@@ -123,7 +123,7 @@ export const groupServiceFactory = ({
     const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.groups)
       throw new BadRequestError({
-        message: "Failed to update group due to plan restrictio Upgrade plan to update group."
+        message: "Failed to update group due to plan restriction Upgrade plan to update group."
       });
 
     const group = await groupDAL.findOne({ orgId: actorOrgId, id });

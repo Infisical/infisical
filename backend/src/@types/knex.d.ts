@@ -200,6 +200,9 @@ import {
   TProjectSlackConfigsInsert,
   TProjectSlackConfigsUpdate,
   TProjectsUpdate,
+  TProjectTemplates,
+  TProjectTemplatesInsert,
+  TProjectTemplatesUpdate,
   TProjectUserAdditionalPrivilege,
   TProjectUserAdditionalPrivilegeInsert,
   TProjectUserAdditionalPrivilegeUpdate,
@@ -817,6 +820,11 @@ declare module "knex/types/tables" {
       TExternalGroupOrgRoleMappings,
       TExternalGroupOrgRoleMappingsInsert,
       TExternalGroupOrgRoleMappingsUpdate
+    >;
+    [TableName.ProjectTemplates]: KnexOriginal.CompositeTableType<
+      TProjectTemplates,
+      TProjectTemplatesInsert,
+      TProjectTemplatesUpdate
     >;
   }
 }

@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import { Checkbox, Select, SelectItem, Td, Tr } from "@app/components/v2";
+import { OrgPermissionSubjects } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { TFormSchema } from "@app/views/Org/RolePage/components/OrgRoleModifySection.utils";
 
@@ -43,6 +44,13 @@ const BILLING_PERMISSIONS = [
   { action: "delete", label: "Remove payments" }
 ] as const;
 
+const PROJECT_TEMPLATES_PERMISSIONS = [
+  { action: "read", label: "View & Apply" },
+  { action: "create", label: "Create" },
+  { action: "edit", label: "Modify" },
+  { action: "delete", label: "Remove" }
+] as const;
+
 const getPermissionList = (option: string) => {
   switch (option) {
     case "secret-scanning":
@@ -53,6 +61,8 @@ const getPermissionList = (option: string) => {
       return INCIDENT_CONTACTS_PERMISSIONS;
     case "member":
       return MEMBERS_PERMISSIONS;
+    case OrgPermissionSubjects.ProjectTemplates:
+      return PROJECT_TEMPLATES_PERMISSIONS;
     default:
       return PERMISSIONS;
   }

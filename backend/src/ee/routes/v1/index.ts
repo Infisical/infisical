@@ -1,3 +1,5 @@
+import { registerProjectTemplateRouter } from "@app/ee/routes/v1/project-template-router";
+
 import { registerAccessApprovalPolicyRouter } from "./access-approval-policy-router";
 import { registerAccessApprovalRequestRouter } from "./access-approval-request-router";
 import { registerAuditLogStreamRouter } from "./audit-log-stream-router";
@@ -92,4 +94,6 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerExternalKmsRouter, {
     prefix: "/external-kms"
   });
+
+  await server.register(registerProjectTemplateRouter, { prefix: "/project-templates" });
 };

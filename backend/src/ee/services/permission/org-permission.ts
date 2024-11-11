@@ -26,7 +26,8 @@ export enum OrgPermissionSubjects {
   Identity = "identity",
   Kms = "kms",
   AdminConsole = "organization-admin-console",
-  AuditLogs = "audit-logs"
+  AuditLogs = "audit-logs",
+  ProjectTemplates = "project-templates"
 }
 
 export type OrgPermissionSet =
@@ -45,6 +46,7 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.Identity]
   | [OrgPermissionActions, OrgPermissionSubjects.Kms]
   | [OrgPermissionActions, OrgPermissionSubjects.AuditLogs]
+  | [OrgPermissionActions, OrgPermissionSubjects.ProjectTemplates]
   | [OrgPermissionAdminConsoleAction, OrgPermissionSubjects.AdminConsole];
 
 const buildAdminPermission = () => {
@@ -117,6 +119,11 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Create, OrgPermissionSubjects.AuditLogs);
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.AuditLogs);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.AuditLogs);
+
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.ProjectTemplates);
+  can(OrgPermissionActions.Edit, OrgPermissionSubjects.ProjectTemplates);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.ProjectTemplates);
 
   can(OrgPermissionAdminConsoleAction.AccessAllProjects, OrgPermissionSubjects.AdminConsole);
 

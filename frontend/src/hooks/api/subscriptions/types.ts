@@ -43,4 +43,5 @@ export type SubscriptionPlan = {
   externalKms: boolean;
   pkiEst: boolean;
   enforceMfa: boolean;
+  projectTemplates: boolean;
 };

@@ -3,7 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionCmekActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { ProjectServiceActor } from "@app/lib/types";
+import { OrgServiceActor } from "@app/lib/types";
 import {
   TCmekDecryptDTO,
   TCmekEncryptDTO,
@@ -23,7 +23,7 @@ type TCmekServiceFactoryDep = {
 export type TCmekServiceFactory = ReturnType<typeof cmekServiceFactory>;
 
 export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TCmekServiceFactoryDep) => {
-  const createCmek = async ({ projectId, ...dto }: TCreateCmekDTO, actor: ProjectServiceActor) => {
+  const createCmek = async ({ projectId, ...dto }: TCreateCmekDTO, actor: OrgServiceActor) => {
     const { permission } = await permissionService.getProjectPermission(
       actor.type,
       actor.id,
@@ -43,7 +43,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
     return cmek;
   };
 
-  const updateCmekById = async ({ keyId, ...data }: TUpdabteCmekByIdDTO, actor: ProjectServiceActor) => {
+  const updateCmekById = async ({ keyId, ...data }: TUpdabteCmekByIdDTO, actor: OrgServiceActor) => {
     const key = await kmsDAL.findById(keyId);
 
     if (!key) throw new NotFoundError({ message: `Key with ID ${keyId} not found` });
@@ -65,7 +65,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
     return cmek;
   };
 
-  const deleteCmekById = async (keyId: string, actor: ProjectServiceActor) => {
+  const deleteCmekById = async (keyId: string, actor: OrgServiceActor) => {
     const key = await kmsDAL.findById(keyId);
 
     if (!key) throw new NotFoundError({ message: `Key with ID ${keyId} not found` });
@@ -87,10 +87,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
     return cmek;
   };
 
-  const listCmeksByProjectId = async (
-    { projectId, ...filters }: TListCmeksByProjectIdDTO,
-    actor: ProjectServiceActor
-  ) => {
+  const listCmeksByProjectId = async ({ projectId, ...filters }: TListCmeksByProjectIdDTO, actor: OrgServiceActor) => {
     const { permission } = await permissionService.getProjectPermission(
       actor.type,
       actor.id,
@@ -106,7 +103,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
     return { cmeks, totalCount };
   };
 
-  const cmekEncrypt = async ({ keyId, plaintext }: TCmekEncryptDTO, actor: ProjectServiceActor) => {
+  const cmekEncrypt = async ({ keyId, plaintext }: TCmekEncryptDTO, actor: OrgServiceActor) => {
     const key = await kmsDAL.findById(keyId);
 
     if (!key) throw new NotFoundError({ message: `Key with ID ${keyId} not found` });
@@ -132,7 +129,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
     return cipherTextBlob.toString("base64");
   };
 
-  const cmekDecrypt = async ({ keyId, ciphertext }: TCmekDecryptDTO, actor: ProjectServiceActor) => {
+  const cmekDecrypt = async ({ keyId, ciphertext }: TCmekDecryptDTO, actor: OrgServiceActor) => {
     const key = await kmsDAL.findById(keyId);
 
     if (!key) throw new NotFoundError({ message: `Key with ID ${keyId} not found` });

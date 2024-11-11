@@ -1,0 +1,147 @@
+---
+title: "Project Templates"
+sidebarTitle: "Project Templates"
+description: "Learn how to manage and apply project templates"
+---
+
+## Concept
+
+Project Templates streamline your ability to set up projects by providing customizable templates to configure projects quickly with a predefined set of environments and roles.
+
+<Note>
+    Project Templates is a paid feature.
+    If you're using Infisical Cloud, then it is available under the **Enterprise Tier**. If you're self-hosting Infisical,
+    then you should contact team@infisical.com to purchase an enterprise license to use it.
+</Note>
+
+## Workflow
+
+The typical workflow for using Project Templates consists of the following steps:
+
+1. <strong>Creating a project template:</strong> As part of this step, you will configure a set of environments and roles to be created when applying this template to a project.
+2. <strong>Using a project template:</strong> When creating new projects, optionally specify a project template to provision the project with the configured roles and environments.
+
+<Note>
+  Note that this workflow can be executed via the Infisical UI or through the API.
+</Note>
+
+## Guide to Creating a Project Template
+
+In the following steps, we'll explore how to set up a project template.
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Creating a Project Template">
+                Navigate to the Project Templates tab on the Organization Settings page and tap on the **Add Template** button.
+                ![project template add button](/images/platform/project-templates/project-template-add-button.png)
+
+                Specify your template details. Here's some guidance on each field:
+
+                - <strong>Name:</strong> A slug-friendly name for the template.
+                - <strong>Description:</strong> An optional description of the intended usage of this template.
+
+                ![project template create modal](/images/platform/project-templates/project-template-create.png)
+            </Step>
+            <Step title="Configuring a Project Template">
+                Once your template is created, you'll be directed to the configuration section.
+                ![project template edit form](/images/platform/project-templates/project-template-edit-form.png)
+
+                Customize the environments and roles to your needs.
+                ![project template customized](/images/platform/project-templates/project-template-customized.png)
+
+                <Note>
+                    Be sure to save your environment and role changes.
+                </Note>
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        To create a project template, make an API request to the [Create Project Template](/api-reference/endpoints/project-templates/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl --request POST \
+        --url https://app.infisical.com/api/v1/project-templates \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "name": "my-project-template",
+            "description": "...",
+            "environments": "[...]",
+            "roles": "[...]",
+        }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+            "projectTemplate": {
+                "id": "<template-id>",
+                "name": "my-project-template",
+                "description": "...",
+                "environments": "[...]",
+                "roles": "[...]",
+                "orgId": "<org-id>",
+                "createdAt": "2023-11-07T05:31:56Z",
+                "updatedAt": "2023-11-07T05:31:56Z",
+            }
+        }
+        ```
+    </Tab>
+
+</Tabs>
+
+## Guide to Using a Project Template
+
+In the following steps, we'll explore how to use a project template when creating a project.
+
+<Tabs>
+    <Tab title="Infisical UI">
+        When creating a new project, select the desired template from the dropdown menu in the create project modal.
+        ![kms key options](/images/platform/project-templates/project-template-apply.png)
+
+        Your project will be provisioned with the configured template roles and environments.
+    </Tab>
+    <Tab title="API">
+        To use a project template, make an API request to the [Create Project](/api-reference/endpoints/workspaces/create-workspace) API endpoint with the specified template name included.
+
+        ### Sample request
+
+        ```bash Request
+        curl --request POST \
+        --url https://app.infisical.com/api/v2/workspace \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "projectName": "My Project",
+            "template": "<template-name>", // defaults to "default"
+        }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+            "project": {
+                "id": "<project-id>",
+                "environments": "[...]", // configured environments
+                ...
+            }
+        }
+        ```
+
+        <Note>
+            Note that configured roles are not included in the project response.
+        </Note>
+    </Tab>
+
+</Tabs>
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="Do changes to templates propagate to existing projects?">
+    No. Project templates only apply at the time of project creation.
+  </Accordion>
+</AccordionGroup>

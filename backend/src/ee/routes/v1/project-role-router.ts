@@ -192,7 +192,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          roles: ProjectRolesSchema.omit({ permissions: true }).array()
+          roles: ProjectRolesSchema.omit({ permissions: true, version: true }).array()
         })
       }
     },
@@ -225,7 +225,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          role: SanitizedRoleSchemaV1
+          role: SanitizedRoleSchemaV1.omit({ version: true })
         })
       }
     },

@@ -9,7 +9,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { OrderByDirection, ProjectServiceActor } from "@app/lib/types";
+import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
@@ -457,7 +457,7 @@ export const dynamicSecretServiceFactory = ({
 
   const listDynamicSecretsByFolderIds = async (
     { folderMappings, filters, projectId }: TListDynamicSecretsByFolderMappingsDTO,
-    actor: ProjectServiceActor
+    actor: OrgServiceActor
   ) => {
     const { permission } = await permissionService.getProjectPermission(
       actor.type,

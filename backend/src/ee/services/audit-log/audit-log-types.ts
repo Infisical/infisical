@@ -1,3 +1,7 @@
+import {
+  TCreateProjectTemplateDTO,
+  TUpdateProjectTemplateDTO
+} from "@app/ee/services/project-template/project-template-types";
 import { SymmetricEncryption } from "@app/lib/crypto/cipher";
 import { TProjectPermission } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -192,7 +196,13 @@ export enum EventType {
   CMEK_ENCRYPT = "cmek-encrypt",
   CMEK_DECRYPT = "cmek-decrypt",
   UPDATE_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "update-external-group-org-role-mapping",
-  GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "get-external-group-org-role-mapping"
+  GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "get-external-group-org-role-mapping",
+  GET_PROJECT_TEMPLATES = "get-project-templates",
+  GET_PROJECT_TEMPLATE = "get-project-template",
+  CREATE_PROJECT_TEMPLATE = "create-project-template",
+  UPDATE_PROJECT_TEMPLATE = "update-project-template",
+  DELETE_PROJECT_TEMPLATE = "delete-project-template",
+  APPLY_PROJECT_TEMPLATE = "apply-project-template"
 }
 
 interface UserActorMetadata {
@@ -1618,6 +1628,46 @@ interface UpdateExternalGroupOrgRoleMappingsEvent {
   };
 }
 
+interface GetProjectTemplatesEvent {
+  type: EventType.GET_PROJECT_TEMPLATES;
+  metadata: {
+    count: number;
+    templateIds: string[];
+  };
+}
+
+interface GetProjectTemplateEvent {
+  type: EventType.GET_PROJECT_TEMPLATE;
+  metadata: {
+    templateId: string;
+  };
+}
+
+interface CreateProjectTemplateEvent {
+  type: EventType.CREATE_PROJECT_TEMPLATE;
+  metadata: TCreateProjectTemplateDTO;
+}
+
+interface UpdateProjectTemplateEvent {
+  type: EventType.UPDATE_PROJECT_TEMPLATE;
+  metadata: TUpdateProjectTemplateDTO & { templateId: string };
+}
+
+interface DeleteProjectTemplateEvent {
+  type: EventType.DELETE_PROJECT_TEMPLATE;
+  metadata: {
+    templateId: string;
+  };
+}
+
+interface ApplyProjectTemplateEvent {
+  type: EventType.APPLY_PROJECT_TEMPLATE;
+  metadata: {
+    template: string;
+    projectId: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -1766,4 +1816,10 @@ export type Event =
   | CmekEncryptEvent
   | CmekDecryptEvent
   | GetExternalGroupOrgRoleMappingsEvent
-  | UpdateExternalGroupOrgRoleMappingsEvent;
+  | UpdateExternalGroupOrgRoleMappingsEvent
+  | GetProjectTemplatesEvent
+  | GetProjectTemplateEvent
+  | CreateProjectTemplateEvent
+  | UpdateProjectTemplateEvent
+  | DeleteProjectTemplateEvent
+  | ApplyProjectTemplateEvent;

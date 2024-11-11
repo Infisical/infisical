@@ -7,7 +7,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { OrderByDirection, ProjectServiceActor } from "@app/lib/types";
+import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -514,7 +514,7 @@ export const secretFolderServiceFactory = ({
 
   const getFoldersDeepByEnvs = async (
     { projectId, environments, secretPath }: TGetFoldersDeepByEnvsDTO,
-    actor: ProjectServiceActor
+    actor: OrgServiceActor
   ) => {
     // folder list is allowed to be read by anyone
     // permission to check does user have access

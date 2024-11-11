@@ -172,22 +172,26 @@ export const QuickSearchSecretItem = ({
                   }}
                   key={secret.id}
                 >
-                  {!isSingleEnv && (
-                    <span className="text-xs text-mineshaft-400">
-                      {envSlugMap.get(secret.env)?.name}
-                    </span>
-                  )}
-                  <p
-                    className={twMerge(
-                      "hidden w-[12rem] max-w-[12rem] truncate  text-sm group-hover:block",
-                      !secret.value && "text-mineshaft-400"
-                    )}
-                  >
-                    {secret.value || "EMPTY"}
-                  </p>
-                  <p className="w-[12rem] text-sm  group-hover:hidden">
-                    ***************************
-                  </p>
+                  <Tooltip side="left" sideOffset={18} content="Click to copy to clipboard">
+                    <div>
+                      {!isSingleEnv && (
+                        <span className="text-xs text-mineshaft-400">
+                          {envSlugMap.get(secret.env)?.name}
+                        </span>
+                      )}
+                      <p
+                        className={twMerge(
+                          "hidden w-[12rem] max-w-[12rem] truncate  text-sm group-hover:block",
+                          !secret.value && "text-mineshaft-400"
+                        )}
+                      >
+                        {secret.value || "EMPTY"}
+                      </p>
+                      <p className="w-[12rem] text-sm  group-hover:hidden">
+                        ***************************
+                      </p>
+                    </div>
+                  </Tooltip>
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>

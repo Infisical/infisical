@@ -9,6 +9,7 @@ import {
   ProjectKeysSchema
 } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { InfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-types";
 import { PROJECTS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -169,7 +170,15 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           })
           .optional()
           .describe(PROJECTS.CREATE.slug),
-        kmsKeyId: z.string().optional()
+        kmsKeyId: z.string().optional(),
+        template: z
+          .string()
+          .refine((v) => slugify(v) === v, {
+            message: "Template name must be in slug format"
+          })
+          .optional()
+          .default(InfisicalProjectTemplate.Default)
+          .describe(PROJECTS.CREATE.template)
       }),
       response: {
         200: z.object({
@@ -186,7 +195,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         workspaceName: req.body.projectName,
         slug: req.body.slug,
-        kmsKeyId: req.body.kmsKeyId
+        kmsKeyId: req.body.kmsKeyId,
+        template: req.body.template
       });
 
       await server.services.telemetry.sendPostHogEvents({
@@ -198,6 +208,20 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           ...req.auditLogInfo
         }
       });
+
+      if (req.body.template) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          event: {
+            type: EventType.APPLY_PROJECT_TEMPLATE,
+            metadata: {
+              template: req.body.template,
+              projectId: project.id
+            }
+          }
+        });
+      }
 
       return { project };
     }

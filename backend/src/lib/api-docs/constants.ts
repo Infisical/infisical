@@ -391,7 +391,8 @@ export const PROJECTS = {
   CREATE: {
     organizationSlug: "The slug of the organization to create the project in.",
     projectName: "The name of the project to create.",
-    slug: "An optional slug for the project."
+    slug: "An optional slug for the project.",
+    template: "The name of the project template, if specified, to apply to this project."
   },
   DELETE: {
     workspaceId: "The ID of the project to delete."
@@ -1436,5 +1437,24 @@ export const KMS = {
   DECRYPT: {
     keyId: "The ID of the key to decrypt the data with.",
     ciphertext: "The ciphertext to be decrypted (base64 encoded)."
+  }
+};
+
+export const ProjectTemplates = {
+  CREATE: {
+    name: "The name of the project template to be created. Must be slug-friendly.",
+    description: "An optional description of the project template.",
+    roles: "The roles to be created when the template is applied to a project.",
+    environments: "The environments to be created when the template is applied to a project."
+  },
+  UPDATE: {
+    templateId: "The ID of the project template to be updated.",
+    name: "The updated name of the project template. Must be slug-friendly.",
+    description: "The updated description of the project template.",
+    roles: "The updated roles to be created when the template is applied to a project.",
+    environments: "The updated environments to be created when the template is applied to a project."
+  },
+  DELETE: {
+    templateId: "The ID of the project template to be deleted."
   }
 };

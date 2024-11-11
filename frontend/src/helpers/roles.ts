@@ -1,3 +1,5 @@
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+
 enum OrgMembershipRole {
   Admin = "admin",
   Member = "member",
@@ -18,3 +20,6 @@ export const formatProjectRoleName = (name: string) => {
   if (name === ProjectMemberRole.Member) return "developer";
   return name;
 };
+
+export const isCustomProjectRole = (slug: string) =>
+  !Object.values(ProjectMembershipRole).includes(slug as ProjectMembershipRole);

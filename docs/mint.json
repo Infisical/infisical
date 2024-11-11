@@ -1,6 +1,6 @@
 {
   "name": "Infisical",
-  "openapi": "https://app.infisical.com/api/docs/json",
+  "openapi": "http://localhost:8080/api/docs/json",
   "logo": {
     "dark": "/logo/dark.svg",
     "light": "/logo/light.svg",
@@ -191,6 +191,7 @@
             "documentation/platform/dynamic-secrets/snowflake"
           ]
         },
+        "documentation/platform/project-templates",
         {
           "group": "Workflow Integrations",
           "pages": [
@@ -642,6 +643,16 @@
             "api-reference/endpoints/project-roles/delete",
             "api-reference/endpoints/project-roles/get-by-slug",
             "api-reference/endpoints/project-roles/list"
+          ]
+        },
+        {
+          "group": "Project Templates",
+          "pages": [
+            "api-reference/endpoints/project-templates/create",
+            "api-reference/endpoints/project-templates/update",
+            "api-reference/endpoints/project-templates/delete",
+            "api-reference/endpoints/project-templates/get-by-id",
+            "api-reference/endpoints/project-templates/list"
           ]
         },
         {

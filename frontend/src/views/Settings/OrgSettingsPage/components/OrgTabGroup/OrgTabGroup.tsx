@@ -4,6 +4,7 @@ import { Tab } from "@headlessui/react";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { ProjectTemplatesTab } from "@app/views/Settings/OrgSettingsPage/components/ProjectTemplatesTab";
 
 import { AuditLogStreamsTab } from "../AuditLogStreamTab";
 import { ImportTab } from "../ImportTab";
@@ -18,7 +19,8 @@ const tabs = [
   { name: "Encryption", key: "tab-org-encryption" },
   { name: "Workflow Integrations", key: "workflow-integrations" },
   { name: "Audit Log Streams", key: "tag-audit-log-streams" },
-  { name: "Import", key: "tab-import" }
+  { name: "Import", key: "tab-import" },
+  { name: "Project Templates", key: "project-templates" }
 ];
 export const OrgTabGroup = () => {
   const { query } = useRouter();
@@ -69,10 +71,13 @@ export const OrgTabGroup = () => {
           <AuditLogStreamsTab />
         </Tab.Panel>
         <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
-        <Tab.Panel>
-          <ImportTab />
-        </Tab.Panel>
+          <Tab.Panel>
+            <ImportTab />
+          </Tab.Panel>
         </OrgPermissionCan>
+        <Tab.Panel>
+          <ProjectTemplatesTab />
+        </Tab.Panel>
       </Tab.Panels>
     </Tab.Group>
   );

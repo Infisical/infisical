@@ -3,7 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { ProjectServiceActor } from "@app/lib/types";
+import { OrgServiceActor } from "@app/lib/types";
 import { constructGroupOrgMembershipRoleMappings } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-fns";
 import { TSyncExternalGroupOrgMembershipRoleMappingsDTO } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-types";
 import { TOrgRoleDALFactory } from "@app/services/org/org-role-dal";
@@ -25,7 +25,7 @@ export const externalGroupOrgRoleMappingServiceFactory = ({
   permissionService,
   orgRoleDAL
 }: TExternalGroupOrgRoleMappingServiceFactoryDep) => {
-  const listExternalGroupOrgRoleMappings = async (actor: ProjectServiceActor) => {
+  const listExternalGroupOrgRoleMappings = async (actor: OrgServiceActor) => {
     const { permission } = await permissionService.getOrgPermission(
       actor.type,
       actor.id,
@@ -46,7 +46,7 @@ export const externalGroupOrgRoleMappingServiceFactory = ({
 
   const updateExternalGroupOrgRoleMappings = async (
     dto: TSyncExternalGroupOrgMembershipRoleMappingsDTO,
-    actor: ProjectServiceActor
+    actor: OrgServiceActor
   ) => {
     const { permission } = await permissionService.getOrgPermission(
       actor.type,

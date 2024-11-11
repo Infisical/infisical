@@ -18,6 +18,7 @@ import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-con
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { TProjectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-service";
 import { TProjectUserAdditionalPrivilegeServiceFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-service";
 import { TRateLimitServiceFactory } from "@app/ee/services/rate-limit/rate-limit-service";
 import { RateLimitConfiguration } from "@app/ee/services/rate-limit/rate-limit-types";
@@ -189,6 +190,7 @@ declare module "fastify" {
       cmek: TCmekServiceFactory;
       migration: TExternalMigrationServiceFactory;
       externalGroupOrgRoleMapping: TExternalGroupOrgRoleMappingServiceFactory;
+      projectTemplate: TProjectTemplateServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

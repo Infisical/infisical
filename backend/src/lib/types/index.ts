@@ -58,7 +58,7 @@ export enum OrderByDirection {
   DESC = "desc"
 }
 
-export type ProjectServiceActor = {
+export type OrgServiceActor = {
   type: ActorType;
   id: string;
   authMethod: ActorAuthMethod;

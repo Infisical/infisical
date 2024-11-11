@@ -19,6 +19,7 @@ import {
   faExclamationCircle,
   faFileShield,
   faHandPeace,
+  faInfoCircle,
   faList,
   faMagnifyingGlass,
   faNetworkWired,
@@ -69,6 +70,7 @@ import {
   useRegisterUserAction
 } from "@app/hooks/api";
 import { INTERNAL_KMS_KEY_ID } from "@app/hooks/api/kms/types";
+import { InfisicalProjectTemplate, useListProjectTemplates } from "@app/hooks/api/projectTemplates";
 // import { fetchUserWsKey } from "@app/hooks/api/keys/queries";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { Workspace } from "@app/hooks/api/types";
@@ -482,7 +484,8 @@ const formSchema = yup.object({
     .trim()
     .max(64, "Too long, maximum length is 64 characters"),
   addMembers: yup.bool().required().label("Add Members"),
-  kmsKeyId: yup.string().label("KMS Key ID")
+  kmsKeyId: yup.string().label("KMS Key ID"),
+  template: yup.string().label("Project Template Name")
 });
 
 type TAddProjectFormData = yup.InferType<typeof formSchema>;
@@ -537,7 +540,7 @@ const OrganizationPage = () => {
     enabled: permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Kms)
   });
 
-  const onCreateProject = async ({ name, addMembers, kmsKeyId }: TAddProjectFormData) => {
+  const onCreateProject = async ({ name, addMembers, kmsKeyId, template }: TAddProjectFormData) => {
     // type check
     if (!currentOrg) return;
     if (!user) return;
@@ -548,7 +551,8 @@ const OrganizationPage = () => {
         }
       } = await createWs.mutateAsync({
         projectName: name,
-        kmsKeyId: kmsKeyId !== INTERNAL_KMS_KEY_ID ? kmsKeyId : undefined
+        kmsKeyId: kmsKeyId !== INTERNAL_KMS_KEY_ID ? kmsKeyId : undefined,
+        template
       });
 
       if (addMembers) {
@@ -578,6 +582,15 @@ const OrganizationPage = () => {
   };
 
   const { subscription } = useSubscription();
+
+  const canReadProjectTemplates = permission.can(
+    OrgPermissionActions.Read,
+    OrgPermissionSubjects.ProjectTemplates
+  );
+
+  const { data: projectTemplates = [] } = useListProjectTemplates({
+    enabled: canReadProjectTemplates && subscription?.projectTemplates
+  });
 
   const isAddingProjectsAllowed = subscription?.workspaceLimit
     ? subscription.workspacesUsed < subscription.workspaceLimit
@@ -1037,20 +1050,72 @@ const OrganizationPage = () => {
           subTitle="This project will contain your secrets and configurations."
         >
           <form onSubmit={handleSubmit(onCreateProject)}>
-            <Controller
-              control={control}
-              name="name"
-              defaultValue=""
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Project Name"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                >
-                  <Input {...field} placeholder="Type your project name" />
-                </FormControl>
-              )}
-            />
+            <div className="flex gap-2">
+              <Controller
+                control={control}
+                name="name"
+                defaultValue=""
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Project Name"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                    className="flex-1"
+                  >
+                    <Input {...field} placeholder="Type your project name" />
+                  </FormControl>
+                )}
+              />
+              <Controller
+                control={control}
+                name="template"
+                render={({ field: { value, onChange } }) => (
+                  <OrgPermissionCan
+                    I={OrgPermissionActions.Read}
+                    a={OrgPermissionSubjects.ProjectTemplates}
+                  >
+                    {(isAllowed) => (
+                      <FormControl
+                        label="Project Template"
+                        icon={<FontAwesomeIcon icon={faInfoCircle} size="sm" />}
+                        tooltipText={
+                          <>
+                            <p>
+                              Create this project from a template to provision it with custom
+                              environments and roles.
+                            </p>
+                            {subscription && !subscription.projectTemplates && (
+                              <p className="pt-2">Project templates are a paid feature.</p>
+                            )}
+                          </>
+                        }
+                      >
+                        <Select
+                          defaultValue={InfisicalProjectTemplate.Default}
+                          placeholder={InfisicalProjectTemplate.Default}
+                          isDisabled={!isAllowed || !subscription?.projectTemplates}
+                          value={value}
+                          onValueChange={onChange}
+                          className="w-44"
+                        >
+                          {projectTemplates.length
+                            ? projectTemplates.map((template) => (
+                                <SelectItem key={template.id} value={template.name}>
+                                  {template.name}
+                                </SelectItem>
+                              ))
+                            : Object.values(InfisicalProjectTemplate).map((template) => (
+                                <SelectItem key={template} value={template}>
+                                  {template}
+                                </SelectItem>
+                              ))}
+                        </Select>
+                      </FormControl>
+                    )}
+                  </OrgPermissionCan>
+                )}
+              />
+            </div>
             <div className="mt-4 pl-1">
               <Controller
                 control={control}

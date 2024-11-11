@@ -64,6 +64,7 @@ export * from "./project-keys";
 export * from "./project-memberships";
 export * from "./project-roles";
 export * from "./project-slack-configs";
+export * from "./project-templates";
 export * from "./project-user-additional-privilege";
 export * from "./project-user-membership-roles";
 export * from "./projects";
