@@ -23,6 +23,9 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 } }: THsm
   const BLOCK_SIZE = 16;
   const HMAC_SIZE = 32;
 
+  const AES_KEY_SIZE = 256;
+  const HMAC_KEY_SIZE = 256;
+
   const $withSession = async <T>(callbackWithSession: SessionCallback<T>): Promise<T> => {
     const RETRY_INTERVAL = 300; // 300ms between attempts
     const MAX_TIMEOUT = 30_000; // 30 seconds maximum total time
@@ -215,13 +218,9 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 } }: THsm
 
         // Calculate max buffer size (input length + potential full block of padding)
         const maxEncryptedLength = Math.ceil(data.length / BLOCK_SIZE) * BLOCK_SIZE + BLOCK_SIZE;
-        const tempBuffer = Buffer.alloc(maxEncryptedLength);
 
-        // First call to get the actual length
-        const encryptedLength = pkcs11.C_Encrypt(sessionHandle, data, tempBuffer);
-
-        // Create a copy of the encrypted data using the actual length
-        const encryptedData = Buffer.from(tempBuffer.subarray(0, encryptedLength.length || 16));
+        // Encrypt the data - this returns the encrypted data directly
+        const encryptedData = pkcs11.C_Encrypt(sessionHandle, data, Buffer.alloc(maxEncryptedLength));
 
         // Initialize HMAC
         const hmacMechanism = {
@@ -396,7 +395,7 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 } }: THsm
           const keyTemplate = [
             { type: pkcs11js.CKA_CLASS, value: pkcs11js.CKO_SECRET_KEY },
             { type: pkcs11js.CKA_KEY_TYPE, value: pkcs11js.CKK_AES },
-            { type: pkcs11js.CKA_VALUE_LEN, value: 256 / 8 },
+            { type: pkcs11js.CKA_VALUE_LEN, value: AES_KEY_SIZE / 8 },
             { type: pkcs11js.CKA_LABEL, value: appCfg.HSM_KEY_LABEL! },
             { type: pkcs11js.CKA_ENCRYPT, value: true }, // Allow encryption
             { type: pkcs11js.CKA_DECRYPT, value: true }, // Allow decryption
@@ -420,7 +419,7 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 } }: THsm
           const hmacKeyTemplate = [
             { type: pkcs11js.CKA_CLASS, value: pkcs11js.CKO_SECRET_KEY },
             { type: pkcs11js.CKA_KEY_TYPE, value: pkcs11js.CKK_GENERIC_SECRET },
-            { type: pkcs11js.CKA_VALUE_LEN, value: 256 / 8 }, // 256-bit key
+            { type: pkcs11js.CKA_VALUE_LEN, value: HMAC_KEY_SIZE / 8 }, // 256-bit key
             { type: pkcs11js.CKA_LABEL, value: `${appCfg.HSM_KEY_LABEL!}_HMAC` },
             { type: pkcs11js.CKA_SIGN, value: true }, // Allow signing
             { type: pkcs11js.CKA_VERIFY, value: true }, // Allow verification
