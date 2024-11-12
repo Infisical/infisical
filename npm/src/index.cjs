@@ -78,7 +78,7 @@ async function main() {
 			outStream.on("close", resolve);
 		});
 	} catch (error) {
-		console.error("Error downloading or extracting the asset:", error);
+		console.error("Error downloading or extracting Infisical CLI:", error);
 		process.exit(1);
 	}
 }
