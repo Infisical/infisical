@@ -1,9 +1,21 @@
 {
-  "name": "infisical-cli",
-  "version": "0.14.2",
+  "name": "@infisical/cli",
+  "private": false,
+  "version": "0.0.0",
+  "keywords": [
+    "infisical",
+    "cli",
+    "command-line"
+  ],
   "bin": {
     "infisical": "./bin/infisical"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Infisical/infisical.git"
+  },
+  "author": "Infisical Inc, <daniel@infisical.com>",
+
   "scripts": {
     "postinstall": "node src/index.cjs"
   },
