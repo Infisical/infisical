@@ -518,7 +518,10 @@ export const expandSecretReferencesFactory = ({
           }
 
           if (referencedSecretValue) {
-            expandedValue = expandedValue.replaceAll(interpolationSyntax, referencedSecretValue);
+            expandedValue = expandedValue.replaceAll(
+              interpolationSyntax,
+              () => referencedSecretValue // prevents special characters from triggering replacement patterns
+            );
           }
         }
       }
