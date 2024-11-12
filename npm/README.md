@@ -34,12 +34,38 @@
   </a>
 </h4>
 
-## Introduction
+### Introduction
 
 **[Infisical](https://infisical.com)** is the open source secret management platform that teams use to centralize their application configuration and secrets like API keys and database credentials as well as manage their internal PKI.
 
 We're on a mission to make security tooling more accessible to everyone, not just security teams, and that means redesigning the entire developer experience from ground up.
 
-## [CLI Documentation](https://infisical.com/docs/cli/usage)
+
+### Installation
+
+The Infisical CLI NPM package serves as a new installation method in addition to our [existing installation methods](https://infisical.com/docs/cli/overview).
+
+After installing the CLI with the command below, you'll be able to use the infisical CLI across your machine.
+
+```bash
+$ npm install -g @infisical/cli
+```
+
+Full example:
+```bash
+# Install the Infisical CLI
+$ npm install -g @infisical/cli
+
+# Authenticate with the Infisical CLI
+$ infisical login 
+
+# Initialize your Infisical CLI
+$ infisical init
+
+# List your secrets with Infisical CLI
+$ infisical secrets
+```
 
 
+### Documentation
+Our full CLI documentation can be found [here](https://infisical.com/docs/cli/usage).
