@@ -1,7 +1,7 @@
 import { ChangeEvent, DragEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
-import { faUpload } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faUpload } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQueryClient } from "@tanstack/react-query";
 import { twMerge } from "tailwind-merge";
@@ -10,29 +10,22 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 // TODO:(akhilmhdh) convert all the util functions like this into a lib folder grouped by functionality
 import { parseDotEnv } from "@app/components/utilities/parseDotEnv";
+import { parseJson } from "@app/components/utilities/parseJson";
 import { Button, Modal, ModalContent } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
 import { useCreateSecretBatch, useUpdateSecretBatch } from "@app/hooks/api";
-import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
+import {
+  dashboardKeys,
+  fetchDashboardProjectSecretsByKeys
+} from "@app/hooks/api/dashboard/queries";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { secretKeys } from "@app/hooks/api/secrets/queries";
-import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/types";
+import { SecretType } from "@app/hooks/api/types";
 
 import { PopUpNames, usePopUpAction } from "../../SecretMainPage.store";
 import { CopySecretsFromBoard } from "./CopySecretsFromBoard";
-
-const parseJson = (src: ArrayBuffer) => {
-  const file = src.toString();
-  const formatedData: Record<string, string> = JSON.parse(file);
-  const env: Record<string, { value: string; comments: string[] }> = {};
-  Object.keys(formatedData).forEach((key) => {
-    if (typeof formatedData[key] === "string") {
-      env[key] = { value: formatedData[key], comments: [] };
-    }
-  });
-  return env;
-};
+import { PasteSecretEnvModal } from "./PasteSecretEnvModal";
 
 type TParsedEnv = Record<string, { value: string; comments: string[] }>;
 type TSecOverwriteOpt = { update: TParsedEnv; create: TParsedEnv };
@@ -43,7 +36,6 @@ type Props = {
   workspaceId: string;
   environment: string;
   secretPath: string;
-  secrets?: SecretV3RawSanitized[];
   isProtectedBranch?: boolean;
 };
 
@@ -53,7 +45,6 @@ export const SecretDropzone = ({
   workspaceId,
   environment,
   secretPath,
-  secrets = [],
   isProtectedBranch = false
 }: Props): JSX.Element => {
   const { t } = useTranslation();
@@ -62,7 +53,8 @@ export const SecretDropzone = ({
 
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "importSecEnv",
-    "overlapKeyWarning"
+    "confirmUpload",
+    "pasteSecEnv"
   ] as const);
   const queryClient = useQueryClient();
   const { openPopUp } = usePopUpAction();
@@ -86,20 +78,10 @@ export const SecretDropzone = ({
     }
   };
 
-  const handleParsedEnv = (env: TParsedEnv) => {
-    const secretsGroupedByKey = secrets?.reduce<Record<string, boolean>>(
-      (prev, curr) => ({ ...prev, [curr.key]: true }),
-      {}
-    );
-    const overlappedSecrets = Object.keys(env)
-      .filter((secKey) => secretsGroupedByKey?.[secKey])
-      .reduce<TParsedEnv>((prev, curr) => ({ ...prev, [curr]: env[curr] }), {});
+  const handleParsedEnv = async (env: TParsedEnv) => {
+    const envSecretKeys = Object.keys(env);
 
-    const nonOverlappedSecrets = Object.keys(env)
-      .filter((secKey) => !secretsGroupedByKey?.[secKey])
-      .reduce<TParsedEnv>((prev, curr) => ({ ...prev, [curr]: env[curr] }), {});
-
-    if (!Object.keys(overlappedSecrets).length && !Object.keys(nonOverlappedSecrets).length) {
+    if (!envSecretKeys.length) {
       createNotification({
         type: "error",
         text: "Failed to find secrets"
@@ -107,10 +89,42 @@ export const SecretDropzone = ({
       return;
     }
 
-    handlePopUpOpen("overlapKeyWarning", {
-      update: overlappedSecrets,
-      create: nonOverlappedSecrets
-    });
+    try {
+      setIsLoading.on();
+      const { secrets: existingSecrets } = await fetchDashboardProjectSecretsByKeys({
+        secretPath,
+        environment,
+        projectId: workspaceId,
+        keys: envSecretKeys
+      });
+
+      const secretsGroupedByKey = existingSecrets.reduce<Record<string, boolean>>(
+        (prev, curr) => ({ ...prev, [curr.secretKey]: true }),
+        {}
+      );
+
+      const updateSecrets = Object.keys(env)
+        .filter((secKey) => secretsGroupedByKey[secKey])
+        .reduce<TParsedEnv>((prev, curr) => ({ ...prev, [curr]: env[curr] }), {});
+
+      const createSecrets = Object.keys(env)
+        .filter((secKey) => !secretsGroupedByKey[secKey])
+        .reduce<TParsedEnv>((prev, curr) => ({ ...prev, [curr]: env[curr] }), {});
+
+      handlePopUpOpen("confirmUpload", {
+        update: updateSecrets,
+        create: createSecrets
+      });
+    } catch (e) {
+      console.error(e);
+      createNotification({
+        text: "Failed to check for secret conflicts",
+        type: "error"
+      });
+      handlePopUpClose("confirmUpload");
+    } finally {
+      setIsLoading.off();
+    }
   };
 
   const parseFile = (file?: File, isJson?: boolean) => {
@@ -160,7 +174,7 @@ export const SecretDropzone = ({
   };
 
   const handleSaveSecrets = async () => {
-    const { update, create } = popUp?.overlapKeyWarning?.data as TSecOverwriteOpt;
+    const { update, create } = popUp?.confirmUpload?.data as TSecOverwriteOpt;
     try {
       if (Object.keys(create || {}).length) {
         await createSecretBatch({
@@ -195,7 +209,7 @@ export const SecretDropzone = ({
         dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
       );
       queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId }));
-      handlePopUpClose("overlapKeyWarning");
+      handlePopUpClose("confirmUpload");
       createNotification({
         type: "success",
         text: isProtectedBranch
@@ -211,9 +225,15 @@ export const SecretDropzone = ({
     }
   };
 
-  const isUploadedDuplicateSecretsEmpty = !Object.keys(
-    (popUp.overlapKeyWarning?.data as TSecOverwriteOpt)?.update || {}
+  const createSecretCount = Object.keys(
+    (popUp.confirmUpload?.data as TSecOverwriteOpt)?.create || {}
   ).length;
+
+  const updateSecretCount = Object.keys(
+    (popUp.confirmUpload?.data as TSecOverwriteOpt)?.update || {}
+  ).length;
+
+  const isNonConflictingUpload = !updateSecretCount;
 
   return (
     <div>
@@ -278,7 +298,15 @@ export const SecretDropzone = ({
               <p className="mx-4 text-xs text-mineshaft-400">OR</p>
               <div className="w-1/5 border-t border-mineshaft-700" />
             </div>
-            <div className="flex items-center justify-center space-x-8">
+            <div className="flex flex-col items-center justify-center gap-4 lg:flex-row">
+              <PasteSecretEnvModal
+                isOpen={popUp.pasteSecEnv.isOpen}
+                onToggle={(isOpen) => handlePopUpToggle("pasteSecEnv", isOpen)}
+                onParsedEnv={handleParsedEnv}
+                environment={environment}
+                secretPath={secretPath}
+                isSmaller={isSmaller}
+              />
               <CopySecretsFromBoard
                 isOpen={popUp.importSecEnv.isOpen}
                 onToggle={(isOpen) => handlePopUpToggle("importSecEnv", isOpen)}
@@ -301,11 +329,12 @@ export const SecretDropzone = ({
                 >
                   {(isAllowed) => (
                     <Button
+                      leftIcon={<FontAwesomeIcon icon={faPlus} />}
                       onClick={() => openPopUp(PopUpNames.CreateSecretForm)}
                       variant="star"
                       isDisabled={!isAllowed}
                     >
-                      Add a new secret
+                      Add a New Secret
                     </Button>
                   )}
                 </ProjectPermissionCan>
@@ -315,25 +344,25 @@ export const SecretDropzone = ({
         )}
       </div>
       <Modal
-        isOpen={popUp?.overlapKeyWarning?.isOpen}
-        onOpenChange={(open) => handlePopUpToggle("overlapKeyWarning", open)}
+        isOpen={popUp?.confirmUpload?.isOpen}
+        onOpenChange={(open) => handlePopUpToggle("confirmUpload", open)}
       >
         <ModalContent
-          title={isUploadedDuplicateSecretsEmpty ? "Confirmation" : "Duplicate Secrets!!"}
+          title="Confirm Secret Upload"
           footerContent={[
             <Button
               isLoading={isSubmitting}
               isDisabled={isSubmitting}
-              colorSchema={isUploadedDuplicateSecretsEmpty ? "primary" : "danger"}
+              colorSchema={isNonConflictingUpload ? "primary" : "danger"}
               key="overwrite-btn"
               onClick={handleSaveSecrets}
             >
-              {isUploadedDuplicateSecretsEmpty ? "Upload" : "Overwrite"}
+              {isNonConflictingUpload ? "Upload" : "Overwrite"}
             </Button>,
             <Button
               key="keep-old-btn"
-              className="mr-4"
-              onClick={() => handlePopUpClose("overlapKeyWarning")}
+              className="ml-4"
+              onClick={() => handlePopUpClose("confirmUpload")}
               variant="outline_bg"
               isDisabled={isSubmitting}
             >
@@ -341,17 +370,27 @@ export const SecretDropzone = ({
             </Button>
           ]}
         >
-          {isUploadedDuplicateSecretsEmpty ? (
-            <div>Upload secrets from this file</div>
+          {isNonConflictingUpload ? (
+            <div>
+              Are you sure you want to import {createSecretCount} secret
+              {createSecretCount > 1 ? "s" : ""} to this environment?
+            </div>
           ) : (
-            <div className="flex flex-col space-y-2 text-gray-300">
-              <div>Your file contains following duplicate secrets</div>
-              <div className="text-sm text-gray-400">
-                {Object.keys((popUp?.overlapKeyWarning?.data as TSecOverwriteOpt)?.update || {})
+            <div className="flex flex-col text-gray-300">
+              <div>Your project already contains the following {updateSecretCount} secrets:</div>
+              <div className="mt-2 text-sm text-gray-400">
+                {Object.keys((popUp?.confirmUpload?.data as TSecOverwriteOpt)?.update || {})
                   ?.map((key) => key)
                   .join(", ")}
               </div>
-              <div>Are you sure you want to overwrite these secrets and create other ones?</div>
+              <div className="mt-6">
+                Are you sure you want to overwrite these secrets
+                {createSecretCount > 0
+                  ? ` and import ${createSecretCount} new
+                one${createSecretCount > 1 ? "s" : ""}`
+                  : ""}
+                ?
+              </div>
             </div>
           )}
         </ModalContent>

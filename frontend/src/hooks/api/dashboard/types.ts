@@ -29,6 +29,10 @@ export type DashboardProjectSecretsDetailsResponse = {
   totalCount: number;
 };
 
+export type DashboardProjectSecretsByKeys = {
+  secrets: SecretV3Raw[];
+};
+
 export type DashboardProjectSecretsOverview = Omit<
   DashboardProjectSecretsOverviewResponse,
   "secrets"
@@ -88,4 +92,11 @@ export type TGetDashboardProjectSecretsQuickSearchDTO = {
   tags: Record<string, boolean>;
   search: string;
   environments: string[];
+};
+
+export type TGetDashboardProjectSecretsByKeys = {
+  projectId: string;
+  secretPath: string;
+  environment: string;
+  keys: string[];
 };

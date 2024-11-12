@@ -361,6 +361,10 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
               void bd.whereILike(`${TableName.SecretV2}.key`, `%${filters?.search}%`);
             }
           }
+
+          if (filters?.keys) {
+            void bd.whereIn(`${TableName.SecretV2}.key`, filters.keys);
+          }
         })
         .where((bd) => {
           void bd.whereNull(`${TableName.SecretV2}.userId`).orWhere({ userId: userId || null });

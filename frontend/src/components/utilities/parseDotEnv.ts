@@ -6,7 +6,7 @@ const LINE =
  * @param {ArrayBuffer} src - source buffer
  * @returns {String} text - text of buffer
  */
-export function parseDotEnv(src: ArrayBuffer) {
+export function parseDotEnv(src: ArrayBuffer | string) {
   const object: {
     [key: string]: { value: string; comments: string[] };
   } = {};
