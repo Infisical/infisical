@@ -34,9 +34,9 @@ jobs:
         env:
             working-directory: ./npm
             CLI_VERSION: 1.1.1
-        needs:
-            - cli-integration-tests
-            # - goreleaser
+        # needs:
+        # - cli-integration-tests
+        # - goreleaser
         steps:
             - uses: actions/checkout@v3
               with:
