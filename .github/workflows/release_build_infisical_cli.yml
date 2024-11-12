@@ -59,7 +59,7 @@ jobs:
                   cache-dependency-path: ./npm/package-lock.json
             - name: Install dependencies
               working-directory: ${{ env.working-directory }}
-              run: npm install
+              run: npm install --ignore-scripts
 
             - name: Set NPM version
               working-directory: ${{ env.working-directory }}
