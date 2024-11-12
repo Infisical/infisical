@@ -490,21 +490,18 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  /* Get a project ID by slug */
   server.route({
     method: "GET",
-    url: "/:slug/id",
+    url: "/:slug/project",
     config: {
       rateLimit: readLimit
     },
     schema: {
       params: z.object({
-        slug: slugSchema.describe("The slug of the project to get the ID for.")
+        slug: slugSchema.describe("The slug of the project returned.")
       }),
       response: {
-        200: z.object({
-          id: z.string().describe("The ID of the project.")
-        })
+        200: SanitizedProjectSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -521,7 +518,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type
       });
 
-      return { id: project.id };
+      return project;
     }
   });
 };
