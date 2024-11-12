@@ -1,20 +1,16 @@
 name: Build and release CLI
 
 on:
-    pull_request:
-        types: [opened, synchronize]
-
     workflow_dispatch:
 
-    # push:
-    # run only against tags
-    # tags:
-    # - "infisical-cli/v*.*.*"
+    push:
+        # run only against tags
+        tags:
+            - "infisical-cli/v*.*.*"
 
 permissions:
     contents: write
-    # packages: write
-    # issues: write
+
 jobs:
     cli-integration-tests:
         name: Run tests before deployment
@@ -33,20 +29,19 @@ jobs:
         runs-on: ubuntu-20.04
         env:
             working-directory: ./npm
-            CLI_VERSION: 1.1.1
-        # needs:
-        # - cli-integration-tests
-        # - goreleaser
+        needs:
+            - cli-integration-tests
+            - goreleaser
         steps:
             - uses: actions/checkout@v3
               with:
                   fetch-depth: 0
 
-            # - name: Extract version
-            #   run: |
-            #       VERSION=$(echo ${{ github.ref_name }} | sed 's/infisical-cli\/v//')
-            #       echo "Version extracted: $VERSION"
-            #       echo "CLI_VERSION=$VERSION" >> $GITHUB_ENV
+            - name: Extract version
+              run: |
+                  VERSION=$(echo ${{ github.ref_name }} | sed 's/infisical-cli\/v//')
+                  echo "Version extracted: $VERSION"
+                  echo "CLI_VERSION=$VERSION" >> $GITHUB_ENV
 
             - name: Print version
               run: echo ${{ env.CLI_VERSION }}
