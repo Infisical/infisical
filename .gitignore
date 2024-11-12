@@ -71,3 +71,5 @@ frontend-build
 cli/infisical-merge
 cli/test/infisical-merge
 /backend/binary
+
+/npm/bin
