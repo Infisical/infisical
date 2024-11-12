@@ -52,7 +52,9 @@ const PasteEnvForm = ({ onParsedEnv }: Pick<Props, "onParsedEnv">) => {
     }
 
     if (!Object.keys(env).length) {
-      setError("value", { message: "No secrets found." });
+      setError("value", {
+        message: "No secrets found. Please make sure the provided format is valid."
+      });
       setFocus("value");
       return;
     }
