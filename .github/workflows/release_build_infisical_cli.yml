@@ -81,6 +81,7 @@ jobs:
               run: npm pack
 
             - name: Publish NPM
+              working-directory: ${{ env.working-directory }}
               run: npm publish --tarball=./infisical-sdk-${{github.ref_name}} --access public --registry=https://registry.npmjs.org/ --dry-run
               env:
                   NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
