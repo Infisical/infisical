@@ -19,24 +19,37 @@ const getPlatform = () => {
 };
 
 const getArchitecture = () => {
-	const architecture = childProcess.execSync("uname -m").toString().trim();
+	const architecture = process.arch;
 	let arch = "";
-	if (architecture === "x86_64" || architecture === "amd64") {
+
+	if (architecture === "x64" || architecture === "amd64") {
 		arch = "amd64";
-	} else if (architecture === "arm64" || architecture === "aarch64") {
+	} else if (architecture === "arm64") {
 		arch = "arm64";
-	} else if (architecture.startsWith("armv5")) {
-		arch = "armv5";
-	} else if (architecture.startsWith("armv6")) {
-		arch = "armv6";
-	} else if (architecture.startsWith("armv7")) {
-		arch = "armv7";
-	} else if (architecture === "i386" || architecture === "i686") {
+	} else if (architecture === "arm") {
+		// If the platform is Linux, we should find the exact ARM version, otherwise we default to armv7 which is the most common
+		if (process.platform === "linux" || process.platform === "freebsd") {
+			const output = childProcess.execSync("uname -m").toString().trim();
+
+			const armVersions = ["armv5", "armv6", "armv7"];
+
+			const armVersion = armVersions.find(version => output.startsWith(version));
+
+			if (armVersion) {
+				arch = armVersion;
+			} else {
+				arch = "armv7";
+			}
+		} else {
+			arch = "armv7";
+		}
+	} else if (architecture === "ia32") {
 		arch = "i386";
 	} else {
 		console.error("Your architecture doesn't seem to be supported. Your architecture is", architecture);
 		process.exit(1);
 	}
+
 	return arch;
 };
 
@@ -64,7 +77,7 @@ async function main() {
 			throw new Error(`Failed to fetch: ${response.status} - ${response.statusText}`);
 		}
 
-		return await new Promise((resolve, reject) => {
+		await new Promise((resolve, reject) => {
 			const outStream = stream.Readable.fromWeb(response.body)
 				.pipe(zlib.createGunzip())
 				.pipe(
@@ -77,6 +90,11 @@ async function main() {
 			outStream.on("error", reject);
 			outStream.on("close", resolve);
 		});
+
+		// Give the binary execute permissions if we're not on Windows
+		if (PLATFORM !== "win32") {
+			fs.chmodSync(path.join(outputDir, "infisical"), "755");
+		}
 	} catch (error) {
 		console.error("Error downloading or extracting Infisical CLI:", error);
 		process.exit(1);
