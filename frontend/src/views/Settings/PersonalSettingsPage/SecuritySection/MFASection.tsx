@@ -147,7 +147,7 @@ export const MFASection = () => {
             </Select>
           </FormControl>
         )}
-        <div className="mt-12 text-lg font-semibold text-mineshaft-100">Mobile Authenticator</div>
+        <div className="mt-10 text-lg font-semibold text-mineshaft-100">Mobile Authenticator</div>
         {isTotpConfigurationLoading ? (
           <ContentLoader />
         ) : (

@@ -90,7 +90,7 @@ export const OrgGenericAuthSection = () => {
           Enforce members to authenticate with MFA in order to access the organization
         </p>
         {currentOrg?.enforceMfa && (
-          <FormControl label="Preferred 2FA method" className="mt-3">
+          <FormControl label="Required 2FA method" className="mt-3">
             <Select
               className="min-w-[20rem] border border-mineshaft-500"
               onValueChange={handleUpdateSelectedMfa}
