@@ -33,6 +33,7 @@ export type TGetSecretsDTO = {
   offset?: number;
   limit?: number;
   search?: string;
+  keys?: string[];
 } & TProjectPermission;
 
 export type TGetASecretDTO = {
@@ -294,6 +295,7 @@ export type TFindSecretsByFolderIdsFilter = {
   search?: string;
   tagSlugs?: string[];
   includeTagsInSearch?: boolean;
+  keys?: string[];
 };
 
 export type TGetSecretsRawByFolderMappingsDTO = {

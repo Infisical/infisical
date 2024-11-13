@@ -840,4 +840,91 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       };
     }
   });
+
+  server.route({
+    method: "GET",
+    url: "/secrets-by-keys",
+    config: {
+      rateLimit: secretsLimit
+    },
+    schema: {
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      querystring: z.object({
+        projectId: z.string().trim(),
+        environment: z.string().trim(),
+        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
+        keys: z.string().trim().transform(decodeURIComponent)
+      }),
+      response: {
+        200: z.object({
+          secrets: secretRawSchema
+            .extend({
+              secretPath: z.string().optional(),
+              tags: SecretTagsSchema.pick({
+                id: true,
+                slug: true,
+                color: true
+              })
+                .extend({ name: z.string() })
+                .array()
+                .optional()
+            })
+            .array()
+            .optional()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { secretPath, projectId, environment } = req.query;
+
+      const keys = req.query.keys?.split(",").filter((key) => Boolean(key.trim())) ?? [];
+      if (!keys.length) throw new BadRequestError({ message: "One or more keys required" });
+
+      const { secrets } = await server.services.secret.getSecretsRaw({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        environment,
+        actorAuthMethod: req.permission.authMethod,
+        projectId,
+        path: secretPath,
+        keys
+      });
+
+      await server.services.auditLog.createAuditLog({
+        projectId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.GET_SECRETS,
+          metadata: {
+            environment,
+            secretPath,
+            numberOfSecrets: secrets.length
+          }
+        }
+      });
+
+      if (getUserAgentType(req.headers["user-agent"]) !== UserAgentType.K8_OPERATOR) {
+        await server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.SecretPulled,
+          distinctId: getTelemetryDistinctId(req),
+          properties: {
+            numberOfSecrets: secrets.length,
+            workspaceId: projectId,
+            environment,
+            secretPath,
+            channel: getUserAgentType(req.headers["user-agent"]),
+            ...req.auditLogInfo
+          }
+        });
+      }
+
+      return { secrets };
+    }
+  });
 };

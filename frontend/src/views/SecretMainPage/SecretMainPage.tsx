@@ -552,7 +552,6 @@ const SecretMainPageContent = () => {
             </ModalContent>
           </Modal>
           <SecretDropzone
-            secrets={secrets}
             environment={environment}
             workspaceId={workspaceId}
             secretPath={secretPath}
