@@ -163,7 +163,7 @@ export const verifyMfaToken = async ({
 }: {
   email: string;
   mfaCode: string;
-  mfaMethod: string;
+  mfaMethod?: string;
 }) => {
   const { data } = await apiRequest.post("/api/v2/auth/mfa/verify", {
     email,
