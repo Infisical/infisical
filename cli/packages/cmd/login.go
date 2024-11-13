@@ -343,7 +343,7 @@ func cliDefaultLogin(userCredentialsToBeStored *models.UserCredentials) {
 	if loginTwoResponse.MfaEnabled {
 		i := 1
 		for i < 6 {
-			mfaVerifyCode := askForMFACode()
+			mfaVerifyCode := askForMFACode("email")
 
 			httpClient := resty.New()
 			httpClient.SetAuthToken(loginTwoResponse.Token)
@@ -756,13 +756,14 @@ func GetJwtTokenWithOrganizationId(oldJwtToken string, email string) string {
 	if selectedOrgRes.MfaEnabled {
 		i := 1
 		for i < 6 {
-			mfaVerifyCode := askForMFACode()
+			mfaVerifyCode := askForMFACode(selectedOrgRes.MfaMethod)
 
 			httpClient := resty.New()
 			httpClient.SetAuthToken(selectedOrgRes.Token)
 			verifyMFAresponse, mfaErrorResponse, requestError := api.CallVerifyMfaToken(httpClient, api.VerifyMfaTokenRequest{
-				Email:    email,
-				MFAToken: mfaVerifyCode,
+				Email:     email,
+				MFAToken:  mfaVerifyCode,
+				MFAMethod: selectedOrgRes.MfaMethod,
 			})
 			if requestError != nil {
 				util.HandleError(err)
@@ -817,9 +818,15 @@ func generateFromPassword(password string, salt []byte, p *params) (hash []byte,
 	return hash, nil
 }
 
-func askForMFACode() string {
+func askForMFACode(mfaMethod string) string {
+	var label string
+	if mfaMethod == "totp" {
+		label = "Enter the verification code from your mobile authenticator app or use a recovery code"
+	} else {
+		label = "Enter the 2FA verification code sent to your email"
+	}
 	mfaCodePromptUI := promptui.Prompt{
-		Label: "Enter the 2FA verification code sent to your email",
+		Label: label,
 	}
 
 	mfaVerifyCode, err := mfaCodePromptUI.Run()

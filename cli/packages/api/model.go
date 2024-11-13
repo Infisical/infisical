@@ -138,6 +138,7 @@ type GetOrganizationsResponse struct {
 type SelectOrganizationResponse struct {
 	Token      string `json:"token"`
 	MfaEnabled bool   `json:"isMfaEnabled"`
+	MfaMethod  string `json:"mfaMethod"`
 }
 
 type SelectOrganizationRequest struct {
@@ -260,8 +261,9 @@ type GetLoginTwoV2Response struct {
 }
 
 type VerifyMfaTokenRequest struct {
-	Email    string `json:"email"`
-	MFAToken string `json:"mfaToken"`
+	Email     string `json:"email"`
+	MFAToken  string `json:"mfaToken"`
+	MFAMethod string `json:"mfaMethod"`
 }
 
 type VerifyMfaTokenResponse struct {
