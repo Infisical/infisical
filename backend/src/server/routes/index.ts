@@ -201,6 +201,8 @@ import { getServerCfg, superAdminServiceFactory } from "@app/services/super-admi
 import { telemetryDALFactory } from "@app/services/telemetry/telemetry-dal";
 import { telemetryQueueServiceFactory } from "@app/services/telemetry/telemetry-queue";
 import { telemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
+import { totpConfigDALFactory } from "@app/services/totp/totp-config-dal";
+import { totpServiceFactory } from "@app/services/totp/totp-service";
 import { userDALFactory } from "@app/services/user/user-dal";
 import { userServiceFactory } from "@app/services/user/user-service";
 import { userAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -348,6 +350,7 @@ export const registerRoutes = async (
   const slackIntegrationDAL = slackIntegrationDALFactory(db);
   const projectSlackConfigDAL = projectSlackConfigDALFactory(db);
   const workflowIntegrationDAL = workflowIntegrationDALFactory(db);
+  const totpConfigDAL = totpConfigDALFactory(db);
 
   const externalGroupOrgRoleMappingDAL = externalGroupOrgRoleMappingDALFactory(db);
 
@@ -511,7 +514,13 @@ export const registerRoutes = async (
     projectMembershipDAL
   });
 
-  const loginService = authLoginServiceFactory({ userDAL, smtpService, tokenService, orgDAL });
+  const totpService = totpServiceFactory({
+    totpConfigDAL,
+    userDAL,
+    kmsService
+  });
+
+  const loginService = authLoginServiceFactory({ userDAL, smtpService, tokenService, orgDAL, totpService });
   const passwordService = authPaswordServiceFactory({
     tokenService,
     smtpService,
@@ -1369,7 +1378,8 @@ export const registerRoutes = async (
     workflowIntegration: workflowIntegrationService,
     migration: migrationService,
     externalGroupOrgRoleMapping: externalGroupOrgRoleMappingService,
-    projectTemplate: projectTemplateService
+    projectTemplate: projectTemplateService,
+    totp: totpService
   });
 
   const cronJobs: CronJob[] = [];

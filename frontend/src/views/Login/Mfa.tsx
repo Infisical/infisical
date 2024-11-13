@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ReactCodeInput from "react-code-input";
 import Image from "next/image";
 import Link from "next/link";
@@ -6,10 +6,12 @@ import { useRouter } from "next/router";
 import { t } from "i18next";
 
 import Error from "@app/components/basic/Error";
+import TotpRegistration from "@app/components/mfa/TotpRegistration";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Button } from "@app/components/v2";
+import { Button, Input } from "@app/components/v2";
 import { useSendMfaToken } from "@app/hooks/api";
-import { verifyMfaToken } from "@app/hooks/api/auth/queries";
+import { checkUserTotpMfa, verifyMfaToken } from "@app/hooks/api/auth/queries";
+import { MfaMethod } from "@app/hooks/api/auth/types";
 
 // The style for the verification code input
 const codeInputProps = {
@@ -36,23 +38,37 @@ type Props = {
   closeMfa?: () => void;
   hideLogo?: boolean;
   email: string;
+  method: MfaMethod;
 };
 
-export const Mfa = ({ successCallback, closeMfa, hideLogo, email }: Props) => {
+export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Props) => {
   const [mfaCode, setMfaCode] = useState("");
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingResend, setIsLoadingResend] = useState(false);
   const [triesLeft, setTriesLeft] = useState<number | undefined>(undefined);
+  const [shouldShowTotpRegistration, setShouldShowTotpRegistration] = useState(false);
 
   const sendMfaToken = useSendMfaToken();
+
+  useEffect(() => {
+    if (method === MfaMethod.TOTP) {
+      checkUserTotpMfa().then((isVerified) => {
+        if (!isVerified) {
+          SecurityClient.setMfaToken("");
+          setShouldShowTotpRegistration(true);
+        }
+      });
+    }
+  }, []);
 
   const verifyMfa = async () => {
     setIsLoading(true);
     try {
       const { token } = await verifyMfaToken({
         email,
-        mfaCode
+        mfaCode,
+        mfaMethod: method
       });
 
       SecurityClient.setMfaToken("");
@@ -92,6 +108,23 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email }: Props) => {
     }
   };
 
+  if (shouldShowTotpRegistration) {
+    return (
+      <div className="mx-auto w-max pb-4 pt-4 md:mb-16 md:px-8">
+        <TotpRegistration
+          onComplete={async () => {
+            setShouldShowTotpRegistration(false);
+
+            await successCallback();
+            if (closeMfa) {
+              closeMfa();
+            }
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto w-max pb-4 pt-4 md:mb-16 md:px-8">
       {!hideLogo && (
@@ -101,18 +134,40 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email }: Props) => {
           </div>
         </Link>
       )}
-      <p className="text-l flex justify-center text-bunker-300">{t("mfa.step2-message")}</p>
-      <p className="text-l my-1 flex justify-center font-semibold text-bunker-300">{email}</p>
+      {method === MfaMethod.EMAIL && (
+        <>
+          <p className="text-l flex justify-center text-bunker-300">{t("mfa.step2-message")}</p>
+          <p className="text-l my-1 flex justify-center font-semibold text-bunker-300">{email}</p>
+        </>
+      )}
+      {method === MfaMethod.TOTP && (
+        <>
+          <p className="text-l mb-4 flex max-w-xs justify-center text-center font-bold text-bunker-100">
+            Authenticator MFA Required
+          </p>
+          <p className="text-l flex max-w-xs justify-center text-center text-bunker-300">
+            Open the authenticator app on your mobile device to get your verification code or enter
+            a recovery code.
+          </p>
+        </>
+      )}
       <div className="mx-auto hidden w-max min-w-[20rem] md:block">
-        <ReactCodeInput
-          name=""
-          inputMode="tel"
-          type="text"
-          fields={6}
-          onChange={setMfaCode}
-          className="mt-6 mb-2"
-          {...codeInputProps}
-        />
+        {method === MfaMethod.EMAIL && (
+          <ReactCodeInput
+            name=""
+            inputMode="tel"
+            type="text"
+            fields={6}
+            onChange={setMfaCode}
+            className="mt-6 mb-2"
+            {...codeInputProps}
+          />
+        )}
+        {method === MfaMethod.TOTP && (
+          <div className="mt-6 mb-4">
+            <Input value={mfaCode} onChange={(e) => setMfaCode(e.target.value)} />
+          </div>
+        )}
       </div>
       {typeof triesLeft === "number" && (
         <Error text={`Invalid code. You have ${triesLeft} attempt(s) remaining.`} />
@@ -132,21 +187,23 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email }: Props) => {
           </Button>
         </div>
       </div>
-      <div className="mx-auto flex max-h-24 w-full max-w-md flex-col items-center justify-center pt-2">
-        <div className="flex flex-row items-baseline gap-1 text-sm">
-          <span className="text-bunker-400">{t("signup.step2-resend-alert")}</span>
-          <div className="text-md mt-2 flex flex-row text-bunker-400">
-            <button disabled={isLoadingResend} onClick={handleResendMfaCode} type="button">
-              <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
-                {isLoadingResend
-                  ? t("signup.step2-resend-progress")
-                  : t("signup.step2-resend-submit")}
-              </span>
-            </button>
+      {method === MfaMethod.EMAIL && (
+        <div className="mx-auto flex max-h-24 w-full max-w-md flex-col items-center justify-center pt-2">
+          <div className="flex flex-row items-baseline gap-1 text-sm">
+            <span className="text-bunker-400">{t("signup.step2-resend-alert")}</span>
+            <div className="text-md mt-2 flex flex-row text-bunker-400">
+              <button disabled={isLoadingResend} onClick={handleResendMfaCode} type="button">
+                <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
+                  {isLoadingResend
+                    ? t("signup.step2-resend-progress")
+                    : t("signup.step2-resend-submit")}
+                </span>
+              </button>
+            </div>
           </div>
+          <p className="pb-2 text-sm text-bunker-400">{t("signup.step2-spam-alert")}</p>
         </div>
-        <p className="pb-2 text-sm text-bunker-400">{t("signup.step2-spam-alert")}</p>
-      </div>
+      )}
     </div>
   );
 };

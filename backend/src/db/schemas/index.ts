@@ -106,6 +106,7 @@ export * from "./secrets-v2";
 export * from "./service-tokens";
 export * from "./slack-integrations";
 export * from "./super-admin";
+export * from "./totp-configs";
 export * from "./trusted-ips";
 export * from "./user-actions";
 export * from "./user-aliases";

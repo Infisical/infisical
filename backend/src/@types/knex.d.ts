@@ -314,6 +314,9 @@ import {
   TSuperAdmin,
   TSuperAdminInsert,
   TSuperAdminUpdate,
+  TTotpConfigs,
+  TTotpConfigsInsert,
+  TTotpConfigsUpdate,
   TTrustedIps,
   TTrustedIpsInsert,
   TTrustedIpsUpdate,
@@ -826,5 +829,6 @@ declare module "knex/types/tables" {
       TProjectTemplatesInsert,
       TProjectTemplatesUpdate
     >;
+    [TableName.TotpConfig]: KnexOriginal.CompositeTableType<TTotpConfigs, TTotpConfigsInsert, TTotpConfigsUpdate>;
   }
 }

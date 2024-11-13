@@ -1,17 +1,83 @@
+import { useQueryClient } from "@tanstack/react-query";
+
+import TotpRegistration from "@app/components/mfa/TotpRegistration";
 import { createNotification } from "@app/components/notifications";
-import { Checkbox, EmailServiceSetupModal } from "@app/components/v2";
-import { useGetUser, useUpdateMfaEnabled } from "@app/hooks/api";
+import {
+  Button,
+  Checkbox,
+  ContentLoader,
+  DeleteActionModal,
+  EmailServiceSetupModal,
+  FormControl,
+  Select,
+  SelectItem
+} from "@app/components/v2";
+import { useToggle } from "@app/hooks";
+import { useGetUser, userKeys, useUpdateUserMfa } from "@app/hooks/api";
+import { MfaMethod } from "@app/hooks/api/auth/types";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
+import { useDeleteUserTotpConfiguration } from "@app/hooks/api/users/mutation";
+import { useGetUserTotpConfiguration } from "@app/hooks/api/users/queries";
 import { AuthMethod } from "@app/hooks/api/users/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 export const MFASection = () => {
   const { data: user } = useGetUser();
-  const { mutateAsync } = useUpdateMfaEnabled();
-  
-  const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp(["setUpEmail"] as const);
+  const { mutateAsync } = useUpdateUserMfa();
 
+  const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
+    "setUpEmail",
+    "deleteTotpConfig"
+  ] as const);
+  const [shouldShowRecoveryCodes, setShouldShowRecoveryCodes] = useToggle();
+  const { data: totpConfiguration, isLoading: isTotpConfigurationLoading } =
+    useGetUserTotpConfiguration();
+  const { mutateAsync: deleteTotpConfiguration } = useDeleteUserTotpConfiguration();
+  const queryClient = useQueryClient();
   const { data: serverDetails } = useFetchServerStatus();
+
+  const handleTotpDeletion = async () => {
+    try {
+      await deleteTotpConfiguration();
+
+      createNotification({
+        text: "Successfully deleted mobile authenticator",
+        type: "success"
+      });
+
+      handlePopUpClose("deleteTotpConfig");
+    } catch (err) {
+      console.error(err);
+      const error = err as any;
+      const text = error?.response?.data?.message ?? "Failed to delete mobile authenticator";
+
+      createNotification({
+        text,
+        type: "error"
+      });
+    }
+  };
+
+  const updateSelectedMfa = async (mfaMethod: MfaMethod) => {
+    try {
+      if (!user) return;
+
+      await mutateAsync({
+        selectedMfaMethod: mfaMethod
+      });
+
+      createNotification({
+        text: "Successfully updated preferred 2FA method",
+        type: "success"
+      });
+    } catch (err) {
+      createNotification({
+        text: "Something went wrong while updating preferred 2FA method.",
+        type: "error"
+      });
+      console.error(err);
+    }
+  };
 
   const toggleMfa = async (state: boolean) => {
     try {
@@ -47,30 +113,85 @@ export const MFASection = () => {
 
   return (
     <>
-      <form>
-        <div className="mb-6 max-w-6xl rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-          <p className="mb-8 text-xl font-semibold text-mineshaft-100">Two-factor Authentication</p>
-          {user && (
-            <Checkbox
-              className="data-[state=checked]:bg-primary"
-              id="isTwoFAEnabled"
-              isChecked={user?.isMfaEnabled}
-              onCheckedChange={(state) => {
-                if (serverDetails?.emailConfigured) {
-                  toggleMfa(state as boolean);
-                } else {
-                  handlePopUpOpen("setUpEmail");
-                }
-              }}
+      <div className="mb-6 max-w-6xl rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+        <p className="mb-8 text-xl font-semibold text-mineshaft-100">Two-factor Authentication</p>
+        {user && (
+          <Checkbox
+            className="data-[state=checked]:bg-primary"
+            id="isTwoFAEnabled"
+            isChecked={user?.isMfaEnabled}
+            onCheckedChange={(state) => {
+              if (serverDetails?.emailConfigured) {
+                toggleMfa(state as boolean);
+              } else {
+                handlePopUpOpen("setUpEmail");
+              }
+            }}
+          >
+            Enable 2-factor authentication
+          </Checkbox>
+        )}
+        {user?.isMfaEnabled && (
+          <FormControl label="Preferred 2FA method" className="mt-3">
+            <Select
+              className="min-w-[20rem] border border-mineshaft-500"
+              onValueChange={updateSelectedMfa}
+              defaultValue={user.selectedMfaMethod ?? MfaMethod.EMAIL}
             >
-              Enable 2-factor authentication via your personal email.
-            </Checkbox>
-          )}
-        </div>
-      </form>
+              <SelectItem value={MfaMethod.EMAIL} key="mfa-method-email">
+                Email
+              </SelectItem>
+              <SelectItem value={MfaMethod.TOTP} key="mfa-method-totp">
+                Mobile Authenticator
+              </SelectItem>
+            </Select>
+          </FormControl>
+        )}
+        <div className="mt-12 text-lg font-semibold text-mineshaft-100">Mobile Authenticator</div>
+        {isTotpConfigurationLoading ? (
+          <ContentLoader />
+        ) : (
+          <div>
+            {totpConfiguration?.isVerified ? (
+              <div className="mt-2">
+                <div className="flex flex-row gap-2">
+                  <Button colorSchema="secondary" onClick={setShouldShowRecoveryCodes.toggle}>
+                    {shouldShowRecoveryCodes ? "Hide recovery codes" : "Show recovery codes"}
+                  </Button>
+                  <Button colorSchema="danger" onClick={() => handlePopUpOpen("deleteTotpConfig")}>
+                    Delete
+                  </Button>
+                </div>
+                {shouldShowRecoveryCodes && totpConfiguration.recoveryCodes.length && (
+                  <div className="mt-4 bg-mineshaft-600 p-4">
+                    {totpConfiguration.recoveryCodes.map((code) => (
+                      <div key={code}>{code}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="mt-6 flex min-w-full justify-center">
+                <TotpRegistration
+                  onComplete={async () => {
+                    await queryClient.invalidateQueries(userKeys.totpConfiguration);
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        )}
+      </div>
       <EmailServiceSetupModal
         isOpen={popUp.setUpEmail?.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("setUpEmail", isOpen)}
+      />
+      <DeleteActionModal
+        isOpen={popUp.deleteTotpConfig.isOpen}
+        title="Are you sure want to delete the mobile authenticator? You’ll have to go through the setup process to enable it again."
+        onChange={(isOpen) => handlePopUpToggle("deleteTotpConfig", isOpen)}
+        deleteKey="confirm"
+        onDeleteApproved={handleTotpDeletion}
       />
     </>
   );

@@ -16,6 +16,8 @@ export const userKeys = {
   myAPIKeysV2: ["api-keys-v2"] as const,
   mySessions: ["sessions"] as const,
   listUsers: ["user-list"] as const,
+  totpRegistration: ["totp-registration"],
+  totpConfiguration: ["totp-configuration"],
   listUserGroupMemberships: (username: string) => [{ username }, "user-group-memberships"] as const,
   myOrganizationProjects: (orgId: string) => [{ orgId }, "organization-projects"] as const
 };

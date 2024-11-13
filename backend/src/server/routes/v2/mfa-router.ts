@@ -2,8 +2,9 @@ import jwt from "jsonwebtoken";
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
+import { NotFoundError } from "@app/lib/errors";
 import { mfaRateLimit } from "@app/server/config/rateLimiter";
-import { AuthModeMfaJwtTokenPayload, AuthTokenType } from "@app/services/auth/auth-type";
+import { AuthModeMfaJwtTokenPayload, AuthTokenType, MfaMethod } from "@app/services/auth/auth-type";
 
 export const registerMfaRouter = async (server: FastifyZodProvider) => {
   const cfg = getConfig();
@@ -50,6 +51,38 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "GET",
+    url: "/mfa/check/totp",
+    config: {
+      rateLimit: mfaRateLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          isVerified: z.boolean()
+        })
+      }
+    },
+    handler: async (req) => {
+      try {
+        const totpConfig = await server.services.totp.getUserTotpConfig({
+          userId: req.mfa.userId
+        });
+
+        return {
+          isVerified: Boolean(totpConfig)
+        };
+      } catch (error) {
+        if (error instanceof NotFoundError) {
+          return { isVerified: false };
+        }
+
+        throw error;
+      }
+    }
+  });
+
+  server.route({
     url: "/mfa/verify",
     method: "POST",
     config: {
@@ -57,7 +90,8 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        mfaToken: z.string().trim()
+        mfaToken: z.string().trim(),
+        mfaMethod: z.nativeEnum(MfaMethod).optional().default(MfaMethod.EMAIL)
       }),
       response: {
         200: z.object({
@@ -86,7 +120,8 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
         ip: req.realIp,
         userId: req.mfa.userId,
         orgId: req.mfa.orgId,
-        mfaToken: req.body.mfaToken
+        mfaToken: req.body.mfaToken,
+        mfaMethod: req.body.mfaMethod
       });
 
       void res.setCookie("jid", token.refresh, {

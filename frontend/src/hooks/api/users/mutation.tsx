@@ -114,3 +114,29 @@ export const useUpdateUserProjectFavorites = () => {
     }
   });
 };
+
+export const useVerifyUserTotpRegistration = () => {
+  return useMutation({
+    mutationFn: async ({ totp }: { totp: string }) => {
+      await apiRequest.post("/api/v1/user/me/totp/verify", {
+        totp
+      });
+
+      return {};
+    }
+  });
+};
+
+export const useDeleteUserTotpConfiguration = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      await apiRequest.delete("/api/v1/user/me/totp");
+
+      return {};
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(userKeys.totpConfiguration);
+    }
+  });
+};

@@ -22,7 +22,7 @@ import {
   useLogoutUser,
   useSelectOrganization
 } from "@app/hooks/api";
-import { UserAgentType } from "@app/hooks/api/auth/types";
+import { MfaMethod, UserAgentType } from "@app/hooks/api/auth/types";
 import { Organization } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 import { getAuthToken, isLoggedIn } from "@app/reactQuery";
@@ -46,6 +46,7 @@ export default function LoginPage() {
   const selectOrg = useSelectOrganization();
   const { data: user, isLoading: userLoading } = useGetUser();
   const [shouldShowMfa, toggleShowMfa] = useToggle(false);
+  const [requiredMfaMethod, setRequiredMfaMethod] = useState(MfaMethod.EMAIL);
   const [isInitialOrgCheckLoading, setIsInitialOrgCheckLoading] = useState(true);
 
   const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
@@ -90,15 +91,17 @@ export default function LoginPage() {
         return;
       }
 
-      const { token, isMfaEnabled } = await selectOrg.mutateAsync({
+      const { token, isMfaEnabled, mfaMethod } = await selectOrg.mutateAsync({
         organizationId: organization.id,
         userAgent: callbackPort ? UserAgentType.CLI : undefined
       });
 
       if (isMfaEnabled) {
         SecurityClient.setMfaToken(token);
+        if (mfaMethod) {
+          setRequiredMfaMethod(mfaMethod);
+        }
         toggleShowMfa.on();
-
         setMfaSuccessCallback(() => () => handleSelectOrganization(organization));
         return;
       }
@@ -213,7 +216,11 @@ export default function LoginPage() {
         <meta name="og:description" content={t("login.og-description") ?? ""} />
       </Head>
       {shouldShowMfa ? (
-        <Mfa email={user.email as string} successCallback={mfaSuccessCallback} />
+        <Mfa
+          email={user.email as string}
+          successCallback={mfaSuccessCallback}
+          method={requiredMfaMethod}
+        />
       ) : (
         <div className="mx-auto mt-20 w-fit rounded-lg border-2 border-mineshaft-500 p-10 shadow-lg">
           <Link href="/">
