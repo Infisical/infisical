@@ -396,7 +396,8 @@ export const authLoginServiceFactory = ({
       userAgent,
       ip: ipAddress,
       organizationId,
-      isMfaVerified: decodedToken.isMfaVerified
+      isMfaVerified: decodedToken.isMfaVerified,
+      mfaMethod: decodedToken.mfaMethod
     });
 
     return {

@@ -13,6 +13,7 @@ import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, Input } from "@app/components/v2";
 import { useToggle } from "@app/hooks";
 import { completeAccountSignup, useSelectOrganization } from "@app/hooks/api/auth/queries";
+import { MfaMethod } from "@app/hooks/api/auth/types";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import ProjectService from "@app/services/ProjectService";
 import { Mfa } from "@app/views/Login/Mfa";
@@ -57,6 +58,7 @@ export const UserInfoSSOStep = ({
   const [organizationNameError, setOrganizationNameError] = useState(false);
   const [attributionSource, setAttributionSource] = useState("");
   const [shouldShowMfa, toggleShowMfa] = useToggle(false);
+  const [requiredMfaMethod, setRequiredMfaMethod] = useState(MfaMethod.EMAIL);
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useTranslation();
   const { mutateAsync: selectOrganization } = useSelectOrganization();
@@ -178,12 +180,15 @@ export const UserInfoSSOStep = ({
 
               const completeSignupFlow = async () => {
                 try {
-                  const { isMfaEnabled, token } = await selectOrganization({
+                  const { isMfaEnabled, token, mfaMethod } = await selectOrganization({
                     organizationId: orgId
                   });
 
                   if (isMfaEnabled) {
                     SecurityClient.setMfaToken(token);
+                    if (mfaMethod) {
+                      setRequiredMfaMethod(mfaMethod);
+                    }
                     toggleShowMfa.on();
                     setMfaSuccessCallback(() => completeSignupFlow);
                     return;
@@ -231,6 +236,7 @@ export const UserInfoSSOStep = ({
         hideLogo
         email={username}
         successCallback={mfaSuccessCallback}
+        method={requiredMfaMethod}
         closeMfa={() => toggleShowMfa.off()}
       />
     );

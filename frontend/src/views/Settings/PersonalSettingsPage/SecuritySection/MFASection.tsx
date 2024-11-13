@@ -162,7 +162,7 @@ export const MFASection = () => {
                     Delete
                   </Button>
                 </div>
-                {shouldShowRecoveryCodes && totpConfiguration.recoveryCodes.length && (
+                {shouldShowRecoveryCodes && totpConfiguration.recoveryCodes && (
                   <div className="mt-4 bg-mineshaft-600 p-4">
                     {totpConfiguration.recoveryCodes.map((code) => (
                       <div key={code}>{code}</div>

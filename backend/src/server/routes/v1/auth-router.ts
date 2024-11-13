@@ -108,7 +108,8 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
           tokenVersionId: tokenVersion.id,
           accessVersion: tokenVersion.accessVersion,
           organizationId: decodedToken.organizationId,
-          isMfaVerified: decodedToken.isMfaVerified
+          isMfaVerified: decodedToken.isMfaVerified,
+          mfaMethod: decodedToken.mfaMethod
         },
         appCfg.AUTH_SECRET,
         { expiresIn: appCfg.JWT_AUTH_LIFETIME }

@@ -15,7 +15,7 @@ import { AUDIT_LOGS, ORGANIZATIONS } from "@app/lib/api-docs";
 import { getLastMidnightDateISO } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ActorType, AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode, MfaMethod } from "@app/services/auth/auth-type";
 
 import { integrationAuthPubSchema } from "../sanitizedSchemas";
 
@@ -259,7 +259,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
             message: "Membership role must be a valid slug"
           })
           .optional(),
-        enforceMfa: z.boolean().optional()
+        enforceMfa: z.boolean().optional(),
+        selectedMfaMethod: z.nativeEnum(MfaMethod).optional()
       }),
       response: {
         200: z.object({
