@@ -9,8 +9,7 @@ import { twMerge } from "tailwind-merge";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 // TODO:(akhilmhdh) convert all the util functions like this into a lib folder grouped by functionality
-import { parseDotEnv } from "@app/components/utilities/parseDotEnv";
-import { parseJson } from "@app/components/utilities/parseJson";
+import { parseDotEnv, parseJson } from "@app/components/utilities/parseSecrets";
 import { Button, Modal, ModalContent } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";

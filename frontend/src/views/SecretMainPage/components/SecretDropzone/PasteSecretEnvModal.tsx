@@ -6,8 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { parseDotEnv } from "@app/components/utilities/parseDotEnv";
-import { parseJson } from "@app/components/utilities/parseJson";
+import { parseDotEnv, parseJson } from "@app/components/utilities/parseSecrets";
 import {
   Button,
   FormControl,
@@ -111,7 +110,7 @@ export const PasteSecretEnvModal = ({
                 variant="star"
                 size={isSmaller ? "xs" : "sm"}
               >
-                Paste Secret Values
+                Paste Secrets
               </Button>
             )}
           </ProjectPermissionCan>
