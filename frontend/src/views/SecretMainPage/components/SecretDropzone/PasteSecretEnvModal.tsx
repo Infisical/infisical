@@ -1,6 +1,6 @@
 import { useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
-import { faPaste } from "@fortawesome/free-solid-svg-icons";
+import { faInfoCircle, faPaste } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -67,6 +67,38 @@ const PasteEnvForm = ({ onParsedEnv }: Pick<Props, "onParsedEnv">) => {
         label="Secret Values"
         isError={Boolean(errors.value)}
         errorText={errors.value?.message}
+        icon={<FontAwesomeIcon size="sm" className="text-mineshaft-400" icon={faInfoCircle} />}
+        tooltipClassName="max-w-lg px-2 whitespace-pre-line"
+        tooltipText={
+          <div className="flex flex-col gap-2">
+            <p>Example Formats:</p>
+            <pre className="rounded-md bg-mineshaft-900 p-3 text-xs">
+              {/* eslint-disable-next-line react/jsx-no-comment-textnodes */}
+              <p className="text-mineshaft-400">// .json</p>
+              {JSON.stringify(
+                {
+                  APP_NAME: "example-service",
+                  APP_VERSION: "1.2.3",
+                  NODE_ENV: "production"
+                },
+                null,
+                2
+              )}
+            </pre>
+            <pre className="rounded-md bg-mineshaft-900 p-3 text-xs">
+              <p className="text-mineshaft-400"># .env</p>
+              <p>APP_NAME=&quot;example-service&quot;</p>
+              <p>APP_VERSION=&quot;1.2.3&quot;</p>
+              <p>NODE_ENV=&quot;production&quot;</p>
+            </pre>
+            <pre className="rounded-md bg-mineshaft-900 p-3 text-xs">
+              <p className="text-mineshaft-400"># .yml</p>
+              <p>APP_NAME: example-service</p>
+              <p>APP_VERSION: 1.2.3</p>
+              <p>NODE_ENV: production</p>
+            </pre>
+          </div>
+        }
       >
         <TextArea
           {...register("value")}
