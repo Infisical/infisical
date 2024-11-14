@@ -114,11 +114,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
         <TotpRegistration
           onComplete={async () => {
             setShouldShowTotpRegistration(false);
-
             await successCallback();
-            if (closeMfa) {
-              closeMfa();
-            }
           }}
         />
       </div>

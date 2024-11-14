@@ -72,11 +72,11 @@ export const PasswordStep = ({ providerAuthToken, email, password, setPassword }
 
           if (isMfaEnabled) {
             SecurityClient.setMfaToken(token);
+            setMfaSuccessCallback(() => finishWithOrgWorkflow);
             if (mfaMethod) {
               setRequiredMfaMethod(mfaMethod);
             }
             toggleShowMfa.on();
-            setMfaSuccessCallback(() => finishWithOrgWorkflow);
             return;
           }
 
