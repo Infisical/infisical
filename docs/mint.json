@@ -226,7 +226,8 @@
           "pages": [
             "documentation/platform/identities/oidc-auth/general",
             "documentation/platform/identities/oidc-auth/github",
-            "documentation/platform/identities/oidc-auth/circleci"
+            "documentation/platform/identities/oidc-auth/circleci",
+            "documentation/platform/identities/oidc-auth/gitlab"
           ]
         },
         "documentation/platform/mfa",
