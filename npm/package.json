@@ -8,7 +8,7 @@
     "command-line"
   ],
   "bin": {
-    "infisical": "bin/infisical"
+    "infisical": "./bin/infisical"
   },
   "repository": {
     "type": "git",
@@ -16,9 +16,10 @@
   },
   "author": "Infisical Inc, <daniel@infisical.com>",
   "scripts": {
-    "postinstall": "node src/index.cjs"
+    "preinstall": "node src/index.cjs"
   },
   "dependencies": {
-    "tar": "^6.2.0"
+    "tar": "^6.2.0",
+    "yauzl": "^3.2.0"
   }
 }
