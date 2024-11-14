@@ -532,7 +532,7 @@ func askForDomain() error {
 	const (
 		INFISICAL_CLOUD_US = "Infisical Cloud (US Region)"
 		INFISICAL_CLOUD_EU = "Infisical Cloud (EU Region)"
-		SELF_HOSTING       = "Self-Hosting"
+		SELF_HOSTING       = "Self-Hosting or Dedicated Instance"
 		ADD_NEW_DOMAIN     = "Add a new domain"
 	)
 
