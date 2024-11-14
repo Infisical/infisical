@@ -4,13 +4,20 @@ const stream = require("node:stream");
 const tar = require("tar");
 const path = require("path");
 const zlib = require("zlib");
+const yauzl = require("yauzl");
+
 const packageJSON = require("../package.json");
 
-const supportedPlatforms = ["linux", "darwin", "win32", "freebsd"];
+const supportedPlatforms = ["linux", "darwin", "win32", "freebsd", "windows"];
 const outputDir = "bin";
 
 const getPlatform = () => {
-	const platform = process.platform;
+	let platform = process.platform;
+
+	if (platform === "win32") {
+		platform = "windows";
+	}
+
 	if (!supportedPlatforms.includes(platform)) {
 		console.error("Your platform doesn't seem to be of type darwin, linux or windows");
 		process.exit(1);
@@ -53,12 +60,47 @@ const getArchitecture = () => {
 	return arch;
 };
 
+async function extractZip(buffer, targetPath) {
+	return new Promise((resolve, reject) => {
+		yauzl.fromBuffer(buffer, { lazyEntries: true }, (err, zipfile) => {
+			if (err) return reject(err);
+
+			zipfile.readEntry();
+			zipfile.on("entry", entry => {
+				const isExecutable = entry.fileName === "infisical" || entry.fileName === "infisical.exe";
+
+				if (/\/$/.test(entry.fileName) || !isExecutable) {
+					// Directory entry
+					zipfile.readEntry();
+				} else {
+					// File entry
+					zipfile.openReadStream(entry, (err, readStream) => {
+						if (err) return reject(err);
+
+						const outputPath = path.join(targetPath, entry.fileName.includes("infisical") ? "infisical" : entry.fileName);
+						const writeStream = fs.createWriteStream(outputPath);
+
+						readStream.pipe(writeStream);
+						writeStream.on("close", () => {
+							zipfile.readEntry();
+						});
+					});
+				}
+			});
+
+			zipfile.on("end", resolve);
+			zipfile.on("error", reject);
+		});
+	});
+}
+
 async function main() {
 	const PLATFORM = getPlatform();
 	const ARCH = getArchitecture();
 	const NUMERIC_RELEASE_VERSION = packageJSON.version;
 	const LATEST_RELEASE_VERSION = `v${NUMERIC_RELEASE_VERSION}`;
-	const downloadLink = `https://github.com/Infisical/infisical/releases/download/infisical-cli/${LATEST_RELEASE_VERSION}/infisical_${NUMERIC_RELEASE_VERSION}_${PLATFORM}_${ARCH}.tar.gz`;
+	const EXTENSION = PLATFORM === "windows" ? "zip" : "tar.gz";
+	const downloadLink = `https://github.com/Infisical/infisical/releases/download/infisical-cli/${LATEST_RELEASE_VERSION}/infisical_${NUMERIC_RELEASE_VERSION}_${PLATFORM}_${ARCH}.${EXTENSION}`;
 
 	// Ensure the output directory exists
 	if (!fs.existsSync(outputDir)) {
@@ -77,19 +119,26 @@ async function main() {
 			throw new Error(`Failed to fetch: ${response.status} - ${response.statusText}`);
 		}
 
-		await new Promise((resolve, reject) => {
-			const outStream = stream.Readable.fromWeb(response.body)
-				.pipe(zlib.createGunzip())
-				.pipe(
-					tar.x({
-						C: path.join(outputDir),
-						filter: path => path === "infisical"
-					})
-				);
+		if (EXTENSION === "zip") {
+			// For ZIP files, we need to buffer the whole thing first
+			const buffer = await response.arrayBuffer();
+			await extractZip(Buffer.from(buffer), outputDir);
+		} else {
+			// For tar.gz files, we stream
+			await new Promise((resolve, reject) => {
+				const outStream = stream.Readable.fromWeb(response.body)
+					.pipe(zlib.createGunzip())
+					.pipe(
+						tar.x({
+							C: path.join(outputDir),
+							filter: path => path === "infisical"
+						})
+					);
 
-			outStream.on("error", reject);
-			outStream.on("close", resolve);
-		});
+				outStream.on("error", reject);
+				outStream.on("close", resolve);
+			});
+		}
 
 		// Give the binary execute permissions if we're not on Windows
 		if (PLATFORM !== "win32") {
