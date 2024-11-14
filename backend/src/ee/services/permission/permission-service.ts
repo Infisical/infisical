@@ -21,7 +21,7 @@ import { TServiceTokenDALFactory } from "@app/services/service-token/service-tok
 
 import { orgAdminPermissions, orgMemberPermissions, orgNoAccessPermissions, OrgPermissionSet } from "./org-permission";
 import { TPermissionDALFactory } from "./permission-dal";
-import { validateOrgSSO } from "./permission-fns";
+import { escapeHandlebarsMissingMetadata, validateOrgSSO } from "./permission-fns";
 import { TBuildOrgPermissionDTO, TBuildProjectPermissionDTO } from "./permission-service-types";
 import {
   buildServiceTokenProjectPermission,
@@ -227,11 +227,13 @@ export const permissionServiceFactory = ({
       })) || [];
 
     const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
-    const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false, strict: true });
-    const metadataKeyValuePair = objectify(
-      userProjectPermission.metadata,
-      (i) => i.key,
-      (i) => i.value
+    const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false });
+    const metadataKeyValuePair = escapeHandlebarsMissingMetadata(
+      objectify(
+        userProjectPermission.metadata,
+        (i) => i.key,
+        (i) => i.value
+      )
     );
     const interpolateRules = templatedRules(
       {
@@ -292,12 +294,15 @@ export const permissionServiceFactory = ({
       })) || [];
 
     const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
-    const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false, strict: true });
-    const metadataKeyValuePair = objectify(
-      identityProjectPermission.metadata,
-      (i) => i.key,
-      (i) => i.value
+    const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false });
+    const metadataKeyValuePair = escapeHandlebarsMissingMetadata(
+      objectify(
+        identityProjectPermission.metadata,
+        (i) => i.key,
+        (i) => i.value
+      )
     );
+
     const interpolateRules = templatedRules(
       {
         identity: {
