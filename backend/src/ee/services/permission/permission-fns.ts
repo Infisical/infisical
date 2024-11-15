@@ -29,4 +29,18 @@ function validateOrgSSO(actorAuthMethod: ActorAuthMethod, isOrgSsoEnforced: TOrg
   }
 }
 
-export { isAuthMethodSaml, validateOrgSSO };
+const escapeHandlebarsMissingMetadata = (obj: Record<string, string>) => {
+  const handler = {
+    get(target: Record<string, string>, prop: string) {
+      if (!(prop in target)) {
+        // eslint-disable-next-line no-param-reassign
+        target[prop] = `{{identity.metadata.${prop}}}`; // Add missing key as an "own" property
+      }
+      return target[prop];
+    }
+  };
+
+  return new Proxy(obj, handler);
+};
+
+export { escapeHandlebarsMissingMetadata, isAuthMethodSaml, validateOrgSSO };
