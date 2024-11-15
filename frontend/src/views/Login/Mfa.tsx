@@ -114,7 +114,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
     return (
       <>
         <div className="mb-6 text-center text-lg font-bold text-white">
-          Your organization requires mobile authenticator to be configured.
+          Your organization requires mobile authentication to be configured.
         </div>
         <div className="mx-auto w-max pb-4 pt-4 md:mb-16 md:px-8">
           <TotpRegistration
@@ -196,7 +196,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
         <div className="mt-2 flex flex-row justify-center text-sm text-bunker-400 ">
           <Link href="/verify-email">
             <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
-              No access to both codes? Reset your account
+              Lost your recovery codes? Reset your account
             </span>
           </Link>
         </div>
