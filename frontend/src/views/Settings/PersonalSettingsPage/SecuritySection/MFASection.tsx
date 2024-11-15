@@ -4,13 +4,13 @@ import TotpRegistration from "@app/components/mfa/TotpRegistration";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  Checkbox,
   ContentLoader,
   DeleteActionModal,
   EmailServiceSetupModal,
   FormControl,
   Select,
-  SelectItem
+  SelectItem,
+  Switch
 } from "@app/components/v2";
 import { useToggle } from "@app/hooks";
 import { useGetUser, userKeys, useUpdateUserMfa } from "@app/hooks/api";
@@ -140,7 +140,7 @@ export const MFASection = () => {
       <div className="mb-6 max-w-6xl rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <p className="mb-4 text-xl font-semibold text-mineshaft-100">Two-factor Authentication</p>
         {user && (
-          <Checkbox
+          <Switch
             className="data-[state=checked]:bg-primary"
             id="isTwoFAEnabled"
             isChecked={user?.isMfaEnabled}
@@ -153,7 +153,7 @@ export const MFASection = () => {
             }}
           >
             Enable 2-factor authentication
-          </Checkbox>
+          </Switch>
         )}
         {user?.isMfaEnabled && (
           <FormControl label="Selected 2FA method" className="mt-3">
