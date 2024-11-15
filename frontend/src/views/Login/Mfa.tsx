@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import ReactCodeInput from "react-code-input";
 import Image from "next/image";
 import Link from "next/link";
@@ -62,7 +62,9 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
     }
   }, []);
 
-  const verifyMfa = async () => {
+  const verifyMfa = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
     setIsLoading(true);
     try {
       const { token } = await verifyMfaToken({
@@ -110,14 +112,19 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
 
   if (shouldShowTotpRegistration) {
     return (
-      <div className="mx-auto w-max pb-4 pt-4 md:mb-16 md:px-8">
-        <TotpRegistration
-          onComplete={async () => {
-            setShouldShowTotpRegistration(false);
-            await successCallback();
-          }}
-        />
-      </div>
+      <>
+        <div className="mb-6 text-center text-lg font-bold text-white">
+          Your organization requires mobile authenticator to be configured.
+        </div>
+        <div className="mx-auto w-max pb-4 pt-4 md:mb-16 md:px-8">
+          <TotpRegistration
+            onComplete={async () => {
+              setShouldShowTotpRegistration(false);
+              await successCallback();
+            }}
+          />
+        </div>
+      </>
     );
   }
 
@@ -147,42 +154,53 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
           </p>
         </>
       )}
-      <div className="mx-auto hidden w-max min-w-[20rem] md:block">
-        {method === MfaMethod.EMAIL && (
-          <ReactCodeInput
-            name=""
-            inputMode="tel"
-            type="text"
-            fields={6}
-            onChange={setMfaCode}
-            className="mt-6 mb-2"
-            {...codeInputProps}
-          />
-        )}
-        {method === MfaMethod.TOTP && (
-          <div className="mt-6 mb-4">
-            <Input value={mfaCode} onChange={(e) => setMfaCode(e.target.value)} />
-          </div>
-        )}
-      </div>
-      {typeof triesLeft === "number" && (
-        <Error text={`Invalid code. You have ${triesLeft} attempt(s) remaining.`} />
-      )}
-      <div className="mx-auto mt-2 flex w-1/4 min-w-[20rem] max-w-xs flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-[19%]">
-        <div className="text-l w-full py-1 text-lg">
-          <Button
-            onClick={() => verifyMfa()}
-            size="sm"
-            isFullWidth
-            className="h-14"
-            colorSchema="primary"
-            variant="outline_bg"
-            isLoading={isLoading}
-          >
-            {String(t("mfa.verify"))}
-          </Button>
+      <form onSubmit={verifyMfa}>
+        <div className="mx-auto hidden w-max min-w-[20rem] md:block">
+          {method === MfaMethod.EMAIL && (
+            <ReactCodeInput
+              name=""
+              inputMode="tel"
+              type="text"
+              fields={6}
+              onChange={setMfaCode}
+              className="mt-6 mb-2"
+              {...codeInputProps}
+            />
+          )}
+          {method === MfaMethod.TOTP && (
+            <div className="mt-6 mb-4">
+              <Input value={mfaCode} onChange={(e) => setMfaCode(e.target.value)} />
+            </div>
+          )}
         </div>
-      </div>
+        {typeof triesLeft === "number" && (
+          <Error text={`Invalid code. You have ${triesLeft} attempt(s) remaining.`} />
+        )}
+        <div className="mx-auto mt-2 flex w-1/4 min-w-[20rem] max-w-xs flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-[19%]">
+          <div className="text-l w-full py-1 text-lg">
+            <Button
+              size="sm"
+              type="submit"
+              isFullWidth
+              className="h-14"
+              colorSchema="primary"
+              variant="outline_bg"
+              isLoading={isLoading}
+            >
+              {String(t("mfa.verify"))}
+            </Button>
+          </div>
+        </div>
+      </form>
+      {method === MfaMethod.TOTP && (
+        <div className="mt-2 flex flex-row justify-center text-sm text-bunker-400 ">
+          <Link href="/verify-email">
+            <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
+              No access to both codes? Reset your account
+            </span>
+          </Link>
+        </div>
+      )}
       {method === MfaMethod.EMAIL && (
         <div className="mx-auto flex max-h-24 w-full max-w-md flex-col items-center justify-center pt-2">
           <div className="flex flex-row items-baseline gap-1 text-sm">

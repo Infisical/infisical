@@ -13,11 +13,13 @@ type Props = {
 
 const TotpRegistration = ({ onComplete }: Props) => {
   const { data: registration, isLoading } = useGetUserTotpRegistration();
-  const { mutateAsync: verifyUserTotp } = useVerifyUserTotpRegistration();
+  const { mutateAsync: verifyUserTotp, isLoading: isVerifyLoading } =
+    useVerifyUserTotpRegistration();
   const [qrCodeUrl, setQrCodeUrl] = useState("");
   const [totp, setTotp] = useState("");
 
-  const handleTotpVerify = async () => {
+  const handleTotpVerify = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     await verifyUserTotp({
       totp
     });
@@ -54,15 +56,19 @@ const TotpRegistration = ({ onComplete }: Props) => {
       <div className="mb-10 flex items-center justify-center">
         <img src={qrCodeUrl} alt="registration-qr" />
       </div>
-      <div className="mb-4 text-center">Enter the resulting verification code</div>
-      <div className="mb-4 flex flex-row gap-2">
-        <Input
-          onChange={(e) => setTotp(e.target.value)}
-          value={totp}
-          placeholder="Verification code"
-        />
-        <Button onClick={handleTotpVerify}>Enable MFA</Button>
-      </div>
+      <form onSubmit={handleTotpVerify}>
+        <div className="mb-4 text-center">Enter the resulting verification code</div>
+        <div className="mb-4 flex flex-row gap-2">
+          <Input
+            onChange={(e) => setTotp(e.target.value)}
+            value={totp}
+            placeholder="Verification code"
+          />
+          <Button isLoading={isVerifyLoading} type="submit">
+            Enable MFA
+          </Button>
+        </div>
+      </form>
     </div>
   );
 };

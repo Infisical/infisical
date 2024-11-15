@@ -8,6 +8,7 @@ import { TKmsServiceFactory } from "../kms/kms-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TTotpConfigDALFactory } from "./totp-config-dal";
 import {
+  TCreateUserTotpRecoveryCodesDTO,
   TDeleteUserTotpConfigDTO,
   TGetUserTotpConfigDTO,
   TRegisterUserTotpDTO,
@@ -27,13 +28,18 @@ export type TTotpServiceFactory = ReturnType<typeof totpServiceFactory>;
 export const totpServiceFactory = ({ totpConfigDAL, kmsService, userDAL }: TTotpServiceFactoryDep) => {
   const getUserTotpConfig = async ({ userId }: TGetUserTotpConfigDTO) => {
     const totpConfig = await totpConfigDAL.findOne({
-      userId,
-      isVerified: true
+      userId
     });
 
     if (!totpConfig) {
       throw new NotFoundError({
         message: "TOTP configuration not found"
+      });
+    }
+
+    if (!totpConfig.isVerified) {
+      throw new BadRequestError({
+        message: "TOTP configuration has not been verified"
       });
     }
 
@@ -102,13 +108,18 @@ export const totpServiceFactory = ({ totpConfigDAL, kmsService, userDAL }: TTotp
 
   const verifyUserTotpConfig = async ({ userId, totp }: TVerifyUserTotpConfigDTO) => {
     const totpConfig = await totpConfigDAL.findOne({
-      userId,
-      isVerified: false
+      userId
     });
 
     if (!totpConfig) {
       throw new NotFoundError({
         message: "TOTP configuration not found"
+      });
+    }
+
+    if (totpConfig.isVerified) {
+      throw new BadRequestError({
+        message: "TOTP configuration has already been verified"
       });
     }
 
@@ -132,13 +143,18 @@ export const totpServiceFactory = ({ totpConfigDAL, kmsService, userDAL }: TTotp
 
   const verifyUserTotp = async ({ userId, totp }: TVerifyUserTotpDTO) => {
     const totpConfig = await totpConfigDAL.findOne({
-      userId,
-      isVerified: true
+      userId
     });
 
     if (!totpConfig) {
       throw new NotFoundError({
         message: "TOTP configuration not found"
+      });
+    }
+
+    if (!totpConfig.isVerified) {
+      throw new BadRequestError({
+        message: "TOTP configuration has not been verified"
       });
     }
 
@@ -158,13 +174,18 @@ export const totpServiceFactory = ({ totpConfigDAL, kmsService, userDAL }: TTotp
 
   const verifyWithUserRecoveryCode = async ({ userId, recoveryCode }: TVerifyWithUserRecoveryCodeDTO) => {
     const totpConfig = await totpConfigDAL.findOne({
-      userId,
-      isVerified: true
+      userId
     });
 
     if (!totpConfig) {
       throw new NotFoundError({
         message: "TOTP configuration not found"
+      });
+    }
+
+    if (!totpConfig.isVerified) {
+      throw new BadRequestError({
+        message: "TOTP configuration has not been verified"
       });
     }
 
@@ -188,8 +209,7 @@ export const totpServiceFactory = ({ totpConfigDAL, kmsService, userDAL }: TTotp
 
   const deleteUserTotpConfig = async ({ userId }: TDeleteUserTotpConfigDTO) => {
     const totpConfig = await totpConfigDAL.findOne({
-      userId,
-      isVerified: true
+      userId
     });
 
     if (!totpConfig) {
@@ -201,12 +221,51 @@ export const totpServiceFactory = ({ totpConfigDAL, kmsService, userDAL }: TTotp
     await totpConfigDAL.deleteById(totpConfig.id);
   };
 
+  const createUserTotpRecoveryCodes = async ({ userId }: TCreateUserTotpRecoveryCodesDTO) => {
+    const decryptWithRoot = kmsService.decryptWithRootKey();
+    const encryptWithRoot = kmsService.encryptWithRootKey();
+
+    return totpConfigDAL.transaction(async (tx) => {
+      const totpConfig = await totpConfigDAL.findOne(
+        {
+          userId,
+          isVerified: true
+        },
+        tx
+      );
+
+      if (!totpConfig) {
+        throw new NotFoundError({
+          message: "Valid TOTP configuration not found"
+        });
+      }
+
+      const recoveryCodes = decryptWithRoot(totpConfig.encryptedRecoveryCodes).toString().split(",");
+      if (recoveryCodes.length >= 10) {
+        throw new BadRequestError({
+          message: "Cannot have more than 10 recovery codes at a time"
+        });
+      }
+
+      const toGenerateCount = 10 - recoveryCodes.length;
+      const newRecoveryCodes = Array.from({ length: toGenerateCount }).map(() =>
+        String(crypto.randomInt(10 ** 7, 10 ** 8 - 1))
+      );
+      const encryptedRecoveryCodes = encryptWithRoot(Buffer.from([...recoveryCodes, ...newRecoveryCodes].join(",")));
+
+      await totpConfigDAL.updateById(totpConfig.id, {
+        encryptedRecoveryCodes
+      });
+    });
+  };
+
   return {
     registerUserTotp,
     verifyUserTotpConfig,
     getUserTotpConfig,
     verifyUserTotp,
     verifyWithUserRecoveryCode,
-    deleteUserTotpConfig
+    deleteUserTotpConfig,
+    createUserTotpRecoveryCodes
   };
 };

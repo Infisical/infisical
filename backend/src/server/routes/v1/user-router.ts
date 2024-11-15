@@ -196,7 +196,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     method: "DELETE",
     url: "/me/totp",
     config: {
-      rateLimit: readLimit
+      rateLimit: writeLimit
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
@@ -251,6 +251,20 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       return server.services.totp.verifyUserTotpConfig({
         userId: req.permission.id,
         totp: req.body.totp
+      });
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/me/totp/recovery-codes",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      return server.services.totp.createUserTotpRecoveryCodes({
+        userId: req.permission.id
       });
     }
   });

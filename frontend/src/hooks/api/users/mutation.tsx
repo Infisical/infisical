@@ -140,3 +140,17 @@ export const useDeleteUserTotpConfiguration = () => {
     }
   });
 };
+
+export const useCreateNewTotpRecoveryCodes = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      await apiRequest.post("/api/v1/user/me/totp/recovery-codes");
+
+      return {};
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(userKeys.totpConfiguration);
+    }
+  });
+};

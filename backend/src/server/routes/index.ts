@@ -525,7 +525,8 @@ export const registerRoutes = async (
     tokenService,
     smtpService,
     authDAL,
-    userDAL
+    userDAL,
+    totpConfigDAL
   });
 
   const projectBotService = projectBotServiceFactory({ permissionService, projectBotDAL, projectDAL });

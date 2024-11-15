@@ -16,7 +16,10 @@ import { useToggle } from "@app/hooks";
 import { useGetUser, userKeys, useUpdateUserMfa } from "@app/hooks/api";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
-import { useDeleteUserTotpConfiguration } from "@app/hooks/api/users/mutation";
+import {
+  useCreateNewTotpRecoveryCodes,
+  useDeleteUserTotpConfiguration
+} from "@app/hooks/api/users/mutation";
 import { useGetUserTotpConfiguration } from "@app/hooks/api/users/queries";
 import { AuthMethod } from "@app/hooks/api/users/types";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -33,6 +36,7 @@ export const MFASection = () => {
   const { data: totpConfiguration, isLoading: isTotpConfigurationLoading } =
     useGetUserTotpConfiguration();
   const { mutateAsync: deleteTotpConfiguration } = useDeleteUserTotpConfiguration();
+  const { mutateAsync: createTotpRecoveryCodes } = useCreateNewTotpRecoveryCodes();
   const queryClient = useQueryClient();
   const { data: serverDetails } = useFetchServerStatus();
 
@@ -58,6 +62,26 @@ export const MFASection = () => {
     }
   };
 
+  const handleGenerateMoreRecoveryCodes = async () => {
+    try {
+      await createTotpRecoveryCodes();
+
+      createNotification({
+        text: "Successfully generated new recovery codes",
+        type: "success"
+      });
+    } catch (err) {
+      console.error(err);
+      const error = err as any;
+      const text = error?.response?.data?.message ?? "Failed to generate new recovery codes";
+
+      createNotification({
+        text,
+        type: "error"
+      });
+    }
+  };
+
   const updateSelectedMfa = async (mfaMethod: MfaMethod) => {
     try {
       if (!user) return;
@@ -67,12 +91,12 @@ export const MFASection = () => {
       });
 
       createNotification({
-        text: "Successfully updated preferred 2FA method",
+        text: "Successfully updated selected 2FA method",
         type: "success"
       });
     } catch (err) {
       createNotification({
-        text: "Something went wrong while updating preferred 2FA method.",
+        text: "Something went wrong while updating selected 2FA method.",
         type: "error"
       });
       console.error(err);
@@ -114,7 +138,7 @@ export const MFASection = () => {
   return (
     <>
       <div className="mb-6 max-w-6xl rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <p className="mb-8 text-xl font-semibold text-mineshaft-100">Two-factor Authentication</p>
+        <p className="mb-4 text-xl font-semibold text-mineshaft-100">Two-factor Authentication</p>
         {user && (
           <Checkbox
             className="data-[state=checked]:bg-primary"
@@ -132,7 +156,7 @@ export const MFASection = () => {
           </Checkbox>
         )}
         {user?.isMfaEnabled && (
-          <FormControl label="Preferred 2FA method" className="mt-3">
+          <FormControl label="Selected 2FA method" className="mt-3">
             <Select
               className="min-w-[20rem] border border-mineshaft-500"
               onValueChange={updateSelectedMfa}
@@ -147,7 +171,7 @@ export const MFASection = () => {
             </Select>
           </FormControl>
         )}
-        <div className="mt-10 text-lg font-semibold text-mineshaft-100">Mobile Authenticator</div>
+        <div className="mt-8 text-lg font-semibold text-mineshaft-100">Mobile Authenticator</div>
         {isTotpConfigurationLoading ? (
           <ContentLoader />
         ) : (
@@ -157,6 +181,9 @@ export const MFASection = () => {
                 <div className="flex flex-row gap-2">
                   <Button colorSchema="secondary" onClick={setShouldShowRecoveryCodes.toggle}>
                     {shouldShowRecoveryCodes ? "Hide recovery codes" : "Show recovery codes"}
+                  </Button>
+                  <Button colorSchema="secondary" onClick={handleGenerateMoreRecoveryCodes}>
+                    Generate more codes
                   </Button>
                   <Button colorSchema="danger" onClick={() => handlePopUpOpen("deleteTotpConfig")}>
                     Delete
@@ -171,13 +198,19 @@ export const MFASection = () => {
                 )}
               </div>
             ) : (
-              <div className="mt-6 flex min-w-full justify-center">
-                <TotpRegistration
-                  onComplete={async () => {
-                    await queryClient.invalidateQueries(userKeys.totpConfiguration);
-                  }}
-                />
-              </div>
+              <>
+                <div className="text-sm text-gray-400">
+                  For added security, you can configure a mobile authenticator and set it as your
+                  selected 2FA method.
+                </div>
+                <div className="mt-6 flex min-w-full justify-center">
+                  <TotpRegistration
+                    onComplete={async () => {
+                      await queryClient.invalidateQueries(userKeys.totpConfiguration);
+                    }}
+                  />
+                </div>
+              </>
             )}
           </div>
         )}
@@ -188,7 +221,8 @@ export const MFASection = () => {
       />
       <DeleteActionModal
         isOpen={popUp.deleteTotpConfig.isOpen}
-        title="Are you sure want to delete the mobile authenticator? You’ll have to go through the setup process to enable it again."
+        title="Are you sure want to delete the configured authenticator?"
+        subTitle="This action is irreversible. You’ll have to go through the setup process to enable it again."
         onChange={(isOpen) => handlePopUpToggle("deleteTotpConfig", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={handleTotpDeletion}

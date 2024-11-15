@@ -8,6 +8,7 @@ import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
+import { TTotpConfigDALFactory } from "../totp/totp-config-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TAuthDALFactory } from "./auth-dal";
 import { TChangePasswordDTO, TCreateBackupPrivateKeyDTO, TResetPasswordViaBackupKeyDTO } from "./auth-password-type";
@@ -18,6 +19,7 @@ type TAuthPasswordServiceFactoryDep = {
   userDAL: TUserDALFactory;
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
+  totpConfigDAL: Pick<TTotpConfigDALFactory, "delete">;
 };
 
 export type TAuthPasswordFactory = ReturnType<typeof authPaswordServiceFactory>;
@@ -25,7 +27,8 @@ export const authPaswordServiceFactory = ({
   authDAL,
   userDAL,
   tokenService,
-  smtpService
+  smtpService,
+  totpConfigDAL
 }: TAuthPasswordServiceFactoryDep) => {
   /*
    * Pre setup for pass change with srp protocol
@@ -184,6 +187,12 @@ export const authPaswordServiceFactory = ({
       isLocked: false,
       temporaryLockDateEnd: null,
       consecutiveFailedMfaAttempts: 0
+    });
+
+    /* we reset the mobile authenticator configs of the user
+    because we want this to be one of the recovery modes from account lockout */
+    await totpConfigDAL.delete({
+      userId
     });
   };
 

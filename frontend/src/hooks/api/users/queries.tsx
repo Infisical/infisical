@@ -480,7 +480,7 @@ export const useGetUserTotpConfiguration = () => {
 
         return data;
       } catch (error) {
-        if (error instanceof AxiosError && error.response?.data?.statusCode === 404) {
+        if (error instanceof AxiosError && [404, 400].includes(error.response?.data?.statusCode)) {
           return {
             isVerified: false,
             recoveryCodes: []

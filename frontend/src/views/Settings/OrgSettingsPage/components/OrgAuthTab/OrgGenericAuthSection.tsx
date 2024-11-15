@@ -58,7 +58,7 @@ export const OrgGenericAuthSection = () => {
       });
 
       createNotification({
-        text: "Successfully updated preferred MFA method",
+        text: "Successfully updated selected MFA method",
         type: "success"
       });
     } catch (err) {
@@ -90,7 +90,7 @@ export const OrgGenericAuthSection = () => {
           Enforce members to authenticate with MFA in order to access the organization
         </p>
         {currentOrg?.enforceMfa && (
-          <FormControl label="Required 2FA method" className="mt-3">
+          <FormControl label="Selected 2FA method" className="mt-3">
             <Select
               className="min-w-[20rem] border border-mineshaft-500"
               onValueChange={handleUpdateSelectedMfa}

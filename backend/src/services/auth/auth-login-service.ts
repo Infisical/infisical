@@ -361,9 +361,9 @@ export const authLoginServiceFactory = ({
     }
 
     const shouldCheckMfa = selectedOrg.enforceMfa || user.isMfaEnabled;
-    const orgMfaMethod = selectedOrg.enforceMfa ? selectedOrg.selectedMfaMethod : undefined;
-    const userMfaMethod = user.isMfaEnabled ? user.selectedMfaMethod : undefined;
-    const mfaMethod = orgMfaMethod ?? userMfaMethod ?? MfaMethod.EMAIL;
+    const orgMfaMethod = selectedOrg.enforceMfa ? selectedOrg.selectedMfaMethod ?? MfaMethod.EMAIL : undefined;
+    const userMfaMethod = user.isMfaEnabled ? user.selectedMfaMethod ?? MfaMethod.EMAIL : undefined;
+    const mfaMethod = orgMfaMethod ?? userMfaMethod;
 
     if (shouldCheckMfa && (!decodedToken.isMfaVerified || decodedToken.mfaMethod !== mfaMethod)) {
       enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
