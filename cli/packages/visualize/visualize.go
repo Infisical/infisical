@@ -94,6 +94,52 @@ func getLongestValues(rows [][3]string) (longestSecretName, longestSecretType in
 	return
 }
 
+func GenericTable(headers []string, rows [][]string) {
+	// if we're not in a terminal or cygwin terminal, don't truncate the secret value
+	shouldTruncate := isatty.IsTerminal(os.Stdout.Fd())
+
+	// This will return an error if we're not in a terminal or
+	// if the terminal is a cygwin terminal like Git Bash.
+	width, _, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil {
+		if shouldTruncate {
+			log.Error().Msgf("error getting terminal size: %s", err)
+		} else {
+			log.Debug().Err(err)
+		}
+	}
+
+	availableWidth := width - borderWidths
+	if availableWidth < 0 {
+		availableWidth = 0
+	}
+
+	t := table.NewWriter()
+	t.SetOutputMirror(os.Stdout)
+	t.SetStyle(table.StyleLight)
+
+	// t.SetTitle(tableOptions.Title)
+	t.Style().Options.DrawBorder = true
+	t.Style().Options.SeparateHeader = true
+	t.Style().Options.SeparateColumns = true
+
+	tableHeaders := table.Row{}
+	for _, header := range headers {
+		tableHeaders = append(tableHeaders, header)
+	}
+
+	t.AppendHeader(tableHeaders)
+	for _, row := range rows {
+		tableRow := table.Row{}
+		for _, val := range row {
+			tableRow = append(tableRow, val)
+		}
+		t.AppendRow(tableRow)
+	}
+
+	t.Render()
+}
+
 // stringWidth returns the width of a string.
 // ANSI escape sequences are ignored and double-width characters are handled correctly.
 func stringWidth(str string) (width int) {

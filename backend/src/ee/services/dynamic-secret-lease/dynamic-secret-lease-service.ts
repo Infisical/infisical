@@ -112,7 +112,7 @@ export const dynamicSecretLeaseServiceFactory = ({
       })
     ) as object;
 
-    const selectedTTL = ttl ?? dynamicSecretCfg.defaultTTL;
+    const selectedTTL = ttl || dynamicSecretCfg.defaultTTL;
     const { maxTTL } = dynamicSecretCfg;
     const expireAt = new Date(new Date().getTime() + ms(selectedTTL));
     if (maxTTL) {
@@ -187,7 +187,7 @@ export const dynamicSecretLeaseServiceFactory = ({
       })
     ) as object;
 
-    const selectedTTL = ttl ?? dynamicSecretCfg.defaultTTL;
+    const selectedTTL = ttl || dynamicSecretCfg.defaultTTL;
     const { maxTTL } = dynamicSecretCfg;
     const expireAt = new Date(dynamicSecretLease.expireAt.getTime() + ms(selectedTTL));
     if (maxTTL) {

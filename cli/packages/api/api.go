@@ -205,6 +205,25 @@ func CallGetAllWorkSpacesUserBelongsTo(httpClient *resty.Client) (GetWorkSpacesR
 	return workSpacesResponse, nil
 }
 
+func CallGetProjectById(httpClient *resty.Client, id string) (Project, error) {
+	var projectResponse GetProjectByIdResponse
+	response, err := httpClient.
+		R().
+		SetResult(&projectResponse).
+		SetHeader("User-Agent", USER_AGENT).
+		Get(fmt.Sprintf("%v/v1/workspace/%s", config.INFISICAL_URL, id))
+
+	if err != nil {
+		return Project{}, err
+	}
+
+	if response.IsError() {
+		return Project{}, fmt.Errorf("CallGetProjectById: Unsuccessful response:  [response=%v]", response)
+	}
+
+	return projectResponse.Project, nil
+}
+
 func CallIsAuthenticated(httpClient *resty.Client) bool {
 	var workSpacesResponse GetWorkSpacesResponse
 	response, err := httpClient.
