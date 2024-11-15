@@ -28,7 +28,8 @@ export enum DynamicSecretProviders {
   AzureEntraId = "azure-entra-id",
   Ldap = "ldap",
   SapHana = "sap-hana",
-  Snowflake = "snowflake"
+  Snowflake = "snowflake",
+  Totp = "totp"
 }
 
 export enum SqlProviders {
@@ -229,6 +230,12 @@ export type TDynamicSecretProvider =
         creationStatement: string;
         revocationStatement: string;
         renewStatement?: string;
+      };
+    }
+  | {
+      type: DynamicSecretProviders.Totp;
+      inputs: {
+        url: string;
       };
     };
 export type TCreateDynamicSecretDTO = {

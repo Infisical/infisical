@@ -221,6 +221,10 @@ export const LdapSchema = z.union([
   })
 ]);
 
+export const DynamicSecretTotpSchema = z.object({
+  url: z.string().trim().min(1)
+});
+
 export enum DynamicSecretProviders {
   SqlDatabase = "sql-database",
   Cassandra = "cassandra",
@@ -234,7 +238,8 @@ export enum DynamicSecretProviders {
   AzureEntraID = "azure-entra-id",
   Ldap = "ldap",
   SapHana = "sap-hana",
-  Snowflake = "snowflake"
+  Snowflake = "snowflake",
+  Totp = "totp"
 }
 
 export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
@@ -250,7 +255,8 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.RabbitMq), inputs: DynamicSecretRabbitMqSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.AzureEntraID), inputs: AzureEntraIDSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Ldap), inputs: LdapSchema }),
-  z.object({ type: z.literal(DynamicSecretProviders.Snowflake), inputs: DynamicSecretSnowflakeSchema })
+  z.object({ type: z.literal(DynamicSecretProviders.Snowflake), inputs: DynamicSecretSnowflakeSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Totp), inputs: DynamicSecretTotpSchema })
 ]);
 
 export type TDynamicProviderFns = {
