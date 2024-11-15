@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -10,7 +10,7 @@ import { z } from "zod";
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, IconButton, Input, SecretInput, Tooltip } from "@app/components/v2";
-import { useTimedReset } from "@app/hooks";
+import { useTimedReset, useToggle } from "@app/hooks";
 import { useCreateDynamicSecretLease } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
@@ -242,11 +242,26 @@ const renderOutputForm = (provider: DynamicSecretProviders, data: unknown) => {
     );
   }
 
+  if (provider === DynamicSecretProviders.Totp) {
+    const { TOTP } = data as {
+      TOTP: string;
+    };
+
+    return (
+      <div>
+        <OutputDisplay label="Time-based one-time password" value={TOTP} />
+      </div>
+    );
+  }
+
   return null;
 };
 
 const formSchema = z.object({
-  ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number")
+  ttl: z
+    .string()
+    .refine((val) => ms(val) > 0, "TTL must be a positive number")
+    .optional()
 });
 type TForm = z.infer<typeof formSchema>;
 
@@ -258,6 +273,8 @@ type Props = {
   environment: string;
   secretPath: string;
 };
+
+const PROVIDERS_WITH_AUTOGENERATE_SUPPORT = [DynamicSecretProviders.Totp];
 
 export const CreateDynamicSecretLease = ({
   onClose,
@@ -277,6 +294,9 @@ export const CreateDynamicSecretLease = ({
       ttl: "1h"
     }
   });
+  const [isPreloading, setIsPreloading] = useToggle(
+    PROVIDERS_WITH_AUTOGENERATE_SUPPORT.includes(provider)
+  );
 
   const createDynamicSecretLease = useCreateDynamicSecretLease();
 
@@ -290,10 +310,13 @@ export const CreateDynamicSecretLease = ({
         ttl,
         dynamicSecretName
       });
+
       createNotification({
         type: "success",
         text: "Successfully leased dynamic secret"
       });
+
+      setIsPreloading.off();
     } catch (error) {
       console.log(error);
       createNotification({
@@ -303,7 +326,17 @@ export const CreateDynamicSecretLease = ({
     }
   };
 
+  useEffect(() => {
+    if (provider === DynamicSecretProviders.Totp) {
+      handleDynamicSecretLeaseCreate({});
+    }
+  }, [provider]);
+
   const isOutputMode = Boolean(createDynamicSecretLease?.data);
+
+  if (isPreloading) {
+    return <div />;
+  }
 
   return (
     <div>

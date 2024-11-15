@@ -11,7 +11,7 @@ import {
   SiSnowflake
 } from "react-icons/si";
 import { faAws } from "@fortawesome/free-brands-svg-icons";
-import { faDatabase } from "@fortawesome/free-solid-svg-icons";
+import { faClock, faDatabase } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -31,6 +31,7 @@ import { RabbitMqInputForm } from "./RabbitMqInputForm";
 import { RedisInputForm } from "./RedisInputForm";
 import { SapHanaInputForm } from "./SapHanaInputForm";
 import { SqlDatabaseInputForm } from "./SqlDatabaseInputForm";
+import { TotpInputForm } from "./TotpInputForm";
 
 type Props = {
   isOpen?: boolean;
@@ -110,6 +111,11 @@ const DYNAMIC_SECRET_LIST = [
     icon: <SiSnowflake size="1.5rem" />,
     provider: DynamicSecretProviders.Snowflake,
     title: "Snowflake"
+  },
+  {
+    icon: <FontAwesomeIcon icon={faClock} size="lg" />,
+    provider: DynamicSecretProviders.Totp,
+    title: "TOTP"
   }
 ];
 
@@ -397,6 +403,24 @@ export const CreateDynamicSecretForm = ({
                 exit={{ opacity: 0, translateX: -30 }}
               >
                 <SnowflakeInputForm
+                  onCompleted={handleFormReset}
+                  onCancel={handleFormReset}
+                  projectSlug={projectSlug}
+                  secretPath={secretPath}
+                  environment={environment}
+                />
+              </motion.div>
+            )}
+          {wizardStep === WizardSteps.ProviderInputs &&
+            selectedProvider === DynamicSecretProviders.Totp && (
+              <motion.div
+                key="dynamic-totp-step"
+                transition={{ duration: 0.1 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: -30 }}
+              >
+                <TotpInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}
