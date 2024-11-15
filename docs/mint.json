@@ -314,6 +314,7 @@
             "cli/commands/init",
             "cli/commands/run",
             "cli/commands/secrets",
+            "cli/commands/dynamic-secrets",
             "cli/commands/export",
             "cli/commands/token",
             "cli/commands/service-token",
