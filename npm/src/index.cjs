@@ -77,7 +77,15 @@ async function extractZip(buffer, targetPath) {
 					zipfile.openReadStream(entry, (err, readStream) => {
 						if (err) return reject(err);
 
-						const outputPath = path.join(targetPath, entry.fileName.includes("infisical") ? "infisical" : entry.fileName);
+						let fileName = entry.fileName;
+
+						if (entry.fileName.endsWith(".exe")) {
+							fileName = "infisical.exe";
+						} else if (entry.fileName.includes("infisical")) {
+							fileName = "infisical";
+						}
+
+						const outputPath = path.join(targetPath, fileName);
 						const writeStream = fs.createWriteStream(outputPath);
 
 						readStream.pipe(writeStream);
@@ -140,8 +148,14 @@ async function main() {
 			});
 		}
 
-		// Give the binary execute permissions if we're not on Windows
-		if (PLATFORM !== "win32") {
+		// Platform-specific tasks
+		if (PLATFORM === "windows") {
+			// We create an empty file called 'infisical'. This file has no functionality, except allowing NPM to correctly create the symlink.
+			// Reason why this doesn't work without the empty file, is because the files downloaded are a .ps1, .exe, and .cmd file. None of these match the binary name from the package.json['bin'] field.
+			// This is a bit hacky, but it assures that the symlink is correctly created.
+			fs.closeSync(fs.openSync(path.join(outputDir, "infisical"), "w"));
+		} else {
+			// Unix systems only need chmod
 			fs.chmodSync(path.join(outputDir, "infisical"), "755");
 		}
 	} catch (error) {
