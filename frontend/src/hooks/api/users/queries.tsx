@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AxiosError } from "axios";
 
 import { apiRequest } from "@app/config/request";
 import { SessionStorageKeys } from "@app/const";
 import { setAuthToken } from "@app/reactQuery";
 
 import { APIKeyDataV2 } from "../apiKeys/types";
+import { MfaMethod } from "../auth/types";
 import { TGroupWithProjectMemberships } from "../groups/types";
 import { workspaceKeys } from "../workspace";
 import { userKeys } from "./query-keys";
@@ -390,14 +392,21 @@ export const useRevokeMySessions = () => {
   });
 };
 
-export const useUpdateMfaEnabled = () => {
+export const useUpdateUserMfa = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ isMfaEnabled }: { isMfaEnabled: boolean }) => {
+    mutationFn: async ({
+      isMfaEnabled,
+      selectedMfaMethod
+    }: {
+      isMfaEnabled?: boolean;
+      selectedMfaMethod?: MfaMethod;
+    }) => {
       const {
         data: { user }
       } = await apiRequest.patch("/api/v2/users/me/mfa", {
-        isMfaEnabled
+        isMfaEnabled,
+        selectedMfaMethod
       });
 
       return user;
@@ -443,6 +452,42 @@ export const useListUserGroupMemberships = (username: string) => {
       );
 
       return data;
+    }
+  });
+};
+
+export const useGetUserTotpRegistration = () => {
+  return useQuery({
+    queryKey: userKeys.totpRegistration,
+    queryFn: async () => {
+      const { data } = await apiRequest.post<{ otpUrl: string; recoveryCodes: string[] }>(
+        "/api/v1/user/me/totp/register"
+      );
+
+      return data;
+    }
+  });
+};
+
+export const useGetUserTotpConfiguration = () => {
+  return useQuery({
+    queryKey: userKeys.totpConfiguration,
+    queryFn: async () => {
+      try {
+        const { data } = await apiRequest.get<{ isVerified: boolean; recoveryCodes: string[] }>(
+          "/api/v1/user/me/totp"
+        );
+
+        return data;
+      } catch (error) {
+        if (error instanceof AxiosError && [404, 400].includes(error.response?.data?.statusCode)) {
+          return {
+            isVerified: false,
+            recoveryCodes: []
+          };
+        }
+        throw error;
+      }
     }
   });
 };

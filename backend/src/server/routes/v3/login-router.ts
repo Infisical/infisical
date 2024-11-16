@@ -48,7 +48,8 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           token: z.string(),
-          isMfaEnabled: z.boolean()
+          isMfaEnabled: z.boolean(),
+          mfaMethod: z.string().optional()
         })
       }
     },
@@ -64,7 +65,8 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
       if (tokens.isMfaEnabled) {
         return {
           token: tokens.mfa as string,
-          isMfaEnabled: true
+          isMfaEnabled: true,
+          mfaMethod: tokens.mfaMethod
         };
       }
 

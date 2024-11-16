@@ -268,7 +268,7 @@ export const orgServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     orgId,
-    data: { name, slug, authEnforced, scimEnabled, defaultMembershipRoleSlug, enforceMfa }
+    data: { name, slug, authEnforced, scimEnabled, defaultMembershipRoleSlug, enforceMfa, selectedMfaMethod }
   }: TUpdateOrgDTO) => {
     const appCfg = getConfig();
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
@@ -333,7 +333,8 @@ export const orgServiceFactory = ({
       authEnforced,
       scimEnabled,
       defaultMembershipRole,
-      enforceMfa
+      enforceMfa,
+      selectedMfaMethod
     });
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
     return org;

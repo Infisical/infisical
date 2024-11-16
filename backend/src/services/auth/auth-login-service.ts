@@ -17,6 +17,7 @@ import { TokenType } from "../auth-token/auth-token-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { LoginMethod } from "../super-admin/super-admin-types";
+import { TTotpServiceFactory } from "../totp/totp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { enforceUserLockStatus, validateProviderAuthToken } from "./auth-fns";
 import {
@@ -26,13 +27,14 @@ import {
   TOauthTokenExchangeDTO,
   TVerifyMfaTokenDTO
 } from "./auth-login-type";
-import { AuthMethod, AuthModeJwtTokenPayload, AuthModeMfaJwtTokenPayload, AuthTokenType } from "./auth-type";
+import { AuthMethod, AuthModeJwtTokenPayload, AuthModeMfaJwtTokenPayload, AuthTokenType, MfaMethod } from "./auth-type";
 
 type TAuthLoginServiceFactoryDep = {
   userDAL: TUserDALFactory;
   orgDAL: TOrgDALFactory;
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
+  totpService: Pick<TTotpServiceFactory, "verifyUserTotp" | "verifyWithUserRecoveryCode">;
 };
 
 export type TAuthLoginFactory = ReturnType<typeof authLoginServiceFactory>;
@@ -40,7 +42,8 @@ export const authLoginServiceFactory = ({
   userDAL,
   tokenService,
   smtpService,
-  orgDAL
+  orgDAL,
+  totpService
 }: TAuthLoginServiceFactoryDep) => {
   /*
    * Private
@@ -100,7 +103,8 @@ export const authLoginServiceFactory = ({
     userAgent,
     organizationId,
     authMethod,
-    isMfaVerified
+    isMfaVerified,
+    mfaMethod
   }: {
     user: TUsers;
     ip: string;
@@ -108,6 +112,7 @@ export const authLoginServiceFactory = ({
     organizationId?: string;
     authMethod: AuthMethod;
     isMfaVerified?: boolean;
+    mfaMethod?: MfaMethod;
   }) => {
     const cfg = getConfig();
     await updateUserDeviceSession(user, ip, userAgent);
@@ -126,7 +131,8 @@ export const authLoginServiceFactory = ({
         tokenVersionId: tokenSession.id,
         accessVersion: tokenSession.accessVersion,
         organizationId,
-        isMfaVerified
+        isMfaVerified,
+        mfaMethod
       },
       cfg.AUTH_SECRET,
       { expiresIn: cfg.JWT_AUTH_LIFETIME }
@@ -140,7 +146,8 @@ export const authLoginServiceFactory = ({
         tokenVersionId: tokenSession.id,
         refreshVersion: tokenSession.refreshVersion,
         organizationId,
-        isMfaVerified
+        isMfaVerified,
+        mfaMethod
       },
       cfg.AUTH_SECRET,
       { expiresIn: cfg.JWT_REFRESH_LIFETIME }
@@ -353,8 +360,12 @@ export const authLoginServiceFactory = ({
       });
     }
 
-    // send multi factor auth token if they it enabled
-    if ((selectedOrg.enforceMfa || user.isMfaEnabled) && user.email && !decodedToken.isMfaVerified) {
+    const shouldCheckMfa = selectedOrg.enforceMfa || user.isMfaEnabled;
+    const orgMfaMethod = selectedOrg.enforceMfa ? selectedOrg.selectedMfaMethod ?? MfaMethod.EMAIL : undefined;
+    const userMfaMethod = user.isMfaEnabled ? user.selectedMfaMethod ?? MfaMethod.EMAIL : undefined;
+    const mfaMethod = orgMfaMethod ?? userMfaMethod;
+
+    if (shouldCheckMfa && (!decodedToken.isMfaVerified || decodedToken.mfaMethod !== mfaMethod)) {
       enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
 
       const mfaToken = jwt.sign(
@@ -369,12 +380,14 @@ export const authLoginServiceFactory = ({
         }
       );
 
-      await sendUserMfaCode({
-        userId: user.id,
-        email: user.email
-      });
+      if (mfaMethod === MfaMethod.EMAIL && user.email) {
+        await sendUserMfaCode({
+          userId: user.id,
+          email: user.email
+        });
+      }
 
-      return { isMfaEnabled: true, mfa: mfaToken } as const;
+      return { isMfaEnabled: true, mfa: mfaToken, mfaMethod } as const;
     }
 
     const tokens = await generateUserTokens({
@@ -383,7 +396,8 @@ export const authLoginServiceFactory = ({
       userAgent,
       ip: ipAddress,
       organizationId,
-      isMfaVerified: decodedToken.isMfaVerified
+      isMfaVerified: decodedToken.isMfaVerified,
+      mfaMethod: decodedToken.mfaMethod
     });
 
     return {
@@ -458,17 +472,39 @@ export const authLoginServiceFactory = ({
    * Multi factor authentication verification of code
    * Third step of login in which user completes with mfa
    * */
-  const verifyMfaToken = async ({ userId, mfaToken, mfaJwtToken, ip, userAgent, orgId }: TVerifyMfaTokenDTO) => {
+  const verifyMfaToken = async ({
+    userId,
+    mfaToken,
+    mfaMethod,
+    mfaJwtToken,
+    ip,
+    userAgent,
+    orgId
+  }: TVerifyMfaTokenDTO) => {
     const appCfg = getConfig();
     const user = await userDAL.findById(userId);
     enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
 
     try {
-      await tokenService.validateTokenForUser({
-        type: TokenType.TOKEN_EMAIL_MFA,
-        userId,
-        code: mfaToken
-      });
+      if (mfaMethod === MfaMethod.EMAIL) {
+        await tokenService.validateTokenForUser({
+          type: TokenType.TOKEN_EMAIL_MFA,
+          userId,
+          code: mfaToken
+        });
+      } else if (mfaMethod === MfaMethod.TOTP) {
+        if (mfaToken.length === 6) {
+          await totpService.verifyUserTotp({
+            userId,
+            totp: mfaToken
+          });
+        } else {
+          await totpService.verifyWithUserRecoveryCode({
+            userId,
+            recoveryCode: mfaToken
+          });
+        }
+      }
     } catch (err) {
       const updatedUser = await processFailedMfaAttempt(userId);
       if (updatedUser.isLocked) {
@@ -513,7 +549,8 @@ export const authLoginServiceFactory = ({
       userAgent,
       organizationId: orgId,
       authMethod: decodedToken.authMethod,
-      isMfaVerified: true
+      isMfaVerified: true,
+      mfaMethod
     });
 
     return { token, user: userEnc };

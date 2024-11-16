@@ -91,7 +91,8 @@ export const useUpdateOrg = () => {
       slug,
       orgId,
       defaultMembershipRoleSlug,
-      enforceMfa
+      enforceMfa,
+      selectedMfaMethod
     }) => {
       return apiRequest.patch(`/api/v1/organization/${orgId}`, {
         name,
@@ -99,7 +100,8 @@ export const useUpdateOrg = () => {
         scimEnabled,
         slug,
         defaultMembershipRoleSlug,
-        enforceMfa
+        enforceMfa,
+        selectedMfaMethod
       });
     },
     onSuccess: () => {

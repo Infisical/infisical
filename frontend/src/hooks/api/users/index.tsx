@@ -21,12 +21,13 @@ export {
   useGetOrgUsers,
   useGetUser,
   useGetUserAction,
+  useGetUserTotpRegistration,
   useListUserGroupMemberships,
   useLogoutUser,
   useRegisterUserAction,
   useRevokeMySessions,
-  useUpdateMfaEnabled,
   useUpdateOrgMembership,
-  useUpdateUserAuthMethods
+  useUpdateUserAuthMethods,
+  useUpdateUserMfa
 } from "./queries";
 export { userKeys } from "./query-keys";

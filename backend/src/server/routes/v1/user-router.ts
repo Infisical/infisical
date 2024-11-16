@@ -169,4 +169,103 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       return groupMemberships;
     }
   });
+
+  server.route({
+    method: "GET",
+    url: "/me/totp",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          isVerified: z.boolean(),
+          recoveryCodes: z.string().array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      return server.services.totp.getUserTotpConfig({
+        userId: req.permission.id
+      });
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/me/totp",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      return server.services.totp.deleteUserTotpConfig({
+        userId: req.permission.id
+      });
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/me/totp/register",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          otpUrl: z.string(),
+          recoveryCodes: z.string().array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT], {
+      requireOrg: false
+    }),
+    handler: async (req) => {
+      return server.services.totp.registerUserTotp({
+        userId: req.permission.id
+      });
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/me/totp/verify",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      body: z.object({
+        totp: z.string()
+      }),
+      response: {
+        200: z.object({})
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT], {
+      requireOrg: false
+    }),
+    handler: async (req) => {
+      return server.services.totp.verifyUserTotpConfig({
+        userId: req.permission.id,
+        totp: req.body.totp
+      });
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/me/totp/recovery-codes",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      return server.services.totp.createUserTotpRecoveryCodes({
+        userId: req.permission.id
+      });
+    }
+  });
 };

@@ -16,6 +16,7 @@ import { Button, Input, Spinner } from "@app/components/v2";
 import { SessionStorageKeys } from "@app/const";
 import { useToggle } from "@app/hooks";
 import { useOauthTokenExchange, useSelectOrganization } from "@app/hooks/api";
+import { MfaMethod } from "@app/hooks/api/auth/types";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { fetchMyPrivateKey } from "@app/hooks/api/users/queries";
 
@@ -36,6 +37,7 @@ export const PasswordStep = ({ providerAuthToken, email, password, setPassword }
   const { mutateAsync: selectOrganization } = useSelectOrganization();
   const { mutateAsync: oauthTokenExchange } = useOauthTokenExchange();
   const [shouldShowMfa, toggleShowMfa] = useToggle(false);
+  const [requiredMfaMethod, setRequiredMfaMethod] = useState(MfaMethod.EMAIL);
   const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
 
   const { navigateToSelectOrganization } = useNavigateToSelectOrganization();
@@ -66,12 +68,15 @@ export const PasswordStep = ({ providerAuthToken, email, password, setPassword }
       // case: organization ID is present from the provider auth token -- select the org and use the new jwt token in the CLI, then navigate to the org
       if (organizationId) {
         const finishWithOrgWorkflow = async () => {
-          const { token, isMfaEnabled } = await selectOrganization({ organizationId });
+          const { token, isMfaEnabled, mfaMethod } = await selectOrganization({ organizationId });
 
           if (isMfaEnabled) {
             SecurityClient.setMfaToken(token);
-            toggleShowMfa.on();
             setMfaSuccessCallback(() => finishWithOrgWorkflow);
+            if (mfaMethod) {
+              setRequiredMfaMethod(mfaMethod);
+            }
+            toggleShowMfa.on();
             return;
           }
 
@@ -167,10 +172,15 @@ export const PasswordStep = ({ providerAuthToken, email, password, setPassword }
           // case: organization ID is present from the provider auth token -- select the org and use the new jwt token in the CLI, then navigate to the org
           if (organizationId) {
             const finishWithOrgWorkflow = async () => {
-              const { token, isMfaEnabled } = await selectOrganization({ organizationId });
+              const { token, isMfaEnabled, mfaMethod } = await selectOrganization({
+                organizationId
+              });
 
               if (isMfaEnabled) {
                 SecurityClient.setMfaToken(token);
+                if (mfaMethod) {
+                  setRequiredMfaMethod(mfaMethod);
+                }
                 toggleShowMfa.on();
                 setMfaSuccessCallback(() => finishWithOrgWorkflow);
                 return;
@@ -283,6 +293,7 @@ export const PasswordStep = ({ providerAuthToken, email, password, setPassword }
         <Mfa
           email={email}
           successCallback={mfaSuccessCallback}
+          method={requiredMfaMethod}
           closeMfa={() => toggleShowMfa.off()}
         />
       </div>

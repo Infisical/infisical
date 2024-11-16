@@ -78,6 +78,7 @@ import {
   useLogoutUser,
   useSelectOrganization
 } from "@app/hooks/api";
+import { MfaMethod } from "@app/hooks/api/auth/types";
 import { INTERNAL_KMS_KEY_ID } from "@app/hooks/api/kms/types";
 import { InfisicalProjectTemplate, useListProjectTemplates } from "@app/hooks/api/projectTemplates";
 import { Workspace } from "@app/hooks/api/types";
@@ -143,6 +144,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const { data: projectFavorites } = useGetUserProjectFavorites(currentOrg?.id!);
   const { mutateAsync: updateUserProjectFavorites } = useUpdateUserProjectFavorites();
   const [shouldShowMfa, toggleShowMfa] = useToggle(false);
+  const [requiredMfaMethod, setRequiredMfaMethod] = useState(MfaMethod.EMAIL);
   const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
 
   const workspacesWithFaveProp = useMemo(
@@ -214,12 +216,15 @@ export const AppLayout = ({ children }: LayoutProps) => {
   };
 
   const changeOrg = async (orgId: string) => {
-    const { token, isMfaEnabled } = await selectOrganization({
+    const { token, isMfaEnabled, mfaMethod } = await selectOrganization({
       organizationId: orgId
     });
 
     if (isMfaEnabled) {
       SecurityClient.setMfaToken(token);
+      if (mfaMethod) {
+        setRequiredMfaMethod(mfaMethod);
+      }
       toggleShowMfa.on();
       setMfaSuccessCallback(() => () => changeOrg(orgId));
       return;
@@ -365,6 +370,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
       <div className="flex max-h-screen min-h-screen flex-col items-center justify-center gap-2 overflow-y-auto bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
         <Mfa
           email={user.email as string}
+          method={requiredMfaMethod}
           successCallback={mfaSuccessCallback}
           closeMfa={() => toggleShowMfa.off()}
         />

@@ -1,6 +1,6 @@
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Switch, UpgradePlanModal } from "@app/components/v2";
+import { FormControl, Select, SelectItem, Switch, UpgradePlanModal } from "@app/components/v2";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -8,6 +8,7 @@ import {
   useSubscription
 } from "@app/context";
 import { useUpdateOrg } from "@app/hooks/api";
+import { MfaMethod } from "@app/hooks/api/auth/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 export const OrgGenericAuthSection = () => {
@@ -43,6 +44,32 @@ export const OrgGenericAuthSection = () => {
     }
   };
 
+  const handleUpdateSelectedMfa = async (selectedMfaMethod: MfaMethod) => {
+    try {
+      if (!currentOrg?.id) return;
+      if (!subscription?.enforceMfa) {
+        handlePopUpOpen("upgradePlan");
+        return;
+      }
+
+      await mutateAsync({
+        orgId: currentOrg?.id,
+        selectedMfaMethod
+      });
+
+      createNotification({
+        text: "Successfully updated selected MFA method",
+        type: "success"
+      });
+    } catch (err) {
+      console.error(err);
+      createNotification({
+        text: (err as { response: { data: { message: string } } }).response.data.message,
+        type: "error"
+      });
+    }
+  };
+
   return (
     <div className="mb-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
       <div className="py-4">
@@ -62,6 +89,22 @@ export const OrgGenericAuthSection = () => {
         <p className="text-sm text-mineshaft-300">
           Enforce members to authenticate with MFA in order to access the organization
         </p>
+        {currentOrg?.enforceMfa && (
+          <FormControl label="Selected 2FA method" className="mt-3">
+            <Select
+              className="min-w-[20rem] border border-mineshaft-500"
+              onValueChange={handleUpdateSelectedMfa}
+              defaultValue={currentOrg.selectedMfaMethod ?? MfaMethod.EMAIL}
+            >
+              <SelectItem value={MfaMethod.EMAIL} key="mfa-method-email">
+                Email
+              </SelectItem>
+              <SelectItem value={MfaMethod.TOTP} key="mfa-method-totp">
+                Mobile Authenticator
+              </SelectItem>
+            </Select>
+          </FormControl>
+        )}
       </div>
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}

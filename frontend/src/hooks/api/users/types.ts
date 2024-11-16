@@ -1,3 +1,4 @@
+import { MfaMethod } from "../auth/types";
 import { UserWsKeyPair } from "../keys/types";
 import { ProjectUserMembershipTemporaryMode } from "../workspace/types";
 
@@ -26,6 +27,7 @@ export type User = {
   authProvider?: AuthMethod;
   authMethods: AuthMethod[];
   isMfaEnabled: boolean;
+  selectedMfaMethod?: MfaMethod;
   seenIps: string[];
   id: string;
 };

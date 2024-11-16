@@ -15,7 +15,7 @@ import { AuthMethod } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TUserDALFactory } from "./user-dal";
-import { TListUserGroupsDTO } from "./user-types";
+import { TListUserGroupsDTO, TUpdateUserMfaDTO } from "./user-types";
 
 type TUserServiceFactoryDep = {
   userDAL: Pick<
@@ -171,15 +171,24 @@ export const userServiceFactory = ({
     });
   };
 
-  const toggleUserMfa = async (userId: string, isMfaEnabled: boolean) => {
+  const updateUserMfa = async ({ userId, isMfaEnabled, selectedMfaMethod }: TUpdateUserMfaDTO) => {
     const user = await userDAL.findById(userId);
 
     if (!user || !user.email) throw new BadRequestError({ name: "Failed to toggle MFA" });
 
+    let mfaMethods;
+    if (isMfaEnabled === undefined) {
+      mfaMethods = undefined;
+    } else {
+      mfaMethods = isMfaEnabled ? ["email"] : [];
+    }
+
     const updatedUser = await userDAL.updateById(userId, {
       isMfaEnabled,
-      mfaMethods: isMfaEnabled ? ["email"] : []
+      mfaMethods,
+      selectedMfaMethod
     });
+
     return updatedUser;
   };
 
@@ -327,7 +336,7 @@ export const userServiceFactory = ({
   return {
     sendEmailVerificationCode,
     verifyEmailVerificationCode,
-    toggleUserMfa,
+    updateUserMfa,
     updateUserName,
     updateAuthMethods,
     deleteUser,

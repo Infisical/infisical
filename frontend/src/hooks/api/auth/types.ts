@@ -9,6 +9,7 @@ export type SendMfaTokenDTO = {
 export type VerifyMfaTokenDTO = {
   email: string;
   mfaCode: string;
+  mfaMethod: MfaMethod;
 };
 
 export type VerifyMfaTokenRes = {
@@ -148,4 +149,9 @@ export type GetBackupEncryptedPrivateKeyDTO = {
 
 export enum UserAgentType {
   CLI = "cli"
+}
+
+export enum MfaMethod {
+  EMAIL = "email",
+  TOTP = "totp"
 }

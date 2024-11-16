@@ -53,6 +53,7 @@ export type AuthModeJwtTokenPayload = {
   accessVersion: number;
   organizationId?: string;
   isMfaVerified?: boolean;
+  mfaMethod?: MfaMethod;
 };
 
 export type AuthModeMfaJwtTokenPayload = {
@@ -71,6 +72,7 @@ export type AuthModeRefreshJwtTokenPayload = {
   refreshVersion: number;
   organizationId?: string;
   isMfaVerified?: boolean;
+  mfaMethod?: MfaMethod;
 };
 
 export type AuthModeProviderJwtTokenPayload = {
@@ -85,3 +87,8 @@ export type AuthModeProviderSignUpTokenPayload = {
   authTokenType: AuthTokenType.SIGNUP_TOKEN;
   userId: string;
 };
+
+export enum MfaMethod {
+  EMAIL = "email",
+  TOTP = "totp"
+}

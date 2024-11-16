@@ -19,6 +19,7 @@ import {
   Login2Res,
   LoginLDAPDTO,
   LoginLDAPRes,
+  MfaMethod,
   ResetPasswordDTO,
   SendMfaTokenDTO,
   SRP1DTO,
@@ -65,10 +66,11 @@ export const selectOrganization = async (data: {
   organizationId: string;
   userAgent?: UserAgentType;
 }) => {
-  const { data: res } = await apiRequest.post<{ token: string; isMfaEnabled: boolean }>(
-    "/api/v3/auth/select-organization",
-    data
-  );
+  const { data: res } = await apiRequest.post<{
+    token: string;
+    isMfaEnabled: boolean;
+    mfaMethod?: MfaMethod;
+  }>("/api/v3/auth/select-organization", data);
   return res;
 };
 
@@ -154,10 +156,19 @@ export const useSendMfaToken = () => {
   });
 };
 
-export const verifyMfaToken = async ({ email, mfaCode }: { email: string; mfaCode: string }) => {
+export const verifyMfaToken = async ({
+  email,
+  mfaCode,
+  mfaMethod
+}: {
+  email: string;
+  mfaCode: string;
+  mfaMethod?: string;
+}) => {
   const { data } = await apiRequest.post("/api/v2/auth/mfa/verify", {
     email,
-    mfaToken: mfaCode
+    mfaToken: mfaCode,
+    mfaMethod
   });
 
   return data;
@@ -165,10 +176,11 @@ export const verifyMfaToken = async ({ email, mfaCode }: { email: string; mfaCod
 
 export const useVerifyMfaToken = () => {
   return useMutation<VerifyMfaTokenRes, {}, VerifyMfaTokenDTO>({
-    mutationFn: async ({ email, mfaCode }) => {
+    mutationFn: async ({ email, mfaCode, mfaMethod }) => {
       return verifyMfaToken({
         email,
-        mfaCode
+        mfaCode,
+        mfaMethod
       });
     }
   });
@@ -302,3 +314,9 @@ export const useGetAuthToken = () =>
     onSuccess: (data) => setAuthToken(data.token),
     retry: 0
   });
+
+export const checkUserTotpMfa = async () => {
+  const { data } = await apiRequest.get<{ isVerified: boolean }>("/api/v2/auth/mfa/check/totp");
+
+  return data.isVerified;
+};
