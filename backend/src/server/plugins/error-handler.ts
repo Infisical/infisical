@@ -10,6 +10,7 @@ import {
   GatewayTimeoutError,
   InternalServerError,
   NotFoundError,
+  OidcAuthError,
   RateLimitError,
   ScimRequestError,
   UnauthorizedError
@@ -83,7 +84,10 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         status: error.status,
         detail: error.detail
       });
-      // Handle JWT errors and make them more human-readable for the end-user.
+    } else if (error instanceof OidcAuthError) {
+      void res
+        .status(HttpStatusCodes.InternalServerError)
+        .send({ statusCode: HttpStatusCodes.InternalServerError, message: error.message, error: error.name });
     } else if (error instanceof jwt.JsonWebTokenError) {
       const message = (() => {
         if (error.message === JWTErrors.JwtExpired) {

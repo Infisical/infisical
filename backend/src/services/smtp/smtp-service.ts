@@ -77,5 +77,21 @@ export const smtpServiceFactory = (cfg: TSmtpConfig) => {
     }
   };
 
-  return { sendMail };
+  const verify = async () => {
+    const isConnected = smtp
+      .verify()
+      .then(async () => {
+        logger.info("SMTP connected");
+        return true;
+      })
+      .catch((err: Error) => {
+        logger.error("SMTP error");
+        logger.error(err);
+        return false;
+      });
+
+    return isConnected;
+  };
+
+  return { sendMail, verify };
 };

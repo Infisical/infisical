@@ -5,6 +5,9 @@ export const mockSmtpServer = (): TSmtpService => {
   return {
     sendMail: async (data) => {
       storage.push(data);
+    },
+    verify: async () => {
+      return true;
     }
   };
 };

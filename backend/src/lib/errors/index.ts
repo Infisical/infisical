@@ -133,3 +133,15 @@ export class ScimRequestError extends Error {
     this.status = status;
   }
 }
+
+export class OidcAuthError extends Error {
+  name: string;
+
+  error: unknown;
+
+  constructor({ name, error, message }: { message?: string; name?: string; error?: unknown }) {
+    super(message || "Something went wrong");
+    this.name = name || "OidcAuthError";
+    this.error = error;
+  }
+}
