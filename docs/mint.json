@@ -189,7 +189,8 @@
             "documentation/platform/dynamic-secrets/azure-entra-id",
             "documentation/platform/dynamic-secrets/ldap",
             "documentation/platform/dynamic-secrets/sap-hana",
-            "documentation/platform/dynamic-secrets/snowflake"
+            "documentation/platform/dynamic-secrets/snowflake",
+            "documentation/platform/dynamic-secrets/totp"
           ]
         },
         "documentation/platform/project-templates",
