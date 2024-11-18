@@ -13,19 +13,12 @@ export async function up(knex: Knex): Promise<void> {
     });
 
     // first we remove identities without auth method that is unused
-    let nullableAuthMethodIdentities = [];
-    do {
-      const findNullableAuthMethodIdentities = knex(TableName.Identity)
-        .whereNull("authMethod")
-        .limit(BATCH_SIZE)
-        .select("id");
-
-      // eslint-disable-next-line no-await-in-loop
-      nullableAuthMethodIdentities = await knex(TableName.Identity)
-        .whereIn("id", findNullableAuthMethodIdentities)
-        .del()
-        .returning("id");
-    } while (nullableAuthMethodIdentities.length > 0);
+    // ! We delete all access tokens where the identity has no auth method set!
+    // ! Which means un-configured identities that for some reason have access tokens, will have their access tokens deleted.
+    await knex(TableName.IdentityAccessToken)
+      .leftJoin(TableName.Identity, `${TableName.Identity}.id`, `${TableName.IdentityAccessToken}.identityId`)
+      .whereNull(`${TableName.Identity}.authMethod`)
+      .delete();
 
     let nullableAccessTokens = await knex(TableName.IdentityAccessToken)
       .whereNull("authMethod")
@@ -59,18 +52,6 @@ export async function up(knex: Knex): Promise<void> {
       totalUpdated += batchIds.length;
       console.log(`Updated ${batchIds.length} access tokens in batch <> Total updated: ${totalUpdated}`);
     } while (nullableAccessTokens.length > 0);
-
-    // ! We delete all access tokens where the identity has no auth method set!
-    // ! Which means un-configured identities that for some reason have access tokens, will have their access tokens deleted.
-    await knex(TableName.IdentityAccessToken)
-      .whereNotExists((queryBuilder) => {
-        void queryBuilder
-          .select("id")
-          .from(TableName.Identity)
-          .whereRaw(`${TableName.IdentityAccessToken}."identityId" = ${TableName.Identity}.id`)
-          .whereNotNull("authMethod");
-      })
-      .delete();
 
     // Finally we set the authMethod to notNullable after populating the column.
     // This will fail if the data is not populated correctly, so it's safe.
