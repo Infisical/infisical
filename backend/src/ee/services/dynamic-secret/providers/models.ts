@@ -222,7 +222,7 @@ export const LdapSchema = z.union([
 ]);
 
 export const DynamicSecretTotpSchema = z.object({
-  url: z.string().trim().min(1)
+  url: z.string().url().trim().min(1)
 });
 
 export enum DynamicSecretProviders {
