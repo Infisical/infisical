@@ -72,8 +72,16 @@ RUN addgroup --system --gid 1001 nodejs \
 
 WORKDIR /app
 
-# Required for pkcs11js
-RUN apk add --no-cache python3 make g++ 
+# Install all required dependencies for build
+RUN apk --update add \
+    python3 \
+    make \
+    g++ \
+    unixodbc \
+    freetds \
+    unixodbc-dev \
+    libc-dev \
+    freetds-dev
 
 COPY backend/package*.json ./
 RUN npm ci --only-production
@@ -88,8 +96,19 @@ FROM base AS backend-runner
 
 WORKDIR /app
 
-# Required for pkcs11js
-RUN apk add --no-cache python3 make g++ 
+# Install all required dependencies for runtime
+RUN apk --update add \
+    python3 \
+    make \
+    g++ \
+    unixodbc \
+    freetds \
+    unixodbc-dev \
+    libc-dev \
+    freetds-dev
+
+# Configure ODBC
+RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/libtdsodbc.so\nSetup = /usr/lib/libtdsodbc.so\nFileUsage = 1\n" > /etc/odbcinst.ini
 
 COPY backend/package*.json ./
 RUN npm ci --only-production
@@ -100,11 +119,32 @@ RUN mkdir frontend-build
 
 # Production stage
 FROM base AS production
+
 RUN apk add --upgrade --no-cache ca-certificates
 RUN apk add --no-cache bash curl && curl -1sLf \
   'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' | bash \
   && apk add infisical=0.31.1 && apk add --no-cache git
 
+WORKDIR /
+
+# Install all required runtime dependencies
+RUN apk --update add \
+    python3 \
+    make \
+    g++ \
+    unixodbc \
+    freetds \
+    unixodbc-dev \
+    libc-dev \
+    freetds-dev \
+    bash \
+    curl \
+    git
+
+# Configure ODBC in production
+RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/libtdsodbc.so\nSetup = /usr/lib/libtdsodbc.so\nFileUsage = 1\n" > /etc/odbcinst.ini
+
+# Setup user permissions
 RUN addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 non-root-user
 
@@ -127,7 +167,6 @@ ARG CAPTCHA_SITE_KEY
 ENV NEXT_PUBLIC_CAPTCHA_SITE_KEY=$CAPTCHA_SITE_KEY \
   BAKED_NEXT_PUBLIC_CAPTCHA_SITE_KEY=$CAPTCHA_SITE_KEY
 
-WORKDIR / 
 
 COPY --from=backend-runner /app /backend
 
