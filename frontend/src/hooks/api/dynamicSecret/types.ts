@@ -29,7 +29,8 @@ export enum DynamicSecretProviders {
   Ldap = "ldap",
   SapHana = "sap-hana",
   Snowflake = "snowflake",
-  Totp = "totp"
+  Totp = "totp",
+  SapAse = "sap-ase"
 }
 
 export enum SqlProviders {
@@ -212,11 +213,24 @@ export type TDynamicSecretProvider =
       inputs: {
         host: string;
         port: number;
+        database: string;
         username: string;
         password: string;
         creationStatement: string;
         revocationStatement: string;
         renewStatement?: string;
+        ca?: string | undefined;
+      };
+    }
+  | {
+      type: DynamicSecretProviders.SapAse;
+      inputs: {
+        host: string;
+        port: number;
+        username: string;
+        password: string;
+        creationStatement: string;
+        revocationStatement: string;
         ca?: string | undefined;
       };
     }

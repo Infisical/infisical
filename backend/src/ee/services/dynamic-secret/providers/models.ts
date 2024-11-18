@@ -4,7 +4,8 @@ export enum SqlProviders {
   Postgres = "postgres",
   MySQL = "mysql2",
   Oracle = "oracledb",
-  MsSQL = "mssql"
+  MsSQL = "mssql",
+  SapAse = "sap-ase"
 }
 
 export enum ElasticSearchAuthTypes {
@@ -115,6 +116,17 @@ export const DynamicSecretCassandraSchema = z.object({
   creationStatement: z.string().trim(),
   revocationStatement: z.string().trim(),
   renewStatement: z.string().trim().optional(),
+  ca: z.string().optional()
+});
+
+export const DynamicSecretSapAseSchema = z.object({
+  host: z.string().trim().toLowerCase(),
+  port: z.number(),
+  database: z.string().trim(),
+  username: z.string().trim(),
+  password: z.string().trim(),
+  creationStatement: z.string().trim(),
+  revocationStatement: z.string().trim(),
   ca: z.string().optional()
 });
 
@@ -274,12 +286,14 @@ export enum DynamicSecretProviders {
   Ldap = "ldap",
   SapHana = "sap-hana",
   Snowflake = "snowflake",
-  Totp = "totp"
+  Totp = "totp",
+  SapAse = "sap-ase"
 }
 
 export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.SqlDatabase), inputs: DynamicSecretSqlDBSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Cassandra), inputs: DynamicSecretCassandraSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.SapAse), inputs: DynamicSecretSapAseSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.AwsIam), inputs: DynamicSecretAwsIamSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Redis), inputs: DynamicSecretRedisDBSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.SapHana), inputs: DynamicSecretSapHanaSchema }),
