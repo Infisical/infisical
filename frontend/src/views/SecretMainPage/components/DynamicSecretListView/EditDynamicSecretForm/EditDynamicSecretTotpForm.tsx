@@ -188,7 +188,7 @@ export const EditDynamicSecretTotpForm = ({
                 defaultValue=""
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
-                    label="URL"
+                    label="OTP URL"
                     className="flex-grow"
                     isError={Boolean(error?.message)}
                     errorText={error?.message}
