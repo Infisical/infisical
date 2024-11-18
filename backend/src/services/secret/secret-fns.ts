@@ -19,11 +19,17 @@ import {
   decryptSymmetric128BitHexKeyUTF8,
   encryptSymmetric128BitHexKeyUTF8
 } from "@app/lib/crypto";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
+import {
+  fnSecretBulkInsert as fnSecretV2BridgeBulkInsert,
+  fnSecretBulkUpdate as fnSecretV2BridgeBulkUpdate,
+  getAllSecretReferences
+} from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
+import { KmsDataKey } from "../kms/kms-types";
 import { getBotKeyFnFactory } from "../project-bot/project-bot-fns";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
@@ -146,7 +152,9 @@ export const recursivelyGetSecretPaths = ({
     });
 
     if (!env) {
-      throw new Error(`'${environment}' environment not found in project with ID ${projectId}`);
+      throw new NotFoundError({
+        message: `Environment with slug '${environment}' in project with ID '${projectId}' not found`
+      });
     }
 
     // Fetch all folders in env once with a single query
@@ -190,6 +198,13 @@ export const recursivelyGetSecretPaths = ({
   return getPaths;
 };
 
+// used to convert multi line ones to quotes ones with \n
+const formatMultiValueEnv = (val?: string) => {
+  if (!val) return "";
+  if (!val.match("\n")) return val;
+  return `"${val.replace(/\n/g, "\\n")}"`;
+};
+
 type TInterpolateSecretArg = {
   projectId: string;
   secretEncKey: string;
@@ -197,166 +212,141 @@ type TInterpolateSecretArg = {
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
 };
 
+const MAX_SECRET_REFERENCE_DEPTH = 5;
 const INTERPOLATION_SYNTAX_REG = /\${([^}]+)}/g;
 export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderDAL }: TInterpolateSecretArg) => {
-  const fetchSecretsCrossEnv = () => {
-    const fetchCache: Record<string, Record<string, string>> = {};
+  const secretCache: Record<string, Record<string, string>> = {};
+  const getCacheUniqueKey = (environment: string, secretPath: string) => `${environment}-${secretPath}`;
 
-    return async (secRefEnv: string, secRefPath: string[], secRefKey: string) => {
-      const secRefPathUrl = path.join("/", ...secRefPath);
-      const uniqKey = `${secRefEnv}-${secRefPathUrl}`;
+  const fetchSecret = async (environment: string, secretPath: string, secretKey: string) => {
+    const cacheKey = getCacheUniqueKey(environment, secretPath);
+    const uniqKey = `${environment}-${cacheKey}`;
 
-      if (fetchCache?.[uniqKey]) {
-        return fetchCache[uniqKey][secRefKey];
-      }
+    if (secretCache?.[uniqKey]) {
+      return secretCache[uniqKey][secretKey] || "";
+    }
 
-      const folder = await folderDAL.findBySecretPath(projectId, secRefEnv, secRefPathUrl);
-      if (!folder) return "";
-      const secrets = await secretDAL.findByFolderId(folder.id);
+    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+    if (!folder) return "";
+    const secrets = await secretDAL.findByFolderId(folder.id);
 
-      const decryptedSec = secrets.reduce<Record<string, string>>((prev, secret) => {
-        const secretKey = decryptSymmetric128BitHexKeyUTF8({
-          ciphertext: secret.secretKeyCiphertext,
-          iv: secret.secretKeyIV,
-          tag: secret.secretKeyTag,
-          key: secretEncKey
-        });
-        const secretValue = decryptSymmetric128BitHexKeyUTF8({
-          ciphertext: secret.secretValueCiphertext,
-          iv: secret.secretValueIV,
-          tag: secret.secretValueTag,
-          key: secretEncKey
-        });
+    const decryptedSec = secrets.reduce<Record<string, string>>((prev, secret) => {
+      const decryptedSecretKey = decryptSymmetric128BitHexKeyUTF8({
+        ciphertext: secret.secretKeyCiphertext,
+        iv: secret.secretKeyIV,
+        tag: secret.secretKeyTag,
+        key: secretEncKey
+      });
+      const decryptedSecretValue = decryptSymmetric128BitHexKeyUTF8({
+        ciphertext: secret.secretValueCiphertext,
+        iv: secret.secretValueIV,
+        tag: secret.secretValueTag,
+        key: secretEncKey
+      });
 
-        // eslint-disable-next-line
-        prev[secretKey] = secretValue;
-        return prev;
-      }, {});
+      // eslint-disable-next-line
+      prev[decryptedSecretKey] = decryptedSecretValue;
+      return prev;
+    }, {});
 
-      fetchCache[uniqKey] = decryptedSec;
+    secretCache[uniqKey] = decryptedSec;
 
-      return fetchCache[uniqKey][secRefKey];
-    };
+    return secretCache[uniqKey][secretKey] || "";
   };
 
-  const recursivelyExpandSecret = async (
-    expandedSec: Record<string, string>,
-    interpolatedSec: Record<string, string>,
-    fetchCrossEnv: (env: string, secPath: string[], secKey: string) => Promise<string>,
-    recursionChainBreaker: Record<string, boolean>,
-    key: string
-  ) => {
-    if (expandedSec?.[key] !== undefined) {
-      return expandedSec[key];
-    }
-    if (recursionChainBreaker?.[key]) {
-      return "";
-    }
-    // eslint-disable-next-line
-    recursionChainBreaker[key] = true;
+  const recursivelyExpandSecret = async ({
+    value,
+    secretPath,
+    environment,
+    depth = 0
+  }: {
+    value?: string;
+    secretPath: string;
+    environment: string;
+    depth?: number;
+  }) => {
+    if (!value) return "";
+    if (depth > MAX_SECRET_REFERENCE_DEPTH) return "";
 
-    let interpolatedValue = interpolatedSec[key];
-    if (!interpolatedValue) {
-      // eslint-disable-next-line no-console
-      console.error(`Couldn't find referenced value - ${key}`);
-      return "";
-    }
-
-    const refs = interpolatedValue.match(INTERPOLATION_SYNTAX_REG);
+    const refs = value.match(INTERPOLATION_SYNTAX_REG);
+    let expandedValue = value;
     if (refs) {
       for (const interpolationSyntax of refs) {
         const interpolationKey = interpolationSyntax.slice(2, interpolationSyntax.length - 1);
         const entities = interpolationKey.trim().split(".");
 
         if (entities.length === 1) {
-          const val = await recursivelyExpandSecret(
-            expandedSec,
-            interpolatedSec,
-            fetchCrossEnv,
-            recursionChainBreaker,
-            interpolationKey
-          );
-          if (val) {
-            interpolatedValue = interpolatedValue.replaceAll(interpolationSyntax, val);
-          }
+          const [secretKey] = entities;
           // eslint-disable-next-line
-          continue;
+          let referenceValue = await fetchSecret(environment, secretPath, secretKey);
+          if (INTERPOLATION_SYNTAX_REG.test(referenceValue)) {
+            // eslint-disable-next-line
+            referenceValue = await recursivelyExpandSecret({
+              environment,
+              secretPath,
+              value: referenceValue,
+              depth: depth + 1
+            });
+          }
+          const cacheKey = getCacheUniqueKey(environment, secretPath);
+          secretCache[cacheKey][secretKey] = referenceValue;
+          expandedValue = expandedValue.replaceAll(interpolationSyntax, referenceValue);
         }
 
         if (entities.length > 1) {
-          const secRefEnv = entities[0];
-          const secRefPath = entities.slice(1, entities.length - 1);
-          const secRefKey = entities[entities.length - 1];
+          const secretReferenceEnvironment = entities[0];
+          const secretReferencePath = path.join("/", ...entities.slice(1, entities.length - 1));
+          const secretReferenceKey = entities[entities.length - 1];
 
-          const val = await fetchCrossEnv(secRefEnv, secRefPath, secRefKey);
-          if (val) {
-            interpolatedValue = interpolatedValue.replaceAll(interpolationSyntax, val);
+          // eslint-disable-next-line
+          let referenceValue = await fetchSecret(secretReferenceEnvironment, secretReferencePath, secretReferenceKey);
+          if (INTERPOLATION_SYNTAX_REG.test(referenceValue)) {
+            // eslint-disable-next-line
+            referenceValue = await recursivelyExpandSecret({
+              environment: secretReferenceEnvironment,
+              secretPath: secretReferencePath,
+              value: referenceValue,
+              depth: depth + 1
+            });
           }
+          const cacheKey = getCacheUniqueKey(secretReferenceEnvironment, secretReferencePath);
+          secretCache[cacheKey][secretReferenceKey] = referenceValue;
+          expandedValue = expandedValue.replaceAll(interpolationSyntax, referenceValue);
         }
       }
     }
 
-    // eslint-disable-next-line
-    expandedSec[key] = interpolatedValue;
-    return interpolatedValue;
+    return expandedValue;
   };
 
-  // used to convert multi line ones to quotes ones with \n
-  const formatMultiValueEnv = (val?: string) => {
-    if (!val) return "";
-    if (!val.match("\n")) return val;
-    return `"${val.replace(/\n/g, "\\n")}"`;
+  const expandSecret = async (inputSecret: {
+    value?: string;
+    skipMultilineEncoding?: boolean | null;
+    secretPath: string;
+    environment: string;
+  }) => {
+    if (!inputSecret.value) return inputSecret.value;
+
+    const shouldExpand = Boolean(inputSecret.value?.match(INTERPOLATION_SYNTAX_REG));
+    if (!shouldExpand) return inputSecret.value;
+
+    const expandedSecretValue = await recursivelyExpandSecret(inputSecret);
+    return inputSecret.skipMultilineEncoding ? formatMultiValueEnv(expandedSecretValue) : expandedSecretValue;
   };
-
-  const expandSecrets = async (
-    secrets: Record<string, { value: string; comment?: string; skipMultilineEncoding?: boolean | null }>
-  ) => {
-    const expandedSec: Record<string, string> = {};
-    const interpolatedSec: Record<string, string> = {};
-
-    const crossSecEnvFetch = fetchSecretsCrossEnv();
-
-    Object.keys(secrets).forEach((key) => {
-      if (secrets[key].value.match(INTERPOLATION_SYNTAX_REG)) {
-        interpolatedSec[key] = secrets[key].value;
-      } else {
-        expandedSec[key] = secrets[key].value;
-      }
-    });
-
-    for (const key of Object.keys(secrets)) {
-      if (expandedSec?.[key]) {
-        // should not do multi line encoding if user has set it to skip
-        // eslint-disable-next-line
-        secrets[key].value = secrets[key].skipMultilineEncoding
-          ? formatMultiValueEnv(expandedSec[key])
-          : expandedSec[key];
-        // eslint-disable-next-line
-        continue;
-      }
-
-      // this is to avoid recursion loop. So the graph should be direct graph rather than cyclic
-      // so for any recursion building if there is an entity two times same key meaning it will be looped
-      const recursionChainBreaker: Record<string, boolean> = {};
-      const expandedVal = await recursivelyExpandSecret(
-        expandedSec,
-        interpolatedSec,
-        crossSecEnvFetch,
-        recursionChainBreaker,
-        key
-      );
-
-      // eslint-disable-next-line
-      secrets[key].value = secrets[key].skipMultilineEncoding ? formatMultiValueEnv(expandedVal) : expandedVal;
-    }
-
-    return secrets;
-  };
-  return expandSecrets;
+  return expandSecret;
 };
 
 export const decryptSecretRaw = (
-  secret: TSecrets & { workspace: string; environment: string; secretPath: string },
+  secret: TSecrets & {
+    workspace: string;
+    environment: string;
+    secretPath: string;
+    tags?: {
+      id: string;
+      slug: string;
+      color?: string | null;
+    }[];
+  },
   key: string
 ) => {
   const secretKey = decryptSymmetric128BitHexKeyUTF8({
@@ -396,7 +386,13 @@ export const decryptSecretRaw = (
     _id: secret.id,
     id: secret.id,
     user: secret.userId,
-    skipMultilineEncoding: secret.skipMultilineEncoding
+    tags: secret.tags?.map((el) => ({ ...el, name: el.slug })),
+    skipMultilineEncoding: secret.skipMultilineEncoding,
+    secretReminderRepeatDays: secret.secretReminderRepeatDays,
+    secretReminderNote: secret.secretReminderNote,
+    metadata: secret.metadata,
+    createdAt: secret.createdAt,
+    updatedAt: secret.updatedAt
   };
 };
 
@@ -504,7 +500,7 @@ export const fnSecretBlindIndexCheck = async ({
     const hasUnknownSecretsProvided = secretKeysInDB.length !== inputSecrets.length;
     if (hasUnknownSecretsProvided) {
       const keysMissingInDB = Object.keys(keyName2BlindIndex).filter((key) => !secretKeysInDB.includes(key));
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: `Secret not found: blind index ${keysMissingInDB.join(",")}`
       });
     }
@@ -525,10 +521,51 @@ export const fnSecretBulkInsert = async ({
   secretVersionTagDAL,
   tx
 }: TFnSecretBulkInsert) => {
-  const newSecrets = await secretDAL.insertMany(
-    inputSecrets.map(({ tags, references, ...el }) => ({ ...el, folderId })),
-    tx
+  const sanitizedInputSecrets = inputSecrets.map(
+    ({
+      skipMultilineEncoding,
+      type,
+      userId,
+      version,
+      metadata,
+      algorithm,
+      secretKeyIV,
+      secretKeyTag,
+      secretValueIV,
+      keyEncoding,
+      secretValueTag,
+      secretCommentIV,
+      secretBlindIndex,
+      secretCommentTag,
+      secretKeyCiphertext,
+      secretReminderNote,
+      secretValueCiphertext,
+      secretCommentCiphertext,
+      secretReminderRepeatDays
+    }) => ({
+      skipMultilineEncoding,
+      folderId,
+      type,
+      userId,
+      version,
+      metadata,
+      algorithm,
+      secretKeyIV,
+      secretKeyTag,
+      secretValueIV,
+      keyEncoding,
+      secretValueTag,
+      secretCommentIV,
+      secretBlindIndex,
+      secretCommentTag,
+      secretKeyCiphertext,
+      secretReminderNote,
+      secretValueCiphertext,
+      secretCommentCiphertext,
+      secretReminderRepeatDays
+    })
   );
+  const newSecrets = await secretDAL.insertMany(sanitizedInputSecrets, tx);
   const newSecretGroupByBlindIndex = groupBy(newSecrets, (item) => item.secretBlindIndex as string);
   const newSecretTags = inputSecrets.flatMap(({ tags: secretTags = [], secretBlindIndex }) =>
     secretTags.map((tag) => ({
@@ -537,9 +574,8 @@ export const fnSecretBulkInsert = async ({
     }))
   );
   const secretVersions = await secretVersionDAL.insertMany(
-    inputSecrets.map(({ tags, references, ...el }) => ({
+    sanitizedInputSecrets.map((el) => ({
       ...el,
-      folderId,
       secretId: newSecretGroupByBlindIndex[el.secretBlindIndex as string][0].id
     })),
     tx
@@ -574,13 +610,55 @@ export const fnSecretBulkUpdate = async ({
   secretTagDAL,
   secretVersionTagDAL
 }: TFnSecretBulkUpdate) => {
-  const newSecrets = await secretDAL.bulkUpdate(
-    inputSecrets.map(({ filter, data: { tags, references, ...data } }) => ({
+  const sanitizedInputSecrets = inputSecrets.map(
+    ({
+      filter,
+      data: {
+        skipMultilineEncoding,
+        type,
+        userId,
+        metadata,
+        algorithm,
+        secretKeyIV,
+        secretKeyTag,
+        secretValueIV,
+        keyEncoding,
+        secretValueTag,
+        secretCommentIV,
+        secretBlindIndex,
+        secretCommentTag,
+        secretKeyCiphertext,
+        secretReminderNote,
+        secretValueCiphertext,
+        secretCommentCiphertext,
+        secretReminderRepeatDays
+      }
+    }) => ({
       filter: { ...filter, folderId },
-      data
-    })),
-    tx
+      data: {
+        skipMultilineEncoding,
+        type,
+        userId,
+        metadata,
+        algorithm,
+        secretKeyIV,
+        secretKeyTag,
+        secretValueIV,
+        keyEncoding,
+        secretValueTag,
+        secretCommentIV,
+        secretBlindIndex,
+        secretCommentTag,
+        secretKeyCiphertext,
+        secretReminderNote,
+        secretValueCiphertext,
+        secretCommentCiphertext,
+        secretReminderRepeatDays
+      }
+    })
   );
+
+  const newSecrets = await secretDAL.bulkUpdate(sanitizedInputSecrets, tx);
   const secretVersions = await secretVersionDAL.insertMany(
     newSecrets.map(({ id, createdAt, updatedAt, ...el }) => ({
       ...el,
@@ -663,7 +741,11 @@ export const createManySecretsRawFnFactory = ({
   secretBlindIndexDAL,
   secretTagDAL,
   secretVersionTagDAL,
-  folderDAL
+  folderDAL,
+  secretVersionV2BridgeDAL,
+  secretV2BridgeDAL,
+  secretVersionTagV2BridgeDAL,
+  kmsService
 }: TCreateManySecretsRawFnFactory) => {
   const getBotKeyFn = getBotKeyFnFactory(projectBotDAL, projectDAL);
   const createManySecretsRawFn = async ({
@@ -673,21 +755,74 @@ export const createManySecretsRawFnFactory = ({
     secrets,
     userId
   }: TCreateManySecretsRawFn) => {
-    const botKey = await getBotKeyFn(projectId);
-    if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
-
-    await projectDAL.checkProjectUpgradeStatus(projectId);
+    const { botKey, shouldUseSecretV2Bridge } = await getBotKeyFn(projectId);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
-      throw new BadRequestError({
-        message: "Folder not found for the given environment slug & secret path",
+      throw new NotFoundError({
+        message: `Folder with path '${secretPath}' not found in environment with slug '${environment}'`,
         name: "Create secret"
       });
     const folderId = folder.id;
+    if (shouldUseSecretV2Bridge) {
+      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+
+      const secretsStoredInDB = await secretV2BridgeDAL.findBySecretKeys(
+        folderId,
+        secrets.map((el) => ({
+          key: el.secretName,
+          type: SecretType.Shared
+        }))
+      );
+      if (secretsStoredInDB.length)
+        throw new BadRequestError({
+          message: `Secret already exist: ${secretsStoredInDB.map((el) => el.key).join(",")}`
+        });
+
+      const inputSecrets = secrets.map((secret) => {
+        return {
+          type: secret.type,
+          userId: secret.type === SecretType.Personal ? userId : null,
+          key: secret.secretName,
+          encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(secret.secretValue) }).cipherTextBlob,
+          encryptedComent: secret.secretComment
+            ? secretManagerEncryptor({ plainText: Buffer.from(secret.secretComment) }).cipherTextBlob
+            : null,
+          skipMultilineEncoding: secret.skipMultilineEncoding,
+          tags: secret.tags,
+          references: getAllSecretReferences(secret.secretValue).nestedReferences
+        };
+      });
+
+      // get all tags
+      const tagIds = inputSecrets.flatMap(({ tags = [] }) => tags);
+      const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds) : [];
+      if (tags.length !== tagIds.length) throw new NotFoundError({ message: "One or more tags not found" });
+
+      const newSecrets = await secretDAL.transaction(async (tx) =>
+        fnSecretV2BridgeBulkInsert({
+          inputSecrets: inputSecrets.map((el) => ({
+            ...el,
+            version: 1,
+            tagIds: el.tags
+          })),
+          folderId,
+          secretDAL: secretV2BridgeDAL,
+          secretVersionDAL: secretVersionV2BridgeDAL,
+          secretTagDAL,
+          secretVersionTagDAL: secretVersionTagV2BridgeDAL,
+          tx
+        })
+      );
+
+      return newSecrets;
+    }
 
     const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
-    if (!blindIndexCfg) throw new BadRequestError({ message: "Blind index not found", name: "Create secret" });
+    if (!blindIndexCfg) throw new NotFoundError({ message: "Blind index not found", name: "Create secret" });
 
     // insert operation
     const { keyName2BlindIndex } = await fnSecretBlindIndexCheck({
@@ -699,6 +834,11 @@ export const createManySecretsRawFnFactory = ({
       secretDAL
     });
 
+    if (!botKey)
+      throw new NotFoundError({
+        message: `Project bot not found for project with ID '${projectId}'. Please upgrade your project.`,
+        name: "bot_not_found_error"
+      });
     const inputSecrets = secrets.map((secret) => {
       const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretName, botKey);
       const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretValue || "", botKey);
@@ -727,11 +867,11 @@ export const createManySecretsRawFnFactory = ({
     // get all tags
     const tagIds = inputSecrets.flatMap(({ tags = [] }) => tags);
     const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds) : [];
-    if (tags.length !== tagIds.length) throw new BadRequestError({ message: "Tag not found" });
+    if (tags.length !== tagIds.length) throw new NotFoundError({ message: "One or more tags not found" });
 
     const newSecrets = await secretDAL.transaction(async (tx) =>
       fnSecretBulkInsert({
-        inputSecrets: inputSecrets.map(({ secretName, ...el }) => ({
+        inputSecrets: inputSecrets.map(({ secretName, tags: _, ...el }) => ({
           ...el,
           version: 0,
           secretBlindIndex: keyName2BlindIndex[secretName],
@@ -761,7 +901,11 @@ export const updateManySecretsRawFnFactory = ({
   secretBlindIndexDAL,
   secretTagDAL,
   secretVersionTagDAL,
-  folderDAL
+  folderDAL,
+  secretVersionTagV2BridgeDAL,
+  secretVersionV2BridgeDAL,
+  secretV2BridgeDAL,
+  kmsService
 }: TUpdateManySecretsRawFnFactory) => {
   const getBotKeyFn = getBotKeyFnFactory(projectBotDAL, projectDAL);
   const updateManySecretsRawFn = async ({
@@ -770,22 +914,98 @@ export const updateManySecretsRawFnFactory = ({
     path: secretPath,
     secrets, // consider accepting instead ciphertext secrets
     userId
-  }: TUpdateManySecretsRawFn): Promise<Array<TSecrets & { _id: string }>> => {
-    const botKey = await getBotKeyFn(projectId);
-    if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
-
-    await projectDAL.checkProjectUpgradeStatus(projectId);
+  }: TUpdateManySecretsRawFn): Promise<Array<{ id: string }>> => {
+    const { botKey, shouldUseSecretV2Bridge } = await getBotKeyFn(projectId);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
-      throw new BadRequestError({
-        message: "Folder not found for the given environment slug & secret path",
-        name: "Update secret"
+      throw new NotFoundError({
+        message: `Folder with path '${secretPath}' not found in environment with slug '${environment}'`,
+        name: "UpdateSecret"
       });
     const folderId = folder.id;
+    if (shouldUseSecretV2Bridge) {
+      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
 
+      const secretsToUpdate = await secretV2BridgeDAL.findBySecretKeys(
+        folderId,
+        secrets.map((el) => ({
+          key: el.secretName,
+          type: SecretType.Shared
+        }))
+      );
+      if (secretsToUpdate.length !== secrets.length)
+        throw new NotFoundError({ message: `Secret does not exist: ${secretsToUpdate.map((el) => el.key).join(",")}` });
+
+      // now find any secret that needs to update its name
+      // same process as above
+      const secretsWithNewName = secrets.filter(({ newSecretName }) => Boolean(newSecretName));
+      if (secretsWithNewName.length) {
+        const secretsWithNewNameInDB = await secretV2BridgeDAL.findBySecretKeys(
+          folderId,
+          secrets.map((el) => ({
+            key: el.secretName,
+            type: SecretType.Shared
+          }))
+        );
+        if (secretsWithNewNameInDB.length)
+          throw new NotFoundError({
+            message: `Secret does not exist: ${secretsWithNewName.map((el) => el.newSecretName).join(",")}`
+          });
+      }
+
+      const secretsToUpdateInDBGroupedByKey = groupBy(secretsToUpdate, (i) => i.key);
+      const inputSecrets = secrets.map((secret) => {
+        if (secret.newSecretName === "") {
+          throw new BadRequestError({ message: "New secret name cannot be empty" });
+        }
+
+        return {
+          type: secret.type,
+          userId: secret.type === SecretType.Personal ? userId : null,
+          key: secret.newSecretName || secret.secretName,
+          encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(secret.secretValue) }).cipherTextBlob,
+          encryptedComent: secret.secretComment
+            ? secretManagerEncryptor({ plainText: Buffer.from(secret.secretComment) }).cipherTextBlob
+            : null,
+          skipMultilineEncoding: secret.skipMultilineEncoding,
+          tags: secret.tags,
+          references: getAllSecretReferences(secret.secretValue).nestedReferences
+        };
+      });
+
+      const tagIds = inputSecrets.flatMap(({ tags = [] }) => tags);
+      const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds) : [];
+      if (tagIds.length !== tags.length) throw new NotFoundError({ message: "One or more tags not found" });
+
+      const updatedSecrets = await secretDAL.transaction(async (tx) =>
+        fnSecretV2BridgeBulkUpdate({
+          folderId,
+          tx,
+          inputSecrets: inputSecrets.map((el) => ({
+            filter: { id: secretsToUpdateInDBGroupedByKey[el.key][0].id, type: SecretType.Shared },
+            data: el
+          })),
+          secretDAL: secretV2BridgeDAL,
+          secretVersionDAL: secretVersionV2BridgeDAL,
+          secretTagDAL,
+          secretVersionTagDAL: secretVersionTagV2BridgeDAL
+        })
+      );
+
+      return updatedSecrets;
+    }
+
+    if (!botKey)
+      throw new NotFoundError({
+        message: `Project bot not found for project with ID '${projectId}'. Please upgrade your project.`,
+        name: "bot_not_found_error"
+      });
     const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
-    if (!blindIndexCfg) throw new BadRequestError({ message: "Blind index not found", name: "Update secret" });
+    if (!blindIndexCfg) throw new NotFoundError({ message: "Blind index not found", name: "Update secret" });
 
     const { keyName2BlindIndex } = await fnSecretBlindIndexCheck({
       inputSecrets: secrets,
@@ -828,7 +1048,7 @@ export const updateManySecretsRawFnFactory = ({
 
     const tagIds = inputSecrets.flatMap(({ tags = [] }) => tags);
     const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds) : [];
-    if (tagIds.length !== tags.length) throw new BadRequestError({ message: "Tag not found" });
+    if (tagIds.length !== tags.length) throw new NotFoundError({ message: "One or more tags not found" });
 
     // now find any secret that needs to update its name
     // same process as above
@@ -870,4 +1090,51 @@ export const updateManySecretsRawFnFactory = ({
   };
 
   return updateManySecretsRawFn;
+};
+
+export const decryptSecretWithBot = (
+  secret: Pick<
+    TSecrets,
+    | "secretKeyIV"
+    | "secretKeyTag"
+    | "secretKeyCiphertext"
+    | "secretValueIV"
+    | "secretValueTag"
+    | "secretValueCiphertext"
+    | "secretCommentIV"
+    | "secretCommentTag"
+    | "secretCommentCiphertext"
+  >,
+  key: string
+) => {
+  const secretKey = decryptSymmetric128BitHexKeyUTF8({
+    ciphertext: secret.secretKeyCiphertext,
+    iv: secret.secretKeyIV,
+    tag: secret.secretKeyTag,
+    key
+  });
+
+  const secretValue = decryptSymmetric128BitHexKeyUTF8({
+    ciphertext: secret.secretValueCiphertext,
+    iv: secret.secretValueIV,
+    tag: secret.secretValueTag,
+    key
+  });
+
+  let secretComment = "";
+
+  if (secret.secretCommentCiphertext && secret.secretCommentIV && secret.secretCommentTag) {
+    secretComment = decryptSymmetric128BitHexKeyUTF8({
+      ciphertext: secret.secretCommentCiphertext,
+      iv: secret.secretCommentIV,
+      tag: secret.secretCommentTag,
+      key
+    });
+  }
+
+  return {
+    secretKey,
+    secretValue,
+    secretComment
+  };
 };

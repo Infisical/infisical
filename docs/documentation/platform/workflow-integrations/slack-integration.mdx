@@ -1,0 +1,164 @@
+---
+title: "Slack integration"
+description: "Learn how to setup Slack integration"
+---
+
+This guide will provide step by step instructions on how to configure Slack integration for your Infisical projects.
+
+## Setting up Slack integration in your projects
+
+<Tabs>
+  <Tab title="Infisical Cloud">
+    ### Create Slack workflow integration
+    <Steps>
+      <Step title="Navigate to the Workflow Integrations tab in your organization settings">
+        In order to use Slack integration in your projects, you will first have to
+        configure a Slack workflow integration in your organization.
+        ![org-slack-overview](/images/platform/workflow-integrations/slack-integration/org-slack-integration-overview.png)
+      </Step>
+      <Step title="Install Slack app to workspace">
+        Press "Add" and select "Slack" as the platform.
+        ![org-slack-initial-add](/images/platform/workflow-integrations/slack-integration/org-slack-integration-initial-add.png)
+
+        Give your Slack integration a descriptive alias. You will use this to select the Slack integration for your project.
+        ![org-slack-add-form](/images/platform/workflow-integrations/slack-integration/org-slack-integration-add-form.png)
+
+        Press **Connect Slack**. This opens up the Slack app installation flow. Select the Slack workspace you want to install the custom Slack app to and press **Allow**.
+        ![org-slack-authenticate](/images/platform/workflow-integrations/slack-integration/cloud-org-slack-integration-authenticate.png)
+
+        This completes the workflow integration creation flow. The projects in your organization can now use this Slack integration to send real-time updates to your Slack workspace.
+        ![org-slack-workspace](/images/platform/workflow-integrations/slack-integration/cloud-org-slack-integration-workspace.png)
+        ![org-slack-created](/images/platform/workflow-integrations/slack-integration/org-slack-integration-created.png)
+
+      </Step>
+
+    </Steps>
+
+    ### Configure project to use Slack workflow integration
+
+    <Steps>
+      <Step title="Navigate to the Workflow Integrations tab in the project settings">
+        ![project-slack-overview](/images/platform/workflow-integrations/slack-integration/project-slack-integration-overview.png)
+      </Step>
+      <Step title="Select the Slack integration to use for the project">
+        Your project will send notifications to the connected Slack workspace of the
+        selected Slack integration when the configured events are triggered.
+        ![project-slack-select](/images/platform/workflow-integrations/slack-integration/project-slack-integration-select.png)
+      </Step>
+      <Step title="Configure the Slack notification settings for the project and click Save.">
+        ![project-slack-select](/images/platform/workflow-integrations/slack-integration/project-slack-integration-config.png)
+        <Info>
+          To enable notifications in private Slack channels, you need to invite the Infisical Slack bot to join those channels.
+        </Info>
+        You now have a working native integration with Slack!
+
+      </Step>
+
+    </Steps>
+
+  </Tab>
+  <Tab title="Self-hosted setup">
+    ### Configure admin settings
+    Note that this step only has to be done once for the entire instance.
+
+    <Steps>
+      <Step title="Navigate to the Integrations tab in the Admin settings">
+        Before anything else, you need to setup the Slack app to be used by
+        your Infisical instance. Because you're self-hosting, you will need to
+        create this Slack application as demonstrated in the preceding step.
+        ![admin-settings-slack-overview](/images/platform/workflow-integrations/slack-integration/admin-slack-integration-overview.png)
+      </Step>
+      <Step title="Create Slack app">
+        Click the "Create Slack app" button. This will open up a new window with the
+        custom app creation flow on Slack.
+        ![admin-slack-create-app](/images/platform/workflow-integrations/slack-integration/admin-slack-integration-create-app.png)
+
+        Select the Slack workspace you want to integrate with Infisical.
+
+        ![admin-slack-app-workspace-select](/images/platform/workflow-integrations/slack-integration/admin-slack-integration-app-workspace-select.png)
+
+        The configuration values of your custom Slack app will be pre-filled for you. You can view or edit the app manifest by clicking **Edit Configurations**.
+        ![admin-slack-app-summary](/images/platform/workflow-integrations/slack-integration/admin-slack-integration-app-summary.png)
+
+        Once everything's confirmed, press Create.
+
+      </Step>
+      <Step title="Input app credentials from Slack">
+        Copy the Client ID and Client Secret values from your newly created custom Slack app and add them to Infisical.
+        ![admin-slack-app-credentials](/images/platform/workflow-integrations/slack-integration/admin-slack-integration-app-credentials.png)
+        ![admin-slack-app-credentials-form](/images/platform/workflow-integrations/slack-integration/admin-slack-integration-app-credential-form.png)
+        Complete the admin setup by pressing Save.
+      </Step>
+
+    </Steps>
+
+    ### Create Slack workflow integration
+
+    <Steps>
+      <Step title="Navigate to the Workflow Integrations tab in your organization settings">
+        In order to use Slack integration in your projects, you will first have to
+        configure a Slack workflow integration in your organization.
+        ![org-slack-overview](/images/platform/workflow-integrations/slack-integration/org-slack-integration-overview.png)
+      </Step>
+      <Step title="Install Slack app to workspace">
+        Press "Add" and select "Slack" as the platform.
+        ![org-slack-initial-add](/images/platform/workflow-integrations/slack-integration/org-slack-integration-initial-add.png)
+
+        Give your Slack integration a descriptive alias. You will use this to select the Slack integration for your project.
+        ![org-slack-add-form](/images/platform/workflow-integrations/slack-integration/org-slack-integration-add-form.png)
+
+        Press **Connect Slack**. This opens up the Slack app installation flow. Select the Slack workspace you want to install the custom Slack app to and press **Allow**.
+        ![org-slack-authenticate](/images/platform/workflow-integrations/slack-integration/org-slack-integration-authenticate.png)
+
+        Your Slack bot will then be added to your selected Slack workspace. This completes the workflow integration creation flow. Your projects in the organization can now use this Slack integration to send real-time updates to your Slack workspace.
+        ![org-slack-workspace](/images/platform/workflow-integrations/slack-integration/org-slack-integration-workspace.png)
+        ![org-slack-created](/images/platform/workflow-integrations/slack-integration/org-slack-integration-created.png)
+
+      </Step>
+
+    </Steps>
+
+    ### Configure project to use Slack workflow integration
+
+    <Steps>
+      <Step title="Navigate to the Workflow Integrations tab in the project settings">
+        ![project-slack-overview](/images/platform/workflow-integrations/slack-integration/project-slack-integration-overview.png)
+      </Step>
+      <Step title="Select the Slack integration to use for the project">
+        Your project will send notifications to the connected Slack workspace of the
+        selected Slack integration when the configured events are triggered.
+        ![project-slack-select](/images/platform/workflow-integrations/slack-integration/project-slack-integration-select.png)
+      </Step>
+      <Step title="Configure the Slack notification settings for the project and click Save.">
+        ![project-slack-select](/images/platform/workflow-integrations/slack-integration/project-slack-integration-config.png)
+        <Info>
+          To enable notifications in private Slack channels, you need to invite your Slack bot to join those channels.
+        </Info>
+        You now have a working native integration with Slack!
+
+      </Step>
+
+    </Steps>
+
+  </Tab>
+</Tabs>
+
+## Using the Slack integration in your private channels
+
+<Steps>
+  <Step title="In the Apps section on Slack, find the Infisical app and view the app details">
+    ![private slack setup
+    menu](/images/platform/workflow-integrations/slack-integration/private-slack-setup-menu.png)
+  </Step>
+  <Step title="Select Add this app to a channel">
+    ![private slack setup
+    add](/images/platform/workflow-integrations/slack-integration/private-slack-setup-add.png)
+  </Step>
+  <Step title="Find the private channel you want to setup notifications for and press Add">
+    ![private slack setup
+    form](/images/platform/workflow-integrations/slack-integration/private-slack-setup-form.png)
+    You can now view the private channels in the Slack channel selection fields!
+    ![private slack setup
+    channels](/images/platform/workflow-integrations/slack-integration/private-slack-setup-channel-field.png)
+  </Step>
+</Steps>

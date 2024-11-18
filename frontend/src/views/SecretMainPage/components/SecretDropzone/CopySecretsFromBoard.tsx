@@ -3,6 +3,7 @@ import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import {
   faClone,
+  faFileImport,
   faKey,
   faSearch,
   faSquareCheck,
@@ -32,7 +33,6 @@ import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useDebounce } from "@app/hooks";
 import { useGetProjectSecrets } from "@app/hooks/api";
-import { UserWsKeyPair } from "@app/hooks/api/types";
 
 const formSchema = z.object({
   environment: z.string().trim(),
@@ -54,7 +54,6 @@ type Props = {
   onParsedEnv: (env: Record<string, { value: string; comments: string[] }>) => void;
   environments?: { name: string; slug: string }[];
   workspaceId: string;
-  decryptFileKey: UserWsKeyPair;
   environment: string;
   secretPath: string;
 };
@@ -62,7 +61,6 @@ type Props = {
 export const CopySecretsFromBoard = ({
   environments = [],
   workspaceId,
-  decryptFileKey,
   environment,
   secretPath,
   isOpen,
@@ -87,13 +85,12 @@ export const CopySecretsFromBoard = ({
 
   const envCopySecPath = watch("secretPath");
   const selectedEnvSlug = watch("environment");
-  const debouncedEnvCopySecretPath = useDebounce(envCopySecPath);
+  const [debouncedEnvCopySecretPath] = useDebounce(envCopySecPath);
 
   const { data: secrets, isLoading: isSecretsLoading } = useGetProjectSecrets({
     workspaceId,
     environment: selectedEnvSlug,
     secretPath: debouncedEnvCopySecretPath,
-    decryptFileKey,
     options: {
       enabled:
         Boolean(workspaceId) &&
@@ -146,10 +143,16 @@ export const CopySecretsFromBoard = ({
         <div>
           <ProjectPermissionCan
             I={ProjectPermissionActions.Create}
-            a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+            a={subject(ProjectPermissionSub.Secrets, {
+              environment,
+              secretPath,
+              secretName: "*",
+              secretTags: ["*"]
+            })}
           >
             {(isAllowed) => (
               <Button
+                leftIcon={<FontAwesomeIcon icon={faFileImport} />}
                 onClick={() => onToggle(true)}
                 isDisabled={!isAllowed}
                 variant="star"

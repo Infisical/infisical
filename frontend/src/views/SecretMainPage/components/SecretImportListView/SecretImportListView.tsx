@@ -18,7 +18,7 @@ import { usePopUp } from "@app/hooks";
 import { useDeleteSecretImport, useUpdateSecretImport } from "@app/hooks/api";
 import { ReservedFolders } from "@app/hooks/api/secretFolders/types";
 import { TSecretImport } from "@app/hooks/api/secretImports/types";
-import { DecryptedSecret, WorkspaceEnv } from "@app/hooks/api/types";
+import { SecretV3RawSanitized, WorkspaceEnv } from "@app/hooks/api/types";
 import { formatReservedPaths } from "@app/lib/fn/string";
 
 import { SecretImportItem } from "./SecretImportItem";
@@ -29,14 +29,14 @@ type TImportedSecrets = Array<{
   environmentInfo: WorkspaceEnv;
   secretPath: string;
   folderId: string;
-  secrets: DecryptedSecret[];
+  secrets: SecretV3RawSanitized[];
 }>;
 
 export const computeImportedSecretRows = (
   importedSecEnv: string,
   importedSecPath: string,
   importSecrets: TImportedSecrets = [],
-  secrets: DecryptedSecret[] = []
+  secrets: SecretV3RawSanitized[] = []
 ) => {
   const importedSecIndex = importSecrets.findIndex(
     ({ secretPath, environmentInfo }) =>
@@ -63,7 +63,7 @@ export const computeImportedSecretRows = (
   const importedEntry: Record<string, boolean> = {};
   const importedSecretEntries: {
     key: string;
-    value: string;
+    value?: string;
     overriden: {
       env: string;
       secretPath: string;
@@ -90,18 +90,18 @@ type Props = {
   secretPath?: string;
   secretImports?: TSecretImport[];
   isFetching?: boolean;
-  secrets?: DecryptedSecret[];
+  // secrets?: SecretV3RawSanitized[];
   importedSecrets?: TImportedSecrets;
   searchTerm: string;
 };
 
 export const SecretImportListView = ({
-  secretImports = [],
+  secretImports,
   environment,
   workspaceId,
   secretPath,
   importedSecrets,
-  secrets = [],
+  // secrets = [],
   isFetching,
   searchTerm
 }: Props) => {
@@ -117,13 +117,13 @@ export const SecretImportListView = ({
     useSensor(KeyboardSensor, {})
   );
 
-  const [items, setItems] = useState(secretImports);
+  const [items, setItems] = useState(secretImports ?? []);
 
   useEffect(() => {
     if (!isFetching) {
-      setItems(secretImports);
+      setItems(secretImports ?? []);
     }
-  }, [isFetching]);
+  }, [isFetching, secretImports]);
 
   const { mutateAsync: deleteSecretImport } = useDeleteSecretImport();
   const { mutate: updateSecretImport } = useUpdateSecretImport();
@@ -170,7 +170,7 @@ export const SecretImportListView = ({
   };
 
   const handleOpenReplicationSecrets = (replicationImportId: string) => {
-    const reservedImport = secretImports.find(
+    const reservedImport = secretImports?.find(
       ({ isReserved, importPath, importEnv }) =>
         importEnv.slug === environment &&
         isReserved &&
@@ -208,8 +208,8 @@ export const SecretImportListView = ({
                 importedSecrets={computeImportedSecretRows(
                   item.importEnv.slug,
                   item.importPath,
-                  importedSecrets,
-                  secrets
+                  importedSecrets
+                  // secrets scott - now that secrets are paginated we are not showing if they are overridden (yet?)
                 )}
                 secretPath={secretPath}
                 environment={environment}

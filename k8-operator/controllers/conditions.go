@@ -40,7 +40,7 @@ func (r *InfisicalSecretReconciler) SetReadyToSyncSecretsConditions(ctx context.
 	return r.Client.Status().Update(ctx, infisicalSecret)
 }
 
-func (r *InfisicalSecretReconciler) SetInfisicalTokenLoadCondition(ctx context.Context, infisicalSecret *v1alpha1.InfisicalSecret, errorToConditionOn error) {
+func (r *InfisicalSecretReconciler) SetInfisicalTokenLoadCondition(ctx context.Context, infisicalSecret *v1alpha1.InfisicalSecret, authStrategy AuthStrategyType, errorToConditionOn error) {
 	if infisicalSecret.Status.Conditions == nil {
 		infisicalSecret.Status.Conditions = []metav1.Condition{}
 	}
@@ -50,7 +50,7 @@ func (r *InfisicalSecretReconciler) SetInfisicalTokenLoadCondition(ctx context.C
 			Type:    "secrets.infisical.com/LoadedInfisicalToken",
 			Status:  metav1.ConditionTrue,
 			Reason:  "OK",
-			Message: "Infisical controller has located the Infisical token in provided Kubernetes secret",
+			Message: fmt.Sprintf("Infisical controller has loaded the Infisical token in provided Kubernetes secret, using %v authentication strategy", authStrategy),
 		})
 	} else {
 		meta.SetStatusCondition(&infisicalSecret.Status.Conditions, metav1.Condition{

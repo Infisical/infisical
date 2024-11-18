@@ -7,6 +7,7 @@ export type TLDAPConfig = {
   url: string;
   bindDN: string;
   bindPass: string;
+  uniqueUserAttribute: string;
   searchBase: string;
   groupSearchBase: string;
   groupSearchFilter: string;
@@ -19,6 +20,7 @@ export type TCreateLdapCfgDTO = {
   url: string;
   bindDN: string;
   bindPass: string;
+  uniqueUserAttribute: string;
   searchBase: string;
   searchFilter: string;
   groupSearchBase: string;
@@ -33,6 +35,7 @@ export type TUpdateLdapCfgDTO = {
   url: string;
   bindDN: string;
   bindPass: string;
+  uniqueUserAttribute: string;
   searchBase: string;
   searchFilter: string;
   groupSearchBase: string;

@@ -5,11 +5,13 @@ import {
   IdentityProjectAdditionalPrivilegeSchema,
   IntegrationAuthsSchema,
   ProjectRolesSchema,
+  ProjectsSchema,
   SecretApprovalPoliciesSchema,
   UsersSchema
 } from "@app/db/schemas";
-import { UnpackedPermissionSchema } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+
+import { UnpackedPermissionSchema } from "./santizedSchemas/permission";
 
 // sometimes the return data must be santizied to avoid leaking important values
 // always prefer pick over omit in zod
@@ -25,6 +27,34 @@ export const integrationAuthPubSchema = IntegrationAuthsSchema.pick({
   createdAt: true,
   updatedAt: true
 });
+
+export const DefaultResponseErrorsSchema = {
+  400: z.object({
+    statusCode: z.literal(400),
+    message: z.string(),
+    error: z.string()
+  }),
+  404: z.object({
+    statusCode: z.literal(404),
+    message: z.string(),
+    error: z.string()
+  }),
+  401: z.object({
+    statusCode: z.literal(401),
+    message: z.any(),
+    error: z.string()
+  }),
+  403: z.object({
+    statusCode: z.literal(403),
+    message: z.string(),
+    error: z.string()
+  }),
+  500: z.object({
+    statusCode: z.literal(500),
+    message: z.string(),
+    error: z.string()
+  })
+};
 
 export const sapPubSchema = SecretApprovalPoliciesSchema.merge(
   z.object({
@@ -63,7 +93,13 @@ export const secretRawSchema = z.object({
   type: z.string(),
   secretKey: z.string(),
   secretValue: z.string(),
-  secretComment: z.string().optional()
+  secretComment: z.string(),
+  secretReminderNote: z.string().nullable().optional(),
+  secretReminderRepeatDays: z.number().nullable().optional(),
+  skipMultilineEncoding: z.boolean().default(false).nullable().optional(),
+  metadata: z.unknown().nullable().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date()
 });
 
 export const ProjectPermissionSchema = z.object({
@@ -114,11 +150,42 @@ export const ProjectSpecificPrivilegePermissionSchema = z.object({
 });
 
 export const SanitizedIdentityPrivilegeSchema = IdentityProjectAdditionalPrivilegeSchema.extend({
-  permissions: UnpackedPermissionSchema.array()
+  permissions: UnpackedPermissionSchema.array().transform((permissions) =>
+    permissions.filter(
+      (caslRule) =>
+        ![
+          ProjectPermissionSub.DynamicSecrets,
+          ProjectPermissionSub.SecretImports,
+          ProjectPermissionSub.SecretFolders
+        ].includes((caslRule?.subject as ProjectPermissionSub) || "")
+    )
+  )
 });
 
 export const SanitizedRoleSchema = ProjectRolesSchema.extend({
   permissions: UnpackedPermissionSchema.array()
+});
+
+export const SanitizedRoleSchemaV1 = ProjectRolesSchema.extend({
+  permissions: UnpackedPermissionSchema.array().transform((caslPermission) =>
+    // first map and remove other actions of folder permission
+    caslPermission
+      .map((caslRule) =>
+        caslRule.subject === ProjectPermissionSub.SecretFolders
+          ? {
+              ...caslRule,
+              action: caslRule.action.filter((caslAction) => caslAction === ProjectPermissionActions.Read)
+            }
+          : caslRule
+      )
+      // now filter out dynamic secret, secret import permission
+      .filter(
+        (caslRule) =>
+          ![ProjectPermissionSub.DynamicSecrets, ProjectPermissionSub.SecretImports].includes(
+            (caslRule?.subject as ProjectPermissionSub) || ""
+          ) && caslRule.action.length > 0
+      )
+  )
 });
 
 export const SanitizedDynamicSecretSchema = DynamicSecretsSchema.omit({
@@ -134,4 +201,19 @@ export const SanitizedAuditLogStreamSchema = z.object({
   url: z.string(),
   createdAt: z.date(),
   updatedAt: z.date()
+});
+
+export const SanitizedProjectSchema = ProjectsSchema.pick({
+  id: true,
+  name: true,
+  slug: true,
+  autoCapitalization: true,
+  orgId: true,
+  createdAt: true,
+  updatedAt: true,
+  version: true,
+  upgradeStatus: true,
+  pitVersionLimit: true,
+  kmsCertificateKeyId: true,
+  auditLogsRetentionDays: true
 });

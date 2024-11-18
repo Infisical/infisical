@@ -161,6 +161,7 @@ export default function UserInfoStep({
 
               const response = await completeAccountSignup({
                 email,
+                password,
                 firstName: name.split(" ")[0],
                 lastName: name.split(" ").slice(1).join(" "),
                 protectedKey,

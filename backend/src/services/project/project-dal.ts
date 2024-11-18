@@ -2,7 +2,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { ProjectsSchema, ProjectUpgradeStatus, ProjectVersion, TableName, TProjectsUpdate } from "@app/db/schemas";
-import { BadRequestError, DatabaseError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
 import { Filter, ProjectFilterType } from "./project-types";
@@ -14,7 +14,8 @@ export const projectDALFactory = (db: TDbClient) => {
 
   const findAllProjects = async (userId: string) => {
     try {
-      const workspaces = await db(TableName.ProjectMembership)
+      const workspaces = await db
+        .replicaNode()(TableName.ProjectMembership)
         .where({ userId })
         .join(TableName.Project, `${TableName.ProjectMembership}.projectId`, `${TableName.Project}.id`)
         .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
@@ -83,7 +84,7 @@ export const projectDALFactory = (db: TDbClient) => {
 
   const findProjectGhostUser = async (projectId: string, tx?: Knex) => {
     try {
-      const ghostUser = await (tx || db)(TableName.ProjectMembership)
+      const ghostUser = await (tx || db.replicaNode())(TableName.ProjectMembership)
         .where({ projectId })
         .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
         .select(selectAllTableCols(TableName.Users))
@@ -109,7 +110,8 @@ export const projectDALFactory = (db: TDbClient) => {
 
   const findAllProjectsByIdentity = async (identityId: string) => {
     try {
-      const workspaces = await db(TableName.IdentityProjectMembership)
+      const workspaces = await db
+        .replicaNode()(TableName.IdentityProjectMembership)
         .where({ identityId })
         .join(TableName.Project, `${TableName.IdentityProjectMembership}.projectId`, `${TableName.Project}.id`)
         .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
@@ -151,7 +153,8 @@ export const projectDALFactory = (db: TDbClient) => {
 
   const findProjectById = async (id: string) => {
     try {
-      const workspaces = await db(TableName.Project)
+      const workspaces = await db
+        .replicaNode()(TableName.Project)
         .where(`${TableName.Project}.id`, id)
         .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .select(
@@ -183,7 +186,7 @@ export const projectDALFactory = (db: TDbClient) => {
       })?.[0];
 
       if (!project) {
-        throw new BadRequestError({ message: "Project not found" });
+        throw new NotFoundError({ message: `Project with ID '${id}' not found` });
       }
 
       return project;
@@ -195,10 +198,11 @@ export const projectDALFactory = (db: TDbClient) => {
   const findProjectBySlug = async (slug: string, orgId: string | undefined) => {
     try {
       if (!orgId) {
-        throw new BadRequestError({ message: "Organization ID is required when querying with slugs" });
+        throw new UnauthorizedError({ message: "Organization ID is required when querying with slugs" });
       }
 
-      const projects = await db(TableName.Project)
+      const projects = await db
+        .replicaNode()(TableName.Project)
         .where(`${TableName.Project}.slug`, slug)
         .where(`${TableName.Project}.orgId`, orgId)
         .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
@@ -231,7 +235,7 @@ export const projectDALFactory = (db: TDbClient) => {
       })?.[0];
 
       if (!project) {
-        throw new BadRequestError({ message: "Project not found" });
+        throw new NotFoundError({ message: `Project with slug '${slug}' not found` });
       }
 
       return project;
@@ -247,7 +251,7 @@ export const projectDALFactory = (db: TDbClient) => {
       }
       if (filter.type === ProjectFilterType.SLUG) {
         if (!filter.orgId) {
-          throw new BadRequestError({
+          throw new UnauthorizedError({
             message: "Organization ID is required when querying with slugs"
           });
         }
@@ -275,6 +279,34 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findProjectWithOrg = async (projectId: string) => {
+    // we just need the project, and we need to include a new .organization field that includes the org from the orgId reference
+
+    const project = await db(TableName.Project)
+      .where({ [`${TableName.Project}.id` as "id"]: projectId })
+
+      .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.Project}.orgId`)
+
+      .select(
+        db.ref("id").withSchema(TableName.Organization).as("organizationId"),
+        db.ref("name").withSchema(TableName.Organization).as("organizationName")
+      )
+      .select(selectAllTableCols(TableName.Project))
+      .first();
+
+    if (!project) {
+      throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+    }
+
+    return {
+      ...ProjectsSchema.parse(project),
+      organization: {
+        id: project.organizationId,
+        name: project.organizationName
+      }
+    };
+  };
+
   return {
     ...projectOrm,
     findAllProjects,
@@ -284,6 +316,7 @@ export const projectDALFactory = (db: TDbClient) => {
     findProjectById,
     findProjectByFilter,
     findProjectBySlug,
+    findProjectWithOrg,
     checkProjectUpgradeStatus
   };
 };

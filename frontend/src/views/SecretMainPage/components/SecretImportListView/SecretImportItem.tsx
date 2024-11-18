@@ -19,13 +19,7 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import {
-  EmptyState,
-  IconButton,
-  SecretInput,
-  TableContainer,
-  Tooltip
-} from "@app/components/v2";
+import { EmptyState, IconButton, SecretInput, TableContainer, Tooltip } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useResyncSecretReplication } from "@app/hooks/api";
@@ -37,7 +31,11 @@ type Props = {
   secretPath?: string;
   secretImport?: TSecretImport;
   isReplicationExpand?: boolean;
-  importedSecrets: { key: string; value: string; overriden: { env: string; secretPath: string } }[];
+  importedSecrets: {
+    key: string;
+    value?: string;
+    overriden: { env: string; secretPath: string };
+  }[];
   searchTerm: string;
   onExpandReplicateSecrets: (id: string) => void;
 };
@@ -45,9 +43,9 @@ type Props = {
 // to show the environment and folder icon
 export const EnvFolderIcon = ({
   env,
-  secretPath,
-  // isReplication 
-}: {
+  secretPath
+}: // isReplication
+{
   env: string;
   secretPath: string;
   // isReplication?: boolean;
@@ -69,7 +67,7 @@ export const SecretImportItem = ({
   isReplicationExpand,
   importedSecrets = [],
   searchTerm = "",
-  secretPath,
+  secretPath = "/",
   environment,
   secretImport,
   onExpandReplicateSecrets: onExpandReplicate
@@ -160,17 +158,17 @@ export const SecretImportItem = ({
           }
         }}
       >
-        <div className="flex w-12 items-center px-4 py-2 text-green-700">
+        <div className="flex w-11 items-center py-2 pl-5 text-green-700">
           <FontAwesomeIcon icon={faFileImport} />
         </div>
-        <div className="flex flex-grow items-center px-4 py-2">
+        <div className="flex flex-grow items-center py-2 pl-4 pr-2">
           <EnvFolderIcon
             env={importEnv.slug || ""}
             secretPath={secretImport?.importPath || ""}
             // isReplication={isReplication}
           />
         </div>
-        <div className="flex items-center space-x-4 px-4 py-2">
+        <div className="flex items-center space-x-4 py-2 pr-4">
           {lastReplicated && (
             <Tooltip
               position="left"
@@ -211,7 +209,7 @@ export const SecretImportItem = ({
           {isReplication && (
             <ProjectPermissionCan
               I={ProjectPermissionActions.Edit}
-              a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+              a={subject(ProjectPermissionSub.SecretImports, { environment, secretPath })}
               renderTooltip
               allowedLabel="Resync replicated secrets"
             >
@@ -237,7 +235,10 @@ export const SecretImportItem = ({
         <div className="flex items-center space-x-4 border-l border-mineshaft-600 px-4 py-2">
           <ProjectPermissionCan
             I={ProjectPermissionActions.Edit}
-            a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+            a={subject(ProjectPermissionSub.SecretImports, {
+              environment,
+              secretPath: secretPath || "/"
+            })}
             renderTooltip
             allowedLabel="Change order"
           >
@@ -258,7 +259,7 @@ export const SecretImportItem = ({
           </ProjectPermissionCan>
           <ProjectPermissionCan
             I={ProjectPermissionActions.Delete}
-            a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+            a={subject(ProjectPermissionSub.SecretImports, { environment, secretPath })}
             renderTooltip
             allowedLabel="Delete"
           >
@@ -293,7 +294,7 @@ export const SecretImportItem = ({
                   <tr>
                     <td style={{ padding: "0.25rem 1rem" }}>Key</td>
                     <td style={{ padding: "0.25rem 1rem" }}>Value</td>
-                    <td style={{ padding: "0.25rem 1rem" }}>Override</td>
+                    {/* <td style={{ padding: "0.25rem 1rem" }}>Override</td> */}
                   </tr>
                 </thead>
                 <tbody>
@@ -306,7 +307,7 @@ export const SecretImportItem = ({
                   )}
                   {importedSecrets
                     .filter((secret) => secret.key.toUpperCase().includes(searchTerm.toUpperCase()))
-                    .map(({ key, value, overriden }, index) => (
+                    .map(({ key, value }, index) => (
                       <tr key={`${id}-${key}-${index + 1}`}>
                         <td className="h-10" style={{ padding: "0.25rem 1rem" }}>
                           {key}
@@ -314,9 +315,9 @@ export const SecretImportItem = ({
                         <td className="h-10" style={{ padding: "0.25rem 1rem" }}>
                           <SecretInput value={value} isReadOnly />
                         </td>
-                        <td className="h-10" style={{ padding: "0.25rem 1rem" }}>
+                        {/* <td className="h-10" style={{ padding: "0.25rem 1rem" }}>
                           <EnvFolderIcon env={overriden?.env} secretPath={overriden?.secretPath} />
-                        </td>
+                        </td> */}
                       </tr>
                     ))}
                 </tbody>

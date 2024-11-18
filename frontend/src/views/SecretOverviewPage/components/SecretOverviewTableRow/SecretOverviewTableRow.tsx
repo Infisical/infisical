@@ -13,7 +13,8 @@ import { twMerge } from "tailwind-merge";
 
 import { Button, Checkbox, TableContainer, Td, Tooltip, Tr } from "@app/components/v2";
 import { useToggle } from "@app/hooks";
-import { DecryptedSecret } from "@app/hooks/api/secrets/types";
+import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
+import { WorkspaceEnv } from "@app/hooks/api/types";
 
 import { SecretEditRow } from "./SecretEditRow";
 import SecretRenameRow from "./SecretRenameRow";
@@ -22,14 +23,24 @@ type Props = {
   secretKey: string;
   secretPath: string;
   environments: { name: string; slug: string }[];
-  expandableColWidth: number;
   isSelected: boolean;
   onToggleSecretSelect: (key: string) => void;
-  getSecretByKey: (slug: string, key: string) => DecryptedSecret | undefined;
+  getSecretByKey: (slug: string, key: string) => SecretV3RawSanitized | undefined;
   onSecretCreate: (env: string, key: string, value: string) => Promise<void>;
-  onSecretUpdate: (env: string, key: string, value: string, secretId?: string) => Promise<void>;
+  onSecretUpdate: (
+    env: string,
+    key: string,
+    value: string,
+    type?: SecretType,
+    secretId?: string
+  ) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
-  isImportedSecretPresentInEnv: (name: string, env: string, secretName: string) => boolean;
+  isImportedSecretPresentInEnv: (env: string, secretName: string) => boolean;
+  getImportedSecretByKey: (
+    env: string,
+    secretName: string
+  ) => { secret?: SecretV3RawSanitized; environmentInfo?: WorkspaceEnv } | undefined;
+  scrollOffset: number;
 };
 
 export const SecretOverviewTableRow = ({
@@ -41,7 +52,8 @@ export const SecretOverviewTableRow = ({
   onSecretCreate,
   onSecretDelete,
   isImportedSecretPresentInEnv,
-  expandableColWidth,
+  getImportedSecretByKey,
+  scrollOffset,
   onToggleSecretSelect,
   isSelected
 }: Props) => {
@@ -59,7 +71,7 @@ export const SecretOverviewTableRow = ({
         >
           <div className="h-full w-full border-r border-mineshaft-600 py-2.5 px-5">
             <div className="flex items-center space-x-5">
-              <div className="text-blue-300/70">
+              <div className="text-bunker-300">
                 <Checkbox
                   id={`checkbox-${secretKey}`}
                   isChecked={isSelected}
@@ -83,7 +95,7 @@ export const SecretOverviewTableRow = ({
         {environments.map(({ slug }, i) => {
           const secret = getSecretByKey(slug, secretKey);
 
-          const isSecretImported = isImportedSecretPresentInEnv(secretPath, slug, secretKey);
+          const isSecretImported = isImportedSecretPresentInEnv(slug, secretKey);
 
           const isSecretPresent = Boolean(secret);
           const isSecretEmpty = secret?.value === "";
@@ -140,7 +152,9 @@ export const SecretOverviewTableRow = ({
             <div
               className="ml-2 p-2"
               style={{
-                width: `calc(${expandableColWidth}px - 1rem)`
+                marginLeft: scrollOffset,
+                width: "calc(100vw - 300px)", // 300px accounts for sidebar and margin
+                maxWidth: "calc(1536px - 50px)" // tw container max width minus padding for uw displays
               }}
             >
               <SecretRenameRow
@@ -149,7 +163,6 @@ export const SecretOverviewTableRow = ({
                 secretPath={secretPath}
                 getSecretByKey={getSecretByKey}
               />
-
               <TableContainer>
                 <table className="secret-table">
                   <thead>
@@ -180,11 +193,8 @@ export const SecretOverviewTableRow = ({
                       const secret = getSecretByKey(slug, secretKey);
                       const isCreatable = !secret;
 
-                      const isImportedSecret = isImportedSecretPresentInEnv(
-                        secretPath,
-                        slug,
-                        secretKey
-                      );
+                      const isImportedSecret = isImportedSecretPresentInEnv(slug, secretKey);
+                      const importedSecret = getImportedSecretByKey(slug, secretKey);
 
                       return (
                         <tr
@@ -195,8 +205,15 @@ export const SecretOverviewTableRow = ({
                             className="flex h-full items-center"
                             style={{ padding: "0.25rem 1rem" }}
                           >
-                            <div title={name} className="flex h-8 w-[8rem] items-center ">
+                            <div title={name} className="flex h-8 w-[8rem] items-center space-x-2 ">
                               <span className="truncate">{name}</span>
+                              {isImportedSecret && (
+                                <Tooltip
+                                  content={`Imported secret from the '${importedSecret?.environmentInfo?.name}' environment`}
+                                >
+                                  <FontAwesomeIcon icon={faFileImport} />
+                                </Tooltip>
+                              )}
                             </div>
                           </td>
                           <td className="col-span-2 h-8 w-full">
@@ -204,8 +221,13 @@ export const SecretOverviewTableRow = ({
                               secretPath={secretPath}
                               isVisible={isSecretVisible}
                               secretName={secretKey}
-                              defaultValue={secret?.value}
+                              defaultValue={
+                                secret?.valueOverride ||
+                                secret?.value ||
+                                importedSecret?.secret?.value
+                              }
                               secretId={secret?.id}
+                              isOverride={Boolean(secret?.valueOverride)}
                               isImportedSecret={isImportedSecret}
                               isCreatable={isCreatable}
                               onSecretDelete={onSecretDelete}

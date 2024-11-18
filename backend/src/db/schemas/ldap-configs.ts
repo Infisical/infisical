@@ -26,7 +26,8 @@ export const LdapConfigsSchema = z.object({
   updatedAt: z.date(),
   groupSearchBase: z.string().default(""),
   groupSearchFilter: z.string().default(""),
-  searchFilter: z.string().default("")
+  searchFilter: z.string().default(""),
+  uniqueUserAttribute: z.string().default("")
 });
 
 export type TLdapConfigs = z.infer<typeof LdapConfigsSchema>;

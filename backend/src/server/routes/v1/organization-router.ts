@@ -1,6 +1,8 @@
+import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import {
+  AuditLogsSchema,
   GroupsSchema,
   IncidentContactsSchema,
   OrganizationsSchema,
@@ -8,10 +10,14 @@ import {
   OrgRolesSchema,
   UsersSchema
 } from "@app/db/schemas";
-import { ORGANIZATIONS } from "@app/lib/api-docs";
+import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
+import { AUDIT_LOGS, ORGANIZATIONS } from "@app/lib/api-docs";
+import { getLastMidnightDateISO } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode, MfaMethod } from "@app/services/auth/auth-type";
+
+import { integrationAuthPubSchema } from "../sanitizedSchemas";
 
 export const registerOrgRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -23,7 +29,9 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     schema: {
       response: {
         200: z.object({
-          organizations: OrganizationsSchema.array()
+          organizations: OrganizationsSchema.extend({
+            orgAuthMethod: z.string()
+          }).array()
         })
       }
     },
@@ -64,6 +72,128 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
+    url: "/:organizationId/integration-authorizations",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        organizationId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          authorizations: integrationAuthPubSchema.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const authorizations = await server.services.integrationAuth.listOrgIntegrationAuth({
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId
+      });
+
+      return { authorizations };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/audit-logs",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "Get all audit logs for an organization",
+      querystring: z.object({
+        projectId: z.string().optional().describe(AUDIT_LOGS.EXPORT.projectId),
+        actorType: z.nativeEnum(ActorType).optional(),
+        // eventType is split with , for multiple values, we need to transform it to array
+        eventType: z
+          .string()
+          .optional()
+          .transform((val) => (val ? val.split(",") : undefined)),
+        userAgentType: z.nativeEnum(UserAgentType).optional().describe(AUDIT_LOGS.EXPORT.userAgentType),
+        eventMetadata: z
+          .string()
+          .optional()
+          .transform((val) => {
+            if (!val) {
+              return undefined;
+            }
+
+            const pairs = val.split(",");
+
+            return pairs.reduce(
+              (acc, pair) => {
+                const [key, value] = pair.split("=");
+                if (key && value) {
+                  acc[key] = value;
+                }
+                return acc;
+              },
+              {} as Record<string, string>
+            );
+          })
+          .describe(AUDIT_LOGS.EXPORT.eventMetadata),
+        startDate: z.string().datetime().optional().describe(AUDIT_LOGS.EXPORT.startDate),
+        endDate: z.string().datetime().optional().describe(AUDIT_LOGS.EXPORT.endDate),
+        offset: z.coerce.number().default(0).describe(AUDIT_LOGS.EXPORT.offset),
+        limit: z.coerce.number().default(20).describe(AUDIT_LOGS.EXPORT.limit),
+        actor: z.string().optional().describe(AUDIT_LOGS.EXPORT.actor)
+      }),
+
+      response: {
+        200: z.object({
+          auditLogs: AuditLogsSchema.omit({
+            eventMetadata: true,
+            eventType: true,
+            actor: true,
+            actorMetadata: true
+          })
+            .merge(
+              z.object({
+                event: z.object({
+                  type: z.string(),
+                  metadata: z.any()
+                }),
+                actor: z.object({
+                  type: z.string(),
+                  metadata: z.any()
+                })
+              })
+            )
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const auditLogs = await server.services.auditLog.listAuditLogs({
+        filter: {
+          ...req.query,
+          endDate: req.query.endDate,
+          projectId: req.query.projectId,
+          startDate: req.query.startDate || getLastMidnightDateISO(),
+          auditLogActorId: req.query.actor,
+          actorType: req.query.actorType,
+          eventType: req.query.eventType as EventType[] | undefined
+        },
+
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type
+      });
+
+      return { auditLogs };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/:organizationId/users",
     config: {
       rateLimit: readLimit
@@ -81,7 +211,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
                 email: true,
                 firstName: true,
                 lastName: true,
-                id: true
+                id: true,
+                superAdmin: true
               }).merge(z.object({ publicKey: z.string().nullable() }))
             })
           )
@@ -119,7 +250,17 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
           .regex(/^[a-zA-Z0-9-]+$/, "Slug must only contain alphanumeric characters or hyphens")
           .optional(),
         authEnforced: z.boolean().optional(),
-        scimEnabled: z.boolean().optional()
+        scimEnabled: z.boolean().optional(),
+        defaultMembershipRoleSlug: z
+          .string()
+          .min(1)
+          .trim()
+          .refine((v) => slugify(v) === v, {
+            message: "Membership role must be a valid slug"
+          })
+          .optional(),
+        enforceMfa: z.boolean().optional(),
+        selectedMfaMethod: z.nativeEnum(MfaMethod).optional()
       }),
       response: {
         200: z.object({

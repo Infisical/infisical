@@ -1,3 +1,4 @@
+import { TIntegrations } from "@app/db/schemas";
 import { TProjectPermission } from "@app/lib/types";
 
 export type TGetIntegrationAuthDTO = {
@@ -8,6 +9,7 @@ export type TOauthExchangeDTO = {
   integration: string;
   code: string;
   url?: string;
+  installationId?: string;
 } & TProjectPermission;
 
 export type TSaveIntegrationAccessTokenDTO = {
@@ -17,6 +19,7 @@ export type TSaveIntegrationAccessTokenDTO = {
   url?: string;
   namespace?: string;
   refreshToken?: string;
+  awsAssumeIamRoleArn?: string;
 } & TProjectPermission;
 
 export type TDeleteIntegrationAuthsDTO = TProjectPermission & {
@@ -27,6 +30,7 @@ export type TDeleteIntegrationAuthsDTO = TProjectPermission & {
 export type TIntegrationAuthAppsDTO = {
   id: string;
   teamId?: string;
+  azureDevOpsOrgName?: string;
   workspaceSlug?: string;
 } & Omit<TProjectPermission, "projectId">;
 
@@ -95,6 +99,12 @@ export type TIntegrationAuthBitbucketWorkspaceDTO = {
   id: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TIntegrationAuthBitbucketEnvironmentsDTO = {
+  workspaceSlug: string;
+  repoSlug: string;
+  id: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TIntegrationAuthNorthflankSecretGroupDTO = {
   id: string;
   appId: string;
@@ -103,6 +113,10 @@ export type TIntegrationAuthNorthflankSecretGroupDTO = {
 export type TDeleteIntegrationAuthByIdDTO = {
   id: string;
 } & Omit<TProjectPermission, "projectId">;
+
+export type TDuplicateGithubIntegrationAuthDTO = {
+  id: string;
+} & TProjectPermission;
 
 export type TGetIntegrationAuthTeamCityBuildConfigDTO = {
   id: string;
@@ -140,6 +154,13 @@ export type TBitbucketWorkspace = {
   updated_on: string;
 };
 
+export type TBitbucketEnvironment = {
+  type: string;
+  uuid: string;
+  name: string;
+  slug: string;
+};
+
 export type TNorthflankSecretGroup = {
   id: string;
   name: string;
@@ -161,4 +182,14 @@ export type TTeamCityBuildConfig = {
   projectId: string;
   href: string;
   webUrl: string;
+};
+
+export type TIntegrationsWithEnvironment = TIntegrations & {
+  environment?:
+    | {
+        id?: string | null | undefined;
+        name?: string | null | undefined;
+      }
+    | null
+    | undefined;
 };

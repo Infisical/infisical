@@ -37,6 +37,7 @@ services:
     image: redis
     container_name: infisical-dev-redis
     env_file: .env
+    restart: always
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
     ports:

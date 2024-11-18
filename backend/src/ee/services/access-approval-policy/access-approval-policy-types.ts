@@ -1,9 +1,9 @@
-import { TProjectPermission } from "@app/lib/types";
+import { EnforcementLevel, TProjectPermission } from "@app/lib/types";
 import { ActorAuthMethod } from "@app/services/auth/auth-type";
 
 import { TPermissionServiceFactory } from "../permission/permission-service";
 
-export type TVerifyApprovers = {
+export type TIsApproversValid = {
   userIds: string[];
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   envSlug: string;
@@ -13,21 +13,28 @@ export type TVerifyApprovers = {
   orgId: string;
 };
 
+export enum ApproverType {
+  Group = "group",
+  User = "user"
+}
+
 export type TCreateAccessApprovalPolicy = {
   approvals: number;
   secretPath: string;
   environment: string;
-  approvers: string[];
+  approvers: ({ type: ApproverType.Group; id: string } | { type: ApproverType.User; id?: string; name?: string })[];
   projectSlug: string;
   name: string;
+  enforcementLevel: EnforcementLevel;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateAccessApprovalPolicy = {
   policyId: string;
   approvals?: number;
-  approvers?: string[];
+  approvers: ({ type: ApproverType.Group; id: string } | { type: ApproverType.User; id?: string; name?: string })[];
   secretPath?: string;
   name?: string;
+  enforcementLevel?: EnforcementLevel;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteAccessApprovalPolicy = {
@@ -37,6 +44,10 @@ export type TDeleteAccessApprovalPolicy = {
 export type TGetAccessPolicyCountByEnvironmentDTO = {
   envSlug: string;
   projectSlug: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TGetAccessApprovalPolicyByIdDTO = {
+  policyId: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TListAccessApprovalPoliciesDTO = {

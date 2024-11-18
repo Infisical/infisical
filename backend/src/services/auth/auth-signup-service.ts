@@ -1,12 +1,15 @@
+import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
-import { OrgMembershipStatus, TableName } from "@app/db/schemas";
+import { OrgMembershipStatus, SecretKeyEncoding, TableName } from "@app/db/schemas";
 import { convertPendingGroupAdditionsToGroupMemberships } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError } from "@app/lib/errors";
+import { infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
+import { generateUserSrpKeys, getUserPrivateKey } from "@app/lib/crypto/srp";
+import { NotFoundError } from "@app/lib/errors";
 import { isDisposableEmail } from "@app/lib/validator";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -17,8 +20,11 @@ import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
+import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
+import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
+import { UserEncryption } from "../user/user-types";
 import { TAuthDALFactory } from "./auth-dal";
 import { validateProviderAuthToken, validateSignUpAuthorization } from "./auth-fns";
 import { TCompleteAccountInviteDTO, TCompleteAccountSignupDTO } from "./auth-signup-type";
@@ -29,10 +35,14 @@ type TAuthSignupDep = {
   userDAL: TUserDALFactory;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
-    "find" | "transaction" | "insertMany" | "deletePendingUserGroupMembershipsByUserIds"
+    | "find"
+    | "transaction"
+    | "insertMany"
+    | "deletePendingUserGroupMembershipsByUserIds"
+    | "findUserGroupMembershipsInProject"
   >;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany">;
-  projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser">;
+  projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser" | "findProjectById">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
@@ -40,6 +50,8 @@ type TAuthSignupDep = {
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
   licenseService: Pick<TLicenseServiceFactory, "updateSubscriptionOrgMemberCount">;
+  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find" | "transaction" | "insertMany">;
+  projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "insertMany">;
 };
 
 export type TAuthSignupFactory = ReturnType<typeof authSignupServiceFactory>;
@@ -119,6 +131,7 @@ export const authSignupServiceFactory = ({
 
   const completeEmailAccountSignup = async ({
     email,
+    password,
     firstName,
     lastName,
     providerAuthToken,
@@ -137,6 +150,7 @@ export const authSignupServiceFactory = ({
     userAgent,
     authorization
   }: TCompleteAccountSignupDTO) => {
+    const appCfg = getConfig();
     const user = await userDAL.findOne({ username: email });
     if (!user || (user && user.isAccepted)) {
       throw new Error("Failed to complete account for complete user");
@@ -152,26 +166,102 @@ export const authSignupServiceFactory = ({
       validateSignUpAuthorization(authorization, user.id);
     }
 
+    const hashedPassword = await bcrypt.hash(password, appCfg.BCRYPT_SALT_ROUND);
+    const privateKey = await getUserPrivateKey(password, {
+      salt,
+      protectedKey,
+      protectedKeyIV,
+      protectedKeyTag,
+      encryptedPrivateKey,
+      iv: encryptedPrivateKeyIV,
+      tag: encryptedPrivateKeyTag,
+      encryptionVersion: UserEncryption.V2
+    });
+    const { tag, encoding, ciphertext, iv } = infisicalSymmetricEncypt(privateKey);
     const updateduser = await authDAL.transaction(async (tx) => {
       const us = await userDAL.updateById(user.id, { firstName, lastName, isAccepted: true }, tx);
       if (!us) throw new Error("User not found");
-      const userEncKey = await userDAL.upsertUserEncryptionKey(
-        us.id,
-        {
-          salt,
-          verifier,
-          publicKey,
-          protectedKey,
-          protectedKeyIV,
-          protectedKeyTag,
-          encryptedPrivateKey,
-          iv: encryptedPrivateKeyIV,
-          tag: encryptedPrivateKeyTag
-        },
-        tx
-      );
+      const systemGeneratedUserEncryptionKey = await userDAL.findUserEncKeyByUserId(us.id, tx);
+      let userEncKey;
+
+      // below condition is true means this is system generated credentials
+      // the private key is actually system generated password
+      // thus we will re-encrypt the system generated private key with the new password
+      // akhilmhdh: you may find this like why? The reason is simple we are moving away from e2ee and these are pieces of it
+      // without a dummy key in place some things will break and backward compatiability too. 2025 we will be removing all these things
+      if (
+        systemGeneratedUserEncryptionKey &&
+        !systemGeneratedUserEncryptionKey.hashedPassword &&
+        systemGeneratedUserEncryptionKey.serverEncryptedPrivateKey &&
+        systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyTag &&
+        systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyIV &&
+        systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyEncoding
+      ) {
+        // get server generated password
+        const serverGeneratedPassword = infisicalSymmetricDecrypt({
+          iv: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyIV,
+          tag: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyTag,
+          ciphertext: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKey,
+          keyEncoding: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyEncoding as SecretKeyEncoding
+        });
+        const serverGeneratedPrivateKey = await getUserPrivateKey(serverGeneratedPassword, {
+          ...systemGeneratedUserEncryptionKey
+        });
+        const encKeys = await generateUserSrpKeys(email, password, {
+          publicKey: systemGeneratedUserEncryptionKey.publicKey,
+          privateKey: serverGeneratedPrivateKey
+        });
+        // now reencrypt server generated key with user provided password
+        userEncKey = await userDAL.upsertUserEncryptionKey(
+          us.id,
+          {
+            encryptionVersion: UserEncryption.V2,
+            protectedKey: encKeys.protectedKey,
+            protectedKeyIV: encKeys.protectedKeyIV,
+            protectedKeyTag: encKeys.protectedKeyTag,
+            publicKey: encKeys.publicKey,
+            encryptedPrivateKey: encKeys.encryptedPrivateKey,
+            iv: encKeys.encryptedPrivateKeyIV,
+            tag: encKeys.encryptedPrivateKeyTag,
+            salt: encKeys.salt,
+            verifier: encKeys.verifier,
+            hashedPassword,
+            serverEncryptedPrivateKeyEncoding: encoding,
+            serverEncryptedPrivateKeyTag: tag,
+            serverEncryptedPrivateKeyIV: iv,
+            serverEncryptedPrivateKey: ciphertext
+          },
+          tx
+        );
+      } else {
+        userEncKey = await userDAL.upsertUserEncryptionKey(
+          us.id,
+          {
+            encryptionVersion: UserEncryption.V2,
+            salt,
+            verifier,
+            publicKey,
+            protectedKey,
+            protectedKeyIV,
+            protectedKeyTag,
+            encryptedPrivateKey,
+            iv: encryptedPrivateKeyIV,
+            tag: encryptedPrivateKeyTag,
+            hashedPassword,
+            serverEncryptedPrivateKeyEncoding: encoding,
+            serverEncryptedPrivateKeyTag: tag,
+            serverEncryptedPrivateKeyIV: iv,
+            serverEncryptedPrivateKey: ciphertext
+          },
+          tx
+        );
+      }
+
       // If it's SAML Auth and the organization ID is present, we should check if the user has a pending invite for this org, and accept it
-      if ((isAuthMethodSaml(authMethod) || authMethod === AuthMethod.LDAP) && organizationId) {
+      if (
+        (isAuthMethodSaml(authMethod) || [AuthMethod.LDAP, AuthMethod.OIDC].includes(authMethod as AuthMethod)) &&
+        organizationId
+      ) {
         const [pendingOrgMembership] = await orgDAL.findMembership({
           [`${TableName.OrgMembership}.userId` as "userId"]: user.id,
           status: OrgMembershipStatus.Invited,
@@ -227,11 +317,10 @@ export const authSignupServiceFactory = ({
       userId: updateduser.info.id
     });
     if (!tokenSession) throw new Error("Failed to create token");
-    const appCfg = getConfig();
 
     const accessToken = jwt.sign(
       {
-        authMethod: AuthMethod.EMAIL,
+        authMethod: authMethod || AuthMethod.EMAIL,
         authTokenType: AuthTokenType.ACCESS_TOKEN,
         userId: updateduser.info.id,
         tokenVersionId: tokenSession.id,
@@ -244,7 +333,7 @@ export const authSignupServiceFactory = ({
 
     const refreshToken = jwt.sign(
       {
-        authMethod: AuthMethod.EMAIL,
+        authMethod: authMethod || AuthMethod.EMAIL,
         authTokenType: AuthTokenType.REFRESH_TOKEN,
         userId: updateduser.info.id,
         tokenVersionId: tokenSession.id,
@@ -265,6 +354,7 @@ export const authSignupServiceFactory = ({
     ip,
     salt,
     email,
+    password,
     verifier,
     firstName,
     publicKey,
@@ -290,30 +380,98 @@ export const authSignupServiceFactory = ({
       status: OrgMembershipStatus.Invited
     });
     if (!orgMembership)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Failed to find invitation for email",
         name: "complete account invite"
       });
 
+    const appCfg = getConfig();
+    const hashedPassword = await bcrypt.hash(password, appCfg.BCRYPT_SALT_ROUND);
+    const privateKey = await getUserPrivateKey(password, {
+      salt,
+      protectedKey,
+      protectedKeyIV,
+      protectedKeyTag,
+      encryptedPrivateKey,
+      iv: encryptedPrivateKeyIV,
+      tag: encryptedPrivateKeyTag,
+      encryptionVersion: 2
+    });
+    const { tag, encoding, ciphertext, iv } = infisicalSymmetricEncypt(privateKey);
     const updateduser = await authDAL.transaction(async (tx) => {
       const us = await userDAL.updateById(user.id, { firstName, lastName, isAccepted: true }, tx);
       if (!us) throw new Error("User not found");
-      const userEncKey = await userDAL.upsertUserEncryptionKey(
-        us.id,
-        {
-          salt,
-          encryptionVersion: 2,
-          verifier,
-          publicKey,
-          protectedKey,
-          protectedKeyIV,
-          protectedKeyTag,
-          encryptedPrivateKey,
-          iv: encryptedPrivateKeyIV,
-          tag: encryptedPrivateKeyTag
-        },
-        tx
-      );
+      const systemGeneratedUserEncryptionKey = await userDAL.findUserEncKeyByUserId(us.id, tx);
+      let userEncKey;
+      // this means this is system generated credentials
+      // now replace the private key
+      if (
+        systemGeneratedUserEncryptionKey &&
+        !systemGeneratedUserEncryptionKey.hashedPassword &&
+        systemGeneratedUserEncryptionKey.serverEncryptedPrivateKey &&
+        systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyTag &&
+        systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyIV &&
+        systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyEncoding
+      ) {
+        // get server generated password
+        const serverGeneratedPassword = infisicalSymmetricDecrypt({
+          iv: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyIV,
+          tag: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyTag,
+          ciphertext: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKey,
+          keyEncoding: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyEncoding as SecretKeyEncoding
+        });
+        const serverGeneratedPrivateKey = await getUserPrivateKey(serverGeneratedPassword, {
+          ...systemGeneratedUserEncryptionKey
+        });
+        const encKeys = await generateUserSrpKeys(email, password, {
+          publicKey: systemGeneratedUserEncryptionKey.publicKey,
+          privateKey: serverGeneratedPrivateKey
+        });
+        // now reencrypt server generated key with user provided password
+        userEncKey = await userDAL.upsertUserEncryptionKey(
+          us.id,
+          {
+            encryptionVersion: 2,
+            protectedKey: encKeys.protectedKey,
+            protectedKeyIV: encKeys.protectedKeyIV,
+            protectedKeyTag: encKeys.protectedKeyTag,
+            publicKey: encKeys.publicKey,
+            encryptedPrivateKey: encKeys.encryptedPrivateKey,
+            iv: encKeys.encryptedPrivateKeyIV,
+            tag: encKeys.encryptedPrivateKeyTag,
+            salt: encKeys.salt,
+            verifier: encKeys.verifier,
+            hashedPassword,
+            serverEncryptedPrivateKeyEncoding: encoding,
+            serverEncryptedPrivateKeyTag: tag,
+            serverEncryptedPrivateKeyIV: iv,
+            serverEncryptedPrivateKey: ciphertext
+          },
+          tx
+        );
+      } else {
+        userEncKey = await userDAL.upsertUserEncryptionKey(
+          us.id,
+          {
+            encryptionVersion: UserEncryption.V2,
+            salt,
+            verifier,
+            publicKey,
+            protectedKey,
+            protectedKeyIV,
+            protectedKeyTag,
+            encryptedPrivateKey,
+            iv: encryptedPrivateKeyIV,
+            tag: encryptedPrivateKeyTag,
+            hashedPassword,
+            serverEncryptedPrivateKeyEncoding: encoding,
+            serverEncryptedPrivateKeyTag: tag,
+            serverEncryptedPrivateKeyIV: iv,
+            serverEncryptedPrivateKey: ciphertext
+          },
+          tx
+        );
+      }
 
       const updatedMembersips = await orgDAL.updateMembership(
         { inviteEmail: email, status: OrgMembershipStatus.Invited },
@@ -321,7 +479,7 @@ export const authSignupServiceFactory = ({
         tx
       );
       const uniqueOrgId = [...new Set(updatedMembersips.map(({ orgId }) => orgId))];
-      await Promise.allSettled(uniqueOrgId.map((orgId) => licenseService.updateSubscriptionOrgMemberCount(orgId)));
+      await Promise.allSettled(uniqueOrgId.map((orgId) => licenseService.updateSubscriptionOrgMemberCount(orgId, tx)));
 
       await convertPendingGroupAdditionsToGroupMemberships({
         userIds: [user.id],
@@ -343,7 +501,6 @@ export const authSignupServiceFactory = ({
       userId: updateduser.info.id
     });
     if (!tokenSession) throw new Error("Failed to create token");
-    const appCfg = getConfig();
 
     const accessToken = jwt.sign(
       {

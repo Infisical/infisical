@@ -26,4 +26,4 @@ export const createNotification = (
     type: myProps?.type || "info",
   });
 
-export const NotificationContainer = () => <ToastContainer hideProgressBar />;
+export const NotificationContainer = () => <ToastContainer pauseOnHover toastClassName="border border-mineshaft-500" style={{ width: "400px" }} />;

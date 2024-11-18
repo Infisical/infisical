@@ -1,15 +1,21 @@
 import { TOrgPermission } from "@app/lib/types";
 
-import { ActorAuthMethod, ActorType } from "../auth/auth-type";
+import { ActorAuthMethod, ActorType, MfaMethod } from "../auth/auth-type";
 
 export type TUpdateOrgMembershipDTO = {
   userId: string;
   orgId: string;
   membershipId: string;
-  role: string;
+  role?: string;
+  isActive?: boolean;
   actorOrgId: string | undefined;
+  metadata?: { key: string; value: string }[];
   actorAuthMethod: ActorAuthMethod;
 };
+
+export type TGetOrgMembershipDTO = {
+  membershipId: string;
+} & TOrgPermission;
 
 export type TDeleteOrgMembershipDTO = {
   userId: string;
@@ -20,12 +26,13 @@ export type TDeleteOrgMembershipDTO = {
 };
 
 export type TInviteUserToOrgDTO = {
-  userId: string;
-  orgId: string;
-  actorOrgId: string | undefined;
-  actorAuthMethod: ActorAuthMethod;
-  inviteeEmail: string;
-};
+  inviteeEmails: string[];
+  organizationRoleSlug: string;
+  projects?: {
+    id: string;
+    projectRoleSlug?: string[];
+  }[];
+} & TOrgPermission;
 
 export type TVerifyUserToOrgDTO = {
   email: string;
@@ -51,7 +58,19 @@ export type TFindAllWorkspacesDTO = {
 };
 
 export type TUpdateOrgDTO = {
-  data: Partial<{ name: string; slug: string; authEnforced: boolean; scimEnabled: boolean }>;
+  data: Partial<{
+    name: string;
+    slug: string;
+    authEnforced: boolean;
+    scimEnabled: boolean;
+    defaultMembershipRoleSlug: string;
+    enforceMfa: boolean;
+    selectedMfaMethod: MfaMethod;
+  }>;
 } & TOrgPermission;
 
 export type TGetOrgGroupsDTO = TOrgPermission;
+
+export type TListProjectMembershipsByOrgMembershipIdDTO = {
+  orgMembershipId: string;
+} & TOrgPermission;

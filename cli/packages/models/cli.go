@@ -11,10 +11,12 @@ type UserCredentials struct {
 
 // The file struct for Infisical config file
 type ConfigFile struct {
-	LoggedInUserEmail  string         `json:"loggedInUserEmail"`
-	LoggedInUserDomain string         `json:"LoggedInUserDomain,omitempty"`
-	LoggedInUsers      []LoggedInUser `json:"loggedInUsers,omitempty"`
-	VaultBackendType   string         `json:"vaultBackendType,omitempty"`
+	LoggedInUserEmail      string         `json:"loggedInUserEmail"`
+	LoggedInUserDomain     string         `json:"LoggedInUserDomain,omitempty"`
+	LoggedInUsers          []LoggedInUser `json:"loggedInUsers,omitempty"`
+	VaultBackendType       string         `json:"vaultBackendType,omitempty"`
+	VaultBackendPassphrase string         `json:"vaultBackendPassphrase,omitempty"`
+	Domains                []string       `json:"domains,omitempty"`
 }
 
 type LoggedInUser struct {
@@ -28,6 +30,7 @@ type SingleEnvironmentVariable struct {
 	Value       string `json:"value"`
 	Type        string `json:"type"`
 	ID          string `json:"_id"`
+	SecretPath  string `json:"secretPath"`
 	Tags        []struct {
 		ID        string `json:"_id"`
 		Name      string `json:"name"`
@@ -35,6 +38,7 @@ type SingleEnvironmentVariable struct {
 		Workspace string `json:"workspace"`
 	} `json:"tags"`
 	Comment string `json:"comment"`
+	Etag    string `json:"Etag"`
 }
 
 type PlaintextSecretResult struct {
@@ -60,8 +64,9 @@ type DynamicSecretLease struct {
 }
 
 type TokenDetails struct {
-	Type  string
-	Token string
+	Type   string
+	Token  string
+	Source string
 }
 
 type SingleFolder struct {
@@ -99,6 +104,13 @@ type GetAllSecretsParameters struct {
 	SecretsPath              string
 	IncludeImport            bool
 	Recursive                bool
+	ExpandSecretReferences   bool
+}
+
+type InjectableEnvironmentResult struct {
+	Variables    []string
+	ETag         string
+	SecretsCount int
 }
 
 type GetAllFoldersParameters struct {
@@ -133,4 +145,17 @@ type ExpandSecretsAuthentication struct {
 type MachineIdentityCredentials struct {
 	ClientId     string
 	ClientSecret string
+}
+
+type SecretSetOperation struct {
+	SecretKey       string
+	SecretValue     string
+	SecretOperation string
+}
+
+type BackupSecretKeyRing struct {
+	ProjectID   string `json:"projectId"`
+	Environment string `json:"environment"`
+	SecretPath  string `json:"secretPath"`
+	Secrets     []SingleEnvironmentVariable
 }

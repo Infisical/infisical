@@ -1,10 +1,11 @@
 import jwt, { JwtPayload } from "jsonwebtoken";
 
-import { TableName, TIdentityAccessTokens } from "@app/db/schemas";
+import { IdentityAuthMethod, TableName, TIdentityAccessTokens } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { checkIPAgainstBlocklist, TIp } from "@app/lib/ip";
 
+import { TAccessTokenQueueServiceFactory } from "../access-token-queue/access-token-queue";
 import { AuthTokenType } from "../auth/auth-type";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "./identity-access-token-dal";
@@ -13,19 +14,24 @@ import { TIdentityAccessTokenJwtPayload, TRenewAccessTokenDTO } from "./identity
 type TIdentityAccessTokenServiceFactoryDep = {
   identityAccessTokenDAL: TIdentityAccessTokenDALFactory;
   identityOrgMembershipDAL: TIdentityOrgDALFactory;
+  accessTokenQueue: Pick<
+    TAccessTokenQueueServiceFactory,
+    "updateIdentityAccessTokenStatus" | "getIdentityTokenDetailsInCache"
+  >;
 };
 
 export type TIdentityAccessTokenServiceFactory = ReturnType<typeof identityAccessTokenServiceFactory>;
 
 export const identityAccessTokenServiceFactory = ({
   identityAccessTokenDAL,
-  identityOrgMembershipDAL
+  identityOrgMembershipDAL,
+  accessTokenQueue
 }: TIdentityAccessTokenServiceFactoryDep) => {
   const validateAccessTokenExp = async (identityAccessToken: TIdentityAccessTokens) => {
     const {
       id: tokenId,
-      accessTokenTTL,
       accessTokenNumUses,
+      accessTokenTTL,
       accessTokenNumUsesLimit,
       accessTokenLastRenewedAt,
       createdAt: accessTokenCreatedAt
@@ -33,7 +39,7 @@ export const identityAccessTokenServiceFactory = ({
 
     if (accessTokenNumUsesLimit > 0 && accessTokenNumUses > 0 && accessTokenNumUses >= accessTokenNumUsesLimit) {
       await identityAccessTokenDAL.deleteById(tokenId);
-      throw new BadRequestError({
+      throw new UnauthorizedError({
         message: "Unable to renew because access token number of uses limit reached"
       });
     }
@@ -75,15 +81,22 @@ export const identityAccessTokenServiceFactory = ({
     const decodedToken = jwt.verify(accessToken, appCfg.AUTH_SECRET) as JwtPayload & {
       identityAccessTokenId: string;
     };
-    if (decodedToken.authTokenType !== AuthTokenType.IDENTITY_ACCESS_TOKEN) throw new UnauthorizedError();
+    if (decodedToken.authTokenType !== AuthTokenType.IDENTITY_ACCESS_TOKEN) {
+      throw new BadRequestError({ message: "Only identity access tokens can be renewed" });
+    }
 
     const identityAccessToken = await identityAccessTokenDAL.findOne({
       [`${TableName.IdentityAccessToken}.id` as "id"]: decodedToken.identityAccessTokenId,
       isAccessTokenRevoked: false
     });
-    if (!identityAccessToken) throw new UnauthorizedError();
+    if (!identityAccessToken) throw new UnauthorizedError({ message: "No identity access token found" });
 
-    await validateAccessTokenExp(identityAccessToken);
+    let { accessTokenNumUses } = identityAccessToken;
+    const tokenStatusInCache = await accessTokenQueue.getIdentityTokenDetailsInCache(identityAccessToken.id);
+    if (tokenStatusInCache) {
+      accessTokenNumUses = tokenStatusInCache.numberOfUses;
+    }
+    await validateAccessTokenExp({ ...identityAccessToken, accessTokenNumUses });
 
     const { accessTokenMaxTTL, createdAt: accessTokenCreatedAt, accessTokenTTL } = identityAccessToken;
 
@@ -123,15 +136,20 @@ export const identityAccessTokenServiceFactory = ({
     const decodedToken = jwt.verify(accessToken, appCfg.AUTH_SECRET) as JwtPayload & {
       identityAccessTokenId: string;
     };
-    if (decodedToken.authTokenType !== AuthTokenType.IDENTITY_ACCESS_TOKEN) throw new UnauthorizedError();
+    if (decodedToken.authTokenType !== AuthTokenType.IDENTITY_ACCESS_TOKEN) {
+      throw new UnauthorizedError({ message: "Only identity access tokens can be revoked" });
+    }
 
     const identityAccessToken = await identityAccessTokenDAL.findOne({
       [`${TableName.IdentityAccessToken}.id` as "id"]: decodedToken.identityAccessTokenId,
       isAccessTokenRevoked: false
     });
-    if (!identityAccessToken) throw new UnauthorizedError();
+    if (!identityAccessToken) throw new UnauthorizedError({ message: "No identity access token found" });
 
-    const revokedToken = await identityAccessTokenDAL.deleteById(identityAccessToken.id);
+    const revokedToken = await identityAccessTokenDAL.updateById(identityAccessToken.id, {
+      isAccessTokenRevoked: true
+    });
+
     return { revokedToken };
   };
 
@@ -140,12 +158,28 @@ export const identityAccessTokenServiceFactory = ({
       [`${TableName.IdentityAccessToken}.id` as "id"]: token.identityAccessTokenId,
       isAccessTokenRevoked: false
     });
-    if (!identityAccessToken) throw new UnauthorizedError();
+    if (!identityAccessToken) throw new UnauthorizedError({ message: "No identity access token found" });
+    if (identityAccessToken.isAccessTokenRevoked)
+      throw new UnauthorizedError({
+        message: "Failed to authorize revoked access token, access token is revoked"
+      });
 
-    if (ipAddress && identityAccessToken) {
+    const trustedIpsMap: Record<IdentityAuthMethod, unknown> = {
+      [IdentityAuthMethod.UNIVERSAL_AUTH]: identityAccessToken.trustedIpsUniversalAuth,
+      [IdentityAuthMethod.GCP_AUTH]: identityAccessToken.trustedIpsGcpAuth,
+      [IdentityAuthMethod.AWS_AUTH]: identityAccessToken.trustedIpsAwsAuth,
+      [IdentityAuthMethod.AZURE_AUTH]: identityAccessToken.trustedIpsAzureAuth,
+      [IdentityAuthMethod.KUBERNETES_AUTH]: identityAccessToken.trustedIpsKubernetesAuth,
+      [IdentityAuthMethod.OIDC_AUTH]: identityAccessToken.trustedIpsOidcAuth,
+      [IdentityAuthMethod.TOKEN_AUTH]: identityAccessToken.trustedIpsAccessTokenAuth
+    };
+
+    const trustedIps = trustedIpsMap[identityAccessToken.authMethod as IdentityAuthMethod];
+
+    if (ipAddress) {
       checkIPAgainstBlocklist({
         ipAddress,
-        trustedIps: identityAccessToken?.accessTokenTrustedIps as TIp[]
+        trustedIps: trustedIps as TIp[]
       });
     }
 
@@ -154,17 +188,17 @@ export const identityAccessTokenServiceFactory = ({
     });
 
     if (!identityOrgMembership) {
-      throw new UnauthorizedError({ message: "Identity does not belong to any organization" });
+      throw new BadRequestError({ message: "Identity does not belong to any organization" });
     }
 
-    await validateAccessTokenExp(identityAccessToken);
+    let { accessTokenNumUses } = identityAccessToken;
+    const tokenStatusInCache = await accessTokenQueue.getIdentityTokenDetailsInCache(identityAccessToken.id);
+    if (tokenStatusInCache) {
+      accessTokenNumUses = tokenStatusInCache.numberOfUses;
+    }
+    await validateAccessTokenExp({ ...identityAccessToken, accessTokenNumUses });
 
-    await identityAccessTokenDAL.updateById(identityAccessToken.id, {
-      accessTokenLastUsedAt: new Date(),
-      $incr: {
-        accessTokenNumUses: 1
-      }
-    });
+    await accessTokenQueue.updateIdentityAccessTokenStatus(identityAccessToken.id, Number(accessTokenNumUses) + 1);
     return { ...identityAccessToken, orgId: identityOrgMembership.orgId };
   };
 

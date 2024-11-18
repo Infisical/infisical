@@ -4,18 +4,19 @@ import { apiRequest } from "@app/config/request";
 
 export const groupKeys = {
   allGroupUserMemberships: () => ["group-user-memberships"] as const,
-  forGroupUserMemberships: (slug: string) => [...groupKeys.allGroupUserMemberships(), slug] as const,
+  forGroupUserMemberships: (slug: string) =>
+    [...groupKeys.allGroupUserMemberships(), slug] as const,
   specificGroupUserMemberships: ({
     slug,
     offset,
     limit,
-    username
+    search
   }: {
     slug: string;
     offset: number;
     limit: number;
-    username: string;
-  }) => [...groupKeys.forGroupUserMemberships(slug), { offset, limit, username }] as const
+    search: string;
+  }) => [...groupKeys.forGroupUserMemberships(slug), { offset, limit, search }] as const
 };
 
 type TUser = {
@@ -28,38 +29,42 @@ type TUser = {
 };
 
 export const useListGroupUsers = ({
+  id,
   groupSlug,
   offset = 0,
   limit = 10,
-  username
+  search
 }: {
+  id: string;
   groupSlug: string;
   offset: number;
   limit: number;
-  username: string;
+  search: string;
 }) => {
   return useQuery({
     queryKey: groupKeys.specificGroupUserMemberships({
       slug: groupSlug,
       offset,
       limit,
-      username
+      search
     }),
     enabled: Boolean(groupSlug),
+    keepPreviousData: true,
     queryFn: async () => {
       const params = new URLSearchParams({
         offset: String(offset),
         limit: String(limit),
-        username
+        search
       });
-      
-      const { data } = await apiRequest.get<{ users: TUser[]; totalCount: number; }>(
-        `/api/v1/groups/${groupSlug}/users`, {
+
+      const { data } = await apiRequest.get<{ users: TUser[]; totalCount: number }>(
+        `/api/v1/groups/${id}/users`,
+        {
           params
         }
       );
-      
+
       return data;
-    },
+    }
   });
 };

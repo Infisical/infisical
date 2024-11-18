@@ -1,6 +1,6 @@
 import { Modal, ModalContent } from "@app/components/v2";
 import { TAccessApprovalPolicy } from "@app/hooks/api/types";
-import { SpecificPrivilegeSecretForm } from "@app/views/Project/MembersPage/components/MemberListTab/MemberRoleForm/SpecificPrivilegeSection";
+import { SpecificPrivilegeSecretForm } from "@app/views/Project/MembersPage/components/MembersTab/components/MemberRoleForm/SpecificPrivilegeSection";
 
 export const RequestAccessModal = ({
   isOpen,

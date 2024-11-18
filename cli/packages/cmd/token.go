@@ -39,7 +39,7 @@ var tokenRenewCmd = &cobra.Command{
 			util.PrintErrorMessageAndExit("You are trying to renew a service token. You can only renew universal auth access tokens.")
 		}
 
-		renewedAccessToken, err := util.RenewUniversalAuthAccessToken(token)
+		renewedAccessToken, err := util.RenewMachineIdentityAccessToken(token)
 
 		if err != nil {
 			util.HandleError(err, "Unable to renew token")

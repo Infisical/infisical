@@ -4,23 +4,45 @@ export type TSharedSecret = {
   orgId: string;
   createdAt: Date;
   updatedAt: Date;
-} & TCreateSharedSecretRequest;
-
-export type TCreateSharedSecretRequest = {
+  name: string | null;
+  lastViewedAt?: Date;
+  expiresAt: Date;
+  expiresAfterViews: number | null;
   encryptedValue: string;
   iv: string;
   tag: string;
-  hashedHex: string;
+};
+
+export type TCreatedSharedSecret = {
+  id: string;
+};
+
+export type TCreateSharedSecretRequest = {
+  name?: string;
+  password?: string;
+  secretValue: string;
   expiresAt: Date;
-  expiresAfterViews: number;
+  expiresAfterViews?: number;
+  accessType?: SecretSharingAccessType;
 };
 
 export type TViewSharedSecretResponse = {
-  encryptedValue: string;
-  iv: string;
-  tag: string;
+  isPasswordProtected: boolean;
+  secret: {
+    secretValue?: string;
+    encryptedValue: string;
+    iv: string;
+    tag: string;
+    accessType: SecretSharingAccessType;
+    orgName?: string;
+  };
 };
 
 export type TDeleteSharedSecretRequest = {
   sharedSecretId: string;
 };
+
+export enum SecretSharingAccessType {
+  Anyone = "anyone",
+  Organization = "organization"
+}

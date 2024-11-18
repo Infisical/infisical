@@ -1,18 +1,30 @@
 import { Logger } from "pino";
 import { z } from "zod";
 
+import { removeTrailingSlash } from "../fn";
 import { zpStr } from "../zod";
 
 export const GITLAB_URL = "https://gitlab.com";
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any -- If `process.pkg` is set, and it's true, then it means that the app is currently running in a packaged environment (a binary)
+export const IS_PACKAGED = (process as any)?.pkg !== undefined;
 
 const zodStrBool = z
   .enum(["true", "false"])
   .optional()
   .transform((val) => val === "true");
 
+const databaseReadReplicaSchema = z
+  .object({
+    DB_CONNECTION_URI: z.string().describe("Postgres read replica database connection string"),
+    DB_ROOT_CERT: zpStr(z.string().optional().describe("Postgres read replica database certificate string"))
+  })
+  .array()
+  .optional();
+
 const envSchema = z
   .object({
-    PORT: z.coerce.number().default(4000),
+    PORT: z.coerce.number().default(IS_PACKAGED ? 8080 : 4000),
     DISABLE_SECRET_SCANNING: z
       .enum(["true", "false"])
       .default("false")
@@ -22,6 +34,12 @@ const envSchema = z
     DB_CONNECTION_URI: zpStr(z.string().describe("Postgres database connection string")).default(
       `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`
     ),
+    AUDIT_LOGS_DB_CONNECTION_URI: zpStr(
+      z.string().describe("Postgres database connection string for Audit logs").optional()
+    ),
+    AUDIT_LOGS_DB_ROOT_CERT: zpStr(
+      z.string().describe("Postgres database base64-encoded CA cert for Audit logs").optional()
+    ),
     MAX_LEASE_LIMIT: z.coerce.number().default(10000),
     DB_ROOT_CERT: zpStr(z.string().describe("Postgres database base64-encoded CA cert").optional()),
     DB_HOST: zpStr(z.string().describe("Postgres database host").optional()),
@@ -29,7 +47,8 @@ const envSchema = z
     DB_USER: zpStr(z.string().describe("Postgres database username").optional()),
     DB_PASSWORD: zpStr(z.string().describe("Postgres database password").optional()),
     DB_NAME: zpStr(z.string().describe("Postgres database name").optional()),
-
+    DB_READ_REPLICAS: zpStr(z.string().describe("Postgres read replicas").optional()),
+    BCRYPT_SALT_ROUND: z.number().default(12),
     NODE_ENV: z.enum(["development", "test", "production"]).default("production"),
     SALT_ROUNDS: z.coerce.number().default(10),
     INITIAL_ORGANIZATION_NAME: zpStr(z.string().optional()),
@@ -51,7 +70,9 @@ const envSchema = z
       .string()
       .min(32)
       .default("#5VihU%rbXHcHwWwCot5L3vyPsx$7dWYw^iGk!EJg2bC*f$PD$%KCqx^R@#^LSEf"),
-    SITE_URL: zpStr(z.string().optional()),
+
+    // Ensure that the SITE_URL never ends with a trailing slash
+    SITE_URL: zpStr(z.string().transform((val) => (val ? removeTrailingSlash(val) : val))).optional(),
     // Telemetry
     TELEMETRY_ENABLED: zodStrBool.default("true"),
     POSTHOG_HOST: zpStr(z.string().optional().default("https://app.posthog.com")),
@@ -62,6 +83,7 @@ const envSchema = z
     JWT_AUTH_LIFETIME: zpStr(z.string().default("10d")),
     JWT_SIGNUP_LIFETIME: zpStr(z.string().default("15m")),
     JWT_REFRESH_LIFETIME: zpStr(z.string().default("90d")),
+    JWT_INVITE_LIFETIME: zpStr(z.string().default("1d")),
     JWT_MFA_LIFETIME: zpStr(z.string().default("5m")),
     JWT_PROVIDER_AUTH_LIFETIME: zpStr(z.string().default("15m")),
     // Oauth
@@ -95,12 +117,22 @@ const envSchema = z
     // gcp secret manager
     CLIENT_ID_GCP_SECRET_MANAGER: zpStr(z.string().optional()),
     CLIENT_SECRET_GCP_SECRET_MANAGER: zpStr(z.string().optional()),
-    // github
+    // github oauth
     CLIENT_ID_GITHUB: zpStr(z.string().optional()),
     CLIENT_SECRET_GITHUB: zpStr(z.string().optional()),
+    // github app
+    CLIENT_ID_GITHUB_APP: zpStr(z.string().optional()),
+    CLIENT_SECRET_GITHUB_APP: zpStr(z.string().optional()),
+    CLIENT_PRIVATE_KEY_GITHUB_APP: zpStr(z.string().optional()),
+    CLIENT_APP_ID_GITHUB_APP: z.coerce.number().optional(),
+    CLIENT_SLUG_GITHUB_APP: zpStr(z.string().optional()),
+
     // azure
     CLIENT_ID_AZURE: zpStr(z.string().optional()),
     CLIENT_SECRET_AZURE: zpStr(z.string().optional()),
+    // aws
+    CLIENT_ID_AWS_INTEGRATION: zpStr(z.string().optional()),
+    CLIENT_SECRET_AWS_INTEGRATION: zpStr(z.string().optional()),
     // gitlab
     CLIENT_ID_GITLAB: zpStr(z.string().optional()),
     CLIENT_SECRET_GITLAB: zpStr(z.string().optional()),
@@ -110,6 +142,7 @@ const envSchema = z
     SECRET_SCANNING_WEBHOOK_SECRET: zpStr(z.string().optional()),
     SECRET_SCANNING_GIT_APP_ID: zpStr(z.string().optional()),
     SECRET_SCANNING_PRIVATE_KEY: zpStr(z.string().optional()),
+    SECRET_SCANNING_ORG_WHITELIST: zpStr(z.string().optional()),
     // LICENSE
     LICENSE_SERVER_URL: zpStr(z.string().optional().default("https://portal.infisical.com")),
     LICENSE_SERVER_KEY: zpStr(z.string().optional()),
@@ -119,30 +152,60 @@ const envSchema = z
     // GENERIC
     STANDALONE_MODE: z
       .enum(["true", "false"])
-      .transform((val) => val === "true")
+      .transform((val) => val === "true" || IS_PACKAGED)
       .optional(),
     INFISICAL_CLOUD: zodStrBool.default("false"),
     MAINTENANCE_MODE: zodStrBool.default("false"),
     CAPTCHA_SECRET: zpStr(z.string().optional()),
+
+    // TELEMETRY
     OTEL_TELEMETRY_COLLECTION_ENABLED: zodStrBool.default("false"),
     OTEL_EXPORT_OTLP_ENDPOINT: zpStr(z.string().optional()),
     OTEL_OTLP_PUSH_INTERVAL: z.coerce.number().default(30000),
     OTEL_COLLECTOR_BASIC_AUTH_USERNAME: zpStr(z.string().optional()),
     OTEL_COLLECTOR_BASIC_AUTH_PASSWORD: zpStr(z.string().optional()),
-    OTEL_EXPORT_TYPE: z.enum(["prometheus", "otlp"]).optional()
+    OTEL_EXPORT_TYPE: z.enum(["prometheus", "otlp"]).optional(),
+
+    PLAIN_API_KEY: zpStr(z.string().optional()),
+    PLAIN_WISH_LABEL_IDS: zpStr(z.string().optional()),
+    DISABLE_AUDIT_LOG_GENERATION: zodStrBool.default("false"),
+    SSL_CLIENT_CERTIFICATE_HEADER_KEY: zpStr(z.string().optional()).default("x-ssl-client-cert"),
+    WORKFLOW_SLACK_CLIENT_ID: zpStr(z.string().optional()),
+    WORKFLOW_SLACK_CLIENT_SECRET: zpStr(z.string().optional()),
+    ENABLE_MSSQL_SECRET_ROTATION_ENCRYPT: zodStrBool.default("true"),
+
+    // HSM
+    HSM_LIB_PATH: zpStr(z.string().optional()),
+    HSM_PIN: zpStr(z.string().optional()),
+    HSM_KEY_LABEL: zpStr(z.string().optional()),
+    HSM_SLOT: z.coerce.number().optional().default(0)
   })
+  // To ensure that basic encryption is always possible.
+  .refine(
+    (data) => Boolean(data.ENCRYPTION_KEY) || Boolean(data.ROOT_ENCRYPTION_KEY),
+    "Either ENCRYPTION_KEY or ROOT_ENCRYPTION_KEY must be defined."
+  )
   .transform((data) => ({
     ...data,
+
+    DB_READ_REPLICAS: data.DB_READ_REPLICAS
+      ? databaseReadReplicaSchema.parse(JSON.parse(data.DB_READ_REPLICAS))
+      : undefined,
     isCloud: Boolean(data.LICENSE_SERVER_KEY),
     isSmtpConfigured: Boolean(data.SMTP_HOST),
     isRedisConfigured: Boolean(data.REDIS_URL),
     isDevelopmentMode: data.NODE_ENV === "development",
-    isProductionMode: data.NODE_ENV === "production",
+    isProductionMode: data.NODE_ENV === "production" || IS_PACKAGED,
+
     isSecretScanningConfigured:
       Boolean(data.SECRET_SCANNING_GIT_APP_ID) &&
       Boolean(data.SECRET_SCANNING_PRIVATE_KEY) &&
       Boolean(data.SECRET_SCANNING_WEBHOOK_SECRET),
-    samlDefaultOrgSlug: data.DEFAULT_SAML_ORG_SLUG
+    isHsmConfigured:
+      Boolean(data.HSM_LIB_PATH) && Boolean(data.HSM_PIN) && Boolean(data.HSM_KEY_LABEL) && data.HSM_SLOT !== undefined,
+
+    samlDefaultOrgSlug: data.DEFAULT_SAML_ORG_SLUG,
+    SECRET_SCANNING_ORG_WHITELIST: data.SECRET_SCANNING_ORG_WHITELIST?.split(",")
   }));
 
 let envCfg: Readonly<z.infer<typeof envSchema>>;

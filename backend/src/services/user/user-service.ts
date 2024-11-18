@@ -1,4 +1,10 @@
-import { BadRequestError } from "@app/lib/errors";
+import { ForbiddenError } from "@casl/ability";
+
+import { SecretKeyEncoding } from "@app/db/schemas";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
@@ -6,7 +12,10 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
 import { AuthMethod } from "../auth/auth-type";
+import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
+import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TUserDALFactory } from "./user-dal";
+import { TListUserGroupsDTO, TUpdateUserMfaDTO } from "./user-types";
 
 type TUserServiceFactoryDep = {
   userDAL: Pick<
@@ -21,11 +30,15 @@ type TUserServiceFactoryDep = {
     | "findOneUserAction"
     | "createUserAction"
     | "findUserEncKeyByUserId"
+    | "delete"
   >;
   userAliasDAL: Pick<TUserAliasDALFactory, "find" | "insertMany">;
-  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find" | "insertMany">;
+  groupProjectDAL: Pick<TGroupProjectDALFactory, "findByUserId">;
+  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find" | "insertMany" | "findOne" | "updateById">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser">;
+  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find">;
   smtpService: Pick<TSmtpService, "sendMail">;
+  permissionService: TPermissionServiceFactory;
 };
 
 export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
@@ -34,12 +47,15 @@ export const userServiceFactory = ({
   userDAL,
   userAliasDAL,
   orgMembershipDAL,
+  projectMembershipDAL,
+  groupProjectDAL,
   tokenService,
-  smtpService
+  smtpService,
+  permissionService
 }: TUserServiceFactoryDep) => {
   const sendEmailVerificationCode = async (username: string) => {
     const user = await userDAL.findOne({ username });
-    if (!user) throw new BadRequestError({ name: "Failed to find user" });
+    if (!user) throw new NotFoundError({ name: `User with username '${username}' not found` });
     if (!user.email)
       throw new BadRequestError({ name: "Failed to send email verification code due to no email on user" });
     if (user.isEmailVerified)
@@ -62,7 +78,7 @@ export const userServiceFactory = ({
 
   const verifyEmailVerificationCode = async (username: string, code: string) => {
     const user = await userDAL.findOne({ username });
-    if (!user) throw new BadRequestError({ name: "Failed to find user" });
+    if (!user) throw new NotFoundError({ name: `User with username '${username}' not found` });
     if (!user.email)
       throw new BadRequestError({ name: "Failed to verify email verification code due to no email on user" });
     if (user.isEmailVerified)
@@ -85,7 +101,7 @@ export const userServiceFactory = ({
         tx
       );
 
-      // check if there are users with the same email.
+      // check if there are verified users with the same email.
       const users = await userDAL.find(
         {
           email,
@@ -97,7 +113,7 @@ export const userServiceFactory = ({
       if (users.length > 1) {
         // merge users
         const mergeUser = users.find((u) => u.id !== user.id);
-        if (!mergeUser) throw new BadRequestError({ name: "Failed to find merge user" });
+        if (!mergeUser) throw new NotFoundError({ name: "Failed to find merge user" });
 
         const mergeUserOrgMembershipSet = new Set(
           (await orgMembershipDAL.find({ userId: mergeUser.id }, { tx })).map((m) => m.orgId)
@@ -134,6 +150,15 @@ export const userServiceFactory = ({
           );
         }
       } else {
+        await userDAL.delete(
+          {
+            email,
+            isAccepted: false,
+            isEmailVerified: false
+          },
+          tx
+        );
+
         // update current user's username to [email]
         await userDAL.updateById(
           user.id,
@@ -146,15 +171,24 @@ export const userServiceFactory = ({
     });
   };
 
-  const toggleUserMfa = async (userId: string, isMfaEnabled: boolean) => {
+  const updateUserMfa = async ({ userId, isMfaEnabled, selectedMfaMethod }: TUpdateUserMfaDTO) => {
     const user = await userDAL.findById(userId);
 
     if (!user || !user.email) throw new BadRequestError({ name: "Failed to toggle MFA" });
 
+    let mfaMethods;
+    if (isMfaEnabled === undefined) {
+      mfaMethods = undefined;
+    } else {
+      mfaMethods = isMfaEnabled ? ["email"] : [];
+    }
+
     const updatedUser = await userDAL.updateById(userId, {
       isMfaEnabled,
-      mfaMethods: isMfaEnabled ? ["email"] : []
+      mfaMethods,
+      selectedMfaMethod
     });
+
     return updatedUser;
   };
 
@@ -168,13 +202,11 @@ export const userServiceFactory = ({
 
   const updateAuthMethods = async (userId: string, authMethods: AuthMethod[]) => {
     const user = await userDAL.findById(userId);
-    if (!user) throw new BadRequestError({ name: "Update auth methods" });
+    if (!user) throw new NotFoundError({ message: `User with ID '${userId}' not found`, name: "UpdateAuthMethods" });
 
-    if (user.authMethods?.includes(AuthMethod.LDAP))
-      throw new BadRequestError({ message: "LDAP auth method cannot be updated", name: "Update auth methods" });
-
-    if (authMethods.includes(AuthMethod.LDAP))
-      throw new BadRequestError({ message: "LDAP auth method cannot be updated", name: "Update auth methods" });
+    if (user.authMethods?.includes(AuthMethod.LDAP) || authMethods.includes(AuthMethod.LDAP)) {
+      throw new BadRequestError({ message: "LDAP auth method cannot be updated", name: "UpdateAuthMethods" });
+    }
 
     const updatedUser = await userDAL.updateById(userId, { authMethods });
     return updatedUser;
@@ -182,11 +214,11 @@ export const userServiceFactory = ({
 
   const getMe = async (userId: string) => {
     const user = await userDAL.findUserEncKeyByUserId(userId);
-    if (!user) throw new BadRequestError({ message: "user not found", name: "Get Me" });
+    if (!user) throw new NotFoundError({ message: `User with ID '${userId}' not found`, name: "GetMe" });
     return user;
   };
 
-  const deleteMe = async (userId: string) => {
+  const deleteUser = async (userId: string) => {
     const user = await userDAL.deleteById(userId);
     return user;
   };
@@ -220,16 +252,101 @@ export const userServiceFactory = ({
     );
   };
 
+  const getUserPrivateKey = async (userId: string) => {
+    const user = await userDAL.findUserEncKeyByUserId(userId);
+    if (!user?.serverEncryptedPrivateKey || !user.serverEncryptedPrivateKeyIV || !user.serverEncryptedPrivateKeyTag) {
+      throw new NotFoundError({ message: `Private key for user with ID '${userId}' not found` });
+    }
+    const privateKey = infisicalSymmetricDecrypt({
+      ciphertext: user.serverEncryptedPrivateKey,
+      tag: user.serverEncryptedPrivateKeyTag,
+      iv: user.serverEncryptedPrivateKeyIV,
+      keyEncoding: user.serverEncryptedPrivateKeyEncoding as SecretKeyEncoding
+    });
+
+    return privateKey;
+  };
+
+  const getUserProjectFavorites = async (userId: string, orgId: string) => {
+    const orgMembership = await orgMembershipDAL.findOne({
+      userId,
+      orgId
+    });
+
+    if (!orgMembership) {
+      throw new ForbiddenRequestError({
+        message: "User does not belong in the organization."
+      });
+    }
+
+    return { projectFavorites: orgMembership.projectFavorites || [] };
+  };
+
+  const updateUserProjectFavorites = async (userId: string, orgId: string, projectIds: string[]) => {
+    const orgMembership = await orgMembershipDAL.findOne({
+      userId,
+      orgId
+    });
+
+    if (!orgMembership) {
+      throw new ForbiddenRequestError({
+        message: "User does not belong in the organization."
+      });
+    }
+
+    const matchingUserProjectMemberships = await projectMembershipDAL.find({
+      userId,
+      $in: {
+        projectId: projectIds
+      }
+    });
+
+    const memberProjectFavorites = matchingUserProjectMemberships.map(
+      (projectMembership) => projectMembership.projectId
+    );
+
+    const updatedOrgMembership = await orgMembershipDAL.updateById(orgMembership.id, {
+      projectFavorites: memberProjectFavorites
+    });
+
+    return updatedOrgMembership.projectFavorites;
+  };
+
+  const listUserGroups = async ({ username, actorOrgId, actor, actorId, actorAuthMethod }: TListUserGroupsDTO) => {
+    const user = await userDAL.findOne({
+      username
+    });
+
+    // This makes it so the user can always read information about themselves, but no one else if they don't have the Members Read permission.
+    if (user.id !== actorId) {
+      const { permission } = await permissionService.getOrgPermission(
+        actor,
+        actorId,
+        actorOrgId,
+        actorAuthMethod,
+        actorOrgId
+      );
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
+    }
+
+    const memberships = await groupProjectDAL.findByUserId(user.id, actorOrgId);
+    return memberships;
+  };
+
   return {
     sendEmailVerificationCode,
     verifyEmailVerificationCode,
-    toggleUserMfa,
+    updateUserMfa,
     updateUserName,
     updateAuthMethods,
-    deleteMe,
+    deleteUser,
     getMe,
     createUserAction,
+    listUserGroups,
     getUserAction,
-    unlockUser
+    unlockUser,
+    getUserPrivateKey,
+    getUserProjectFavorites,
+    updateUserProjectFavorites
   };
 };

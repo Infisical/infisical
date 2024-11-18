@@ -26,6 +26,23 @@ export type TApprovalUpdateSecret = Partial<TApprovalCreateSecret> & {
   tagIds?: string[];
 };
 
+export type TApprovalCreateSecretV2Bridge = {
+  secretKey: string;
+  secretValue?: string;
+  secretComment?: string;
+  reminderNote?: string | null;
+  reminderRepeatDays?: number | null;
+  skipMultilineEncoding?: boolean;
+  metadata?: Record<string, string>;
+  tagIds?: string[];
+};
+
+export type TApprovalUpdateSecretV2Bridge = Partial<TApprovalCreateSecretV2Bridge> & {
+  secretKey: string;
+  newSecretName?: string;
+  tagIds?: string[];
+};
+
 export type TGenerateSecretApprovalRequestDTO = {
   environment: string;
   secretPath: string;
@@ -37,8 +54,20 @@ export type TGenerateSecretApprovalRequestDTO = {
   };
 } & TProjectPermission;
 
+export type TGenerateSecretApprovalRequestV2BridgeDTO = {
+  environment: string;
+  secretPath: string;
+  policy: TSecretApprovalPolicies;
+  data: {
+    [SecretOperations.Create]?: TApprovalCreateSecretV2Bridge[];
+    [SecretOperations.Update]?: TApprovalUpdateSecretV2Bridge[];
+    [SecretOperations.Delete]?: { secretKey: string }[];
+  };
+} & TProjectPermission;
+
 export type TMergeSecretApprovalRequestDTO = {
   approvalId: string;
+  bypassReason?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TStatusChangeDTO = {

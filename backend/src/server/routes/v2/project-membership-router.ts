@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { ProjectMembershipsSchema } from "@app/db/schemas";
+import { OrgMembershipRole, ProjectMembershipRole, ProjectMembershipsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PROJECT_USERS } from "@app/lib/api-docs";
 import { writeLimit } from "@app/server/config/rateLimiter";
@@ -26,7 +26,8 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       }),
       body: z.object({
         emails: z.string().email().array().default([]).describe(PROJECT_USERS.INVITE_MEMBER.emails),
-        usernames: z.string().array().default([]).describe(PROJECT_USERS.INVITE_MEMBER.usernames)
+        usernames: z.string().array().default([]).describe(PROJECT_USERS.INVITE_MEMBER.usernames),
+        roleSlugs: z.string().array().optional().describe(PROJECT_USERS.INVITE_MEMBER.roleSlugs)
       }),
       response: {
         200: z.object({
@@ -36,14 +37,21 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const memberships = await server.services.projectMembership.addUsersToProjectNonE2EE({
-        projectId: req.params.projectId,
+      const usernamesAndEmails = [...req.body.emails, ...req.body.usernames];
+      const { projectMemberships: memberships } = await server.services.org.inviteUserToOrganization({
         actorAuthMethod: req.permission.authMethod,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         actor: req.permission.type,
-        emails: req.body.emails,
-        usernames: req.body.usernames
+        inviteeEmails: usernamesAndEmails,
+        orgId: req.permission.orgId,
+        organizationRoleSlug: OrgMembershipRole.NoAccess,
+        projects: [
+          {
+            id: req.params.projectId,
+            projectRoleSlug: [ProjectMembershipRole.Member]
+          }
+        ]
       });
 
       await server.services.auditLog.createAuditLog({

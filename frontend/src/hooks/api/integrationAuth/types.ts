@@ -9,6 +9,10 @@ export type IntegrationAuth = {
   keyEncoding: string;
   url?: string;
   teamId?: string;
+  metadata: {
+    installationName?: string;
+    installationId?: string;
+  };
 };
 
 export type App = {
@@ -75,6 +79,12 @@ export type BitBucketWorkspace = {
   slug: string;
 };
 
+export type BitBucketEnvironment = {
+  uuid: string;
+  name: string;
+  slug: string;
+};
+
 export type NorthflankSecretGroup = {
   name: string;
   groupId: string;
@@ -83,4 +93,9 @@ export type NorthflankSecretGroup = {
 export type TeamCityBuildConfig = {
   name: string;
   buildConfigId: string;
+};
+
+export type TDuplicateIntegrationAuthDTO = {
+  integrationAuthId: string;
+  projectId: string;
 };

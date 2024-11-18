@@ -1,3 +1,4 @@
+import { ReactElement } from "react";
 import {
   faCaretDown,
   faCheck,
@@ -23,6 +24,7 @@ export type PaginationProps = {
   onChangePerPage: (newRows: number) => void;
   className?: string;
   perPageList?: number[];
+  startAdornment?: ReactElement;
 };
 
 export const Pagination = ({
@@ -32,7 +34,8 @@ export const Pagination = ({
   onChangePage,
   onChangePerPage,
   perPageList = [10, 20, 50, 100],
-  className
+  className,
+  startAdornment
 }: PaginationProps) => {
   const prevPageNumber = Math.max(1, page - 1);
   const canGoPrev = page > 1;
@@ -40,17 +43,20 @@ export const Pagination = ({
   const upperLimit = Math.ceil(count / perPage);
   const nextPageNumber = Math.min(upperLimit, page + 1);
   const canGoNext = page + 1 <= upperLimit;
+  const canGoFirst = page > 1;
+  const canGoLast = page < upperLimit;
 
   return (
     <div
       className={twMerge(
-        "flex w-full items-center justify-end bg-mineshaft-800 py-3 px-4 text-white",
+        "flex w-full items-center justify-end border-t border-mineshaft-600 bg-mineshaft-800 py-3 px-4 text-white",
         className
       )}
     >
-      <div className="mr-6 flex items-center space-x-2">
+      {startAdornment}
+      <div className="ml-auto mr-6 flex items-center space-x-2">
         <div className="text-xs">
-          {(page - 1) * perPage} - {(page - 1) * perPage + perPage} of {count}
+          {(page - 1) * perPage + 1} - {Math.min((page - 1) * perPage + perPage, count)} of {count}
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -75,6 +81,16 @@ export const Pagination = ({
       <div className="flex items-center space-x-4">
         <IconButton
           variant="plain"
+          ariaLabel="pagination-first"
+          className="relative"
+          onClick={() => onChangePage(1)}
+          isDisabled={!canGoFirst}
+        >
+          <FontAwesomeIcon className="absolute left-2.5 top-1 text-xs" icon={faChevronLeft} />
+          <FontAwesomeIcon className="text-xs" icon={faChevronLeft} />
+        </IconButton>
+        <IconButton
+          variant="plain"
           ariaLabel="pagination-prev"
           onClick={() => onChangePage(prevPageNumber)}
           isDisabled={!canGoPrev}
@@ -87,6 +103,16 @@ export const Pagination = ({
           onClick={() => onChangePage(nextPageNumber)}
           isDisabled={!canGoNext}
         >
+          <FontAwesomeIcon className="text-xs" icon={faChevronRight} />
+        </IconButton>
+        <IconButton
+          variant="plain"
+          ariaLabel="pagination-last"
+          className="relative"
+          onClick={() => onChangePage(upperLimit)}
+          isDisabled={!canGoLast}
+        >
+          <FontAwesomeIcon className="absolute left-2.5 top-1 text-xs" icon={faChevronRight} />
           <FontAwesomeIcon className="text-xs" icon={faChevronRight} />
         </IconButton>
       </div>

@@ -1,3 +1,4 @@
+import { ReactNode } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -20,7 +21,7 @@ const OutputDisplay = ({
 }: {
   value: string;
   label: string;
-  helperText?: string;
+  helperText?: ReactNode;
 }) => {
   const [copyText, isCopying, setCopyText] = useTimedReset<string>({
     initialState: "Copy to clipboard"
@@ -56,7 +57,9 @@ const OutputDisplay = ({
 const renderOutputForm = (provider: DynamicSecretProviders, data: unknown) => {
   if (
     provider === DynamicSecretProviders.SqlDatabase ||
-    provider === DynamicSecretProviders.Cassandra
+    provider === DynamicSecretProviders.Cassandra ||
+    provider === DynamicSecretProviders.MongoAtlas ||
+    provider === DynamicSecretProviders.MongoDB
   ) {
     const { DB_PASSWORD, DB_USERNAME } = data as { DB_USERNAME: string; DB_PASSWORD: string };
     return (
@@ -89,6 +92,156 @@ const renderOutputForm = (provider: DynamicSecretProviders, data: unknown) => {
       </div>
     );
   }
+
+  if (provider === DynamicSecretProviders.Redis) {
+    const { DB_USERNAME, DB_PASSWORD } = data as {
+      DB_USERNAME: string;
+      DB_PASSWORD: string;
+    };
+
+    return (
+      <div>
+        <OutputDisplay label="Redis Username" value={DB_USERNAME} />
+        <OutputDisplay
+          label="Redis Password"
+          value={DB_PASSWORD}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+        />
+      </div>
+    );
+  }
+
+  if (provider === DynamicSecretProviders.AwsElastiCache) {
+    const { DB_USERNAME, DB_PASSWORD } = data as {
+      DB_USERNAME: string;
+      DB_PASSWORD: string;
+    };
+
+    return (
+      <div>
+        <OutputDisplay label="Cluster Username" value={DB_USERNAME} />
+        <OutputDisplay
+          label="Cluster Password"
+          value={DB_PASSWORD}
+          helperText={
+            <div className="space-y-4">
+              <p>
+                Important: Copy these credentials now. You will not be able to see them again after
+                you close the modal.
+              </p>
+              <p className="font-medium">
+                Please note that it may take a few minutes before the credentials are available for
+                use.
+              </p>
+            </div>
+          }
+        />
+      </div>
+    );
+  }
+
+  if (provider === DynamicSecretProviders.RabbitMq) {
+    const { DB_USERNAME, DB_PASSWORD } = data as {
+      DB_USERNAME: string;
+      DB_PASSWORD: string;
+    };
+
+    return (
+      <div>
+        <OutputDisplay label="Username" value={DB_USERNAME} />
+        <OutputDisplay
+          label="Password"
+          value={DB_PASSWORD}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+        />
+      </div>
+    );
+  }
+
+  if (provider === DynamicSecretProviders.ElasticSearch) {
+    const { DB_USERNAME, DB_PASSWORD } = data as {
+      DB_USERNAME: string;
+      DB_PASSWORD: string;
+    };
+
+    return (
+      <div>
+        <OutputDisplay label="Username" value={DB_USERNAME} />
+        <OutputDisplay
+          label="Password"
+          value={DB_PASSWORD}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+        />
+      </div>
+    );
+  }
+
+  if (provider === DynamicSecretProviders.AzureEntraId) {
+    const { email, password } = data as {
+      email: string;
+      password: string;
+    };
+
+    return (
+      <div>
+        <OutputDisplay label="Email" value={email} />
+        <OutputDisplay
+          label="Password"
+          value={password}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+        />
+      </div>
+    );
+  }
+
+  if (provider === DynamicSecretProviders.Ldap) {
+    const { USERNAME, PASSWORD, DN_ARRAY } = data as {
+      USERNAME: string;
+      PASSWORD: string;
+      DN_ARRAY: string[];
+    };
+
+    return (
+      <div>
+        <OutputDisplay label="Username" value={USERNAME} />
+        <OutputDisplay
+          label="Password"
+          value={PASSWORD}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+        />
+        <FormControl label="DNs" className="flex-grow">
+          <SecretInput
+            isReadOnly
+            isVisible
+            value={JSON.stringify(DN_ARRAY)}
+            containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
+          />
+        </FormControl>
+      </div>
+    );
+  }
+
+  if (
+    provider === DynamicSecretProviders.SapHana ||
+    provider === DynamicSecretProviders.Snowflake
+  ) {
+    const { DB_USERNAME, DB_PASSWORD } = data as {
+      DB_USERNAME: string;
+      DB_PASSWORD: string;
+    };
+
+    return (
+      <div>
+        <OutputDisplay label="Username" value={DB_USERNAME} />
+        <OutputDisplay
+          label="Password"
+          value={DB_PASSWORD}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+        />
+      </div>
+    );
+  }
+
   return null;
 };
 

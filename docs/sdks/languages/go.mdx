@@ -9,30 +9,26 @@ icon: "golang"
 If you're working with Go Lang, the official [Infisical Go SDK](https://github.com/infisical/go-sdk) package is the easiest way to fetch and work with secrets for your application.
 
 - [Package](https://pkg.go.dev/github.com/infisical/go-sdk)
-- [Github Repository](https://github.com/infiscial/go-sdk)
+- [Github Repository](https://github.com/infisical/go-sdk)
 
-## Basic Usage
+# Basic Usage
 
 ```go
 package main
 
 import (
-	"fmt"
-	"os"
-
-	infisical "github.com/infisical/go-sdk"
+  "fmt"
+  "os"
+  "context"
+  infisical "github.com/infisical/go-sdk"
 )
 
 func main() {
 
-	client, err := infisical.NewInfisicalClient(infisical.Config{
+	client := infisical.NewInfisicalClient(context.Background(), infisical.Config{
 		SiteUrl: "https://app.infisical.com", // Optional, default is https://app.infisical.com
+    AutoTokenRefresh: true, // Wether or not to let the SDK handle the access token lifecycle. Defaults to true if not specified.
 	})
-
-	if err != nil {
-		fmt.Printf("Error: %v", err)
-		os.Exit(1)
-	}
 
 	_, err = client.Auth().UniversalAuthLogin("YOUR_CLIENT_ID", "YOUR_CLIENT_SECRET")
 
@@ -69,37 +65,68 @@ This example demonstrates how to use the Infisical Go SDK in a simple Go applica
 ```console
 $ go get github.com/infisical/go-sdk
 ```
+
 # Configuration
 
 Import the SDK and create a client instance.
 
 ```go
-client, err := infisical.NewInfisicalClient(infisical.Config{
+client := infisical.NewInfisicalClient(context.Background(), infisical.Config{
 		SiteUrl: "https://app.infisical.com", // Optional, default is https://api.infisical.com
 	})
-
-if err != nil {
-  fmt.Printf("Error: %v", err)
-  os.Exit(1)
-}
 ```
 
-### ClientSettings methods
+### Configuration Options
 
 <ParamField query="options" type="object">
     <Expandable title="properties">
-        <ParamField query="SiteUrl" type="string" optional>
-            The URL of the Infisical API. Default is `https://api.infisical.com`.
+        <ParamField query="SiteUrl" type="string" optional default="https://app.infisical.com">
+            The URL of the Infisical API..
         </ParamField>
 
-        <ParamField query="UserAgent" type="string" required>
+        <ParamField query="UserAgent" type="string">
             Optionally set the user agent that will be used for HTTP requests. _(Not recommended)_
+        </ParamField>
+
+        <ParamField query="AutoTokenRefresh" type="boolean" default={true} optional>
+            Whether or not to let the SDK handle the access token lifecycle. Defaults to true if not specified.
+        </ParamField>
+
+        <ParamField query="SilentMode" type="boolean" default={false} optional>
+            Whether or not to suppress logs such as warnings from the token refreshing process. Defaults to false if not specified.
         </ParamField>
     </Expandable>
 
 </ParamField>
 
-### Authentication
+# Automatic token refreshing
+
+The Infisical Go SDK supports automatic token refreshing. After using one of the auth methods such as Universal Auth, the SDK will automatically renew and re-authenticate when needed.
+This behavior is enabled by default, but you can opt-out by setting `AutoTokenRefresh` to `false` in the client settings.
+
+```go
+  client := infisical.NewInfisicalClient(context.Background(), infisical.Config{
+    AutoTokenRefresh: false, // <- Disable automatic token refreshing
+  })
+```
+
+When using automatic token refreshing it's important to understand how your application uses the Infiiscal client. If you are instantiating new instances of the client often, it's important to cancel the context when the client is no longer needed to avoid the token refreshing process from running indefinitely.
+
+```go
+  ctx, cancel := context.WithCancel(context.Background())
+  defer cancel() // Cancel the context when the client is no longer needed
+
+  client := infisical.NewInfisicalClient(ctx, infisical.Config{
+    AutoTokenRefresh: true,
+  })
+
+  // Use the client
+```
+
+This is only necessary if you are creating multiple instances of the client, and those instances are deleted or otherwise removed throughout the application lifecycle.
+If you are only creating one instance of the client, and it will be used throughout the lifetime of your application, you don't need to worry about this.
+
+# Authentication
 
 The SDK supports a variety of authentication methods. The most common authentication method is Universal Auth, which uses a client ID and client secret to authenticate.
 
@@ -232,9 +259,12 @@ if err != nil {
 }
 ```
 
-## Working with Secrets
+## Working With Secrets
 
-### client.Secrets().List(options)
+### List Secrets
+`client.Secrets().List(options)`
+
+Retrieve all secrets within the Infisical project and environment that client is connected to.
 
 ```go
 secrets, err := client.Secrets().List(infisical.ListSecretsOptions{
@@ -245,9 +275,7 @@ secrets, err := client.Secrets().List(infisical.ListSecretsOptions{
 })
 ```
 
-Retrieve all secrets within the Infisical project and environment that client is connected to
-
-#### Parameters
+### Parameters
 
 <ParamField query="Parameters" type="object">
     <Expandable title="properties">
@@ -282,7 +310,11 @@ Retrieve all secrets within the Infisical project and environment that client is
 
 </ParamField>
 
-### client.Secrets().Get(options)
+###
+### Retrieve Secret
+`client.Secrets().Retrieve(options)`
+
+Retrieve a secret from Infisical. By default `Secrets().Retrieve()` fetches and returns a shared secret.
 
 ```go
 secret, err := client.Secrets().Retrieve(infisical.RetrieveSecretOptions{
@@ -292,11 +324,7 @@ secret, err := client.Secrets().Retrieve(infisical.RetrieveSecretOptions{
 })
 ```
 
-Retrieve a secret from Infisical.
-
-By default, `Secrets().Get()` fetches and returns a shared secret.
-
-#### Parameters
+### Parameters
 
 <ParamField query="Parameters" type="object" optional>
     <Expandable title="properties">
@@ -318,7 +346,11 @@ By default, `Secrets().Get()` fetches and returns a shared secret.
     </Expandable>
 </ParamField>
 
-### client.Secrets().Create(options)
+###
+### Create Secret
+`client.Secrets().Create(options)`
+
+Create a new secret in Infisical.
 
 ```go
 secret, err := client.Secrets().Create(infisical.CreateSecretOptions{
@@ -331,9 +363,8 @@ secret, err := client.Secrets().Create(infisical.CreateSecretOptions{
 })
 ```
 
-Create a new secret in Infisical.
 
-#### Parameters
+### Parameters
 
 <ParamField query="Parameters" type="object" optional>
     <Expandable title="properties">
@@ -361,7 +392,12 @@ Create a new secret in Infisical.
     </Expandable>
 </ParamField>
 
-### client.Secrets().Update(options)
+###
+### Update Secret
+
+`client.Secrets().Update(options)`
+
+Update an existing secret in Infisical.
 
 ```go
 secret, err := client.Secrets().Update(infisical.UpdateSecretOptions{
@@ -373,9 +409,7 @@ secret, err := client.Secrets().Update(infisical.UpdateSecretOptions{
 })
 ```
 
-Update an existing secret in Infisical.
-
-#### Parameters
+### Parameters
 
 <ParamField query="Parameters" type="object" optional>
     <Expandable title="properties">
@@ -403,7 +437,11 @@ Update an existing secret in Infisical.
     </Expandable>
 </ParamField>
 
-### client.Secrets().Delete(options)
+###
+### Delete Secret
+`client.Secrets().Delete(options)`
+
+Delete a secret in Infisical.
 
 ```go
 secret, err := client.Secrets().Delete(infisical.DeleteSecretOptions{
@@ -413,9 +451,7 @@ secret, err := client.Secrets().Delete(infisical.DeleteSecretOptions{
 })
 ```
 
-Delete a secret in Infisical.
-
-#### Parameters
+### Parameters
 
 <ParamField query="Parameters" type="object" optional>
     <Expandable title="properties">
@@ -436,3 +472,154 @@ Delete a secret in Infisical.
         </ParamField>
     </Expandable>
 </ParamField>
+
+## Working With folders
+
+
+###
+### List Folders
+`client.Folders().List(options)`
+
+Retrieve all within the Infisical project and environment that client is connected to.
+
+```go
+folders, err := client.Folders().List(infisical.ListFoldersOptions{
+  ProjectID:   "PROJECT_ID",
+  Environment: "dev",
+  Path:        "/",
+})
+```
+
+### Parameters
+
+<ParamField query="Parameters" type="object">
+    <Expandable title="properties">
+        <ParamField query="Environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where folders should be fetched from.
+        </ParamField>
+
+        <ParamField query="ProjectID" type="string">
+            The project ID where the folder lives in.
+        </ParamField>
+
+         <ParamField query="Path" type="string" optional>
+            The path from where folders should be fetched from.
+        </ParamField>
+    </Expandable>
+
+</ParamField>
+
+###
+### Create Folder
+`client.Folders().Create(options)`
+
+Create a new folder in Infisical.
+
+```go
+folder, err := client.Folders().Create(infisical.CreateFolderOptions{
+  ProjectID:   "PROJECT_ID",
+  Name:        "new=folder-name",
+  Environment: "dev",
+  Path:        "/",
+})
+```
+
+### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="ProjectID" type="string" required>
+            The ID of the project where the folder will be created.
+        </ParamField>
+        <ParamField query="Environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment where the folder will be created.
+        </ParamField>
+        <ParamField query="Path" type="string" optional>
+            The path to create the folder in. The root path is `/`.
+        </ParamField>
+        <ParamField query="Name" type="string" optional>
+            The name of the folder to create.
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+
+###
+### Update Folder
+`client.Folders().Update(options)`
+
+Update an existing folder in Infisical.
+
+```go
+folder, err := client.Folders().Update(infisical.UpdateFolderOptions{
+  ProjectID:   "PROJECT_ID",
+  Environment: "dev",
+  Path:        "/",
+  FolderID:    "FOLDER_ID_TO_UPDATE",
+  NewName:     "new-folder-name",
+})
+```
+
+### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="ProjectID" type="string" required>
+            The ID of the project where the folder will be updated.
+        </ParamField>
+        <ParamField query="Environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where the folder lives in.
+        </ParamField>
+        <ParamField query="Path" type="string" optional>
+            The path from where the folder should be updated.
+        </ParamField>
+        <ParamField query="FolderID" type="string" required>
+            The ID of the folder to update.
+        </ParamField>
+        <ParamField query="NewName" type="string" required>
+            The new name of the folder.
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+###
+### Delete Folder
+`client.Folders().Delete(options)`
+
+Delete a folder in Infisical.
+
+```go
+deletedFolder, err := client.Folders().Delete(infisical.DeleteFolderOptions{
+  // Either folder ID or folder name is required.
+  FolderName:  "name-of-folder-to-delete",
+  FolderID:    "folder-id-to-delete",
+  ProjectID:   "PROJECT_ID",
+  Environment: "dev",
+  Path:        "/",
+})
+```
+
+### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="FolderName" type="string" optional>
+            The name of the folder to delete. Note that either `FolderName` or `FolderID` is required.
+        </ParamField>
+        <ParamField query="FolderID" type="string" optional>
+            The ID of the folder to delete. Note that either `FolderName` or `FolderID` is required.
+        </ParamField>
+
+        <ParamField query="ProjectID" type="string" required>
+            The ID of the project where the folder lives in.
+        </ParamField>
+        <ParamField query="Environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where the folder lives in.
+        </ParamField>
+        <ParamField query="Path" type="string" optional>
+            The path from where the folder should be deleted.
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+

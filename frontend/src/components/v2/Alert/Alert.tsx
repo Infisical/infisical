@@ -9,7 +9,7 @@ import { type VariantProps, cva } from "cva";
 import { twMerge } from "tailwind-merge";
 
 const alertVariants = cva(
-  "w-full bg-mineshaft-800 rounded-lg border px-4 py-3 text-sm flex items-center gap-x-4",
+  "w-full bg-mineshaft-800 rounded-lg border border-bunker-400 px-4 py-3 text-sm flex items-center gap-x-4",
   {
     variants: {
       variant: {
@@ -66,7 +66,7 @@ const Alert = forwardRef<
       </div>
       <div className="flex flex-col gap-y-1">
         {hideTitle ? null : (
-          <h5 className="font-medium leading-none tracking-tight" {...props}>
+          <h5 className="font-medium leading-6 tracking-tight" {...props}>
             {defaultTitle}
           </h5>
         )}
@@ -81,7 +81,7 @@ const AlertDescription = forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={twMerge("text-sm [&_p]:leading-relaxed", className)} {...props} />
+  <div ref={ref} className={twMerge("text-sm", className)} {...props} />
 ));
 AlertDescription.displayName = "AlertDescription";
 

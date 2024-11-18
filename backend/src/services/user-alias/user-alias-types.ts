@@ -1,4 +1,5 @@
 export enum UserAliasType {
   LDAP = "ldap",
-  SAML = "saml"
+  SAML = "saml",
+  OIDC = "oidc"
 }

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { IdentityGcpAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { GCP_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -18,7 +19,7 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
     schema: {
       description: "Login with GCP Auth",
       body: z.object({
-        identityId: z.string(),
+        identityId: z.string().trim().describe(GCP_AUTH.LOGIN.identityId).trim(),
         jwt: z.string()
       }),
       response: {
@@ -71,36 +72,41 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
         }
       ],
       params: z.object({
-        identityId: z.string().trim()
+        identityId: z.string().trim().describe(GCP_AUTH.ATTACH.identityId)
       }),
       body: z.object({
         type: z.enum(["iam", "gce"]),
-        allowedServiceAccounts: validateGcpAuthField,
-        allowedProjects: validateGcpAuthField,
-        allowedZones: validateGcpAuthField,
+        allowedServiceAccounts: validateGcpAuthField.describe(GCP_AUTH.ATTACH.allowedServiceAccounts),
+        allowedProjects: validateGcpAuthField.describe(GCP_AUTH.ATTACH.allowedProjects),
+        allowedZones: validateGcpAuthField.describe(GCP_AUTH.ATTACH.allowedZones),
         accessTokenTrustedIps: z
           .object({
             ipAddress: z.string().trim()
           })
           .array()
           .min(1)
-          .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]),
+          .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
+          .describe(GCP_AUTH.ATTACH.accessTokenTrustedIps),
         accessTokenTTL: z
           .number()
           .int()
           .min(1)
+          .max(315360000)
           .refine((value) => value !== 0, {
             message: "accessTokenTTL must have a non zero number"
           })
-          .default(2592000),
+          .default(2592000)
+          .describe(GCP_AUTH.ATTACH.accessTokenTTL),
         accessTokenMaxTTL: z
           .number()
           .int()
+          .max(315360000)
           .refine((value) => value !== 0, {
             message: "accessTokenMaxTTL must have a non zero number"
           })
-          .default(2592000),
-        accessTokenNumUsesLimit: z.number().int().min(0).default(0)
+          .default(2592000)
+          .describe(GCP_AUTH.ATTACH.accessTokenMaxTTL),
+        accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(GCP_AUTH.ATTACH.accessTokenNumUsesLimit)
       }),
       response: {
         200: z.object({
@@ -156,29 +162,32 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
         }
       ],
       params: z.object({
-        identityId: z.string().trim()
+        identityId: z.string().trim().describe(GCP_AUTH.UPDATE.identityId)
       }),
       body: z.object({
         type: z.enum(["iam", "gce"]).optional(),
-        allowedServiceAccounts: validateGcpAuthField.optional(),
-        allowedProjects: validateGcpAuthField.optional(),
-        allowedZones: validateGcpAuthField.optional(),
+        allowedServiceAccounts: validateGcpAuthField.optional().describe(GCP_AUTH.UPDATE.allowedServiceAccounts),
+        allowedProjects: validateGcpAuthField.optional().describe(GCP_AUTH.UPDATE.allowedProjects),
+        allowedZones: validateGcpAuthField.optional().describe(GCP_AUTH.UPDATE.allowedZones),
         accessTokenTrustedIps: z
           .object({
             ipAddress: z.string().trim()
           })
           .array()
           .min(1)
-          .optional(),
-        accessTokenTTL: z.number().int().min(0).optional(),
-        accessTokenNumUsesLimit: z.number().int().min(0).optional(),
+          .optional()
+          .describe(GCP_AUTH.UPDATE.accessTokenTrustedIps),
+        accessTokenTTL: z.number().int().min(0).max(315360000).optional().describe(GCP_AUTH.UPDATE.accessTokenTTL),
+        accessTokenNumUsesLimit: z.number().int().min(0).optional().describe(GCP_AUTH.UPDATE.accessTokenNumUsesLimit),
         accessTokenMaxTTL: z
           .number()
           .int()
+          .max(315360000)
           .refine((value) => value !== 0, {
             message: "accessTokenMaxTTL must have a non zero number"
           })
           .optional()
+          .describe(GCP_AUTH.UPDATE.accessTokenMaxTTL)
       }),
       response: {
         200: z.object({
@@ -234,7 +243,7 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
         }
       ],
       params: z.object({
-        identityId: z.string()
+        identityId: z.string().describe(GCP_AUTH.RETRIEVE.identityId)
       }),
       response: {
         200: z.object({
@@ -256,6 +265,53 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
         orgId: identityGcpAuth.orgId,
         event: {
           type: EventType.GET_IDENTITY_GCP_AUTH,
+          metadata: {
+            identityId: identityGcpAuth.identityId
+          }
+        }
+      });
+
+      return { identityGcpAuth };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/gcp-auth/identities/:identityId",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Delete GCP Auth configuration on identity",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        identityId: z.string().describe(GCP_AUTH.REVOKE.identityId)
+      }),
+      response: {
+        200: z.object({
+          identityGcpAuth: IdentityGcpAuthsSchema
+        })
+      }
+    },
+    handler: async (req) => {
+      const identityGcpAuth = await server.services.identityGcpAuth.revokeIdentityGcpAuth({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        identityId: req.params.identityId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: identityGcpAuth.orgId,
+        event: {
+          type: EventType.REVOKE_IDENTITY_GCP_AUTH,
           metadata: {
             identityId: identityGcpAuth.identityId
           }

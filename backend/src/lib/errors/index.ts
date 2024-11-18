@@ -23,6 +23,18 @@ export class InternalServerError extends Error {
   }
 }
 
+export class GatewayTimeoutError extends Error {
+  name: string;
+
+  error: unknown;
+
+  constructor({ name, error, message }: { message?: string; name?: string; error?: unknown }) {
+    super(message || "Timeout error");
+    this.name = name || "GatewayTimeoutError";
+    this.error = error;
+  }
+}
+
 export class UnauthorizedError extends Error {
   name: string;
 
@@ -40,9 +52,9 @@ export class ForbiddenRequestError extends Error {
 
   error: unknown;
 
-  constructor({ name, error, message }: { message?: string; name?: string; error?: unknown }) {
+  constructor({ name, error, message }: { message?: string; name?: string; error?: unknown } = {}) {
     super(message ?? "You are not allowed to access this resource");
-    this.name = name || "ForbideenError";
+    this.name = name || "ForbiddenError";
     this.error = error;
   }
 }
@@ -55,6 +67,25 @@ export class BadRequestError extends Error {
   constructor({ name, error, message }: { message?: string; name?: string; error?: unknown }) {
     super(message ?? "The request is invalid");
     this.name = name || "BadRequest";
+    this.error = error;
+  }
+}
+
+export class RateLimitError extends Error {
+  constructor({ message }: { message?: string }) {
+    super(message || "Rate limit exceeded");
+    this.name = "RateLimitExceeded";
+  }
+}
+
+export class NotFoundError extends Error {
+  name: string;
+
+  error: unknown;
+
+  constructor({ name, error, message }: { message?: string; name?: string; error?: unknown }) {
+    super(message ?? "The requested entity is not found");
+    this.name = name || "NotFound";
     this.error = error;
   }
 }

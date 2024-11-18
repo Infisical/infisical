@@ -34,7 +34,7 @@ describe("Identity v1", async () => {
   test("Create identity", async () => {
     const newIdentity = await createIdentity("mac1", OrgMembershipRole.Admin);
     expect(newIdentity.name).toBe("mac1");
-    expect(newIdentity.authMethod).toBeNull();
+    expect(newIdentity.authMethods).toEqual([]);
 
     await deleteIdentity(newIdentity.id);
   });
@@ -42,7 +42,7 @@ describe("Identity v1", async () => {
   test("Update identity", async () => {
     const newIdentity = await createIdentity("mac1", OrgMembershipRole.Admin);
     expect(newIdentity.name).toBe("mac1");
-    expect(newIdentity.authMethod).toBeNull();
+    expect(newIdentity.authMethods).toEqual([]);
 
     const updatedIdentity = await testServer.inject({
       method: "PATCH",

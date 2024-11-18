@@ -1,3 +1,4 @@
+import { EnforcementLevel, PolicyType } from "../policies/enums";
 import { TProjectPermission } from "../roles/types";
 import { WorkspaceEnv } from "../workspace/types";
 
@@ -10,14 +11,35 @@ export type TAccessApprovalPolicy = {
   workspace: string;
   environment: WorkspaceEnv;
   projectId: string;
-  approvers: string[];
+  policyType: PolicyType;
+  approversRequired: boolean;
+  enforcementLevel: EnforcementLevel;
+  updatedAt: Date;
+  approvers?: Approver[];
 };
+
+export enum ApproverType{
+  User = "user",
+  Group = "group"
+}
+
+export type Approver ={
+  id: string;
+  type: ApproverType;
+}
 
 export type TAccessApprovalRequest = {
   id: string;
   policyId: string;
   privilegeId: string | null;
-  requestedBy: string;
+  requestedByUserId: string;
+  requestedByUser: {
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    userId: string;
+    username: string;
+  };
   createdAt: Date;
   updatedAt: Date;
   isTemporary: boolean;
@@ -47,6 +69,7 @@ export type TAccessApprovalRequest = {
     approvers: string[];
     secretPath?: string | null;
     envId: string;
+    enforcementLevel: EnforcementLevel;
   };
 
   reviewers: {
@@ -116,18 +139,20 @@ export type TCreateAccessPolicyDTO = {
   projectSlug: string;
   name?: string;
   environment: string;
-  approvers?: string[];
+  approvers?: Approver[];
   approvals?: number;
   secretPath?: string;
+  enforcementLevel?: EnforcementLevel;
 };
 
 export type TUpdateAccessPolicyDTO = {
   id: string;
   name?: string;
-  approvers?: string[];
+  approvers?: Approver[];
   secretPath?: string;
   environment?: string;
   approvals?: number;
+  enforcementLevel?: EnforcementLevel;
   // for invalidating list
   projectSlug: string;
 };

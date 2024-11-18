@@ -17,6 +17,7 @@ import { useCreateIntegration } from "@app/hooks/api";
 import { useGetIntegrationAuthAwsKmsKeys } from "@app/hooks/api/integrationAuth/queries";
 
 import {
+  Badge,
   Button,
   Card,
   CardTitle,
@@ -245,8 +246,8 @@ export default function AWSParameterStoreCreateIntegrationPage() {
                   className="w-full border border-mineshaft-500"
                 >
                   {awsRegions.map((awsRegion) => (
-                    <SelectItem value={awsRegion.slug} key={`flyio-environment-${awsRegion.slug}`}>
-                      {awsRegion.name}
+                    <SelectItem value={awsRegion.slug} key={`aws-environment-${awsRegion.slug}`}>
+                      {awsRegion.name} <Badge variant="success">{awsRegion.slug}</Badge>
                     </SelectItem>
                   ))}
                 </Select>
@@ -277,18 +278,14 @@ export default function AWSParameterStoreCreateIntegrationPage() {
               <div className="mt-2 ml-1">
                 <Switch
                   id="delete-aws"
-                  onCheckedChange={() => setShouldDisableDelete(!shouldDisableDelete)}
+                  onCheckedChange={setShouldDisableDelete}
                   isChecked={shouldDisableDelete}
                 >
                   Disable deleting secrets in AWS Parameter Store
                 </Switch>
               </div>
               <div className="mt-4 ml-1">
-                <Switch
-                  id="tag-aws"
-                  onCheckedChange={() => setShouldTag(!shouldTag)}
-                  isChecked={shouldTag}
-                >
+                <Switch id="tag-aws" onCheckedChange={setShouldTag} isChecked={shouldTag}>
                   Tag in AWS Parameter Store
                 </Switch>
               </div>
@@ -352,7 +349,7 @@ export default function AWSParameterStoreCreateIntegrationPage() {
       <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4">
         <div className="flex flex-row items-center">
           <FontAwesomeIcon icon={faCircleInfo} className="text-xl text-mineshaft-200" />{" "}
-          <span className="text-md ml-3 text-mineshaft-100">Pro Tips</span>
+          <span className="text-md ml-3 text-mineshaft-100">Pro Tip</span>
         </div>
         <span className="mt-4 text-sm text-mineshaft-300">
           After creating an integration, your secrets will start syncing immediately. This might

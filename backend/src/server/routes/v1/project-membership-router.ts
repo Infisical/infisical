@@ -39,7 +39,8 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
               email: true,
               firstName: true,
               lastName: true,
-              id: true
+              id: true,
+              username: true
             }).merge(UserEncryptionKeysSchema.pick({ publicKey: true })),
             roles: z.array(
               z.object({
@@ -56,7 +57,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
               })
             )
           })
-            .omit({ createdAt: true, updatedAt: true })
+            .omit({ updatedAt: true })
             .array()
         })
       }
@@ -71,6 +72,65 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         projectId: req.params.workspaceId
       });
       return { memberships };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:workspaceId/memberships/:membershipId",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "Return project user membership",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        workspaceId: z.string().min(1).trim().describe(PROJECT_USERS.GET_USER_MEMBERSHIP.workspaceId),
+        membershipId: z.string().min(1).trim().describe(PROJECT_USERS.GET_USER_MEMBERSHIP.membershipId)
+      }),
+      response: {
+        200: z.object({
+          membership: ProjectMembershipsSchema.extend({
+            user: UsersSchema.pick({
+              email: true,
+              firstName: true,
+              lastName: true,
+              id: true,
+              username: true
+            }).merge(UserEncryptionKeysSchema.pick({ publicKey: true })),
+            roles: z.array(
+              z.object({
+                id: z.string(),
+                role: z.string(),
+                customRoleId: z.string().optional().nullable(),
+                customRoleName: z.string().optional().nullable(),
+                customRoleSlug: z.string().optional().nullable(),
+                isTemporary: z.boolean(),
+                temporaryMode: z.string().optional().nullable(),
+                temporaryRange: z.string().nullable().optional(),
+                temporaryAccessStartTime: z.date().nullable().optional(),
+                temporaryAccessEndTime: z.date().nullable().optional()
+              })
+            )
+          }).omit({ updatedAt: true })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const membership = await server.services.projectMembership.getProjectMembershipById({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.workspaceId,
+        id: req.params.membershipId
+      });
+      return { membership };
     }
   });
 
@@ -305,6 +365,34 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
             email: ""
           }
         }
+      });
+      return { membership };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:workspaceId/leave",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          membership: ProjectMembershipsSchema
+        })
+      }
+    },
+
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const membership = await server.services.projectMembership.leaveProject({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        projectId: req.params.workspaceId
       });
       return { membership };
     }

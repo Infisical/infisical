@@ -1,4 +1,3 @@
-import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import {
   faArrowsSpin,
@@ -16,12 +15,9 @@ import { formatDistance } from "date-fns";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  Button,
   DeleteActionModal,
   EmptyState,
   IconButton,
-  Modal,
-  ModalContent,
   Skeleton,
   Spinner,
   Table,
@@ -48,22 +44,17 @@ import {
   useDeleteSecretRotation,
   useGetSecretRotationProviders,
   useGetSecretRotations,
-  useGetUserWsKey,
-  useGetWorkspaceBot,
-  useRestartSecretRotation,
-  useUpdateBotActiveStatus
+  useRestartSecretRotation
 } from "@app/hooks/api";
 import { TSecretRotationProviderTemplate } from "@app/hooks/api/types";
 
 import { CreateRotationForm } from "./components/CreateRotationForm";
-import { generateBotKey } from "./SecretRotationPage.utils";
 
 export const SecretRotationPage = withProjectPermission(
   () => {
     const { currentWorkspace } = useWorkspace();
-    const { t } = useTranslation();
     const { permission } = useProjectPermission();
-    
+
     const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
       "createRotation",
       "activeBot",
@@ -77,13 +68,10 @@ export const SecretRotationPage = withProjectPermission(
     );
     const { subscription } = useSubscription();
 
-    const { data: userWsKey } = useGetUserWsKey(workspaceId);
-
     const { data: secretRotationProviders, isLoading: isRotationProviderLoading } =
       useGetSecretRotationProviders({ workspaceId });
     const { data: secretRotations, isLoading: isRotationLoading } = useGetSecretRotations({
-      workspaceId,
-      decryptFileKey: userWsKey!
+      workspaceId
     });
 
     const {
@@ -96,11 +84,6 @@ export const SecretRotationPage = withProjectPermission(
       variables: restartSecretRotationVar,
       isLoading: isRestartingRotation
     } = useRestartSecretRotation();
-
-    const { data: bot } = useGetWorkspaceBot(workspaceId);
-    const { mutateAsync: updateBotActiveStatus } = useUpdateBotActiveStatus();
-
-    const isBotActive = Boolean(bot?.isActive);
 
     const handleDeleteRotation = async () => {
       const { id } = popUp.deleteRotation.data as { id: string };
@@ -142,29 +125,6 @@ export const SecretRotationPage = withProjectPermission(
       }
     };
 
-    const handleUserAcceptBotCondition = async () => {
-      const provider = popUp.activeBot?.data as TSecretRotationProviderTemplate;
-      try {
-        if (bot?.id) {
-          const botKey = generateBotKey(bot.publicKey, userWsKey!);
-          await updateBotActiveStatus({
-            isActive: true,
-            botId: bot.id,
-            workspaceId,
-            botKey
-          });
-        }
-        handlePopUpOpen("createRotation", provider);
-        handlePopUpClose("activeBot");
-      } catch (error) {
-        console.log(error);
-        createNotification({
-          type: "error",
-          text: "Failed to create bot"
-        });
-      }
-    };
-
     const handleCreateRotation = async (provider: TSecretRotationProviderTemplate) => {
       if (subscription && !subscription?.secretRotation) {
         handlePopUpOpen("upgradePlan");
@@ -174,11 +134,7 @@ export const SecretRotationPage = withProjectPermission(
         createNotification({ type: "error", text: "Access permission denied!!" });
         return;
       }
-      if (isBotActive) {
-        handlePopUpOpen("createRotation", provider);
-      } else {
-        handlePopUpOpen("activeBot", provider);
-      }
+      handlePopUpOpen("createRotation", provider);
     };
 
     return (
@@ -391,30 +347,6 @@ export const SecretRotationPage = withProjectPermission(
           onToggle={(isOpen) => handlePopUpToggle("createRotation", isOpen)}
           provider={(popUp.createRotation.data as TSecretRotationProviderTemplate) || {}}
         />
-        <Modal
-          isOpen={popUp.activeBot?.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("activeBot", isOpen)}
-        >
-          <ModalContent
-            title={t("integrations.grant-access-to-secrets") as string}
-            footerContent={
-              <div className="flex items-center space-x-2">
-                <Button onClick={() => handleUserAcceptBotCondition()}>
-                  {t("integrations.grant-access-button") as string}
-                </Button>
-                <Button
-                  onClick={() => handlePopUpClose("activeBot")}
-                  variant="outline_bg"
-                  colorSchema="secondary"
-                >
-                  Cancel
-                </Button>
-              </div>
-            }
-          >
-            {t("integrations.why-infisical-needs-access")}
-          </ModalContent>
-        </Modal>
         <DeleteActionModal
           isOpen={popUp.deleteRotation.isOpen}
           title="Are you sure want to delete this rotation?"

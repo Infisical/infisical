@@ -4,16 +4,59 @@ sidebarTitle: "MFA"
 description: "Learn how to secure your Infisical account with MFA."
 ---
 
-MFA requires users to provide multiple forms of identification to access their account. Currently, this means logging in with your password and a 6-digit code sent to your email.
+MFA requires users to provide multiple forms of identification to access their account.
 
 ## Email 2FA
 
-Check the box in Personal Settings > Two-factor Authentication to enable email-based 2FA.
+If 2-factor authentication is enabled in the Personal settings page, email will be used for MFA by default.
 
-![Email-based MFA](../../images/mfa-email.png)
+![Email-based MFA](/images/mfa-email.png)
+
+## Mobile Authenticator 2FA
+
+You can use any mobile authenticator app (Authy, Google Authenticator, Duo, etc.) to secure your account. After registration with an authenticator, select **Mobile Authenticator** as your 2FA method.
+![Authenticator-based MFA](/images/mfa-authenticator.png)
+
+## Entra ID / Azure AD MFA
 
 <Note>
-  Infisical currently supports email-based 2FA. We're actively working on
-  building support for other forms of identification via SMS and Authenticator
-  App.
+    Before proceeding make sure you've enabled [SAML SSO for Entra ID / Azure AD](./sso/azure).
+
+    We also encourage you to have your team download and setup the
+    [Microsoft Authenticator App](https://www.microsoft.com/en-us/security/mobile-authenticator-app) prior to enabling MFA.
+
 </Note>
+
+<Steps>
+  <Step title="Open your Infisical Application in the Microsoft Entra Admin Center">
+    ![Entra Infisical
+    app](/images/platform/mfa/entra/mfa_entra_infisical_app.png)
+  </Step>
+  <Step title="Tap on Conditional Access under the Security Tab">
+    ![conditional
+    access](/images/platform/mfa/entra/mfa_entra_conditional_access.png)
+  </Step>
+  <Step title="Tap on Create New Policy from Templates">
+    ![create policy](/images/platform/mfa/entra/mfa_entra_create_policy.png)
+  </Step>
+  <Step title="Select Require MFA for All Users and Tap on Review + Create">
+    ![require MFA and review
+    policy](/images/platform/mfa/entra/mfa_entra_review_policy.png)
+    <Note>
+      By default all users except the configuring admin will be setup to require
+      MFA. Microsoft encourages keeping at least one admin excluded from MFA to
+      prevent accidental lockout.
+    </Note>
+  </Step>
+  <Step title="Set Policy State to Enabled and Tap on Create">
+    ![enable policy and
+    confirm](/images/platform/mfa/entra/mfa_entra_confirm_policy.png)
+  </Step>
+  <Step title="MFA is now Required When Accessing Infisical">
+    ![mfa login](/images/platform/mfa/entra/mfa_entra_login.png)
+    <Note>
+      If users have not setup MFA for Entra / Azure they will be prompted to do
+      so at this time.
+    </Note>
+  </Step>
+</Steps>

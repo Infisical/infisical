@@ -1,92 +1,40 @@
 import { useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQueryClient } from "@tanstack/react-query";
-import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { CreateTagModal } from "@app/components/tags/CreateTagModal";
 import { DeleteActionModal } from "@app/components/v2";
 import { usePopUp } from "@app/hooks";
 import { useCreateSecretV3, useDeleteSecretV3, useUpdateSecretV3 } from "@app/hooks/api";
+import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { secretKeys } from "@app/hooks/api/secrets/queries";
-import { DecryptedSecret } from "@app/hooks/api/secrets/types";
+import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { secretSnapshotKeys } from "@app/hooks/api/secretSnapshots/queries";
-import { UserWsKeyPair, WsTag } from "@app/hooks/api/types";
+import { WsTag } from "@app/hooks/api/types";
+import { AddShareSecretModal } from "@app/views/ShareSecretPage/components/AddShareSecretModal";
 
 import { useSelectedSecretActions, useSelectedSecrets } from "../../SecretMainPage.store";
-import { Filter, GroupBy, SortDir } from "../../SecretMainPage.types";
-import { SecretDetailSidebar } from "./SecretDetaiSidebar";
+import { SecretDetailSidebar } from "./SecretDetailSidebar";
 import { SecretItem } from "./SecretItem";
 import { FontAwesomeSpriteSymbols } from "./SecretListView.utils";
 
 type Props = {
-  secrets?: DecryptedSecret[];
+  secrets?: SecretV3RawSanitized[];
   environment: string;
   workspaceId: string;
-  decryptFileKey: UserWsKeyPair;
   secretPath?: string;
-  filter: Filter;
-  sortDir?: SortDir;
   tags?: WsTag[];
   isVisible?: boolean;
   isProtectedBranch?: boolean;
 };
 
-const reorderSecretGroupByUnderscore = (secrets: DecryptedSecret[], sortDir: SortDir) => {
-  const groupedSecrets: Record<string, DecryptedSecret[]> = {};
-  secrets.forEach((secret) => {
-    const lastSeperatorIndex = secret.key.lastIndexOf("_");
-    const namespace =
-      lastSeperatorIndex !== -1 ? secret.key.substring(0, lastSeperatorIndex) : "misc";
-    if (!groupedSecrets?.[namespace]) groupedSecrets[namespace] = [];
-    groupedSecrets[namespace].push(secret);
-  });
-
-  return Object.keys(groupedSecrets)
-    .sort((a, b) =>
-      sortDir === SortDir.ASC
-        ? a.toLowerCase().localeCompare(b.toLowerCase())
-        : b.toLowerCase().localeCompare(a.toLowerCase())
-    )
-    .map((namespace) => ({ namespace, secrets: groupedSecrets[namespace] }));
-};
-
-const reorderSecret = (secrets: DecryptedSecret[], sortDir: SortDir, filter?: GroupBy | null) => {
-  if (filter === GroupBy.PREFIX) {
-    return reorderSecretGroupByUnderscore(secrets, sortDir);
-  }
-
-  return [
-    {
-      namespace: "",
-      secrets: secrets?.sort((a, b) =>
-        sortDir === SortDir.ASC
-          ? a.key.toLowerCase().localeCompare(b.key.toLowerCase())
-          : b.key.toLowerCase().localeCompare(a.key.toLowerCase())
-      )
-    }
-  ];
-};
-
-export const filterSecrets = (secrets: DecryptedSecret[], filter: Filter) =>
-  secrets.filter(({ key, value, tags }) => {
-    const isTagFilterActive = Boolean(Object.keys(filter.tags).length);
-    const searchTerm = filter.searchFilter.toLowerCase();
-    return (
-      (!isTagFilterActive || tags.some(({ id }) => filter.tags?.[id])) &&
-      (key.toLowerCase().includes(searchTerm) || value.toLowerCase().includes(searchTerm))
-    );
-  });
-
 export const SecretListView = ({
   secrets = [],
   environment,
   workspaceId,
-  decryptFileKey,
   secretPath = "/",
-  filter,
-  sortDir = SortDir.ASC,
   tags: wsTags = [],
   isVisible,
   isProtectedBranch = false
@@ -95,7 +43,8 @@ export const SecretListView = ({
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "deleteSecret",
     "secretDetail",
-    "createTag"
+    "createTag",
+    "createSharedSecret"
   ] as const);
 
   // strip of side effect queries
@@ -119,7 +68,7 @@ export const SecretListView = ({
 
   const handleSecretOperation = async (
     operation: "create" | "update" | "delete",
-    type: "shared" | "personal",
+    type: SecretType,
     key: string,
     {
       value,
@@ -146,7 +95,7 @@ export const SecretListView = ({
         environment,
         workspaceId,
         secretPath,
-        secretName: key,
+        secretKey: key,
         type,
         secretId
       });
@@ -158,12 +107,10 @@ export const SecretListView = ({
         environment,
         workspaceId,
         secretPath,
-        secretName: key,
-        secretId,
+        secretKey: key,
         secretValue: value || "",
         type,
-        latestFileKey: decryptFileKey,
-        tags,
+        tagIds: tags,
         secretComment: comment,
         secretReminderRepeatDays: reminderRepeatDays,
         secretReminderNote: reminderNote,
@@ -178,12 +125,11 @@ export const SecretListView = ({
         environment,
         workspaceId,
         secretPath,
-        secretName: key,
+        secretKey: key,
         secretValue: value || "",
         secretComment: "",
         skipMultilineEncoding,
-        type,
-        latestFileKey: decryptFileKey
+        type
       },
       {}
     );
@@ -191,8 +137,8 @@ export const SecretListView = ({
 
   const handleSaveSecret = useCallback(
     async (
-      orgSecret: DecryptedSecret,
-      modSecret: Omit<DecryptedSecret, "tags"> & { tags: { id: string }[] },
+      orgSecret: SecretV3RawSanitized,
+      modSecret: Omit<SecretV3RawSanitized, "tags"> & { tags?: { id: string }[] },
       cb?: () => void
     ) => {
       const { key: oldKey } = orgSecret;
@@ -227,23 +173,25 @@ export const SecretListView = ({
       try {
         // personal secret change
         if (overrideAction === "deleted") {
-          await handleSecretOperation("delete", "personal", oldKey, {
+          await handleSecretOperation("delete", SecretType.Personal, oldKey, {
             secretId: orgSecret.idOverride
           });
         } else if (overrideAction && idOverride) {
-          await handleSecretOperation("update", "personal", oldKey, {
+          await handleSecretOperation("update", SecretType.Personal, oldKey, {
             value: valueOverride,
             newKey: hasKeyChanged ? key : undefined,
             secretId: orgSecret.idOverride,
             skipMultilineEncoding: modSecret.skipMultilineEncoding
           });
         } else if (overrideAction) {
-          await handleSecretOperation("create", "personal", oldKey, { value: valueOverride });
+          await handleSecretOperation("create", SecretType.Personal, oldKey, {
+            value: valueOverride
+          });
         }
 
         // shared secret change
         if (!isSharedSecUnchanged) {
-          await handleSecretOperation("update", "shared", oldKey, {
+          await handleSecretOperation("update", SecretType.Shared, oldKey, {
             value,
             tags: tagIds,
             comment,
@@ -256,6 +204,12 @@ export const SecretListView = ({
           if (cb) cb();
         }
         queryClient.invalidateQueries(
+          dashboardKeys.getDashboardSecrets({
+            projectId: workspaceId,
+            secretPath
+          })
+        );
+        queryClient.invalidateQueries(
           secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
         );
         queryClient.invalidateQueries(
@@ -267,7 +221,7 @@ export const SecretListView = ({
         queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId }));
         handlePopUpClose("secretDetail");
         createNotification({
-          type: "success",
+          type: isProtectedBranch ? "info" : "success",
           text: isProtectedBranch
             ? "Requested changes have been sent for review"
             : "Successfully saved secrets"
@@ -284,10 +238,13 @@ export const SecretListView = ({
   );
 
   const handleSecretDelete = useCallback(async () => {
-    const { key, id: secretId } = popUp.deleteSecret?.data as DecryptedSecret;
+    const { key, id: secretId } = popUp.deleteSecret?.data as SecretV3RawSanitized;
     try {
-      await handleSecretOperation("delete", "shared", key, { secretId });
+      await handleSecretOperation("delete", SecretType.Shared, key, { secretId });
       // wrap this in another function and then reuse
+      queryClient.invalidateQueries(
+        dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+      );
       queryClient.invalidateQueries(
         secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
       );
@@ -301,7 +258,7 @@ export const SecretListView = ({
       handlePopUpClose("deleteSecret");
       handlePopUpClose("secretDetail");
       createNotification({
-        type: "success",
+        type: isProtectedBranch ? "info" : "success",
         text: isProtectedBranch
           ? "Requested changes have been sent for review"
           : "Successfully deleted secret"
@@ -313,65 +270,48 @@ export const SecretListView = ({
         text: "Failed to delete secret"
       });
     }
-  }, [(popUp.deleteSecret?.data as DecryptedSecret)?.key, environment, secretPath]);
+  }, [(popUp.deleteSecret?.data as SecretV3RawSanitized)?.key, environment, secretPath]);
 
   // for optimization on minimise re-rendering of secret items
   const onCreateTag = useCallback(() => handlePopUpOpen("createTag"), []);
   const onDeleteSecret = useCallback(
-    (sec: DecryptedSecret) => handlePopUpOpen("deleteSecret", sec),
+    (sec: SecretV3RawSanitized) => handlePopUpOpen("deleteSecret", sec),
     []
   );
   const onDetailViewSecret = useCallback(
-    (sec: DecryptedSecret) => handlePopUpOpen("secretDetail", sec),
+    (sec: SecretV3RawSanitized) => handlePopUpOpen("secretDetail", sec),
     []
   );
 
   return (
     <>
-      {reorderSecret(secrets, sortDir, filter.groupBy).map(
-        ({ namespace, secrets: groupedSecrets }) => {
-          const filteredSecrets = filterSecrets(groupedSecrets, filter);
-          return (
-            <div className="flex flex-col" key={`${namespace}-${groupedSecrets.length}`}>
-              <div
-                className={twMerge(
-                  "text-md h-0 bg-bunker-600 capitalize transition-all",
-                  Boolean(namespace) && Boolean(filteredSecrets.length) && "h-11 py-3 pl-4 "
-                )}
-                key={namespace}
-              >
-                {namespace}
-              </div>
-              {FontAwesomeSpriteSymbols.map(({ icon, symbol }) => (
-                <FontAwesomeIcon
-                  icon={icon}
-                  symbol={symbol}
-                  key={`font-awesome-svg-spritie-${symbol}`}
-                />
-              ))}
-              {filteredSecrets.map((secret) => (
-                <SecretItem
-                  environment={environment}
-                  secretPath={secretPath}
-                  tags={wsTags}
-                  isSelected={selectedSecrets?.[secret.id]}
-                  onToggleSecretSelect={toggleSelectedSecret}
-                  isVisible={isVisible}
-                  secret={secret}
-                  key={secret.id}
-                  onSaveSecret={handleSaveSecret}
-                  onDeleteSecret={onDeleteSecret}
-                  onDetailViewSecret={onDetailViewSecret}
-                  onCreateTag={onCreateTag}
-                />
-              ))}
-            </div>
-          );
-        }
-      )}
+      {FontAwesomeSpriteSymbols.map(({ icon, symbol }) => (
+        <FontAwesomeIcon icon={icon} symbol={symbol} key={`font-awesome-svg-spritie-${symbol}`} />
+      ))}
+      {secrets.map((secret) => (
+        <SecretItem
+          environment={environment}
+          secretPath={secretPath}
+          tags={wsTags}
+          isSelected={Boolean(selectedSecrets?.[secret.id])}
+          onToggleSecretSelect={toggleSelectedSecret}
+          isVisible={isVisible}
+          secret={secret}
+          key={secret.id}
+          onSaveSecret={handleSaveSecret}
+          onDeleteSecret={onDeleteSecret}
+          onDetailViewSecret={onDetailViewSecret}
+          onCreateTag={onCreateTag}
+          handleSecretShare={() =>
+            handlePopUpOpen("createSharedSecret", {
+              value: secret.valueOverride ?? secret.value
+            })
+          }
+        />
+      ))}
       <DeleteActionModal
         isOpen={popUp.deleteSecret.isOpen}
-        deleteKey={(popUp.deleteSecret?.data as DecryptedSecret)?.key}
+        deleteKey={(popUp.deleteSecret?.data as SecretV3RawSanitized)?.key}
         title="Do you want to delete this secret?"
         onChange={(isOpen) => handlePopUpToggle("deleteSecret", isOpen)}
         onDeleteApproved={handleSecretDelete}
@@ -382,18 +322,19 @@ export const SecretListView = ({
         secretPath={secretPath}
         isOpen={popUp.secretDetail.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("secretDetail", isOpen)}
-        decryptFileKey={decryptFileKey}
-        secret={popUp.secretDetail.data as DecryptedSecret}
+        secret={popUp.secretDetail.data as SecretV3RawSanitized}
         onDeleteSecret={() => handlePopUpOpen("deleteSecret", popUp.secretDetail.data)}
         onClose={() => handlePopUpClose("secretDetail")}
         onSaveSecret={handleSaveSecret}
         tags={wsTags}
         onCreateTag={() => handlePopUpOpen("createTag")}
+        handleSecretShare={(value: string) => handlePopUpOpen("createSharedSecret", { value })}
       />
       <CreateTagModal
         isOpen={popUp.createTag.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("createTag", isOpen)}
       />
+      <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
     </>
   );
 };

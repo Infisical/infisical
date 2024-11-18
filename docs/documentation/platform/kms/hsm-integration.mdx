@@ -1,0 +1,262 @@
+---
+title: "HSM Integration"
+description: "Learn more about integrating an HSM with Infisical KMS."
+---
+
+<Note>
+  Changing the encryption strategy for your instance is an Enterprise-only feature.
+  This section is intended for users who have obtained an Enterprise license and are on-premise.
+
+
+  Please reach out to sales@infisical.com if you have any questions.
+</Note>
+
+## Overview
+
+Infisical KMS currently supports two encryption strategies:
+1. **Standard Encryption**: This is the default encryption strategy used by Infisical KMS. It uses a software-protected encryption key to encrypt KMS keys within your Infisical instance. The root encryption key is defined by setting the `ENCRYPTION_KEY` environment variable.
+2. **Hardware Security Module (HSM)**: This encryption strategy uses a Hardware Security Module (HSM) to create a root encryption key that is stored on a physical device to encrypt the KMS keys within your instance.
+
+## Hardware Security Module (HSM)
+
+![HSM Illustration](/images/platform/kms/hsm/hsm-illustration.png)
+
+Using a hardware security module comes with the added benefit of having a secure and tamper-proof device to store your encryption keys. This ensures that your data is protected from unauthorized access.
+
+<Warning>
+  All encryption keys used for cryptographic operations are stored within the HSM. This means that if the HSM is lost or destroyed, you will no longer be able to decrypt your data stored within Infisical. Most providers offer recovery options for HSM devices, which you should consider when setting up an HSM device.
+</Warning>
+
+Enabling HSM encryption has a set of key benefits:
+1. **Root Key Wrapping**: The root KMS encryption key that is used to secure your Infisical instance will be encrypted using the HSM device rather than the standard software-protected key.
+2. **FIPS 140-2/3 Compliance**: Using an HSM device ensures that your Infisical instance is FIPS 140-2 or FIPS 140-3 compliant. For FIPS 140-3, ensure that your HSM is FIPS 140-3 validated.
+
+#### Caveats
+- **Performance**: Using an HSM device can have a performance impact on your Infisical instance. This is due to the additional latency introduced by the HSM device. This is however only noticeable when your instance(s) start up or when the encryption strategy is changed.
+- **Key Recovery**: If the HSM device is lost or destroyed, you will no longer be able to decrypt your data stored within Infisical. Most HSM providers offer recovery options, which you should consider when setting up an HSM device.
+
+### Requirements
+- An Infisical instance with a version number that is equal to or greater than `v0.91.0`.
+- If you are using Docker, your instance must be using the `infisical/infisical-fips` image.
+- An HSM device from a provider such as [Thales Luna HSM](https://cpl.thalesgroup.com/encryption/data-protection-on-demand/services/luna-cloud-hsm), [AWS CloudHSM](https://aws.amazon.com/cloudhsm/), or others.
+
+
+### FIPS Compliance
+FIPS, also known as the Federal Information Processing Standard, is a set of standards that are used to accredit cryptographic modules. FIPS 140-2 and FIPS 140-3 are the two most common standards used for cryptographic modules. If your HSM uses FIPS 140-3 validated hardware, Infisical will automatically be FIPS 140-3 compliant. If your HSM uses FIPS 140-2 validated hardware, Infisical will be FIPS 140-2 compliant.
+
+HSM devices are especially useful for organizations that operate in regulated industries such as healthcare, finance, and government, where data security and compliance are of the utmost importance.
+
+For organizations that work with US government agencies, FIPS compliance is almost always a requirement when dealing with sensitive information. FIPS compliance ensures that the cryptographic modules used by the organization meet the security requirements set by the US government.
+
+## Setup Instructions
+
+
+<Steps>
+    <Step title="Setting up an HSM Device">
+        To set up HSM encryption, you need to configure an HSM provider and HSM key. The HSM provider is used to connect to the HSM device, and the HSM key is used to encrypt Infisical's KMS keys. We recommend using a Cloud HSM provider such as [Thales Luna HSM](https://cpl.thalesgroup.com/encryption/data-protection-on-demand/services/luna-cloud-hsm) or [AWS CloudHSM](https://aws.amazon.com/cloudhsm/).
+
+        You need to follow the instructions provided by the HSM provider to set up the HSM device. Once the HSM device is set up, the HSM device can be used within Infisical.
+
+        After setting up the HSM from your provider, you will have a set of files that you can use to access the HSM. These files need to be present on the machine where Infisical is running.
+        If you are using containers, you will need to mount the folder where these files are stored as a volume in the container.
+
+        The setup process for an HSM device varies depending on the provider. We have created a guide for Thales Luna Cloud HSM, which you can find below.
+        
+    </Step>
+    <Step title="Configure HSM on Infisical">
+
+    <Warning>
+      Are you using Docker? If you are using Docker, please follow the instructions in the [Using HSM's with Docker](#using-hsms-with-docker) section.
+    </Warning>
+
+        Configuring the HSM on Infisical requires setting a set of environment variables:
+        - `HSM_LIB_PATH`: The path to the PKCS#11 library provided by the HSM provider. This usually comes in the form of a `.so` for Linux and MacOS, or a `.dll` file for Windows. For Docker, you need to mount the library path as a volume. Further instructions can be found below. If you are using Docker, make sure to set the HSM_LIB_PATH environment variable to the path where the library is mounted in the container.
+        - `HSM_PIN`: The PKCS#11 PIN to use for authentication with the HSM device.
+        - `HSM_SLOT`: The slot number to use for the HSM device. This is typically between `0` and `5` for most HSM devices.
+        - `HSM_KEY_LABEL`: The label of the key to use for encryption. **Please note that if no key is found with the provided label, the HSM will create a new key with the provided label.**
+
+        You can read more about the [default instance configurations](/self-hosting/configuration/envars) here.
+    </Step>
+    <Step title="Restart Instance">
+        After setting up the HSM, you need to restart the Infisical instance for the changes to take effect.
+    </Step>
+    <Step title="Navigate to the Server Admin Console">
+        ![Server Admin Console](/images/platform/kms/hsm/server-admin-console.png)
+    </Step>
+    <Step title="Update the KMS Encryption Strategy to HSM">
+        ![Set Encryption Strategy](/images/platform/kms/hsm/encryption-strategy.png)
+
+        Once you press the 'Save' button, your Infisical instance will immediately switch to the HSM encryption strategy. This will re-encrypt your KMS key with keys from the HSM device.
+    </Step>
+    <Step title="Verify Encryption Strategy">
+        To verify that the HSM was correctly configured, you can try creating a new secret in one of your projects. If the secret is created successfully, the HSM is now being used for encryption.
+    </Step>
+</Steps>
+
+
+## Using HSMs with Docker
+When using Docker, you need to mount the path containing the HSM client files. This section covers how to configure your Infisical instance to use an HSM with Docker.
+<Tabs>
+  <Tab title="Thales Luna Cloud HSM">
+    <Steps>
+      <Step title="Create HSM client folder">
+        When using Docker, you are able to set your HSM library path to any location on your machine. In this example, we are going to be using `/etc/luna-docker`.
+
+        ```bash
+          mkdir /etc/luna-docker
+        ```
+
+        After [setting up your Luna Cloud HSM client](https://thalesdocs.com/gphsm/luna/7/docs/network/Content/install/client_install/add_dpod.htm), you should have a set of files, referred to as the HSM client. You don't need all the files, but for simplicity we recommend copying all the files from the client.
+
+        A folder structure of a client folder will often look like this:
+        ```
+        partition-ca-certificate.pem
+        partition-certificate.pem
+        server-certificate.pem
+        Chrystoki.conf
+        /plugins
+          libcloud.plugin
+        /lock
+        /libs
+          /64
+            libCryptoki2.so
+        /jsp
+          LunaProvider.jar
+          /64
+            libLunaAPI.so
+        /etc
+          openssl.cnf
+        /bin
+          /64
+            ckdemo
+            lunacm
+            multitoken
+            vtl
+        ```
+        
+        The most important parts of the client folder is the `Chrystoki.conf` file, and the `libs`, `plugins`, and `jsp` folders. You need to copy these files to the folder you created in the first step.
+
+        ```bash
+          cp -r /<path-to-where-your-luna-client-is-located> /etc/luna-docker
+        ```
+
+      </Step>
+
+      <Step title="Update Chrystoki.conf">
+        The `Chrystoki.conf` file is used to configure the HSM client. You need to update the `Chrystoki.conf` file to point to the correct file paths.
+
+        In this example, we will be mounting the `/etc/luna-docker` folder to the Docker container under a different path. The path we will use in this example is `/usr/safenet/lunaclient`. This means `/etc/luna-docker` will be mounted to `/usr/safenet/lunaclient` in the Docker container.
+
+        An example config file will look like this:
+
+        ```Chrystoki.conf
+            Chrystoki2 = {
+              # This path points to the mounted path, /usr/safenet/lunaclient
+              LibUNIX64 = /usr/safenet/lunaclient/libs/64/libCryptoki2.so;
+            }
+
+            Luna = {
+              DefaultTimeOut = 500000;
+              PEDTimeout1 = 100000;
+              PEDTimeout2 = 200000;
+              PEDTimeout3 = 20000;
+              KeypairGenTimeOut = 2700000;
+              CloningCommandTimeOut = 300000;
+              CommandTimeOutPedSet = 720000;
+            }
+
+            CardReader = {
+              LunaG5Slots = 0;
+              RemoteCommand = 1;
+            }
+
+            Misc = {
+              # Update the paths to point to the mounted path if your folder structure is different from the one mentioned in the previous step.
+              PluginModuleDir = /usr/safenet/lunaclient/plugins;
+              MutexFolder = /usr/safenet/lunaclient/lock;
+              PE1746Enabled = 1;
+              ToolsDir = /usr/bin;
+
+            }
+
+            Presentation = {
+              ShowEmptySlots = no;
+            }
+
+            LunaSA Client = {
+              ReceiveTimeout = 20000;
+              # Update the paths to point to the mounted path if your folder structure is different from the one mentioned in the previous step.
+              SSLConfigFile = /usr/safenet/lunaclient/etc/openssl.cnf;
+              ClientPrivKeyFile = ./etc/ClientNameKey.pem;
+              ClientCertFile = ./etc/ClientNameCert.pem;
+              ServerCAFile = ./etc/CAFile.pem;
+              NetClient = 1;
+              TCPKeepAlive = 1;
+            }
+
+
+            REST = {
+              AppLogLevel = error
+              ServerName = <REDACTED>;
+              ServerPort = 443;
+              AuthTokenConfigURI = <REDACTED>;
+              AuthTokenClientId = <REDACTED>;
+              AuthTokenClientSecret = <REDACTED>;
+              RestClient = 1;
+              ClientTimeoutSec = 120;
+              ClientPoolSize = 32;
+              ClientEofRetryCount = 15;
+              ClientConnectRetryCount = 900;
+              ClientConnectIntervalMs = 1000;
+            }
+            XTC = {
+              Enabled = 1;
+              TimeoutSec = 600;
+            }
+        ```
+
+        Save the file after updating the paths.
+      </Step>
+
+      <Step title="Run Docker">
+        Running Docker with HSM encryption requires setting the HSM-related environment variables as mentioned previously in the [HSM setup instructions](#setup-instructions). You can set these environment variables in your Docker run command.
+
+        We are setting the environment variables for Docker via the command line in this example, but you can also pass in a `.env` file to set these environment variables.
+
+        <Warning>
+          If no key is found with the provided key label, the HSM will create a new key with the provided label.
+          Infisical depends on an AES and HMAC key to be present in the HSM. If these keys are not present, Infisical will create them. The AES key label will be the value of the `HSM_KEY_LABEL` environment variable, and the HMAC key label will be the value of the `HSM_KEY_LABEL` environment variable with the suffix `_HMAC`.
+        </Warning>
+
+        ```bash
+        docker run -p 80:8080 \
+          -v /etc/luna-docker:/usr/safenet/lunaclient \
+          -e HSM_LIB_PATH="/usr/safenet/lunaclient/libs/64/libCryptoki2.so" \
+          -e HSM_PIN="<your-hsm-device-pin>" \
+          -e HSM_SLOT=<hsm-device-slot> \
+          -e HSM_KEY_LABEL="<your-key-label>" \
+        
+          # The rest are unrelated to HSM setup...
+          -e ENCRYPTION_KEY="<>" \
+          -e AUTH_SECRET="<>" \
+          -e DB_CONNECTION_URI="<>" \
+          -e REDIS_URL="<>" \
+          -e SITE_URL="<>" \
+          infisical/infisical-fips:<version> # Replace <version> with the version you want to use
+        ```
+
+        We recommend reading further about [using Infisical with Docker](/self-hosting/deployment-options/standalone-infisical).
+
+      </Step>
+    </Steps>
+    After following these steps, your Docker setup will be ready to use HSM encryption.
+  </Tab>
+</Tabs>
+
+## Disabling HSM Encryption
+
+To disable HSM encryption, navigate to Infisical's Server Admin Console and set the KMS encryption strategy to `Software-based Encryption`. This will revert the encryption strategy back to the default software-based encryption.
+
+<Note>
+  In order to disable HSM encryption, the Infisical instance must be able to access the HSM device. If the HSM device is no longer accessible, you will not be able to disable HSM encryption.
+</Note>

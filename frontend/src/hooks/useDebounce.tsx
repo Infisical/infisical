@@ -1,7 +1,10 @@
-import { useEffect, useState } from "react";
+import { Dispatch, SetStateAction, useEffect, useState } from "react";
 
 // Ref: https://usehooks.com/useDebounce/
-export const useDebounce = <T extends unknown>(value: T, delay = 500): T => {
+export const useDebounce = <T extends unknown>(
+  value: T,
+  delay = 500
+): [T, Dispatch<SetStateAction<T>>] => {
   // State and setters for debounced value
   const [debouncedValue, setDebouncedValue] = useState(value);
 
@@ -22,5 +25,5 @@ export const useDebounce = <T extends unknown>(value: T, delay = 500): T => {
     [value, delay] // Only re-call effect if value or delay changes
   );
 
-  return debouncedValue;
+  return [debouncedValue, setDebouncedValue];
 };

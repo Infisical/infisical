@@ -9,7 +9,7 @@
 <body>
     <h2>Join your organization on Infisical</h2>
     <p>{{inviterFirstName}} ({{inviterUsername}}) has invited you to their Infisical organization — {{organizationName}}</p>
-    <a href="{{callback_url}}?token={{token}}&to={{email}}&organization_id={{organizationId}}">Join now</a>
+    <a href="{{callback_url}}?token={{token}}{{#if metadata}}&metadata={{metadata}}{{/if}}&to={{email}}&organization_id={{organizationId}}">Join now</a>
     <h3>What is Infisical?</h3>
     <p>Infisical is an easy-to-use end-to-end encrypted tool that enables developers to sync and manage their secrets and configs.</p>
 </body>

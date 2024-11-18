@@ -1,0 +1,76 @@
+import { Knex } from "knex";
+
+import { TableName } from "../schemas";
+
+const BATCH_SIZE = 30_000;
+
+export async function up(knex: Knex): Promise<void> {
+  const hasAuthMethodColumnAccessToken = await knex.schema.hasColumn(TableName.IdentityAccessToken, "authMethod");
+
+  if (!hasAuthMethodColumnAccessToken) {
+    await knex.schema.alterTable(TableName.IdentityAccessToken, (t) => {
+      t.string("authMethod").nullable();
+    });
+
+    let nullableAccessTokens = await knex(TableName.IdentityAccessToken).whereNull("authMethod").limit(BATCH_SIZE);
+    let totalUpdated = 0;
+
+    do {
+      const batchIds = nullableAccessTokens.map((token) => token.id);
+
+      // ! Update the auth method column in batches for the current batch
+      // eslint-disable-next-line no-await-in-loop
+      await knex(TableName.IdentityAccessToken)
+        .whereIn("id", batchIds)
+        .update({
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore because generate schema happens after this
+          authMethod: knex(TableName.Identity)
+            .select("authMethod")
+            .whereRaw(`${TableName.IdentityAccessToken}."identityId" = ${TableName.Identity}.id`)
+            .whereNotNull("authMethod")
+            .first()
+        });
+
+      // eslint-disable-next-line no-await-in-loop
+      nullableAccessTokens = await knex(TableName.IdentityAccessToken).whereNull("authMethod").limit(BATCH_SIZE);
+
+      totalUpdated += batchIds.length;
+      console.log(`Updated ${batchIds.length} access tokens in batch <> Total updated: ${totalUpdated}`);
+    } while (nullableAccessTokens.length > 0);
+
+    // ! We delete all access tokens where the identity has no auth method set!
+    // ! Which means un-configured identities that for some reason have access tokens, will have their access tokens deleted.
+    await knex(TableName.IdentityAccessToken)
+      .whereNotExists((queryBuilder) => {
+        void queryBuilder
+          .select("id")
+          .from(TableName.Identity)
+          .whereRaw(`${TableName.IdentityAccessToken}."identityId" = ${TableName.Identity}.id`)
+          .whereNotNull("authMethod");
+      })
+      .delete();
+
+    // Finally we set the authMethod to notNullable after populating the column.
+    // This will fail if the data is not populated correctly, so it's safe.
+    await knex.schema.alterTable(TableName.IdentityAccessToken, (t) => {
+      t.string("authMethod").notNullable().alter();
+    });
+  }
+
+  // ! We aren't dropping the authMethod column from the Identity itself, because we wan't to be able to easily rollback for the time being.
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function down(knex: Knex): Promise<void> {
+  const hasAuthMethodColumnAccessToken = await knex.schema.hasColumn(TableName.IdentityAccessToken, "authMethod");
+
+  if (hasAuthMethodColumnAccessToken) {
+    await knex.schema.alterTable(TableName.IdentityAccessToken, (t) => {
+      t.dropColumn("authMethod");
+    });
+  }
+}
+
+const config = { transaction: false };
+export { config };

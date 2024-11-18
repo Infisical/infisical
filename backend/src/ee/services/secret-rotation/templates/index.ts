@@ -1,4 +1,5 @@
 import { AWS_IAM_TEMPLATE } from "./aws-iam";
+import { MSSQL_TEMPLATE } from "./mssql";
 import { MYSQL_TEMPLATE } from "./mysql";
 import { POSTGRES_TEMPLATE } from "./postgres";
 import { SENDGRID_TEMPLATE } from "./sendgrid";
@@ -25,6 +26,13 @@ export const rotationTemplates: TSecretRotationProviderTemplate[] = [
     image: "mysql.png",
     description: "Rotate MySQL@7/MariaDB user credentials",
     template: MYSQL_TEMPLATE
+  },
+  {
+    name: "mssql",
+    title: "Microsoft SQL Server",
+    image: "mssqlserver.png",
+    description: "Rotate Microsoft SQL server user credentials",
+    template: MSSQL_TEMPLATE
   },
   {
     name: "aws-iam",

@@ -10,7 +10,8 @@ export const samlConfigDALFactory = (db: TDbClient) => {
 
   const findEnforceableSamlCfg = async (orgId: string) => {
     try {
-      const samlCfg = await db(TableName.SamlConfig)
+      const samlCfg = await db
+        .replicaNode()(TableName.SamlConfig)
         .where({
           orgId,
           isActive: true

@@ -63,9 +63,13 @@ yarn-error.log*
 
 # Editor specific
 .vscode/*
+.idea/*
 
 frontend-build
 
 *.tgz
 cli/infisical-merge
 cli/test/infisical-merge
+/backend/binary
+
+/npm/bin

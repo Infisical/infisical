@@ -1,3 +1,4 @@
+import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
 import { TUsers, UserDeviceSchema } from "@app/db/schemas";
@@ -5,30 +6,35 @@ import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
-import { BadRequestError, DatabaseError, UnauthorizedError } from "@app/lib/errors";
+import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
+import { getUserPrivateKey } from "@app/lib/crypto/srp";
+import { BadRequestError, DatabaseError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
-import { TTokenDALFactory } from "../auth-token/auth-token-dal";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
+import { LoginMethod } from "../super-admin/super-admin-types";
+import { TTotpServiceFactory } from "../totp/totp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { enforceUserLockStatus, validateProviderAuthToken } from "./auth-fns";
 import {
   TLoginClientProofDTO,
   TLoginGenServerPublicKeyDTO,
   TOauthLoginDTO,
+  TOauthTokenExchangeDTO,
   TVerifyMfaTokenDTO
 } from "./auth-login-type";
-import { AuthMethod, AuthModeJwtTokenPayload, AuthModeMfaJwtTokenPayload, AuthTokenType } from "./auth-type";
+import { AuthMethod, AuthModeJwtTokenPayload, AuthModeMfaJwtTokenPayload, AuthTokenType, MfaMethod } from "./auth-type";
 
 type TAuthLoginServiceFactoryDep = {
   userDAL: TUserDALFactory;
   orgDAL: TOrgDALFactory;
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
-  tokenDAL: TTokenDALFactory;
+  totpService: Pick<TTotpServiceFactory, "verifyUserTotp" | "verifyWithUserRecoveryCode">;
 };
 
 export type TAuthLoginFactory = ReturnType<typeof authLoginServiceFactory>;
@@ -37,7 +43,7 @@ export const authLoginServiceFactory = ({
   tokenService,
   smtpService,
   orgDAL,
-  tokenDAL
+  totpService
 }: TAuthLoginServiceFactoryDep) => {
   /*
    * Private
@@ -96,13 +102,17 @@ export const authLoginServiceFactory = ({
     ip,
     userAgent,
     organizationId,
-    authMethod
+    authMethod,
+    isMfaVerified,
+    mfaMethod
   }: {
     user: TUsers;
     ip: string;
     userAgent: string;
-    organizationId: string | undefined;
+    organizationId?: string;
     authMethod: AuthMethod;
+    isMfaVerified?: boolean;
+    mfaMethod?: MfaMethod;
   }) => {
     const cfg = getConfig();
     await updateUserDeviceSession(user, ip, userAgent);
@@ -120,7 +130,9 @@ export const authLoginServiceFactory = ({
         userId: user.id,
         tokenVersionId: tokenSession.id,
         accessVersion: tokenSession.accessVersion,
-        organizationId
+        organizationId,
+        isMfaVerified,
+        mfaMethod
       },
       cfg.AUTH_SECRET,
       { expiresIn: cfg.JWT_AUTH_LIFETIME }
@@ -133,7 +145,9 @@ export const authLoginServiceFactory = ({
         userId: user.id,
         tokenVersionId: tokenSession.id,
         refreshVersion: tokenSession.refreshVersion,
-        organizationId
+        organizationId,
+        isMfaVerified,
+        mfaMethod
       },
       cfg.AUTH_SECRET,
       { expiresIn: cfg.JWT_REFRESH_LIFETIME }
@@ -153,9 +167,22 @@ export const authLoginServiceFactory = ({
     const userEnc = await userDAL.findUserEncKeyByUsername({
       username: email
     });
+    const serverCfg = await getServerCfg();
+
+    if (
+      serverCfg.enabledLoginMethods &&
+      !serverCfg.enabledLoginMethods.includes(LoginMethod.EMAIL) &&
+      !providerAuthToken
+    ) {
+      throw new BadRequestError({
+        message: "Login with email is disabled by administrator."
+      });
+    }
+
     if (!userEnc || (userEnc && !userEnc.isAccepted)) {
       throw new Error("Failed to find user");
     }
+
     if (!userEnc.authMethods?.includes(AuthMethod.EMAIL)) {
       validateProviderAuthToken(providerAuthToken as string, email);
     }
@@ -178,7 +205,8 @@ export const authLoginServiceFactory = ({
     ip,
     userAgent,
     providerAuthToken,
-    captchaToken
+    captchaToken,
+    password
   }: TLoginClientProofDTO) => {
     const appCfg = getConfig();
 
@@ -196,7 +224,10 @@ export const authLoginServiceFactory = ({
       const decodedProviderToken = validateProviderAuthToken(providerAuthToken, email);
 
       authMethod = decodedProviderToken.authMethod;
-      if ((isAuthMethodSaml(authMethod) || authMethod === AuthMethod.LDAP) && decodedProviderToken.orgId) {
+      if (
+        (isAuthMethodSaml(authMethod) || [AuthMethod.LDAP, AuthMethod.OIDC].includes(authMethod)) &&
+        decodedProviderToken.orgId
+      ) {
         organizationId = decodedProviderToken.orgId;
       }
     }
@@ -248,37 +279,34 @@ export const authLoginServiceFactory = ({
       throw new Error("Failed to authenticate. Try again?");
     }
 
-    await userDAL.updateUserEncryptionByUserId(userEnc.userId, {
-      serverPrivateKey: null,
-      clientPublicKey: null
-    });
-
     await userDAL.updateById(userEnc.userId, {
       consecutiveFailedPasswordAttempts: 0
     });
-
-    // send multi factor auth token if they it enabled
-    if (userEnc.isMfaEnabled && userEnc.email) {
-      enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
-
-      const mfaToken = jwt.sign(
-        {
-          authMethod,
-          authTokenType: AuthTokenType.MFA_TOKEN,
-          userId: userEnc.userId
-        },
-        cfg.AUTH_SECRET,
-        {
-          expiresIn: cfg.JWT_MFA_LIFETIME
-        }
-      );
-
-      await sendUserMfaCode({
-        userId: userEnc.userId,
-        email: userEnc.email
+    // from password decrypt the private key
+    if (password) {
+      const privateKey = await getUserPrivateKey(password, userEnc).catch((err) => {
+        logger.error(
+          err,
+          `loginExchangeClientProof: private key generation failed for [userId=${user.id}] and [email=${user.email}] `
+        );
+        return "";
       });
-
-      return { isMfaEnabled: true, token: mfaToken } as const;
+      const hashedPassword = await bcrypt.hash(password, cfg.BCRYPT_SALT_ROUND);
+      const { iv, tag, ciphertext, encoding } = infisicalSymmetricEncypt(privateKey);
+      await userDAL.updateUserEncryptionByUserId(userEnc.userId, {
+        serverPrivateKey: null,
+        clientPublicKey: null,
+        hashedPassword,
+        serverEncryptedPrivateKey: ciphertext,
+        serverEncryptedPrivateKeyIV: iv,
+        serverEncryptedPrivateKeyTag: tag,
+        serverEncryptedPrivateKeyEncoding: encoding
+      });
+    } else {
+      await userDAL.updateUserEncryptionByUserId(userEnc.userId, {
+        serverPrivateKey: null,
+        clientPublicKey: null
+      });
     }
 
     const token = await generateUserTokens({
@@ -292,7 +320,7 @@ export const authLoginServiceFactory = ({
       organizationId
     });
 
-    return { token, isMfaEnabled: false, user: userEnc } as const;
+    return { token, user: userEnc } as const;
   };
 
   const selectOrganization = async ({
@@ -309,7 +337,7 @@ export const authLoginServiceFactory = ({
     const cfg = getConfig();
 
     if (!authJwtToken) throw new UnauthorizedError({ name: "Authorization header is required" });
-    if (!userAgent) throw new UnauthorizedError({ name: "user agent header is required" });
+    if (!userAgent) throw new UnauthorizedError({ name: "User-Agent header is required" });
 
     // eslint-disable-next-line no-param-reassign
     authJwtToken = authJwtToken.replace("Bearer ", ""); // remove bearer from token
@@ -324,22 +352,58 @@ export const authLoginServiceFactory = ({
     // Check if the user actually has access to the specified organization.
     const userOrgs = await orgDAL.findAllOrgsByUserId(user.id);
     const hasOrganizationMembership = userOrgs.some((org) => org.id === organizationId);
+    const selectedOrg = await orgDAL.findById(organizationId);
 
     if (!hasOrganizationMembership) {
-      throw new UnauthorizedError({ message: "User does not have access to the organization" });
+      throw new ForbiddenRequestError({
+        message: `User does not have access to the organization named ${selectedOrg?.name}`
+      });
     }
 
-    await tokenDAL.incrementTokenSessionVersion(user.id, decodedToken.tokenVersionId);
+    const shouldCheckMfa = selectedOrg.enforceMfa || user.isMfaEnabled;
+    const orgMfaMethod = selectedOrg.enforceMfa ? selectedOrg.selectedMfaMethod ?? MfaMethod.EMAIL : undefined;
+    const userMfaMethod = user.isMfaEnabled ? user.selectedMfaMethod ?? MfaMethod.EMAIL : undefined;
+    const mfaMethod = orgMfaMethod ?? userMfaMethod;
+
+    if (shouldCheckMfa && (!decodedToken.isMfaVerified || decodedToken.mfaMethod !== mfaMethod)) {
+      enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
+
+      const mfaToken = jwt.sign(
+        {
+          authMethod: decodedToken.authMethod,
+          authTokenType: AuthTokenType.MFA_TOKEN,
+          userId: user.id
+        },
+        cfg.AUTH_SECRET,
+        {
+          expiresIn: cfg.JWT_MFA_LIFETIME
+        }
+      );
+
+      if (mfaMethod === MfaMethod.EMAIL && user.email) {
+        await sendUserMfaCode({
+          userId: user.id,
+          email: user.email
+        });
+      }
+
+      return { isMfaEnabled: true, mfa: mfaToken, mfaMethod } as const;
+    }
 
     const tokens = await generateUserTokens({
       authMethod: decodedToken.authMethod,
       user,
       userAgent,
       ip: ipAddress,
-      organizationId
+      organizationId,
+      isMfaVerified: decodedToken.isMfaVerified,
+      mfaMethod: decodedToken.mfaMethod
     });
 
-    return tokens;
+    return {
+      ...tokens,
+      isMfaEnabled: false
+    };
   };
 
   /*
@@ -408,17 +472,39 @@ export const authLoginServiceFactory = ({
    * Multi factor authentication verification of code
    * Third step of login in which user completes with mfa
    * */
-  const verifyMfaToken = async ({ userId, mfaToken, mfaJwtToken, ip, userAgent, orgId }: TVerifyMfaTokenDTO) => {
+  const verifyMfaToken = async ({
+    userId,
+    mfaToken,
+    mfaMethod,
+    mfaJwtToken,
+    ip,
+    userAgent,
+    orgId
+  }: TVerifyMfaTokenDTO) => {
     const appCfg = getConfig();
     const user = await userDAL.findById(userId);
     enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
 
     try {
-      await tokenService.validateTokenForUser({
-        type: TokenType.TOKEN_EMAIL_MFA,
-        userId,
-        code: mfaToken
-      });
+      if (mfaMethod === MfaMethod.EMAIL) {
+        await tokenService.validateTokenForUser({
+          type: TokenType.TOKEN_EMAIL_MFA,
+          userId,
+          code: mfaToken
+        });
+      } else if (mfaMethod === MfaMethod.TOTP) {
+        if (mfaToken.length === 6) {
+          await totpService.verifyUserTotp({
+            userId,
+            totp: mfaToken
+          });
+        } else {
+          await totpService.verifyWithUserRecoveryCode({
+            userId,
+            recoveryCode: mfaToken
+          });
+        }
+      }
     } catch (err) {
       const updatedUser = await processFailedMfaAttempt(userId);
       if (updatedUser.isLocked) {
@@ -462,7 +548,9 @@ export const authLoginServiceFactory = ({
       ip,
       userAgent,
       organizationId: orgId,
-      authMethod: decodedToken.authMethod
+      authMethod: decodedToken.authMethod,
+      isMfaVerified: true,
+      mfaMethod
     });
 
     return { token, user: userEnc };
@@ -473,6 +561,40 @@ export const authLoginServiceFactory = ({
   const oauth2Login = async ({ email, firstName, lastName, authMethod, callbackPort }: TOauthLoginDTO) => {
     let user = await userDAL.findUserByUsername(email);
     const serverCfg = await getServerCfg();
+
+    if (serverCfg.enabledLoginMethods) {
+      switch (authMethod) {
+        case AuthMethod.GITHUB: {
+          if (!serverCfg.enabledLoginMethods.includes(LoginMethod.GITHUB)) {
+            throw new BadRequestError({
+              message: "Login with Github is disabled by administrator.",
+              name: "Oauth 2 login"
+            });
+          }
+          break;
+        }
+        case AuthMethod.GOOGLE: {
+          if (!serverCfg.enabledLoginMethods.includes(LoginMethod.GOOGLE)) {
+            throw new BadRequestError({
+              message: "Login with Google is disabled by administrator.",
+              name: "Oauth 2 login"
+            });
+          }
+          break;
+        }
+        case AuthMethod.GITLAB: {
+          if (!serverCfg.enabledLoginMethods.includes(LoginMethod.GITLAB)) {
+            throw new BadRequestError({
+              message: "Login with Gitlab is disabled by administrator.",
+              name: "Oauth 2 login"
+            });
+          }
+          break;
+        }
+        default:
+          break;
+      }
+    }
 
     const appCfg = getConfig();
 
@@ -499,8 +621,20 @@ export const authLoginServiceFactory = ({
         authMethods: [authMethod],
         isGhost: false
       });
+    } else {
+      const isLinkingRequired = !user?.authMethods?.includes(authMethod);
+      if (isLinkingRequired) {
+        // we update the names here because upon org invitation, the names are set to be NULL
+        // if user is signing up with SSO after invitation, their names should be set based on their SSO profile
+        user = await userDAL.updateById(user.id, {
+          authMethods: [...(user.authMethods || []), authMethod],
+          firstName: !user.isAccepted ? firstName : undefined,
+          lastName: !user.isAccepted ? lastName : undefined
+        });
+      }
     }
-    const isLinkingRequired = !user?.authMethods?.includes(authMethod);
+
+    const userEnc = await userDAL.findUserEncKeyByUserId(user.id);
     const isUserCompleted = user.isAccepted;
     const providerAuthToken = jwt.sign(
       {
@@ -511,9 +645,9 @@ export const authLoginServiceFactory = ({
         isEmailVerified: user.isEmailVerified,
         firstName: user.firstName,
         lastName: user.lastName,
+        hasExchangedPrivateKey: Boolean(userEnc?.serverEncryptedPrivateKey),
         authMethod,
         isUserCompleted,
-        isLinkingRequired,
         ...(callbackPort
           ? {
               callbackPort
@@ -525,8 +659,46 @@ export const authLoginServiceFactory = ({
         expiresIn: appCfg.JWT_PROVIDER_AUTH_LIFETIME
       }
     );
-
     return { isUserCompleted, providerAuthToken };
+  };
+
+  /**
+   * Handles OAuth2 token exchange for user login with private key handoff.
+   *
+   * The process involves exchanging a provider's authorization token for an Infisical access token.
+   * The provider token is returned to the client, who then sends it back to obtain the Infisical access token.
+   *
+   * This approach is used instead of directly sending the access token for the following reasons:
+   * 1. To facilitate easier logic changes from SRP OAuth to simple OAuth.
+   * 2. To avoid attaching the access token to the URL, which could be logged. The provider token has a very short lifespan, reducing security risks.
+   */
+  const oauth2TokenExchange = async ({ userAgent, ip, providerAuthToken, email }: TOauthTokenExchangeDTO) => {
+    const decodedProviderToken = validateProviderAuthToken(providerAuthToken, email);
+
+    const { authMethod, userName } = decodedProviderToken;
+    if (!userName) throw new BadRequestError({ message: "Missing user name" });
+    const organizationId =
+      (isAuthMethodSaml(authMethod) || [AuthMethod.LDAP, AuthMethod.OIDC].includes(authMethod)) &&
+      decodedProviderToken.orgId
+        ? decodedProviderToken.orgId
+        : undefined;
+
+    const userEnc = await userDAL.findUserEncKeyByUsername({
+      username: email
+    });
+    if (!userEnc) throw new BadRequestError({ message: "Invalid token" });
+    if (!userEnc.serverEncryptedPrivateKey)
+      throw new BadRequestError({ message: "Key handoff incomplete. Please try logging in again." });
+
+    const token = await generateUserTokens({
+      user: { ...userEnc, id: userEnc.userId },
+      ip,
+      userAgent,
+      authMethod,
+      organizationId
+    });
+
+    return { token, isMfaEnabled: false, user: userEnc } as const;
   };
 
   /*
@@ -542,6 +714,7 @@ export const authLoginServiceFactory = ({
     loginExchangeClientProof,
     logout,
     oauth2Login,
+    oauth2TokenExchange,
     resendMfaToken,
     verifyMfaToken,
     selectOrganization,

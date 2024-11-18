@@ -1,9 +1,11 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { IdentityAuthMethod, TableName, TIdentityAccessTokens } from "@app/db/schemas";
+import { TableName, TIdentityAccessTokens } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { logger } from "@app/lib/logger";
+import { QueueName } from "@app/queue";
 
 export type TIdentityAccessTokenDALFactory = ReturnType<typeof identityAccessTokenDALFactory>;
 
@@ -12,45 +14,30 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
 
   const findOne = async (filter: Partial<TIdentityAccessTokens>, tx?: Knex) => {
     try {
-      const doc = await (tx || db)(TableName.IdentityAccessToken)
+      const doc = await (tx || db.replicaNode())(TableName.IdentityAccessToken)
         .where(filter)
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.IdentityAccessToken}.identityId`)
-        .leftJoin(TableName.IdentityUaClientSecret, (qb) => {
-          qb.on(`${TableName.Identity}.authMethod`, db.raw("?", [IdentityAuthMethod.Univeral])).andOn(
-            `${TableName.IdentityAccessToken}.identityUAClientSecretId`,
-            `${TableName.IdentityUaClientSecret}.id`
-          );
-        })
-        .leftJoin(TableName.IdentityUniversalAuth, (qb) => {
-          qb.on(`${TableName.Identity}.authMethod`, db.raw("?", [IdentityAuthMethod.Univeral])).andOn(
-            `${TableName.IdentityUaClientSecret}.identityUAId`,
-            `${TableName.IdentityUniversalAuth}.id`
-          );
-        })
-        .leftJoin(TableName.IdentityGcpAuth, (qb) => {
-          qb.on(`${TableName.Identity}.authMethod`, db.raw("?", [IdentityAuthMethod.GCP_AUTH])).andOn(
-            `${TableName.Identity}.id`,
-            `${TableName.IdentityGcpAuth}.identityId`
-          );
-        })
-        .leftJoin(TableName.IdentityAwsAuth, (qb) => {
-          qb.on(`${TableName.Identity}.authMethod`, db.raw("?", [IdentityAuthMethod.AWS_AUTH])).andOn(
-            `${TableName.Identity}.id`,
-            `${TableName.IdentityAwsAuth}.identityId`
-          );
-        })
-        .leftJoin(TableName.IdentityAzureAuth, (qb) => {
-          qb.on(`${TableName.Identity}.authMethod`, db.raw("?", [IdentityAuthMethod.AZURE_AUTH])).andOn(
-            `${TableName.Identity}.id`,
-            `${TableName.IdentityAzureAuth}.identityId`
-          );
-        })
-        .leftJoin(TableName.IdentityKubernetesAuth, (qb) => {
-          qb.on(`${TableName.Identity}.authMethod`, db.raw("?", [IdentityAuthMethod.KUBERNETES_AUTH])).andOn(
-            `${TableName.Identity}.id`,
-            `${TableName.IdentityKubernetesAuth}.identityId`
-          );
-        })
+        .leftJoin(
+          TableName.IdentityUaClientSecret,
+          `${TableName.IdentityAccessToken}.identityUAClientSecretId`,
+          `${TableName.IdentityUaClientSecret}.id`
+        )
+        .leftJoin(
+          TableName.IdentityUniversalAuth,
+          `${TableName.IdentityUaClientSecret}.identityUAId`,
+          `${TableName.IdentityUniversalAuth}.id`
+        )
+        .leftJoin(TableName.IdentityGcpAuth, `${TableName.Identity}.id`, `${TableName.IdentityGcpAuth}.identityId`)
+        .leftJoin(TableName.IdentityAwsAuth, `${TableName.Identity}.id`, `${TableName.IdentityAwsAuth}.identityId`)
+        .leftJoin(TableName.IdentityAzureAuth, `${TableName.Identity}.id`, `${TableName.IdentityAzureAuth}.identityId`)
+        .leftJoin(
+          TableName.IdentityKubernetesAuth,
+          `${TableName.Identity}.id`,
+          `${TableName.IdentityKubernetesAuth}.identityId`
+        )
+        .leftJoin(TableName.IdentityOidcAuth, `${TableName.Identity}.id`, `${TableName.IdentityOidcAuth}.identityId`)
+        .leftJoin(TableName.IdentityTokenAuth, `${TableName.Identity}.id`, `${TableName.IdentityTokenAuth}.identityId`)
+
         .select(selectAllTableCols(TableName.IdentityAccessToken))
         .select(
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityUniversalAuth).as("accessTokenTrustedIpsUa"),
@@ -58,6 +45,8 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityAwsAuth).as("accessTokenTrustedIpsAws"),
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityAzureAuth).as("accessTokenTrustedIpsAzure"),
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityKubernetesAuth).as("accessTokenTrustedIpsK8s"),
+          db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityOidcAuth).as("accessTokenTrustedIpsOidc"),
+          db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityTokenAuth).as("accessTokenTrustedIpsToken"),
           db.ref("name").withSchema(TableName.Identity)
         )
         .first();
@@ -66,12 +55,13 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
 
       return {
         ...doc,
-        accessTokenTrustedIps:
-          doc.accessTokenTrustedIpsUa ||
-          doc.accessTokenTrustedIpsGcp ||
-          doc.accessTokenTrustedIpsAws ||
-          doc.accessTokenTrustedIpsAzure ||
-          doc.accessTokenTrustedIpsK8s
+        trustedIpsUniversalAuth: doc.accessTokenTrustedIpsUa,
+        trustedIpsGcpAuth: doc.accessTokenTrustedIpsGcp,
+        trustedIpsAwsAuth: doc.accessTokenTrustedIpsAws,
+        trustedIpsAzureAuth: doc.accessTokenTrustedIpsAzure,
+        trustedIpsKubernetesAuth: doc.accessTokenTrustedIpsK8s,
+        trustedIpsOidcAuth: doc.accessTokenTrustedIpsOidc,
+        trustedIpsAccessTokenAuth: doc.accessTokenTrustedIpsToken
       };
     } catch (error) {
       throw new DatabaseError({ error, name: "IdAccessTokenFindOne" });
@@ -79,6 +69,10 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
   };
 
   const removeExpiredTokens = async (tx?: Knex) => {
+    logger.info(`${QueueName.DailyResourceCleanUp}: remove expired access token started`);
+
+    const MAX_TTL = 315_360_000; // Maximum TTL value in seconds (10 years)
+
     try {
       const docs = (tx || db)(TableName.IdentityAccessToken)
         .where({
@@ -101,7 +95,8 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
                   .whereNotNull("accessTokenLastRenewedAt")
                   // accessTokenLastRenewedAt + convert_integer_to_seconds(accessTokenTTL) < present_date
                   .andWhereRaw(
-                    `"${TableName.IdentityAccessToken}"."accessTokenLastRenewedAt" + make_interval(secs => "${TableName.IdentityAccessToken}"."accessTokenTTL") < NOW()`
+                    `"${TableName.IdentityAccessToken}"."accessTokenLastRenewedAt" + make_interval(secs => LEAST("${TableName.IdentityAccessToken}"."accessTokenTTL", ?)) < NOW()`,
+                    [MAX_TTL]
                   );
               })
               .orWhere((qb3) => {
@@ -109,13 +104,15 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
                   .whereNull("accessTokenLastRenewedAt")
                   // created + convert_integer_to_seconds(accessTokenTTL) < present_date
                   .andWhereRaw(
-                    `"${TableName.IdentityAccessToken}"."createdAt" + make_interval(secs => "${TableName.IdentityAccessToken}"."accessTokenTTL") < NOW()`
+                    `"${TableName.IdentityAccessToken}"."createdAt" + make_interval(secs => LEAST("${TableName.IdentityAccessToken}"."accessTokenTTL", ?)) < NOW()`,
+                    [MAX_TTL]
                   );
               });
           });
         })
         .delete();
-      return await docs;
+      await docs;
+      logger.info(`${QueueName.DailyResourceCleanUp}: remove expired access token completed`);
     } catch (error) {
       throw new DatabaseError({ error, name: "IdentityAccessTokenPrune" });
     }

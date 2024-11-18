@@ -62,7 +62,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
   const sendPostHogEvents = async (event: TPostHogEvent) => {
     if (postHog) {
       const instanceType = licenseService.getInstanceType();
-      // capture posthog only when its cloud or signup event happens in self hosted
+      // capture posthog only when its cloud or signup event happens in self-hosted
       if (instanceType === InstanceType.Cloud || event.event === PostHogEventTypes.UserSignedUp) {
         postHog.capture({
           event: event.event,

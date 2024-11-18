@@ -1,5 +1,5 @@
-import { faWarning } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+// import { faWarning } from "@fortawesome/free-solid-svg-icons";
+// import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { motion } from "framer-motion";
 
 import { ServiceTokenSection } from "./components";
@@ -14,7 +14,7 @@ export const ServiceTokenTab = () => {
       exit={{ opacity: 0, translateX: 30 }}
     >
       <div className="space-y-3">
-        <div className="flex w-full flex-row items-center rounded-md border border-primary-600/70 bg-primary/[.07] p-4 text-base text-white">
+        {/* <div className="flex w-full flex-row items-center rounded-md border border-primary-600/70 bg-primary/[.07] p-4 text-base text-white">
           <FontAwesomeIcon icon={faWarning} className="pr-6 text-4xl text-white/80" />
           <div className="flex w-full flex-col text-sm">
             <span className="mb-4 text-lg font-semibold">Deprecation Notice</span>
@@ -41,7 +41,7 @@ export const ServiceTokenTab = () => {
               </a>
             </p>
           </div>
-        </div>
+        </div> */}
         <ServiceTokenSection />
       </div>
     </motion.div>

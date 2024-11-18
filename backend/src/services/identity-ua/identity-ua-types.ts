@@ -22,6 +22,10 @@ export type TGetUaDTO = {
   identityId: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TRevokeUaDTO = {
+  identityId: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TCreateUaClientSecretDTO = {
   identityId: string;
   description: string;
@@ -34,6 +38,11 @@ export type TGetUaClientSecretsDTO = {
 } & Omit<TProjectPermission, "projectId">;
 
 export type TRevokeUaClientSecretDTO = {
+  identityId: string;
+  clientSecretId: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TGetUniversalAuthClientSecretByIdDTO = {
   identityId: string;
   clientSecretId: string;
 } & Omit<TProjectPermission, "projectId">;

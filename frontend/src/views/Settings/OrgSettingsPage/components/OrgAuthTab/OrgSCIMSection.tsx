@@ -9,11 +9,11 @@ import {
 } from "@app/context";
 import { useUpdateOrg } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
+import { ExternalGroupOrgRoleMappings } from "@app/views/Settings/OrgSettingsPage/components/OrgAuthTab/ExternalGroupOrgRoleMappings";
 
 import { ScimTokenModal } from "./ScimTokenModal";
 
 export const OrgScimSection = () => {
-  
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
@@ -58,8 +58,8 @@ export const OrgScimSection = () => {
   };
 
   return (
-    <>
-      <hr className="border-mineshaft-600" />
+    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
+      <p className="text-xl font-semibold text-gray-200">Provision users via SCIM</p>
       <div className="py-4">
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-md text-mineshaft-100">SCIM</h2>
@@ -70,13 +70,14 @@ export const OrgScimSection = () => {
                 colorSchema="secondary"
                 isDisabled={!isAllowed}
               >
-                Manage
+                Configure
               </Button>
             )}
           </OrgPermissionCan>
         </div>
         <p className="text-sm text-mineshaft-300">Manage SCIM configuration</p>
       </div>
+      <ExternalGroupOrgRoleMappings />
       <div className="py-4">
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-md text-mineshaft-100">Enable SCIM</h2>
@@ -111,6 +112,6 @@ export const OrgScimSection = () => {
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="You can use SCIM Provisioning if you switch to Infisical's Enterprise plan."
       />
-    </>
+    </div>
   );
 };

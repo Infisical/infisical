@@ -5,18 +5,19 @@
 // TODO(akhilmhdh): With tony find out the api structure and fill it here
 
 import { ForbiddenError } from "@casl/ability";
+import { Knex } from "knex";
 
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { verifyOfflineLicense } from "@app/lib/crypto";
-import { BadRequestError } from "@app/lib/errors";
+import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service";
-import { getDefaultOnPremFeatures, setupLicenceRequestWithStore } from "./licence-fns";
 import { TLicenseDALFactory } from "./license-dal";
+import { getDefaultOnPremFeatures, setupLicenseRequestWithStore } from "./license-fns";
 import {
   InstanceType,
   TAddOrgPmtMethodDTO,
@@ -63,13 +64,13 @@ export const licenseServiceFactory = ({
   let onPremFeatures: TFeatureSet = getDefaultOnPremFeatures();
 
   const appCfg = getConfig();
-  const licenseServerCloudApi = setupLicenceRequestWithStore(
+  const licenseServerCloudApi = setupLicenseRequestWithStore(
     appCfg.LICENSE_SERVER_URL || "",
     LICENSE_SERVER_CLOUD_LOGIN,
     appCfg.LICENSE_SERVER_KEY || ""
   );
 
-  const licenseServerOnPremApi = setupLicenceRequestWithStore(
+  const licenseServerOnPremApi = setupLicenseRequestWithStore(
     appCfg.LICENSE_SERVER_URL || "",
     LICENSE_SERVER_ON_PREM_LOGIN,
     appCfg.LICENSE_KEY || ""
@@ -78,7 +79,7 @@ export const licenseServiceFactory = ({
   const init = async () => {
     try {
       if (appCfg.LICENSE_SERVER_KEY) {
-        const token = await licenseServerCloudApi.refreshLicence();
+        const token = await licenseServerCloudApi.refreshLicense();
         if (token) instanceType = InstanceType.Cloud;
         logger.info(`Instance type: ${InstanceType.Cloud}`);
         isValidLicense = true;
@@ -86,7 +87,7 @@ export const licenseServiceFactory = ({
       }
 
       if (appCfg.LICENSE_KEY) {
-        const token = await licenseServerOnPremApi.refreshLicence();
+        const token = await licenseServerOnPremApi.refreshLicense();
         if (token) {
           const {
             data: { currentPlan }
@@ -128,7 +129,7 @@ export const licenseServiceFactory = ({
         }
       }
 
-      // this means this is self hosted oss version
+      // this means this is the self-hosted oss version
       // else it would reach catch statement
       isValidLicense = true;
     } catch (error) {
@@ -144,7 +145,7 @@ export const licenseServiceFactory = ({
         if (cachedPlan) return JSON.parse(cachedPlan) as TFeatureSet;
 
         const org = await orgDAL.findOrgById(orgId);
-        if (!org) throw new BadRequestError({ message: "Org not found" });
+        if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
         const {
           data: { currentPlan }
         } = await licenseServerCloudApi.request.get<{ currentPlan: TFeatureSet }>(
@@ -155,6 +156,7 @@ export const licenseServiceFactory = ({
           LICENSE_SERVER_CLOUD_PLAN_TTL,
           JSON.stringify(currentPlan)
         );
+
         return currentPlan;
       }
     } catch (error) {
@@ -199,21 +201,29 @@ export const licenseServiceFactory = ({
     await licenseServerCloudApi.request.delete(`/api/license-server/v1/customers/${customerId}`);
   };
 
-  const updateSubscriptionOrgMemberCount = async (orgId: string) => {
+  const updateSubscriptionOrgMemberCount = async (orgId: string, tx?: Knex) => {
     if (instanceType === InstanceType.Cloud) {
       const org = await orgDAL.findOrgById(orgId);
-      if (!org) throw new BadRequestError({ message: "Org not found" });
+      if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
-      const count = await licenseDAL.countOfOrgMembers(orgId);
+      const quantity = await licenseDAL.countOfOrgMembers(orgId, tx);
+      const quantityIdentities = await licenseDAL.countOrgUsersAndIdentities(orgId, tx);
       if (org?.customerId) {
         await licenseServerCloudApi.request.patch(`/api/license-server/v1/customers/${org.customerId}/cloud-plan`, {
-          quantity: count
+          quantity,
+          quantityIdentities
         });
       }
       await keyStore.deleteItem(FEATURE_CACHE_KEY(orgId));
     } else if (instanceType === InstanceType.EnterpriseOnPrem) {
-      const usedSeats = await licenseDAL.countOfOrgMembers(null);
-      await licenseServerOnPremApi.request.patch(`/api/license/v1/license`, { usedSeats });
+      const usedSeats = await licenseDAL.countOfOrgMembers(null, tx);
+      const usedIdentitySeats = await licenseDAL.countOrgUsersAndIdentities(null, tx);
+      onPremFeatures.membersUsed = usedSeats;
+      onPremFeatures.identitiesUsed = usedIdentitySeats;
+      await licenseServerOnPremApi.request.patch(`/api/license/v1/license`, {
+        usedSeats,
+        usedIdentitySeats
+      });
     }
     await refreshPlan(orgId);
   };
@@ -256,8 +266,8 @@ export const licenseServiceFactory = ({
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
-      throw new BadRequestError({
-        message: "Failed to find organization"
+      throw new NotFoundError({
+        message: `Organization with ID '${orgId}' not found`
       });
     }
 
@@ -284,8 +294,8 @@ export const licenseServiceFactory = ({
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
-      throw new BadRequestError({
-        message: "Failed to find organization"
+      throw new NotFoundError({
+        message: "Organization not found"
       });
     }
 
@@ -330,8 +340,8 @@ export const licenseServiceFactory = ({
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
-      throw new BadRequestError({
-        message: "Failed to find organization"
+      throw new NotFoundError({
+        message: `Organization with ID '${orgId}' not found`
       });
     }
     const { data } = await licenseServerCloudApi.request.get(
@@ -347,8 +357,8 @@ export const licenseServiceFactory = ({
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
-      throw new BadRequestError({
-        message: "Failed to find organization"
+      throw new NotFoundError({
+        message: `Organization with ID '${orgId}' not found`
       });
     }
     const { data } = await licenseServerCloudApi.request.get(
@@ -363,8 +373,8 @@ export const licenseServiceFactory = ({
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
-      throw new BadRequestError({
-        message: "Failed to find organization"
+      throw new NotFoundError({
+        message: `Organization with ID '${orgId}' not found`
       });
     }
 
@@ -388,8 +398,8 @@ export const licenseServiceFactory = ({
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
-      throw new BadRequestError({
-        message: "Failed to find organization"
+      throw new NotFoundError({
+        message: `Organization with ID '${orgId}' not found`
       });
     }
     const { data } = await licenseServerCloudApi.request.patch(
@@ -408,8 +418,8 @@ export const licenseServiceFactory = ({
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
-      throw new BadRequestError({
-        message: "Failed to find organization"
+      throw new NotFoundError({
+        message: `Organization with ID '${orgId}' not found`
       });
     }
 
@@ -435,8 +445,8 @@ export const licenseServiceFactory = ({
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
-      throw new BadRequestError({
-        message: "Failed to find organization"
+      throw new NotFoundError({
+        message: `Organization with ID '${orgId}' not found`
       });
     }
     const {
@@ -464,8 +474,8 @@ export const licenseServiceFactory = ({
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
-      throw new BadRequestError({
-        message: "Failed to find organization"
+      throw new NotFoundError({
+        message: `Organization with ID '${orgId}' not found`
       });
     }
 
@@ -481,8 +491,8 @@ export const licenseServiceFactory = ({
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
-      throw new BadRequestError({
-        message: "Failed to find organization"
+      throw new NotFoundError({
+        message: `Organization with ID '${orgId}' not found`
       });
     }
     const {
@@ -499,8 +509,8 @@ export const licenseServiceFactory = ({
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
-      throw new BadRequestError({
-        message: "Failed to find organization"
+      throw new NotFoundError({
+        message: `Organization with ID '${orgId}' not found`
       });
     }
 
@@ -520,8 +530,8 @@ export const licenseServiceFactory = ({
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
-      throw new BadRequestError({
-        message: "Failed to find organization"
+      throw new NotFoundError({
+        message: `Organization with ID '${orgId}' not found`
       });
     }
 
@@ -537,8 +547,8 @@ export const licenseServiceFactory = ({
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
-      throw new BadRequestError({
-        message: "Failed to find organization"
+      throw new NotFoundError({
+        message: `Organization with ID '${orgId}' not found`
       });
     }
 
@@ -554,8 +564,8 @@ export const licenseServiceFactory = ({
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
-      throw new BadRequestError({
-        message: "Failed to find organization"
+      throw new NotFoundError({
+        message: `Organization with ID '${orgId}' not found`
       });
     }
 
@@ -574,6 +584,9 @@ export const licenseServiceFactory = ({
     },
     getInstanceType() {
       return instanceType;
+    },
+    get onPremFeatures() {
+      return onPremFeatures;
     },
     getPlan,
     updateSubscriptionOrgMemberCount,

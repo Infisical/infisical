@@ -5,7 +5,7 @@ import { apiRequest } from "@app/config/request";
 import { setAuthToken } from "@app/reactQuery";
 
 import { organizationKeys } from "../organization/queries";
-import { workspaceKeys } from "../workspace/queries";
+import { workspaceKeys } from "../workspace";
 import {
   ChangePasswordDTO,
   CompleteAccountDTO,
@@ -19,10 +19,13 @@ import {
   Login2Res,
   LoginLDAPDTO,
   LoginLDAPRes,
+  MfaMethod,
   ResetPasswordDTO,
   SendMfaTokenDTO,
   SRP1DTO,
   SRPR1Res,
+  TOauthTokenExchangeDTO,
+  UserAgentType,
   VerifyMfaTokenDTO,
   VerifyMfaTokenRes,
   VerifySignupInviteDTO
@@ -59,22 +62,29 @@ export const useLogin1 = () => {
   });
 };
 
-export const selectOrganization = async (data: { organizationId: string }) => {
-  const { data: res } = await apiRequest.post<{ token: string }>(
-    "/api/v3/auth/select-organization",
-    data
-  );
+export const selectOrganization = async (data: {
+  organizationId: string;
+  userAgent?: UserAgentType;
+}) => {
+  const { data: res } = await apiRequest.post<{
+    token: string;
+    isMfaEnabled: boolean;
+    mfaMethod?: MfaMethod;
+  }>("/api/v3/auth/select-organization", data);
   return res;
 };
 
 export const useSelectOrganization = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (details: { organizationId: string }) => {
+    mutationFn: async (details: { organizationId: string; userAgent?: UserAgentType }) => {
       const data = await selectOrganization(details);
 
-      SecurityClient.setToken(data.token);
-      SecurityClient.setProviderAuthToken("");
+      // If a custom user agent is set, then this session is meant for another consuming application, not the web application.
+      if (!details.userAgent && !data.isMfaEnabled) {
+        SecurityClient.setToken(data.token);
+        SecurityClient.setProviderAuthToken("");
+      }
 
       return data;
     },
@@ -92,9 +102,24 @@ export const useLogin2 = () => {
     mutationFn: async (details: {
       email: string;
       clientProof: string;
+      password: string;
       providerAuthToken?: string;
     }) => {
       return login2(details);
+    }
+  });
+};
+
+export const oauthTokenExchange = async (details: TOauthTokenExchangeDTO) => {
+  const { data } = await apiRequest.post<Login2Res>("/api/v1/sso/token-exchange", details);
+  return data;
+};
+
+export const useOauthTokenExchange = () => {
+  // note: use after srp1
+  return useMutation({
+    mutationFn: async (details: TOauthTokenExchangeDTO) => {
+      return oauthTokenExchange(details);
     }
   });
 };
@@ -131,10 +156,19 @@ export const useSendMfaToken = () => {
   });
 };
 
-export const verifyMfaToken = async ({ email, mfaCode }: { email: string; mfaCode: string }) => {
+export const verifyMfaToken = async ({
+  email,
+  mfaCode,
+  mfaMethod
+}: {
+  email: string;
+  mfaCode: string;
+  mfaMethod?: string;
+}) => {
   const { data } = await apiRequest.post("/api/v2/auth/mfa/verify", {
     email,
-    mfaToken: mfaCode
+    mfaToken: mfaCode,
+    mfaMethod
   });
 
   return data;
@@ -142,10 +176,11 @@ export const verifyMfaToken = async ({ email, mfaCode }: { email: string; mfaCod
 
 export const useVerifyMfaToken = () => {
   return useMutation<VerifyMfaTokenRes, {}, VerifyMfaTokenDTO>({
-    mutationFn: async ({ email, mfaCode }) => {
+    mutationFn: async ({ email, mfaCode, mfaMethod }) => {
       return verifyMfaToken({
         email,
-        mfaCode
+        mfaCode,
+        mfaMethod
       });
     }
   });
@@ -279,3 +314,9 @@ export const useGetAuthToken = () =>
     onSuccess: (data) => setAuthToken(data.token),
     retry: 0
   });
+
+export const checkUserTotpMfa = async () => {
+  const { data } = await apiRequest.get<{ isVerified: boolean }>("/api/v2/auth/mfa/check/totp");
+
+  return data.isVerified;
+};

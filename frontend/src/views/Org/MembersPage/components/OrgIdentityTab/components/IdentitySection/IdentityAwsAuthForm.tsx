@@ -22,8 +22,22 @@ const schema = yup
     stsEndpoint: yup.string(),
     allowedPrincipalArns: yup.string(),
     allowedAccountIds: yup.string(),
-    accessTokenTTL: yup.string().required("Access Token TTL is required"),
-    accessTokenMaxTTL: yup.string().required("Access Max Token TTL is required"),
+    accessTokenTTL: yup
+      .string()
+      .required("Access Token TTL is required")
+      .test(
+        "is-value-valid",
+        "Access Token TTL cannot be greater than 315360000",
+        (value) => Number(value) <= 315360000
+      ),
+    accessTokenMaxTTL: yup
+      .string()
+      .required("Access Max Token TTL is required")
+      .test(
+        "is-value-valid",
+        "Access Token Max TTL cannot be greater than 315360000",
+        (value) => Number(value) <= 315360000
+      ),
     accessTokenNumUsesLimit: yup.string().required("Access Token Max Number of Uses is required"),
     accessTokenTrustedIps: yup
       .array(
@@ -42,12 +56,13 @@ export type FormData = yup.InferType<typeof schema>;
 type Props = {
   handlePopUpOpen: (popUpName: keyof UsePopUpState<["upgradePlan"]>) => void;
   handlePopUpToggle: (
-    popUpName: keyof UsePopUpState<["identityAuthMethod"]>,
+    popUpName: keyof UsePopUpState<["identityAuthMethod", "revokeAuthMethod"]>,
     state?: boolean
   ) => void;
   identityAuthMethodData: {
     identityId: string;
     name: string;
+    configuredAuthMethods?: IdentityAuthMethod[];
     authMethod?: IdentityAuthMethod;
   };
 };
@@ -64,7 +79,12 @@ export const IdentityAwsAuthForm = ({
   const { mutateAsync: addMutateAsync } = useAddIdentityAwsAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityAwsAuth();
 
-  const { data } = useGetIdentityAwsAuth(identityAuthMethodData?.identityId ?? "");
+  const isUpdate = identityAuthMethodData?.configuredAuthMethods?.includes(
+    identityAuthMethodData.authMethod! || ""
+  );
+  const { data } = useGetIdentityAwsAuth(identityAuthMethodData?.identityId ?? "", {
+    enabled: isUpdate
+  });
 
   const {
     control,
@@ -161,16 +181,14 @@ export const IdentityAwsAuthForm = ({
       handlePopUpToggle("identityAuthMethod", false);
 
       createNotification({
-        text: `Successfully ${
-          identityAuthMethodData?.authMethod ? "updated" : "configured"
-        } auth method`,
+        text: `Successfully ${isUpdate ? "updated" : "configured"} auth method`,
         type: "success"
       });
 
       reset();
     } catch (err) {
       createNotification({
-        text: `Failed to ${identityAuthMethodData?.authMethod ? "update" : "configure"} identity`,
+        text: `Failed to ${isUpdate ? "update" : "configure"} identity`,
         type: "error"
       });
     }
@@ -329,23 +347,37 @@ export const IdentityAwsAuthForm = ({
           Add IP Address
         </Button>
       </div>
-      <div className="flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
-          {identityAuthMethodData?.authMethod ? "Update" : "Configure"}
-        </Button>
-        <Button
-          colorSchema="secondary"
-          variant="plain"
-          onClick={() => handlePopUpToggle("identityAuthMethod", false)}
-        >
-          {identityAuthMethodData?.authMethod ? "Cancel" : "Skip"}
-        </Button>
+      <div className="flex justify-between">
+        <div className="flex items-center">
+          <Button
+            className="mr-4"
+            size="sm"
+            type="submit"
+            isLoading={isSubmitting}
+            isDisabled={isSubmitting}
+          >
+            {!isUpdate ? "Create" : "Edit"}
+          </Button>
+
+          <Button
+            colorSchema="secondary"
+            variant="plain"
+            onClick={() => handlePopUpToggle("identityAuthMethod", false)}
+          >
+            Cancel
+          </Button>
+        </div>
+        {isUpdate && (
+          <Button
+            size="sm"
+            colorSchema="danger"
+            isLoading={isSubmitting}
+            isDisabled={isSubmitting}
+            onClick={() => handlePopUpToggle("revokeAuthMethod", true)}
+          >
+            Remove Auth Method
+          </Button>
+        )}
       </div>
     </form>
   );

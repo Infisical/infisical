@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { TProjectPermission } from "@app/lib/types";
+import { OrderByDirection, TProjectPermission } from "@app/lib/types";
+import { SecretsOrderBy } from "@app/services/secret/secret-types";
 
 import { DynamicSecretProviderSchema } from "./providers/models";
 
@@ -47,8 +48,33 @@ export type TDetailsDynamicSecretDTO = {
   projectSlug: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type ListDynamicSecretsFilters = {
+  offset?: number;
+  limit?: number;
+  orderBy?: SecretsOrderBy;
+  orderDirection?: OrderByDirection;
+  search?: string;
+};
+
 export type TListDynamicSecretsDTO = {
   path: string;
   environmentSlug: string;
-  projectSlug: string;
-} & Omit<TProjectPermission, "projectId">;
+  projectSlug?: string;
+  projectId?: string;
+} & ListDynamicSecretsFilters &
+  Omit<TProjectPermission, "projectId">;
+
+export type TListDynamicSecretsByFolderMappingsDTO = {
+  projectId: string;
+  folderMappings: { folderId: string; path: string; environment: string }[];
+  filters: ListDynamicSecretsFilters;
+};
+
+export type TListDynamicSecretsMultiEnvDTO = Omit<
+  TListDynamicSecretsDTO,
+  "projectId" | "environmentSlug" | "projectSlug"
+> & { projectId: string; environmentSlugs: string[]; isInternal?: boolean };
+
+export type TGetDynamicSecretsCountDTO = Omit<TListDynamicSecretsDTO, "projectSlug" | "projectId"> & {
+  projectId: string;
+};

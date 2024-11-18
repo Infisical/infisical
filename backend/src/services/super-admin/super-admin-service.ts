@@ -1,27 +1,45 @@
+import bcrypt from "bcrypt";
+
 import { TSuperAdmin, TSuperAdminUpdate } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError } from "@app/lib/errors";
+import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
+import { getUserPrivateKey } from "@app/lib/crypto/srp";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TAuthLoginFactory } from "../auth/auth-login-service";
 import { AuthMethod } from "../auth/auth-type";
+import { KMS_ROOT_CONFIG_UUID } from "../kms/kms-fns";
+import { TKmsRootConfigDALFactory } from "../kms/kms-root-config-dal";
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { RootKeyEncryptionStrategy } from "../kms/kms-types";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TSuperAdminDALFactory } from "./super-admin-dal";
-import { TAdminSignUpDTO } from "./super-admin-types";
+import { LoginMethod, TAdminGetUsersDTO, TAdminSignUpDTO } from "./super-admin-types";
 
 type TSuperAdminServiceFactoryDep = {
   serverCfgDAL: TSuperAdminDALFactory;
   userDAL: TUserDALFactory;
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
+  kmsService: Pick<TKmsServiceFactory, "encryptWithRootKey" | "decryptWithRootKey" | "updateEncryptionStrategy">;
+  kmsRootConfigDAL: TKmsRootConfigDALFactory;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
+  licenseService: Pick<TLicenseServiceFactory, "onPremFeatures">;
 };
 
 export type TSuperAdminServiceFactory = ReturnType<typeof superAdminServiceFactory>;
 
 // eslint-disable-next-line
-export let getServerCfg: () => Promise<TSuperAdmin>;
+export let getServerCfg: () => Promise<
+  TSuperAdmin & {
+    defaultAuthOrgSlug: string | null;
+    defaultAuthOrgAuthEnforced?: boolean | null;
+    defaultAuthOrgAuthMethod?: string | null;
+  }
+>;
 
 const ADMIN_CONFIG_KEY = "infisical-admin-cfg";
 const ADMIN_CONFIG_KEY_EXP = 60; // 60s
@@ -32,22 +50,29 @@ export const superAdminServiceFactory = ({
   userDAL,
   authService,
   orgService,
-  keyStore
+  keyStore,
+  kmsRootConfigDAL,
+  kmsService,
+  licenseService
 }: TSuperAdminServiceFactoryDep) => {
   const initServerCfg = async () => {
     // TODO(akhilmhdh): bad  pattern time less change this later to me itself
     getServerCfg = async () => {
       const config = await keyStore.getItem(ADMIN_CONFIG_KEY);
+
       // missing in keystore means fetch from db
       if (!config) {
         const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
-        if (serverCfg) {
-          await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(serverCfg)); // insert it back to keystore
+
+        if (!serverCfg) {
+          throw new NotFoundError({ message: "Admin config not found" });
         }
+
+        await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(serverCfg)); // insert it back to keystore
         return serverCfg;
       }
 
-      const keyStoreServerCfg = JSON.parse(config) as TSuperAdmin;
+      const keyStoreServerCfg = JSON.parse(config) as TSuperAdmin & { defaultAuthOrgSlug: string | null };
       return {
         ...keyStoreServerCfg,
         // this is to allow admin router to work
@@ -61,14 +86,72 @@ export const superAdminServiceFactory = ({
     const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
     if (serverCfg) return;
 
-    // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
-    const newCfg = await serverCfgDAL.create({ initialized: false, allowSignUp: true, id: ADMIN_CONFIG_DB_UUID });
+    const newCfg = await serverCfgDAL.create({
+      // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
+      id: ADMIN_CONFIG_DB_UUID,
+      initialized: false,
+      allowSignUp: true,
+      defaultAuthOrgId: null
+    });
     return newCfg;
   };
 
-  const updateServerCfg = async (data: TSuperAdminUpdate) => {
-    const updatedServerCfg = await serverCfgDAL.updateById(ADMIN_CONFIG_DB_UUID, data);
+  const updateServerCfg = async (
+    data: TSuperAdminUpdate & { slackClientId?: string; slackClientSecret?: string },
+    userId: string
+  ) => {
+    const updatedData = data;
+
+    if (data.enabledLoginMethods) {
+      const superAdminUser = await userDAL.findById(userId);
+      const loginMethodToAuthMethod = {
+        [LoginMethod.EMAIL]: [AuthMethod.EMAIL],
+        [LoginMethod.GOOGLE]: [AuthMethod.GOOGLE],
+        [LoginMethod.GITLAB]: [AuthMethod.GITLAB],
+        [LoginMethod.GITHUB]: [AuthMethod.GITHUB],
+        [LoginMethod.LDAP]: [AuthMethod.LDAP],
+        [LoginMethod.OIDC]: [AuthMethod.OIDC],
+        [LoginMethod.SAML]: [
+          AuthMethod.AZURE_SAML,
+          AuthMethod.GOOGLE_SAML,
+          AuthMethod.JUMPCLOUD_SAML,
+          AuthMethod.KEYCLOAK_SAML,
+          AuthMethod.OKTA_SAML
+        ]
+      };
+
+      if (
+        !data.enabledLoginMethods.some((loginMethod) =>
+          loginMethodToAuthMethod[loginMethod as LoginMethod].some(
+            (authMethod) => superAdminUser.authMethods?.includes(authMethod)
+          )
+        )
+      ) {
+        throw new BadRequestError({
+          message: "You must configure at least one auth method to prevent account lockout"
+        });
+      }
+    }
+
+    const encryptWithRoot = kmsService.encryptWithRootKey();
+    if (data.slackClientId) {
+      const encryptedClientId = encryptWithRoot(Buffer.from(data.slackClientId));
+
+      updatedData.encryptedSlackClientId = encryptedClientId;
+      updatedData.slackClientId = undefined;
+    }
+
+    if (data.slackClientSecret) {
+      const encryptedClientSecret = encryptWithRoot(Buffer.from(data.slackClientSecret));
+
+      updatedData.encryptedSlackClientSecret = encryptedClientSecret;
+      updatedData.slackClientSecret = undefined;
+    }
+
+    const updatedServerCfg = await serverCfgDAL.updateById(ADMIN_CONFIG_DB_UUID, updatedData);
+
     await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(updatedServerCfg));
+
     return updatedServerCfg;
   };
 
@@ -77,6 +160,7 @@ export const superAdminServiceFactory = ({
     firstName,
     salt,
     email,
+    password,
     verifier,
     publicKey,
     protectedKey,
@@ -90,8 +174,20 @@ export const superAdminServiceFactory = ({
   }: TAdminSignUpDTO) => {
     const appCfg = getConfig();
     const existingUser = await userDAL.findOne({ email });
-    if (existingUser) throw new BadRequestError({ name: "Admin sign up", message: "User already exist" });
+    if (existingUser) throw new BadRequestError({ name: "Admin sign up", message: "User already exists" });
 
+    const privateKey = await getUserPrivateKey(password, {
+      encryptionVersion: 2,
+      salt,
+      protectedKey,
+      protectedKeyIV,
+      protectedKeyTag,
+      encryptedPrivateKey,
+      iv: encryptedPrivateKeyIV,
+      tag: encryptedPrivateKeyTag
+    });
+    const hashedPassword = await bcrypt.hash(password, appCfg.BCRYPT_SALT_ROUND);
+    const { iv, tag, ciphertext, encoding } = infisicalSymmetricEncypt(privateKey);
     const userInfo = await userDAL.transaction(async (tx) => {
       const newUser = await userDAL.create(
         {
@@ -119,7 +215,12 @@ export const superAdminServiceFactory = ({
           iv: encryptedPrivateKeyIV,
           tag: encryptedPrivateKeyTag,
           verifier,
-          userId: newUser.id
+          userId: newUser.id,
+          hashedPassword,
+          serverEncryptedPrivateKey: ciphertext,
+          serverEncryptedPrivateKeyIV: iv,
+          serverEncryptedPrivateKeyTag: tag,
+          serverEncryptedPrivateKeyEncoding: encoding
         },
         tx
       );
@@ -134,7 +235,7 @@ export const superAdminServiceFactory = ({
       orgName: initialOrganizationName
     });
 
-    await updateServerCfg({ initialized: true });
+    await updateServerCfg({ initialized: true }, userInfo.user.id);
     const token = await authService.generateUserTokens({
       user: userInfo.user,
       authMethod: AuthMethod.EMAIL,
@@ -146,9 +247,116 @@ export const superAdminServiceFactory = ({
     return { token, user: userInfo, organization };
   };
 
+  const getUsers = ({ offset, limit, searchTerm }: TAdminGetUsersDTO) => {
+    return userDAL.getUsersByFilter({
+      limit,
+      offset,
+      searchTerm,
+      sortBy: "username"
+    });
+  };
+
+  const deleteUser = async (userId: string) => {
+    if (!licenseService.onPremFeatures?.instanceUserManagement) {
+      throw new BadRequestError({
+        message: "Failed to delete user due to plan restriction. Upgrade to Infisical's Pro plan."
+      });
+    }
+
+    const user = await userDAL.deleteById(userId);
+    return user;
+  };
+
+  const getAdminSlackConfig = async () => {
+    const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
+
+    if (!serverCfg) {
+      throw new NotFoundError({ name: "AdminConfig", message: "Admin config not found" });
+    }
+
+    let clientId = "";
+    let clientSecret = "";
+
+    const decrypt = kmsService.decryptWithRootKey();
+
+    if (serverCfg.encryptedSlackClientId) {
+      clientId = decrypt(serverCfg.encryptedSlackClientId).toString();
+    }
+
+    if (serverCfg.encryptedSlackClientSecret) {
+      clientSecret = decrypt(serverCfg.encryptedSlackClientSecret).toString();
+    }
+
+    return {
+      clientId,
+      clientSecret
+    };
+  };
+
+  const getConfiguredEncryptionStrategies = async () => {
+    const appCfg = getConfig();
+
+    const kmsRootCfg = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID);
+
+    if (!kmsRootCfg) {
+      throw new NotFoundError({ name: "KmsRootConfig", message: "KMS root configuration not found" });
+    }
+
+    const selectedStrategy = kmsRootCfg.encryptionStrategy;
+    const enabledStrategies: { enabled: boolean; strategy: RootKeyEncryptionStrategy }[] = [];
+
+    if (appCfg.ROOT_ENCRYPTION_KEY || appCfg.ENCRYPTION_KEY) {
+      const basicStrategy = RootKeyEncryptionStrategy.Software;
+
+      enabledStrategies.push({
+        enabled: selectedStrategy === basicStrategy,
+        strategy: basicStrategy
+      });
+    }
+    if (appCfg.isHsmConfigured) {
+      const hsmStrategy = RootKeyEncryptionStrategy.HSM;
+
+      enabledStrategies.push({
+        enabled: selectedStrategy === hsmStrategy,
+        strategy: hsmStrategy
+      });
+    }
+
+    return {
+      strategies: enabledStrategies
+    };
+  };
+
+  const updateRootEncryptionStrategy = async (strategy: RootKeyEncryptionStrategy) => {
+    if (!licenseService.onPremFeatures.hsm) {
+      throw new BadRequestError({
+        message: "Failed to update encryption strategy due to plan restriction. Upgrade to Infisical's Enterprise plan."
+      });
+    }
+
+    const configuredStrategies = await getConfiguredEncryptionStrategies();
+
+    const foundStrategy = configuredStrategies.strategies.find((s) => s.strategy === strategy);
+
+    if (!foundStrategy) {
+      throw new BadRequestError({ message: "Invalid encryption strategy" });
+    }
+
+    if (foundStrategy.enabled) {
+      throw new BadRequestError({ message: "The selected encryption strategy is already enabled" });
+    }
+
+    await kmsService.updateEncryptionStrategy(strategy);
+  };
+
   return {
     initServerCfg,
     updateServerCfg,
-    adminSignUp
+    adminSignUp,
+    getUsers,
+    deleteUser,
+    getAdminSlackConfig,
+    updateRootEncryptionStrategy,
+    getConfiguredEncryptionStrategies
   };
 };

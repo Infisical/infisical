@@ -3,25 +3,31 @@ import { faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
-import { Divider } from "@app/components/v2/Divider";
+import { Badge } from "@app/components/v2/Badge";
 import { useWorkspace } from "@app/context";
+import { useGetAccessRequestsCount, useGetSecretApprovalRequestCount } from "@app/hooks/api";
 
-import { AccessApprovalPolicyList } from "./components/AccessApprovalPolicyList";
 import { AccessApprovalRequest } from "./components/AccessApprovalRequest";
-import { SecretApprovalPolicyList } from "./components/SecretApprovalPolicyList";
+import { ApprovalPolicyList } from "./components/ApprovalPolicyList";
 import { SecretApprovalRequest } from "./components/SecretApprovalRequest";
 
 enum TabSection {
   SecretApprovalRequests = "approval-requests",
   SecretPolicies = "approval-rules",
   ResourcePolicies = "resource-rules",
-  ResourceApprovalRequests = "resource-requests"
+  ResourceApprovalRequests = "resource-requests",
+  Policies = "policies"
 }
 
 export const SecretApprovalPage = () => {
   const { currentWorkspace } = useWorkspace();
   const projectId = currentWorkspace?.id || "";
   const projectSlug = currentWorkspace?.slug || "";
+  const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({ workspaceId: projectId });
+  const { data: accessApprovalRequestCount } = useGetAccessRequestsCount({ projectSlug });
+  const defaultTab = (accessApprovalRequestCount?.pendingCount || 0) > (secretApprovalReqCount?.open || 0)
+    ? TabSection.ResourceApprovalRequests
+    : TabSection.SecretApprovalRequests;
 
   return (
     <div className="container mx-auto h-full w-full max-w-7xl bg-bunker-800 px-6 text-white">
@@ -45,25 +51,26 @@ export const SecretApprovalPage = () => {
           </Link>
         </div>
       </div>
-      <Tabs defaultValue={TabSection.SecretApprovalRequests}>
+      <Tabs defaultValue={defaultTab}>
         <TabList>
-          <Tab value={TabSection.SecretApprovalRequests}>Secret Requests</Tab>
-          <Tab value={TabSection.SecretPolicies}>Secret Policies</Tab>
-          <Divider />
-          <Tab value={TabSection.ResourceApprovalRequests}>Access Requests</Tab>
-          <Tab value={TabSection.ResourcePolicies}>Access Request Policies</Tab>
+          <Tab value={TabSection.SecretApprovalRequests}>
+            Secret Requests
+            {Boolean(secretApprovalReqCount?.open) && (<Badge className="ml-2">{secretApprovalReqCount?.open}</Badge>)}
+          </Tab>
+          <Tab value={TabSection.ResourceApprovalRequests}>
+            Access Requests
+            {Boolean(accessApprovalRequestCount?.pendingCount) && <Badge className="ml-2">{accessApprovalRequestCount?.pendingCount}</Badge>}
+          </Tab>
+          <Tab value={TabSection.Policies}>Policies</Tab>
         </TabList>
-        <TabPanel value={TabSection.SecretPolicies}>
-          <SecretApprovalPolicyList workspaceId={projectId} />
-        </TabPanel>
         <TabPanel value={TabSection.SecretApprovalRequests}>
           <SecretApprovalRequest />
         </TabPanel>
         <TabPanel value={TabSection.ResourceApprovalRequests}>
           <AccessApprovalRequest projectId={projectId} projectSlug={projectSlug} />
         </TabPanel>
-        <TabPanel value={TabSection.ResourcePolicies}>
-          <AccessApprovalPolicyList workspaceId={projectId} />
+        <TabPanel value={TabSection.Policies}>
+          <ApprovalPolicyList workspaceId={projectId} />
         </TabPanel>
       </Tabs>
     </div>

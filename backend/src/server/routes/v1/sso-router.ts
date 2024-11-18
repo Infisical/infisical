@@ -14,7 +14,7 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError } from "@app/lib/errors";
+import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { fetchGithubEmails } from "@app/lib/requests/github";
 import { AuthMethod } from "@app/services/auth/auth-type";
@@ -42,9 +42,9 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
           try {
             const email = profile?.emails?.[0]?.value;
             if (!email)
-              throw new BadRequestError({
+              throw new NotFoundError({
                 message: "Email not found",
-                name: "Oauth Google Register"
+                name: "OauthGoogleRegister"
               });
 
             const { isUserCompleted, providerAuthToken } = await server.services.login.oauth2Login({
@@ -57,7 +57,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
             cb(null, { isUserCompleted, providerAuthToken });
           } catch (error) {
             logger.error(error);
-            cb(null, false);
+            cb(error as Error, false);
           }
         }
       )
@@ -91,7 +91,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
             return cb(null, { isUserCompleted, providerAuthToken });
           } catch (error) {
             logger.error(error);
-            cb(null, false);
+            cb(error as Error, false);
           }
         }
       )
@@ -126,7 +126,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
             return cb(null, { isUserCompleted, providerAuthToken });
           } catch (error) {
             logger.error(error);
-            cb(null, false);
+            cb(error as Error, false);
           }
         }
       )
@@ -257,6 +257,47 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       return res.redirect(
         `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
       );
+    }
+  });
+
+  server.route({
+    url: "/token-exchange",
+    method: "POST",
+    schema: {
+      body: z.object({
+        providerAuthToken: z.string(),
+        email: z.string()
+      })
+    },
+    handler: async (req, res) => {
+      const userAgent = req.headers["user-agent"];
+      if (!userAgent) throw new Error("user agent header is required");
+
+      const data = await server.services.login.oauth2TokenExchange({
+        email: req.body.email,
+        ip: req.realIp,
+        userAgent,
+        providerAuthToken: req.body.providerAuthToken
+      });
+
+      void res.setCookie("jid", data.token.refresh, {
+        httpOnly: true,
+        path: "/",
+        sameSite: "strict",
+        secure: appCfg.HTTPS_ENABLED
+      });
+
+      return {
+        encryptionVersion: data.user.encryptionVersion,
+        token: data.token.access,
+        publicKey: data.user.publicKey,
+        encryptedPrivateKey: data.user.encryptedPrivateKey,
+        iv: data.user.iv,
+        tag: data.user.tag,
+        protectedKey: data.user.protectedKey || null,
+        protectedKeyIV: data.user.protectedKeyIV || null,
+        protectedKeyTag: data.user.protectedKeyTag || null
+      } as const;
     }
   });
 };

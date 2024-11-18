@@ -58,11 +58,20 @@
       "pages": [
         "handbook/onboarding", 
         "handbook/spending-money",
-        "handbook/time-off"
+        "handbook/compensation",
+        "handbook/time-off",
+        "handbook/hiring",
+        "handbook/meetings",
+        "handbook/talking-to-customers"
       ]
     }
   ],
   "integrations": {
     "intercom": "hsg644ru"
+  },
+  "analytics": {
+    "koala": {
+      "publicApiKey": "pk_b50d7184e0e39ddd5cdb43cf6abeadd9b97d"
+    }
   }
 }

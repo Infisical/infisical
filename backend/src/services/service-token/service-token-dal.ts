@@ -12,7 +12,7 @@ export const serviceTokenDALFactory = (db: TDbClient) => {
 
   const findById = async (id: string, tx?: Knex) => {
     try {
-      const doc = await (tx || db)(TableName.ServiceToken)
+      const doc = await (tx || db.replicaNode())(TableName.ServiceToken)
         .leftJoin<TUsers>(
           TableName.Users,
           `${TableName.Users}.id`,

@@ -2,7 +2,7 @@ import { Knex } from "knex";
 
 import { SecretKeyEncoding, TableName, TUsers } from "@app/db/schemas";
 import { decryptAsymmetric, encryptAsymmetric, infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
-import { BadRequestError, ScimRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError, ScimRequestError } from "@app/lib/errors";
 
 import {
   TAddUsersToGroup,
@@ -73,24 +73,24 @@ const addAcceptedUsersToGroup = async ({
       const ghostUser = await projectDAL.findProjectGhostUser(projectId, tx);
 
       if (!ghostUser) {
-        throw new BadRequestError({
-          message: "Failed to find sudo user"
+        throw new NotFoundError({
+          message: `Failed to find project owner of project with ID '${projectId}'`
         });
       }
 
       const ghostUserLatestKey = await projectKeyDAL.findLatestProjectKey(ghostUser.id, projectId, tx);
 
       if (!ghostUserLatestKey) {
-        throw new BadRequestError({
-          message: "Failed to find sudo user latest key"
+        throw new NotFoundError({
+          message: `Failed to find project owner's latest key in project with ID '${projectId}'`
         });
       }
 
       const bot = await projectBotDAL.findOne({ projectId }, tx);
 
       if (!bot) {
-        throw new BadRequestError({
-          message: "Failed to find bot"
+        throw new NotFoundError({
+          message: `Failed to find project bot in project with ID '${projectId}'`
         });
       }
 
@@ -200,7 +200,7 @@ export const addUsersToGroupByUserIds = async ({
 
     userIds.forEach((userId) => {
       if (!existingUserOrgMembershipsUserIdsSet.has(userId))
-        throw new BadRequestError({
+        throw new ForbiddenRequestError({
           message: `User with id ${userId} is not part of the organization`
         });
     });
@@ -303,7 +303,7 @@ export const removeUsersFromGroupByUserIds = async ({
 
     userIds.forEach((userId) => {
       if (!existingUserGroupMembershipsUserIdsSet.has(userId))
-        throw new BadRequestError({
+        throw new ForbiddenRequestError({
           message: `User(s) are not part of the group ${group.slug}`
         });
     });
@@ -336,31 +336,36 @@ export const removeUsersFromGroupByUserIds = async ({
         )
       );
 
-      // TODO: this part can be optimized
-      for await (const userId of userIds) {
-        const t = await userGroupMembershipDAL.filterProjectsByUserMembership(userId, group.id, projectIds, tx);
-        const projectsToDeleteKeyFor = projectIds.filter((p) => !t.has(p));
+      const promises: Array<Promise<void>> = [];
+      for (const userId of userIds) {
+        promises.push(
+          (async () => {
+            const t = await userGroupMembershipDAL.filterProjectsByUserMembership(userId, group.id, projectIds, tx);
+            const projectsToDeleteKeyFor = projectIds.filter((p) => !t.has(p));
 
-        if (projectsToDeleteKeyFor.length) {
-          await projectKeyDAL.delete(
-            {
-              receiverId: userId,
-              $in: {
-                projectId: projectsToDeleteKeyFor
-              }
-            },
-            tx
-          );
-        }
+            if (projectsToDeleteKeyFor.length) {
+              await projectKeyDAL.delete(
+                {
+                  receiverId: userId,
+                  $in: {
+                    projectId: projectsToDeleteKeyFor
+                  }
+                },
+                tx
+              );
+            }
 
-        await userGroupMembershipDAL.delete(
-          {
-            groupId: group.id,
-            userId
-          },
-          tx
+            await userGroupMembershipDAL.delete(
+              {
+                groupId: group.id,
+                userId
+              },
+              tx
+            );
+          })()
         );
       }
+      await Promise.all(promises);
     }
 
     if (membersToRemoveFromGroupPending.length) {
@@ -410,7 +415,7 @@ export const convertPendingGroupAdditionsToGroupMemberships = async ({
     const usersUserIdsSet = new Set(users.map((u) => u.id));
     userIds.forEach((userId) => {
       if (!usersUserIdsSet.has(userId)) {
-        throw new BadRequestError({
+        throw new NotFoundError({
           message: `Failed to find user with id ${userId}`
         });
       }

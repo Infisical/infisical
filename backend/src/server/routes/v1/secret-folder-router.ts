@@ -3,7 +3,8 @@ import { z } from "zod";
 import { SecretFoldersSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { FOLDERS } from "@app/lib/api-docs";
-import { removeTrailingSlash } from "@app/lib/fn";
+import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
+import { isValidFolderName } from "@app/lib/validator";
 import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -25,10 +26,28 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       body: z.object({
         workspaceId: z.string().trim().describe(FOLDERS.CREATE.workspaceId),
         environment: z.string().trim().describe(FOLDERS.CREATE.environment),
-        name: z.string().trim().describe(FOLDERS.CREATE.name),
-        path: z.string().trim().default("/").transform(removeTrailingSlash).describe(FOLDERS.CREATE.path),
+        name: z
+          .string()
+          .trim()
+          .describe(FOLDERS.CREATE.name)
+          .refine((name) => isValidFolderName(name), {
+            message: "Invalid folder name. Only alphanumeric characters, dashes, and underscores are allowed."
+          }),
+        path: z
+          .string()
+          .trim()
+          .default("/")
+          .transform(prefixWithSlash)
+          .transform(removeTrailingSlash)
+          .describe(FOLDERS.CREATE.path),
         // backward compatiability with cli
-        directory: z.string().trim().default("/").transform(removeTrailingSlash).describe(FOLDERS.CREATE.directory)
+        directory: z
+          .string()
+          .trim()
+          .default("/")
+          .transform(prefixWithSlash)
+          .transform(removeTrailingSlash)
+          .describe(FOLDERS.CREATE.directory)
       }),
       response: {
         200: z.object({
@@ -85,10 +104,28 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       body: z.object({
         workspaceId: z.string().trim().describe(FOLDERS.UPDATE.workspaceId),
         environment: z.string().trim().describe(FOLDERS.UPDATE.environment),
-        name: z.string().trim().describe(FOLDERS.UPDATE.name),
-        path: z.string().trim().default("/").transform(removeTrailingSlash).describe(FOLDERS.UPDATE.path),
+        name: z
+          .string()
+          .trim()
+          .describe(FOLDERS.UPDATE.name)
+          .refine((name) => isValidFolderName(name), {
+            message: "Invalid folder name. Only alphanumeric characters, dashes, and underscores are allowed."
+          }),
+        path: z
+          .string()
+          .trim()
+          .default("/")
+          .transform(prefixWithSlash)
+          .transform(removeTrailingSlash)
+          .describe(FOLDERS.UPDATE.path),
         // backward compatiability with cli
-        directory: z.string().trim().default("/").transform(removeTrailingSlash).describe(FOLDERS.UPDATE.directory)
+        directory: z
+          .string()
+          .trim()
+          .default("/")
+          .transform(prefixWithSlash)
+          .transform(removeTrailingSlash)
+          .describe(FOLDERS.UPDATE.directory)
       }),
       response: {
         200: z.object({
@@ -146,8 +183,20 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
           .object({
             id: z.string().describe(FOLDERS.UPDATE.folderId),
             environment: z.string().trim().describe(FOLDERS.UPDATE.environment),
-            name: z.string().trim().describe(FOLDERS.UPDATE.name),
-            path: z.string().trim().default("/").transform(removeTrailingSlash).describe(FOLDERS.UPDATE.path)
+            name: z
+              .string()
+              .trim()
+              .describe(FOLDERS.UPDATE.name)
+              .refine((name) => isValidFolderName(name), {
+                message: "Invalid folder name. Only alphanumeric characters, dashes, and underscores are allowed."
+              }),
+            path: z
+              .string()
+              .trim()
+              .default("/")
+              .transform(prefixWithSlash)
+              .transform(removeTrailingSlash)
+              .describe(FOLDERS.UPDATE.path)
           })
           .array()
           .min(1)
@@ -211,9 +260,21 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       body: z.object({
         workspaceId: z.string().trim().describe(FOLDERS.DELETE.workspaceId),
         environment: z.string().trim().describe(FOLDERS.DELETE.environment),
-        path: z.string().trim().default("/").transform(removeTrailingSlash).describe(FOLDERS.DELETE.path),
+        path: z
+          .string()
+          .trim()
+          .default("/")
+          .transform(prefixWithSlash)
+          .transform(removeTrailingSlash)
+          .describe(FOLDERS.DELETE.path),
         // keep this here as cli need directory
-        directory: z.string().trim().default("/").transform(removeTrailingSlash).describe(FOLDERS.DELETE.directory)
+        directory: z
+          .string()
+          .trim()
+          .default("/")
+          .transform(prefixWithSlash)
+          .transform(removeTrailingSlash)
+          .describe(FOLDERS.DELETE.directory)
       }),
       response: {
         200: z.object({
@@ -267,9 +328,21 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       querystring: z.object({
         workspaceId: z.string().trim().describe(FOLDERS.LIST.workspaceId),
         environment: z.string().trim().describe(FOLDERS.LIST.environment),
-        path: z.string().trim().default("/").transform(removeTrailingSlash).describe(FOLDERS.LIST.path),
+        path: z
+          .string()
+          .trim()
+          .default("/")
+          .transform(prefixWithSlash)
+          .transform(removeTrailingSlash)
+          .describe(FOLDERS.LIST.path),
         // backward compatiability with cli
-        directory: z.string().trim().default("/").transform(removeTrailingSlash).describe(FOLDERS.LIST.directory)
+        directory: z
+          .string()
+          .trim()
+          .default("/")
+          .transform(prefixWithSlash)
+          .transform(removeTrailingSlash)
+          .describe(FOLDERS.LIST.directory)
       }),
       response: {
         200: z.object({
@@ -290,6 +363,49 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         path
       });
       return { folders };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:id",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "Get folder by id",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        id: z.string().trim().describe(FOLDERS.GET_BY_ID.folderId)
+      }),
+      response: {
+        200: z.object({
+          folder: SecretFoldersSchema.extend({
+            environment: z.object({
+              envId: z.string(),
+              envName: z.string(),
+              envSlug: z.string()
+            }),
+            path: z.string(),
+            projectId: z.string()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const folder = await server.services.folder.getFolderById({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        id: req.params.id
+      });
+      return { folder };
     }
   });
 };

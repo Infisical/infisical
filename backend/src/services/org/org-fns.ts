@@ -1,4 +1,5 @@
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TProjectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
@@ -12,6 +13,7 @@ type TDeleteOrgMembership = {
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete">;
   userAliasDAL: Pick<TUserAliasDALFactory, "delete">;
   licenseService: Pick<TLicenseServiceFactory, "updateSubscriptionOrgMemberCount">;
+  projectUserAdditionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "delete">;
 };
 
 export const deleteOrgMembershipFn = async ({
@@ -19,6 +21,7 @@ export const deleteOrgMembershipFn = async ({
   orgId,
   orgDAL,
   projectMembershipDAL,
+  projectUserAdditionalPrivilegeDAL,
   projectKeyDAL,
   userAliasDAL,
   licenseService
@@ -35,6 +38,13 @@ export const deleteOrgMembershipFn = async ({
       {
         userId: orgMembership.userId,
         orgId
+      },
+      tx
+    );
+
+    await projectUserAdditionalPrivilegeDAL.delete(
+      {
+        userId: orgMembership.userId
       },
       tx
     );

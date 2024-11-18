@@ -1,3 +1,5 @@
+import { ProjectMembershipRole } from "@app/db/schemas";
+
 export enum TokenType {
   TOKEN_EMAIL_CONFIRMATION = "emailConfirmation",
   TOKEN_EMAIL_VERIFICATION = "emailVerification", // unverified -> verified
@@ -48,4 +50,20 @@ export type TIssueAuthTokenDTO = {
   userId: string;
   ip: string;
   userAgent: string;
+};
+
+export enum TokenMetadataType {
+  InviteToProjects = "projects-invite"
+}
+
+export type TTokenInviteToProjectsMetadataPayload = {
+  projectIds: string[];
+  projectRoleSlug: ProjectMembershipRole;
+  userId: string;
+  orgId: string;
+};
+
+export type TTokenMetadata = {
+  type: TokenMetadataType.InviteToProjects;
+  payload: TTokenInviteToProjectsMetadataPayload;
 };

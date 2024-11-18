@@ -21,7 +21,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { useToggle } from "@app/hooks";
-import { DecryptedSecret } from "@app/hooks/api/types";
+import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
 export enum TDiffModes {
   NoChange = "no change",
@@ -32,8 +32,8 @@ export enum TDiffModes {
 
 type Props = {
   mode: TDiffModes;
-  preSecret?: DecryptedSecret;
-  postSecret: DecryptedSecret;
+  preSecret?: SecretV3RawSanitized;
+  postSecret: SecretV3RawSanitized;
 };
 export type TDiffView<T> = {
   mode: TDiffModes;
@@ -120,9 +120,7 @@ export const SecretItem = ({ mode, preSecret, postSecret }: Props) => {
                   <Td className="border-r border-mineshaft-600">Value</Td>
                   {isModified && (
                     <Td className="border-r border-mineshaft-600">
-                      <SecretInput
-                        value={preSecret?.value}
-                      />
+                      <SecretInput value={preSecret?.value} />
                     </Td>
                   )}
                   <Td>
@@ -153,7 +151,7 @@ export const SecretItem = ({ mode, preSecret, postSecret }: Props) => {
                   <Td className="border-r border-mineshaft-600">Tags</Td>
                   {isModified && (
                     <Td className="border-r border-mineshaft-600">
-                      {preSecret?.tags?.map(({ name, id: tagId, color }) => (
+                      {preSecret?.tags?.map(({ slug, id: tagId, color }) => (
                         <Tag
                           className="flex w-min items-center space-x-2"
                           key={`${preSecret.id}-${tagId}`}
@@ -162,13 +160,13 @@ export const SecretItem = ({ mode, preSecret, postSecret }: Props) => {
                             className="h-3 w-3 rounded-full"
                             style={{ backgroundColor: color || "#bec2c8" }}
                           />
-                          <div className="text-sm">{name}</div>
+                          <div className="text-sm">{slug}</div>
                         </Tag>
                       ))}
                     </Td>
                   )}
                   <Td>
-                    {postSecret?.tags?.map(({ name, id: tagId, color }) => (
+                    {postSecret?.tags?.map(({ slug, id: tagId, color }) => (
                       <Tag
                         className="flex w-min items-center space-x-2"
                         key={`${postSecret.id}-${tagId}`}
@@ -177,7 +175,7 @@ export const SecretItem = ({ mode, preSecret, postSecret }: Props) => {
                           className="h-3 w-3 rounded-full"
                           style={{ backgroundColor: color || "#bec2c8" }}
                         />
-                        <div className="text-sm">{name}</div>
+                        <div className="text-sm">{slug}</div>
                       </Tag>
                     ))}
                   </Td>

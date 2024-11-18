@@ -5,7 +5,7 @@ import { ProjectMembershipRole } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
-import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 
 import { ActorType } from "../auth/auth-type";
@@ -66,7 +66,7 @@ export const identityProjectServiceFactory = ({
     const existingIdentity = await identityProjectDAL.findOne({ identityId, projectId });
     if (existingIdentity)
       throw new BadRequestError({
-        message: `Identity with id ${identityId} already exists in project with id ${projectId}`
+        message: `Identity with ID ${identityId} already exists in project with ID ${projectId}`
       });
 
     const project = await projectDAL.findById(projectId);
@@ -75,8 +75,8 @@ export const identityProjectServiceFactory = ({
       orgId: project.orgId
     });
     if (!identityOrgMembership)
-      throw new BadRequestError({
-        message: `Failed to find identity with id ${identityId}`
+      throw new NotFoundError({
+        message: `Failed to find identity with ID ${identityId}`
       });
 
     for await (const { role: requestedRoleChange } of roles) {
@@ -103,7 +103,8 @@ export const identityProjectServiceFactory = ({
           $in: { slug: customInputRoles.map(({ role }) => role) }
         })
       : [];
-    if (customRoles.length !== customInputRoles.length) throw new BadRequestError({ message: "Custom role not found" });
+    if (customRoles.length !== customInputRoles.length)
+      throw new NotFoundError({ message: "One or more custom project roles not found" });
 
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
     const projectIdentity = await identityProjectDAL.transaction(async (tx) => {
@@ -164,8 +165,8 @@ export const identityProjectServiceFactory = ({
 
     const projectIdentity = await identityProjectDAL.findOne({ identityId, projectId });
     if (!projectIdentity)
-      throw new BadRequestError({
-        message: `Identity with id ${identityId} doesn't exists in project with id ${projectId}`
+      throw new NotFoundError({
+        message: `Identity with ID ${identityId} doesn't exists in project with ID ${projectId}`
       });
 
     for await (const { role: requestedRoleChange } of roles) {
@@ -174,9 +175,7 @@ export const identityProjectServiceFactory = ({
         projectId
       );
 
-      const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, rolePermission);
-
-      if (!hasRequiredPriviledges) {
+      if (!isAtLeastAsPrivileged(permission, rolePermission)) {
         throw new ForbiddenRequestError({ message: "Failed to change to a more privileged role" });
       }
     }
@@ -192,7 +191,8 @@ export const identityProjectServiceFactory = ({
           $in: { slug: customInputRoles.map(({ role }) => role) }
         })
       : [];
-    if (customRoles.length !== customInputRoles.length) throw new BadRequestError({ message: "Custom role not found" });
+    if (customRoles.length !== customInputRoles.length)
+      throw new NotFoundError({ message: "One or more custom project roles not found" });
 
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
@@ -237,8 +237,9 @@ export const identityProjectServiceFactory = ({
     projectId
   }: TDeleteProjectIdentityDTO) => {
     const identityProjectMembership = await identityProjectDAL.findOne({ identityId, projectId });
-    if (!identityProjectMembership)
-      throw new BadRequestError({ message: `Failed to find identity with id ${identityId}` });
+    if (!identityProjectMembership) {
+      throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+    }
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -255,8 +256,7 @@ export const identityProjectServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, identityRolePermission);
-    if (!hasRequiredPriviledges)
+    if (!isAtLeastAsPrivileged(permission, identityRolePermission))
       throw new ForbiddenRequestError({ message: "Failed to delete more privileged identity" });
 
     const [deletedIdentity] = await identityProjectDAL.delete({ identityId, projectId });
@@ -268,7 +268,12 @@ export const identityProjectServiceFactory = ({
     actor,
     actorId,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    limit,
+    offset,
+    orderBy,
+    orderDirection,
+    search
   }: TListProjectIdentityDTO) => {
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -279,8 +284,17 @@ export const identityProjectServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Identity);
 
-    const identityMemberships = await identityProjectDAL.findByProjectId(projectId);
-    return identityMemberships;
+    const identityMemberships = await identityProjectDAL.findByProjectId(projectId, {
+      limit,
+      offset,
+      orderBy,
+      orderDirection,
+      search
+    });
+
+    const totalCount = await identityProjectDAL.getCountByProjectId(projectId, { search });
+
+    return { identityMemberships, totalCount };
   };
 
   const getProjectIdentityByIdentityId = async ({
@@ -301,7 +315,10 @@ export const identityProjectServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Identity);
 
     const [identityMembership] = await identityProjectDAL.findByProjectId(projectId, { identityId });
-    if (!identityMembership) throw new BadRequestError({ message: `Membership not found for identity ${identityId}` });
+    if (!identityMembership)
+      throw new NotFoundError({
+        message: `Project membership for identity with ID '${identityId} in project with ID '${projectId}' not found`
+      });
     return identityMembership;
   };
 

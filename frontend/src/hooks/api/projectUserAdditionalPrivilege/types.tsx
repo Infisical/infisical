@@ -12,29 +12,35 @@ export type TProjectUserPrivilege = {
   updatedAt: Date;
   permissions?: TProjectPermission[];
 } & (
-    | {
+  | {
       isTemporary: true;
       temporaryMode: string;
       temporaryRange: string;
       temporaryAccessStartTime: string;
       temporaryAccessEndTime?: string;
     }
-    | {
+  | {
       isTemporary: false;
       temporaryMode?: null;
       temporaryRange?: null;
       temporaryAccessStartTime?: null;
       temporaryAccessEndTime?: null;
     }
-  );
+);
 
 export type TCreateProjectUserPrivilegeDTO = {
   projectMembershipId: string;
   slug?: string;
-  isTemporary?: boolean;
-  temporaryMode?: ProjectUserAdditionalPrivilegeTemporaryMode;
-  temporaryRange?: string;
-  temporaryAccessStartTime?: string;
+  type:
+    | {
+        isTemporary: true;
+        temporaryMode?: ProjectUserAdditionalPrivilegeTemporaryMode;
+        temporaryRange?: string;
+        temporaryAccessStartTime?: string;
+      }
+    | {
+        isTemporary: false;
+      };
   permissions: TProjectPermission[];
 };
 

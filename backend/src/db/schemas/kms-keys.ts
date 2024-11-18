@@ -5,20 +5,19 @@
 
 import { z } from "zod";
 
-import { zodBuffer } from "@app/lib/zod";
-
 import { TImmutableDBKeys } from "./models";
 
 export const KmsKeysSchema = z.object({
   id: z.string().uuid(),
-  encryptedKey: zodBuffer,
-  encryptionAlgorithm: z.string(),
-  version: z.number().default(1),
   description: z.string().nullable().optional(),
   isDisabled: z.boolean().default(false).nullable().optional(),
   isReserved: z.boolean().default(true).nullable().optional(),
+  orgId: z.string().uuid(),
+  name: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
   projectId: z.string().nullable().optional(),
-  orgId: z.string().uuid().nullable().optional()
+  slug: z.string().nullable().optional()
 });
 
 export type TKmsKeys = z.infer<typeof KmsKeysSchema>;

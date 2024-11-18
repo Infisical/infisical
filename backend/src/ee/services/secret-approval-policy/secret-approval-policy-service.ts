@@ -1,19 +1,23 @@
-import { ForbiddenError, subject } from "@casl/ability";
+import { ForbiddenError } from "@casl/ability";
 import picomatch from "picomatch";
 
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { removeTrailingSlash } from "@app/lib/fn";
 import { containsGlobPatterns } from "@app/lib/picomatch";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
-import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { ApproverType } from "../access-approval-policy/access-approval-policy-types";
+import { TLicenseServiceFactory } from "../license/license-service";
 import { TSecretApprovalPolicyApproverDALFactory } from "./secret-approval-policy-approver-dal";
 import { TSecretApprovalPolicyDALFactory } from "./secret-approval-policy-dal";
 import {
   TCreateSapDTO,
   TDeleteSapDTO,
   TGetBoardSapDTO,
+  TGetSapByIdDTO,
   TListSapDTO,
   TUpdateSapDTO
 } from "./secret-approval-policy-types";
@@ -27,8 +31,9 @@ type TSecretApprovalPolicyServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretApprovalPolicyDAL: TSecretApprovalPolicyDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
+  userDAL: Pick<TUserDALFactory, "find">;
   secretApprovalPolicyApproverDAL: TSecretApprovalPolicyApproverDALFactory;
-  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TSecretApprovalPolicyServiceFactory = ReturnType<typeof secretApprovalPolicyServiceFactory>;
@@ -38,7 +43,8 @@ export const secretApprovalPolicyServiceFactory = ({
   permissionService,
   secretApprovalPolicyApproverDAL,
   projectEnvDAL,
-  projectMembershipDAL
+  userDAL,
+  licenseService
 }: TSecretApprovalPolicyServiceFactoryDep) => {
   const createSecretApprovalPolicy = async ({
     name,
@@ -50,9 +56,22 @@ export const secretApprovalPolicyServiceFactory = ({
     approvers,
     projectId,
     secretPath,
-    environment
+    environment,
+    enforcementLevel
   }: TCreateSapDTO) => {
-    if (approvals > approvers.length)
+    const groupApprovers = approvers
+      ?.filter((approver) => approver.type === ApproverType.Group)
+      .map((approver) => approver.id);
+    const userApprovers = approvers
+      ?.filter((approver) => approver.type === ApproverType.User)
+      .map((approver) => approver.id)
+      .filter(Boolean) as string[];
+
+    const userApproverNames = approvers
+      .map((approver) => (approver.type === ApproverType.User ? approver.name : undefined))
+      .filter(Boolean) as string[];
+
+    if (!groupApprovers.length && approvals > approvers.length)
       throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -66,15 +85,20 @@ export const secretApprovalPolicyServiceFactory = ({
       ProjectPermissionActions.Create,
       ProjectPermissionSub.SecretApproval
     );
-    const env = await projectEnvDAL.findOne({ slug: environment, projectId });
-    if (!env) throw new BadRequestError({ message: "Environment not found" });
 
-    const secretApprovers = await projectMembershipDAL.find({
-      projectId,
-      $in: { id: approvers }
-    });
-    if (secretApprovers.length !== approvers.length)
-      throw new BadRequestError({ message: "Approver not found in project" });
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.secretApproval) {
+      throw new BadRequestError({
+        message:
+          "Failed to create secret approval policy due to plan restriction. Upgrade plan to create secret approval policy."
+      });
+    }
+
+    const env = await projectEnvDAL.findOne({ slug: environment, projectId });
+    if (!env)
+      throw new NotFoundError({
+        message: `Environment with slug '${environment}' not found in project with ID ${projectId}`
+      });
 
     const secretApproval = await secretApprovalPolicyDAL.transaction(async (tx) => {
       const doc = await secretApprovalPolicyDAL.create(
@@ -82,19 +106,53 @@ export const secretApprovalPolicyServiceFactory = ({
           envId: env.id,
           approvals,
           secretPath,
-          name
+          name,
+          enforcementLevel
         },
         tx
       );
+
+      let userApproverIds = userApprovers;
+      if (userApproverNames.length) {
+        const approverUsers = await userDAL.find(
+          {
+            $in: {
+              username: userApproverNames
+            }
+          },
+          { tx }
+        );
+
+        const approverNamesFromDb = approverUsers.map((user) => user.username);
+        const invalidUsernames = userApproverNames?.filter((username) => !approverNamesFromDb.includes(username));
+
+        if (invalidUsernames?.length) {
+          throw new BadRequestError({
+            message: `Invalid approver user: ${invalidUsernames.join(", ")}`
+          });
+        }
+
+        userApproverIds = userApproverIds.concat(approverUsers.map((user) => user.id));
+      }
+
       await secretApprovalPolicyApproverDAL.insertMany(
-        secretApprovers.map(({ id }) => ({
-          approverId: id,
+        userApproverIds.map((approverUserId) => ({
+          approverUserId,
+          policyId: doc.id
+        })),
+        tx
+      );
+
+      await secretApprovalPolicyApproverDAL.insertMany(
+        groupApprovers.map((approverGroupId) => ({
+          approverGroupId,
           policyId: doc.id
         })),
         tx
       );
       return doc;
     });
+
     return { ...secretApproval, environment: env, projectId };
   };
 
@@ -107,10 +165,27 @@ export const secretApprovalPolicyServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     approvals,
-    secretPolicyId
+    secretPolicyId,
+    enforcementLevel
   }: TUpdateSapDTO) => {
+    const groupApprovers = approvers
+      ?.filter((approver) => approver.type === ApproverType.Group)
+      .map((approver) => approver.id);
+    const userApprovers = approvers
+      ?.filter((approver) => approver.type === ApproverType.User)
+      .map((approver) => approver.id)
+      .filter(Boolean) as string[];
+
+    const userApproverNames = approvers
+      .map((approver) => (approver.type === ApproverType.User ? approver.name : undefined))
+      .filter(Boolean) as string[];
+
     const secretApprovalPolicy = await secretApprovalPolicyDAL.findById(secretPolicyId);
-    if (!secretApprovalPolicy) throw new BadRequestError({ message: "Secret approval policy not found" });
+    if (!secretApprovalPolicy) {
+      throw new NotFoundError({
+        message: `Secret approval policy with ID '${secretPolicyId}' not found`
+      });
+    }
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -121,37 +196,71 @@ export const secretApprovalPolicyServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
 
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.secretApproval) {
+      throw new BadRequestError({
+        message:
+          "Failed to update secret approval policy due to plan restriction. Upgrade plan to update secret approval policy."
+      });
+    }
+
     const updatedSap = await secretApprovalPolicyDAL.transaction(async (tx) => {
       const doc = await secretApprovalPolicyDAL.updateById(
         secretApprovalPolicy.id,
         {
           approvals,
           secretPath,
-          name
+          name,
+          enforcementLevel
         },
         tx
       );
+
+      await secretApprovalPolicyApproverDAL.delete({ policyId: doc.id }, tx);
+
       if (approvers) {
-        const secretApprovers = await projectMembershipDAL.find(
-          {
-            projectId: secretApprovalPolicy.projectId,
-            $in: { id: approvers }
-          },
-          { tx }
-        );
-        if (secretApprovers.length !== approvers.length)
-          throw new BadRequestError({ message: "Approver not found in project" });
-        if (doc.approvals > secretApprovers.length)
-          throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
-        await secretApprovalPolicyApproverDAL.delete({ policyId: doc.id }, tx);
+        let userApproverIds = userApprovers;
+        if (userApproverNames) {
+          const approverUsers = await userDAL.find(
+            {
+              $in: {
+                username: userApproverNames
+              }
+            },
+            { tx }
+          );
+
+          const approverNamesFromDb = approverUsers.map((user) => user.username);
+          const invalidUsernames = userApproverNames?.filter((username) => !approverNamesFromDb.includes(username));
+
+          if (invalidUsernames?.length) {
+            throw new BadRequestError({
+              message: `Invalid approver user: ${invalidUsernames.join(", ")}`
+            });
+          }
+
+          userApproverIds = userApproverIds.concat(approverUsers.map((user) => user.id));
+        }
+
         await secretApprovalPolicyApproverDAL.insertMany(
-          secretApprovers.map(({ id }) => ({
-            approverId: id,
+          userApproverIds.map((approverUserId) => ({
+            approverUserId,
             policyId: doc.id
           })),
           tx
         );
       }
+
+      if (groupApprovers) {
+        await secretApprovalPolicyApproverDAL.insertMany(
+          groupApprovers.map((approverGroupId) => ({
+            approverGroupId,
+            policyId: doc.id
+          })),
+          tx
+        );
+      }
+
       return doc;
     });
     return {
@@ -169,7 +278,8 @@ export const secretApprovalPolicyServiceFactory = ({
     actorOrgId
   }: TDeleteSapDTO) => {
     const sapPolicy = await secretApprovalPolicyDAL.findById(secretPolicyId);
-    if (!sapPolicy) throw new BadRequestError({ message: "Secret approval policy not found" });
+    if (!sapPolicy)
+      throw new NotFoundError({ message: `Secret approval policy with ID '${secretPolicyId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -182,6 +292,14 @@ export const secretApprovalPolicyServiceFactory = ({
       ProjectPermissionActions.Delete,
       ProjectPermissionSub.SecretApproval
     );
+
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.secretApproval) {
+      throw new BadRequestError({
+        message:
+          "Failed to update secret approval policy due to plan restriction. Upgrade plan to update secret approval policy."
+      });
+    }
 
     await secretApprovalPolicyDAL.deleteById(secretPolicyId);
     return sapPolicy;
@@ -207,9 +325,14 @@ export const secretApprovalPolicyServiceFactory = ({
     return sapPolicies;
   };
 
-  const getSecretApprovalPolicy = async (projectId: string, environment: string, secretPath: string) => {
+  const getSecretApprovalPolicy = async (projectId: string, environment: string, path: string) => {
+    const secretPath = removeTrailingSlash(path);
     const env = await projectEnvDAL.findOne({ slug: environment, projectId });
-    if (!env) throw new BadRequestError({ message: "Environment not found" });
+    if (!env) {
+      throw new NotFoundError({
+        message: `Environment with slug '${environment}' not found in project with ID ${projectId}`
+      });
+    }
 
     const policies = await secretApprovalPolicyDAL.find({ envId: env.id });
     if (!policies.length) return;
@@ -233,18 +356,37 @@ export const secretApprovalPolicyServiceFactory = ({
     environment,
     secretPath
   }: TGetBoardSapDTO) => {
+    await permissionService.getProjectPermission(actor, actorId, projectId, actorAuthMethod, actorOrgId);
+
+    return getSecretApprovalPolicy(projectId, environment, secretPath);
+  };
+
+  const getSecretApprovalPolicyById = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    sapId
+  }: TGetSapByIdDTO) => {
+    const [sapPolicy] = await secretApprovalPolicyDAL.find({}, { sapId });
+
+    if (!sapPolicy) {
+      throw new NotFoundError({
+        message: `Secret approval policy with ID '${sapId}' not found`
+      });
+    }
+
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
-      projectId,
+      sapPolicy.projectId,
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { secretPath, environment })
-    );
-    return getSecretApprovalPolicy(projectId, environment, secretPath);
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
+
+    return sapPolicy;
   };
 
   return {
@@ -253,6 +395,7 @@ export const secretApprovalPolicyServiceFactory = ({
     deleteSecretApprovalPolicy,
     getSecretApprovalPolicy,
     getSecretApprovalPolicyByProjectId,
-    getSecretApprovalPolicyOfFolder
+    getSecretApprovalPolicyOfFolder,
+    getSecretApprovalPolicyById
   };
 };

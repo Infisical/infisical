@@ -1,36 +1,12 @@
-import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-
-import { FormLabel, Tooltip } from "../v2";
+import { FormLabelToolTip } from "./FormLabelToolTip";
 
 // To give users example of possible values of TTL
 export const TtlFormLabel = ({ label }: { label: string }) => (
   <div>
-    <FormLabel
+    <FormLabelToolTip
       label={label}
-      icon={
-        <Tooltip
-          content={
-            <span>
-              1m, 2h, 3d.{" "}
-              <a
-                href="https://github.com/vercel/ms?tab=readme-ov-file#examples"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary-700"
-              >
-                More
-              </a>
-            </span>
-          }
-        >
-          <FontAwesomeIcon
-            icon={faQuestionCircle}
-            size="sm"
-            className="relative bottom-1 right-1"
-          />
-        </Tooltip>
-      }
+      content="1m, 2h, 3d. "
+      linkToMore="https://github.com/vercel/ms?tab=readme-ov-file#examples"
     />
   </div>
 );

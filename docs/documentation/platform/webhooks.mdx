@@ -9,7 +9,9 @@ Webhooks can be used to trigger changes to your integrations when secrets are mo
 
 To create a webhook for a particular project, go to `Project Settings > Webhooks`.
 
-When creating a webhook, you can specify an environment and folder path (using glob patterns) to trigger only specific integrations. 
+Infisical supports two webhook types - General and Slack. If you need to integrate with Slack, use the Slack type with an [Incoming Webhook](https://api.slack.com/messaging/webhooks). When creating a webhook, you can specify an environment and folder path to trigger only specific integrations.
+
+![webhook-create](../../images/webhook-create.png)
 
 ## Secret Key Verification
 
@@ -27,7 +29,7 @@ If the signature in the header matches the signature that you generated, then yo
 {
   "event": "secret.modified",
   "project": {
-    "workspaceId":"the workspace id",
+    "workspaceId": "the workspace id",
     "environment": "project environment",
     "secretPath": "project folder path"
   },

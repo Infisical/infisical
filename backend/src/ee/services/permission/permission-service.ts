@@ -1,6 +1,7 @@
 import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
 import { PackRule, unpackRules } from "@casl/ability/extra";
 import { MongoQuery } from "@ucast/mongo2js";
+import handlebars from "handlebars";
 
 import {
   OrgMembershipRole,
@@ -10,7 +11,8 @@ import {
   TProjectMemberships
 } from "@app/db/schemas";
 import { conditionsMatcher } from "@app/lib/casl";
-import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { objectify } from "@app/lib/fn";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TOrgRoleDALFactory } from "@app/services/org/org-role-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -19,8 +21,8 @@ import { TServiceTokenDALFactory } from "@app/services/service-token/service-tok
 
 import { orgAdminPermissions, orgMemberPermissions, orgNoAccessPermissions, OrgPermissionSet } from "./org-permission";
 import { TPermissionDALFactory } from "./permission-dal";
-import { validateOrgSAML } from "./permission-fns";
-import { TBuildProjectPermissionDTO } from "./permission-types";
+import { escapeHandlebarsMissingMetadata, validateOrgSSO } from "./permission-fns";
+import { TBuildOrgPermissionDTO, TBuildProjectPermissionDTO } from "./permission-service-types";
 import {
   buildServiceTokenProjectPermission,
   projectAdminPermissions,
@@ -47,29 +49,32 @@ export const permissionServiceFactory = ({
   serviceTokenDAL,
   projectDAL
 }: TPermissionServiceFactoryDep) => {
-  const buildOrgPermission = (role: string, permission?: unknown) => {
-    switch (role) {
-      case OrgMembershipRole.Admin:
-        return orgAdminPermissions;
-      case OrgMembershipRole.Member:
-        return orgMemberPermissions;
-      case OrgMembershipRole.NoAccess:
-        return orgNoAccessPermissions;
-      case OrgMembershipRole.Custom:
-        return createMongoAbility<OrgPermissionSet>(
-          unpackRules<RawRuleOf<MongoAbility<OrgPermissionSet>>>(
-            permission as PackRule<RawRuleOf<MongoAbility<OrgPermissionSet>>>[]
-          ),
-          {
-            conditionsMatcher
-          }
-        );
-      default:
-        throw new BadRequestError({ name: "OrgRoleInvalid", message: "Org role not found" });
-    }
+  const buildOrgPermission = (orgUserRoles: TBuildOrgPermissionDTO) => {
+    const rules = orgUserRoles
+      .map(({ role, permissions }) => {
+        switch (role) {
+          case OrgMembershipRole.Admin:
+            return orgAdminPermissions;
+          case OrgMembershipRole.Member:
+            return orgMemberPermissions;
+          case OrgMembershipRole.NoAccess:
+            return orgNoAccessPermissions;
+          case OrgMembershipRole.Custom:
+            return unpackRules<RawRuleOf<MongoAbility<OrgPermissionSet>>>(
+              permissions as PackRule<RawRuleOf<MongoAbility<OrgPermissionSet>>>[]
+            );
+          default:
+            throw new NotFoundError({ name: "OrgRoleInvalid", message: `Organization role '${role}' not found` });
+        }
+      })
+      .reduce((prev, curr) => prev.concat(curr), []);
+
+    return createMongoAbility<OrgPermissionSet>(rules, {
+      conditionsMatcher
+    });
   };
 
-  const buildProjectPermission = (projectUserRoles: TBuildProjectPermissionDTO) => {
+  const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDTO) => {
     const rules = projectUserRoles
       .map(({ role, permissions }) => {
         switch (role) {
@@ -87,17 +92,15 @@ export const permissionServiceFactory = ({
             );
           }
           default:
-            throw new BadRequestError({
+            throw new NotFoundError({
               name: "ProjectRoleInvalid",
-              message: "Project role not found"
+              message: `Project role '${role}' not found`
             });
         }
       })
-      .reduce((curr, prev) => prev.concat(curr), []);
+      .reduce((prev, curr) => prev.concat(curr), []);
 
-    return createMongoAbility<ProjectPermissionSet>(rules, {
-      conditionsMatcher
-    });
+    return rules;
   };
 
   /*
@@ -109,10 +112,13 @@ export const permissionServiceFactory = ({
     authMethod: ActorAuthMethod,
     userOrgId?: string
   ) => {
+    // when token is scoped, ensure the passed org id is same as user org id
+    if (userOrgId && userOrgId !== orgId)
+      throw new ForbiddenRequestError({ message: "Invalid user token. Scoped to different organization." });
     const membership = await permissionDAL.getOrgPermission(userId, orgId);
-    if (!membership) throw new UnauthorizedError({ name: "User not in org" });
+    if (!membership) throw new ForbiddenRequestError({ name: "You are not apart of this organization" });
     if (membership.role === OrgMembershipRole.Custom && !membership.permissions) {
-      throw new BadRequestError({ name: "Custom permission not found" });
+      throw new BadRequestError({ name: "Custom organization permission not found" });
     }
 
     // If the org ID is API_KEY, the request is being made with an API Key.
@@ -121,21 +127,30 @@ export const permissionServiceFactory = ({
     // Extra: This means that when users are using API keys to make requests, they can't use slug-based routes.
     // Slug-based routes depend on the organization ID being present on the request, since project slugs aren't globally unique, and we need a way to filter by organization.
     if (userOrgId !== "API_KEY" && membership.orgId !== userOrgId) {
-      throw new UnauthorizedError({ name: "You are not logged into this organization" });
+      throw new ForbiddenRequestError({ name: "You are not logged into this organization" });
     }
 
-    validateOrgSAML(authMethod, membership.orgAuthEnforced);
+    validateOrgSSO(authMethod, membership.orgAuthEnforced);
 
-    return { permission: buildOrgPermission(membership.role, membership.permissions), membership };
+    const finalPolicyRoles = [{ role: membership.role, permissions: membership.permissions }].concat(
+      membership?.groups?.map(({ role, customRolePermission }) => ({
+        role,
+        permissions: customRolePermission
+      })) || []
+    );
+    return { permission: buildOrgPermission(finalPolicyRoles), membership };
   };
 
   const getIdentityOrgPermission = async (identityId: string, orgId: string) => {
     const membership = await permissionDAL.getOrgIdentityPermission(identityId, orgId);
-    if (!membership) throw new UnauthorizedError({ name: "Identity not in org" });
+    if (!membership) throw new ForbiddenRequestError({ name: "Identity is not apart of this organization" });
     if (membership.role === OrgMembershipRole.Custom && !membership.permissions) {
-      throw new BadRequestError({ name: "Custom permission not found" });
+      throw new NotFoundError({ name: `Custom organization permission not found for identity ${identityId}` });
     }
-    return { permission: buildOrgPermission(membership.role, membership.permissions), membership };
+    return {
+      permission: buildOrgPermission([{ role: membership.role, permissions: membership.permissions }]),
+      membership
+    };
   };
 
   const getOrgPermission = async (
@@ -151,8 +166,8 @@ export const permissionServiceFactory = ({
       case ActorType.IDENTITY:
         return getIdentityOrgPermission(id, orgId);
       default:
-        throw new UnauthorizedError({
-          message: "Permission not defined",
+        throw new BadRequestError({
+          message: "Invalid actor provided",
           name: "Get org permission"
         });
     }
@@ -164,13 +179,16 @@ export const permissionServiceFactory = ({
     const isCustomRole = !Object.values(OrgMembershipRole).includes(role as OrgMembershipRole);
     if (isCustomRole) {
       const orgRole = await orgRoleDAL.findOne({ slug: role, orgId });
-      if (!orgRole) throw new BadRequestError({ message: "Role not found" });
+      if (!orgRole)
+        throw new NotFoundError({
+          message: `Specified role '${role}' was not found in the organization with ID '${orgId}'`
+        });
       return {
-        permission: buildOrgPermission(OrgMembershipRole.Custom, orgRole.permissions),
+        permission: buildOrgPermission([{ role: OrgMembershipRole.Custom, permissions: orgRole.permissions }]),
         role: orgRole
       };
     }
-    return { permission: buildOrgPermission(role, []) };
+    return { permission: buildOrgPermission([{ role, permissions: [] }]) };
   };
 
   // user permission for a project in an organization
@@ -181,12 +199,12 @@ export const permissionServiceFactory = ({
     userOrgId?: string
   ): Promise<TProjectPermissionRT<ActorType.USER>> => {
     const userProjectPermission = await permissionDAL.getProjectPermission(userId, projectId);
-    if (!userProjectPermission) throw new UnauthorizedError({ name: "User not in project" });
+    if (!userProjectPermission) throw new ForbiddenRequestError({ name: "User not a part of the specified project" });
 
     if (
       userProjectPermission.roles.some(({ role, permissions }) => role === ProjectMembershipRole.Custom && !permissions)
     ) {
-      throw new BadRequestError({ name: "Custom permission not found" });
+      throw new NotFoundError({ name: "The permission was not found" });
     }
 
     // If the org ID is API_KEY, the request is being made with an API Key.
@@ -195,10 +213,10 @@ export const permissionServiceFactory = ({
     // Extra: This means that when users are using API keys to make requests, they can't use slug-based routes.
     // Slug-based routes depend on the organization ID being present on the request, since project slugs aren't globally unique, and we need a way to filter by organization.
     if (userOrgId !== "API_KEY" && userProjectPermission.orgId !== userOrgId) {
-      throw new UnauthorizedError({ name: "You are not logged into this organization" });
+      throw new ForbiddenRequestError({ name: "You are not logged into this organization" });
     }
 
-    validateOrgSAML(authMethod, userProjectPermission.orgAuthEnforced);
+    validateOrgSSO(authMethod, userProjectPermission.orgAuthEnforced);
 
     // join two permissions and pass to build the final permission set
     const rolePermissions = userProjectPermission.roles?.map(({ role, permissions }) => ({ role, permissions })) || [];
@@ -208,8 +226,34 @@ export const permissionServiceFactory = ({
         permissions
       })) || [];
 
+    const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
+    const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false });
+    const metadataKeyValuePair = escapeHandlebarsMissingMetadata(
+      objectify(
+        userProjectPermission.metadata,
+        (i) => i.key,
+        (i) => i.value
+      )
+    );
+    const interpolateRules = templatedRules(
+      {
+        identity: {
+          id: userProjectPermission.userId,
+          username: userProjectPermission.username,
+          metadata: metadataKeyValuePair
+        }
+      },
+      { data: false }
+    );
+    const permission = createMongoAbility<ProjectPermissionSet>(
+      JSON.parse(interpolateRules) as RawRuleOf<MongoAbility<ProjectPermissionSet>>[],
+      {
+        conditionsMatcher
+      }
+    );
+
     return {
-      permission: buildProjectPermission(rolePermissions.concat(additionalPrivileges)),
+      permission,
       membership: userProjectPermission,
       hasRole: (role: string) =>
         userProjectPermission.roles.findIndex(
@@ -224,18 +268,21 @@ export const permissionServiceFactory = ({
     identityOrgId: string | undefined
   ): Promise<TProjectPermissionRT<ActorType.IDENTITY>> => {
     const identityProjectPermission = await permissionDAL.getProjectIdentityPermission(identityId, projectId);
-    if (!identityProjectPermission) throw new UnauthorizedError({ name: "Identity not in project" });
+    if (!identityProjectPermission)
+      throw new ForbiddenRequestError({
+        name: `Identity is not a member of the specified project with ID '${projectId}'`
+      });
 
     if (
       identityProjectPermission.roles.some(
         ({ role, permissions }) => role === ProjectMembershipRole.Custom && !permissions
       )
     ) {
-      throw new BadRequestError({ name: "Custom permission not found" });
+      throw new NotFoundError({ name: "Custom permission not found" });
     }
 
     if (identityProjectPermission.orgId !== identityOrgId) {
-      throw new UnauthorizedError({ name: "You are not a member of this organization" });
+      throw new ForbiddenRequestError({ name: "Identity is not a member of the specified organization" });
     }
 
     const rolePermissions =
@@ -246,8 +293,35 @@ export const permissionServiceFactory = ({
         permissions
       })) || [];
 
+    const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
+    const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false });
+    const metadataKeyValuePair = escapeHandlebarsMissingMetadata(
+      objectify(
+        identityProjectPermission.metadata,
+        (i) => i.key,
+        (i) => i.value
+      )
+    );
+
+    const interpolateRules = templatedRules(
+      {
+        identity: {
+          id: identityProjectPermission.identityId,
+          username: identityProjectPermission.username,
+          metadata: metadataKeyValuePair
+        }
+      },
+      { data: false }
+    );
+    const permission = createMongoAbility<ProjectPermissionSet>(
+      JSON.parse(interpolateRules) as RawRuleOf<MongoAbility<ProjectPermissionSet>>[],
+      {
+        conditionsMatcher
+      }
+    );
+
     return {
-      permission: buildProjectPermission(rolePermissions.concat(additionalPrivileges)),
+      permission,
       membership: identityProjectPermission,
       hasRole: (role: string) =>
         identityProjectPermission.roles.findIndex(
@@ -262,25 +336,27 @@ export const permissionServiceFactory = ({
     actorOrgId: string | undefined
   ) => {
     const serviceToken = await serviceTokenDAL.findById(serviceTokenId);
-    if (!serviceToken) throw new BadRequestError({ message: "Service token not found" });
+    if (!serviceToken) throw new NotFoundError({ message: `Service token with ID '${serviceTokenId}' not found` });
 
     const serviceTokenProject = await projectDAL.findById(serviceToken.projectId);
 
     if (!serviceTokenProject) throw new BadRequestError({ message: "Service token not linked to a project" });
 
     if (serviceTokenProject.orgId !== actorOrgId) {
-      throw new UnauthorizedError({ message: "Service token not a part of this organization" });
+      throw new ForbiddenRequestError({ message: "Service token not a part of the specified organization" });
     }
 
-    if (serviceToken.projectId !== projectId)
-      throw new UnauthorizedError({
-        message: "Failed to find service authorization for given project"
+    if (serviceToken.projectId !== projectId) {
+      throw new ForbiddenRequestError({
+        name: `Service token not a part of the specified project with ID ${projectId}`
       });
+    }
 
-    if (serviceTokenProject.orgId !== actorOrgId)
-      throw new UnauthorizedError({
-        message: "Failed to find service authorization for given project"
+    if (serviceTokenProject.orgId !== actorOrgId) {
+      throw new ForbiddenRequestError({
+        message: `Service token not a part of the specified organization with ID ${actorOrgId}`
       });
+    }
 
     const scopes = ServiceTokenScopes.parse(serviceToken.scopes || []);
     return {
@@ -320,8 +396,8 @@ export const permissionServiceFactory = ({
       case ActorType.IDENTITY:
         return getIdentityProjectPermission(id, projectId, actorOrgId) as Promise<TProjectPermissionRT<T>>;
       default:
-        throw new UnauthorizedError({
-          message: "Permission not defined",
+        throw new BadRequestError({
+          message: "Invalid actor provided",
           name: "Get project permission"
         });
     }
@@ -331,15 +407,23 @@ export const permissionServiceFactory = ({
     const isCustomRole = !Object.values(ProjectMembershipRole).includes(role as ProjectMembershipRole);
     if (isCustomRole) {
       const projectRole = await projectRoleDAL.findOne({ slug: role, projectId });
-      if (!projectRole) throw new BadRequestError({ message: "Role not found" });
+      if (!projectRole) throw new NotFoundError({ message: `Specified role was not found: ${role}` });
+      const rules = buildProjectPermissionRules([
+        { role: ProjectMembershipRole.Custom, permissions: projectRole.permissions }
+      ]);
       return {
-        permission: buildProjectPermission([
-          { role: ProjectMembershipRole.Custom, permissions: projectRole.permissions }
-        ]),
+        permission: createMongoAbility<ProjectPermissionSet>(rules, {
+          conditionsMatcher
+        }),
         role: projectRole
       };
     }
-    return { permission: buildProjectPermission([{ role, permissions: [] }]) };
+
+    const rules = buildProjectPermissionRules([{ role, permissions: [] }]);
+    const permission = createMongoAbility<ProjectPermissionSet>(rules, {
+      conditionsMatcher
+    });
+    return { permission };
   };
 
   return {
@@ -350,6 +434,6 @@ export const permissionServiceFactory = ({
     getOrgPermissionByRole,
     getProjectPermissionByRole,
     buildOrgPermission,
-    buildProjectPermission
+    buildProjectPermissionRules
   };
 };

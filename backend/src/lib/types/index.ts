@@ -42,3 +42,25 @@ export type RequiredKeys<T> = {
 }[keyof T];
 
 export type PickRequired<T> = Pick<T, RequiredKeys<T>>;
+
+export enum EnforcementLevel {
+  Hard = "hard",
+  Soft = "soft"
+}
+
+export enum SecretSharingAccessType {
+  Anyone = "anyone",
+  Organization = "organization"
+}
+
+export enum OrderByDirection {
+  ASC = "asc",
+  DESC = "desc"
+}
+
+export type OrgServiceActor = {
+  type: ActorType;
+  id: string;
+  authMethod: ActorAuthMethod;
+  orgId: string;
+};

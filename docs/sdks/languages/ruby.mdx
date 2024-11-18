@@ -1,0 +1,436 @@
+---
+title: "Infisical Ruby SDK"
+sidebarTitle: "Ruby"
+icon: "diamond"
+---
+
+
+
+If you're working with Ruby , the official [Infisical Ruby SDK](https://github.com/infisical/sdk) package is the easiest way to fetch and work with secrets for your application.
+
+- [Ruby Package](https://rubygems.org/gems/infisical-sdk)
+- [Github Repository](https://github.com/infisical/sdk)
+
+## Basic Usage
+
+```ruby
+require 'infisical-sdk'
+
+# 1. Create the Infisical client
+infisical = InfisicalSDK::InfisicalClient.new('https://app.infisical.com')
+
+infisical.auth.universal_auth(client_id: 'YOUR_CLIENT_ID', client_secret: 'YOUR_CLIENT_SECRET')
+
+test_secret = infisical.secrets.get(
+  secret_name: 'API_KEY',
+  project_id: 'project-id',
+  environment: 'dev'
+)
+puts "Secret: #{single_test_secret}"
+```
+
+This example demonstrates how to use the Infisical Ruby SDK in a simple Ruby application. The application retrieves a secret named `API_KEY` from the `dev` environment of the `YOUR_PROJECT_ID` project.
+
+<Warning>
+    We do not recommend hardcoding your [Machine Identity Tokens](/platform/identities/overview). Setting it as an environment variable would be best.
+</Warning>
+
+# Installation
+
+```console
+$ gem install infisical-sdk
+```
+# Configuration
+
+Import the SDK and create a client instance.
+
+```ruby
+infisical = InfisicalSDK::InfisicalClient.new('https://app.infisical.com') # Optional parameter, default is https://api.infisical.com
+```
+
+### Client parameters
+
+<ParamField query="options" type="object">
+    <Expandable title="properties">
+        <ParamField query="Site URL" type="string" optional>
+            The URL of the Infisical API. Default is `https://api.infisical.com`.
+        </ParamField>
+
+        <ParamField query="Cache TTL" type="string" required>
+          How long the client should cache secrets for. Default is 5 minutes. Disable by setting to 0.
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+### Authentication
+
+The SDK supports a variety of authentication methods. The most common authentication method is Universal Auth, which uses a client ID and client secret to authenticate.
+
+#### Universal Auth
+
+**Using environment variables**
+
+Call `auth.universal_auth()` with empty arguments to use the following environment variables:
+
+- `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` - Your machine identity client ID.
+- `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` - Your machine identity client secret.
+
+**Using the SDK directly**
+```ruby
+infisical.auth.universal_auth(client_id: 'your-client-id', client_secret: 'your-client-secret')
+```
+
+#### GCP ID Token Auth
+<Info>
+  Please note that this authentication method will only work if you're running your application on Google Cloud Platform.
+  Please [read more](/documentation/platform/identities/gcp-auth) about this authentication method.
+</Info>
+
+**Using environment variables**
+
+Call `.auth.gcp_id_token_auth()` with empty arguments to use the following environment variables:
+
+- `INFISICAL_GCP_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
+
+**Using the SDK directly**
+```ruby
+infisical.auth.gcp_id_token_auth(identity_id: 'MACHINE_IDENTITY_ID')
+```
+
+#### GCP IAM Auth
+
+**Using environment variables**
+
+Call `.auth.gcp_iam_auth()` with empty arguments to use the following environment variables:
+
+- `INFISICAL_GCP_IAM_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
+- `INFISICAL_GCP_IAM_SERVICE_ACCOUNT_KEY_FILE_PATH` - The path to your GCP service account key file.
+
+**Using the SDK directly**
+```ruby
+infisical.auth.gcp_iam_auth(identity_id: 'MACHINE_IDENTITY_ID', service_account_key_file_path: 'SERVICE_ACCOUNT_KEY_FILE_PATH')
+```
+
+#### AWS IAM Auth
+<Info>
+  Please note that this authentication method will only work if you're running your application on AWS.
+  Please [read more](/documentation/platform/identities/aws-auth) about this authentication method.
+</Info>
+
+**Using environment variables**
+
+Call `.auth.aws_iam_auth()` with empty arguments to use the following environment variables:
+
+- `INFISICAL_AWS_IAM_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
+
+**Using the SDK directly**
+```ruby
+infisical.auth.aws_iam_auth(identity_id: 'MACHINE_IDENTITY_ID')
+```
+
+
+#### Azure Auth
+<Info>
+  Please note that this authentication method will only work if you're running your application on Azure.
+  Please [read more](/documentation/platform/identities/azure-auth) about this authentication method.
+</Info>
+
+**Using environment variables**
+
+Call `.auth.azure_auth()` with empty arguments to use the following environment variables:
+
+- `INFISICAL_AZURE_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
+
+**Using the SDK directly**
+```ruby
+infisical.auth.azure_auth(identity_id: 'MACHINE_IDENTITY_ID')
+```
+
+#### Kubernetes Auth
+<Info>
+  Please note that this authentication method will only work if you're running your application on Kubernetes.
+  Please [read more](/documentation/platform/identities/kubernetes-auth) about this authentication method.
+</Info>
+
+**Using environment variables**
+
+Call `.auth.kubernetes_auth()` with empty arguments to use the following environment variables:
+
+- `INFISICAL_KUBERNETES_IDENTITY_ID` - Your Infisical Machine Identity ID.
+- `INFISICAL_KUBERNETES_SERVICE_ACCOUNT_TOKEN_PATH_ENV_NAME` - The environment variable name that contains the path to the service account token. This is optional and will default to `/var/run/secrets/kubernetes.io/serviceaccount/token`.
+
+**Using the SDK directly**
+```ruby
+# Service account token path will default to /var/run/secrets/kubernetes.io/serviceaccount/token if empty value is passed
+infisical.auth.kubernetes_auth(identity_id: 'MACHINE_IDENTITY_ID', service_account_token_path: nil)
+```
+
+## Working with Secrets
+
+### client.secrets.list(options)
+
+```ruby
+secrets = infisical.secrets.list(
+  project_id: 'PROJECT_ID',
+  environment: 'dev',
+  path: '/foo/bar',
+)
+```
+
+Retrieve all secrets within the Infisical project and environment that client is connected to
+
+#### Parameters
+
+<ParamField query="Parameters" type="object">
+    <Expandable title="properties">
+        <ParamField query="environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+
+        <ParamField query="project_id" type="string">
+            The project ID where the secret lives in.
+        </ParamField>
+
+         <ParamField query="path" type="string" optional>
+            The path from where secrets should be fetched from.
+        </ParamField>
+
+        <ParamField query="attach_to_process_env" type="boolean" default="false" optional>
+             Whether or not to set the fetched secrets to the process environment. If true, you can access the secrets like so `System.getenv("SECRET_NAME")`.
+        </ParamField>
+
+        <ParamField query="include_imports" type="boolean" default="false" optional>
+             Whether or not to include imported secrets from the current path. Read about [secret import](/documentation/platform/secret-reference)
+        </ParamField>
+
+        <ParamField query="recursive" type="boolean" default="false" optional>
+            Whether or not to fetch secrets recursively from the specified path. Please note that there's a 20-depth limit for recursive fetching.
+        </ParamField>
+
+        <ParamField query="expand_secret_references" type="boolean" default="true" optional>
+            Whether or not to expand secret references in the fetched secrets. Read about [secret reference](/documentation/platform/secret-reference)
+        </ParamField>
+    </Expandable>
+
+</ParamField>
+
+### client.secrets.get(options)
+
+```ruby
+secret = infisical.secrets.get(
+  secret_name: 'API_KEY',
+  project_id: project_id,
+  environment: env_slug
+)
+```
+
+Retrieve a secret from Infisical.
+
+By default, `Secrets().Retrieve()` fetches and returns a shared secret.
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="secret_name" type="string" required>
+            The key of the secret to retrieve.
+        </ParamField>
+        <ParamField query="project_id" type="string" required>
+            The project ID where the secret lives in.
+        </ParamField>
+        <ParamField query="environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+        <ParamField query="path" type="string" optional>
+            The path from where secret should be fetched from.
+        </ParamField>
+        <ParamField query="type" type="string" optional>
+            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+### client.secrets.create(options)
+
+```ruby
+new_secret = infisical.secrets.create(
+  secret_name: 'NEW_SECRET',
+  secret_value: 'SECRET_VALUE',
+  project_id: 'PROJECT_ID',
+  environment: 'dev',
+)
+```
+
+Create a new secret in Infisical.
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="secret_name" type="string" required>
+            The key of the secret to create.
+        </ParamField>
+        <ParamField query="secret_value" type="string" required>
+            The value of the secret.
+        </ParamField>
+        <ParamField query="secret_comment" type="string" optional>
+            A comment for the secret.
+        </ParamField>
+        <ParamField query="project_id" type="string" required>
+            The project ID where the secret lives in.
+        </ParamField>
+        <ParamField query="environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+        <ParamField query="path" type="string" optional>
+            The path from where secret should be created.
+        </ParamField>
+        <ParamField query="type" type="string" optional>
+            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+### client.secrets.update(options)
+
+```ruby
+updated_secret = infisical.secrets.update(
+  secret_name: 'SECRET_KEY_TO_UPDATE',
+  secret_value: 'NEW_SECRET_VALUE',
+  project_id: 'PROJECT_ID',
+  environment: 'dev',
+)
+```
+
+Update an existing secret in Infisical.
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="secret_name" type="string" required>
+            The key of the secret to update.
+        </ParamField>
+        <ParamField query="secret_value" type="string" required>
+            The new value of the secret.
+        </ParamField>
+        <ParamField query="skip_multiline_encoding" type="boolean" default="false" optional>
+            Whether or not to skip multiline encoding for the new secret value.
+        </ParamField>
+        <ParamField query="project_id" type="string" required>
+            The project ID where the secret lives in.
+        </ParamField>
+        <ParamField query="environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+        <ParamField query="path" type="string" optional>
+            The path from where secret should be updated.
+        </ParamField>
+        <ParamField query="type" type="string" optional>
+            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+### client.secrets.delete(options)
+
+```ruby
+deleted_secret = infisical.secrets.delete(
+  secret_name: 'SECRET_TO_DELETE',
+  project_id: 'PROJECT_ID',
+  environment: 'dev',
+)
+```
+
+Delete a secret in Infisical.
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="secret_name" type="string">
+            The key of the secret to update.
+        </ParamField>
+        <ParamField query="project_id" type="string" required>
+            The project ID where the secret lives in.
+        </ParamField>
+        <ParamField query="environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+        <ParamField query="path" type="string" optional>
+            The path from where secret should be deleted.
+        </ParamField>
+        <ParamField query="type" type="string" optional>
+            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+
+## Cryptography
+
+### Create a symmetric key
+
+Create a base64-encoded, 256-bit symmetric key to be used for encryption/decryption.
+
+```ruby
+key = infisical.cryptography.create_symmetric_key
+```
+
+#### Returns (string)
+`key` (string): A base64-encoded, 256-bit symmetric key, that can be used for encryption/decryption purposes.
+
+### Encrypt symmetric
+```ruby
+encrypted_data = infisical.cryptography.encrypt_symmetric(data: "Hello World!", key: key)
+```
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" required>
+    <Expandable title="properties">
+        <ParamField query="data" type="string">
+            The plaintext you want to encrypt.
+        </ParamField>
+        <ParamField query="key" type="string" required>
+            The symmetric key to use for encryption.
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+#### Returns (object)
+`tag` (string): A base64-encoded, 128-bit authentication tag.
+`iv` (string): A base64-encoded, 96-bit initialization vector.
+`ciphertext` (string): A base64-encoded, encrypted ciphertext.
+
+
+### Decrypt symmetric
+```ruby
+decrypted_data = infisical.cryptography.decrypt_symmetric(
+  ciphertext: encrypted_data['ciphertext'],
+  iv: encrypted_data['iv'],
+  tag: encrypted_data['tag'],
+  key: key
+)
+```
+
+#### Parameters
+<ParamField query="Parameters" type="object" required>
+    <Expandable title="properties">
+        <ParamField query="ciphertext" type="string">
+            The ciphertext you want to decrypt.
+        </ParamField>
+        <ParamField query="key" type="string" required>
+            The symmetric key to use for encryption.
+        </ParamField>
+        <ParamField query="iv" type="string" required>
+            The initialization vector to use for decryption.
+        </ParamField>
+        <ParamField query="tag" type="string" required>
+            The authentication tag to use for decryption.
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+#### Returns (string)
+`Plaintext` (string): The decrypted plaintext.

@@ -9,7 +9,7 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("integration").notNullable();
       t.string("teamId"); // vercel-specific
-      t.string("url"); // for self hosted
+      t.string("url"); // for self-hosted
       t.string("namespace"); // hashicorp specific
       t.string("accountId"); // netlify
       t.text("refreshCiphertext");
@@ -36,7 +36,7 @@ export async function up(knex: Knex): Promise<void> {
     await knex.schema.createTable(TableName.Integration, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.boolean("isActive").notNullable();
-      t.string("url"); // self hosted
+      t.string("url"); // self-hosted
       t.string("app"); // name of app in provider
       t.string("appId");
       t.string("targetEnvironment");

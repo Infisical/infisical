@@ -2,7 +2,7 @@ import jwt from "jsonwebtoken";
 
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 
 import { Integrations, IntegrationUrls } from "./integration-list";
 
@@ -131,6 +131,35 @@ const exchangeCodeAzure = async ({ code }: { code: string }) => {
   };
 };
 
+const exchangeCodeAzureAppConfig = async ({ code }: { code: string }) => {
+  const accessExpiresAt = new Date();
+  const appCfg = getConfig();
+  if (!appCfg.CLIENT_ID_AZURE || !appCfg.CLIENT_SECRET_AZURE) {
+    throw new BadRequestError({ message: "Missing client id and client secret" });
+  }
+  const res = (
+    await request.post<ExchangeCodeAzureResponse>(
+      IntegrationUrls.AZURE_TOKEN_URL,
+      new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        scope: "https://azconfig.io/.default openid offline_access",
+        client_id: appCfg.CLIENT_ID_AZURE,
+        client_secret: appCfg.CLIENT_SECRET_AZURE,
+        redirect_uri: `${appCfg.SITE_URL}/integrations/azure-app-configuration/oauth2/callback`
+      })
+    )
+  ).data;
+
+  accessExpiresAt.setSeconds(accessExpiresAt.getSeconds() + res.expires_in);
+
+  return {
+    accessToken: res.access_token,
+    refreshToken: res.refresh_token,
+    accessExpiresAt
+  };
+};
+
 const exchangeCodeHeroku = async ({ code }: { code: string }) => {
   const accessExpiresAt = new Date();
   const appCfg = getConfig();
@@ -234,12 +263,73 @@ const exchangeCodeNetlify = async ({ code }: { code: string }) => {
   };
 };
 
-const exchangeCodeGithub = async ({ code }: { code: string }) => {
+const exchangeCodeGithub = async ({ code, installationId }: { code: string; installationId?: string }) => {
   const appCfg = getConfig();
-  if (!appCfg.CLIENT_ID_GITHUB || !appCfg.CLIENT_SECRET_GITHUB) {
-    throw new BadRequestError({ message: "Missing client id and client secret" });
+
+  if (!installationId && (!appCfg.CLIENT_ID_GITHUB || !appCfg.CLIENT_SECRET_GITHUB)) {
+    throw new InternalServerError({ message: "Missing client id and client secret" });
   }
 
+  if (installationId && (!appCfg.CLIENT_ID_GITHUB_APP || !appCfg.CLIENT_SECRET_GITHUB_APP)) {
+    throw new InternalServerError({
+      message: "Missing Github app client ID and client secret"
+    });
+  }
+
+  if (installationId) {
+    // handle app installations
+    const oauthRes = (
+      await request.get<ExchangeCodeGithubResponse>(IntegrationUrls.GITHUB_TOKEN_URL, {
+        params: {
+          client_id: appCfg.CLIENT_ID_GITHUB_APP,
+          client_secret: appCfg.CLIENT_SECRET_GITHUB_APP,
+          code,
+          redirect_uri: `${appCfg.SITE_URL}/integrations/github/oauth2/callback`
+        },
+        headers: {
+          Accept: "application/json",
+          "Accept-Encoding": "application/json"
+        }
+      })
+    ).data;
+
+    // use access token to validate installation ID
+    const installationsRes = (
+      await request.get<{
+        installations: {
+          id: number;
+          account: {
+            login: string;
+          };
+        }[];
+      }>(IntegrationUrls.GITHUB_USER_INSTALLATIONS, {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${oauthRes.access_token}`,
+          "Accept-Encoding": "application/json"
+        }
+      })
+    ).data;
+
+    const matchingInstallation = installationsRes.installations.find(
+      (installation) => installation.id === +installationId
+    );
+
+    if (!matchingInstallation) {
+      throw new ForbiddenRequestError({
+        message: "User has no access to the provided installation"
+      });
+    }
+
+    return {
+      accessToken: "", // for github app integrations, we only need the installationID from the metadata
+      refreshToken: null,
+      accessExpiresAt: null,
+      installationName: matchingInstallation.account.login
+    };
+  }
+
+  // handle oauth github integration
   const res = (
     await request.get<ExchangeCodeGithubResponse>(IntegrationUrls.GITHUB_TOKEN_URL, {
       params: {
@@ -346,6 +436,7 @@ type TExchangeReturn = {
   url?: string;
   teamId?: string;
   accountId?: string;
+  installationName?: string;
 };
 
 /**
@@ -355,11 +446,13 @@ type TExchangeReturn = {
 export const exchangeCode = async ({
   integration,
   code,
-  url
+  url,
+  installationId
 }: {
   integration: string;
   code: string;
   url?: string;
+  installationId?: string;
 }): Promise<TExchangeReturn> => {
   switch (integration) {
     case Integrations.GCP_SECRET_MANAGER:
@@ -368,6 +461,10 @@ export const exchangeCode = async ({
       });
     case Integrations.AZURE_KEY_VAULT:
       return exchangeCodeAzure({
+        code
+      });
+    case Integrations.AZURE_APP_CONFIGURATION:
+      return exchangeCodeAzureAppConfig({
         code
       });
     case Integrations.HEROKU:
@@ -384,7 +481,8 @@ export const exchangeCode = async ({
       });
     case Integrations.GITHUB:
       return exchangeCodeGithub({
-        code
+        code,
+        installationId
       });
     case Integrations.GITLAB:
       return exchangeCodeGitlab({
@@ -396,7 +494,7 @@ export const exchangeCode = async ({
         code
       });
     default:
-      throw new BadRequestError({ message: "Unknown integration" });
+      throw new NotFoundError({ message: "Unknown integration" });
   }
 };
 
@@ -681,6 +779,7 @@ export const exchangeRefresh = async (
   accessExpiresAt: Date;
 }> => {
   switch (integration) {
+    case Integrations.AZURE_APP_CONFIGURATION:
     case Integrations.AZURE_KEY_VAULT:
       return exchangeRefreshAzure({
         refreshToken

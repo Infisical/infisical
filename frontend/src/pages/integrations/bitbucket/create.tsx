@@ -1,196 +1,300 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { SiBitbucket } from "react-icons/si";
 import { useRouter } from "next/router";
-import queryString from "query-string";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
-import { useCreateIntegration } from "@app/hooks/api";
-
+import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Card,
   CardTitle,
+  FilterableSelect,
   FormControl,
   Input,
-  Select,
-  SelectItem
-} from "../../../components/v2";
+  Spinner
+} from "@app/components/v2";
+import { useWorkspace } from "@app/context";
 import {
+  useCreateIntegration,
   useGetIntegrationAuthApps,
-  useGetIntegrationAuthBitBucketWorkspaces,
-  useGetIntegrationAuthById
-} from "../../../hooks/api/integrationAuth";
-import { useGetWorkspaceById } from "../../../hooks/api/workspace";
+  useGetIntegrationAuthBitBucketWorkspaces
+} from "@app/hooks/api";
+import { useGetIntegrationAuthBitBucketEnvironments } from "@app/hooks/api/integrationAuth/queries";
+
+enum BitbucketScope {
+  Repo = "repo",
+  Env = "environment"
+}
+
+const ScopeOptions = [
+  {
+    label: "Repository",
+    value: BitbucketScope.Repo
+  },
+  {
+    label: "Deployment Environment",
+    value: BitbucketScope.Env
+  }
+];
+
+const formSchema = z
+  .object({
+    secretPath: z.string().default("/"),
+    sourceEnvironment: z.object({ name: z.string(), slug: z.string() }),
+    targetRepo: z.object({ name: z.string(), appId: z.string() }),
+    targetWorkspace: z.object({ name: z.string(), slug: z.string() }),
+    targetEnvironment: z.object({ name: z.string(), uuid: z.string() }).optional(),
+    scope: z.object({ label: z.string(), value: z.nativeEnum(BitbucketScope) })
+  })
+  .superRefine((val, ctx) => {
+    if (val.scope.value === BitbucketScope.Env && !val.targetEnvironment) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["targetEnvironment"],
+        message: "Required"
+      });
+    }
+  });
+
+type TFormData = z.infer<typeof formSchema>;
 
 export default function BitBucketCreateIntegrationPage() {
   const router = useRouter();
-  const { mutateAsync } = useCreateIntegration();
+  const createIntegration = useCreateIntegration();
 
-  const [targetAppId, setTargetAppId] = useState("");
-  const [targetEnvironmentId, setTargetEnvironmentId] = useState("");
-
-  const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
-  const [secretPath, setSecretPath] = useState("/");
-  const [isLoading, setIsLoading] = useState(false);
-
-  const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
-  const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
-  const { data: workspace } = useGetWorkspaceById(localStorage.getItem("projectData.id") ?? "");
-  const { data: targetEnvironments } = useGetIntegrationAuthBitBucketWorkspaces(
-    (integrationAuthId as string) ?? ""
-  );
-  const { data: integrationAuthApps } = useGetIntegrationAuthApps({
-    integrationAuthId: (integrationAuthId as string) ?? "",
-    workspaceSlug: targetEnvironmentId
+  const { watch, control, reset, handleSubmit } = useForm<TFormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      secretPath: "/"
+    }
   });
 
-  useEffect(() => {
-    if (workspace) {
-      setSelectedSourceEnvironment(workspace.environments[0].slug);
-    }
-  }, [workspace]);
+  const bitBucketWorkspace = watch("targetWorkspace");
+  const bitBucketRepo = watch("targetRepo");
 
-  useEffect(() => {
-    if (integrationAuthApps) {
-      if (integrationAuthApps.length > 0) {
-        setTargetAppId(integrationAuthApps[0].appId as string);
-      } else {
-        setTargetAppId("none");
-      }
-    }
-  }, [integrationAuthApps]);
+  const integrationAuthId = router.query.integrationAuthId as string;
 
-  useEffect(() => {
-    if (targetEnvironments) {
-      if (targetEnvironments.length > 0) {
-        setTargetEnvironmentId(targetEnvironments[0].slug);
-      } else {
-        setTargetEnvironmentId("none");
-      }
-    }
-  }, [targetEnvironments]);
+  const { currentWorkspace, isLoading: isProjectLoading } = useWorkspace();
 
-  const handleButtonClick = async () => {
+  const { data: bitbucketWorkspaces, isLoading: isBitbucketWorkspacesLoading } =
+    useGetIntegrationAuthBitBucketWorkspaces((integrationAuthId as string) ?? "");
+
+  const { data: bitbucketRepos, isLoading: isBitbucketReposLoading } = useGetIntegrationAuthApps({
+    integrationAuthId: (integrationAuthId as string) ?? "",
+    workspaceSlug: bitBucketWorkspace?.slug
+  });
+
+  const { data: bitbucketEnvironments } = useGetIntegrationAuthBitBucketEnvironments(
+    {
+      integrationAuthId: (integrationAuthId as string) ?? "",
+      workspaceSlug: bitBucketWorkspace?.slug,
+      repoSlug: bitBucketRepo?.appId
+    },
+    { enabled: Boolean(bitBucketWorkspace?.slug && bitBucketRepo?.appId) }
+  );
+
+  const onSubmit = async ({
+    targetRepo,
+    sourceEnvironment,
+    targetWorkspace,
+    secretPath,
+    targetEnvironment,
+    scope
+  }: TFormData) => {
     try {
-      setIsLoading(true);
-
-      if (!integrationAuth?.id) return;
-
-      const targetApp = integrationAuthApps?.find(
-        (integrationAuthApp) => integrationAuthApp.appId === targetAppId
-      );
-      const targetEnvironment = targetEnvironments?.find(
-        (environment) => environment.slug === targetEnvironmentId
-      );
-
-      if (!targetApp || !targetApp.appId || !targetEnvironment) return;
-
-      await mutateAsync({
-        integrationAuthId: integrationAuth?.id,
+      await createIntegration.mutateAsync({
+        integrationAuthId,
         isActive: true,
-        app: targetApp.name,
-        appId: targetApp.appId,
-        sourceEnvironment: selectedSourceEnvironment,
-        targetEnvironment: targetEnvironment.name,
-        targetEnvironmentId: targetEnvironment.slug,
+        app: targetRepo.name,
+        appId: targetRepo.appId,
+        sourceEnvironment: sourceEnvironment.slug,
+        targetEnvironment: targetWorkspace.name,
+        targetEnvironmentId: targetWorkspace.slug,
+        ...(scope.value === BitbucketScope.Env &&
+          targetEnvironment && {
+            targetService: targetEnvironment.name,
+            targetServiceId: targetEnvironment.uuid
+          }),
         secretPath
       });
 
-      setIsLoading(false);
-
-      router.push(`/integrations/${localStorage.getItem("projectData.id")}`);
+      createNotification({
+        type: "success",
+        text: "Successfully created integration"
+      });
+      router.push(`/integrations/${currentWorkspace?.id}`);
     } catch (err) {
+      createNotification({
+        type: "error",
+        text: "Failed to create integration"
+      });
       console.error(err);
     }
   };
 
-  return integrationAuth &&
-    workspace &&
-    selectedSourceEnvironment &&
-    integrationAuthApps &&
-    targetEnvironments ? (
-    <div className="flex h-full w-full items-center justify-center">
-      <Card className="max-w-md rounded-md p-8">
-        <CardTitle className="text-center">BitBucket Integration</CardTitle>
-        <FormControl label="Project Environment" className="mt-4">
-          <Select
-            value={selectedSourceEnvironment}
-            onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-mineshaft-500"
-          >
-            {workspace?.environments.map((sourceEnvironment) => (
-              <SelectItem
-                value={sourceEnvironment.slug}
-                key={`source-environment-${sourceEnvironment.slug}`}
+  useEffect(() => {
+    if (!bitbucketRepos || !bitbucketWorkspaces || !currentWorkspace) return;
+
+    reset({
+      targetRepo: bitbucketRepos[0],
+      targetWorkspace: bitbucketWorkspaces[0],
+      sourceEnvironment: currentWorkspace.environments[0],
+      secretPath: "/",
+      scope: ScopeOptions[0]
+    });
+  }, [bitbucketWorkspaces, bitbucketRepos, currentWorkspace]);
+
+  if (isProjectLoading || isBitbucketWorkspacesLoading || isBitbucketReposLoading)
+    return (
+      <div className="flex h-full w-full items-center justify-center p-24">
+        <Spinner />
+      </div>
+    );
+
+  const scope = watch("scope");
+
+  return (
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="flex h-full w-full items-center justify-center"
+    >
+      <Card className="max-w-md rounded-md p-8 pt-4">
+        <CardTitle className=" text-center">
+          <SiBitbucket size="1.2rem" className="mr-2 mb-1 inline-block" />
+          Bitbucket Integration
+        </CardTitle>
+        <Controller
+          control={control}
+          name="sourceEnvironment"
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl
+              errorText={error?.message}
+              isError={Boolean(error)}
+              label="Project Environment"
+            >
+              <FilterableSelect
+                getOptionValue={(option) => option.slug}
+                value={value}
+                getOptionLabel={(option) => option.name}
+                onChange={onChange}
+                options={currentWorkspace?.environments}
+                placeholder="Select a project environment"
+                isDisabled={!bitbucketWorkspaces?.length}
+              />
+            </FormControl>
+          )}
+        />
+        <Controller
+          control={control}
+          name="secretPath"
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl isError={Boolean(error)} label="Secrets Path">
+              <Input
+                value={value}
+                onChange={onChange}
+                placeholder={'Provide a path (defaults to "/")'}
+              />
+            </FormControl>
+          )}
+        />
+        <Controller
+          control={control}
+          name="targetWorkspace"
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl
+              errorText={error?.message}
+              isError={Boolean(error)}
+              label="Bitbucket Workspace"
+            >
+              <FilterableSelect
+                getOptionValue={(option) => option.slug}
+                value={value}
+                getOptionLabel={(option) => option.name}
+                onChange={onChange}
+                options={bitbucketWorkspaces}
+                placeholder={
+                  bitbucketWorkspaces?.length ? "Select a workspace..." : "No workspaces found..."
+                }
+                isDisabled={!bitbucketWorkspaces?.length}
+              />
+            </FormControl>
+          )}
+        />
+        <Controller
+          control={control}
+          name="targetRepo"
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl errorText={error?.message} isError={Boolean(error)} label="Bitbucket Repo">
+              <FilterableSelect
+                getOptionValue={(option) => option.appId!}
+                value={value}
+                getOptionLabel={(option) => option.name}
+                onChange={onChange}
+                options={bitbucketRepos}
+                placeholder={
+                  bitbucketRepos?.length ? "Select a repository..." : "No repositories found..."
+                }
+                isDisabled={!bitbucketRepos?.length}
+              />
+            </FormControl>
+          )}
+        />
+        <Controller
+          control={control}
+          name="scope"
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl errorText={error?.message} isError={Boolean(error)} label="Scope">
+              <FilterableSelect
+                value={value}
+                getOptionValue={(option) => option.value}
+                getOptionLabel={(option) => option.label}
+                onChange={onChange}
+                options={ScopeOptions}
+              />
+            </FormControl>
+          )}
+        />
+
+        {scope?.value === BitbucketScope.Env && (
+          <Controller
+            control={control}
+            name="targetEnvironment"
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <FormControl
+                errorText={error?.message}
+                isError={Boolean(error)}
+                label="Bitbucket Deployment Environment"
               >
-                {sourceEnvironment.name}
-              </SelectItem>
-            ))}
-          </Select>
-        </FormControl>
-        <FormControl label="Secrets Path">
-          <Input
-            value={secretPath}
-            onChange={(evt) => setSecretPath(evt.target.value)}
-            placeholder="Provide a path, default is /"
+                <FilterableSelect
+                  getOptionValue={(option) => option.uuid}
+                  value={value}
+                  getOptionLabel={(option) => option.name}
+                  onChange={onChange}
+                  options={bitbucketEnvironments}
+                  placeholder={
+                    bitbucketEnvironments?.length
+                      ? "Select an environment..."
+                      : "No environments found..."
+                  }
+                  isDisabled={!bitbucketEnvironments?.length}
+                />
+              </FormControl>
+            )}
           />
-        </FormControl>
-        <FormControl label="BitBucket Workspace">
-          <Select
-            value={targetEnvironmentId}
-            onValueChange={(val) => setTargetEnvironmentId(val)}
-            className="w-full border border-mineshaft-500"
-            isDisabled={targetEnvironments.length === 0}
-          >
-            {targetEnvironments.length > 0 ? (
-              targetEnvironments.map((targetEnvironment) => (
-                <SelectItem
-                  value={targetEnvironment.slug as string}
-                  key={`target-environment-${targetEnvironment.slug as string}`}
-                >
-                  {targetEnvironment.name}
-                </SelectItem>
-              ))
-            ) : (
-              <SelectItem value="none" key="target-environment-none">
-                No workspaces found
-              </SelectItem>
-            )}
-          </Select>
-        </FormControl>
-        <FormControl label="BitBucket Repo">
-          <Select
-            value={targetAppId}
-            onValueChange={(val) => setTargetAppId(val)}
-            className="w-full border border-mineshaft-500"
-          >
-            {integrationAuthApps.length > 0 ? (
-              integrationAuthApps.map((integrationAuthApp) => (
-                <SelectItem
-                  value={integrationAuthApp.appId as string}
-                  key={`target-app-${integrationAuthApp.appId as string}`}
-                >
-                  {integrationAuthApp.name}
-                </SelectItem>
-              ))
-            ) : (
-              <SelectItem value="none" key="target-app-none">
-                No repositories found
-              </SelectItem>
-            )}
-          </Select>
-        </FormControl>
+        )}
         <Button
-          onClick={handleButtonClick}
-          color="mineshaft"
+          type="submit"
+          colorSchema="primary"
           className="mt-4"
-          isLoading={isLoading}
-          isDisabled={integrationAuthApps.length === 0}
+          isLoading={createIntegration.isLoading}
+          isDisabled={createIntegration.isLoading || !bitbucketRepos?.length}
         >
           Create Integration
         </Button>
       </Card>
-    </div>
-  ) : (
-    <div />
+    </form>
   );
 }
 

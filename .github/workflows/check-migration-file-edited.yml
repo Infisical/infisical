@@ -1,0 +1,25 @@
+name: Check migration file edited
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - 'backend/src/db/migrations/**'
+
+jobs:
+  rename:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check any migration files are modified, renamed or duplicated.
+        run: |
+          git diff --name-status HEAD^ HEAD backend/src/db/migrations | grep '^M\|^R\|^C' || true | cut -f2 | xargs -r -n1 basename > edited_files.txt
+          if [ -s edited_files.txt ]; then
+            echo "Exiting migration files cannot be modified."
+            cat edited_files.txt
+            exit 1
+          fi

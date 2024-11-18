@@ -1,9 +1,11 @@
 ---
 title: "Infisical Node.js SDK"
 sidebarTitle: "Node.js"
+url: "https://github.com/Infisical/node-sdk-v2"
 icon: "node"
 ---
 
+{/*
 If you're working with Node.js, the official [Infisical Node SDK](https://github.com/Infisical/sdk/tree/main/languages/node) package is the easiest way to fetch and work with secrets for your application.
 
 - [NPM Package](https://www.npmjs.com/package/@infisical/sdk)
@@ -135,6 +137,10 @@ Import the SDK and create a client instance with your [Machine Identity](/docume
         </ParamField>
         <ParamField query="logLevel" type="enum" default="Error" optional>
             The level of logs you wish to log The logs are derived from Rust, as we have written our base SDK in Rust.
+        </ParamField>
+
+        <ParamField query="sslCertificatePath" optional>
+            Optionally provide a path to a custom SSL certificate file. This can be substituted by setting the `INFISICAL_SSL_CERTIFICATE` environment variable to the contents of the certificate.
         </ParamField>
 
         <ParamField query="auth" type="AuthenticationOptions">
@@ -356,6 +362,12 @@ By default, `getSecret()` fetches and returns a shared secret.
         <ParamField query="type" type="string" optional>
             The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
         </ParamField>
+        <ParamField query="includeImports" type="boolean" optional>
+          Whether or not to include imported secrets from the current path. Read about [secret import](/documentation/platform/secret-reference)
+        </ParamField>
+        <ParamField query="expandSecretReferences" type="boolean" default="true" optional>
+            Whether or not to expand secret references in the fetched secrets. Read about [secret reference](/documentation/platform/secret-reference)
+        </ParamField>
     </Expandable>
 </ParamField>
 
@@ -542,3 +554,5 @@ const decryptedString = await client.decryptSymmetric({
 
 #### Returns (string)
 `plaintext` (string): The decrypted plaintext.
+
+*/}

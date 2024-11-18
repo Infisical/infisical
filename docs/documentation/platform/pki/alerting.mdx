@@ -1,0 +1,149 @@
+---
+title: "Alerting"
+description: "Learn how to set up alerting for expiring certificates with Infisical"
+---
+
+## Concept
+
+In order to ensure that your certificates are always up-to-date and not expired, you can set up alerting for expiring CA and leaf certificates in Infisical.
+
+## Workflow
+
+A typical alerting workflow for expiring certificates consists of the following steps:
+
+1. Creating a PKI/Certificate collection and adding certificates that you wish to monitor for expiration to it.
+2. Creating an alert and binding it to the PKI/Certificate collection. As part of the configuration, you specify when the alert should trigger based on the number of days before certificate expiration and the email addresses of the recipients to notify.
+
+## Guide to Creating an Alert
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step title="Creating a PKI/Certificate collection">
+        To create a PKI/Certificate collection, head to your Project > Internal
+        PKI > Alerting > Certificate Collection and press **Create**. 
+        
+        ![pki create collection](/images/platform/pki/alerting/collection-create.png)
+        
+        Give the collection a name and proceed to create the empty collection.
+
+        ![pki create collection](/images/platform/pki/alerting/collection-create-2.png)
+
+        Next, in the Collection Page, add the certificate authorities and leaf certificates
+        that you wish to monitor for expiration to the collection.
+
+        ![pki add cert to collection](/images/platform/pki/alerting/collection-add-cert.png)
+      </Step>
+      <Step title="Creating an alert">
+        To create an alert, head to your Project > Internal PKI > Alerting > Alerts and press **Create**.
+
+        ![pki create alert](/images/platform/pki/alerting/alert-create.png)
+
+        Here, set the **Certificate Collection** to the PKI/Certificate collection you created in the previous step and fill out details for the alert.
+
+        ![pki create alert](/images/platform/pki/alerting/alert-create-2.png)
+
+        Here's some guidance on each field:
+
+        - Name: A name for the alert.
+        - Collection Collection: The PKI/Certificate collection to bind the alert to from the previous step.
+        - Alert Before / Unit: The time before certificate expiration to trigger the alert.
+        - Emails to Alert: A comma-delimited list of email addresses to notify when the alert triggers.
+
+        Finally, press **Create** to create the alert.
+
+        ![pki alerts](/images/platform/pki/alerting/alerts.png)
+
+        Great! You've successfully created a PKI/Certificate collection and an alert to monitor the expiring certificates in the collection. Once the alert triggers, the specified email addresses will be notified.
+      </Step>
+    </Steps>
+
+  </Tab>
+  <Tab title="API">
+    <Steps>
+        <Step title="Creating a PKI/Certificate collection">
+            1.1. To create a PKI/Certificate collection, make an API request to the [Create PKI Collection](/api-reference/endpoints/pki-collections/create) API endpoint.
+
+            ### Sample request
+
+            ```bash Request
+            curl --location --request POST 'https://app.infisical.com/api/v1/pki/collections' \
+              --header 'Authorization: Bearer <access-token>' \
+              --header 'Content-Type: application/json' \
+              --data-raw '{
+                  "projectId": "<your-project-id>",
+                  "name": "My Certificate Collection"
+              }'
+            ```
+
+            ### Sample response
+
+            ```bash Response
+            {
+              id: "<collection-id>",
+              name: "My Certificate Collection",
+              ...
+            }
+            ```
+
+            1.2. Next, make an API request to the [Add Collection Item](/api-reference/endpoints/pki-collections/add-item) API endpoint to add a certificate to the collection.
+
+            ### Sample request
+
+            ```bash Request
+            curl --location --request POST 'https://app.infisical.com/api/v1/pki/collections/<collection-id>/items' \
+              --header 'Authorization: Bearer <access-token>' \
+              --header 'Content-Type: application/json' \
+              --data-raw '{
+                  "type": "certificate",
+                  "itemId": "id-of-certificate"
+              }'
+            ```
+
+            ### Sample response
+
+            ```bash Response
+            {
+              id: "<collection-item-id>",
+              type: "certificate",
+              itemId: "id-of-certificate"
+              ...
+            }
+            ```
+        </Step>
+        <Step title="Creating an alert">
+          To create an alert, make an API request to the [Create Alert](/api-reference/endpoints/pki-alerts/create) API endpoint, specifying the PKI/Certificate collection to bind the alert to, the alert configuration, and the email addresses to notify.
+
+          ### Sample request
+
+            ```bash Request
+            curl --location --request POST 'https://app.infisical.com/api/v1/pki/alerts' \
+              --header 'Authorization: Bearer <access-token>' \
+              --header 'Content-Type: application/json' \
+              --data-raw '{
+                  "projectId": "<your-project-id>",
+                  "pkiCollectionId": "<your-collection-id>",
+                  "name": "My Alert",
+                  "alertBeforeDays": 30,
+                  "emails": ["johndoe@gmail.com", "janedoe@gmail.com"]
+              }'
+            ```
+
+            ### Sample response
+
+            ```bash Response
+            {
+              id: "<alert-id>",
+              name: "My Alert",
+              alertBeforeDays: 30,
+              recipientEmails: "johndoe@gmail.com,janedoe@gmail.com"
+              ...
+            }
+            ```
+
+            Great! You've successfully created a PKI/Certificate collection and an alert to monitor the expiring certificate in the collection. Once the alert triggers, the specified email addresses will be notified.
+        </Step>
+    </Steps>
+
+  </Tab>
+</Tabs>

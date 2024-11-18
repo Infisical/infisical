@@ -12,7 +12,9 @@ export const projectEnvDALFactory = (db: TDbClient) => {
 
   const findBySlugs = async (projectId: string, env: string[], tx?: Knex) => {
     try {
-      const envs = await (tx || db)(TableName.Environment).where("projectId", projectId).whereIn("slug", env);
+      const envs = await (tx || db.replicaNode())(TableName.Environment)
+        .where("projectId", projectId)
+        .whereIn("slug", env);
       return envs;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find by slugs" });
@@ -22,10 +24,15 @@ export const projectEnvDALFactory = (db: TDbClient) => {
   // we are using postion based sorting as its a small list
   // this will return the last value of the position in a folder with secret imports
   const findLastEnvPosition = async (projectId: string, tx?: Knex) => {
+    // acquire update lock on project environments.
+    // this ensures that concurrent invocations will wait and execute sequentially
+    await (tx || db)(TableName.Environment).where({ projectId }).forUpdate();
+
     const lastPos = await (tx || db)(TableName.Environment)
       .where({ projectId })
       .max("position", { as: "position" })
       .first();
+
     return lastPos?.position || 0;
   };
 
@@ -58,10 +65,16 @@ export const projectEnvDALFactory = (db: TDbClient) => {
     }
   };
 
+  const shiftPositions = async (projectId: string, pos: number, tx?: Knex) => {
+    // Shift all positions >= the new position up by 1
+    await (tx || db)(TableName.Environment).where({ projectId }).where("position", ">=", pos).increment("position", 1);
+  };
+
   return {
     ...projectEnvOrm,
     findBySlugs,
     findLastEnvPosition,
-    updateAllPosition
+    updateAllPosition,
+    shiftPositions
   };
 };

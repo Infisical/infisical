@@ -10,16 +10,18 @@ import fastifyFormBody from "@fastify/formbody";
 import helmet from "@fastify/helmet";
 import type { FastifyRateLimitOptions } from "@fastify/rate-limit";
 import ratelimiter from "@fastify/rate-limit";
-import fasitfy from "fastify";
+import fastify from "fastify";
 import { Knex } from "knex";
 import { Logger } from "pino";
 
+import { HsmModule } from "@app/ee/services/hsm/hsm-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
-import { getConfig } from "@app/lib/config/env";
+import { getConfig, IS_PACKAGED } from "@app/lib/config/env";
 import { TQueueServiceFactory } from "@app/queue";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { globalRateLimiterCfg } from "./config/rateLimiter";
+import { addErrorsToResponseSchemas } from "./plugins/add-errors-to-response-schemas";
 import { apiMetrics } from "./plugins/api-metrics";
 import { fastifyErrHandler } from "./plugins/error-handler";
 import { registerExternalNextjs } from "./plugins/external-nextjs";
@@ -30,25 +32,44 @@ import { fastifySwagger } from "./plugins/swagger";
 import { registerRoutes } from "./routes";
 
 type TMain = {
+  auditLogDb?: Knex;
   db: Knex;
   smtp: TSmtpService;
   logger?: Logger;
   queue: TQueueServiceFactory;
   keyStore: TKeyStoreFactory;
+  hsmModule: HsmModule;
 };
 
 // Run the server!
-export const main = async ({ db, smtp, logger, queue, keyStore }: TMain) => {
+export const main = async ({ db, hsmModule, auditLogDb, smtp, logger, queue, keyStore }: TMain) => {
   const appCfg = getConfig();
-  const server = fasitfy({
+
+  const server = fastify({
     logger: appCfg.NODE_ENV === "test" ? false : logger,
     trustProxy: true,
-    connectionTimeout: 30 * 1000,
-    ignoreTrailingSlash: true
+    connectionTimeout: appCfg.isHsmConfigured ? 90_000 : 30_000,
+    ignoreTrailingSlash: true,
+    pluginTimeout: 40_000
   }).withTypeProvider<ZodTypeProvider>();
 
   server.setValidatorCompiler(validatorCompiler);
   server.setSerializerCompiler(serializerCompiler);
+
+  server.addContentTypeParser("application/scim+json", { parseAs: "string" }, (_, body, done) => {
+    try {
+      const strBody = body instanceof Buffer ? body.toString() : body;
+      if (!strBody) {
+        done(null, undefined);
+        return;
+      }
+      const json: unknown = JSON.parse(strBody);
+      done(null, json);
+    } catch (err) {
+      const error = err as Error;
+      done(error, undefined);
+    }
+  });
 
   try {
     await server.register<FastifyCookieOptions>(cookie, {
@@ -61,6 +82,8 @@ export const main = async ({ db, smtp, logger, queue, keyStore }: TMain) => {
       credentials: true,
       origin: appCfg.SITE_URL || true
     });
+
+    await server.register(addErrorsToResponseSchemas);
     // pull ip based on various proxy headers
     await server.register(fastifyIp);
 
@@ -76,16 +99,17 @@ export const main = async ({ db, smtp, logger, queue, keyStore }: TMain) => {
     if (appCfg.isProductionMode) {
       await server.register<FastifyRateLimitOptions>(ratelimiter, globalRateLimiterCfg());
     }
+
     await server.register(helmet, { contentSecurityPolicy: false });
 
     await server.register(maintenanceMode);
 
-    await server.register(registerRoutes, { smtp, queue, db, keyStore });
+    await server.register(registerRoutes, { smtp, queue, db, auditLogDb, keyStore, hsmModule });
 
     if (appCfg.isProductionMode) {
       await server.register(registerExternalNextjs, {
-        standaloneMode: appCfg.STANDALONE_MODE,
-        dir: path.join(__dirname, "../../"),
+        standaloneMode: appCfg.STANDALONE_MODE || IS_PACKAGED,
+        dir: path.join(__dirname, IS_PACKAGED ? "../../../" : "../../"),
         port: appCfg.PORT
       });
     }

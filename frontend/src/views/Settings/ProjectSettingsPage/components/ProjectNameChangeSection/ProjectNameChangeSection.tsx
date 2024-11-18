@@ -22,7 +22,6 @@ const formSchema = yup.object({
 type FormData = yup.InferType<typeof formSchema>;
 
 export const ProjectNameChangeSection = () => {
-  
   const { currentWorkspace } = useWorkspace();
   const { mutateAsync, isLoading } = useRenameWorkspace();
 
@@ -83,7 +82,7 @@ export const ProjectNameChangeSection = () => {
         </div>
       </div>
       <div className="max-w-md">
-        <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Workspace}>
+        <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Project}>
           {(isAllowed) => (
             <Controller
               defaultValue=""
@@ -103,7 +102,7 @@ export const ProjectNameChangeSection = () => {
           )}
         </ProjectPermissionCan>
       </div>
-      <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Workspace}>
+      <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Project}>
         {(isAllowed) => (
           <Button
             colorSchema="secondary"

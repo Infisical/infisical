@@ -3,17 +3,21 @@ import ms from "ms";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
+import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
+import { triggerSlackNotification } from "@app/services/slack/slack-fns";
+import { SlackTriggerFeature } from "@app/services/slack/slack-types";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TAccessApprovalPolicyApproverDALFactory } from "../access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
-import { verifyApprovers } from "../access-approval-policy/access-approval-policy-fns";
+import { TGroupDALFactory } from "../group/group-dal";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "../project-user-additional-privilege/project-user-additional-privilege-dal";
 import { ProjectUserAdditionalPrivilegeTemporaryMode } from "../project-user-additional-privilege/project-user-additional-privilege-types";
@@ -33,7 +37,10 @@ type TSecretApprovalRequestServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   accessApprovalPolicyApproverDAL: Pick<TAccessApprovalPolicyApproverDALFactory, "find">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
-  projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findProjectBySlug">;
+  projectDAL: Pick<
+    TProjectDALFactory,
+    "checkProjectUpgradeStatus" | "findProjectBySlug" | "findProjectWithOrg" | "findById"
+  >;
   accessApprovalRequestDAL: Pick<
     TAccessApprovalRequestDALFactory,
     | "create"
@@ -50,25 +57,33 @@ type TSecretApprovalRequestServiceFactoryDep = {
     TAccessApprovalRequestReviewerDALFactory,
     "create" | "find" | "findOne" | "transaction"
   >;
+  groupDAL: Pick<TGroupDALFactory, "findAllGroupPossibleMembers">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findById">;
   smtpService: Pick<TSmtpService, "sendMail">;
-  userDAL: Pick<TUserDALFactory, "findUserByProjectMembershipId" | "findUsersByProjectMembershipIds">;
+  userDAL: Pick<
+    TUserDALFactory,
+    "findUserByProjectMembershipId" | "findUsersByProjectMembershipIds" | "find" | "findById"
+  >;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
 };
 
 export type TAccessApprovalRequestServiceFactory = ReturnType<typeof accessApprovalRequestServiceFactory>;
 
 export const accessApprovalRequestServiceFactory = ({
+  groupDAL,
   projectDAL,
   projectEnvDAL,
   permissionService,
   accessApprovalRequestDAL,
   accessApprovalRequestReviewerDAL,
-  projectMembershipDAL,
   accessApprovalPolicyDAL,
   accessApprovalPolicyApproverDAL,
   additionalPrivilegeDAL,
   smtpService,
-  userDAL
+  userDAL,
+  kmsService,
+  projectSlackConfigDAL
 }: TSecretApprovalRequestServiceFactoryDep) => {
   const createAccessApprovalRequest = async ({
     isTemporary,
@@ -82,7 +97,7 @@ export const accessApprovalRequestServiceFactory = ({
   }: TCreateAccessApprovalRequestDTO) => {
     const cfg = getConfig();
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new UnauthorizedError({ message: "Project not found" });
+    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     // Anyone can create an access approval request.
     const { membership } = await permissionService.getProjectPermission(
@@ -92,35 +107,68 @@ export const accessApprovalRequestServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    if (!membership) throw new UnauthorizedError({ message: "You are not a member of this project" });
+    if (!membership) {
+      throw new ForbiddenRequestError({ message: "You are not a member of this project" });
+    }
 
-    const requestedByUser = await userDAL.findUserByProjectMembershipId(membership.id);
-    if (!requestedByUser) throw new UnauthorizedError({ message: "User not found" });
+    const requestedByUser = await userDAL.findById(actorId);
+    if (!requestedByUser) throw new ForbiddenRequestError({ message: "User not found" });
 
     await projectDAL.checkProjectUpgradeStatus(project.id);
 
     const { envSlug, secretPath, accessTypes } = verifyRequestedPermissions({ permissions: requestedPermissions });
     const environment = await projectEnvDAL.findOne({ projectId: project.id, slug: envSlug });
 
-    if (!environment) throw new UnauthorizedError({ message: "Environment not found" });
+    if (!environment) throw new NotFoundError({ message: `Environment with slug '${envSlug}' not found` });
 
     const policy = await accessApprovalPolicyDAL.findOne({
       envId: environment.id,
       secretPath
     });
-    if (!policy) throw new UnauthorizedError({ message: "No policy matching criteria was found." });
+    if (!policy) {
+      throw new NotFoundError({
+        message: `No policy in environment with slug '${environment.slug}' and with secret path '${secretPath}' was found.`
+      });
+    }
+
+    const approverIds: string[] = [];
+    const approverGroupIds: string[] = [];
 
     const approvers = await accessApprovalPolicyApproverDAL.find({
       policyId: policy.id
     });
 
-    const approverUsers = await userDAL.findUsersByProjectMembershipIds(
-      approvers.map((approver) => approver.approverId)
-    );
+    approvers.forEach((approver) => {
+      if (approver.approverUserId) {
+        approverIds.push(approver.approverUserId);
+      } else if (approver.approverGroupId) {
+        approverGroupIds.push(approver.approverGroupId);
+      }
+    });
+
+    const groupUsers = (
+      await Promise.all(
+        approverGroupIds.map((groupApproverId) =>
+          groupDAL
+            .findAllGroupPossibleMembers({
+              orgId: actorOrgId,
+              groupId: groupApproverId
+            })
+            .then((group) => group.members)
+        )
+      )
+    ).flat();
+    approverIds.push(...groupUsers.filter((user) => user.isPartOfGroup).map((user) => user.id));
+
+    const approverUsers = await userDAL.find({
+      $in: {
+        id: [...new Set(approverIds)]
+      }
+    });
 
     const duplicateRequests = await accessApprovalRequestDAL.find({
       policyId: policy.id,
-      requestedBy: membership.id,
+      requestedByUserId: actorId,
       permissions: JSON.stringify(requestedPermissions),
       isTemporary
     });
@@ -153,7 +201,7 @@ export const accessApprovalRequestServiceFactory = ({
       const approvalRequest = await accessApprovalRequestDAL.create(
         {
           policyId: policy.id,
-          requestedBy: membership.id,
+          requestedByUserId: actorId,
           temporaryRange: temporaryRange || null,
           permissions: JSON.stringify(requestedPermissions),
           isTemporary
@@ -161,13 +209,36 @@ export const accessApprovalRequestServiceFactory = ({
         tx
       );
 
+      const requesterFullName = `${requestedByUser.firstName} ${requestedByUser.lastName}`;
+      const approvalUrl = `${cfg.SITE_URL}/project/${project.id}/approval`;
+
+      await triggerSlackNotification({
+        projectId: project.id,
+        projectSlackConfigDAL,
+        projectDAL,
+        kmsService,
+        notification: {
+          type: SlackTriggerFeature.ACCESS_REQUEST,
+          payload: {
+            projectName: project.name,
+            requesterFullName,
+            isTemporary,
+            requesterEmail: requestedByUser.email as string,
+            secretPath,
+            environment: envSlug,
+            permissions: accessTypes,
+            approvalUrl
+          }
+        }
+      });
+
       await smtpService.sendMail({
         recipients: approverUsers.filter((approver) => approver.email).map((approver) => approver.email!),
         subjectLine: "Access Approval Request",
 
         substitutions: {
           projectName: project.name,
-          requesterFullName: `${requestedByUser.firstName} ${requestedByUser.lastName}`,
+          requesterFullName,
           requesterEmail: requestedByUser.email,
           isTemporary,
           ...(isTemporary && {
@@ -176,7 +247,7 @@ export const accessApprovalRequestServiceFactory = ({
           secretPath,
           environment: envSlug,
           permissions: accessTypes,
-          approvalUrl: `${cfg.SITE_URL}/project/${project.id}/approval`
+          approvalUrl
         },
         template: SmtpTemplates.AccessApprovalRequest
       });
@@ -197,7 +268,7 @@ export const accessApprovalRequestServiceFactory = ({
     actorAuthMethod
   }: TListApprovalRequestsDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new UnauthorizedError({ message: "Project not found" });
+    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     const { membership } = await permissionService.getProjectPermission(
       actor,
@@ -206,13 +277,15 @@ export const accessApprovalRequestServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    if (!membership) throw new UnauthorizedError({ message: "You are not a member of this project" });
+    if (!membership) {
+      throw new ForbiddenRequestError({ message: "You are not a member of this project" });
+    }
 
     const policies = await accessApprovalPolicyDAL.find({ projectId: project.id });
     let requests = await accessApprovalRequestDAL.findRequestsWithPrivilegeByPolicyIds(policies.map((p) => p.id));
 
     if (authorProjectMembershipId) {
-      requests = requests.filter((request) => request.requestedBy === authorProjectMembershipId);
+      requests = requests.filter((request) => request.requestedByUserId === actorId);
     }
 
     if (envSlug) {
@@ -231,7 +304,9 @@ export const accessApprovalRequestServiceFactory = ({
     actorOrgId
   }: TReviewAccessRequestDTO) => {
     const accessApprovalRequest = await accessApprovalRequestDAL.findById(requestId);
-    if (!accessApprovalRequest) throw new BadRequestError({ message: "Secret approval request not found" });
+    if (!accessApprovalRequest) {
+      throw new NotFoundError({ message: `Secret approval request with ID '${requestId}' not found` });
+    }
 
     const { policy } = accessApprovalRequest;
     const { membership, hasRole } = await permissionService.getProjectPermission(
@@ -242,27 +317,17 @@ export const accessApprovalRequestServiceFactory = ({
       actorOrgId
     );
 
-    if (!membership) throw new UnauthorizedError({ message: "You are not a member of this project" });
+    if (!membership) {
+      throw new ForbiddenRequestError({ message: "You are not a member of this project" });
+    }
 
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
-      accessApprovalRequest.requestedBy !== membership.id && // The request wasn't made by the current user
-      !policy.approvers.find((approverId) => approverId === membership.id) // The request isn't performed by an assigned approver
+      accessApprovalRequest.requestedByUserId !== actorId && // The request wasn't made by the current user
+      !policy.approvers.find((approver) => approver.userId === actorId) // The request isn't performed by an assigned approver
     ) {
-      throw new UnauthorizedError({ message: "You are not authorized to approve this request" });
+      throw new ForbiddenRequestError({ message: "You are not authorized to approve this request" });
     }
-
-    const reviewerProjectMembership = await projectMembershipDAL.findById(membership.id);
-
-    await verifyApprovers({
-      projectId: accessApprovalRequest.projectId,
-      orgId: actorOrgId,
-      envSlug: accessApprovalRequest.environment,
-      secretPath: accessApprovalRequest.policy.secretPath!,
-      actorAuthMethod,
-      permissionService,
-      userIds: [reviewerProjectMembership.userId]
-    });
 
     const existingReviews = await accessApprovalRequestReviewerDAL.find({ requestId: accessApprovalRequest.id });
     if (existingReviews.some((review) => review.status === ApprovalStatus.REJECTED)) {
@@ -273,7 +338,7 @@ export const accessApprovalRequestServiceFactory = ({
       const review = await accessApprovalRequestReviewerDAL.findOne(
         {
           requestId: accessApprovalRequest.id,
-          member: membership.id
+          reviewerUserId: actorId
         },
         tx
       );
@@ -282,7 +347,7 @@ export const accessApprovalRequestServiceFactory = ({
           {
             status,
             requestId: accessApprovalRequest.id,
-            member: membership.id
+            reviewerUserId: actorId
           },
           tx
         );
@@ -303,7 +368,8 @@ export const accessApprovalRequestServiceFactory = ({
             // Permanent access
             const privilege = await additionalPrivilegeDAL.create(
               {
-                projectMembershipId: accessApprovalRequest.requestedBy,
+                userId: accessApprovalRequest.requestedByUserId,
+                projectId: accessApprovalRequest.projectId,
                 slug: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
                 permissions: JSON.stringify(accessApprovalRequest.permissions)
               },
@@ -317,7 +383,8 @@ export const accessApprovalRequestServiceFactory = ({
 
             const privilege = await additionalPrivilegeDAL.create(
               {
-                projectMembershipId: accessApprovalRequest.requestedBy,
+                userId: accessApprovalRequest.requestedByUserId,
+                projectId: accessApprovalRequest.projectId,
                 slug: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
                 permissions: JSON.stringify(accessApprovalRequest.permissions),
                 isTemporary: true,
@@ -344,7 +411,7 @@ export const accessApprovalRequestServiceFactory = ({
 
   const getCount = async ({ projectSlug, actor, actorAuthMethod, actorId, actorOrgId }: TGetAccessRequestCountDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new UnauthorizedError({ message: "Project not found" });
+    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     const { membership } = await permissionService.getProjectPermission(
       actor,
@@ -353,7 +420,9 @@ export const accessApprovalRequestServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    if (!membership) throw new BadRequestError({ message: "User not found in project" });
+    if (!membership) {
+      throw new ForbiddenRequestError({ message: "You are not a member of this project" });
+    }
 
     const count = await accessApprovalRequestDAL.getCount({ projectId: project.id });
 

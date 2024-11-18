@@ -14,6 +14,7 @@ import (
 	"github.com/Infisical/infisical-merge/packages/util"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -55,6 +56,11 @@ var exportCmd = &cobra.Command{
 			util.HandleError(err)
 		}
 
+		token, err := util.GetInfisicalToken(cmd)
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
 		format, err := cmd.Flags().GetString("format")
 		if err != nil {
 			util.HandleError(err)
@@ -70,11 +76,6 @@ var exportCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		token, err := util.GetInfisicalToken(cmd)
-		if err != nil {
-			util.HandleError(err, "Unable to parse flag")
-		}
-
 		tagSlugs, err := cmd.Flags().GetString("tags")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
@@ -86,11 +87,12 @@ var exportCmd = &cobra.Command{
 		}
 
 		request := models.GetAllSecretsParameters{
-			Environment:   environmentName,
-			TagSlugs:      tagSlugs,
-			WorkspaceId:   projectId,
-			SecretsPath:   secretsPath,
-			IncludeImport: includeImports,
+			Environment:            environmentName,
+			TagSlugs:               tagSlugs,
+			WorkspaceId:            projectId,
+			SecretsPath:            secretsPath,
+			IncludeImport:          includeImports,
+			ExpandSecretReferences: shouldExpandSecrets,
 		}
 
 		if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
@@ -136,18 +138,6 @@ var exportCmd = &cobra.Command{
 		}
 
 		var output string
-		if shouldExpandSecrets {
-
-			authParams := models.ExpandSecretsAuthentication{}
-
-			if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
-				authParams.InfisicalToken = token.Token
-			} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
-				authParams.UniversalAuthAccessToken = token.Token
-			}
-
-			secrets = util.ExpandSecrets(secrets, authParams, "")
-		}
 		secrets = util.FilterSecretsByTag(secrets, tagSlugs)
 		secrets = util.SortSecretsByKeys(secrets)
 
@@ -169,9 +159,9 @@ func init() {
 	exportCmd.Flags().StringP("format", "f", "dotenv", "Set the format of the output file (dotenv, json, csv)")
 	exportCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
 	exportCmd.Flags().Bool("include-imports", true, "Imported linked secrets")
-	exportCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
+	exportCmd.Flags().String("token", "", "Fetch secrets using service token or machine identity access token")
 	exportCmd.Flags().StringP("tags", "t", "", "filter secrets by tag slugs")
-	exportCmd.Flags().String("projectId", "", "manually set the projectId to fetch secrets from")
+	exportCmd.Flags().String("projectId", "", "manually set the projectId to export secrets from")
 	exportCmd.Flags().String("path", "/", "get secrets within a folder path")
 	exportCmd.Flags().String("template", "", "The path to the template file used to render secrets")
 }
@@ -188,7 +178,7 @@ func formatEnvs(envs []models.SingleEnvironmentVariable, format string) (string,
 	case FormatCSV:
 		return formatAsCSV(envs), nil
 	case FormatYaml:
-		return formatAsYaml(envs), nil
+		return formatAsYaml(envs)
 	default:
 		return "", fmt.Errorf("invalid format type: %s. Available format types are [%s]", format, []string{FormatDotenv, FormatJson, FormatCSV, FormatYaml, FormatDotEnvExport})
 	}
@@ -224,12 +214,18 @@ func formatAsDotEnvExport(envs []models.SingleEnvironmentVariable) string {
 	return dotenv
 }
 
-func formatAsYaml(envs []models.SingleEnvironmentVariable) string {
-	var dotenv string
+func formatAsYaml(envs []models.SingleEnvironmentVariable) (string, error) {
+	m := make(map[string]string)
 	for _, env := range envs {
-		dotenv += fmt.Sprintf("%s: %s\n", env.Key, env.Value)
+		m[env.Key] = env.Value
 	}
-	return dotenv
+
+	yamlBytes, err := yaml.Marshal(m)
+	if err != nil {
+		return "", fmt.Errorf("failed to format environment variables as YAML: %w", err)
+	}
+
+	return string(yamlBytes), nil
 }
 
 // Format environment variables as a JSON file

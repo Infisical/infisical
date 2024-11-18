@@ -15,3 +15,16 @@ up-prod:
 
 down:
 	docker compose -f docker-compose.dev.yml down
+
+reviewable-ui:
+	cd frontend && \
+	npm run lint:fix && \
+	npm run type:check
+
+reviewable-api:
+	cd backend && \
+	npm run lint:fix && \
+	npm run type:check
+
+reviewable: reviewable-ui reviewable-api
+

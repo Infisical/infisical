@@ -1,5 +1,5 @@
 import { TOrganizations } from "@app/db/schemas";
-import { UnauthorizedError } from "@app/lib/errors";
+import { ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { ActorAuthMethod, AuthMethod } from "@app/services/auth/auth-type";
 
 function isAuthMethodSaml(actorAuthMethod: ActorAuthMethod) {
@@ -14,14 +14,33 @@ function isAuthMethodSaml(actorAuthMethod: ActorAuthMethod) {
   ].includes(actorAuthMethod);
 }
 
-function validateOrgSAML(actorAuthMethod: ActorAuthMethod, isSamlEnforced: TOrganizations["authEnforced"]) {
+function validateOrgSSO(actorAuthMethod: ActorAuthMethod, isOrgSsoEnforced: TOrganizations["authEnforced"]) {
   if (actorAuthMethod === undefined) {
     throw new UnauthorizedError({ name: "No auth method defined" });
   }
 
-  if (isSamlEnforced && actorAuthMethod !== null && !isAuthMethodSaml(actorAuthMethod)) {
-    throw new UnauthorizedError({ name: "Cannot access org-scoped resource" });
+  if (
+    isOrgSsoEnforced &&
+    actorAuthMethod !== null &&
+    !isAuthMethodSaml(actorAuthMethod) &&
+    actorAuthMethod !== AuthMethod.OIDC
+  ) {
+    throw new ForbiddenRequestError({ name: "Org auth enforced. Cannot access org-scoped resource" });
   }
 }
 
-export { isAuthMethodSaml, validateOrgSAML };
+const escapeHandlebarsMissingMetadata = (obj: Record<string, string>) => {
+  const handler = {
+    get(target: Record<string, string>, prop: string) {
+      if (!(prop in target)) {
+        // eslint-disable-next-line no-param-reassign
+        target[prop] = `{{identity.metadata.${prop}}}`; // Add missing key as an "own" property
+      }
+      return target[prop];
+    }
+  };
+
+  return new Proxy(obj, handler);
+};
+
+export { escapeHandlebarsMissingMetadata, isAuthMethodSaml, validateOrgSSO };

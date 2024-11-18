@@ -16,7 +16,9 @@ export const OrgMembershipsSchema = z.object({
   updatedAt: z.date(),
   userId: z.string().uuid().nullable().optional(),
   orgId: z.string().uuid(),
-  roleId: z.string().uuid().nullable().optional()
+  roleId: z.string().uuid().nullable().optional(),
+  projectFavorites: z.string().array().nullable().optional(),
+  isActive: z.boolean().default(true)
 });
 
 export type TOrgMemberships = z.infer<typeof OrgMembershipsSchema>;

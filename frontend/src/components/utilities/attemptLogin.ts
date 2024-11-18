@@ -62,6 +62,7 @@ const attemptLogin = async ({
   } = await login2({
     captchaToken,
     email,
+    password,
     clientProof,
     providerAuthToken
   });

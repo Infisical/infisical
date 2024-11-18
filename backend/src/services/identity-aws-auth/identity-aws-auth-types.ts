@@ -52,3 +52,7 @@ export type TGetCallerIdentityResponse = {
     ResponseMetadata: { RequestId: string };
   };
 };
+
+export type TRevokeAwsAuthDTO = {
+  identityId: string;
+} & Omit<TProjectPermission, "projectId">;

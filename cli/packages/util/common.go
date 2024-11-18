@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+
+	"github.com/Infisical/infisical-merge/packages/config"
 )
 
 func GetHomeDir() (string, error) {
@@ -21,7 +23,7 @@ func WriteToFile(fileName string, dataToWrite []byte, filePerm os.FileMode) erro
 	return nil
 }
 
-func CheckIsConnectedToInternet() (ok bool) {
-	_, err := http.Get("http://clients3.google.com/generate_204")
+func ValidateInfisicalAPIConnection() (ok bool) {
+	_, err := http.Get(fmt.Sprintf("%v/status", config.INFISICAL_URL))
 	return err == nil
 }

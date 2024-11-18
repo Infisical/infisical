@@ -44,6 +44,9 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
       case "azure-key-vault":
         link = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${window.location.origin}/integrations/azure-key-vault/oauth2/callback&response_mode=query&scope=https://vault.azure.net/.default openid offline_access&state=${state}`;
         break;
+      case "azure-app-configuration":
+        link = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${window.location.origin}/integrations/azure-app-configuration/oauth2/callback&response_mode=query&scope=https://azconfig.io/.default openid offline_access&state=${state}`;
+        break;
       case "aws-parameter-store":
         link = `${window.location.origin}/integrations/aws-parameter-store/authorize`;
         break;
@@ -60,7 +63,7 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
         link = `https://app.netlify.com/authorize?client_id=${integrationOption.clientId}&response_type=code&state=${state}&redirect_uri=${window.location.origin}/integrations/netlify/oauth2/callback`;
         break;
       case "github":
-        link = `https://github.com/login/oauth/authorize?client_id=${integrationOption.clientId}&response_type=code&scope=repo,admin:org&redirect_uri=${window.location.origin}/integrations/github/oauth2/callback&state=${state}`;
+        link = `${window.location.origin}/integrations/github/auth-mode-selection`;
         break;
       case "gitlab":
         link = `${window.location.origin}/integrations/gitlab/authorize`;
@@ -73,6 +76,9 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
         break;
       case "circleci":
         link = `${window.location.origin}/integrations/circleci/authorize`;
+        break;
+      case "databricks":
+        link = `${window.location.origin}/integrations/databricks/authorize`;
         break;
       case "laravel-forge":
         link = `${window.location.origin}/integrations/laravel-forge/authorize`;
@@ -130,6 +136,9 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
         break;
       case "rundeck":
         link = `${window.location.origin}/integrations/rundeck/authorize`;
+        break;
+      case "azure-devops":
+        link = `${window.location.origin}/integrations/azure-devops/authorize`;
         break;
       default:
         break;

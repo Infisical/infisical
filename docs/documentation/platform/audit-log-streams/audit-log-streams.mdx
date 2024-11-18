@@ -1,0 +1,82 @@
+---
+title: "Audit Log Streams"
+description: "Learn how to stream Infisical Audit Logs to external logging providers."
+---
+
+<Info>
+    Audit log streams is a paid feature.
+   
+    If you're using Infisical Cloud, then it is available under the **Enterprise Tier**. If you're self-hosting Infisical,
+    then you should contact team@infisical.com to purchase an enterprise license to use it.
+</Info>
+
+Infisical Audit Log Streaming enables you to transmit your organization's Audit Logs to external logging providers for monitoring and analysis. 
+
+The logs are formatted in JSON, requiring your logging provider to support JSON-based log parsing.
+
+
+## Overview
+
+<Steps>
+    <Step title="Navigate to Organization Settings in your sidebar." />
+    <Step title="Select Audit Log Streams Tab.">
+				![stream create](/images/platform/audit-log-streams/stream-create.png)
+		</Step>
+		<Step title="Click on Create">
+		 ![stream create](/images/platform/audit-log-streams/stream-inputs.png)
+
+		 Provide the following values
+		 <ParamField path="Endpoint URL" type="string" required>
+				The HTTPS endpoint URL of the logging provider that collects the JSON stream.
+     </ParamField>
+		 <ParamField path="Headers" type="string" >
+				The HTTP headers for the logging provider for identification and authentication.
+     </ParamField>
+		</Step>
+</Steps>
+
+![stream listt](/images/platform/audit-log-streams/stream-list.png)
+Your Audit Logs are now ready to be streamed.
+
+## Example Providers
+
+### Better Stack
+
+<Steps>
+    <Step title="Select Connect Source">
+				![better stack connect source](/images/platform/audit-log-streams/betterstack-create-source.png)
+		</Step>
+    <Step title="Provide a name and select platform"/>
+   <Step title="Provide Audit Log Stream inputs">
+				![better stack connect](/images/platform/audit-log-streams/betterstack-source-details.png)
+
+				1. Copy the **endpoint** from Better Stack to the **Endpoint URL** field.
+				3. Create a new header with key **Authorization** and set the value as **Bearer \<source token from betterstack\>**.
+		</Step>
+</Steps>
+
+### Datadog
+
+<Steps>
+    <Step title="Navigate to API Keys section">
+				![api key create](/images/platform/audit-log-streams/datadog-api-sidebar.png)
+		</Step>
+    <Step title="Select New Key and provide a key name">
+				![api key form](/images/platform/audit-log-streams/data-create-api-key.png)
+				![api key form](/images/platform/audit-log-streams/data-dog-api-key.png)
+		</Step>
+   <Step title="Find your Datadog region specific logging endpoint.">
+				![datadog url](/images/platform/audit-log-streams/datadog-logging-endpoint.png)
+
+				1. Navigate to the [Datadog Send Logs API documentation](https://docs.datadoghq.com/api/latest/logs/?code-lang=curl&site=us5#send-logs).
+				2. Pick your Datadog account region.
+				3. Obtain your Datadog logging endpoint URL.
+	 </Step>
+   <Step title="Provide audit log stream inputs">
+				![datadog api key details](/images/platform/audit-log-streams/datadog-source-details.png)
+
+				1. Copy the **logging endpoint** from Datadog to the **Endpoint URL** field.
+				2. Copy the **API Key** from previous step
+				3. Create a new header with key **DD-API-KEY** and set the value as **API Key**.
+		</Step>
+</Steps>

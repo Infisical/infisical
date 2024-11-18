@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName, TIntegrationAuths, TIntegrationAuthsUpdate } from "@app/db/schemas";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
-import { ormify } from "@app/lib/knex";
+import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TIntegrationAuthDALFactory = ReturnType<typeof integrationAuthDALFactory>;
 
@@ -28,8 +28,23 @@ export const integrationAuthDALFactory = (db: TDbClient) => {
     }
   };
 
+  const getByOrg = async (orgId: string, tx?: Knex) => {
+    try {
+      const integrationAuths = await (tx || db)(TableName.IntegrationAuth)
+        .join(TableName.Project, `${TableName.Project}.id`, `${TableName.IntegrationAuth}.projectId`)
+        .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.Project}.orgId`)
+        .where(`${TableName.Organization}.id`, "=", orgId)
+        .select(selectAllTableCols(TableName.IntegrationAuth));
+
+      return integrationAuths;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "get by org" });
+    }
+  };
+
   return {
     ...integrationAuthOrm,
-    bulkUpdate
+    bulkUpdate,
+    getByOrg
   };
 };

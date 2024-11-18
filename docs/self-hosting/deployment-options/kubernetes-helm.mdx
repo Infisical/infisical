@@ -41,7 +41,7 @@ description: "Learn how to use Helm chart to install Infisical on your Kubernete
 
     To deploy this Helm chart, a Kubernetes secret named `infisical-secrets` must be present in the same namespace where the chart is being deployed.
 
-    For a minimal installation of Infisical, you need to configure `ENCRYPTION_KEY`, `AUTH_SECRET`, `DB_CONNECTION_URI`, and `REDIS_URL`. [Learn more about configuration settings](/self-hosting/configuration/envars).
+    For a minimal installation of Infisical, you need to configure `ENCRYPTION_KEY`, `AUTH_SECRET`, `DB_CONNECTION_URI`, `SITE_URL`, and `REDIS_URL`. [Learn more about configuration settings](/self-hosting/configuration/envars).
 
 
     <Tabs>
@@ -56,6 +56,7 @@ description: "Learn how to use Helm chart to install Infisical on your Kubernete
         stringData:
           AUTH_SECRET: <>
           ENCRYPTION_KEY: <>
+          SITE_URL: <>
         ```
       </Tab>
       <Tab title="Production deployment">
@@ -71,13 +72,14 @@ description: "Learn how to use Helm chart to install Infisical on your Kubernete
           ENCRYPTION_KEY: <>
           REDIS_URL: <>
           DB_CONNECTION_URI: <>
+          SITE_URL: <>
         ```
       </Tab>
     </Tabs>
   </Step>
 
   <Step title="Database schema migration ">
-    Infisical relies a relational database, which means that database schemas need to be migrated before the instance can become operational. 
+    Infisical relies on a relational database, which means that database schemas need to be migrated before the instance can become operational. 
     
     To automate this process, the chart includes a option named `infisical.autoDatabaseSchemaMigration`.
     When this option is enabled, a deployment/upgrade will only occur _after_ a successful schema migration.

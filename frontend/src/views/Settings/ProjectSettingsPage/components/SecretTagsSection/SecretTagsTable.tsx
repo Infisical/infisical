@@ -40,7 +40,6 @@ export const SecretTagsTable = ({ handlePopUpOpen }: Props) => {
       <Table>
         <THead>
           <Tr>
-            <Th>Tag</Th>
             <Th>Slug</Th>
             <Th aria-label="button" />
           </Tr>
@@ -49,9 +48,8 @@ export const SecretTagsTable = ({ handlePopUpOpen }: Props) => {
           {isLoading && <TableSkeleton columns={3} innerKey="secret-tags" />}
           {!isLoading &&
             data &&
-            data.map(({ id, name, slug }) => (
-              <Tr key={name}>
-                <Td>{name}</Td>
+            data.map(({ id, slug }) => (
+              <Tr key={id}>
                 <Td>{slug}</Td>
                 <Td className="flex items-center justify-end">
                   <ProjectPermissionCan
@@ -62,7 +60,7 @@ export const SecretTagsTable = ({ handlePopUpOpen }: Props) => {
                       <IconButton
                         onClick={() =>
                           handlePopUpOpen("deleteTagConfirmation", {
-                            name,
+                            name: slug,
                             id
                           })
                         }

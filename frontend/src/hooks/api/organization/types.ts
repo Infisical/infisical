@@ -1,11 +1,20 @@
+import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { IdentityMembershipOrg } from "@app/hooks/api/identities/types";
+
+import { MfaMethod } from "../auth/types";
+
 export type Organization = {
   id: string;
   name: string;
   createAt: string;
   updatedAt: string;
   authEnforced: boolean;
+  orgAuthMethod: string;
   scimEnabled: boolean;
   slug: string;
+  defaultMembershipRole: string;
+  enforceMfa: boolean;
+  selectedMfaMethod?: MfaMethod;
 };
 
 export type UpdateOrgDTO = {
@@ -14,6 +23,9 @@ export type UpdateOrgDTO = {
   authEnforced?: boolean;
   scimEnabled?: boolean;
   slug?: string;
+  defaultMembershipRoleSlug?: string;
+  enforceMfa?: boolean;
+  selectedMfaMethod?: MfaMethod;
 };
 
 export type BillingDetails = {
@@ -102,3 +114,22 @@ export type ProductsTable = {
   head: ProductsTableHead[];
   rows: ProductsTableRow[];
 };
+
+export type TListOrgIdentitiesDTO = {
+  organizationId: string;
+  offset?: number;
+  limit?: number;
+  orderBy?: OrgIdentityOrderBy;
+  orderDirection?: OrderByDirection;
+  search?: string;
+};
+
+export type TOrgIdentitiesList = {
+  identityMemberships: IdentityMembershipOrg[];
+  totalCount: number;
+};
+
+export enum OrgIdentityOrderBy {
+  Name = "name"
+  // Role = "role"
+}

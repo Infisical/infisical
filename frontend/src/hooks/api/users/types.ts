@@ -1,4 +1,6 @@
+import { MfaMethod } from "../auth/types";
 import { UserWsKeyPair } from "../keys/types";
+import { ProjectUserMembershipTemporaryMode } from "../workspace/types";
 
 export enum AuthMethod {
   EMAIL = "email",
@@ -9,7 +11,9 @@ export enum AuthMethod {
   AZURE_SAML = "azure-saml",
   JUMPCLOUD_SAML = "jumpcloud-saml",
   KEYCLOAK_SAML = "keycloak-saml",
-  LDAP = "ldap"
+  LDAP = "ldap",
+  OIDC = "oidc",
+  SAML = "saml"
 }
 
 export type User = {
@@ -23,13 +27,15 @@ export type User = {
   authProvider?: AuthMethod;
   authMethods: AuthMethod[];
   isMfaEnabled: boolean;
+  selectedMfaMethod?: MfaMethod;
   seenIps: string[];
   id: string;
 };
 
 export enum UserAliasType {
   LDAP = "ldap",
-  SAML = "saml"
+  SAML = "saml",
+  OIDC = "oidc"
 }
 
 export type UserEnc = {
@@ -45,13 +51,16 @@ export type UserEnc = {
 
 export type OrgUser = {
   id: string;
+  metadata: { key: string; value: string; id: string }[];
   user: {
     username: string;
     email?: string;
+    isEmailVerified: boolean;
     firstName: string;
     lastName: string;
     id: string;
     publicKey: string;
+    superAdmin: boolean;
   };
   inviteEmail: string;
   organization: string;
@@ -59,11 +68,11 @@ export type OrgUser = {
   status: "invited" | "accepted" | "verified" | "completed";
   deniedPermissions: any[];
   roleId: string;
+  isActive: boolean;
 };
 
 export type TProjectMembership = {
   id: string;
-  role: string;
   createdAt: string;
   updatedAt: string;
   projectId: string;
@@ -79,6 +88,13 @@ export type TWorkspaceUser = {
     lastName: string;
     id: string;
     publicKey: string;
+  };
+  createdAt: string;
+  projectId: string;
+  isGroupMember: boolean;
+  project: {
+    id: string;
+    name: string;
   };
   inviteEmail: string;
   organization: string;
@@ -103,7 +119,7 @@ export type TWorkspaceUser = {
         customRoleSlug: string;
         isTemporary: true;
         temporaryRange: string;
-        temporaryMode: string;
+        temporaryMode: ProjectUserMembershipTemporaryMode;
         temporaryAccessEndTime: string;
         temporaryAccessStartTime: string;
       }
@@ -125,12 +141,16 @@ export type AddUserToWsDTOE2EE = {
 export type AddUserToWsDTONonE2EE = {
   projectId: string;
   usernames: string[];
+  roleSlugs?: string[];
+  orgId: string;
 };
 
-export type UpdateOrgUserRoleDTO = {
+export type UpdateOrgMembershipDTO = {
   organizationId: string;
   membershipId: string;
-  role: string;
+  role?: string;
+  isActive?: boolean;
+  metadata?: { key: string; value: string }[];
 };
 
 export type DeletOrgMembershipDTO = {
@@ -139,8 +159,12 @@ export type DeletOrgMembershipDTO = {
 };
 
 export type AddUserToOrgDTO = {
-  inviteeEmail: string;
+  inviteeEmails: string[];
+  organizationRoleSlug: string;
   organizationId: string;
+
+  // We need the slug in order to invalidate the groups query. `slug` is only used for invalidation purposes.
+  projects?: { id: string; slug?: string; projectRoleSlug: string[] }[];
 };
 
 export type CreateAPIKeyRes = {

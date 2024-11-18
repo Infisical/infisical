@@ -6,7 +6,8 @@ import {
 } from "@app/components/utilities/cryptography/crypto";
 import { apiRequest } from "@app/config/request";
 
-import { workspaceKeys } from "../workspace/queries";
+import { workspaceKeys } from "../workspace";
+import { userKeys } from "./query-keys";
 import { AddUserToWsDTOE2EE, AddUserToWsDTONonE2EE } from "./types";
 
 export const useAddUserToWsE2EE = () => {
@@ -50,14 +51,16 @@ export const useAddUserToWsNonE2EE = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, AddUserToWsDTONonE2EE>({
-    mutationFn: async ({ projectId, usernames }) => {
+    mutationFn: async ({ projectId, usernames, roleSlugs }) => {
       const { data } = await apiRequest.post(`/api/v2/workspace/${projectId}/memberships`, {
-        usernames
+        usernames,
+        roleSlugs
       });
       return data;
     },
-    onSuccess: (_, { projectId }) => {
+    onSuccess: (_, { orgId, projectId }) => {
       queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(projectId));
+      queryClient.invalidateQueries(userKeys.allOrgMembershipProjectMemberships(orgId));
     }
   });
 };
@@ -85,6 +88,69 @@ export const useVerifyEmailVerificationCode = () => {
         code
       });
       return {};
+    }
+  });
+};
+
+export const useUpdateUserProjectFavorites = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      orgId,
+      projectFavorites
+    }: {
+      orgId: string;
+      projectFavorites: string[];
+    }) => {
+      await apiRequest.put("/api/v1/user/me/project-favorites", {
+        orgId,
+        projectFavorites
+      });
+
+      return {};
+    },
+    onSuccess: (_, { orgId }) => {
+      queryClient.invalidateQueries(userKeys.userProjectFavorites(orgId));
+    }
+  });
+};
+
+export const useVerifyUserTotpRegistration = () => {
+  return useMutation({
+    mutationFn: async ({ totp }: { totp: string }) => {
+      await apiRequest.post("/api/v1/user/me/totp/verify", {
+        totp
+      });
+
+      return {};
+    }
+  });
+};
+
+export const useDeleteUserTotpConfiguration = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      await apiRequest.delete("/api/v1/user/me/totp");
+
+      return {};
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(userKeys.totpConfiguration);
+    }
+  });
+};
+
+export const useCreateNewTotpRecoveryCodes = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      await apiRequest.post("/api/v1/user/me/totp/recovery-codes");
+
+      return {};
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(userKeys.totpConfiguration);
     }
   });
 };

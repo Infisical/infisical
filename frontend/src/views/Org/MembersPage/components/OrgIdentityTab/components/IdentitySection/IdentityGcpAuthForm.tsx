@@ -23,8 +23,12 @@ const schema = z
     allowedServiceAccounts: z.string(),
     allowedProjects: z.string(),
     allowedZones: z.string(),
-    accessTokenTTL: z.string(),
-    accessTokenMaxTTL: z.string(),
+    accessTokenTTL: z.string().refine((val) => Number(val) <= 315360000, {
+      message: "Access Token TTL cannot be greater than 315360000"
+    }),
+    accessTokenMaxTTL: z.string().refine((val) => Number(val) <= 315360000, {
+      message: "Access Token Max TTL cannot be greater than 315360000"
+    }),
     accessTokenNumUsesLimit: z.string(),
     accessTokenTrustedIps: z
       .array(
@@ -41,12 +45,13 @@ export type FormData = z.infer<typeof schema>;
 type Props = {
   handlePopUpOpen: (popUpName: keyof UsePopUpState<["upgradePlan"]>) => void;
   handlePopUpToggle: (
-    popUpName: keyof UsePopUpState<["identityAuthMethod"]>,
+    popUpName: keyof UsePopUpState<["identityAuthMethod", "revokeAuthMethod"]>,
     state?: boolean
   ) => void;
   identityAuthMethodData: {
     identityId: string;
     name: string;
+    configuredAuthMethods?: IdentityAuthMethod[];
     authMethod?: IdentityAuthMethod;
   };
 };
@@ -63,7 +68,12 @@ export const IdentityGcpAuthForm = ({
   const { mutateAsync: addMutateAsync } = useAddIdentityGcpAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityGcpAuth();
 
-  const { data } = useGetIdentityGcpAuth(identityAuthMethodData?.identityId ?? "");
+  const isUpdate = identityAuthMethodData?.configuredAuthMethods?.includes(
+    identityAuthMethodData.authMethod! || ""
+  );
+  const { data } = useGetIdentityGcpAuth(identityAuthMethodData?.identityId ?? "", {
+    enabled: isUpdate
+  });
 
   const {
     control,
@@ -96,7 +106,7 @@ export const IdentityGcpAuthForm = ({
   useEffect(() => {
     if (data) {
       reset({
-        type: data.type,
+        type: data.type || "gce",
         allowedServiceAccounts: data.allowedServiceAccounts,
         allowedProjects: data.allowedProjects,
         allowedZones: data.allowedZones,
@@ -113,7 +123,7 @@ export const IdentityGcpAuthForm = ({
       });
     } else {
       reset({
-        type: "iam",
+        type: "gce",
         allowedServiceAccounts: "",
         allowedProjects: "",
         allowedZones: "",
@@ -169,16 +179,14 @@ export const IdentityGcpAuthForm = ({
       handlePopUpToggle("identityAuthMethod", false);
 
       createNotification({
-        text: `Successfully ${
-          identityAuthMethodData?.authMethod ? "updated" : "configured"
-        } auth method`,
+        text: `Successfully ${isUpdate ? "updated" : "configured"} auth method`,
         type: "success"
       });
 
       reset();
     } catch (err) {
       createNotification({
-        text: `Failed to ${identityAuthMethodData?.authMethod ? "update" : "configure"} identity`,
+        text: `Failed to ${isUpdate ? "update" : "configure"} identity`,
         type: "error"
       });
     }
@@ -197,10 +205,10 @@ export const IdentityGcpAuthForm = ({
               onValueChange={(e) => onChange(e)}
               className="w-full"
             >
-              <SelectItem value="gce" key="gcp-type-gce">
+              <SelectItem value="gce" key="gce">
                 GCP ID Token Auth (Recommended)
               </SelectItem>
-              <SelectItem value="iam" key="gcpiam">
+              <SelectItem value="iam" key="iam">
                 GCP IAM Auth
               </SelectItem>
             </Select>
@@ -361,23 +369,37 @@ export const IdentityGcpAuthForm = ({
           Add IP Address
         </Button>
       </div>
-      <div className="flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
-          {identityAuthMethodData?.authMethod ? "Update" : "Configure"}
-        </Button>
-        <Button
-          colorSchema="secondary"
-          variant="plain"
-          onClick={() => handlePopUpToggle("identityAuthMethod", false)}
-        >
-          {identityAuthMethodData?.authMethod ? "Cancel" : "Skip"}
-        </Button>
+      <div className="flex justify-between">
+        <div className="flex items-center">
+          <Button
+            className="mr-4"
+            size="sm"
+            type="submit"
+            isLoading={isSubmitting}
+            isDisabled={isSubmitting}
+          >
+            {!isUpdate ? "Create" : "Edit"}
+          </Button>
+
+          <Button
+            colorSchema="secondary"
+            variant="plain"
+            onClick={() => handlePopUpToggle("identityAuthMethod", false)}
+          >
+            Cancel
+          </Button>
+        </div>
+        {isUpdate && (
+          <Button
+            size="sm"
+            colorSchema="danger"
+            isLoading={isSubmitting}
+            isDisabled={isSubmitting}
+            onClick={() => handlePopUpToggle("revokeAuthMethod", true)}
+          >
+            Remove Auth Method
+          </Button>
+        )}
       </div>
     </form>
   );

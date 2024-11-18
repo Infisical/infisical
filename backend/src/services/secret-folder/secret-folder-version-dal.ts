@@ -4,6 +4,8 @@ import { TDbClient } from "@app/db";
 import { TableName, TSecretFolderVersions } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { logger } from "@app/lib/logger";
+import { QueueName } from "@app/queue";
 
 export type TSecretFolderVersionDALFactory = ReturnType<typeof secretFolderVersionDALFactory>;
 
@@ -13,7 +15,7 @@ export const secretFolderVersionDALFactory = (db: TDbClient) => {
   // This will fetch all latest secret versions from a folder
   const findLatestVersionByFolderId = async (folderId: string, tx?: Knex) => {
     try {
-      const docs = await (tx || db)(TableName.SecretFolderVersion)
+      const docs = await (tx || db.replicaNode())(TableName.SecretFolderVersion)
         .join(TableName.SecretFolder, `${TableName.SecretFolderVersion}.folderId`, `${TableName.SecretFolder}.id`)
         .where({ parentId: folderId, isReserved: false })
         .join<TSecretFolderVersions>(
@@ -38,7 +40,9 @@ export const secretFolderVersionDALFactory = (db: TDbClient) => {
 
   const findLatestFolderVersions = async (folderIds: string[], tx?: Knex) => {
     try {
-      const docs: Array<TSecretFolderVersions & { max: number }> = await (tx || db)(TableName.SecretFolderVersion)
+      const docs: Array<TSecretFolderVersions & { max: number }> = await (tx || db.replicaNode())(
+        TableName.SecretFolderVersion
+      )
         .whereIn("folderId", folderIds)
         .join(
           (tx || db)(TableName.SecretFolderVersion)
@@ -62,5 +66,34 @@ export const secretFolderVersionDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...secretFolderVerOrm, findLatestFolderVersions, findLatestVersionByFolderId };
+  const pruneExcessVersions = async () => {
+    logger.info(`${QueueName.DailyResourceCleanUp}: pruning secret folder versions started`);
+    try {
+      await db(TableName.SecretFolderVersion)
+        .with("folder_cte", (qb) => {
+          void qb
+            .from(TableName.SecretFolderVersion)
+            .select(
+              "id",
+              "folderId",
+              db.raw(
+                `ROW_NUMBER() OVER (PARTITION BY ${TableName.SecretFolderVersion}."folderId" ORDER BY ${TableName.SecretFolderVersion}."createdAt" DESC) AS row_num`
+              )
+            );
+        })
+        .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolderVersion}.envId`)
+        .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Environment}.projectId`)
+        .join("folder_cte", "folder_cte.id", `${TableName.SecretFolderVersion}.id`)
+        .whereRaw(`folder_cte.row_num > ${TableName.Project}."pitVersionLimit"`)
+        .delete();
+    } catch (error) {
+      throw new DatabaseError({
+        error,
+        name: "Secret Folder Version Prune"
+      });
+    }
+    logger.info(`${QueueName.DailyResourceCleanUp}: pruning secret folder versions completed`);
+  };
+
+  return { ...secretFolderVerOrm, findLatestFolderVersions, findLatestVersionByFolderId, pruneExcessVersions };
 };

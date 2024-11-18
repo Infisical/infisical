@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { UsersSchema } from "@app/db/schemas";
+import { OrgMembershipRole, ProjectMembershipRole, UsersSchema } from "@app/db/schemas";
 import { inviteUserRateLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -16,23 +16,42 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     schema: {
       body: z.object({
-        inviteeEmail: z.string().trim().email(),
-        organizationId: z.string().trim()
+        inviteeEmails: z.array(z.string().trim().email()),
+        organizationId: z.string().trim(),
+        projects: z
+          .object({
+            id: z.string(),
+            projectRoleSlug: z.string().array().default([ProjectMembershipRole.Member])
+          })
+          .array()
+          .optional(),
+        organizationRoleSlug: z.string().default(OrgMembershipRole.Member)
       }),
       response: {
         200: z.object({
           message: z.string(),
-          completeInviteLink: z.string().optional()
+          completeInviteLinks: z
+            .array(
+              z.object({
+                email: z.string(),
+                link: z.string()
+              })
+            )
+            .optional()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       if (req.auth.actor !== ActorType.USER) return;
-      const completeInviteLink = await server.services.org.inviteUserToOrganization({
+
+      const { signupTokens: completeInviteLinks } = await server.services.org.inviteUserToOrganization({
         orgId: req.body.organizationId,
-        userId: req.permission.id,
-        inviteeEmail: req.body.inviteeEmail,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        inviteeEmails: req.body.inviteeEmails,
+        projects: req.body.projects,
+        organizationRoleSlug: req.body.organizationRoleSlug,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
@@ -41,14 +60,15 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
         event: PostHogEventTypes.UserOrgInvitation,
         distinctId: getTelemetryDistinctId(req),
         properties: {
-          inviteeEmail: req.body.inviteeEmail,
+          inviteeEmails: req.body.inviteeEmails,
+          organizationRoleSlug: req.body.organizationRoleSlug,
           ...req.auditLogInfo
         }
       });
 
       return {
-        completeInviteLink,
-        message: `Send an invite link to ${req.body.inviteeEmail}`
+        completeInviteLinks,
+        message: `Send an invite link to ${req.body.inviteeEmails.join(", ")}`
       };
     }
   });

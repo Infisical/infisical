@@ -189,6 +189,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
         workspaceId: z.string().trim(),
         code: z.string().trim(),
         integration: z.string().trim(),
+        installationId: z.string().trim().optional(),
         url: z.string().trim().url().optional()
       }),
       response: {
@@ -240,6 +241,12 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
         integration: z.string().trim().describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.integration),
         accessId: z.string().trim().optional().describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.accessId),
         accessToken: z.string().trim().optional().describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.accessToken),
+        awsAssumeIamRoleArn: z
+          .string()
+          .url()
+          .trim()
+          .optional()
+          .describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.awsAssumeIamRoleArn),
         url: z.string().url().trim().optional().describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.url),
         namespace: z.string().trim().optional().describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.namespace),
         refreshToken: z.string().trim().optional().describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.refreshToken)
@@ -287,6 +294,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
       }),
       querystring: z.object({
         teamId: z.string().trim().optional(),
+        azureDevOpsOrgName: z.string().trim().optional(),
         workspaceSlug: z.string().trim().optional()
       }),
       response: {
@@ -442,6 +450,40 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
       if (!orgs) throw new Error("No organization found.");
 
       return { orgs };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:integrationAuthId/duplicate",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      params: z.object({
+        integrationAuthId: z.string().trim()
+      }),
+      body: z.object({
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          integrationAuth: integrationAuthPubSchema
+        })
+      }
+    },
+    handler: async (req) => {
+      const integrationAuth = await server.services.integrationAuth.duplicateIntegrationAuth({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        id: req.params.integrationAuthId,
+        projectId: req.body.projectId
+      });
+
+      return { integrationAuth };
     }
   });
 
@@ -846,6 +888,48 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
         id: req.params.integrationAuthId
       });
       return { workspaces };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:integrationAuthId/bitbucket/environments",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      params: z.object({
+        integrationAuthId: z.string().trim()
+      }),
+      querystring: z.object({
+        workspaceSlug: z.string().trim().min(1, { message: "Workspace slug required" }),
+        repoSlug: z.string().trim().min(1, { message: "Repo slug required" })
+      }),
+      response: {
+        200: z.object({
+          environments: z
+            .object({
+              name: z.string(),
+              slug: z.string(),
+              uuid: z.string(),
+              type: z.string()
+            })
+            .array()
+        })
+      }
+    },
+    handler: async (req) => {
+      const environments = await server.services.integrationAuth.getBitbucketEnvironments({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        id: req.params.integrationAuthId,
+        workspaceSlug: req.query.workspaceSlug,
+        repoSlug: req.query.repoSlug
+      });
+      return { environments };
     }
   });
 

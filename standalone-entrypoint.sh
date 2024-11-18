@@ -7,4 +7,4 @@ scripts/initialize-standalone-build.sh
 
 cd ../
 
-exec node dist/main.mjs
+exec node --enable-source-maps dist/main.mjs

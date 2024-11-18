@@ -17,18 +17,20 @@ import { IdentityAuthMethod } from "@app/hooks/api/identities";
 import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-// TODO: Add CA cert and token reviewer JWT fields
-
 const schema = z
   .object({
-    kubernetesHost: z.string(),
-    tokenReviewerJwt: z.string(),
+    kubernetesHost: z.string().min(1),
+    tokenReviewerJwt: z.string().min(1),
     allowedNames: z.string(),
     allowedNamespaces: z.string(),
     allowedAudience: z.string(),
     caCert: z.string(),
-    accessTokenTTL: z.string(),
-    accessTokenMaxTTL: z.string(),
+    accessTokenTTL: z.string().refine((val) => Number(val) <= 315360000, {
+      message: "Access Token TTL cannot be greater than 315360000"
+    }),
+    accessTokenMaxTTL: z.string().refine((val) => Number(val) <= 315360000, {
+      message: "Access Token Max TTL cannot be greater than 315360000"
+    }),
     accessTokenNumUsesLimit: z.string(),
     accessTokenTrustedIps: z
       .array(
@@ -45,12 +47,13 @@ export type FormData = z.infer<typeof schema>;
 type Props = {
   handlePopUpOpen: (popUpName: keyof UsePopUpState<["upgradePlan"]>) => void;
   handlePopUpToggle: (
-    popUpName: keyof UsePopUpState<["identityAuthMethod"]>,
+    popUpName: keyof UsePopUpState<["identityAuthMethod", "revokeAuthMethod"]>,
     state?: boolean
   ) => void;
   identityAuthMethodData: {
     identityId: string;
     name: string;
+    configuredAuthMethods?: IdentityAuthMethod[];
     authMethod?: IdentityAuthMethod;
   };
 };
@@ -67,21 +70,27 @@ export const IdentityKubernetesAuthForm = ({
   const { mutateAsync: addMutateAsync } = useAddIdentityKubernetesAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityKubernetesAuth();
 
-  const { data } = useGetIdentityKubernetesAuth(identityAuthMethodData?.identityId ?? "");
+  const isUpdate = identityAuthMethodData?.configuredAuthMethods?.includes(
+    identityAuthMethodData.authMethod! || ""
+  );
+  const { data } = useGetIdentityKubernetesAuth(identityAuthMethodData?.identityId ?? "", {
+    enabled: isUpdate
+  });
 
   const {
     control,
     handleSubmit,
     reset,
+
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      kubernetesHost: "", // TODO
+      kubernetesHost: "",
       tokenReviewerJwt: "",
-      allowedNames: "", // TODO
-      allowedNamespaces: "", // TODO
-      allowedAudience: "", // TODO
+      allowedNames: "",
+      allowedNamespaces: "",
+      allowedAudience: "",
       caCert: "",
       accessTokenTTL: "2592000",
       accessTokenMaxTTL: "2592000",
@@ -118,7 +127,7 @@ export const IdentityKubernetesAuthForm = ({
       });
     } else {
       reset({
-        kubernetesHost: "", // TODO
+        kubernetesHost: "",
         tokenReviewerJwt: "",
         allowedNames: "",
         allowedNamespaces: "",
@@ -182,16 +191,14 @@ export const IdentityKubernetesAuthForm = ({
       handlePopUpToggle("identityAuthMethod", false);
 
       createNotification({
-        text: `Successfully ${
-          identityAuthMethodData?.authMethod ? "updated" : "configured"
-        } auth method`,
+        text: `Successfully ${isUpdate ? "updated" : "configured"} auth method`,
         type: "success"
       });
 
       reset();
     } catch (err) {
       createNotification({
-        text: `Failed to ${identityAuthMethodData?.authMethod ? "update" : "configure"} identity`,
+        text: `Failed to ${isUpdate ? "update" : "configure"} identity`,
         type: "error"
       });
     }
@@ -208,6 +215,7 @@ export const IdentityKubernetesAuthForm = ({
             label="Kubernetes Host / Base Kubernetes API URL "
             isError={Boolean(error)}
             errorText={error?.message}
+            tooltipText="The host string, host:port pair, or URL to the base of the Kubernetes API server. This can usually be obtained by running 'kubectl cluster-info'"
             isRequired
           >
             <Input {...field} placeholder="https://my-example-k8s-api-host.com" type="text" />
@@ -222,6 +230,7 @@ export const IdentityKubernetesAuthForm = ({
             label="Token Reviewer JWT"
             isError={Boolean(error)}
             errorText={error?.message}
+            tooltipText="A long-lived service account JWT token for Infisical to access the TokenReview API to validate other service account JWT tokens submitted by applications/pods."
             isRequired
           >
             <Input {...field} placeholder="" type="password" />
@@ -235,6 +244,7 @@ export const IdentityKubernetesAuthForm = ({
           <FormControl
             label="Allowed Service Account Names"
             isError={Boolean(error)}
+            tooltipText="An optional comma-separated list of trusted service account names that are allowed to authenticate with Infisical. Leave empty to allow any service account."
             errorText={error?.message}
           >
             <Input {...field} placeholder="service-account-1-name, service-account-1-name" />
@@ -250,6 +260,7 @@ export const IdentityKubernetesAuthForm = ({
             label="Allowed Namespaces"
             isError={Boolean(error)}
             errorText={error?.message}
+            tooltipText="A comma-separated list of trusted namespaces that service accounts must belong to authenticate with Infisical."
           >
             <Input {...field} placeholder="namespaceA, namespaceB" type="text" />
           </FormControl>
@@ -260,7 +271,12 @@ export const IdentityKubernetesAuthForm = ({
         defaultValue=""
         name="allowedAudience"
         render={({ field, fieldState: { error } }) => (
-          <FormControl label="Allowed Audience" isError={Boolean(error)} errorText={error?.message}>
+          <FormControl
+            label="Allowed Audience"
+            isError={Boolean(error)}
+            errorText={error?.message}
+            tooltipText="An optional audience claim that the service account JWT token must have to authenticate with Infisical. Leave empty to allow any audience claim."
+          >
             <Input {...field} placeholder="" type="text" />
           </FormControl>
         )}
@@ -269,7 +285,12 @@ export const IdentityKubernetesAuthForm = ({
         control={control}
         name="caCert"
         render={({ field, fieldState: { error } }) => (
-          <FormControl label="CA Certificate" errorText={error?.message} isError={Boolean(error)}>
+          <FormControl
+            label="CA Certificate"
+            errorText={error?.message}
+            isError={Boolean(error)}
+            tooltipText="An optional PEM-encoded CA cert for the Kubernetes API server. This is used by the TLS client for secure communication with the Kubernetes API server."
+          >
             <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
           </FormControl>
         )}
@@ -281,6 +302,7 @@ export const IdentityKubernetesAuthForm = ({
         render={({ field, fieldState: { error } }) => (
           <FormControl
             label="Access Token TTL (seconds)"
+            tooltipText="The lifetime for an acccess token in seconds. This value will be referenced at renewal time."
             isError={Boolean(error)}
             errorText={error?.message}
           >
@@ -297,6 +319,7 @@ export const IdentityKubernetesAuthForm = ({
             label="Access Token Max TTL (seconds)"
             isError={Boolean(error)}
             errorText={error?.message}
+            tooltipText="The maximum lifetime for an access token in seconds. This value will be referenced at renewal time."
           >
             <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
           </FormControl>
@@ -311,6 +334,7 @@ export const IdentityKubernetesAuthForm = ({
             label="Access Token Max Number of Uses"
             isError={Boolean(error)}
             errorText={error?.message}
+            tooltipText="The maximum number of times that an access token can be used; a value of 0 implies infinite number of uses."
           >
             <Input {...field} placeholder="0" type="number" min="0" step="1" />
           </FormControl>
@@ -329,6 +353,7 @@ export const IdentityKubernetesAuthForm = ({
                   label={index === 0 ? "Access Token Trusted IPs" : undefined}
                   isError={Boolean(error)}
                   errorText={error?.message}
+                  tooltipText="The IPs or CIDR ranges that access tokens can be used from. By default, each token is given the 0.0.0.0/0, allowing usage from any network address."
                 >
                   <Input
                     value={field.value}
@@ -384,23 +409,37 @@ export const IdentityKubernetesAuthForm = ({
           Add IP Address
         </Button>
       </div>
-      <div className="flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
-          {identityAuthMethodData?.authMethod ? "Update" : "Configure"}
-        </Button>
-        <Button
-          colorSchema="secondary"
-          variant="plain"
-          onClick={() => handlePopUpToggle("identityAuthMethod", false)}
-        >
-          {identityAuthMethodData?.authMethod ? "Cancel" : "Skip"}
-        </Button>
+      <div className="flex justify-between">
+        <div className="flex items-center">
+          <Button
+            className="mr-4"
+            size="sm"
+            type="submit"
+            isLoading={isSubmitting}
+            isDisabled={isSubmitting}
+          >
+            {isUpdate ? "Update" : "Create"}
+          </Button>
+
+          <Button
+            colorSchema="secondary"
+            variant="plain"
+            onClick={() => handlePopUpToggle("identityAuthMethod", false)}
+          >
+            Cancel
+          </Button>
+        </div>
+        {isUpdate && (
+          <Button
+            size="sm"
+            colorSchema="danger"
+            isLoading={isSubmitting}
+            isDisabled={isSubmitting}
+            onClick={() => handlePopUpToggle("revokeAuthMethod", true)}
+          >
+            Remove Auth Method
+          </Button>
+        )}
       </div>
     </form>
   );

@@ -1,13 +1,14 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, UseQueryOptions } from "@tanstack/react-query";
 
 import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
 
-import { workspaceKeys } from "../workspace/queries";
-import { TCloudIntegration } from "./types";
+import { workspaceKeys } from "../workspace";
+import { TCloudIntegration, TIntegrationWithEnv } from "./types";
 
 export const integrationQueryKeys = {
-  getIntegrations: () => ["integrations"] as const
+  getIntegrations: () => ["integrations"] as const,
+  getIntegration: (id: string) => ["integration", id] as const
 };
 
 const fetchIntegrations = async () => {
@@ -16,6 +17,14 @@ const fetchIntegrations = async () => {
   );
 
   return data.integrationOptions;
+};
+
+const fetchIntegration = async (id: string) => {
+  const { data } = await apiRequest.get<{ integration: TIntegrationWithEnv }>(
+    `/api/v1/integration/${id}`
+  );
+
+  return data.integration;
 };
 
 export const useGetCloudIntegrations = () =>
@@ -71,6 +80,8 @@ export const useCreateIntegration = () => {
           key: string;
           value: string;
         }[];
+        githubVisibility?: string;
+        githubVisibilityRepoIds?: string[];
         kmsKeyId?: string;
         shouldDisableDelete?: boolean;
         shouldMaskSecrets?: boolean;
@@ -110,12 +121,39 @@ export const useCreateIntegration = () => {
 export const useDeleteIntegration = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, { id: string; workspaceId: string }>({
-    mutationFn: ({ id }) => apiRequest.delete(`/api/v1/integration/${id}`),
+  return useMutation<
+    {},
+    {},
+    { id: string; workspaceId: string; shouldDeleteIntegrationSecrets: boolean }
+  >({
+    mutationFn: ({ id, shouldDeleteIntegrationSecrets }) =>
+      apiRequest.delete(
+        `/api/v1/integration/${id}?shouldDeleteIntegrationSecrets=${shouldDeleteIntegrationSecrets}`
+      ),
     onSuccess: (_, { workspaceId }) => {
       queryClient.invalidateQueries(workspaceKeys.getWorkspaceIntegrations(workspaceId));
       queryClient.invalidateQueries(workspaceKeys.getWorkspaceAuthorization(workspaceId));
     }
+  });
+};
+
+export const useGetIntegration = (
+  integrationId: string,
+  options?: Omit<
+    UseQueryOptions<
+      TIntegrationWithEnv,
+      unknown,
+      TIntegrationWithEnv,
+      ReturnType<typeof integrationQueryKeys.getIntegration>
+    >,
+    "queryFn" | "queryKey"
+  >
+) => {
+  return useQuery({
+    ...options,
+    enabled: Boolean(integrationId && options?.enabled === undefined ? true : options?.enabled),
+    queryKey: integrationQueryKeys.getIntegration(integrationId),
+    queryFn: () => fetchIntegration(integrationId)
   });
 };
 

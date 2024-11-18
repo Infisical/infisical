@@ -11,7 +11,7 @@
     <h2>Confirm your email address</h2>
     <p>Your confirmation code is below — enter it in the browser window where you've started signing up for Infisical.</p>
     <h1>{{code}}</h1>
-    <p>Questions about setting up Infisical? Email us at support@infisical.com</p>
+    <p>Questions about setting up Infisical? {{#if isCloud}}Email us at support@infisical.com{{else}}Contact your administrator{{/if}}.</p>
 </body>
 
 </html>

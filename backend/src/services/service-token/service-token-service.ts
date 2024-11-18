@@ -6,8 +6,9 @@ import bcrypt from "bcrypt";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 
+import { TAccessTokenQueueServiceFactory } from "../access-token-queue/access-token-queue";
 import { ActorType } from "../auth/auth-type";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -26,6 +27,7 @@ type TServiceTokenServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findBySlugs">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
+  accessTokenQueue: Pick<TAccessTokenQueueServiceFactory, "updateServiceTokenStatus">;
 };
 
 export type TServiceTokenServiceFactory = ReturnType<typeof serviceTokenServiceFactory>;
@@ -35,7 +37,8 @@ export const serviceTokenServiceFactory = ({
   userDAL,
   permissionService,
   projectEnvDAL,
-  projectDAL
+  projectDAL,
+  accessTokenQueue
 }: TServiceTokenServiceFactoryDep) => {
   const createServiceToken = async ({
     iv,
@@ -72,7 +75,8 @@ export const serviceTokenServiceFactory = ({
     // validates env
     const scopeEnvs = [...new Set(scopes.map(({ environment }) => environment))];
     const inputEnvs = await projectEnvDAL.findBySlugs(projectId, scopeEnvs);
-    if (inputEnvs.length !== scopeEnvs.length) throw new BadRequestError({ message: "Environment not found" });
+    if (inputEnvs.length !== scopeEnvs.length)
+      throw new NotFoundError({ message: `One or more selected environments not found` });
 
     const secret = crypto.randomBytes(16).toString("hex");
     const secretHash = await bcrypt.hash(secret, appCfg.SALT_ROUNDS);
@@ -103,7 +107,7 @@ export const serviceTokenServiceFactory = ({
 
   const deleteServiceToken = async ({ actorId, actor, actorOrgId, actorAuthMethod, id }: TDeleteServiceTokenDTO) => {
     const serviceToken = await serviceTokenDAL.findById(id);
-    if (!serviceToken) throw new BadRequestError({ message: "Token not found" });
+    if (!serviceToken) throw new NotFoundError({ message: `Service token with ID '${id}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -119,13 +123,15 @@ export const serviceTokenServiceFactory = ({
   };
 
   const getServiceToken = async ({ actor, actorId }: TGetServiceTokenInfoDTO) => {
-    if (actor !== ActorType.SERVICE) throw new BadRequestError({ message: "Service token not found" });
+    if (actor !== ActorType.SERVICE)
+      throw new NotFoundError({ message: `Service token with ID '${actorId}' not found` });
 
     const serviceToken = await serviceTokenDAL.findById(actorId);
-    if (!serviceToken) throw new BadRequestError({ message: "Token not found" });
+    if (!serviceToken) throw new NotFoundError({ message: `Service token with ID '${actorId}' not found` });
 
     const serviceTokenUser = await userDAL.findById(serviceToken.createdBy);
-    if (!serviceTokenUser) throw new BadRequestError({ message: "Service token user not found" });
+    if (!serviceTokenUser)
+      throw new NotFoundError({ message: `Service token with ID ${serviceToken.id} has no associated creator` });
 
     return { serviceToken, user: serviceTokenUser };
   };
@@ -151,26 +157,24 @@ export const serviceTokenServiceFactory = ({
   };
 
   const fnValidateServiceToken = async (token: string) => {
-    const [, TOKEN_IDENTIFIER, TOKEN_SECRET] = <[string, string, string]>token.split(".", 3);
-    const serviceToken = await serviceTokenDAL.findById(TOKEN_IDENTIFIER);
+    const [, tokenIdentifier, tokenSecret] = <[string, string, string]>token.split(".", 3);
+    const serviceToken = await serviceTokenDAL.findById(tokenIdentifier);
 
-    if (!serviceToken) throw new UnauthorizedError();
+    if (!serviceToken) throw new NotFoundError({ message: `Service token with ID '${tokenIdentifier}' not found` });
     const project = await projectDAL.findById(serviceToken.projectId);
 
-    if (!project) throw new UnauthorizedError({ message: "Service token project not found" });
+    if (!project) throw new NotFoundError({ message: `Project with ID '${serviceToken.projectId}' not found` });
 
     if (serviceToken.expiresAt && new Date(serviceToken.expiresAt) < new Date()) {
       await serviceTokenDAL.deleteById(serviceToken.id);
-      throw new UnauthorizedError({ message: "failed to authenticate expired service token" });
+      throw new ForbiddenRequestError({ message: "Service token has expired" });
     }
 
-    const isMatch = await bcrypt.compare(TOKEN_SECRET, serviceToken.secretHash);
-    if (!isMatch) throw new UnauthorizedError();
-    const updatedToken = await serviceTokenDAL.updateById(serviceToken.id, {
-      lastUsed: new Date()
-    });
+    const isMatch = await bcrypt.compare(tokenSecret, serviceToken.secretHash);
+    if (!isMatch) throw new UnauthorizedError({ message: "Invalid service token" });
+    await accessTokenQueue.updateServiceTokenStatus(serviceToken.id);
 
-    return { ...serviceToken, lastUsed: updatedToken.lastUsed, orgId: project.orgId };
+    return { ...serviceToken, lastUsed: new Date(), orgId: project.orgId };
   };
 
   return {

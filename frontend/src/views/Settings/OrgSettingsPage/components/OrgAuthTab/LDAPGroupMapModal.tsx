@@ -1,4 +1,6 @@
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { useRouter } from "next/router";
 import { faUsers, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -66,8 +68,9 @@ export const LDAPGroupMapModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }:
   const { mutateAsync: createLDAPGroupMapping, isLoading: createIsLoading } =
     useCreateLDAPGroupMapping();
   const { mutateAsync: deleteLDAPGroupMapping } = useDeleteLDAPGroupMapping();
+  const router = useRouter();
 
-  const { control, handleSubmit, reset } = useForm<TFormData>({
+  const { control, handleSubmit, reset, setValue } = useForm<TFormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       ldapGroupCN: "",
@@ -130,6 +133,12 @@ export const LDAPGroupMapModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }:
     }
   };
 
+  useEffect(() => {
+    if (groups && groups.length > 0) {
+      setValue("groupSlug", groups[0].slug);
+    }
+  }, [groups, popUp.ldapGroupMap.isOpen]);
+
   return (
     <Modal
       isOpen={popUp?.ldapGroupMap?.isOpen}
@@ -139,117 +148,141 @@ export const LDAPGroupMapModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }:
       }}
     >
       <ModalContent title="Manage LDAP Group Mappings">
-        <h2 className="mb-4">New Group Mapping</h2>
-        <form onSubmit={handleSubmit(onFormSubmit)} className="mb-8">
-          <div className="flex">
-            <Controller
-              control={control}
-              name="ldapGroupCN"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="LDAP Group CN"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                >
-                  <Input {...field} placeholder="Engineering" />
-                </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              name="groupSlug"
-              defaultValue=""
-              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                <FormControl
-                  label="Infisical Group"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                  className="ml-4 w-full"
-                >
-                  <div className="flex">
-                    <Select
-                      defaultValue={field.value}
-                      {...field}
-                      onValueChange={(e) => onChange(e)}
-                      className="w-full"
+        {groups && groups.length > 0 && (
+          <>
+            <h2 className="mb-4">New Group Mapping</h2>
+            <form onSubmit={handleSubmit(onFormSubmit)} className="mb-8">
+              <div className="flex">
+                <Controller
+                  control={control}
+                  name="ldapGroupCN"
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="LDAP Group CN"
+                      errorText={error?.message}
+                      isError={Boolean(error)}
                     >
-                      {(groups || []).map(({ name, id, slug }) => (
-                        <SelectItem value={slug} key={`internal-group-${id}`}>
-                          {name}
-                        </SelectItem>
-                      ))}
-                    </Select>
-                    <Button className="ml-4" size="sm" type="submit" isLoading={createIsLoading}>
-                      Add mapping
-                    </Button>
-                  </div>
-                </FormControl>
-              )}
-            />
-          </div>
-        </form>
-        <h2 className="mb-4">Group Mappings</h2>
-        <TableContainer>
-          <Table>
-            <THead>
-              <Tr>
-                <Th>LDAP Group CN</Th>
-                <Th>Infisical Group</Th>
-                <Th className="w-5" />
-              </Tr>
-            </THead>
-            <TBody>
-              {isLoading && <TableSkeleton columns={3} innerKey="ldap-group-maps" />}
-              {!isLoading &&
-                groupMaps?.map(({ id, ldapGroupCN, group }) => {
-                  return (
-                    <Tr className="h-10 items-center" key={`ldap-group-map-${id}`}>
-                      <Td>{ldapGroupCN}</Td>
-                      <Td>{group.name}</Td>
-                      <Td>
-                        <IconButton
-                          onClick={() => {
-                            handlePopUpOpen("deleteLdapGroupMap", {
-                              ldapGroupMapId: id,
-                              ldapGroupCN
-                            });
-                          }}
-                          size="lg"
-                          colorSchema="danger"
-                          variant="plain"
-                          ariaLabel="update"
+                      <Input {...field} placeholder="Engineering" />
+                    </FormControl>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="groupSlug"
+                  defaultValue=""
+                  render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                    <FormControl
+                      label="Infisical Group"
+                      errorText={error?.message}
+                      isError={Boolean(error)}
+                      className="ml-4 w-full"
+                    >
+                      <div className="flex">
+                        <Select
+                          defaultValue={field.value}
+                          {...field}
+                          onValueChange={(e) => onChange(e)}
+                          className="w-full"
                         >
-                          <FontAwesomeIcon icon={faXmark} />
-                        </IconButton>
-                      </Td>
-                    </Tr>
-                  );
-                })}
-            </TBody>
-          </Table>
-          {groupMaps?.length === 0 && (
-            <EmptyState title="No LDAP group mappings found" icon={faUsers} />
-          )}
-        </TableContainer>
-        <DeleteActionModal
-          isOpen={popUp.deleteLdapGroupMap.isOpen}
-          title={`Are you sure want to delete the group mapping for ${
-            (popUp?.deleteLdapGroupMap?.data as { ldapGroupCN: string })?.ldapGroupCN || ""
-          }?`}
-          onChange={(isOpen) => handlePopUpToggle("deleteLdapGroupMap", isOpen)}
-          deleteKey="confirm"
-          onDeleteApproved={() => {
-            const deleteLdapGroupMapData = popUp?.deleteLdapGroupMap?.data as {
-              ldapGroupMapId: string;
-              ldapGroupCN: string;
-            };
-            return onDeleteGroupMapSubmit({
-              ldapConfigId: ldapConfig?.id ?? "",
-              ldapGroupMapId: deleteLdapGroupMapData.ldapGroupMapId,
-              ldapGroupCN: deleteLdapGroupMapData.ldapGroupCN
-            });
-          }}
-        />
+                          {(groups || []).map(({ name, id, slug }) => (
+                            <SelectItem value={slug} key={`internal-group-${id}`}>
+                              {name}
+                            </SelectItem>
+                          ))}
+                        </Select>
+                        <Button
+                          className="ml-4"
+                          size="sm"
+                          type="submit"
+                          isLoading={createIsLoading}
+                        >
+                          Add mapping
+                        </Button>
+                      </div>
+                    </FormControl>
+                  )}
+                />
+              </div>
+            </form>
+            <h2 className="mb-4">Group Mappings</h2>
+            <TableContainer>
+              <Table>
+                <THead>
+                  <Tr>
+                    <Th>LDAP Group CN</Th>
+                    <Th>Infisical Group</Th>
+                    <Th className="w-5" />
+                  </Tr>
+                </THead>
+                <TBody>
+                  {isLoading && <TableSkeleton columns={3} innerKey="ldap-group-maps" />}
+                  {!isLoading &&
+                    groupMaps?.map(({ id, ldapGroupCN, group }) => {
+                      return (
+                        <Tr className="h-10 items-center" key={`ldap-group-map-${id}`}>
+                          <Td>{ldapGroupCN}</Td>
+                          <Td>{group.name}</Td>
+                          <Td>
+                            <IconButton
+                              onClick={() => {
+                                handlePopUpOpen("deleteLdapGroupMap", {
+                                  ldapGroupMapId: id,
+                                  ldapGroupCN
+                                });
+                              }}
+                              size="lg"
+                              colorSchema="danger"
+                              variant="plain"
+                              ariaLabel="update"
+                            >
+                              <FontAwesomeIcon icon={faXmark} />
+                            </IconButton>
+                          </Td>
+                        </Tr>
+                      );
+                    })}
+                </TBody>
+              </Table>
+              {groupMaps?.length === 0 && (
+                <EmptyState title="No LDAP group mappings found" icon={faUsers} />
+              )}
+            </TableContainer>
+            <DeleteActionModal
+              isOpen={popUp.deleteLdapGroupMap.isOpen}
+              title={`Are you sure want to delete the group mapping for ${
+                (popUp?.deleteLdapGroupMap?.data as { ldapGroupCN: string })?.ldapGroupCN || ""
+              }?`}
+              onChange={(isOpen) => handlePopUpToggle("deleteLdapGroupMap", isOpen)}
+              deleteKey="confirm"
+              onDeleteApproved={() => {
+                const deleteLdapGroupMapData = popUp?.deleteLdapGroupMap?.data as {
+                  ldapGroupMapId: string;
+                  ldapGroupCN: string;
+                };
+                return onDeleteGroupMapSubmit({
+                  ldapConfigId: ldapConfig?.id ?? "",
+                  ldapGroupMapId: deleteLdapGroupMapData.ldapGroupMapId,
+                  ldapGroupCN: deleteLdapGroupMapData.ldapGroupCN
+                });
+              }}
+            />
+          </>
+        )}
+        {groups && groups.length === 0 && (
+          <div>
+            <div>
+              You do not have any Infisical groups in your organization. Create one in order to
+              proceed.
+            </div>
+            <Button
+              className="mt-4"
+              size="sm"
+              onClick={() => router.push(`/org/${currentOrg?.id}/members`)}
+            >
+              Create
+            </Button>
+          </div>
+        )}
       </ModalContent>
     </Modal>
   );

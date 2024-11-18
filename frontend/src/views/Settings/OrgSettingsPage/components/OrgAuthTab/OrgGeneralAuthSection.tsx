@@ -11,7 +11,6 @@ import { useLogoutUser, useUpdateOrg } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 export const OrgGeneralAuthSection = () => {
-  
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);

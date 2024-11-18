@@ -73,6 +73,7 @@ export const SignUpPage = () => {
       const { privateKey, ...userPass } = await generateUserPassKey(email, password);
       const res = await createAdminUser({
         email,
+        password,
         firstName,
         lastName,
         ...userPass

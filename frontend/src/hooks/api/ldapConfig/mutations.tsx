@@ -13,6 +13,7 @@ export const useCreateLDAPConfig = () => {
       url,
       bindDN,
       bindPass,
+      uniqueUserAttribute,
       searchBase,
       searchFilter,
       groupSearchBase,
@@ -24,6 +25,7 @@ export const useCreateLDAPConfig = () => {
       url: string;
       bindDN: string;
       bindPass: string;
+      uniqueUserAttribute: string;
       searchBase: string;
       searchFilter: string;
       groupSearchBase: string;
@@ -36,6 +38,7 @@ export const useCreateLDAPConfig = () => {
         url,
         bindDN,
         bindPass,
+        uniqueUserAttribute,
         searchBase,
         searchFilter,
         groupSearchBase,
@@ -60,6 +63,7 @@ export const useUpdateLDAPConfig = () => {
       url,
       bindDN,
       bindPass,
+      uniqueUserAttribute,
       searchBase,
       searchFilter,
       groupSearchBase,
@@ -71,6 +75,7 @@ export const useUpdateLDAPConfig = () => {
       url?: string;
       bindDN?: string;
       bindPass?: string;
+      uniqueUserAttribute?: string;
       searchBase?: string;
       searchFilter?: string;
       groupSearchBase?: string;
@@ -83,6 +88,7 @@ export const useUpdateLDAPConfig = () => {
         url,
         bindDN,
         bindPass,
+        uniqueUserAttribute,
         searchBase,
         searchFilter,
         groupSearchBase,

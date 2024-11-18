@@ -8,7 +8,9 @@ export enum TDbProviderClients {
   // postgres, cockroack db, amazon red shift
   Pg = "pg",
   // mysql and maria db
-  MySql = "mysql"
+  MySql = "mysql",
+
+  MsSqlServer = "mssql"
 }
 
 export enum TAwsProviderSystems {

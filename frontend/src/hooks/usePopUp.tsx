@@ -13,7 +13,7 @@ interface UsePopUpProps {
 export type UsePopUpState<T extends Readonly<string[]> | UsePopUpProps[]> = {
   [P in T extends UsePopUpProps[] ? T[number]["name"] : T[number]]: {
     isOpen: boolean;
-    data?: unknown;
+    data?: any;
   };
 };
 

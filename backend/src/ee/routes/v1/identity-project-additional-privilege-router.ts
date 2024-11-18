@@ -1,11 +1,11 @@
-import { packRules } from "@casl/ability/extra";
 import slugify from "@sindresorhus/slugify";
 import ms from "ms";
 import { z } from "zod";
 
 import { IdentityProjectAdditionalPrivilegeTemporaryMode } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-types";
+import { backfillPermissionV1SchemaToV2Schema } from "@app/ee/services/permission/project-permission";
 import { IDENTITY_ADDITIONAL_PRIVILEGE } from "@app/lib/api-docs";
-import { BadRequestError } from "@app/lib/errors";
+import { UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -61,7 +61,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     handler: async (req) => {
       const { permissions, privilegePermission } = req.body;
       if (!permissions && !privilegePermission) {
-        throw new BadRequestError({ message: "Permission or privilegePermission must be provided" });
+        throw new UnauthorizedError({ message: "Permission or privilegePermission must be provided" });
       }
 
       const permission = privilegePermission
@@ -79,7 +79,9 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         ...req.body,
         slug: req.body.slug ? slugify(req.body.slug) : slugify(alphaNumericNanoId(12)),
         isTemporary: false,
-        permissions: JSON.stringify(packRules(permission))
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore-error this is valid ts
+        permissions: backfillPermissionV1SchemaToV2Schema(permission)
       });
       return { privilege };
     }
@@ -140,7 +142,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     handler: async (req) => {
       const { permissions, privilegePermission } = req.body;
       if (!permissions && !privilegePermission) {
-        throw new BadRequestError({ message: "Permission or privilegePermission must be provided" });
+        throw new UnauthorizedError({ message: "Permission or privilegePermission must be provided" });
       }
 
       const permission = privilegePermission
@@ -159,7 +161,9 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         ...req.body,
         slug: req.body.slug ? slugify(req.body.slug) : slugify(alphaNumericNanoId(12)),
         isTemporary: true,
-        permissions: JSON.stringify(packRules(permission))
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore-error this is valid ts
+        permissions: backfillPermissionV1SchemaToV2Schema(permission)
       });
       return { privilege };
     }
@@ -224,7 +228,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     handler: async (req) => {
       const { permissions, privilegePermission, ...updatedInfo } = req.body.privilegeDetails;
       if (!permissions && !privilegePermission) {
-        throw new BadRequestError({ message: "Permission or privilegePermission must be provided" });
+        throw new UnauthorizedError({ message: "Permission or privilegePermission must be provided" });
       }
 
       const permission = privilegePermission
@@ -244,7 +248,13 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         projectSlug: req.body.projectSlug,
         data: {
           ...updatedInfo,
-          permissions: permission ? JSON.stringify(packRules(permission)) : undefined
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore-error this is valid ts
+          permissions: permission
+            ? // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+              // @ts-ignore-error this is valid ts
+              backfillPermissionV1SchemaToV2Schema(permission)
+            : undefined
         }
       });
       return { privilege };

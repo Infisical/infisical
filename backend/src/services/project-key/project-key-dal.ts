@@ -16,7 +16,7 @@ export const projectKeyDALFactory = (db: TDbClient) => {
     tx?: Knex
   ): Promise<(TProjectKeys & { sender: { publicKey: string } }) | undefined> => {
     try {
-      const projectKey = await (tx || db)(TableName.ProjectKeys)
+      const projectKey = await (tx || db.replicaNode())(TableName.ProjectKeys)
         .join(TableName.Users, `${TableName.ProjectKeys}.senderId`, `${TableName.Users}.id`)
         .join(TableName.UserEncryptionKey, `${TableName.UserEncryptionKey}.userId`, `${TableName.Users}.id`)
         .where({ projectId, receiverId: userId })
@@ -34,7 +34,7 @@ export const projectKeyDALFactory = (db: TDbClient) => {
 
   const findAllProjectUserPubKeys = async (projectId: string, tx?: Knex) => {
     try {
-      const pubKeys = await (tx || db)(TableName.ProjectMembership)
+      const pubKeys = await (tx || db.replicaNode())(TableName.ProjectMembership)
         .where({ projectId })
         .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
         .join(TableName.UserEncryptionKey, `${TableName.Users}.id`, `${TableName.UserEncryptionKey}.userId`)

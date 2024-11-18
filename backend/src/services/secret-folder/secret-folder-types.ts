@@ -1,4 +1,5 @@
-import { TProjectPermission } from "@app/lib/types";
+import { OrderByDirection, TProjectPermission } from "@app/lib/types";
+import { SecretsOrderBy } from "@app/services/secret/secret-types";
 
 export enum ReservedFolders {
   SecretReplication = "__reserve_replication_"
@@ -36,4 +37,23 @@ export type TDeleteFolderDTO = {
 export type TGetFolderDTO = {
   environment: string;
   path: string;
+  search?: string;
+  orderBy?: SecretsOrderBy;
+  orderDirection?: OrderByDirection;
+  limit?: number;
+  offset?: number;
 } & TProjectPermission;
+
+export type TGetFolderByIdDTO = {
+  id: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TGetFoldersDeepByEnvsDTO = {
+  projectId: string;
+  environments: string[];
+  secretPath: string;
+};
+
+export type TFindFoldersDeepByParentIdsDTO = {
+  parentIds: string[];
+};

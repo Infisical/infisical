@@ -1,0 +1,31 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <title>Infisical CA/Certificate expiration notice</title>
+  </head>
+  <body>
+    <p>Hello,</p>
+    <p>This is an automated alert for "{{alertName}}" triggered for CAs/Certificates expiring in
+      {{alertBeforeDays}}
+      days.</p>
+
+    <p>Expiring Items:</p>
+    <ul>
+      {{#each items}}
+        <li>
+          {{type}}:
+          <strong>{{friendlyName}}</strong>
+          <br />Serial Number:
+          {{serialNumber}}
+          <br />Expires On:
+          {{expiryDate}}
+        </li>
+      {{/each}}
+    </ul>
+
+    <p>Please take necessary actions to renew these items before they expire.</p>
+
+    <p>For more details, please log in to your Infisical account and check your PKI management section.</p>
+  </body>
+</html>

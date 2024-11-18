@@ -16,6 +16,7 @@ const integrationSlugNameMapping: Mapping = {
   railway: "Railway",
   flyio: "Fly.io",
   circleci: "CircleCI",
+  databricks: "Databricks",
   travisci: "TravisCI",
   supabase: "Supabase",
   checkly: "Checkly",
@@ -27,13 +28,15 @@ const integrationSlugNameMapping: Mapping = {
   "cloudflare-workers": "Cloudflare Workers",
   codefresh: "Codefresh",
   "digital-ocean-app-platform": "Digital Ocean App Platform",
-  bitbucket: "BitBucket",
+  bitbucket: "Bitbucket",
   "cloud-66": "Cloud 66",
   northflank: "Northflank",
   windmill: "Windmill",
   "gcp-secret-manager": "GCP Secret Manager",
   "hasura-cloud": "Hasura Cloud",
-  rundeck: "Rundeck"
+  rundeck: "Rundeck",
+  "azure-devops": "Azure DevOps",
+  "azure-app-configuration": "Azure App Configuration"
 };
 
 const envMapping: Mapping = {

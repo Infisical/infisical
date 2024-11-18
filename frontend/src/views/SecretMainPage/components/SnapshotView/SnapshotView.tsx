@@ -14,7 +14,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, ContentLoader, Input, Tag, Tooltip } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useGetSnapshotSecrets, usePerformSecretRollback } from "@app/hooks/api";
-import { DecryptedSecret, TSecretFolder, UserWsKeyPair } from "@app/hooks/api/types";
+import { SecretV3RawSanitized, TSecretFolder } from "@app/hooks/api/types";
 
 import { renderIcon, SecretItem, TDiffModes, TDiffView } from "./SecretItem";
 
@@ -23,8 +23,7 @@ type Props = {
   environment: string;
   workspaceId: string;
   secretPath?: string;
-  decryptFileKey: UserWsKeyPair;
-  secrets?: DecryptedSecret[];
+  secrets?: SecretV3RawSanitized[];
   folders?: TSecretFolder[];
   snapshotCount?: number;
   onGoBack: () => void;
@@ -33,7 +32,7 @@ type Props = {
 
 const LOADER_TEXT = ["Fetching your snapshot", "Creating the difference view"];
 
-const deepCompareSecrets = (lhs: DecryptedSecret, rhs: DecryptedSecret) =>
+const deepCompareSecrets = (lhs: SecretV3RawSanitized, rhs: SecretV3RawSanitized) =>
   lhs.key === rhs.key &&
   lhs.value === rhs.value &&
   lhs.comment === rhs.comment &&
@@ -45,21 +44,18 @@ export const SnapshotView = ({
   environment,
   workspaceId,
   secretPath,
-  decryptFileKey,
   secrets = [],
   folders = [],
   onGoBack,
   snapshotCount,
   onClickListSnapshot
 }: Props) => {
-  
   const [search, setSearch] = useState("");
   const { mutateAsync: performRollback, isLoading: isRollingBack } = usePerformSecretRollback();
 
   const { data: snapshotData, isLoading: isSnapshotLoading } = useGetSnapshotSecrets({
     snapshotId,
-    env: environment,
-    decryptFileKey
+    env: environment
   });
 
   const rollingFolder = snapshotData?.folders || [];
@@ -92,11 +88,11 @@ export const SnapshotView = ({
   }, [folders, rollingFolder]);
 
   const secretDiffView = useMemo(() => {
-    const secretGroupById = secrets.reduce<Record<string, DecryptedSecret>>(
+    const secretGroupById = secrets.reduce<Record<string, SecretV3RawSanitized>>(
       (prev, curr) => ({ ...prev, [curr.id]: curr }),
       {}
     );
-    const diffView: Array<TDiffView<DecryptedSecret>> = [];
+    const diffView: Array<TDiffView<SecretV3RawSanitized>> = [];
     rollingSecrets.forEach((rollSecret) => {
       const { id } = rollSecret;
       const doesExist = Boolean(secretGroupById?.[id]);

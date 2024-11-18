@@ -1,3 +1,4 @@
+import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
@@ -7,6 +8,7 @@ import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
+import { TTotpConfigDALFactory } from "../totp/totp-config-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TAuthDALFactory } from "./auth-dal";
 import { TChangePasswordDTO, TCreateBackupPrivateKeyDTO, TResetPasswordViaBackupKeyDTO } from "./auth-password-type";
@@ -17,6 +19,7 @@ type TAuthPasswordServiceFactoryDep = {
   userDAL: TUserDALFactory;
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
+  totpConfigDAL: Pick<TTotpConfigDALFactory, "delete">;
 };
 
 export type TAuthPasswordFactory = ReturnType<typeof authPaswordServiceFactory>;
@@ -24,7 +27,8 @@ export const authPaswordServiceFactory = ({
   authDAL,
   userDAL,
   tokenService,
-  smtpService
+  smtpService,
+  totpConfigDAL
 }: TAuthPasswordServiceFactoryDep) => {
   /*
    * Pre setup for pass change with srp protocol
@@ -57,7 +61,8 @@ export const authPaswordServiceFactory = ({
     encryptedPrivateKeyTag,
     salt,
     verifier,
-    tokenVersionId
+    tokenVersionId,
+    password
   }: TChangePasswordDTO) => {
     const userEnc = await userDAL.findUserEncKeyByUserId(userId);
     if (!userEnc) throw new Error("Failed to find user");
@@ -76,6 +81,8 @@ export const authPaswordServiceFactory = ({
     );
     if (!isValidClientProof) throw new Error("Failed to authenticate. Try again?");
 
+    const appCfg = getConfig();
+    const hashedPassword = await bcrypt.hash(password, appCfg.BCRYPT_SALT_ROUND);
     await userDAL.updateUserEncryptionByUserId(userId, {
       encryptionVersion: 2,
       protectedKey,
@@ -87,7 +94,8 @@ export const authPaswordServiceFactory = ({
       salt,
       verifier,
       serverPrivateKey: null,
-      clientPublicKey: null
+      clientPublicKey: null,
+      hashedPassword
     });
 
     if (tokenVersionId) {
@@ -179,6 +187,12 @@ export const authPaswordServiceFactory = ({
       isLocked: false,
       temporaryLockDateEnd: null,
       consecutiveFailedMfaAttempts: 0
+    });
+
+    /* we reset the mobile authenticator configs of the user
+    because we want this to be one of the recovery modes from account lockout */
+    await totpConfigDAL.delete({
+      userId
     });
   };
 

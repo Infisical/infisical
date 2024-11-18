@@ -4,12 +4,14 @@ import { IntegrationsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { INTEGRATION } from "@app/lib/api-docs";
 import { removeTrailingSlash, shake } from "@app/lib/fn";
-import { writeLimit } from "@app/server/config/rateLimiter";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { IntegrationMetadataSchema } from "@app/services/integration/integration-schema";
 import { PostHogEventTypes, TIntegrationCreatedEvent } from "@app/services/telemetry/telemetry-types";
+
+import {} from "../sanitizedSchemas";
 
 export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -50,7 +52,13 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          integration: IntegrationsSchema
+          integration: IntegrationsSchema.extend({
+            environment: z.object({
+              slug: z.string().trim(),
+              name: z.string().trim(),
+              id: z.string().trim()
+            })
+          })
         })
       }
     },
@@ -129,14 +137,20 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
           .default("/")
           .transform(removeTrailingSlash)
           .describe(INTEGRATION.UPDATE.secretPath),
-        targetEnvironment: z.string().trim().describe(INTEGRATION.UPDATE.targetEnvironment),
-        owner: z.string().trim().describe(INTEGRATION.UPDATE.owner),
-        environment: z.string().trim().describe(INTEGRATION.UPDATE.environment),
+        targetEnvironment: z.string().trim().optional().describe(INTEGRATION.UPDATE.targetEnvironment),
+        owner: z.string().trim().optional().describe(INTEGRATION.UPDATE.owner),
+        environment: z.string().trim().optional().describe(INTEGRATION.UPDATE.environment),
         metadata: IntegrationMetadataSchema.optional()
       }),
       response: {
         200: z.object({
-          integration: IntegrationsSchema
+          integration: IntegrationsSchema.extend({
+            environment: z.object({
+              slug: z.string().trim(),
+              name: z.string().trim(),
+              id: z.string().trim()
+            })
+          })
         })
       }
     },
@@ -150,6 +164,48 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         id: req.params.integrationId,
         ...req.body
       });
+      return { integration };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:integrationId",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "Get an integration by integration id",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        integrationId: z.string().trim().describe(INTEGRATION.UPDATE.integrationId)
+      }),
+      response: {
+        200: z.object({
+          integration: IntegrationsSchema.extend({
+            environment: z.object({
+              slug: z.string().trim(),
+              name: z.string().trim(),
+              id: z.string().trim()
+            })
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const integration = await server.services.integration.getIntegration({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        id: req.params.integrationId
+      });
+
       return { integration };
     }
   });
@@ -170,6 +226,12 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         integrationId: z.string().trim().describe(INTEGRATION.DELETE.integrationId)
       }),
+      querystring: z.object({
+        shouldDeleteIntegrationSecrets: z
+          .enum(["true", "false"])
+          .optional()
+          .transform((val) => val === "true")
+      }),
       response: {
         200: z.object({
           integration: IntegrationsSchema
@@ -183,7 +245,8 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
-        id: req.params.integrationId
+        id: req.params.integrationId,
+        shouldDeleteIntegrationSecrets: req.query.shouldDeleteIntegrationSecrets
       });
 
       await server.services.auditLog.createAuditLog({
@@ -205,7 +268,8 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
             targetService: integration.targetService,
             targetServiceId: integration.targetServiceId,
             path: integration.path,
-            region: integration.region
+            region: integration.region,
+            shouldDeleteIntegrationSecrets: req.query.shouldDeleteIntegrationSecrets
             // eslint-disable-next-line
           }) as any
         }

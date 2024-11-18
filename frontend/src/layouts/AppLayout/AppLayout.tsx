@@ -5,13 +5,13 @@
 /* eslint-disable no-var */
 /* eslint-disable func-names */
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
+import { faStar } from "@fortawesome/free-regular-svg-icons";
 import {
   faAngleDown,
   faArrowLeft,
@@ -21,9 +21,11 @@ import {
   faEnvelope,
   faInfinity,
   faInfo,
+  faInfoCircle,
   faMobile,
   faPlus,
-  faQuestion
+  faQuestion,
+  faStar as faSolidStar
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -34,7 +36,12 @@ import * as yup from "yup";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { tempLocalStorage } from "@app/components/utilities/checks/tempLocalStorage";
+import SecurityClient from "@app/components/utilities/SecurityClient";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
   Button,
   Checkbox,
   DropdownMenu,
@@ -50,30 +57,40 @@ import {
   SelectItem,
   UpgradePlanModal
 } from "@app/components/v2";
-import { UpgradeOverlay } from "@app/components/v2/UpgradeOverlay";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
+  useOrgPermission,
   useSubscription,
   useUser,
   useWorkspace
 } from "@app/context";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useToggle } from "@app/hooks";
 import {
   fetchOrgUsers,
   useAddUserToWsNonE2EE,
   useCreateWorkspace,
   useGetAccessRequestsCount,
+  useGetExternalKmsList,
   useGetOrgTrialUrl,
   useGetSecretApprovalRequestCount,
-  useGetUserAction,
   useLogoutUser,
-  useRegisterUserAction,
   useSelectOrganization
 } from "@app/hooks/api";
+import { MfaMethod } from "@app/hooks/api/auth/types";
+import { INTERNAL_KMS_KEY_ID } from "@app/hooks/api/kms/types";
+import { InfisicalProjectTemplate, useListProjectTemplates } from "@app/hooks/api/projectTemplates";
+import { Workspace } from "@app/hooks/api/types";
+import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
+import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
+import { AuthMethod } from "@app/hooks/api/users/types";
+import { InsecureConnectionBanner } from "@app/layouts/AppLayout/components/InsecureConnectionBanner";
 import { navigateUserToOrg } from "@app/views/Login/Login.utils";
+import { Mfa } from "@app/views/Login/Mfa";
 import { CreateOrgModal } from "@app/views/Org/components";
+
+import { WishForm } from "./components/WishForm/WishForm";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -109,7 +126,9 @@ const formSchema = yup.object({
     .label("Project Name")
     .trim()
     .max(64, "Too long, maximum length is 64 characters"),
-  addMembers: yup.bool().required().label("Add Members")
+  addMembers: yup.bool().required().label("Add Members"),
+  kmsKeyId: yup.string().label("KMS Key ID"),
+  template: yup.string().label("Project Template Name")
 });
 
 type TAddProjectFormData = yup.InferType<typeof formSchema>;
@@ -122,14 +141,34 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const { workspaces, currentWorkspace } = useWorkspace();
   const { orgs, currentOrg } = useOrganization();
 
+  const { data: projectFavorites } = useGetUserProjectFavorites(currentOrg?.id!);
+  const { mutateAsync: updateUserProjectFavorites } = useUpdateUserProjectFavorites();
+  const [shouldShowMfa, toggleShowMfa] = useToggle(false);
+  const [requiredMfaMethod, setRequiredMfaMethod] = useState(MfaMethod.EMAIL);
+  const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
+
+  const workspacesWithFaveProp = useMemo(
+    () =>
+      workspaces
+        .map((w): Workspace & { isFavorite: boolean } => ({
+          ...w,
+          isFavorite: Boolean(projectFavorites?.includes(w.id))
+        }))
+        .sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite)),
+    [workspaces, projectFavorites]
+  );
+
   const { user } = useUser();
   const { subscription } = useSubscription();
   const workspaceId = currentWorkspace?.id || "";
   const projectSlug = currentWorkspace?.slug || "";
-  const { data: updateClosed } = useGetUserAction("december_update_closed");
 
   const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({ workspaceId });
   const { data: accessApprovalRequestCount } = useGetAccessRequestsCount({ projectSlug });
+  const { permission } = useOrgPermission();
+  const { data: externalKmsList } = useGetExternalKmsList(currentOrg?.id!, {
+    enabled: permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Kms)
+  });
 
   const pendingRequestsCount = useMemo(() => {
     return (secretApprovalReqCount?.open || 0) + (accessApprovalRequestCount?.pendingCount || 0);
@@ -155,17 +194,15 @@ export const AppLayout = ({ children }: LayoutProps) => {
     reset,
     handleSubmit
   } = useForm<TAddProjectFormData>({
-    resolver: yupResolver(formSchema)
+    resolver: yupResolver(formSchema),
+    defaultValues: {
+      kmsKeyId: INTERNAL_KMS_KEY_ID
+    }
   });
 
   const { t } = useTranslation();
 
-  const registerUserAction = useRegisterUserAction();
   const { mutateAsync: selectOrganization } = useSelectOrganization();
-
-  const closeUpdate = async () => {
-    await registerUserAction.mutateAsync("december_update_closed");
-  };
 
   const logout = useLogoutUser();
   const logOutUser = async () => {
@@ -179,9 +216,19 @@ export const AppLayout = ({ children }: LayoutProps) => {
   };
 
   const changeOrg = async (orgId: string) => {
-    await selectOrganization({
+    const { token, isMfaEnabled, mfaMethod } = await selectOrganization({
       organizationId: orgId
     });
+
+    if (isMfaEnabled) {
+      SecurityClient.setMfaToken(token);
+      if (mfaMethod) {
+        setRequiredMfaMethod(mfaMethod);
+      }
+      toggleShowMfa.on();
+      setMfaSuccessCallback(() => () => changeOrg(orgId));
+      return;
+    }
 
     await navigateUserToOrg(router, orgId);
   };
@@ -203,6 +250,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
           (!orgs?.map((org) => org.id)?.includes(router.query.id as string) &&
             !router.asPath.includes("project") &&
             !router.asPath.includes("personal") &&
+            !router.asPath.includes("secret-scanning") &&
             !router.asPath.includes("integration")))
       ) {
         router.push(`/org/${currentOrg?.id}/overview`);
@@ -233,7 +281,16 @@ export const AppLayout = ({ children }: LayoutProps) => {
     putUserInOrg();
   }, [router.query.id]);
 
-  const onCreateProject = async ({ name, addMembers }: TAddProjectFormData) => {
+  const canReadProjectTemplates = permission.can(
+    OrgPermissionActions.Read,
+    OrgPermissionSubjects.ProjectTemplates
+  );
+
+  const { data: projectTemplates = [] } = useListProjectTemplates({
+    enabled: Boolean(canReadProjectTemplates && subscription?.projectTemplates)
+  });
+
+  const onCreateProject = async ({ name, addMembers, kmsKeyId, template }: TAddProjectFormData) => {
     // type check
     if (!currentOrg) return;
     if (!user) return;
@@ -243,16 +300,21 @@ export const AppLayout = ({ children }: LayoutProps) => {
           project: { id: newProjectId }
         }
       } = await createWs.mutateAsync({
-        projectName: name
+        projectName: name,
+        kmsKeyId: kmsKeyId !== INTERNAL_KMS_KEY_ID ? kmsKeyId : undefined,
+        template
       });
 
       if (addMembers) {
         const orgUsers = await fetchOrgUsers(currentOrg.id);
         await addUsersToProject.mutateAsync({
           usernames: orgUsers
-            .map((member) => member.user.username)
-            .filter((username) => username !== user.username),
-          projectId: newProjectId
+            .filter(
+              (member) => member.user.username !== user.username && member.status === "accepted"
+            )
+            .map((member) => member.user.username),
+          projectId: newProjectId,
+          orgId: currentOrg.id
         });
       }
 
@@ -262,23 +324,68 @@ export const AppLayout = ({ children }: LayoutProps) => {
       // eslint-disable-next-line no-promise-executor-return -- We do this because the function returns too fast, which sometimes causes an error when the user is redirected.
       await new Promise((resolve) => setTimeout(resolve, 2_000));
 
-      createNotification({ text: "Workspace created", type: "success" });
+      createNotification({ text: "Project created", type: "success" });
       handlePopUpClose("addNewWs");
       router.push(`/project/${newProjectId}/secrets/overview`);
     } catch (err) {
       console.error(err);
-      createNotification({ text: "Failed to create workspace", type: "error" });
+      createNotification({ text: "Failed to create project", type: "error" });
     }
   };
+
+  const addProjectToFavorites = async (projectId: string) => {
+    try {
+      if (currentOrg?.id) {
+        await updateUserProjectFavorites({
+          orgId: currentOrg?.id,
+          projectFavorites: [...(projectFavorites || []), projectId]
+        });
+      }
+    } catch (err) {
+      createNotification({
+        text: "Failed to add project to favorites.",
+        type: "error"
+      });
+    }
+  };
+
+  const removeProjectFromFavorites = async (projectId: string) => {
+    try {
+      if (currentOrg?.id) {
+        await updateUserProjectFavorites({
+          orgId: currentOrg?.id,
+          projectFavorites: [...(projectFavorites || []).filter((entry) => entry !== projectId)]
+        });
+      }
+    } catch (err) {
+      createNotification({
+        text: "Failed to remove project from favorites.",
+        type: "error"
+      });
+    }
+  };
+
+  if (shouldShowMfa) {
+    return (
+      <div className="flex max-h-screen min-h-screen flex-col items-center justify-center gap-2 overflow-y-auto bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
+        <Mfa
+          email={user.email as string}
+          method={requiredMfaMethod}
+          successCallback={mfaSuccessCallback}
+          closeMfa={() => toggleShowMfa.off()}
+        />
+      </div>
+    );
+  }
 
   return (
     <>
       <div className="dark hidden h-screen w-full flex-col overflow-x-hidden md:flex">
+        {!window.isSecureContext && <InsecureConnectionBanner />}
         <div className="flex flex-grow flex-col overflow-y-hidden md:flex-row">
           <aside className="dark w-full border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60">
             <nav className="items-between flex h-full flex-col justify-between overflow-y-auto dark:[color-scheme:dark]">
               <div>
-                <UpgradeOverlay />
                 {!router.asPath.includes("personal") && (
                   <div className="flex h-12 cursor-default items-center px-3 pt-6">
                     {(router.asPath.includes("project") ||
@@ -324,9 +431,13 @@ export const AppLayout = ({ children }: LayoutProps) => {
                                     // -> logout + redirect to SAML SSO
 
                                     await logout.mutateAsync();
-                                    window.open(
-                                      `/api/v1/sso/redirect/saml2/organizations/${org.slug}`
-                                    );
+                                    if (org.orgAuthMethod === AuthMethod.OIDC) {
+                                      window.open(`/api/v1/sso/oidc/login?orgSlug=${org.slug}`);
+                                    } else {
+                                      window.open(
+                                        `/api/v1/sso/redirect/saml2/organizations/${org.slug}`
+                                      );
+                                    }
                                     window.close();
                                     return;
                                   }
@@ -421,10 +532,15 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         {user?.superAdmin && (
                           <Link href="/admin" legacyBehavior>
                             <DropdownMenuItem className="mt-1 border-t border-mineshaft-600">
-                              Admin Panel
+                              Server Admin Console
                             </DropdownMenuItem>
                           </Link>
                         )}
+                        <Link href={`/org/${currentOrg?.id}/admin`} legacyBehavior>
+                          <DropdownMenuItem className="mt-1 border-t border-mineshaft-600">
+                            Organization Admin Console
+                          </DropdownMenuItem>
+                        </Link>
                         <div className="mt-1 h-1 border-t border-mineshaft-600" />
                         <button type="button" onClick={logOutUser} className="w-full">
                           <DropdownMenuItem>Log Out</DropdownMenuItem>
@@ -451,19 +567,47 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         dropdownContainerClassName="text-bunker-200 bg-mineshaft-800 border border-mineshaft-600 z-50 max-h-96 border-gray-700"
                       >
                         <div className="no-scrollbar::-webkit-scrollbar h-full no-scrollbar">
-                          {workspaces
+                          {workspacesWithFaveProp
                             .filter((ws) => ws.orgId === currentOrg?.id)
-                            .map(({ id, name }) => (
-                              <SelectItem
-                                key={`ws-layout-list-${id}`}
-                                value={id}
+                            .map(({ id, name, isFavorite }) => (
+                              <div
                                 className={twMerge(
-                                  currentWorkspace?.id === id && "bg-mineshaft-600",
-                                  "truncate"
+                                  "mb-1 grid grid-cols-7 rounded-md hover:bg-mineshaft-500",
+                                  id === currentWorkspace?.id && "bg-mineshaft-500"
                                 )}
+                                key={id}
                               >
-                                {name}
-                              </SelectItem>
+                                <div className="col-span-6">
+                                  <SelectItem
+                                    key={`ws-layout-list-${id}`}
+                                    value={id}
+                                    className="transition-none data-[highlighted]:bg-mineshaft-500"
+                                  >
+                                    {name}
+                                  </SelectItem>
+                                </div>
+                                <div className="col-span-1 flex items-center">
+                                  {isFavorite ? (
+                                    <FontAwesomeIcon
+                                      icon={faSolidStar}
+                                      className="text-sm text-mineshaft-300 hover:text-mineshaft-400"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        removeProjectFromFavorites(id);
+                                      }}
+                                    />
+                                  ) : (
+                                    <FontAwesomeIcon
+                                      icon={faStar}
+                                      className="text-sm text-mineshaft-400 hover:text-mineshaft-300"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        addProjectToFavorites(id);
+                                      }}
+                                    />
+                                  )}
+                                </div>
+                              </div>
                             ))}
                         </div>
                         <hr className="mt-1 mb-1 h-px border-0 bg-gray-700" />
@@ -516,6 +660,28 @@ export const AppLayout = ({ children }: LayoutProps) => {
                             icon="system-outline-90-lock-closed"
                           >
                             {t("nav.menu.secrets")}
+                          </MenuItem>
+                        </a>
+                      </Link>
+                      <Link href={`/project/${currentWorkspace?.id}/certificates`} passHref>
+                        <a>
+                          <MenuItem
+                            isSelected={
+                              router.asPath === `/project/${currentWorkspace?.id}/certificates`
+                            }
+                            icon="system-outline-90-lock-closed"
+                          >
+                            Internal PKI
+                          </MenuItem>
+                        </a>
+                      </Link>
+                      <Link href={`/project/${currentWorkspace?.id}/kms`} passHref>
+                        <a>
+                          <MenuItem
+                            isSelected={router.asPath === `/project/${currentWorkspace?.id}/kms`}
+                            icon="system-outline-90-lock-closed"
+                          >
+                            Key Management
                           </MenuItem>
                         </a>
                       </Link>
@@ -573,18 +739,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           </MenuItem>
                         </a>
                       </Link>
-                      <Link href={`/project/${currentWorkspace?.id}/audit-logs`} passHref>
-                        <a>
-                          <MenuItem
-                            isSelected={
-                              router.asPath === `/project/${currentWorkspace?.id}/audit-logs`
-                            }
-                            icon="system-outline-168-view-headline"
-                          >
-                            Audit Logs
-                          </MenuItem>
-                        </a>
-                      </Link>
                       <Link href={`/project/${currentWorkspace?.id}/settings`} passHref>
                         <a>
                           <MenuItem
@@ -633,9 +787,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       <Link href={`/org/${currentOrg?.id}/secret-sharing`} passHref>
                         <a>
                           <MenuItem
-                            isSelected={
-                              router.asPath === `/org/${currentOrg?.id}/secret-sharing`
-                            }
+                            isSelected={router.asPath === `/org/${currentOrg?.id}/secret-sharing`}
                             icon="system-outline-90-lock-closed"
                           >
                             Secret Sharing
@@ -643,6 +795,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         </a>
                       </Link>
                       {(window.location.origin.includes("https://app.infisical.com") ||
+                        window.location.origin.includes("https://eu.infisical.com") ||
                         window.location.origin.includes("https://gamma.infisical.com")) && (
                         <Link href={`/org/${currentOrg?.id}/billing`} passHref>
                           <a>
@@ -655,6 +808,16 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           </a>
                         </Link>
                       )}
+                      <Link href={`/org/${currentOrg?.id}/audit-logs`} passHref>
+                        <a>
+                          <MenuItem
+                            isSelected={router.asPath === `/org/${currentOrg?.id}/audit-logs`}
+                            icon="system-outline-168-view-headline"
+                          >
+                            Audit Logs
+                          </MenuItem>
+                        </a>
+                      </Link>
                       <Link href={`/org/${currentOrg?.id}/settings`} passHref>
                         <a>
                           <MenuItem
@@ -676,49 +839,8 @@ export const AppLayout = ({ children }: LayoutProps) => {
                     : "mb-4"
                 } flex w-full cursor-default flex-col items-center px-3 text-sm text-mineshaft-400`}
               >
-                {/* <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[9.9rem] ${router.asPath.includes("org") ? "bottom-[8.4rem]" : "bottom-[5.4rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-30`}/>
-                <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[10.7rem] ${router.asPath.includes("org") ? "bottom-[8.15rem]" : "bottom-[5.15rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-50`}/>
-                <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[11.5rem] ${router.asPath.includes("org") ? "bottom-[7.9rem]" : "bottom-[4.9rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-70`}/>
-                <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[12.3rem] ${router.asPath.includes("org") ? "bottom-[7.65rem]" : "bottom-[4.65rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-90`}/> */}
-                <div
-                  className={`${
-                    !updateClosed ? "block" : "hidden"
-                  } relative z-10 mb-6 flex h-64 w-52 flex-col items-center justify-start rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3`}
-                >
-                  <div className="text-md mt-2 w-full font-semibold text-mineshaft-100">
-                    Infisical December update
-                  </div>
-                  <div className="mt-1 mb-1 w-full text-sm font-normal leading-[1.2rem] text-mineshaft-300">
-                    Infisical Agent, new SDKs, Machine Identities, and more!
-                  </div>
-                  <div className="mt-2 h-[6.77rem] w-full rounded-md border border-mineshaft-700">
-                    <Image
-                      src="/images/infisical-update-december-2023.png"
-                      height={319}
-                      width={539}
-                      alt="kubernetes image"
-                      className="rounded-sm"
-                    />
-                  </div>
-                  <div className="mt-3 flex w-full items-center justify-between px-0.5">
-                    <button
-                      type="button"
-                      onClick={() => closeUpdate()}
-                      className="text-mineshaft-400 duration-200 hover:text-mineshaft-100"
-                    >
-                      Close
-                    </button>
-                    <a
-                      href="https://infisical.com/blog/infisical-update-december-2023"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm font-normal leading-[1.2rem] text-mineshaft-400 duration-200 hover:text-mineshaft-100"
-                    >
-                      Learn More{" "}
-                      <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="pl-0.5 text-xs" />
-                    </a>
-                  </div>
-                </div>
+                {(window.location.origin.includes("https://app.infisical.com") ||
+                  window.location.origin.includes("https://gamma.infisical.com")) && <WishForm />}
                 {router.asPath.includes("org") && (
                   <div
                     onKeyDown={() => null}
@@ -806,20 +928,72 @@ export const AppLayout = ({ children }: LayoutProps) => {
               subTitle="This project will contain your secrets and configurations."
             >
               <form onSubmit={handleSubmit(onCreateProject)}>
-                <Controller
-                  control={control}
-                  name="name"
-                  defaultValue=""
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      label="Project Name"
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                    >
-                      <Input {...field} placeholder="Type your project name" />
-                    </FormControl>
-                  )}
-                />
+                <div className="flex gap-2">
+                  <Controller
+                    control={control}
+                    name="name"
+                    defaultValue=""
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="Project Name"
+                        isError={Boolean(error)}
+                        errorText={error?.message}
+                        className="flex-1"
+                      >
+                        <Input {...field} placeholder="Type your project name" />
+                      </FormControl>
+                    )}
+                  />
+                  <Controller
+                    control={control}
+                    name="template"
+                    render={({ field: { value, onChange } }) => (
+                      <OrgPermissionCan
+                        I={OrgPermissionActions.Read}
+                        a={OrgPermissionSubjects.ProjectTemplates}
+                      >
+                        {(isAllowed) => (
+                          <FormControl
+                            label="Project Template"
+                            icon={<FontAwesomeIcon icon={faInfoCircle} size="sm" />}
+                            tooltipText={
+                              <>
+                                <p>
+                                  Create this project from a template to provision it with custom
+                                  environments and roles.
+                                </p>
+                                {subscription && !subscription.projectTemplates && (
+                                  <p className="pt-2">Project templates are a paid feature.</p>
+                                )}
+                              </>
+                            }
+                          >
+                            <Select
+                              defaultValue={InfisicalProjectTemplate.Default}
+                              placeholder={InfisicalProjectTemplate.Default}
+                              isDisabled={!isAllowed || !subscription?.projectTemplates}
+                              value={value}
+                              onValueChange={onChange}
+                              className="w-44"
+                            >
+                              {projectTemplates.length
+                                ? projectTemplates.map((template) => (
+                                    <SelectItem key={template.id} value={template.name}>
+                                      {template.name}
+                                    </SelectItem>
+                                  ))
+                                : Object.values(InfisicalProjectTemplate).map((template) => (
+                                    <SelectItem key={template} value={template}>
+                                      {template}
+                                    </SelectItem>
+                                  ))}
+                            </Select>
+                          </FormControl>
+                        )}
+                      </OrgPermissionCan>
+                    )}
+                  />
+                </div>
                 <div className="mt-4 pl-1">
                   <Controller
                     control={control}
@@ -847,24 +1021,67 @@ export const AppLayout = ({ children }: LayoutProps) => {
                     )}
                   />
                 </div>
-                <div className="mt-7 flex items-center">
-                  <Button
-                    isDisabled={isSubmitting}
-                    isLoading={isSubmitting}
-                    key="layout-create-project-submit"
-                    className="mr-4"
-                    type="submit"
-                  >
-                    Create Project
-                  </Button>
-                  <Button
-                    key="layout-cancel-create-project"
-                    onClick={() => handlePopUpClose("addNewWs")}
-                    variant="plain"
-                    colorSchema="secondary"
-                  >
-                    Cancel
-                  </Button>
+                <div className="mt-14 flex">
+                  <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem
+                      value="advance-settings"
+                      className="data-[state=open]:border-none"
+                    >
+                      <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
+                        <div className="order-1 ml-3">Advanced Settings</div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <Controller
+                          render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                            <FormControl
+                              errorText={error?.message}
+                              isError={Boolean(error)}
+                              label="KMS"
+                            >
+                              <Select
+                                {...field}
+                                onValueChange={(e) => {
+                                  onChange(e);
+                                }}
+                                className="mb-12 w-full bg-mineshaft-600"
+                              >
+                                <SelectItem value={INTERNAL_KMS_KEY_ID} key="kms-internal">
+                                  Default Infisical KMS
+                                </SelectItem>
+                                {externalKmsList?.map((kms) => (
+                                  <SelectItem value={kms.id} key={`kms-${kms.id}`}>
+                                    {kms.name}
+                                  </SelectItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                          )}
+                          control={control}
+                          name="kmsKeyId"
+                        />
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                  <div className="absolute right-0 bottom-0 mr-6 mb-6 flex items-start justify-end">
+                    <Button
+                      key="layout-cancel-create-project"
+                      onClick={() => handlePopUpClose("addNewWs")}
+                      colorSchema="secondary"
+                      variant="plain"
+                      className="py-2"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      isDisabled={isSubmitting}
+                      isLoading={isSubmitting}
+                      key="layout-create-project-submit"
+                      className="ml-4"
+                      type="submit"
+                    >
+                      Create Project
+                    </Button>
+                  </div>
                 </div>
               </form>
             </ModalContent>

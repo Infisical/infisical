@@ -42,22 +42,33 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        organizationId: z.string().trim()
+        organizationId: z.string().trim(),
+        userAgent: z.enum(["cli"]).optional()
       }),
       response: {
         200: z.object({
-          token: z.string()
+          token: z.string(),
+          isMfaEnabled: z.boolean(),
+          mfaMethod: z.string().optional()
         })
       }
     },
     handler: async (req, res) => {
       const cfg = getConfig();
       const tokens = await server.services.login.selectOrganization({
-        userAgent: req.headers["user-agent"],
+        userAgent: req.body.userAgent ?? req.headers["user-agent"],
         authJwtToken: req.headers.authorization,
         organizationId: req.body.organizationId,
         ipAddress: req.realIp
       });
+
+      if (tokens.isMfaEnabled) {
+        return {
+          token: tokens.mfa as string,
+          isMfaEnabled: true,
+          mfaMethod: tokens.mfaMethod
+        };
+      }
 
       void res.setCookie("jid", tokens.refresh, {
         httpOnly: true,
@@ -66,7 +77,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
         secure: cfg.HTTPS_ENABLED
       });
 
-      return { token: tokens.access };
+      return { token: tokens.access, isMfaEnabled: false };
     }
   });
 
@@ -81,24 +92,21 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
         email: z.string().trim(),
         providerAuthToken: z.string().trim().optional(),
         clientProof: z.string().trim(),
-        captchaToken: z.string().trim().optional()
+        captchaToken: z.string().trim().optional(),
+        password: z.string().optional()
       }),
       response: {
-        200: z.discriminatedUnion("mfaEnabled", [
-          z.object({ mfaEnabled: z.literal(true), token: z.string() }),
-          z.object({
-            mfaEnabled: z.literal(false),
-            encryptionVersion: z.number().default(1).nullable().optional(),
-            protectedKey: z.string().nullable(),
-            protectedKeyIV: z.string().nullable(),
-            protectedKeyTag: z.string().nullable(),
-            publicKey: z.string(),
-            encryptedPrivateKey: z.string(),
-            iv: z.string(),
-            tag: z.string(),
-            token: z.string()
-          })
-        ])
+        200: z.object({
+          encryptionVersion: z.number().default(1).nullable().optional(),
+          protectedKey: z.string().nullable(),
+          protectedKeyIV: z.string().nullable(),
+          protectedKeyTag: z.string().nullable(),
+          publicKey: z.string(),
+          encryptedPrivateKey: z.string(),
+          iv: z.string(),
+          tag: z.string(),
+          token: z.string()
+        })
       }
     },
     handler: async (req, res) => {
@@ -112,12 +120,9 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
         ip: req.realIp,
         userAgent,
         providerAuthToken: req.body.providerAuthToken,
-        clientProof: req.body.clientProof
+        clientProof: req.body.clientProof,
+        password: req.body.password
       });
-
-      if (data.isMfaEnabled) {
-        return { mfaEnabled: true, token: data.token } as const; // for discriminated union
-      }
 
       void res.setCookie("jid", data.token.refresh, {
         httpOnly: true,
@@ -127,7 +132,6 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
       });
 
       return {
-        mfaEnabled: false,
         encryptionVersion: data.user.encryptionVersion,
         token: data.token.access,
         publicKey: data.user.publicKey,

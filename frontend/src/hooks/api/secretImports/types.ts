@@ -1,5 +1,4 @@
-import { UserWsKeyPair } from "../keys/types";
-import { EncryptedSecret } from "../secrets/types";
+import { SecretV3Raw } from "../secrets/types";
 import { WorkspaceEnv } from "../workspace/types";
 
 export type TSecretImport = {
@@ -28,7 +27,7 @@ export type TImportedSecrets = {
   environmentInfo: WorkspaceEnv;
   secretPath: string;
   folderId: string;
-  secrets: EncryptedSecret[];
+  secrets: SecretV3Raw[];
 };
 
 export type TGetSecretImports = {
@@ -39,7 +38,6 @@ export type TGetSecretImports = {
 
 export type TGetSecretImportsAllEnvs = {
   projectId: string;
-  decryptFileKey: UserWsKeyPair;
   path?: string;
   environments: string[];
 };
@@ -48,7 +46,6 @@ export type TGetImportedSecrets = {
   projectId: string;
   environment: string;
   path?: string;
-  decryptFileKey: UserWsKeyPair;
 };
 
 export type TuseGetImportedFoldersByEnv = {

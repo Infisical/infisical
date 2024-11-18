@@ -1,19 +1,23 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { OrderByDirection } from "@app/hooks/api/generic/types";
 
 import { TGroupOrgMembership } from "../groups/types";
-import { IdentityMembershipOrg } from "../identities/types";
+import { IntegrationAuth } from "../types";
 import {
   BillingDetails,
   Invoice,
   License,
   Organization,
+  OrgIdentityOrderBy,
   OrgPlanTable,
   PlanBillingInfo,
   PmtMethod,
   ProductsTable,
   TaxID,
+  TListOrgIdentitiesDTO,
+  TOrgIdentitiesList,
   UpdateOrgDTO
 } from "./types";
 
@@ -30,7 +34,14 @@ export const organizationKeys = {
   getOrgLicenses: (orgId: string) => [{ orgId }, "organization-licenses"] as const,
   getOrgIdentityMemberships: (orgId: string) =>
     [{ orgId }, "organization-identity-memberships"] as const,
-  getOrgGroups: (orgId: string) => [{ orgId }, "organization-groups"] as const
+  // allows invalidation using above key without knowing params
+  getOrgIdentityMembershipsWithParams: ({
+    organizationId: orgId,
+    ...params
+  }: TListOrgIdentitiesDTO) =>
+    [...organizationKeys.getOrgIdentityMemberships(orgId), params] as const,
+  getOrgGroups: (orgId: string) => [{ orgId }, "organization-groups"] as const,
+  getOrgIntegrationAuths: (orgId: string) => [{ orgId }, "integration-auths"] as const
 };
 
 export const fetchOrganizations = async () => {
@@ -73,12 +84,24 @@ export const useCreateOrg = (options: { invalidate: boolean } = { invalidate: tr
 export const useUpdateOrg = () => {
   const queryClient = useQueryClient();
   return useMutation<{}, {}, UpdateOrgDTO>({
-    mutationFn: ({ name, authEnforced, scimEnabled, slug, orgId }) => {
+    mutationFn: ({
+      name,
+      authEnforced,
+      scimEnabled,
+      slug,
+      orgId,
+      defaultMembershipRoleSlug,
+      enforceMfa,
+      selectedMfaMethod
+    }) => {
       return apiRequest.patch(`/api/v1/organization/${orgId}`, {
         name,
         authEnforced,
         scimEnabled,
-        slug
+        slug,
+        defaultMembershipRoleSlug,
+        enforceMfa,
+        selectedMfaMethod
       });
     },
     onSuccess: () => {
@@ -360,19 +383,51 @@ export const useGetOrgLicenses = (organizationId: string) => {
   });
 };
 
-export const useGetIdentityMembershipOrgs = (organizationId: string) => {
+export const useGetIdentityMembershipOrgs = (
+  {
+    organizationId,
+    offset = 0,
+    limit = 100,
+    orderBy = OrgIdentityOrderBy.Name,
+    orderDirection = OrderByDirection.ASC,
+    search = ""
+  }: TListOrgIdentitiesDTO,
+  options?: Omit<
+    UseQueryOptions<
+      TOrgIdentitiesList,
+      unknown,
+      TOrgIdentitiesList,
+      ReturnType<typeof organizationKeys.getOrgIdentityMembershipsWithParams>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  const params = new URLSearchParams({
+    offset: String(offset),
+    limit: String(limit),
+    orderBy: String(orderBy),
+    orderDirection: String(orderDirection),
+    search: String(search)
+  });
   return useQuery({
-    queryKey: organizationKeys.getOrgIdentityMemberships(organizationId),
+    queryKey: organizationKeys.getOrgIdentityMembershipsWithParams({
+      organizationId,
+      offset,
+      limit,
+      orderBy,
+      orderDirection,
+      search
+    }),
     queryFn: async () => {
-      const {
-        data: { identityMemberships }
-      } = await apiRequest.get<{ identityMemberships: IdentityMembershipOrg[] }>(
-        `/api/v2/organizations/${organizationId}/identity-memberships`
+      const { data } = await apiRequest.get<TOrgIdentitiesList>(
+        `/api/v2/organizations/${organizationId}/identity-memberships`,
+        { params }
       );
 
-      return identityMemberships;
+      return data;
     },
-    enabled: true
+    enabled: true,
+    ...options
   });
 };
 
@@ -420,5 +475,23 @@ export const useGetOrganizationGroups = (organizationId: string) => {
 
       return groups;
     }
+  });
+};
+
+export const useGetOrgIntegrationAuths = <TData = IntegrationAuth[],>(
+  organizationId: string,
+  select?: (data: IntegrationAuth[]) => TData
+) => {
+  return useQuery({
+    queryKey: organizationKeys.getOrgIntegrationAuths(organizationId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ authorizations: IntegrationAuth[] }>(
+        `/api/v1/organization/${organizationId}/integration-authorizations`
+      );
+
+      return data.authorizations;
+    },
+    enabled: Boolean(organizationId),
+    select
   });
 };

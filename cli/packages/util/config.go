@@ -1,6 +1,7 @@
 package util
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -50,10 +51,11 @@ func WriteInitalConfig(userCredentials *models.UserCredentials) error {
 	}
 
 	configFile := models.ConfigFile{
-		LoggedInUserEmail:  userCredentials.Email,
-		LoggedInUserDomain: config.INFISICAL_URL,
-		LoggedInUsers:      existingConfigFile.LoggedInUsers,
-		VaultBackendType:   existingConfigFile.VaultBackendType,
+		LoggedInUserEmail:      userCredentials.Email,
+		LoggedInUserDomain:     config.INFISICAL_URL,
+		LoggedInUsers:          existingConfigFile.LoggedInUsers,
+		VaultBackendType:       existingConfigFile.VaultBackendType,
+		VaultBackendPassphrase: existingConfigFile.VaultBackendPassphrase,
 	}
 
 	configFileMarshalled, err := json.Marshal(configFile)
@@ -215,6 +217,14 @@ func GetConfigFile() (models.ConfigFile, error) {
 		return models.ConfigFile{}, err
 	}
 
+	if configFile.VaultBackendPassphrase != "" {
+		decodedPassphrase, err := base64.StdEncoding.DecodeString(configFile.VaultBackendPassphrase)
+		if err != nil {
+			return models.ConfigFile{}, fmt.Errorf("GetConfigFile: Unable to decode base64 passphrase [err=%s]", err)
+		}
+		os.Setenv("INFISICAL_VAULT_FILE_PASSPHRASE", string(decodedPassphrase))
+	}
+
 	return configFile, nil
 }
 
@@ -242,11 +252,6 @@ func WriteConfigFile(configFile *models.ConfigFile) error {
 	err = os.WriteFile(fullConfigFilePath, configFileMarshalled, 0600)
 	if err != nil {
 		return fmt.Errorf("writeConfigFile: Unable to write to file [err=%s]", err)
-	}
-
-	if err != nil {
-		return fmt.Errorf("writeConfigFile: unable to write config file because an error occurred when write the config to file [err=%s]", err)
-
 	}
 
 	return nil

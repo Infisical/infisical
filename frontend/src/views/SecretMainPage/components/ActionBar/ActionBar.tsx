@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { TypeOptions } from "react-toastify";
 import { subject } from "@casl/ability";
 import {
   faAngleDown,
+  faAnglesRight,
   faCheckCircle,
   faChevronRight,
   faCodeCommit,
@@ -11,8 +12,9 @@ import {
   faFileImport,
   faFilter,
   faFingerprint,
+  faFolder,
   faFolderPlus,
-  faMagnifyingGlass,
+  faKey,
   faMinusSquare,
   faPlus,
   faTrash
@@ -23,7 +25,6 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { decryptAssymmetric } from "@app/components/utilities/cryptography/crypto";
 import {
   Button,
   DeleteActionModal,
@@ -37,18 +38,23 @@ import {
   DropdownSubMenuContent,
   DropdownSubMenuTrigger,
   IconButton,
-  Input,
   Modal,
   ModalContent,
   Tooltip,
   UpgradePlanModal
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useSubscription } from "@app/context";
-import { interpolateSecrets } from "@app/helpers/secret";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionDynamicSecretActions,
+  ProjectPermissionSub,
+  useSubscription,
+  useWorkspace
+} from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { useCreateFolder, useDeleteSecretBatch, useGetUserWsKey } from "@app/hooks/api";
-import { DecryptedSecret, TImportedSecrets, WsTag } from "@app/hooks/api/types";
-import { debounce } from "@app/lib/fn/debounce";
+import { useCreateFolder, useDeleteSecretBatch, useMoveSecrets } from "@app/hooks/api";
+import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
+import { SecretType, WsTag } from "@app/hooks/api/types";
+import { SecretSearchInput } from "@app/views/SecretOverviewPage/components/SecretSearchInput";
 
 import {
   PopUpNames,
@@ -56,15 +62,14 @@ import {
   useSelectedSecretActions,
   useSelectedSecrets
 } from "../../SecretMainPage.store";
-import { Filter, GroupBy } from "../../SecretMainPage.types";
+import { Filter, RowType } from "../../SecretMainPage.types";
 import { CreateDynamicSecretForm } from "./CreateDynamicSecretForm";
 import { CreateSecretImportForm } from "./CreateSecretImportForm";
 import { FolderForm } from "./FolderForm";
+import { MoveSecretsModal } from "./MoveSecretsModal";
 
 type Props = {
-  secrets?: DecryptedSecret[];
-  // swtich the secrets type as it gets decrypted after api call
-  importedSecrets?: Array<Omit<TImportedSecrets, "secrets"> & { secrets: DecryptedSecret[] }>;
+  // switch the secrets type as it gets decrypted after api call
   environment: string;
   // @depreciated will be moving all these details to zustand
   workspaceId: string;
@@ -75,16 +80,14 @@ type Props = {
   isVisible?: boolean;
   snapshotCount: number;
   isSnapshotCountLoading?: boolean;
-  onGroupByChange: (opt?: GroupBy) => void;
   onSearchChange: (term: string) => void;
   onToggleTagFilter: (tagId: string) => void;
-  onVisiblilityToggle: () => void;
+  onVisibilityToggle: () => void;
+  onToggleRowType: (rowType: RowType) => void;
   onClickRollbackMode: () => void;
 };
 
 export const ActionBar = ({
-  secrets = [],
-  importedSecrets = [],
   environment,
   workspaceId,
   projectSlug,
@@ -96,31 +99,31 @@ export const ActionBar = ({
   isSnapshotCountLoading,
   onSearchChange,
   onToggleTagFilter,
-  onGroupByChange,
-  onVisiblilityToggle,
-  onClickRollbackMode
+  onVisibilityToggle,
+  onClickRollbackMode,
+  onToggleRowType
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "addFolder",
     "addDynamicSecret",
     "addSecretImport",
     "bulkDeleteSecrets",
+    "moveSecrets",
     "misc",
     "upgradePlan"
   ] as const);
   const { subscription } = useSubscription();
   const { openPopUp } = usePopUpAction();
-  const [search, setSearch] = useState(filter.searchFilter);
 
   const { mutateAsync: createFolder } = useCreateFolder();
   const { mutateAsync: deleteBatchSecretV3 } = useDeleteSecretBatch();
-  const { data: decryptFileKey } = useGetUserWsKey(workspaceId);
+  const { mutateAsync: moveSecrets } = useMoveSecrets();
 
   const selectedSecrets = useSelectedSecrets();
   const { reset: resetSelectedSecret } = useSelectedSecretActions();
   const isMultiSelectActive = Boolean(Object.keys(selectedSecrets).length);
 
-  const debouncedOnSearch = debounce(onSearchChange, 500);
+  const { currentWorkspace } = useWorkspace();
 
   const handleFolderCreate = async (folderName: string) => {
     try {
@@ -145,58 +148,46 @@ export const ActionBar = ({
   };
 
   const handleSecretDownload = async () => {
-    const secPriority: Record<string, boolean> = {};
-    const downloadedSecrets: Array<{ key: string; value: string; comment?: string }> = [];
-
-    const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
-    const workspaceKey = decryptAssymmetric({
-      ciphertext: decryptFileKey!.encryptedKey,
-      nonce: decryptFileKey!.nonce,
-      publicKey: decryptFileKey!.sender.publicKey,
-      privateKey: PRIVATE_KEY
+    const { secrets: localSecrets, imports: localImportedSecrets } = await fetchProjectSecrets({
+      workspaceId,
+      expandSecretReferences: true,
+      includeImports: true,
+      environment,
+      secretPath
     });
-
-    const expandSecrets = interpolateSecrets({
-      projectId: workspaceId,
-      secretEncKey: workspaceKey
-    });
-
-    const secretRecord: Record<
-      string,
-      { value: string; comment?: string; skipMultilineEncoding?: boolean }
-    > = {};
-
-    // load up secrets in dashboard
-    secrets?.forEach(({ key, value, valueOverride, comment }) => {
-      secPriority[key] = true;
-      downloadedSecrets.push({ key, value: valueOverride || value, comment });
-    });
-    // now load imported secrets with secPriority
-    for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
-      importedSecrets[i].secrets.forEach(({ key, value, valueOverride, comment }) => {
-        if (secPriority?.[key]) return;
-        downloadedSecrets.unshift({ key, value: valueOverride || value, comment });
-        secPriority[key] = true;
+    const secretsPicked = new Set<string>();
+    const secretsToDownload: { key: string; value?: string; comment?: string }[] = [];
+    localSecrets.forEach((el) => {
+      secretsPicked.add(el.secretKey);
+      secretsToDownload.push({
+        key: el.secretKey,
+        value: el.secretValue,
+        comment: el.secretComment
       });
+    });
+
+    for (let i = localImportedSecrets.length - 1; i >= 0; i -= 1) {
+      for (let j = localImportedSecrets[i].secrets.length - 1; j >= 0; j -= 1) {
+        const secret = localImportedSecrets[i].secrets[j];
+        if (!secretsPicked.has(secret.secretKey)) {
+          secretsToDownload.push({
+            key: secret.secretKey,
+            value: secret.secretValue,
+            comment: secret.secretComment
+          });
+        }
+        secretsPicked.add(secret.secretKey);
+      }
     }
 
-    downloadedSecrets.forEach((secret) => {
-      secretRecord[secret.key] = {
-        value: secret.value,
-        comment: secret.comment
-      };
-    });
-
-    await expandSecrets(secretRecord);
-
-    const file = downloadedSecrets
+    const file = secretsToDownload
       .sort((a, b) => a.key.toLowerCase().localeCompare(b.key.toLowerCase()))
       .reduce(
-        (prev, { key, comment }, index) =>
+        (prev, { key, comment, value }, index) =>
           prev +
           (comment
-            ? `${index === 0 ? "#" : "\n#"} ${comment}\n${key}=${secretRecord[key].value}\n`
-            : `${key}=${secretRecord[key].value}\n`),
+            ? `${index === 0 ? "#" : "\n#"} ${comment}\n${key}=${value}\n`
+            : `${key}=${value}\n`),
         ""
       );
 
@@ -205,13 +196,13 @@ export const ActionBar = ({
   };
 
   const handleSecretBulkDelete = async () => {
-    const bulkDeletedSecrets = secrets.filter(({ id }) => Boolean(selectedSecrets?.[id]));
+    const bulkDeletedSecrets = Object.values(selectedSecrets);
     try {
       await deleteBatchSecretV3({
         secretPath,
         workspaceId,
         environment,
-        secrets: bulkDeletedSecrets.map(({ key }) => ({ secretName: key, type: "shared" }))
+        secrets: bulkDeletedSecrets.map(({ key }) => ({ secretKey: key, type: SecretType.Shared }))
       });
       resetSelectedSecret();
       handlePopUpClose("bulkDeleteSecrets");
@@ -228,21 +219,67 @@ export const ActionBar = ({
     }
   };
 
+  const handleSecretsMove = async ({
+    destinationEnvironment,
+    destinationSecretPath,
+    shouldOverwrite
+  }: {
+    destinationEnvironment: string;
+    destinationSecretPath: string;
+    shouldOverwrite: boolean;
+  }) => {
+    try {
+      const secretsToMove = Object.values(selectedSecrets);
+      const { isDestinationUpdated, isSourceUpdated } = await moveSecrets({
+        projectSlug,
+        shouldOverwrite,
+        sourceEnvironment: environment,
+        sourceSecretPath: secretPath,
+        destinationEnvironment,
+        destinationSecretPath,
+        projectId: workspaceId,
+        secretIds: secretsToMove.map((sec) => sec.id)
+      });
+
+      let notificationMessage = "";
+      let notificationType: TypeOptions = "info";
+
+      if (isDestinationUpdated && isSourceUpdated) {
+        notificationMessage = "Successfully moved selected secrets";
+        notificationType = "success";
+      } else if (isDestinationUpdated) {
+        notificationMessage =
+          "Successfully created secrets in destination. A secret approval request has been generated for the source.";
+      } else if (isSourceUpdated) {
+        notificationMessage = "A secret approval request has been generated in the destination";
+      } else {
+        notificationMessage =
+          "A secret approval request has been generated in both the source and the destination.";
+      }
+
+      createNotification({
+        type: notificationType,
+        text: notificationMessage
+      });
+
+      resetSelectedSecret();
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   return (
     <>
       <div className="mt-4 flex items-center space-x-2">
-        <div className="w-2/5">
-          <Input
-            className="bg-mineshaft-800 placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
-            placeholder="Search by folder name, key name, comment..."
-            leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-            value={search}
-            onChange={(evt) => {
-              setSearch(evt.target.value);
-              debouncedOnSearch(evt.target.value);
-            }}
-          />
-        </div>
+        <SecretSearchInput
+          isSingleEnv
+          className="w-2/5"
+          value={filter.searchFilter}
+          onChange={onSearchChange}
+          environments={[currentWorkspace?.environments.find((env) => env.slug === environment)!]}
+          projectId={workspaceId}
+          tags={tags}
+        />
         <div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -251,24 +288,70 @@ export const ActionBar = ({
                 ariaLabel="Download"
                 className={twMerge(
                   "transition-all",
-                  Object.keys(filter.tags).length && "border-primary/50 text-primary"
+                  (Object.keys(filter.tags).length ||
+                    Object.values(filter.include).filter((include) => !include).length) &&
+                    "border-primary/50 text-primary"
                 )}
               >
                 <FontAwesomeIcon icon={faFilter} />
               </IconButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="p-0">
-              <DropdownMenuGroup>Group By</DropdownMenuGroup>
-              <DropdownMenuItem
-                iconPos="right"
-                icon={
-                  filter?.groupBy === GroupBy.PREFIX && <FontAwesomeIcon icon={faCheckCircle} />
-                }
-                onClick={() => onGroupByChange(!filter.groupBy ? GroupBy.PREFIX : undefined)}
-              >
-                Prefix
-              </DropdownMenuItem>
               <DropdownMenuGroup>Filter By</DropdownMenuGroup>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault();
+                  onToggleRowType(RowType.Import);
+                }}
+                icon={filter?.include[RowType.Import] && <FontAwesomeIcon icon={faCheckCircle} />}
+                iconPos="right"
+              >
+                <div className="flex items-center gap-2">
+                  <FontAwesomeIcon icon={faFileImport} className=" text-green-700" />
+                  <span>Imports</span>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault();
+                  onToggleRowType(RowType.Folder);
+                }}
+                icon={filter?.include[RowType.Folder] && <FontAwesomeIcon icon={faCheckCircle} />}
+                iconPos="right"
+              >
+                <div className="flex items-center gap-2">
+                  <FontAwesomeIcon icon={faFolder} className="text-yellow-700" />
+                  <span>Folders</span>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault();
+                  onToggleRowType(RowType.DynamicSecret);
+                }}
+                icon={
+                  filter?.include[RowType.DynamicSecret] && <FontAwesomeIcon icon={faCheckCircle} />
+                }
+                iconPos="right"
+              >
+                <div className="flex items-center gap-2">
+                  <FontAwesomeIcon icon={faFingerprint} className=" text-yellow-700" />
+                  <span>Dynamic Secrets</span>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault();
+                  onToggleRowType(RowType.Secret);
+                }}
+                icon={filter?.include[RowType.Secret] && <FontAwesomeIcon icon={faCheckCircle} />}
+                iconPos="right"
+              >
+                <div className="flex items-center gap-2">
+                  <FontAwesomeIcon icon={faKey} className=" text-bunker-300" />
+                  <span>Secrets</span>
+                </div>
+              </DropdownMenuItem>
               <DropdownSubMenu>
                 <DropdownSubMenuTrigger
                   iconPos="right"
@@ -276,16 +359,18 @@ export const ActionBar = ({
                 >
                   Tags
                 </DropdownSubMenuTrigger>
-                <DropdownSubMenuContent className="rounded-l-none">
-                  <DropdownMenuLabel>Apply tags to filter secrets</DropdownMenuLabel>
-                  {tags.map(({ id, name, color }) => (
+                <DropdownSubMenuContent className="thin-scrollbar max-h-[20rem] overflow-y-auto rounded-l-none">
+                  <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
+                    Apply Tags to Filter Secrets
+                  </DropdownMenuLabel>
+                  {tags.map(({ id, slug, color }) => (
                     <DropdownMenuItem
                       onClick={(evt) => {
                         evt.preventDefault();
-                        onToggleTagFilter(id);
+                        onToggleTagFilter(slug);
                       }}
                       key={id}
-                      icon={filter?.tags[id] && <FontAwesomeIcon icon={faCheckCircle} />}
+                      icon={filter?.tags[slug] && <FontAwesomeIcon icon={faCheckCircle} />}
                       iconPos="right"
                     >
                       <div className="flex items-center">
@@ -293,7 +378,7 @@ export const ActionBar = ({
                           className="mr-2 h-2 w-2 rounded-full"
                           style={{ background: color || "#bec2c8" }}
                         />
-                        {name}
+                        {slug}
                       </div>
                     </DropdownMenuItem>
                   ))}
@@ -309,7 +394,7 @@ export const ActionBar = ({
           </IconButton>
         </div>
         <div>
-          <IconButton variant="outline_bg" ariaLabel="Reveal" onClick={onVisiblilityToggle}>
+          <IconButton variant="outline_bg" ariaLabel="Reveal" onClick={onVisibilityToggle}>
             <FontAwesomeIcon icon={isVisible ? faEyeSlash : faEye} />
           </IconButton>
         </div>
@@ -334,7 +419,7 @@ export const ActionBar = ({
                 className="h-10"
                 isDisabled={!isAllowed}
               >
-                {`${snapshotCount} ${snapshotCount === 1 ? "Commit" : "Commits"}`}
+                {`${snapshotCount} ${snapshotCount === 1 ? "Snapshot" : "Snapshots"}`}
               </Button>
             )}
           </ProjectPermissionCan>
@@ -342,7 +427,12 @@ export const ActionBar = ({
         <div className="flex items-center">
           <ProjectPermissionCan
             I={ProjectPermissionActions.Create}
-            a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+            a={subject(ProjectPermissionSub.Secrets, {
+              environment,
+              secretPath,
+              secretName: "*",
+              secretTags: ["*"]
+            })}
           >
             {(isAllowed) => (
               <Button
@@ -373,7 +463,10 @@ export const ActionBar = ({
               <div className="flex flex-col space-y-1 p-1.5">
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Create}
-                  a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                  a={subject(ProjectPermissionSub.SecretFolders, {
+                    environment,
+                    secretPath
+                  })}
                 >
                   {(isAllowed) => (
                     <Button
@@ -392,8 +485,13 @@ export const ActionBar = ({
                   )}
                 </ProjectPermissionCan>
                 <ProjectPermissionCan
-                  I={ProjectPermissionActions.Create}
-                  a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                  I={ProjectPermissionDynamicSecretActions.CreateRootCredential}
+                  a={subject(ProjectPermissionSub.DynamicSecrets, {
+                    environment,
+                    secretPath,
+                    secretName: "*",
+                    secretTags: ["*"]
+                  })}
                 >
                   {(isAllowed) => (
                     <Button
@@ -417,7 +515,10 @@ export const ActionBar = ({
                 </ProjectPermissionCan>
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Create}
-                  a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                  a={subject(ProjectPermissionSub.SecretImports, {
+                    environment,
+                    secretPath
+                  })}
                 >
                   {(isAllowed) => (
                     <Button
@@ -452,12 +553,41 @@ export const ActionBar = ({
               <FontAwesomeIcon icon={faMinusSquare} size="lg" />
             </IconButton>
           </Tooltip>
-          <div className="ml-4 flex-grow px-2 text-sm">
+          <div className="ml-2 flex-grow px-2 text-sm">
             {Object.keys(selectedSecrets).length} Selected
           </div>
           <ProjectPermissionCan
             I={ProjectPermissionActions.Delete}
-            a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+            a={subject(ProjectPermissionSub.Secrets, {
+              environment,
+              secretPath,
+              secretName: "*",
+              secretTags: ["*"]
+            })}
+            renderTooltip
+            allowedLabel="Move"
+          >
+            {(isAllowed) => (
+              <Button
+                variant="outline_bg"
+                leftIcon={<FontAwesomeIcon icon={faAnglesRight} />}
+                className="ml-4"
+                onClick={() => handlePopUpOpen("moveSecrets")}
+                isDisabled={!isAllowed}
+                size="xs"
+              >
+                Move
+              </Button>
+            )}
+          </ProjectPermissionCan>
+          <ProjectPermissionCan
+            I={ProjectPermissionActions.Delete}
+            a={subject(ProjectPermissionSub.Secrets, {
+              environment,
+              secretPath,
+              secretName: "*",
+              secretTags: ["*"]
+            })}
             renderTooltip
             allowedLabel="Delete"
           >
@@ -466,7 +596,7 @@ export const ActionBar = ({
                 variant="outline_bg"
                 colorSchema="danger"
                 leftIcon={<FontAwesomeIcon icon={faTrash} />}
-                className="ml-4"
+                className="ml-2"
                 onClick={() => handlePopUpOpen("bulkDeleteSecrets")}
                 isDisabled={!isAllowed}
                 size="xs"
@@ -508,6 +638,11 @@ export const ActionBar = ({
         title="Do you want to delete these secrets?"
         onChange={(isOpen) => handlePopUpToggle("bulkDeleteSecrets", isOpen)}
         onDeleteApproved={handleSecretBulkDelete}
+      />
+      <MoveSecretsModal
+        popUp={popUp}
+        handlePopUpToggle={handlePopUpToggle}
+        onMoveApproved={handleSecretsMove}
       />
       {subscription && (
         <UpgradePlanModal

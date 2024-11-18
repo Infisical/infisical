@@ -1,9 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AxiosError } from "axios";
 
 import { apiRequest } from "@app/config/request";
+import { SessionStorageKeys } from "@app/const";
 import { setAuthToken } from "@app/reactQuery";
 
 import { APIKeyDataV2 } from "../apiKeys/types";
+import { MfaMethod } from "../auth/types";
+import { TGroupWithProjectMemberships } from "../groups/types";
+import { workspaceKeys } from "../workspace";
+import { userKeys } from "./query-keys";
 import {
   AddUserToOrgDTO,
   APIKeyData,
@@ -13,21 +19,11 @@ import {
   OrgUser,
   RenameUserDTO,
   TokenVersion,
-  UpdateOrgUserRoleDTO,
+  TWorkspaceUser,
+  UpdateOrgMembershipDTO,
   User,
   UserEnc
 } from "./types";
-
-export const userKeys = {
-  getUser: ["user"] as const,
-  userAction: ["user-action"] as const,
-  getOrgUsers: (orgId: string) => [{ orgId }, "user"],
-  myIp: ["ip"] as const,
-  myAPIKeys: ["api-keys"] as const,
-  myAPIKeysV2: ["api-keys-v2"] as const,
-  mySessions: ["sessions"] as const,
-  myOrganizationProjects: (orgId: string) => [{ orgId }, "organization-projects"] as const
-};
 
 export const fetchUserDetails = async () => {
   const { data } = await apiRequest.get<{ user: User & UserEnc }>("/api/v1/user");
@@ -37,7 +33,7 @@ export const fetchUserDetails = async () => {
 
 export const useGetUser = () => useQuery(userKeys.getUser, fetchUserDetails);
 
-export const useDeleteUser = () => {
+export const useDeleteMe = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -71,6 +67,14 @@ export const fetchUserAction = async (action: string) => {
     }
   });
   return data.userAction || "";
+};
+
+export const fetchUserProjectFavorites = async (orgId: string) => {
+  const { data } = await apiRequest.get<{ projectFavorites: string[] }>(
+    `/api/v1/user/me/project-favorites?orgId=${orgId}`
+  );
+
+  return data.projectFavorites;
 };
 
 export const useRenameUser = () => {
@@ -121,6 +125,12 @@ export const fetchOrgUsers = async (orgId: string) => {
   return data.users;
 };
 
+export const useGetUserProjectFavorites = (orgId: string) =>
+  useQuery({
+    queryKey: userKeys.userProjectFavorites(orgId),
+    queryFn: () => fetchUserProjectFavorites(orgId)
+  });
+
 export const useGetOrgUsers = (orgId: string) =>
   useQuery({
     queryKey: userKeys.getOrgUsers(orgId),
@@ -130,12 +140,15 @@ export const useGetOrgUsers = (orgId: string) =>
 
 // mutation
 // TODO(akhilmhdh): move all mutation to mutation file
-export const useAddUserToOrg = () => {
+export const useAddUsersToOrg = () => {
   const queryClient = useQueryClient();
   type Response = {
     data: {
       message: string;
-      completeInviteLink: string | undefined;
+      completeInviteLinks?: {
+        email: string;
+        link: string;
+      }[];
     };
   };
 
@@ -143,9 +156,51 @@ export const useAddUserToOrg = () => {
     mutationFn: (dto) => {
       return apiRequest.post("/api/v1/invite-org/signup", dto);
     },
-    onSuccess: (_, { organizationId }) => {
+    onSuccess: (_, { organizationId, projects }) => {
       queryClient.invalidateQueries(userKeys.getOrgUsers(organizationId));
+
+      projects?.forEach((project) => {
+        if (project.slug) {
+          queryClient.invalidateQueries(workspaceKeys.getWorkspaceGroupMemberships(project.slug));
+        }
+        queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(project.id));
+      });
     }
+  });
+};
+
+export const useGetOrgMembership = (organizationId: string, orgMembershipId: string) => {
+  return useQuery({
+    queryKey: userKeys.getOrgMembership(organizationId, orgMembershipId),
+    queryFn: async () => {
+      const {
+        data: { membership }
+      } = await apiRequest.get<{ membership: OrgUser }>(
+        `/api/v2/organizations/${organizationId}/memberships/${orgMembershipId}`
+      );
+
+      return membership;
+    },
+    enabled: Boolean(organizationId) && Boolean(orgMembershipId)
+  });
+};
+
+export const useGetOrgMembershipProjectMemberships = (
+  organizationId: string,
+  orgMembershipId: string
+) => {
+  return useQuery({
+    queryKey: userKeys.forOrgMembershipProjectMemberships(organizationId, orgMembershipId),
+    queryFn: async () => {
+      const {
+        data: { memberships }
+      } = await apiRequest.get<{ memberships: TWorkspaceUser[] }>(
+        `/api/v2/organizations/${organizationId}/memberships/${orgMembershipId}/project-memberships`
+      );
+
+      return memberships;
+    },
+    enabled: Boolean(organizationId) && Boolean(orgMembershipId)
   });
 };
 
@@ -162,24 +217,44 @@ export const useDeleteOrgMembership = () => {
   });
 };
 
-export const useUpdateOrgUserRole = () => {
+export const useDeactivateOrgMembership = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, UpdateOrgUserRoleDTO>({
-    mutationFn: ({ organizationId, membershipId, role }) => {
+  return useMutation<{}, {}, DeletOrgMembershipDTO>({
+    mutationFn: ({ membershipId, orgId }) => {
+      return apiRequest.post(
+        `/api/v2/organizations/${orgId}/memberships/${membershipId}/deactivate`
+      );
+    },
+    onSuccess: (_, { orgId, membershipId }) => {
+      queryClient.invalidateQueries(userKeys.getOrgUsers(orgId));
+      queryClient.invalidateQueries(userKeys.getOrgMembership(orgId, membershipId));
+    }
+  });
+};
+
+export const useUpdateOrgMembership = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{}, {}, UpdateOrgMembershipDTO>({
+    mutationFn: ({ organizationId, membershipId, role, isActive, metadata }) => {
       return apiRequest.patch(
         `/api/v2/organizations/${organizationId}/memberships/${membershipId}`,
         {
-          role
+          role,
+          isActive,
+          metadata
         }
       );
     },
-    onSuccess: (_, { organizationId }) => {
+    onSuccess: (_, { organizationId, membershipId }) => {
       queryClient.invalidateQueries(userKeys.getOrgUsers(organizationId));
+      queryClient.invalidateQueries(userKeys.getOrgMembership(organizationId, membershipId));
     },
     // to remove old states
-    onError: (_, { organizationId }) => {
+    onError: (_, { organizationId, membershipId }) => {
       queryClient.invalidateQueries(userKeys.getOrgUsers(organizationId));
+      queryClient.invalidateQueries(userKeys.getOrgMembership(organizationId, membershipId));
     }
   });
 };
@@ -213,6 +288,7 @@ export const useLogoutUser = (keepQueryClient?: boolean) => {
       localStorage.removeItem("PRIVATE_KEY");
       localStorage.removeItem("orgData.id");
       localStorage.removeItem("projectData.id");
+      sessionStorage.removeItem(SessionStorageKeys.CLI_TERMINAL_TOKEN);
 
       if (!keepQueryClient) {
         queryClient.clear();
@@ -316,14 +392,21 @@ export const useRevokeMySessions = () => {
   });
 };
 
-export const useUpdateMfaEnabled = () => {
+export const useUpdateUserMfa = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ isMfaEnabled }: { isMfaEnabled: boolean }) => {
+    mutationFn: async ({
+      isMfaEnabled,
+      selectedMfaMethod
+    }: {
+      isMfaEnabled?: boolean;
+      selectedMfaMethod?: MfaMethod;
+    }) => {
       const {
         data: { user }
       } = await apiRequest.patch("/api/v2/users/me/mfa", {
-        isMfaEnabled
+        isMfaEnabled,
+        selectedMfaMethod
       });
 
       return user;
@@ -349,5 +432,62 @@ export const useGetMyOrganizationProjects = (orgId: string) => {
       return fetchMyOrganizationProjects(orgId);
     },
     enabled: true
+  });
+};
+
+export const fetchMyPrivateKey = async () => {
+  const {
+    data: { privateKey }
+  } = await apiRequest.get<{ privateKey: string }>("/api/v1/user/private-key");
+
+  return privateKey;
+};
+
+export const useListUserGroupMemberships = (username: string) => {
+  return useQuery({
+    queryKey: userKeys.listUserGroupMemberships(username),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TGroupWithProjectMemberships[]>(
+        `/api/v1/user/me/${username}/groups`
+      );
+
+      return data;
+    }
+  });
+};
+
+export const useGetUserTotpRegistration = () => {
+  return useQuery({
+    queryKey: userKeys.totpRegistration,
+    queryFn: async () => {
+      const { data } = await apiRequest.post<{ otpUrl: string; recoveryCodes: string[] }>(
+        "/api/v1/user/me/totp/register"
+      );
+
+      return data;
+    }
+  });
+};
+
+export const useGetUserTotpConfiguration = () => {
+  return useQuery({
+    queryKey: userKeys.totpConfiguration,
+    queryFn: async () => {
+      try {
+        const { data } = await apiRequest.get<{ isVerified: boolean; recoveryCodes: string[] }>(
+          "/api/v1/user/me/totp"
+        );
+
+        return data;
+      } catch (error) {
+        if (error instanceof AxiosError && [404, 400].includes(error.response?.data?.statusCode)) {
+          return {
+            isVerified: false,
+            recoveryCodes: []
+          };
+        }
+        throw error;
+      }
+    }
   });
 };

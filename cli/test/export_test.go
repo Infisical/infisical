@@ -8,7 +8,6 @@ import (
 
 func TestUniversalAuth_ExportSecretsWithImports(t *testing.T) {
 	MachineIdentityLoginCmd(t)
-	SetupCli(t)
 
 	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "export", "--token", creds.UAAccessToken, "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--silent")
 
@@ -24,8 +23,6 @@ func TestUniversalAuth_ExportSecretsWithImports(t *testing.T) {
 }
 
 func TestServiceToken_ExportSecretsWithImports(t *testing.T) {
-	SetupCli(t)
-
 	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "export", "--token", creds.ServiceToken, "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--silent")
 
 	if err != nil {
@@ -41,8 +38,6 @@ func TestServiceToken_ExportSecretsWithImports(t *testing.T) {
 
 func TestUniversalAuth_ExportSecretsWithoutImports(t *testing.T) {
 	MachineIdentityLoginCmd(t)
-	SetupCli(t)
-
 	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "export", "--token", creds.UAAccessToken, "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--silent", "--include-imports=false")
 
 	if err != nil {
@@ -57,8 +52,6 @@ func TestUniversalAuth_ExportSecretsWithoutImports(t *testing.T) {
 }
 
 func TestServiceToken_ExportSecretsWithoutImports(t *testing.T) {
-	SetupCli(t)
-
 	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "export", "--token", creds.ServiceToken, "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--silent", "--include-imports=false")
 
 	if err != nil {

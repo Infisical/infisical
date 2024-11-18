@@ -53,4 +53,5 @@ export type TSamlLoginDTO = {
   orgId: string;
   // saml thingy
   relayState?: string;
+  metadata?: { key: string; value: string }[];
 };

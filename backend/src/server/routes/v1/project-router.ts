@@ -3,20 +3,23 @@ import { z } from "zod";
 import {
   IntegrationsSchema,
   ProjectMembershipsSchema,
-  ProjectsSchema,
+  ProjectRolesSchema,
+  ProjectSlackConfigsSchema,
   UserEncryptionKeysSchema,
   UsersSchema
 } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PROJECTS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ProjectFilterType } from "@app/services/project/project-types";
+import { validateSlackChannelsField } from "@app/services/slack/slack-auth-validators";
 
-import { integrationAuthPubSchema } from "../sanitizedSchemas";
+import { integrationAuthPubSchema, SanitizedProjectSchema } from "../sanitizedSchemas";
 import { sanitizedServiceTokenSchema } from "../v2/service-token-router";
 
-const projectWithEnv = ProjectsSchema.merge(
+const projectWithEnv = SanitizedProjectSchema.merge(
   z.object({
     _id: z.string(),
     environments: z.object({ name: z.string(), slug: z.string(), id: z.string() }).array()
@@ -65,12 +68,19 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      querystring: z.object({
+        includeGroupMembers: z
+          .enum(["true", "false"])
+          .default("false")
+          .transform((value) => value === "true")
+      }),
       params: z.object({
         workspaceId: z.string().trim()
       }),
       response: {
         200: z.object({
           users: ProjectMembershipsSchema.extend({
+            isGroupMember: z.boolean(),
             user: UsersSchema.pick({
               email: true,
               username: true,
@@ -78,6 +88,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
               lastName: true,
               id: true
             }).merge(UserEncryptionKeysSchema.pick({ publicKey: true })),
+            project: SanitizedProjectSchema.pick({ name: true, id: true }),
             roles: z.array(
               z.object({
                 id: z.string(),
@@ -104,9 +115,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
+        includeGroupMembers: req.query.includeGroupMembers,
         projectId: req.params.workspaceId,
         actorOrgId: req.permission.orgId
       });
+
       return { users };
     }
   });
@@ -118,15 +131,31 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      querystring: z.object({
+        includeRoles: z
+          .enum(["true", "false"])
+          .default("false")
+          .transform((value) => value === "true")
+      }),
       response: {
         200: z.object({
-          workspaces: projectWithEnv.array()
+          workspaces: projectWithEnv
+            .extend({
+              roles: ProjectRolesSchema.array().optional()
+            })
+            .array()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
     handler: async (req) => {
-      const workspaces = await server.services.project.getProjects(req.permission.id);
+      const workspaces = await server.services.project.getProjects({
+        includeRoles: req.query.includeRoles,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId
+      });
       return { workspaces };
     }
   });
@@ -187,7 +216,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          workspace: ProjectsSchema.optional()
+          workspace: SanitizedProjectSchema.optional()
         })
       }
     },
@@ -223,7 +252,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           message: z.string(),
-          workspace: ProjectsSchema
+          workspace: SanitizedProjectSchema
         })
       }
     },
@@ -271,7 +300,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          workspace: ProjectsSchema
+          workspace: SanitizedProjectSchema
         })
       }
     },
@@ -313,7 +342,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           message: z.string(),
-          workspace: ProjectsSchema
+          workspace: SanitizedProjectSchema
         })
       }
     },
@@ -329,6 +358,82 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       });
       return {
         message: "Successfully changed workspace settings",
+        workspace
+      };
+    }
+  });
+
+  server.route({
+    method: "PUT",
+    url: "/:workspaceSlug/version-limit",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceSlug: z.string().trim()
+      }),
+      body: z.object({
+        pitVersionLimit: z.number().min(1).max(100)
+      }),
+      response: {
+        200: z.object({
+          message: z.string(),
+          workspace: SanitizedProjectSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const workspace = await server.services.project.updateVersionLimit({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        pitVersionLimit: req.body.pitVersionLimit,
+        workspaceSlug: req.params.workspaceSlug
+      });
+
+      return {
+        message: "Successfully changed workspace version limit",
+        workspace
+      };
+    }
+  });
+
+  server.route({
+    method: "PUT",
+    url: "/:workspaceSlug/audit-logs-retention",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceSlug: z.string().trim()
+      }),
+      body: z.object({
+        auditLogsRetentionDays: z.number().min(0)
+      }),
+      response: {
+        200: z.object({
+          message: z.string(),
+          workspace: SanitizedProjectSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const workspace = await server.services.project.updateAuditLogsRetention({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        workspaceSlug: req.params.workspaceSlug,
+        auditLogsRetentionDays: req.body.auditLogsRetentionDays
+      });
+
+      return {
+        message: "Successfully updated project's audit logs retention period",
         workspace
       };
     }
@@ -438,6 +543,113 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId
       });
       return { serviceTokenData };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:workspaceId/slack-config",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      response: {
+        200: ProjectSlackConfigsSchema.pick({
+          id: true,
+          slackIntegrationId: true,
+          isAccessRequestNotificationEnabled: true,
+          accessRequestChannels: true,
+          isSecretRequestNotificationEnabled: true,
+          secretRequestChannels: true
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const slackConfig = await server.services.project.getProjectSlackConfig({
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.workspaceId
+      });
+
+      if (slackConfig) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          projectId: req.params.workspaceId,
+          event: {
+            type: EventType.GET_PROJECT_SLACK_CONFIG,
+            metadata: {
+              id: slackConfig.id
+            }
+          }
+        });
+      }
+
+      return slackConfig;
+    }
+  });
+
+  server.route({
+    method: "PUT",
+    url: "/:workspaceId/slack-config",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      body: z.object({
+        slackIntegrationId: z.string(),
+        isAccessRequestNotificationEnabled: z.boolean(),
+        accessRequestChannels: validateSlackChannelsField,
+        isSecretRequestNotificationEnabled: z.boolean(),
+        secretRequestChannels: validateSlackChannelsField
+      }),
+      response: {
+        200: ProjectSlackConfigsSchema.pick({
+          id: true,
+          slackIntegrationId: true,
+          isAccessRequestNotificationEnabled: true,
+          accessRequestChannels: true,
+          isSecretRequestNotificationEnabled: true,
+          secretRequestChannels: true
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const slackConfig = await server.services.project.updateProjectSlackConfig({
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.workspaceId,
+        ...req.body
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.params.workspaceId,
+        event: {
+          type: EventType.UPDATE_PROJECT_SLACK_CONFIG,
+          metadata: {
+            id: slackConfig.id,
+            slackIntegrationId: slackConfig.slackIntegrationId,
+            isAccessRequestNotificationEnabled: slackConfig.isAccessRequestNotificationEnabled,
+            accessRequestChannels: slackConfig.accessRequestChannels,
+            isSecretRequestNotificationEnabled: slackConfig.isSecretRequestNotificationEnabled,
+            secretRequestChannels: slackConfig.secretRequestChannels
+          }
+        }
+      });
+
+      return slackConfig;
     }
   });
 };

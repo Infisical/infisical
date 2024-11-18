@@ -14,7 +14,8 @@ export const AccessApprovalPoliciesSchema = z.object({
   secretPath: z.string().nullable().optional(),
   envId: z.string().uuid(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  enforcementLevel: z.string().default("hard")
 });
 
 export type TAccessApprovalPolicies = z.infer<typeof AccessApprovalPoliciesSchema>;

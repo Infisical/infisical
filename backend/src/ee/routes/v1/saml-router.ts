@@ -61,7 +61,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
                 id: samlConfigId
               };
             } else {
-              throw new BadRequestError({ message: "Missing sso identitier or org slug" });
+              throw new BadRequestError({ message: "Missing sso identifier or org slug" });
             }
 
             const ssoConfig = await server.services.saml.getSaml(ssoLookupDetails);
@@ -100,25 +100,57 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
       async (req, profile, cb) => {
         try {
           if (!profile) throw new BadRequestError({ message: "Missing profile" });
-          const email = profile?.email ?? (profile?.emailAddress as string); // emailRippling is added because in Rippling the field `email` reserved
 
-          if (!email || !profile.firstName) {
-            throw new BadRequestError({ message: "Invalid request. Missing email or first name" });
+          const email =
+            profile?.email ??
+            // entra sends data in this format
+            (profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/email"] as string) ??
+            (profile?.emailAddress as string); // emailRippling is added because in Rippling the field `email` reserved\
+
+          const firstName = (profile.firstName ??
+            // entra sends data in this format
+            profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/firstName"]) as string;
+
+          const lastName =
+            profile.lastName ?? profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/lastName"];
+
+          if (!email || !firstName) {
+            logger.info(
+              {
+                err: new Error("Invalid saml request. Missing email or first name"),
+                profile
+              },
+              `email: ${email} firstName: ${profile.firstName as string}`
+            );
+
+            throw new Error("Invalid saml request. Missing email or first name");
           }
+
+          const userMetadata = Object.keys(profile.attributes || {})
+            .map((key) => {
+              // for the ones like in format: http://schemas.xmlsoap.org/ws/2005/05/identity/claims/email
+              const formatedKey = key.startsWith("http") ? key.split("/").at(-1) || "" : key;
+              return {
+                key: formatedKey,
+                value: String((profile.attributes as Record<string, string>)[key]).substring(0, 1020)
+              };
+            })
+            .filter((el) => el.key && !["email", "firstName", "lastName"].includes(el.key));
 
           const { isUserCompleted, providerAuthToken } = await server.services.saml.samlLogin({
             externalId: profile.nameID,
             email,
-            firstName: profile.firstName as string,
-            lastName: profile.lastName as string,
+            firstName,
+            lastName: lastName as string,
             relayState: (req.body as { RelayState?: string }).RelayState,
             authProvider: (req as unknown as FastifyRequest).ssoConfig?.authProvider as string,
-            orgId: (req as unknown as FastifyRequest).ssoConfig?.orgId as string
+            orgId: (req as unknown as FastifyRequest).ssoConfig?.orgId as string,
+            metadata: userMetadata
           });
           cb(null, { isUserCompleted, providerAuthToken });
         } catch (error) {
           logger.error(error);
-          cb(null, {});
+          cb(error as Error);
         }
       },
       () => {}

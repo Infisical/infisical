@@ -1,8 +1,8 @@
 import Head from "next/head";
 
-import { ShareSecretPublicPage } from "@app/views/ShareSecretPublicPage";
+import { ViewSecretPublicPage } from "@app/views/ViewSecretPublicPage";
 
-const SecretApproval = () => {
+const SecretSharedPublicPage = () => {
   return (
     <>
       <Head>
@@ -12,13 +12,11 @@ const SecretApproval = () => {
         <meta property="og:title" content="" />
         <meta name="og:description" content="" />
       </Head>
-      <div className="h-full">
-        <ShareSecretPublicPage />
-      </div>
+      <ViewSecretPublicPage />
     </>
   );
 };
 
-export default SecretApproval;
+export default SecretSharedPublicPage;
 
-SecretApproval.requireAuth = false;
+SecretSharedPublicPage.requireAuth = false;

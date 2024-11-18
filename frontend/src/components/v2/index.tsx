@@ -1,5 +1,6 @@
 export * from "./Accordion";
 export * from "./Alert";
+export * from "./Badge";
 export * from "./Button";
 export * from "./Card";
 export * from "./Checkbox";
@@ -10,6 +11,7 @@ export * from "./Drawer";
 export * from "./Dropdown";
 export * from "./EmailServiceSetupModal";
 export * from "./EmptyState";
+export * from "./FilterableSelect";
 export * from "./FontAwesomeSymbol";
 export * from "./FormControl";
 export * from "./HoverCardv2";

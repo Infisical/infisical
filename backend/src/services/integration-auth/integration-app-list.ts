@@ -1,9 +1,13 @@
 /* eslint-disable no-await-in-loop */
+import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
 
+import { TIntegrationAuths } from "@app/db/schemas";
+import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
-import { BadRequestError } from "@app/lib/errors";
+import { NotFoundError } from "@app/lib/errors";
 
+import { IntegrationAuthMetadataSchema, TIntegrationAuthMetadata } from "./integration-auth-schema";
 import { Integrations, IntegrationUrls } from "./integration-list";
 
 // akhilmhdh: check this part later. Copied from old base
@@ -230,7 +234,13 @@ const getAppsNetlify = async ({ accessToken }: { accessToken: string }) => {
 /**
  * Return list of repositories for Github integration
  */
-const getAppsGithub = async ({ accessToken }: { accessToken: string }) => {
+const getAppsGithub = async ({
+  accessToken,
+  authMetadata
+}: {
+  accessToken: string;
+  authMetadata?: TIntegrationAuthMetadata;
+}) => {
   interface GitHubApp {
     id: string;
     name: string;
@@ -242,37 +252,35 @@ const getAppsGithub = async ({ accessToken }: { accessToken: string }) => {
     };
   }
 
-  const octokit = new Octokit({
-    auth: accessToken
-  });
-
-  const getAllRepos = async () => {
-    let repos: GitHubApp[] = [];
-    let page = 1;
-    const perPage = 100;
-    let hasMore = true;
-
-    while (hasMore) {
-      const response = await octokit.request(
-        "GET /user/repos{?visibility,affiliation,type,sort,direction,per_page,page,since,before}",
-        {
-          per_page: perPage,
-          page
-        }
-      );
-
-      if ((response.data as GitHubApp[]).length > 0) {
-        repos = repos.concat(response.data as GitHubApp[]);
-        page += 1;
-      } else {
-        hasMore = false;
+  if (authMetadata?.installationId) {
+    const appCfg = getConfig();
+    const octokit = new Octokit({
+      authStrategy: createAppAuth,
+      auth: {
+        appId: appCfg.CLIENT_APP_ID_GITHUB_APP,
+        privateKey: appCfg.CLIENT_PRIVATE_KEY_GITHUB_APP,
+        installationId: authMetadata.installationId
       }
-    }
+    });
 
-    return repos;
-  };
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    const repos = await octokit.paginate("GET /installation/repositories", {
+      per_page: 100
+    });
 
-  const repos = await getAllRepos();
+    return repos.map((a) => ({
+      appId: String(a.id),
+      name: a.name,
+      owner: a.owner.login
+    }));
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+  const repos = (await new Octokit({
+    auth: accessToken
+  }).paginate("GET /user/repos{?visibility,affiliation,type,sort,direction,per_page,page,since,before}", {
+    per_page: 100
+  })) as GitHubApp[];
 
   const apps = repos
     .filter((a: GitHubApp) => a.permissions.admin === true)
@@ -460,19 +468,49 @@ const getAppsFlyio = async ({ accessToken }: { accessToken: string }) => {
  */
 const getAppsCircleCI = async ({ accessToken }: { accessToken: string }) => {
   const res = (
-    await request.get<{ reponame: string }[]>(`${IntegrationUrls.CIRCLECI_API_URL}/v1.1/projects`, {
-      headers: {
-        "Circle-Token": accessToken,
-        "Accept-Encoding": "application/json"
+    await request.get<{ reponame: string; username: string; vcs_url: string }[]>(
+      `${IntegrationUrls.CIRCLECI_API_URL}/v1.1/projects`,
+      {
+        headers: {
+          "Circle-Token": accessToken,
+          "Accept-Encoding": "application/json"
+        }
       }
-    })
+    )
   ).data;
 
-  const apps = res?.map((a) => ({
-    name: a?.reponame
+  const apps = res.map((a) => ({
+    owner: a.username, // username maps to unique organization name in CircleCI
+    name: a.reponame, // reponame maps to project name within an organization in CircleCI
+    appId: a.vcs_url.split("/").pop() // vcs_url maps to the project id in CircleCI
   }));
 
   return apps;
+};
+
+/**
+ * Return list of projects for Databricks integration
+ */
+const getAppsDatabricks = async ({ url, accessToken }: { url?: string | null; accessToken: string }) => {
+  const databricksApiUrl = `${url}/api`;
+
+  const res = await request.get<{ scopes: { name: string; backend_type: string }[] }>(
+    `${databricksApiUrl}/2.0/secrets/scopes/list`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Accept-Encoding": "application/json"
+      }
+    }
+  );
+
+  const scopes =
+    res.data?.scopes?.map((a) => ({
+      name: a.name, // name maps to unique scope name in Databricks
+      backend_type: a.backend_type
+    })) ?? [];
+
+  return scopes;
 };
 
 const getAppsTravisCI = async ({ accessToken }: { accessToken: string }) => {
@@ -1030,18 +1068,41 @@ const getAppsCloud66 = async ({ accessToken }: { accessToken: string }) => {
   return apps;
 };
 
+const getAppsAzureDevOps = async ({ accessToken, orgName }: { accessToken: string; orgName: string }) => {
+  const res = (
+    await request.get<{ count: number; value: Record<string, string>[] }>(
+      `${IntegrationUrls.AZURE_DEVOPS_API_URL}/${orgName}/_apis/projects?api-version=7.2-preview.2`,
+      {
+        headers: {
+          Authorization: `Basic ${accessToken}`
+        }
+      }
+    )
+  ).data;
+  const apps = res.value.map((a) => ({
+    name: a.name,
+    appId: a.id
+  }));
+
+  return apps;
+};
+
 export const getApps = async ({
   integration,
+  integrationAuth,
   accessToken,
   accessId,
   teamId,
+  azureDevOpsOrgName,
   workspaceSlug,
   url
 }: {
   integration: string;
   accessToken: string;
   accessId?: string;
+  integrationAuth: TIntegrationAuths;
   teamId?: string | null;
+  azureDevOpsOrgName?: string | null;
   workspaceSlug?: string;
   url?: string | null;
 }): Promise<App[]> => {
@@ -1051,6 +1112,8 @@ export const getApps = async ({
         accessToken
       });
     case Integrations.AZURE_KEY_VAULT:
+      return [];
+    case Integrations.AZURE_APP_CONFIGURATION:
       return [];
     case Integrations.AWS_PARAMETER_STORE:
       return [];
@@ -1073,7 +1136,8 @@ export const getApps = async ({
 
     case Integrations.GITHUB:
       return getAppsGithub({
-        accessToken
+        accessToken,
+        authMetadata: IntegrationAuthMetadataSchema.parse(integrationAuth.metadata || {})
       });
 
     case Integrations.GITLAB:
@@ -1100,6 +1164,12 @@ export const getApps = async ({
 
     case Integrations.CIRCLECI:
       return getAppsCircleCI({
+        accessToken
+      });
+
+    case Integrations.DATABRICKS:
+      return getAppsDatabricks({
+        url,
         accessToken
       });
 
@@ -1184,7 +1254,13 @@ export const getApps = async ({
         accessToken
       });
 
+    case Integrations.AZURE_DEVOPS:
+      return getAppsAzureDevOps({
+        accessToken,
+        orgName: azureDevOpsOrgName as string
+      });
+
     default:
-      throw new BadRequestError({ message: "integration not found" });
+      throw new NotFoundError({ message: `Integration '${integration}' not found` });
   }
 };

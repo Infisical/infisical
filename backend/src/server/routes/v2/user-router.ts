@@ -4,7 +4,7 @@ import { AuthTokenSessionsSchema, OrganizationsSchema, UserEncryptionKeysSchema,
 import { ApiKeysSchema } from "@app/db/schemas/api-keys";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMethod, AuthMode } from "@app/services/auth/auth-type";
+import { AuthMethod, AuthMode, MfaMethod } from "@app/services/auth/auth-type";
 
 export const registerUserRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -56,7 +56,8 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        isMfaEnabled: z.boolean()
+        isMfaEnabled: z.boolean().optional(),
+        selectedMfaMethod: z.nativeEnum(MfaMethod).optional()
       }),
       response: {
         200: z.object({
@@ -66,7 +67,12 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     preHandler: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
     handler: async (req) => {
-      const user = await server.services.user.toggleUserMfa(req.permission.id, req.body.isMfaEnabled);
+      const user = await server.services.user.updateUserMfa({
+        userId: req.permission.id,
+        isMfaEnabled: req.body.isMfaEnabled,
+        selectedMfaMethod: req.body.selectedMfaMethod
+      });
+
       return { user };
     }
   });
@@ -255,7 +261,23 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       description: "Retrieve the current user on the request",
       response: {
         200: z.object({
-          user: UsersSchema.merge(UserEncryptionKeysSchema.omit({ verifier: true }))
+          user: UsersSchema.merge(
+            UserEncryptionKeysSchema.pick({
+              clientPublicKey: true,
+              serverPrivateKey: true,
+              encryptionVersion: true,
+              protectedKey: true,
+              protectedKeyIV: true,
+              protectedKeyTag: true,
+              publicKey: true,
+              encryptedPrivateKey: true,
+              iv: true,
+              tag: true,
+              salt: true,
+              verifier: true,
+              userId: true
+            })
+          )
         })
       }
     },
@@ -281,7 +303,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const user = await server.services.user.deleteMe(req.permission.id);
+      const user = await server.services.user.deleteUser(req.permission.id);
       return { user };
     }
   });

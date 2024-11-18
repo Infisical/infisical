@@ -12,7 +12,7 @@ export const groupDALFactory = (db: TDbClient) => {
 
   const findGroups = async (filter: TFindFilter<TGroups>, { offset, limit, sort, tx }: TFindOpt<TGroups> = {}) => {
     try {
-      const query = (tx || db)(TableName.Groups)
+      const query = (tx || db.replicaNode())(TableName.Groups)
         // eslint-disable-next-line
         .where(buildFindFilter(filter))
         .select(selectAllTableCols(TableName.Groups));
@@ -32,7 +32,7 @@ export const groupDALFactory = (db: TDbClient) => {
 
   const findByOrgId = async (orgId: string, tx?: Knex) => {
     try {
-      const docs = await (tx || db)(TableName.Groups)
+      const docs = await (tx || db.replicaNode())(TableName.Groups)
         .where(`${TableName.Groups}.orgId`, orgId)
         .leftJoin(TableName.OrgRoles, `${TableName.Groups}.roleId`, `${TableName.OrgRoles}.id`)
         .select(selectAllTableCols(TableName.Groups))
@@ -60,25 +60,28 @@ export const groupDALFactory = (db: TDbClient) => {
   };
 
   // special query
-  const findAllGroupMembers = async ({
+  const findAllGroupPossibleMembers = async ({
     orgId,
     groupId,
     offset = 0,
     limit,
-    username
+    username, // depreciated in favor of search
+    search
   }: {
     orgId: string;
     groupId: string;
     offset?: number;
     limit?: number;
     username?: string;
+    search?: string;
   }) => {
     try {
-      let query = db(TableName.OrgMembership)
+      const query = db
+        .replicaNode()(TableName.OrgMembership)
         .where(`${TableName.OrgMembership}.orgId`, orgId)
         .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
-        .leftJoin(TableName.UserGroupMembership, function () {
-          this.on(`${TableName.UserGroupMembership}.userId`, "=", `${TableName.Users}.id`).andOn(
+        .leftJoin(TableName.UserGroupMembership, (bd) => {
+          bd.on(`${TableName.UserGroupMembership}.userId`, "=", `${TableName.Users}.id`).andOn(
             `${TableName.UserGroupMembership}.groupId`,
             "=",
             db.raw("?", [groupId])
@@ -91,31 +94,39 @@ export const groupDALFactory = (db: TDbClient) => {
           db.ref("username").withSchema(TableName.Users),
           db.ref("firstName").withSchema(TableName.Users),
           db.ref("lastName").withSchema(TableName.Users),
-          db.ref("id").withSchema(TableName.Users).as("userId")
+          db.ref("id").withSchema(TableName.Users).as("userId"),
+          db.raw(`count(*) OVER() as total_count`)
         )
         .where({ isGhost: false })
-        .offset(offset);
+        .offset(offset)
+        .orderBy("firstName", "asc");
 
       if (limit) {
-        query = query.limit(limit);
+        void query.limit(limit);
       }
 
-      if (username) {
-        query = query.andWhere(`${TableName.Users}.username`, "ilike", `%${username}%`);
+      if (search) {
+        void query.andWhereRaw(`CONCAT_WS(' ', "firstName", "lastName", "username") ilike '%${search}%'`);
+      } else if (username) {
+        void query.andWhere(`${TableName.Users}.username`, "ilike", `%${username}%`);
       }
 
       const members = await query;
 
-      return members.map(
-        ({ email, username: memberUsername, firstName, lastName, userId, groupId: memberGroupId }) => ({
-          id: userId,
-          email,
-          username: memberUsername,
-          firstName,
-          lastName,
-          isPartOfGroup: !!memberGroupId
-        })
-      );
+      return {
+        members: members.map(
+          ({ email, username: memberUsername, firstName, lastName, userId, groupId: memberGroupId }) => ({
+            id: userId,
+            email,
+            username: memberUsername,
+            firstName,
+            lastName,
+            isPartOfGroup: !!memberGroupId
+          })
+        ),
+        // @ts-expect-error col select is raw and not strongly typed
+        totalCount: Number(members?.[0]?.total_count ?? 0)
+      };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all org members" });
     }
@@ -124,7 +135,7 @@ export const groupDALFactory = (db: TDbClient) => {
   return {
     findGroups,
     findByOrgId,
-    findAllGroupMembers,
+    findAllGroupPossibleMembers,
     ...groupOrm
   };
 };

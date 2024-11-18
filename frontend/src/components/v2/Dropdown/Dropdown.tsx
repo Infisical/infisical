@@ -24,7 +24,7 @@ export const DropdownMenuContent = forwardRef<HTMLDivElement, DropdownMenuConten
           {...props}
           ref={forwardedRef}
           className={twMerge(
-            "z-30 min-w-[220px] rounded-md border border-mineshaft-600 bg-mineshaft-900 text-bunker-300 shadow will-change-auto data-[side=top]:animate-slideDownAndFade data-[side=left]:animate-slideRightAndFade data-[side=right]:animate-slideLeftAndFade data-[side=bottom]:animate-slideUpAndFade",
+            "z-30 min-w-[220px] overflow-y-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 text-bunker-300 shadow will-change-auto data-[side=top]:animate-slideDownAndFade data-[side=left]:animate-slideRightAndFade data-[side=right]:animate-slideLeftAndFade data-[side=bottom]:animate-slideUpAndFade",
             className
           )}
         >
@@ -86,13 +86,15 @@ export const DropdownMenuItem = <T extends ElementType = "button">({
   icon,
   as: Item = "button",
   iconPos = "left",
+  isDisabled = false,
   ...props
-}: DropdownMenuItemProps<T> & ComponentPropsWithRef<T>) => (
+}: DropdownMenuItemProps<T> & ComponentPropsWithRef<T> & { isDisabled?: boolean }) => (
   <DropdownMenuPrimitive.Item
     {...props}
     className={twMerge(
       "block cursor-pointer rounded-sm px-4 py-2 font-inter text-xs text-mineshaft-200 outline-none data-[highlighted]:bg-mineshaft-700",
-      className
+      className,
+      isDisabled ? "pointer-events-none opacity-50" : ""
     )}
   >
     <Item type="button" role="menuitem" className="flex w-full items-center" ref={inputRef}>

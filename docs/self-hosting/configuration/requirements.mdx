@@ -59,6 +59,7 @@ Redis requirements:
 - Use Redis versions 6.x or 7.x. We advise upgrading to at least Redis 6.2.
 - Redis Cluster mode is currently not supported; use Redis Standalone, with or without High Availability (HA).
 - Redis storage needs are minimal: a setup with 2 vCPU, 4 GB RAM, and 30GB SSD will be sufficient for small deployments.
+- Set cache eviction policy to `noeviction`.
 
 ## Supported Web Browsers
 

@@ -76,3 +76,7 @@ export type TDecodedGcpIamAuthJwt = {
     [key: string]: string;
   };
 };
+
+export type TRevokeGcpAuthDTO = {
+  identityId: string;
+} & Omit<TProjectPermission, "projectId">;

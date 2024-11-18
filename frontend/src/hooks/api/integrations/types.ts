@@ -34,13 +34,37 @@ export type TIntegration = {
   syncMessage?: string;
   __v: number;
   metadata?: {
+    githubVisibility?: string;
+    githubVisibilityRepoIds?: string[];
+    shouldAutoRedeploy?: boolean;
+    secretAWSTag?: {
+      key: string;
+      value: string;
+    }[];
+
+    kmsKeyId?: string;
     secretSuffix?: string;
+    secretPrefix?: string;
     syncBehavior?: IntegrationSyncBehavior;
+    initialSyncBehavior: IntegrationSyncBehavior;
     mappingBehavior?: IntegrationMappingBehavior;
     scope: string;
     org: string;
     project: string;
     environment: string;
+
+    shouldDisableDelete?: boolean;
+    shouldMaskSecrets?: boolean;
+    shouldProtectSecrets?: boolean;
+    shouldEnableDelete?: boolean;
+  };
+};
+
+export type TIntegrationWithEnv = TIntegration & {
+  environment: {
+    id: string;
+    name: string;
+    slug: string;
   };
 };
 

@@ -167,7 +167,7 @@ For security and privacy concerns, we recommend you to configure your terminal t
 
     #### Method 2: Export environment variable
 
-    You can point the CLI to the self hosted Infisical instance by exporting the environment variable `INFISICAL_API_URL` in your terminal.
+    You can point the CLI to the self-hosted Infisical instance by exporting the environment variable `INFISICAL_API_URL` in your terminal.
 
     <Tabs>
     <Tab title="Linux/MacOs">
@@ -197,7 +197,7 @@ For security and privacy concerns, we recommend you to configure your terminal t
 
 #### Method 3: Set manually on every command
 
-Another option to point the CLI to your self hosted Infisical instance is to set it via a flag on every command you run.
+Another option to point the CLI to your self-hosted Infisical instance is to set it via a flag on every command you run.
 
 ```bash
 # Example
@@ -206,8 +206,6 @@ infisical <any-command> --domain="https://your-self-hosted-infisical.com/api"
 
   </Accordion>
   <Accordion title="Can I use the CLI with service tokens?">
-    Yes. Please note, however, that service tokens are being deprecated in favor of [machine identities](/documentation/platform/identities/machine-identities). They will be removed in the future in accordance with the deprecation notice and timeline stated [here](https://infisical.com/blog/deprecating-api-keys).
-
     To use Infisical for non local development scenarios, please create a service token. The service token will allow you to authenticate and interact with Infisical. Once you have created a service token with the required permissions, you’ll need to feed the token to the CLI.
 
     ```bash

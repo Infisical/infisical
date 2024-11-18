@@ -1,5 +1,5 @@
 export { GroupsTab } from "./GroupsTab";
 export { IdentityTab } from "./IdentityTab";
-export { MemberListTab } from "./MemberListTab";
+export { MembersTab } from "./MembersTab";
 export { ProjectRoleListTab } from "./ProjectRoleListTab";
 export { ServiceTokenTab } from "./ServiceTokenTab";

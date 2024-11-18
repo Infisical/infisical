@@ -9,6 +9,8 @@ import {
   TCreateProjectRoleDTO,
   TDeleteOrgRoleDTO,
   TDeleteProjectRoleDTO,
+  TOrgRole,
+  TProjectRole,
   TUpdateOrgRoleDTO,
   TUpdateProjectRoleDTO
 } from "./types";
@@ -16,11 +18,15 @@ import {
 export const useCreateProjectRole = () => {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: ({ projectSlug, ...dto }: TCreateProjectRoleDTO) =>
-      apiRequest.post(`/api/v1/workspace/${projectSlug}/roles`, dto),
-    onSuccess: (_, { projectSlug }) => {
-      queryClient.invalidateQueries(roleQueryKeys.getProjectRoles(projectSlug));
+  return useMutation<TProjectRole, {}, TCreateProjectRoleDTO>({
+    mutationFn: async ({ projectId, ...dto }: TCreateProjectRoleDTO) => {
+      const {
+        data: { role }
+      } = await apiRequest.post(`/api/v2/workspace/${projectId}/roles`, dto);
+      return role;
+    },
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries(roleQueryKeys.getProjectRoles(projectId));
     }
   });
 };
@@ -28,23 +34,33 @@ export const useCreateProjectRole = () => {
 export const useUpdateProjectRole = () => {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: ({ id, projectSlug, ...dto }: TUpdateProjectRoleDTO) =>
-      apiRequest.patch(`/api/v1/workspace/${projectSlug}/roles/${id}`, dto),
-    onSuccess: (_, { projectSlug }) => {
-      queryClient.invalidateQueries(roleQueryKeys.getProjectRoles(projectSlug));
+  return useMutation<TProjectRole, {}, TUpdateProjectRoleDTO>({
+    mutationFn: async ({ id, projectId, ...dto }: TUpdateProjectRoleDTO) => {
+      const {
+        data: { role }
+      } = await apiRequest.patch(`/api/v2/workspace/${projectId}/roles/${id}`, dto);
+      return role;
+    },
+    onSuccess: (_, { projectId, slug }) => {
+      queryClient.invalidateQueries(roleQueryKeys.getProjectRoles(projectId));
+      if (slug) {
+        queryClient.invalidateQueries(roleQueryKeys.getProjectRoleBySlug(projectId, slug));
+      }
     }
   });
 };
 
 export const useDeleteProjectRole = () => {
   const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ projectSlug, id }: TDeleteProjectRoleDTO) =>
-      apiRequest.delete(`/api/v1/workspace/${projectSlug}/roles/${id}`),
-    onSuccess: (_, { projectSlug }) => {
-      queryClient.invalidateQueries(roleQueryKeys.getProjectRoles(projectSlug));
+  return useMutation<TProjectRole, {}, TDeleteProjectRoleDTO>({
+    mutationFn: async ({ projectId, id }: TDeleteProjectRoleDTO) => {
+      const {
+        data: { role }
+      } = await apiRequest.delete(`/api/v2/workspace/${projectId}/roles/${id}`);
+      return role;
+    },
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries(roleQueryKeys.getProjectRoles(projectId));
     }
   });
 };
@@ -52,12 +68,17 @@ export const useDeleteProjectRole = () => {
 export const useCreateOrgRole = () => {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: ({ orgId, permissions, ...dto }: TCreateOrgRoleDTO) =>
-      apiRequest.post(`/api/v1/organization/${orgId}/roles`, {
+  return useMutation<TOrgRole, {}, TCreateOrgRoleDTO>({
+    mutationFn: async ({ orgId, permissions, ...dto }: TCreateOrgRoleDTO) => {
+      const {
+        data: { role }
+      } = await apiRequest.post(`/api/v1/organization/${orgId}/roles`, {
         ...dto,
         permissions: permissions.length ? packRules(permissions) : []
-      }),
+      });
+
+      return role;
+    },
     onSuccess: (_, { orgId }) => {
       queryClient.invalidateQueries(roleQueryKeys.getOrgRoles(orgId));
     }
@@ -67,14 +88,20 @@ export const useCreateOrgRole = () => {
 export const useUpdateOrgRole = () => {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: ({ id, orgId, permissions, ...dto }: TUpdateOrgRoleDTO) =>
-      apiRequest.patch(`/api/v1/organization/${orgId}/roles/${id}`, {
+  return useMutation<TOrgRole, {}, TUpdateOrgRoleDTO>({
+    mutationFn: async ({ id, orgId, permissions, ...dto }: TUpdateOrgRoleDTO) => {
+      const {
+        data: { role }
+      } = await apiRequest.patch(`/api/v1/organization/${orgId}/roles/${id}`, {
         ...dto,
-        permissions: permissions?.length ? packRules(permissions) : []
-      }),
-    onSuccess: (_, { orgId }) => {
+        permissions: permissions?.length ? packRules(permissions) : undefined
+      });
+
+      return role;
+    },
+    onSuccess: (_, { id, orgId }) => {
       queryClient.invalidateQueries(roleQueryKeys.getOrgRoles(orgId));
+      queryClient.invalidateQueries(roleQueryKeys.getOrgRole(orgId, id));
     }
   });
 };
@@ -82,13 +109,19 @@ export const useUpdateOrgRole = () => {
 export const useDeleteOrgRole = () => {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: ({ orgId, id }: TDeleteOrgRoleDTO) =>
-      apiRequest.delete(`/api/v1/organization/${orgId}/roles/${id}`, {
+  return useMutation<TOrgRole, {}, TDeleteOrgRoleDTO>({
+    mutationFn: async ({ orgId, id }: TDeleteOrgRoleDTO) => {
+      const {
+        data: { role }
+      } = await apiRequest.delete(`/api/v1/organization/${orgId}/roles/${id}`, {
         data: { orgId }
-      }),
-    onSuccess: (_, { orgId }) => {
+      });
+
+      return role;
+    },
+    onSuccess: (_, { id, orgId }) => {
       queryClient.invalidateQueries(roleQueryKeys.getOrgRoles(orgId));
+      queryClient.invalidateQueries(roleQueryKeys.getOrgRole(orgId, id));
     }
   });
 };

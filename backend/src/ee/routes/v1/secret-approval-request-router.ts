@@ -3,16 +3,24 @@ import { z } from "zod";
 import {
   SecretApprovalRequestsReviewersSchema,
   SecretApprovalRequestsSchema,
-  SecretApprovalRequestsSecretsSchema,
-  SecretsSchema,
   SecretTagsSchema,
-  SecretVersionsSchema
+  UsersSchema
 } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApprovalStatus, RequestState } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { secretRawSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
+
+const approvalRequestUser = z.object({ userId: z.string().nullable().optional() }).merge(
+  UsersSchema.pick({
+    email: true,
+    firstName: true,
+    lastName: true,
+    username: true
+  })
+);
 
 export const registerSecretApprovalRequestRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -38,13 +46,23 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
               id: z.string(),
               name: z.string(),
               approvals: z.number(),
-              approvers: z.string().array(),
-              secretPath: z.string().optional().nullable()
+              approvers: z
+                .object({
+                  userId: z.string().nullable().optional()
+                })
+                .array(),
+              secretPath: z.string().optional().nullable(),
+              enforcementLevel: z.string()
             }),
+            committerUser: approvalRequestUser,
             commits: z.object({ op: z.string(), secretId: z.string().nullable().optional() }).array(),
             environment: z.string(),
-            reviewers: z.object({ member: z.string(), status: z.string() }).array(),
-            approvers: z.string().array()
+            reviewers: z.object({ userId: z.string(), status: z.string() }).array(),
+            approvers: z
+              .object({
+                userId: z.string().nullable().optional()
+              })
+              .array()
           }).array()
         })
       }
@@ -105,6 +123,9 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       params: z.object({
         id: z.string()
       }),
+      body: z.object({
+        bypassReason: z.string().optional()
+      }),
       response: {
         200: z.object({
           approval: SecretApprovalRequestsSchema
@@ -118,7 +139,8 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        approvalId: req.params.id
+        approvalId: req.params.id,
+        bypassReason: req.body.bypassReason
       });
       return { approval };
     }
@@ -195,7 +217,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
           type: isClosing ? EventType.SECRET_APPROVAL_CLOSED : EventType.SECRET_APPROVAL_REOPENED,
           // eslint-disable-next-line
           metadata: {
-            [isClosing ? ("closedBy" as const) : ("reopenedBy" as const)]: approval.statusChangeBy as string,
+            [isClosing ? ("closedBy" as const) : ("reopenedBy" as const)]: approval.statusChangedByUserId as string,
             secretApprovalRequestId: approval.id,
             secretApprovalRequestSlug: approval.slug
             // eslint-disable-next-line
@@ -216,6 +238,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
   })
     .array()
     .optional();
+
   server.route({
     method: "GET",
     url: "/:id",
@@ -235,53 +258,41 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
                 id: z.string(),
                 name: z.string(),
                 approvals: z.number(),
-                approvers: z.string().array(),
-                secretPath: z.string().optional().nullable()
+                approvers: approvalRequestUser.array(),
+                secretPath: z.string().optional().nullable(),
+                enforcementLevel: z.string()
               }),
               environment: z.string(),
-              reviewers: z.object({ member: z.string(), status: z.string() }).array(),
-              approvers: z.string().array(),
+              statusChangedByUser: approvalRequestUser.optional(),
+              committerUser: approvalRequestUser,
+              reviewers: approvalRequestUser.extend({ status: z.string() }).array(),
               secretPath: z.string(),
-              commits: SecretApprovalRequestsSecretsSchema.omit({ secretBlindIndex: true })
-                .merge(
-                  z.object({
-                    tags: tagSchema,
-                    secret: SecretsSchema.pick({
-                      id: true,
-                      version: true,
-                      secretKeyIV: true,
-                      secretKeyTag: true,
-                      secretKeyCiphertext: true,
-                      secretValueIV: true,
-                      secretValueTag: true,
-                      secretValueCiphertext: true,
-                      secretCommentIV: true,
-                      secretCommentTag: true,
-                      secretCommentCiphertext: true
+              commits: secretRawSchema
+                .omit({ _id: true, environment: true, workspace: true, type: true, version: true })
+                .extend({
+                  op: z.string(),
+                  tags: tagSchema,
+                  secret: z
+                    .object({
+                      id: z.string(),
+                      version: z.number(),
+                      secretKey: z.string(),
+                      secretValue: z.string().optional(),
+                      secretComment: z.string().optional()
                     })
-                      .optional()
-                      .nullable(),
-                    secretVersion: SecretVersionsSchema.pick({
-                      id: true,
-                      version: true,
-                      secretKeyIV: true,
-                      secretKeyTag: true,
-                      secretKeyCiphertext: true,
-                      secretValueIV: true,
-                      secretValueTag: true,
-                      secretValueCiphertext: true,
-                      secretCommentIV: true,
-                      secretCommentTag: true,
-                      secretCommentCiphertext: true
+                    .optional()
+                    .nullable(),
+                  secretVersion: z
+                    .object({
+                      id: z.string(),
+                      version: z.number(),
+                      secretKey: z.string(),
+                      secretValue: z.string().optional(),
+                      secretComment: z.string().optional(),
+                      tags: tagSchema
                     })
-                      .merge(
-                        z.object({
-                          tags: tagSchema
-                        })
-                      )
-                      .optional()
-                  })
-                )
+                    .optional()
+                })
                 .array()
             })
           )

@@ -2,10 +2,11 @@ import { ForbiddenError } from "@casl/ability";
 import { RawAxiosRequestHeaders } from "axios";
 
 import { SecretKeyEncoding } from "@app/db/schemas";
+import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
-import { BadRequestError } from "@app/lib/errors";
-import { validateLocalIps } from "@app/lib/validator";
+import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { AUDIT_LOG_STREAM_TIMEOUT } from "../audit-log/audit-log-queue";
 import { TLicenseServiceFactory } from "../license/license-service";
@@ -42,13 +43,15 @@ export const auditLogStreamServiceFactory = ({
     actorOrgId,
     actorAuthMethod
   }: TCreateAuditLogStreamDTO) => {
-    if (!actorOrgId) throw new BadRequestError({ message: "Missing org id from token" });
+    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID attached to authentication token" });
 
+    const appCfg = getConfig();
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.auditLogStreams)
+    if (!plan.auditLogStreams) {
       throw new BadRequestError({
         message: "Failed to create audit log streams due to plan restriction. Upgrade plan to create group."
       });
+    }
 
     const { permission } = await permissionService.getOrgPermission(
       actor,
@@ -59,7 +62,9 @@ export const auditLogStreamServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
 
-    validateLocalIps(url);
+    if (appCfg.isCloud) {
+      blockLocalAndPrivateIpAddresses(url);
+    }
 
     const totalStreams = await auditLogStreamDAL.find({ orgId: actorOrgId });
     if (totalStreams.length >= plan.auditLogStreamLimit) {
@@ -116,7 +121,7 @@ export const auditLogStreamServiceFactory = ({
     actorOrgId,
     actorAuthMethod
   }: TUpdateAuditLogStreamDTO) => {
-    if (!actorOrgId) throw new BadRequestError({ message: "Missing org id from token" });
+    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID attached to authentication token" });
 
     const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.auditLogStreams)
@@ -125,13 +130,14 @@ export const auditLogStreamServiceFactory = ({
       });
 
     const logStream = await auditLogStreamDAL.findById(id);
-    if (!logStream) throw new BadRequestError({ message: "Audit log stream not found" });
+    if (!logStream) throw new NotFoundError({ message: `Audit log stream with ID '${id}' not found` });
 
     const { orgId } = logStream;
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
 
-    if (url) validateLocalIps(url);
+    const appCfg = getConfig();
+    if (url && appCfg.isCloud) blockLocalAndPrivateIpAddresses(url);
 
     // testing connection first
     const streamHeaders: RawAxiosRequestHeaders = { "Content-Type": "application/json" };
@@ -173,10 +179,10 @@ export const auditLogStreamServiceFactory = ({
   };
 
   const deleteById = async ({ id, actor, actorId, actorOrgId, actorAuthMethod }: TDeleteAuditLogStreamDTO) => {
-    if (!actorOrgId) throw new BadRequestError({ message: "Missing org id from token" });
+    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID attached to authentication token" });
 
     const logStream = await auditLogStreamDAL.findById(id);
-    if (!logStream) throw new BadRequestError({ message: "Audit log stream not found" });
+    if (!logStream) throw new NotFoundError({ message: `Audit log stream with ID '${id}' not found` });
 
     const { orgId } = logStream;
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
@@ -188,7 +194,7 @@ export const auditLogStreamServiceFactory = ({
 
   const getById = async ({ id, actor, actorId, actorOrgId, actorAuthMethod }: TGetDetailsAuditLogStreamDTO) => {
     const logStream = await auditLogStreamDAL.findById(id);
-    if (!logStream) throw new BadRequestError({ message: "Audit log stream not found" });
+    if (!logStream) throw new NotFoundError({ message: `Audit log stream with ID '${id}' not found` });
 
     const { orgId } = logStream;
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);

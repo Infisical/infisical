@@ -1,12 +1,15 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import Ajv from "ajv";
 
-import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
-import { BadRequestError } from "@app/lib/errors";
+import { ProjectVersion, TableName } from "@app/db/schemas";
+import { decryptSymmetric128BitHexKeyUTF8, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service";
@@ -22,9 +25,11 @@ type TSecretRotationServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
   secretDAL: Pick<TSecretDALFactory, "find">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretRotationQueue: TSecretRotationQueueFactory;
+  projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
 };
 
 export type TSecretRotationServiceFactory = ReturnType<typeof secretRotationServiceFactory>;
@@ -37,7 +42,9 @@ export const secretRotationServiceFactory = ({
   licenseService,
   projectDAL,
   folderDAL,
-  secretDAL
+  secretDAL,
+  projectBotService,
+  secretV2BridgeDAL
 }: TSecretRotationServiceFactoryDep) => {
   const getProviderTemplates = async ({
     actor,
@@ -87,20 +94,35 @@ export const secretRotationServiceFactory = ({
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-    if (!folder) throw new BadRequestError({ message: "Secret path not found" });
+    if (!folder) {
+      throw new NotFoundError({
+        message: `Secret path with path '${secretPath}' not found in environment with slug '${environment}'`
+      });
+    }
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })
     );
 
-    const selectedSecrets = await secretDAL.find({
-      folderId: folder.id,
-      $in: { id: Object.values(outputs) }
-    });
-    if (selectedSecrets.length !== Object.values(outputs).length)
-      throw new BadRequestError({ message: "Secrets not found" });
-
     const project = await projectDAL.findById(projectId);
+    const shouldUseBridge = project.version === ProjectVersion.V3;
+
+    if (shouldUseBridge) {
+      const selectedSecrets = await secretV2BridgeDAL.find({
+        folderId: folder.id,
+        $in: { [`${TableName.SecretV2}.id` as "id"]: Object.values(outputs) }
+      });
+      if (selectedSecrets.length !== Object.values(outputs).length)
+        throw new NotFoundError({ message: `Secrets not found in folder with ID '${folder.id}'` });
+    } else {
+      const selectedSecrets = await secretDAL.find({
+        folderId: folder.id,
+        $in: { id: Object.values(outputs) }
+      });
+      if (selectedSecrets.length !== Object.values(outputs).length)
+        throw new NotFoundError({ message: `Secrets not found in folder with ID '${folder.id}'` });
+    }
+
     const plan = await licenseService.getPlan(project.orgId);
     if (!plan.secretRotation)
       throw new BadRequestError({
@@ -108,7 +130,7 @@ export const secretRotationServiceFactory = ({
       });
 
     const selectedTemplate = rotationTemplates.find(({ name }) => name === provider);
-    if (!selectedTemplate) throw new BadRequestError({ message: "Provider not found" });
+    if (!selectedTemplate) throw new NotFoundError({ message: `Provider with name '${provider}' not found` });
     const formattedInputs: Record<string, unknown> = {};
     Object.entries(inputs).forEach(([key, value]) => {
       const { type } = selectedTemplate.template.inputs.properties[key];
@@ -133,7 +155,7 @@ export const secretRotationServiceFactory = ({
       creds: []
     };
     const encData = infisicalSymmetricEncypt(JSON.stringify(unencryptedData));
-    const secretRotation = secretRotationDAL.transaction(async (tx) => {
+    const secretRotation = await secretRotationDAL.transaction(async (tx) => {
       const doc = await secretRotationDAL.create(
         {
           provider,
@@ -148,13 +170,21 @@ export const secretRotationServiceFactory = ({
         },
         tx
       );
-      await secretRotationQueue.addToQueue(doc.id, doc.interval);
-      const outputSecretMapping = await secretRotationDAL.secretOutputInsertMany(
-        Object.entries(outputs).map(([key, secretId]) => ({ key, secretId, rotationId: doc.id })),
-        tx
-      );
+      let outputSecretMapping;
+      if (shouldUseBridge) {
+        outputSecretMapping = await secretRotationDAL.secretOutputV2InsertMany(
+          Object.entries(outputs).map(([key, secretId]) => ({ key, secretId, rotationId: doc.id })),
+          tx
+        );
+      } else {
+        outputSecretMapping = await secretRotationDAL.secretOutputInsertMany(
+          Object.entries(outputs).map(([key, secretId]) => ({ key, secretId, rotationId: doc.id })),
+          tx
+        );
+      }
       return { ...doc, outputs: outputSecretMapping, environment: folder.environment };
     });
+    await secretRotationQueue.addToQueue(secretRotation.id, secretRotation.interval);
     return secretRotation;
   };
 
@@ -167,13 +197,35 @@ export const secretRotationServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRotation);
-    const doc = await secretRotationDAL.find({ projectId });
-    return doc;
+    const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+    if (shouldUseSecretV2Bridge) {
+      const docs = await secretRotationDAL.findSecretV2({ projectId });
+      return docs;
+    }
+
+    if (!botKey) throw new NotFoundError({ message: `Project bot not found for project with ID '${projectId}'` });
+    const docs = await secretRotationDAL.find({ projectId });
+    return docs.map((el) => ({
+      ...el,
+      outputs: el.outputs.map((output) => ({
+        ...output,
+        secret: {
+          id: output.secret.id,
+          version: output.secret.version,
+          secretKey: decryptSymmetric128BitHexKeyUTF8({
+            ciphertext: output.secret.secretKeyCiphertext,
+            iv: output.secret.secretKeyIV,
+            tag: output.secret.secretKeyTag,
+            key: botKey
+          })
+        }
+      }))
+    }));
   };
 
   const restartById = async ({ actor, actorId, actorOrgId, actorAuthMethod, rotationId }: TRestartDTO) => {
     const doc = await secretRotationDAL.findById(rotationId);
-    if (!doc) throw new BadRequestError({ message: "Rotation not found" });
+    if (!doc) throw new NotFoundError({ message: `Rotation with ID '${rotationId}' not found` });
 
     const project = await projectDAL.findById(doc.projectId);
     const plan = await licenseService.getPlan(project.orgId);
@@ -197,7 +249,7 @@ export const secretRotationServiceFactory = ({
 
   const deleteById = async ({ actor, actorId, actorOrgId, actorAuthMethod, rotationId }: TDeleteDTO) => {
     const doc = await secretRotationDAL.findById(rotationId);
-    if (!doc) throw new BadRequestError({ message: "Rotation not found" });
+    if (!doc) throw new NotFoundError({ message: `Rotation with ID '${rotationId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -212,9 +264,9 @@ export const secretRotationServiceFactory = ({
     );
     const deletedDoc = await secretRotationDAL.transaction(async (tx) => {
       const strat = await secretRotationDAL.deleteById(rotationId, tx);
-      await secretRotationQueue.removeFromQueue(strat.id, strat.interval);
       return strat;
     });
+    await secretRotationQueue.removeFromQueue(deletedDoc.id, deletedDoc.interval);
     return { ...doc, ...deletedDoc };
   };
 

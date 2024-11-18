@@ -72,6 +72,9 @@ RUN addgroup --system --gid 1001 nodejs \
 
 WORKDIR /app
 
+# Required for pkcs11js
+RUN apk add --no-cache python3 make g++ 
+
 COPY backend/package*.json ./
 RUN npm ci --only-production
 
@@ -85,6 +88,9 @@ FROM base AS backend-runner
 
 WORKDIR /app
 
+# Required for pkcs11js
+RUN apk add --no-cache python3 make g++ 
+
 COPY backend/package*.json ./
 RUN npm ci --only-production
 
@@ -95,6 +101,10 @@ RUN mkdir frontend-build
 # Production stage
 FROM base AS production
 RUN apk add --upgrade --no-cache ca-certificates
+RUN apk add --no-cache bash curl && curl -1sLf \
+  'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' | bash \
+  && apk add infisical=0.31.1 && apk add --no-cache git
+
 RUN addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 non-root-user
 

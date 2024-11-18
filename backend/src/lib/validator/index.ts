@@ -1,2 +1,3 @@
 export { isDisposableEmail } from "./validate-email";
-export { validateLocalIps } from "./validate-url";
+export { isValidFolderName, isValidSecretPath } from "./validate-folder-name";
+export { blockLocalAndPrivateIpAddresses } from "./validate-url";

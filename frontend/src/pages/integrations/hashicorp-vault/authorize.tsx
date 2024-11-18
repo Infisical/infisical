@@ -1,83 +1,69 @@
-import { useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { zodResolver } from "@hookform/resolvers/zod";
+import axios from "axios";
+import { z } from "zod";
 
+import { createNotification } from "@app/components/notifications";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
-import { Button, Card, CardTitle, FormControl, Input } from "../../../components/v2";
+import { Button, Card, CardBody, CardTitle, FormControl, Input } from "../../../components/v2";
+
+const formSchema = z.object({
+  vaultURL: z.string().url({ message: "Invalid Hashicorp Vault URL" }),
+  vaultNamespace: z.string().optional(),
+  vaultRoleID: z.string().uuid({ message: "Role ID has be a valid UUID" }),
+  vaultSecretID: z.string().uuid({ message: "Role ID has be a valid UUID" })
+});
+
+type TForm = z.infer<typeof formSchema>;
 
 export default function HashiCorpVaultAuthorizeIntegrationPage() {
   const router = useRouter();
   const { mutateAsync } = useSaveIntegrationAccessToken();
 
-  const [vaultURL, setVaultURL] = useState("");
-  const [vaultURLErrorText, setVaultURLErrorText] = useState("");
+  const {
+    control,
+    handleSubmit,
+    formState: { isSubmitting }
+  } = useForm<TForm>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      vaultURL: "",
+      vaultNamespace: "",
+      vaultRoleID: "",
+      vaultSecretID: ""
+    }
+  });
 
-  const [vaultNamespace, setVaultNamespace] = useState("");
-  const [vaultNamespaceErrorText, setVaultNamespaceErrorText] = useState("");
-
-  const [vaultRoleID, setVaultRoleID] = useState("");
-  const [vaultRoleIDErrorText, setVaultRoleIDErrorText] = useState("");
-
-  const [vaultSecretID, setVaultSecretID] = useState("");
-  const [vaultSecretIDErrorText, setVaultSecretIDErrorText] = useState("");
-
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleButtonClick = async () => {
+  const handleFormSubmit = async (formData: TForm) => {
     try {
-      if (vaultURL.length === 0) {
-        setVaultURLErrorText("Vault Cluster URL cannot be blank");
-      } else {
-        setVaultURLErrorText("");
-      }
-
-      if (vaultNamespace.length === 0) {
-        setVaultNamespaceErrorText("Vault Namespace cannot be blank");
-      } else {
-        setVaultNamespaceErrorText("");
-      }
-
-      if (vaultRoleID.length === 0) {
-        setVaultRoleIDErrorText("Vault Role ID cannot be blank");
-      } else {
-        setVaultRoleIDErrorText("");
-      }
-
-      if (vaultSecretID.length === 0) {
-        setVaultSecretIDErrorText("Vault Secret ID cannot be blank");
-      } else {
-        setVaultSecretIDErrorText("");
-      }
-      if (
-        vaultURL.length === 0 ||
-        vaultNamespace.length === 0 ||
-        vaultRoleID.length === 0 ||
-        vaultSecretID.length === 0
-      ) {
-        return;
-      }
-
-      setIsLoading(true);
-
       const integrationAuth = await mutateAsync({
         workspaceId: localStorage.getItem("projectData.id"),
         integration: "hashicorp-vault",
-        accessId: vaultRoleID,
-        accessToken: vaultSecretID,
-        url: vaultURL,
-        namespace: vaultNamespace
+        accessId: formData.vaultRoleID,
+        accessToken: formData.vaultSecretID,
+        url: formData.vaultURL,
+        namespace: formData.vaultNamespace
       });
-
-      setIsLoading(false);
-
       router.push(`/integrations/hashicorp-vault/create?integrationAuthId=${integrationAuth.id}`);
     } catch (err) {
       console.error(err);
+      let errorMessage: string = "Something went wrong!";
+      if (axios.isAxiosError(err)) {
+        const { message } = err?.response?.data as { message: string };
+        errorMessage = message;
+      }
+
+      createNotification({
+        text: errorMessage,
+        type: "error"
+      });
     }
   };
 
@@ -93,7 +79,7 @@ export default function HashiCorpVaultAuthorizeIntegrationPage() {
           subTitle="After connecting to Vault, you will be prompted to set up an integration for a particular Infisical project and environment."
         >
           <div className="flex flex-row items-center">
-            <div className="inline flex items-center">
+            <div className="inline-flex items-center">
               <Image
                 src="/images/integrations/Vault.png"
                 height={30}
@@ -116,59 +102,84 @@ export default function HashiCorpVaultAuthorizeIntegrationPage() {
             </Link>
           </div>
         </CardTitle>
-        <FormControl
-          label="Vault Cluster URL"
-          errorText={vaultURLErrorText}
-          isError={vaultURLErrorText !== "" ?? false}
-          className="px-6"
-        >
-          <Input placeholder="" value={vaultURL} onChange={(e) => setVaultURL(e.target.value)} />
-        </FormControl>
-        <FormControl
-          label="Vault Namespace"
-          errorText={vaultNamespaceErrorText}
-          isError={vaultNamespaceErrorText !== "" ?? false}
-          className="px-6"
-        >
-          <Input
-            placeholder="admin/education"
-            value={vaultNamespace}
-            onChange={(e) => setVaultNamespace(e.target.value)}
-          />
-        </FormControl>
-        <FormControl
-          label="Vault RoleID"
-          errorText={vaultRoleIDErrorText}
-          isError={vaultRoleIDErrorText !== "" ?? false}
-          className="px-6"
-        >
-          <Input
-            placeholder=""
-            value={vaultRoleID}
-            onChange={(e) => setVaultRoleID(e.target.value)}
-          />
-        </FormControl>
-        <FormControl
-          label="Vault SecretID"
-          errorText={vaultSecretIDErrorText}
-          isError={vaultSecretIDErrorText !== "" ?? false}
-          className="px-6"
-        >
-          <Input
-            placeholder=""
-            value={vaultSecretID}
-            onChange={(e) => setVaultSecretID(e.target.value)}
-          />
-        </FormControl>
-        <Button
-          onClick={handleButtonClick}
-          colorSchema="primary"
-          variant="outline_bg"
-          className="mb-6 mt-2 ml-auto mr-6 w-min"
-          isLoading={isLoading}
-        >
-          Connect to Vault
-        </Button>
+        <CardBody className="px-6 pb-6 pt-0">
+          <form onSubmit={handleSubmit(handleFormSubmit)} noValidate>
+            <Controller
+              control={control}
+              name="vaultURL"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Vault Cluster URL"
+                  errorText={error?.message}
+                  isError={Boolean(error)}
+                  isRequired
+                >
+                  <Input autoCorrect="off" spellCheck={false} placeholder="" {...field} />
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={control}
+              name="vaultNamespace"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Vault Namespace"
+                  errorText={error?.message}
+                  isError={Boolean(error)}
+                  isRequired={false}
+                >
+                  <Input
+                    autoCorrect="off"
+                    spellCheck={false}
+                    placeholder="admin/education"
+                    {...field}
+                  />
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={control}
+              name="vaultRoleID"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Vault RoleID"
+                  errorText={error?.message}
+                  isError={Boolean(error)}
+                  isRequired
+                >
+                  <Input
+                    autoCorrect="off"
+                    spellCheck={false}
+                    placeholder="aaaaaaa-bbbb-cccc-dddd-aaaaaaaaaaa"
+                    {...field}
+                  />
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={control}
+              name="vaultSecretID"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Vault SecretID"
+                  errorText={error?.message}
+                  isError={Boolean(error)}
+                  isRequired
+                >
+                  <Input
+                    autoCorrect="off"
+                    spellCheck={false}
+                    placeholder="aaaaaaa-bbbb-cccc-dddd-aaaaaaaaaaa"
+                    {...field}
+                  />
+                </FormControl>
+              )}
+            />
+            <Button type="submit" isLoading={isSubmitting}>
+              Connect to Vault
+            </Button>
+          </form>
+        </CardBody>
       </Card>
     </div>
   );

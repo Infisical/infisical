@@ -1,15 +1,21 @@
+import { registerProjectTemplateRouter } from "@app/ee/routes/v1/project-template-router";
+
 import { registerAccessApprovalPolicyRouter } from "./access-approval-policy-router";
 import { registerAccessApprovalRequestRouter } from "./access-approval-request-router";
 import { registerAuditLogStreamRouter } from "./audit-log-stream-router";
+import { registerCaCrlRouter } from "./certificate-authority-crl-router";
 import { registerDynamicSecretLeaseRouter } from "./dynamic-secret-lease-router";
 import { registerDynamicSecretRouter } from "./dynamic-secret-router";
+import { registerExternalKmsRouter } from "./external-kms-router";
 import { registerGroupRouter } from "./group-router";
 import { registerIdentityProjectAdditionalPrivilegeRouter } from "./identity-project-additional-privilege-router";
 import { registerLdapRouter } from "./ldap-router";
 import { registerLicenseRouter } from "./license-router";
+import { registerOidcRouter } from "./oidc-router";
 import { registerOrgRoleRouter } from "./org-role-router";
 import { registerProjectRoleRouter } from "./project-role-router";
 import { registerProjectRouter } from "./project-router";
+import { registerRateLimitRouter } from "./rate-limit-router";
 import { registerSamlRouter } from "./saml-router";
 import { registerScimRouter } from "./scim-router";
 import { registerSecretApprovalPolicyRouter } from "./secret-approval-policy-router";
@@ -45,6 +51,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
 
   await server.register(registerAccessApprovalPolicyRouter, { prefix: "/access-approvals/policies" });
   await server.register(registerAccessApprovalRequestRouter, { prefix: "/access-approvals/requests" });
+  await server.register(registerRateLimitRouter, { prefix: "/rate-limit" });
 
   await server.register(
     async (dynamicSecretRouter) => {
@@ -54,7 +61,21 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     { prefix: "/dynamic-secrets" }
   );
 
-  await server.register(registerSamlRouter, { prefix: "/sso" });
+  await server.register(
+    async (pkiRouter) => {
+      await pkiRouter.register(registerCaCrlRouter, { prefix: "/crl" });
+    },
+    { prefix: "/pki" }
+  );
+
+  await server.register(
+    async (ssoRouter) => {
+      await ssoRouter.register(registerSamlRouter);
+      await ssoRouter.register(registerOidcRouter, { prefix: "/oidc" });
+    },
+    { prefix: "/sso" }
+  );
+
   await server.register(registerScimRouter, { prefix: "/scim" });
   await server.register(registerLdapRouter, { prefix: "/ldap" });
   await server.register(registerSecretScanningRouter, { prefix: "/secret-scanning" });
@@ -62,11 +83,17 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerSecretVersionRouter, { prefix: "/secret" });
   await server.register(registerGroupRouter, { prefix: "/groups" });
   await server.register(registerAuditLogStreamRouter, { prefix: "/audit-log-streams" });
+  await server.register(registerUserAdditionalPrivilegeRouter, { prefix: "/user-project-additional-privilege" });
   await server.register(
     async (privilegeRouter) => {
-      await privilegeRouter.register(registerUserAdditionalPrivilegeRouter, { prefix: "/users" });
       await privilegeRouter.register(registerIdentityProjectAdditionalPrivilegeRouter, { prefix: "/identity" });
     },
     { prefix: "/additional-privilege" }
   );
+
+  await server.register(registerExternalKmsRouter, {
+    prefix: "/external-kms"
+  });
+
+  await server.register(registerProjectTemplateRouter, { prefix: "/project-templates" });
 };

@@ -15,7 +15,7 @@ import { SSOModal } from "./SSOModal";
 export const OrgSSOSection = (): JSX.Element => {
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
-  
+
   const { data, isLoading } = useGetSSOConfig(currentOrg?.id ?? "");
   const { mutateAsync } = useUpdateSSOConfig();
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([

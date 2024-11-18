@@ -1,14 +1,14 @@
 export type Filter = {
   tags: Record<string, boolean>;
   searchFilter: string;
-  groupBy?: GroupBy | null;
+  include: {
+    [key in RowType]: boolean;
+  };
 };
 
-export enum SortDir {
-  ASC = "asc",
-  DESC = "desc"
-}
-
-export enum GroupBy {
-  PREFIX = "prefix"
+export enum RowType {
+  Folder = "folder",
+  Import = "import",
+  DynamicSecret = "dynamic",
+  Secret = "secret"
 }

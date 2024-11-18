@@ -13,7 +13,12 @@ import {
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteFolder, useDeleteSecretBatch } from "@app/hooks/api";
-import { DecryptedSecret, TDeleteSecretBatchDTO, TSecretFolder } from "@app/hooks/api/types";
+import {
+  SecretType,
+  SecretV3RawSanitized,
+  TDeleteSecretBatchDTO,
+  TSecretFolder
+} from "@app/hooks/api/types";
 
 export enum EntryType {
   FOLDER = "folder",
@@ -22,30 +27,23 @@ export enum EntryType {
 
 type Props = {
   secretPath: string;
-  getSecretByKey: (slug: string, key: string) => DecryptedSecret | undefined;
-  getFolderByNameAndEnv: (name: string, env: string) => TSecretFolder | undefined;
   resetSelectedEntries: () => void;
   selectedEntries: {
-    [EntryType.FOLDER]: Record<string, boolean>;
-    [EntryType.SECRET]: Record<string, boolean>;
+    [EntryType.FOLDER]: Record<string, Record<string, TSecretFolder>>;
+    [EntryType.SECRET]: Record<string, Record<string, SecretV3RawSanitized>>;
   };
 };
 
-export const SelectionPanel = ({
-  getFolderByNameAndEnv,
-  getSecretByKey,
-  secretPath,
-  resetSelectedEntries,
-  selectedEntries
-}: Props) => {
+export const SelectionPanel = ({ secretPath, resetSelectedEntries, selectedEntries }: Props) => {
   const { permission } = useProjectPermission();
 
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "bulkDeleteEntries"
   ] as const);
 
-  const selectedCount =
-    Object.keys(selectedEntries.folder).length + Object.keys(selectedEntries.secret).length;
+  const selectedFolderCount = Object.keys(selectedEntries.folder).length;
+  const selectedKeysCount = Object.keys(selectedEntries.secret).length;
+  const selectedCount = selectedFolderCount + selectedKeysCount;
 
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || "";
@@ -59,48 +57,72 @@ export const SelectionPanel = ({
   const shouldShowDelete = userAvailableEnvs.some((env) =>
     permission.can(
       ProjectPermissionActions.Delete,
-      subject(ProjectPermissionSub.Secrets, { environment: env.slug, secretPath })
+      subject(ProjectPermissionSub.Secrets, {
+        environment: env.slug,
+        secretPath,
+        secretName: "*",
+        secretTags: ["*"]
+      })
     )
   );
+
+  const getDeleteModalTitle = () => {
+    if (selectedFolderCount > 0 && selectedKeysCount > 0) {
+      return "Do you want to delete the selected secrets and folders across environments?";
+    }
+    if (selectedKeysCount > 0) {
+      return "Do you want to delete the selected secrets across environments?";
+    }
+    return "Do you want to delete the selected folders across environments?";
+  };
 
   const handleBulkDelete = async () => {
     let processedEntries = 0;
 
     const promises = userAvailableEnvs.map(async (env) => {
       // additional check: ensure that bulk delete is only executed on envs that user has access to
+
       if (
-        permission.cannot(
+        permission.can(
           ProjectPermissionActions.Delete,
-          subject(ProjectPermissionSub.Secrets, { environment: env.slug, secretPath })
+          subject(ProjectPermissionSub.SecretFolders, { environment: env.slug, secretPath })
         )
       ) {
-        return;
+        await Promise.all(
+          Object.values(selectedEntries.folder).map(async (folderRecord) => {
+            const folder = folderRecord[env.slug];
+            if (folder) {
+              processedEntries += 1;
+              await deleteFolder({
+                folderId: folder?.id,
+                path: secretPath,
+                environment: env.slug,
+                projectId: workspaceId
+              });
+            }
+          })
+        );
       }
 
-      await Promise.all(
-        Object.keys(selectedEntries.folder).map(async (folderName) => {
-          const folder = getFolderByNameAndEnv(folderName, env.slug);
-          if (folder) {
-            processedEntries += 1;
-            await deleteFolder({
-              folderId: folder?.id,
-              path: secretPath,
+      const secretsToDelete = Object.values(selectedEntries.secret).reduce(
+        (accum: TDeleteSecretBatchDTO["secrets"], secretRecord) => {
+          const entry = secretRecord[env.slug];
+          const canDeleteSecret = permission.can(
+            ProjectPermissionActions.Delete,
+            subject(ProjectPermissionSub.Secrets, {
               environment: env.slug,
-              projectId: workspaceId
-            });
-          }
-        })
-      );
+              secretPath,
+              secretName: entry.key,
+              secretTags: (entry?.tags || []).map((i) => i.slug)
+            })
+          );
 
-      const secretsToDelete = Object.keys(selectedEntries.secret).reduce(
-        (accum: TDeleteSecretBatchDTO["secrets"], secretName) => {
-          const entry = getSecretByKey(env.slug, secretName);
-          if (entry) {
+          if (entry && canDeleteSecret) {
             return [
               ...accum,
               {
-                secretName: entry.key,
-                type: "shared" as "shared"
+                secretKey: entry.key,
+                type: SecretType.Shared
               }
             ];
           }
@@ -157,7 +179,7 @@ export const SelectionPanel = ({
               <FontAwesomeIcon icon={faMinusSquare} size="lg" />
             </IconButton>
           </Tooltip>
-          <div className="ml-4 flex-grow px-2 text-sm">{selectedCount} Selected</div>
+          <div className="ml-1 flex-grow px-2 text-sm">{selectedCount} Selected</div>
           {shouldShowDelete && (
             <Button
               variant="outline_bg"
@@ -175,7 +197,7 @@ export const SelectionPanel = ({
       <DeleteActionModal
         isOpen={popUp.bulkDeleteEntries.isOpen}
         deleteKey="delete"
-        title="Do you want to delete the selected secrets and folders across envs?"
+        title={getDeleteModalTitle()}
         onChange={(isOpen) => handlePopUpToggle("bulkDeleteEntries", isOpen)}
         onDeleteApproved={handleBulkDelete}
       />

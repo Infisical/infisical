@@ -6,23 +6,28 @@ export {
 } from "./mutation";
 export {
   fetchOrgUsers,
-  useAddUserToOrg,
+  useAddUsersToOrg,
   useCreateAPIKey,
   useDeleteAPIKey,
+  useDeleteMe,
   useDeleteOrgMembership,
-  useDeleteUser,
   useGetMyAPIKeys,
   useGetMyAPIKeysV2,
   useGetMyIp,
   useGetMyOrganizationProjects,
   useGetMySessions,
+  useGetOrgMembership,
+  useGetOrgMembershipProjectMemberships,
   useGetOrgUsers,
   useGetUser,
   useGetUserAction,
+  useGetUserTotpRegistration,
+  useListUserGroupMemberships,
   useLogoutUser,
   useRegisterUserAction,
   useRevokeMySessions,
-  useUpdateMfaEnabled,
-  useUpdateOrgUserRole,
-  useUpdateUserAuthMethods
+  useUpdateOrgMembership,
+  useUpdateUserAuthMethods,
+  useUpdateUserMfa
 } from "./queries";
+export { userKeys } from "./query-keys";

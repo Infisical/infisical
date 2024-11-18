@@ -2,9 +2,22 @@ import { z } from "zod";
 
 export enum TableName {
   Users = "users",
+  CertificateAuthority = "certificate_authorities",
+  CertificateTemplateEstConfig = "certificate_template_est_configs",
+  CertificateAuthorityCert = "certificate_authority_certs",
+  CertificateAuthoritySecret = "certificate_authority_secret",
+  CertificateAuthorityCrl = "certificate_authority_crl",
+  Certificate = "certificates",
+  CertificateBody = "certificate_bodies",
+  CertificateSecret = "certificate_secrets",
+  CertificateTemplate = "certificate_templates",
+  PkiAlert = "pki_alerts",
+  PkiCollection = "pki_collections",
+  PkiCollectionItem = "pki_collection_items",
   Groups = "groups",
   GroupProjectMembership = "group_project_memberships",
   GroupProjectMembershipRole = "group_project_membership_roles",
+  ExternalGroupOrgRoleMapping = "external_group_org_role_mappings",
   UserGroupMembership = "user_group_membership",
   UserAliases = "user_aliases",
   UserEncryptionKey = "user_encryption_keys",
@@ -18,6 +31,7 @@ export enum TableName {
   IncidentContact = "incident_contacts",
   UserAction = "user_actions",
   SuperAdmin = "super_admin",
+  RateLimit = "rate_limit",
   ApiKey = "api_keys",
   Project = "projects",
   ProjectBot = "project_bots",
@@ -27,6 +41,7 @@ export enum TableName {
   ProjectUserAdditionalPrivilege = "project_user_additional_privilege",
   ProjectUserMembershipRole = "project_user_membership_roles",
   ProjectKeys = "project_keys",
+  ProjectTemplates = "project_templates",
   Secret = "secrets",
   SecretReference = "secret_references",
   SecretSharing = "secret_sharing",
@@ -45,16 +60,20 @@ export enum TableName {
   Webhook = "webhooks",
   Identity = "identities",
   IdentityAccessToken = "identity_access_tokens",
+  IdentityTokenAuth = "identity_token_auths",
   IdentityUniversalAuth = "identity_universal_auths",
   IdentityKubernetesAuth = "identity_kubernetes_auths",
   IdentityGcpAuth = "identity_gcp_auths",
   IdentityAzureAuth = "identity_azure_auths",
   IdentityUaClientSecret = "identity_ua_client_secrets",
   IdentityAwsAuth = "identity_aws_auths",
+  IdentityOidcAuth = "identity_oidc_auths",
   IdentityOrgMembership = "identity_org_memberships",
   IdentityProjectMembership = "identity_project_memberships",
   IdentityProjectMembershipRole = "identity_project_membership_role",
   IdentityProjectAdditionalPrivilege = "identity_project_additional_privilege",
+  // used by both identity and users
+  IdentityMetadata = "identity_metadata",
   ScimToken = "scim_tokens",
   AccessApprovalPolicy = "access_approval_policies",
   AccessApprovalPolicyApprover = "access_approval_policies_approvers",
@@ -70,6 +89,7 @@ export enum TableName {
   SecretRotationOutput = "secret_rotation_outputs",
   SamlConfig = "saml_configs",
   LdapConfig = "ldap_configs",
+  OidcConfig = "oidc_configs",
   LdapGroupMap = "ldap_group_maps",
   AuditLog = "audit_logs",
   AuditLogStream = "audit_log_streams",
@@ -79,13 +99,30 @@ export enum TableName {
   TrustedIps = "trusted_ips",
   DynamicSecret = "dynamic_secrets",
   DynamicSecretLease = "dynamic_secret_leases",
+  SecretV2 = "secrets_v2",
+  SecretReferenceV2 = "secret_references_v2",
+  SecretVersionV2 = "secret_versions_v2",
+  SecretApprovalRequestSecretV2 = "secret_approval_requests_secrets_v2",
+  SecretApprovalRequestSecretTagV2 = "secret_approval_request_secret_tags_v2",
+  SnapshotSecretV2 = "secret_snapshot_secrets_v2",
   // junction tables with tags
+  SecretV2JnTag = "secret_v2_tag_junction",
   JnSecretTag = "secret_tag_junction",
   SecretVersionTag = "secret_version_tag_junction",
+  SecretVersionV2Tag = "secret_version_v2_tag_junction",
+  SecretRotationOutputV2 = "secret_rotation_output_v2",
   // KMS Service
   KmsServerRootConfig = "kms_root_config",
   KmsKey = "kms_keys",
-  KmsKeyVersion = "kms_key_versions"
+  ExternalKms = "external_kms",
+  InternalKms = "internal_kms",
+  InternalKmsKeyVersion = "internal_kms_key_version",
+  TotpConfig = "totp_configs",
+  // @depreciated
+  KmsKeyVersion = "kms_key_versions",
+  WorkflowIntegrations = "workflow_integrations",
+  SlackIntegrations = "slack_integrations",
+  ProjectSlackConfigs = "project_slack_configs"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt";
@@ -142,7 +179,8 @@ export enum SecretType {
 
 export enum ProjectVersion {
   V1 = 1,
-  V2 = 2
+  V2 = 2,
+  V3 = 3
 }
 
 export enum ProjectUpgradeStatus {
@@ -152,9 +190,11 @@ export enum ProjectUpgradeStatus {
 }
 
 export enum IdentityAuthMethod {
-  Univeral = "universal-auth",
+  TOKEN_AUTH = "token-auth",
+  UNIVERSAL_AUTH = "universal-auth",
   KUBERNETES_AUTH = "kubernetes-auth",
   GCP_AUTH = "gcp-auth",
   AWS_AUTH = "aws-auth",
-  AZURE_AUTH = "azure-auth"
+  AZURE_AUTH = "azure-auth",
+  OIDC_AUTH = "oidc-auth"
 }

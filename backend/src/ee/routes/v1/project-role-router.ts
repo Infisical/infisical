@@ -3,11 +3,16 @@ import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { ProjectMembershipRole, ProjectMembershipsSchema, ProjectRolesSchema } from "@app/db/schemas";
+import {
+  backfillPermissionV1SchemaToV2Schema,
+  ProjectPermissionV1Schema
+} from "@app/ee/services/permission/project-permission";
 import { PROJECT_ROLE } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ProjectPermissionSchema, SanitizedRoleSchema } from "@app/server/routes/sanitizedSchemas";
+import { SanitizedRoleSchemaV1 } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { ProjectRoleServiceIdentifierType } from "@app/services/project-role/project-role-types";
 
 export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -42,11 +47,11 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
           .describe(PROJECT_ROLE.CREATE.slug),
         name: z.string().min(1).trim().describe(PROJECT_ROLE.CREATE.name),
         description: z.string().trim().optional().describe(PROJECT_ROLE.CREATE.description),
-        permissions: ProjectPermissionSchema.array().describe(PROJECT_ROLE.CREATE.permissions)
+        permissions: ProjectPermissionV1Schema.array().describe(PROJECT_ROLE.CREATE.permissions)
       }),
       response: {
         200: z.object({
-          role: SanitizedRoleSchema
+          role: SanitizedRoleSchemaV1
         })
       }
     },
@@ -57,12 +62,16 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         actor: req.permission.type,
-        projectSlug: req.params.projectSlug,
+        filter: {
+          type: ProjectRoleServiceIdentifierType.SLUG,
+          projectSlug: req.params.projectSlug
+        },
         data: {
           ...req.body,
-          permissions: JSON.stringify(packRules(req.body.permissions))
+          permissions: JSON.stringify(packRules(backfillPermissionV1SchemaToV2Schema(req.body.permissions, true)))
         }
       });
+
       return { role };
     }
   });
@@ -101,11 +110,12 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
             message: "Slug must be a valid"
           }),
         name: z.string().trim().optional().describe(PROJECT_ROLE.UPDATE.name),
-        permissions: ProjectPermissionSchema.array().describe(PROJECT_ROLE.UPDATE.permissions)
+        description: z.string().trim().optional().describe(PROJECT_ROLE.UPDATE.description),
+        permissions: ProjectPermissionV1Schema.array().describe(PROJECT_ROLE.UPDATE.permissions).optional()
       }),
       response: {
         200: z.object({
-          role: SanitizedRoleSchema
+          role: SanitizedRoleSchemaV1
         })
       }
     },
@@ -116,11 +126,12 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         actor: req.permission.type,
-        projectSlug: req.params.projectSlug,
         roleId: req.params.roleId,
         data: {
           ...req.body,
-          permissions: JSON.stringify(packRules(req.body.permissions))
+          permissions: req.body.permissions
+            ? JSON.stringify(packRules(backfillPermissionV1SchemaToV2Schema(req.body.permissions, true)))
+            : undefined
         }
       });
       return { role };
@@ -146,7 +157,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          role: SanitizedRoleSchema
+          role: SanitizedRoleSchemaV1
         })
       }
     },
@@ -157,7 +168,6 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         actor: req.permission.type,
-        projectSlug: req.params.projectSlug,
         roleId: req.params.roleId
       });
       return { role };
@@ -182,7 +192,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          roles: ProjectRolesSchema.omit({ permissions: true }).array()
+          roles: ProjectRolesSchema.omit({ permissions: true, version: true }).array()
         })
       }
     },
@@ -193,7 +203,10 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         actor: req.permission.type,
-        projectSlug: req.params.projectSlug
+        filter: {
+          type: ProjectRoleServiceIdentifierType.SLUG,
+          projectSlug: req.params.projectSlug
+        }
       });
       return { roles };
     }
@@ -212,7 +225,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          role: SanitizedRoleSchema
+          role: SanitizedRoleSchemaV1.omit({ version: true })
         })
       }
     },
@@ -223,9 +236,13 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         actor: req.permission.type,
-        projectSlug: req.params.projectSlug,
+        filter: {
+          type: ProjectRoleServiceIdentifierType.SLUG,
+          projectSlug: req.params.projectSlug
+        },
         roleSlug: req.params.slug
       });
+
       return { role };
     }
   });

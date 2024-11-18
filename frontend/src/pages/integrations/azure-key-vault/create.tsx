@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import queryString from "query-string";
 
 import { useCreateIntegration } from "@app/hooks/api";
+import { IntegrationSyncBehavior } from "@app/hooks/api/integrations/types";
 
 import {
   Button,
@@ -15,6 +16,18 @@ import {
 } from "../../../components/v2";
 import { useGetIntegrationAuthById } from "../../../hooks/api/integrationAuth";
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
+
+const initialSyncBehaviors = [
+  {
+    label: "No Import - Overwrite all values in Azure Vault",
+    value: IntegrationSyncBehavior.OVERWRITE_TARGET
+  },
+  {
+    label: "Import - Prefer values from Azure Vault",
+    value: IntegrationSyncBehavior.PREFER_TARGET
+  },
+  { label: "Import - Prefer values from Infisical", value: IntegrationSyncBehavior.PREFER_SOURCE }
+];
 
 export default function AzureKeyVaultCreateIntegrationPage() {
   const router = useRouter();
@@ -30,6 +43,9 @@ export default function AzureKeyVaultCreateIntegrationPage() {
 
   const [vaultBaseUrl, setVaultBaseUrl] = useState("");
   const [vaultBaseUrlErrorText, setVaultBaseUrlErrorText] = useState("");
+  const [initialSyncBehavior, setInitialSyncBehavior] = useState(
+    IntegrationSyncBehavior.PREFER_SOURCE
+  );
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -59,7 +75,10 @@ export default function AzureKeyVaultCreateIntegrationPage() {
         isActive: true,
         app: vaultBaseUrl,
         sourceEnvironment: selectedSourceEnvironment,
-        secretPath
+        secretPath,
+        metadata: {
+          initialSyncBehavior
+        }
       });
       setIsLoading(false);
 
@@ -106,6 +125,21 @@ export default function AzureKeyVaultCreateIntegrationPage() {
             value={vaultBaseUrl}
             onChange={(e) => setVaultBaseUrl(e.target.value)}
           />
+        </FormControl>
+        <FormControl label="Initial Sync Behavior">
+          <Select
+            value={initialSyncBehavior}
+            onValueChange={(e) => setInitialSyncBehavior(e as IntegrationSyncBehavior)}
+            className="w-full"
+          >
+            {initialSyncBehaviors.map((b) => {
+              return (
+                <SelectItem value={b.value} key={`sync-behavior-${b.value}`}>
+                  {b.label}
+                </SelectItem>
+              );
+            })}
+          </Select>
         </FormControl>
         <Button
           onClick={handleButtonClick}

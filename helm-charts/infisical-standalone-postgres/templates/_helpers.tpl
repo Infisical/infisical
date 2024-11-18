@@ -40,6 +40,23 @@ component: {{ .Values.infisical.name | quote }}
 {{ include "infisical.common.matchLabels" . }}
 {{- end -}}
 
+{{- define "infisical.roleName" -}}
+{{- printf "%s-infisical" .Release.Name -}}
+{{- end -}}
+
+{{- define "infisical.roleBindingName" -}}
+{{- printf "%s-infisical" .Release.Name -}}
+{{- end -}}
+
+{{- define "infisical.serviceAccountName" -}}
+{{- if .Values.infisical.serviceAccount.create -}}
+{{- printf "%s-infisical" .Release.Name -}}
+{{- else -}}
+{{- .Values.infisical.serviceAccount.name | default "default" -}}
+{{- end -}}
+{{- end -}}
+
+
 {{/*
 Create a fully qualified backend name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).

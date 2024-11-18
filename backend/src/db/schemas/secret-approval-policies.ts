@@ -14,7 +14,8 @@ export const SecretApprovalPoliciesSchema = z.object({
   approvals: z.number().default(1),
   envId: z.string().uuid(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  enforcementLevel: z.string().default("hard")
 });
 
 export type TSecretApprovalPolicies = z.infer<typeof SecretApprovalPoliciesSchema>;

@@ -1,30 +1,37 @@
 import { ForbiddenError } from "@casl/ability";
+import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
 import AWS from "aws-sdk";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding, TIntegrationAuths, TIntegrationAuthsInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { decryptSymmetric128BitHexKeyUTF8, encryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
-import { BadRequestError } from "@app/lib/errors";
-import { TProjectPermission } from "@app/lib/types";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { TGenericPermission, TProjectPermission } from "@app/lib/types";
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
-import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { KmsDataKey } from "../kms/kms-types";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { getApps } from "./integration-app-list";
 import { TIntegrationAuthDALFactory } from "./integration-auth-dal";
+import { IntegrationAuthMetadataSchema, TIntegrationAuthMetadata } from "./integration-auth-schema";
 import {
+  TBitbucketEnvironment,
   TBitbucketWorkspace,
   TChecklyGroups,
   TDeleteIntegrationAuthByIdDTO,
   TDeleteIntegrationAuthsDTO,
+  TDuplicateGithubIntegrationAuthDTO,
   TGetIntegrationAuthDTO,
   TGetIntegrationAuthTeamCityBuildConfigDTO,
   THerokuPipelineCoupling,
   TIntegrationAuthAppsDTO,
   TIntegrationAuthAwsKmsKeyDTO,
+  TIntegrationAuthBitbucketEnvironmentsDTO,
   TIntegrationAuthBitbucketWorkspaceDTO,
   TIntegrationAuthChecklyGroupsDTO,
   TIntegrationAuthGithubEnvsDTO,
@@ -53,8 +60,8 @@ type TIntegrationAuthServiceFactoryDep = {
   integrationAuthDAL: TIntegrationAuthDALFactory;
   integrationDAL: Pick<TIntegrationDALFactory, "delete">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
-  projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
 export type TIntegrationAuthServiceFactory = ReturnType<typeof integrationAuthServiceFactory>;
@@ -63,8 +70,8 @@ export const integrationAuthServiceFactory = ({
   permissionService,
   integrationAuthDAL,
   integrationDAL,
-  projectBotDAL,
-  projectBotService
+  projectBotService,
+  kmsService
 }: TIntegrationAuthServiceFactoryDep) => {
   const listIntegrationAuthByProjectId = async ({
     actorId,
@@ -85,9 +92,27 @@ export const integrationAuthServiceFactory = ({
     return authorizations;
   };
 
+  const listOrgIntegrationAuth = async ({ actorId, actor, actorOrgId, actorAuthMethod }: TGenericPermission) => {
+    const authorizations = await integrationAuthDAL.getByOrg(actorOrgId as string);
+
+    return Promise.all(
+      authorizations.filter(async (auth) => {
+        const { permission } = await permissionService.getProjectPermission(
+          actor,
+          actorId,
+          auth.projectId,
+          actorAuthMethod,
+          actorOrgId
+        );
+
+        return permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
+      })
+    );
+  };
+
   const getIntegrationAuth = async ({ actor, id, actorId, actorAuthMethod, actorOrgId }: TGetIntegrationAuthDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
-    if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
+    if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -108,7 +133,8 @@ export const integrationAuthServiceFactory = ({
     actorAuthMethod,
     integration,
     url,
-    code
+    code,
+    installationId
   }: TOauthExchangeDTO) => {
     if (!Object.values(Integrations).includes(integration as Integrations))
       throw new BadRequestError({ message: "Invalid integration" });
@@ -122,10 +148,7 @@ export const integrationAuthServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
 
-    const bot = await projectBotDAL.findOne({ isActive: true, projectId });
-    if (!bot) throw new BadRequestError({ message: "Bot must be enabled for oauth2 code token exchange" });
-
-    const tokenExchange = await exchangeCode({ integration, code, url });
+    const tokenExchange = await exchangeCode({ integration, code, url, installationId });
     const updateDoc: TIntegrationAuthsInsert = {
       projectId,
       integration,
@@ -143,27 +166,68 @@ export const integrationAuthServiceFactory = ({
       updateDoc.metadata = {
         authMethod: "oauth2"
       };
+    } else if (integration === Integrations.GITHUB && installationId) {
+      updateDoc.metadata = {
+        installationId,
+        installationName: tokenExchange.installationName,
+        authMethod: "app"
+      };
     }
 
-    const key = await projectBotService.getBotKey(projectId);
-    if (tokenExchange.refreshToken) {
-      const refreshEncToken = encryptSymmetric128BitHexKeyUTF8(tokenExchange.refreshToken, key);
-      updateDoc.refreshIV = refreshEncToken.iv;
-      updateDoc.refreshTag = refreshEncToken.tag;
-      updateDoc.refreshCiphertext = refreshEncToken.ciphertext;
+    if (installationId && integration === Integrations.GITHUB) {
+      return integrationAuthDAL.create(updateDoc);
     }
-    if (tokenExchange.accessToken) {
-      const accessEncToken = encryptSymmetric128BitHexKeyUTF8(tokenExchange.accessToken, key);
-      updateDoc.accessIV = accessEncToken.iv;
-      updateDoc.accessTag = accessEncToken.tag;
-      updateDoc.accessCiphertext = accessEncToken.ciphertext;
+
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(projectId);
+    if (shouldUseSecretV2Bridge) {
+      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+      if (tokenExchange.refreshToken) {
+        const refreshEncToken = secretManagerEncryptor({
+          plainText: Buffer.from(tokenExchange.refreshToken)
+        }).cipherTextBlob;
+        updateDoc.encryptedRefresh = refreshEncToken;
+      }
+      if (tokenExchange.accessToken) {
+        const accessToken = secretManagerEncryptor({
+          plainText: Buffer.from(tokenExchange.accessToken)
+        }).cipherTextBlob;
+        updateDoc.encryptedAccess = accessToken;
+      }
+    } else {
+      if (!botKey) throw new NotFoundError({ message: `Project bot key for project with ID '${projectId}' not found` });
+      if (tokenExchange.refreshToken) {
+        const refreshEncToken = encryptSymmetric128BitHexKeyUTF8(tokenExchange.refreshToken, botKey);
+        updateDoc.refreshIV = refreshEncToken.iv;
+        updateDoc.refreshTag = refreshEncToken.tag;
+        updateDoc.refreshCiphertext = refreshEncToken.ciphertext;
+      }
+      if (tokenExchange.accessToken) {
+        const accessEncToken = encryptSymmetric128BitHexKeyUTF8(tokenExchange.accessToken, botKey);
+        updateDoc.accessIV = accessEncToken.iv;
+        updateDoc.accessTag = accessEncToken.tag;
+        updateDoc.accessCiphertext = accessEncToken.ciphertext;
+      }
     }
+
     return integrationAuthDAL.transaction(async (tx) => {
-      const doc = await integrationAuthDAL.findOne({ projectId, integration }, tx);
-      if (!doc) {
+      const integrationAuths = await integrationAuthDAL.find({ projectId, integration }, { tx });
+      let existingIntegrationAuth: TIntegrationAuths | undefined;
+
+      // we need to ensure that the integration auth that we use for Github is actually Oauth
+      if (integration === Integrations.GITHUB) {
+        existingIntegrationAuth = integrationAuths.find((integAuth) => !integAuth.metadata);
+      } else {
+        [existingIntegrationAuth] = integrationAuths;
+      }
+
+      if (!existingIntegrationAuth) {
         return integrationAuthDAL.create(updateDoc, tx);
       }
-      return integrationAuthDAL.updateById(doc.id, updateDoc, tx);
+
+      return integrationAuthDAL.updateById(existingIntegrationAuth.id, updateDoc, tx);
     });
   };
 
@@ -178,7 +242,8 @@ export const integrationAuthServiceFactory = ({
     actorAuthMethod,
     accessId,
     namespace,
-    accessToken
+    accessToken,
+    awsAssumeIamRoleArn
   }: TSaveIntegrationAccessTokenDTO) => {
     if (!Object.values(Integrations).includes(integration as Integrations))
       throw new BadRequestError({ message: "Invalid integration" });
@@ -191,9 +256,6 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
-
-    const bot = await projectBotDAL.findOne({ isActive: true, projectId });
-    if (!bot) throw new BadRequestError({ message: "Bot must be enabled for oauth2 code token exchange" });
 
     const updateDoc: TIntegrationAuthsInsert = {
       projectId,
@@ -211,95 +273,218 @@ export const integrationAuthServiceFactory = ({
         : {})
     };
 
-    const key = await projectBotService.getBotKey(projectId);
-    if (refreshToken) {
-      const tokenDetails = await exchangeRefresh(
-        integration,
-        refreshToken,
-        url,
-        updateDoc.metadata as Record<string, string>
-      );
-      const refreshEncToken = encryptSymmetric128BitHexKeyUTF8(tokenDetails.refreshToken, key);
-      updateDoc.refreshIV = refreshEncToken.iv;
-      updateDoc.refreshTag = refreshEncToken.tag;
-      updateDoc.refreshCiphertext = refreshEncToken.ciphertext;
-      const accessEncToken = encryptSymmetric128BitHexKeyUTF8(tokenDetails.accessToken, key);
-      updateDoc.accessIV = accessEncToken.iv;
-      updateDoc.accessTag = accessEncToken.tag;
-      updateDoc.accessCiphertext = accessEncToken.ciphertext;
-      updateDoc.accessExpiresAt = tokenDetails.accessExpiresAt;
-    }
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(projectId);
+    if (shouldUseSecretV2Bridge) {
+      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+      if (refreshToken) {
+        const tokenDetails = await exchangeRefresh(
+          integration,
+          refreshToken,
+          url,
+          updateDoc.metadata as Record<string, string>
+        );
+        const refreshEncToken = secretManagerEncryptor({
+          plainText: Buffer.from(tokenDetails.refreshToken)
+        }).cipherTextBlob;
+        updateDoc.encryptedRefresh = refreshEncToken;
 
-    if (!refreshToken && (accessId || accessToken)) {
-      if (accessToken) {
-        const accessEncToken = encryptSymmetric128BitHexKeyUTF8(accessToken, key);
+        const accessEncToken = secretManagerEncryptor({
+          plainText: Buffer.from(tokenDetails.accessToken)
+        }).cipherTextBlob;
+        updateDoc.encryptedAccess = accessEncToken;
+        updateDoc.accessExpiresAt = tokenDetails.accessExpiresAt;
+      }
+
+      if (!refreshToken && (accessId || accessToken || awsAssumeIamRoleArn)) {
+        if (accessToken) {
+          const accessEncToken = secretManagerEncryptor({
+            plainText: Buffer.from(accessToken)
+          }).cipherTextBlob;
+          updateDoc.encryptedAccess = accessEncToken;
+        }
+        if (accessId) {
+          const accessEncToken = secretManagerEncryptor({
+            plainText: Buffer.from(accessId)
+          }).cipherTextBlob;
+          updateDoc.encryptedAccessId = accessEncToken;
+        }
+        if (awsAssumeIamRoleArn) {
+          const awsAssumeIamRoleArnEncrypted = secretManagerEncryptor({
+            plainText: Buffer.from(awsAssumeIamRoleArn)
+          }).cipherTextBlob;
+          updateDoc.encryptedAwsAssumeIamRoleArn = awsAssumeIamRoleArnEncrypted;
+        }
+      }
+    } else {
+      if (!botKey) throw new NotFoundError({ message: `Project bot key for project with ID '${projectId}' not found` });
+      if (refreshToken) {
+        const tokenDetails = await exchangeRefresh(
+          integration,
+          refreshToken,
+          url,
+          updateDoc.metadata as Record<string, string>
+        );
+        const refreshEncToken = encryptSymmetric128BitHexKeyUTF8(tokenDetails.refreshToken, botKey);
+        updateDoc.refreshIV = refreshEncToken.iv;
+        updateDoc.refreshTag = refreshEncToken.tag;
+        updateDoc.refreshCiphertext = refreshEncToken.ciphertext;
+        const accessEncToken = encryptSymmetric128BitHexKeyUTF8(tokenDetails.accessToken, botKey);
         updateDoc.accessIV = accessEncToken.iv;
         updateDoc.accessTag = accessEncToken.tag;
         updateDoc.accessCiphertext = accessEncToken.ciphertext;
+
+        updateDoc.accessExpiresAt = tokenDetails.accessExpiresAt;
       }
-      if (accessId) {
-        const accessEncToken = encryptSymmetric128BitHexKeyUTF8(accessId, key);
-        updateDoc.accessIdIV = accessEncToken.iv;
-        updateDoc.accessIdTag = accessEncToken.tag;
-        updateDoc.accessIdCiphertext = accessEncToken.ciphertext;
+
+      if (!refreshToken && (accessId || accessToken || awsAssumeIamRoleArn)) {
+        if (accessToken) {
+          const accessEncToken = encryptSymmetric128BitHexKeyUTF8(accessToken, botKey);
+          updateDoc.accessIV = accessEncToken.iv;
+          updateDoc.accessTag = accessEncToken.tag;
+          updateDoc.accessCiphertext = accessEncToken.ciphertext;
+        }
+        if (accessId) {
+          const accessEncToken = encryptSymmetric128BitHexKeyUTF8(accessId, botKey);
+          updateDoc.accessIdIV = accessEncToken.iv;
+          updateDoc.accessIdTag = accessEncToken.tag;
+          updateDoc.accessIdCiphertext = accessEncToken.ciphertext;
+        }
+        if (awsAssumeIamRoleArn) {
+          const awsAssumeIamRoleArnEnc = encryptSymmetric128BitHexKeyUTF8(awsAssumeIamRoleArn, botKey);
+          updateDoc.awsAssumeIamRoleArnCipherText = awsAssumeIamRoleArnEnc.ciphertext;
+          updateDoc.awsAssumeIamRoleArnIV = awsAssumeIamRoleArnEnc.iv;
+          updateDoc.awsAssumeIamRoleArnTag = awsAssumeIamRoleArnEnc.tag;
+        }
       }
     }
     return integrationAuthDAL.create(updateDoc);
   };
 
   // helper function
-  const getIntegrationAccessToken = async (integrationAuth: TIntegrationAuths, botKey: string) => {
+  const getIntegrationAccessToken = async (
+    integrationAuth: TIntegrationAuths,
+    shouldUseSecretV2Bridge: boolean,
+    botKey?: string
+  ) => {
     let accessToken: string | undefined;
     let accessId: string | undefined;
-    if (integrationAuth.accessTag && integrationAuth.accessIV && integrationAuth.accessCiphertext) {
-      accessToken = decryptSymmetric128BitHexKeyUTF8({
-        ciphertext: integrationAuth.accessCiphertext,
-        iv: integrationAuth.accessIV,
-        tag: integrationAuth.accessTag,
-        key: botKey
-      });
+    // this means its not access token based
+    if (
+      (integrationAuth.integration === Integrations.AWS_SECRET_MANAGER ||
+        integrationAuth.integration === Integrations.AWS_PARAMETER_STORE) &&
+      (shouldUseSecretV2Bridge
+        ? integrationAuth.encryptedAwsAssumeIamRoleArn
+        : integrationAuth.awsAssumeIamRoleArnCipherText)
+    ) {
+      return { accessToken: "", accessId: "" };
+    }
+    if (
+      integrationAuth.integration === Integrations.GITHUB &&
+      IntegrationAuthMetadataSchema.parse(integrationAuth.metadata || {}).installationId
+    ) {
+      return { accessToken: "", accessId: "" };
     }
 
-    if (integrationAuth.refreshCiphertext && integrationAuth.refreshIV && integrationAuth.refreshTag) {
-      const refreshToken = decryptSymmetric128BitHexKeyUTF8({
-        key: botKey,
-        ciphertext: integrationAuth.refreshCiphertext,
-        iv: integrationAuth.refreshIV,
-        tag: integrationAuth.refreshTag
-      });
+    if (shouldUseSecretV2Bridge) {
+      const { decryptor: secretManagerDecryptor, encryptor: secretManagerEncryptor } =
+        await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId: integrationAuth.projectId
+        });
+      if (integrationAuth.encryptedAccess) {
+        accessToken = secretManagerDecryptor({ cipherTextBlob: integrationAuth.encryptedAccess }).toString();
+      }
 
-      if (integrationAuth.accessExpiresAt && integrationAuth.accessExpiresAt < new Date()) {
-        // refer above it contains same logic except not saving
-        const tokenDetails = await exchangeRefresh(
-          integrationAuth.integration,
-          refreshToken,
-          integrationAuth?.url,
-          integrationAuth.metadata as Record<string, string>
-        );
-        const refreshEncToken = encryptSymmetric128BitHexKeyUTF8(tokenDetails.refreshToken, botKey);
-        const accessEncToken = encryptSymmetric128BitHexKeyUTF8(tokenDetails.accessToken, botKey);
-        accessToken = tokenDetails.accessToken;
-        await integrationAuthDAL.updateById(integrationAuth.id, {
-          refreshIV: refreshEncToken.iv,
-          refreshTag: refreshEncToken.tag,
-          refreshCiphertext: refreshEncToken.ciphertext,
-          accessExpiresAt: tokenDetails.accessExpiresAt,
-          accessIV: accessEncToken.iv,
-          accessTag: accessEncToken.tag,
-          accessCiphertext: accessEncToken.ciphertext
+      if (integrationAuth.encryptedRefresh) {
+        const refreshToken = secretManagerDecryptor({ cipherTextBlob: integrationAuth.encryptedRefresh }).toString();
+
+        if (integrationAuth.accessExpiresAt && integrationAuth.accessExpiresAt < new Date()) {
+          // refer above it contains same logic except not saving
+          const tokenDetails = await exchangeRefresh(
+            integrationAuth.integration,
+            refreshToken,
+            integrationAuth?.url,
+            integrationAuth.metadata as Record<string, string>
+          );
+          const encryptedRefresh = secretManagerEncryptor({
+            plainText: Buffer.from(tokenDetails.refreshToken)
+          }).cipherTextBlob;
+          const encryptedAccess = secretManagerEncryptor({
+            plainText: Buffer.from(tokenDetails.accessToken)
+          }).cipherTextBlob;
+          accessToken = tokenDetails.accessToken;
+          await integrationAuthDAL.updateById(integrationAuth.id, {
+            accessExpiresAt: tokenDetails.accessExpiresAt,
+            encryptedRefresh,
+            encryptedAccess
+          });
+        }
+      }
+      if (!accessToken) throw new BadRequestError({ message: "Missing access token" });
+
+      if (integrationAuth.encryptedAccessId) {
+        accessId = secretManagerDecryptor({
+          cipherTextBlob: integrationAuth.encryptedAccessId
+        }).toString();
+      }
+
+      // the old bot key is else
+    } else {
+      if (!botKey) throw new NotFoundError({ message: "Project bot key not found" });
+      if (integrationAuth.accessTag && integrationAuth.accessIV && integrationAuth.accessCiphertext) {
+        accessToken = decryptSymmetric128BitHexKeyUTF8({
+          ciphertext: integrationAuth.accessCiphertext,
+          iv: integrationAuth.accessIV,
+          tag: integrationAuth.accessTag,
+          key: botKey
+        });
+      }
+
+      if (integrationAuth.refreshCiphertext && integrationAuth.refreshIV && integrationAuth.refreshTag) {
+        const refreshToken = decryptSymmetric128BitHexKeyUTF8({
+          key: botKey,
+          ciphertext: integrationAuth.refreshCiphertext,
+          iv: integrationAuth.refreshIV,
+          tag: integrationAuth.refreshTag
+        });
+
+        if (integrationAuth.accessExpiresAt && integrationAuth.accessExpiresAt < new Date()) {
+          // refer above it contains same logic except not saving
+          const tokenDetails = await exchangeRefresh(
+            integrationAuth.integration,
+            refreshToken,
+            integrationAuth?.url,
+            integrationAuth.metadata as Record<string, string>
+          );
+          const refreshEncToken = encryptSymmetric128BitHexKeyUTF8(tokenDetails.refreshToken, botKey);
+          const accessEncToken = encryptSymmetric128BitHexKeyUTF8(tokenDetails.accessToken, botKey);
+          accessToken = tokenDetails.accessToken;
+          await integrationAuthDAL.updateById(integrationAuth.id, {
+            refreshIV: refreshEncToken.iv,
+            refreshTag: refreshEncToken.tag,
+            refreshCiphertext: refreshEncToken.ciphertext,
+            accessExpiresAt: tokenDetails.accessExpiresAt,
+            accessIV: accessEncToken.iv,
+            accessTag: accessEncToken.tag,
+            accessCiphertext: accessEncToken.ciphertext
+          });
+        }
+      }
+      if (!accessToken) throw new BadRequestError({ message: "Missing access token" });
+
+      if (integrationAuth.accessIdTag && integrationAuth.accessIdIV && integrationAuth.accessIdCiphertext) {
+        accessId = decryptSymmetric128BitHexKeyUTF8({
+          key: botKey,
+          ciphertext: integrationAuth.accessIdCiphertext,
+          iv: integrationAuth.accessIdIV,
+          tag: integrationAuth.accessIdTag
         });
       }
     }
-    if (!accessToken) throw new BadRequestError({ message: "Missing access token" });
 
-    if (integrationAuth.accessIdTag && integrationAuth.accessIdIV && integrationAuth.accessIdCiphertext) {
-      accessId = decryptSymmetric128BitHexKeyUTF8({
-        key: botKey,
-        ciphertext: integrationAuth.accessIdCiphertext,
-        iv: integrationAuth.accessIdIV,
-        tag: integrationAuth.accessIdTag
-      });
-    }
     return { accessId, accessToken };
   };
 
@@ -309,11 +494,12 @@ export const integrationAuthServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     teamId,
+    azureDevOpsOrgName,
     id,
     workspaceSlug
   }: TIntegrationAuthAppsDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
-    if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
+    if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -324,13 +510,15 @@ export const integrationAuthServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
 
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken, accessId } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken, accessId } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
     const apps = await getApps({
       integration: integrationAuth.integration,
+      integrationAuth,
       accessToken,
       accessId,
       teamId,
+      azureDevOpsOrgName,
       workspaceSlug,
       url: integrationAuth.url
     });
@@ -345,7 +533,7 @@ export const integrationAuthServiceFactory = ({
     id
   }: TIntegrationAuthTeamsDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
-    if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
+    if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -356,8 +544,8 @@ export const integrationAuthServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
 
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
     const teams = await getTeams({
       integration: integrationAuth.integration,
       accessToken,
@@ -375,7 +563,7 @@ export const integrationAuthServiceFactory = ({
     actorOrgId
   }: TIntegrationAuthVercelBranchesDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
-    if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
+    if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -385,8 +573,8 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
 
     if (appId) {
       const { data } = await request.get<TVercelBranches[]>(
@@ -416,7 +604,7 @@ export const integrationAuthServiceFactory = ({
     accountId
   }: TIntegrationAuthChecklyGroupsDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
-    if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
+    if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -426,8 +614,8 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
     if (accountId) {
       const { data } = await request.get<TChecklyGroups[]>(`${IntegrationUrls.CHECKLY_API_URL}/v1/check-groups`, {
         headers: {
@@ -442,8 +630,9 @@ export const integrationAuthServiceFactory = ({
   };
 
   const getGithubOrgs = async ({ actorId, actor, actorOrgId, actorAuthMethod, id }: TIntegrationAuthGithubOrgsDTO) => {
+    const appCfg = getConfig();
     const integrationAuth = await integrationAuthDAL.findById(id);
-    if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
+    if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -453,10 +642,45 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
 
-    const octokit = new Octokit({
+    let octokit: Octokit;
+    const { installationId } = (integrationAuth.metadata as TIntegrationAuthMetadata) || {};
+    if (installationId) {
+      octokit = new Octokit({
+        authStrategy: createAppAuth,
+        auth: {
+          appId: appCfg.CLIENT_APP_ID_GITHUB_APP,
+          privateKey: appCfg.CLIENT_PRIVATE_KEY_GITHUB_APP,
+          installationId
+        }
+      });
+
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+      const repos = await octokit.paginate("GET /installation/repositories", {
+        per_page: 100
+      });
+
+      const orgSet: Set<string> = new Set();
+
+      return repos
+        .filter((repo) => repo.owner.type === "Organization")
+        .map((repo) => ({
+          name: repo.owner.login,
+          orgId: String(repo.owner.id)
+        }))
+        .filter((org) => {
+          const isOrgProcessed = orgSet.has(org.orgId);
+          if (!isOrgProcessed) {
+            orgSet.add(org.orgId);
+          }
+
+          return !isOrgProcessed;
+        });
+    }
+
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
+    octokit = new Octokit({
       auth: accessToken
     });
 
@@ -465,7 +689,9 @@ export const integrationAuthServiceFactory = ({
         "X-GitHub-Api-Version": "2022-11-28"
       }
     });
-    if (!data) return [];
+    if (!data) {
+      return [];
+    }
 
     return data.map(({ login: name, id: orgId }) => ({ name, orgId: String(orgId) }));
   };
@@ -480,7 +706,7 @@ export const integrationAuthServiceFactory = ({
     repoName
   }: TIntegrationAuthGithubEnvsDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
-    if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
+    if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -490,12 +716,27 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
 
-    const octokit = new Octokit({
-      auth: accessToken
-    });
+    let octokit: Octokit;
+    const appCfg = getConfig();
+
+    const authMetadata = IntegrationAuthMetadataSchema.parse(integrationAuth.metadata || {});
+    if (authMetadata.installationId) {
+      octokit = new Octokit({
+        authStrategy: createAppAuth,
+        auth: {
+          appId: appCfg.CLIENT_APP_ID_GITHUB_APP,
+          privateKey: appCfg.CLIENT_PRIVATE_KEY_GITHUB_APP,
+          installationId: authMetadata.installationId
+        }
+      });
+    } else {
+      octokit = new Octokit({
+        auth: accessToken
+      });
+    }
 
     const {
       data: { environments }
@@ -512,7 +753,7 @@ export const integrationAuthServiceFactory = ({
 
   const getQoveryOrgs = async ({ actorId, actor, actorOrgId, actorAuthMethod, id }: TIntegrationAuthQoveryOrgsDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
-    if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
+    if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -522,8 +763,8 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
     const { data } = await request.get<{ results: Array<{ id: string; name: string }> }>(
       `${IntegrationUrls.QOVERY_API_URL}/organization`,
       {
@@ -546,7 +787,7 @@ export const integrationAuthServiceFactory = ({
     region
   }: TIntegrationAuthAwsKmsKeyDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
-    if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
+    if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -556,17 +797,17 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessId, accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessId, accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
 
-    AWS.config.update({
+    const kms = new AWS.KMS({
       region,
       credentials: {
         accessKeyId: String(accessId),
         secretAccessKey: accessToken
       }
     });
-    const kms = new AWS.KMS();
+
     const aliases = await kms.listAliases({}).promise();
 
     const keyAliases = aliases.Aliases!.filter((alias) => {
@@ -604,7 +845,7 @@ export const integrationAuthServiceFactory = ({
     orgId
   }: TIntegrationAuthQoveryProjectDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
-    if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
+    if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -614,8 +855,8 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
     if (orgId) {
       const { data } = await request.get<{ results: Array<{ id: string; name: string }> }>(
         `${IntegrationUrls.QOVERY_API_URL}/organization/${orgId}/project`,
@@ -640,7 +881,7 @@ export const integrationAuthServiceFactory = ({
     actorOrgId
   }: TIntegrationAuthQoveryEnvironmentsDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
-    if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
+    if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -650,8 +891,8 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
     if (projectId && projectId !== "none") {
       // TODO: fix
       const { data } = await request.get<{ results: { id: string; name: string }[] }>(
@@ -681,7 +922,7 @@ export const integrationAuthServiceFactory = ({
     environmentId
   }: TIntegrationAuthQoveryScopesDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
-    if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
+    if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -691,8 +932,8 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
     if (environmentId) {
       const { data } = await request.get<{ results: { id: string; name: string }[] }>(
         `${IntegrationUrls.QOVERY_API_URL}/environment/${environmentId}/application`,
@@ -721,7 +962,7 @@ export const integrationAuthServiceFactory = ({
     environmentId
   }: TIntegrationAuthQoveryScopesDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
-    if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
+    if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -731,8 +972,8 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
     if (environmentId) {
       const { data } = await request.get<{ results: { id: string; name: string }[] }>(
         `${IntegrationUrls.QOVERY_API_URL}/environment/${environmentId}/container`,
@@ -761,7 +1002,7 @@ export const integrationAuthServiceFactory = ({
     environmentId
   }: TIntegrationAuthQoveryScopesDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
-    if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
+    if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID ${id} not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -771,8 +1012,8 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
     if (environmentId) {
       const { data } = await request.get<{ results: { id: string; name: string }[] }>(
         `${IntegrationUrls.QOVERY_API_URL}/environment/${environmentId}/job`,
@@ -800,7 +1041,7 @@ export const integrationAuthServiceFactory = ({
     actorOrgId
   }: TIntegrationAuthHerokuPipelinesDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
-    if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
+    if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -810,8 +1051,8 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
 
     const { data } = await request.get<THerokuPipelineCoupling[]>(
       `${IntegrationUrls.HEROKU_API_URL}/pipeline-couplings`,
@@ -840,7 +1081,7 @@ export const integrationAuthServiceFactory = ({
     appId
   }: TIntegrationAuthRailwayEnvDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
-    if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
+    if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -850,8 +1091,8 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
     if (appId) {
       const query = `
 			query GetEnvironments($projectId: String!, $after: String, $before: String, $first: Int, $isEphemeral: Boolean, $last: Int) {
@@ -908,7 +1149,7 @@ export const integrationAuthServiceFactory = ({
     appId
   }: TIntegrationAuthRailwayServicesDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
-    if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
+    if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -918,8 +1159,8 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
 
     if (appId && appId !== "") {
       const query = `
@@ -982,7 +1223,7 @@ export const integrationAuthServiceFactory = ({
     id
   }: TIntegrationAuthBitbucketWorkspaceDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
-    if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
+    if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -992,8 +1233,8 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
     const workspaces: TBitbucketWorkspace[] = [];
     let hasNextPage = true;
     let workspaceUrl = `${IntegrationUrls.BITBUCKET_API_URL}/2.0/workspaces`;
@@ -1022,16 +1263,17 @@ export const integrationAuthServiceFactory = ({
     return workspaces;
   };
 
-  const getNorthFlankSecretGroups = async ({
-    id,
-    actor,
+  const getBitbucketEnvironments = async ({
+    workspaceSlug,
+    repoSlug,
     actorId,
+    actor,
     actorOrgId,
     actorAuthMethod,
-    appId
-  }: TIntegrationAuthNorthflankSecretGroupDTO) => {
+    id
+  }: TIntegrationAuthBitbucketEnvironmentsDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
-    if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
+    if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -1041,8 +1283,56 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
+    const environments: TBitbucketEnvironment[] = [];
+    let hasNextPage = true;
+
+    let environmentsUrl = `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${workspaceSlug}/${repoSlug}/environments`;
+
+    while (hasNextPage) {
+      // eslint-disable-next-line
+      const { data }: { data: { values: TBitbucketEnvironment[]; next: string } } = await request.get(environmentsUrl, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Accept-Encoding": "application/json"
+        }
+      });
+
+      if (data?.values.length > 0) {
+        environments.push(...data.values);
+      }
+
+      if (data.next) {
+        environmentsUrl = data.next;
+      } else {
+        hasNextPage = false;
+      }
+    }
+    return environments;
+  };
+
+  const getNorthFlankSecretGroups = async ({
+    id,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    appId
+  }: TIntegrationAuthNorthflankSecretGroupDTO) => {
+    const integrationAuth = await integrationAuthDAL.findById(id);
+    if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
     const secretGroups: { name: string; groupId: string }[] = [];
 
     if (appId) {
@@ -1099,7 +1389,7 @@ export const integrationAuthServiceFactory = ({
     actor
   }: TGetIntegrationAuthTeamCityBuildConfigDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
-    if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
+    if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -1109,8 +1399,8 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
     if (appId) {
       const {
         data: { buildType }
@@ -1161,7 +1451,7 @@ export const integrationAuthServiceFactory = ({
     actorOrgId
   }: TDeleteIntegrationAuthByIdDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
-    if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
+    if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -1174,7 +1464,7 @@ export const integrationAuthServiceFactory = ({
 
     const delIntegrationAuth = await integrationAuthDAL.transaction(async (tx) => {
       const doc = await integrationAuthDAL.deleteById(integrationAuth.id, tx);
-      if (!doc) throw new BadRequestError({ message: "Faled to find integration" });
+      if (!doc) throw new NotFoundError({ message: `Integration auth with ID '${integrationAuth.id}' not found` });
       await integrationDAL.delete({ integrationAuthId: doc.id }, tx);
       return doc;
     });
@@ -1182,8 +1472,58 @@ export const integrationAuthServiceFactory = ({
     return delIntegrationAuth;
   };
 
+  // At the moment, we only use this for Github App integration as it's a special case
+  const duplicateIntegrationAuth = async ({
+    id,
+    actorId,
+    actor,
+    actorAuthMethod,
+    actorOrgId,
+    projectId
+  }: TDuplicateGithubIntegrationAuthDTO) => {
+    const integrationAuth = await integrationAuthDAL.findById(id);
+    if (!integrationAuth) {
+      throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
+    }
+
+    const { permission: sourcePermission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(sourcePermission).throwUnlessCan(
+      ProjectPermissionActions.Create,
+      ProjectPermissionSub.Integrations
+    );
+
+    const { permission: targetPermission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(targetPermission).throwUnlessCan(
+      ProjectPermissionActions.Create,
+      ProjectPermissionSub.Integrations
+    );
+
+    const newIntegrationAuth: Omit<typeof integrationAuth, "id"> & { id?: string } = {
+      ...integrationAuth,
+      id: undefined,
+      projectId
+    };
+
+    return integrationAuthDAL.create(newIntegrationAuth);
+  };
+
   return {
     listIntegrationAuthByProjectId,
+    listOrgIntegrationAuth,
     getIntegrationOptions,
     getIntegrationAuth,
     oauthExchange,
@@ -1210,6 +1550,8 @@ export const integrationAuthServiceFactory = ({
     getNorthFlankSecretGroups,
     getTeamcityBuildConfigs,
     getBitbucketWorkspaces,
-    getIntegrationAccessToken
+    getBitbucketEnvironments,
+    getIntegrationAccessToken,
+    duplicateIntegrationAuth
   };
 };

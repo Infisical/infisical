@@ -1,11 +1,24 @@
-import { useQuery, UseQueryOptions } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { TServerConfig } from "./types";
+import { User } from "../types";
+import {
+  AdminGetUsersFilters,
+  AdminSlackConfig,
+  TGetServerRootKmsEncryptionDetails,
+  TServerConfig
+} from "./types";
+
+export const adminStandaloneKeys = {
+  getUsers: "get-users"
+};
 
 export const adminQueryKeys = {
-  serverConfig: () => ["server-config"] as const
+  serverConfig: () => ["server-config"] as const,
+  getUsers: (filters: AdminGetUsersFilters) => [adminStandaloneKeys.getUsers, { filters }] as const,
+  getAdminSlackConfig: () => ["admin-slack-config"] as const,
+  getServerEncryptionStrategies: () => ["server-encryption-strategies"] as const
 };
 
 const fetchServerConfig = async () => {
@@ -32,3 +45,50 @@ export const useGetServerConfig = ({
     ...options,
     enabled: options?.enabled ?? true
   });
+
+export const useAdminGetUsers = (filters: AdminGetUsersFilters) => {
+  return useInfiniteQuery({
+    queryKey: adminQueryKeys.getUsers(filters),
+    queryFn: async ({ pageParam }) => {
+      const { data } = await apiRequest.get<{ users: User[] }>(
+        "/api/v1/admin/user-management/users",
+        {
+          params: {
+            ...filters,
+            offset: pageParam
+          }
+        }
+      );
+
+      return data.users;
+    },
+    getNextPageParam: (lastPage, pages) =>
+      lastPage.length !== 0 ? pages.length * filters.limit : undefined
+  });
+};
+
+export const useGetAdminSlackConfig = () => {
+  return useQuery({
+    queryKey: adminQueryKeys.getAdminSlackConfig(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<AdminSlackConfig>(
+        "/api/v1/admin/integrations/slack/config"
+      );
+
+      return data;
+    }
+  });
+};
+
+export const useGetServerRootKmsEncryptionDetails = () => {
+  return useQuery({
+    queryKey: adminQueryKeys.getServerEncryptionStrategies(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TGetServerRootKmsEncryptionDetails>(
+        "/api/v1/admin/encryption-strategies"
+      );
+
+      return data;
+    }
+  });
+};

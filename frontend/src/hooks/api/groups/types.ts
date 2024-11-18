@@ -4,7 +4,7 @@ import { TOrgRole } from "../roles/types";
 
 export type TGroupOrgMembership = TGroup & {
   customRole?: TOrgRole;
-}
+};
 
 export type TGroup = {
   id: string;
@@ -33,4 +33,11 @@ export type TGroupMembership = {
   }[];
   createdAt: string;
   updatedAt: string;
+};
+
+export type TGroupWithProjectMemberships = {
+  id: string;
+  name: string;
+  slug: string;
+  orgId: string;
 };

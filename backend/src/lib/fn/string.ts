@@ -9,3 +9,8 @@ export const removeTrailingSlash = (str: string) => {
 
   return str.endsWith("/") ? str.slice(0, -1) : str;
 };
+
+export const prefixWithSlash = (str: string) => {
+  if (str.startsWith("/")) return str;
+  return `/${str}`;
+};

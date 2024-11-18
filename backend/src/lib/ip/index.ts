@@ -1,6 +1,6 @@
 import net from "node:net";
 
-import { UnauthorizedError } from "../errors";
+import { ForbiddenRequestError } from "../errors";
 
 export enum IPType {
   IPV4 = "ipv4",
@@ -126,7 +126,7 @@ export const checkIPAgainstBlocklist = ({ ipAddress, trustedIps }: { ipAddress: 
   const check = blockList.check(ipAddress, type);
 
   if (!check)
-    throw new UnauthorizedError({
-      message: "Failed to authenticate"
+    throw new ForbiddenRequestError({
+      message: "You are not allowed to access this resource from the current IP address"
     });
 };

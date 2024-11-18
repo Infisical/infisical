@@ -5,7 +5,7 @@ import jwt, { JwtPayload } from "jsonwebtoken";
 import { TServiceTokens, TUsers } from "@app/db/schemas";
 import { TScimTokenJwtPayload } from "@app/ee/services/scim/scim-types";
 import { getConfig } from "@app/lib/config/env";
-import { UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError } from "@app/lib/errors";
 import { ActorType, AuthMethod, AuthMode, AuthModeJwtTokenPayload, AuthTokenType } from "@app/services/auth/auth-type";
 import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
 
@@ -18,6 +18,7 @@ export type TAuthMode =
       user: TUsers;
       orgId: string;
       authMethod: AuthMethod;
+      isMfaVerified?: boolean;
     }
   | {
       authMode: AuthMode.API_KEY;
@@ -57,7 +58,6 @@ const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
     return { authMode: AuthMode.API_KEY, token: apiKey, actor: ActorType.USER } as const;
   }
   const authHeader = req.headers?.authorization;
-
   if (!authHeader) return { authMode: null, token: null };
 
   const authTokenValue = authHeader.slice(7); // slice of after Bearer
@@ -103,11 +103,12 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
   server.decorateRequest("auth", null);
   server.addHook("onRequest", async (req) => {
     const appCfg = getConfig();
-    const { authMode, token, actor } = await extractAuth(req, appCfg.AUTH_SECRET);
 
-    if (req.url.includes("/api/v3/auth/")) {
+    if (req.url.includes(".well-known/est") || req.url.includes("/api/v3/auth/")) {
       return;
     }
+
+    const { authMode, token, actor } = await extractAuth(req, appCfg.AUTH_SECRET);
 
     if (!authMode) return;
 
@@ -121,7 +122,8 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
           tokenVersionId,
           actor,
           orgId: orgId as string,
-          authMethod: token.authMethod
+          authMethod: token.authMethod,
+          isMfaVerified: token.isMfaVerified
         };
         break;
       }
@@ -167,7 +169,7 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
         break;
       }
       default:
-        throw new UnauthorizedError({ name: "Unknown token strategy" });
+        throw new BadRequestError({ message: "Invalid token strategy provided" });
     }
   });
 });

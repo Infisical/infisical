@@ -12,14 +12,14 @@ From there, you can invite external members to the organization and start creati
 ### Projects
 
 The **Projects** page shows you all the projects that you have access to within your organization.
-Here, you can also create a new project. 
+Here, you can also create a new project.
 
 ![organization overview](../../images/organization-overview.png)
 
 ### Members
 
-The **Members** page lets you add or remove external members to your organization. 
-Note that you can configure your organization in Infisical to have members authenticate with the platform via protocols like SAML 2.0.
+The **Members** page lets you add or remove external members to your organization.
+Note that you can configure your organization in Infisical to have members authenticate with the platform via protocols like SAML 2.0 and OpenID Connect.
 
 ![organization members](../../images/organization/platform/organization-members.png)
 
@@ -35,13 +35,14 @@ The **Secrets Overview** screen provides a bird's-eye view of all the secrets in
 ![dashboard secrets overview](../../images/dashboard-secrets-overview.png)
 
 In the above image, you can already see that:
+
 - `STRIPE_API_KEY` is missing from the **Staging** environment.
 - `JWT_SECRET` is missing from the **Production** environment.
 - `BAR` is `EMPTY` in the **Production** environment.
 
 ### Dashboard
 
-The secrets dashboard lets you manage secrets for a specific environment in a project. 
+The secrets dashboard lets you manage secrets for a specific environment in a project.
 Here, developers can override secrets, version secrets, rollback projects to any point in time and much more.
 
 ![dashboard](../../images/dashboard.png)

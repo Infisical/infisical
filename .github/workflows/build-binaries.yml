@@ -1,0 +1,189 @@
+name: Build Binaries and Deploy
+
+on:
+    workflow_dispatch:
+        inputs:
+            version:
+                description: "Version number"
+                required: true
+                type: string
+defaults:
+    run:
+        working-directory: ./backend
+
+jobs:
+    build-and-deploy:
+        strategy:
+            matrix:
+                arch: [x64, arm64]
+                os: [linux, win]
+                include:
+                    - os: linux
+                      target: node20-linux
+                    - os: win
+                      target: node20-win
+        runs-on: ${{ (matrix.arch == 'arm64' && matrix.os == 'linux') && 'ubuntu24-arm64' || 'ubuntu-latest' }}
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v3
+
+            - name: Set up Node.js
+              uses: actions/setup-node@v3
+              with:
+                  node-version: 20
+
+            - name: Install pkg
+              run: npm install -g @yao-pkg/pkg
+
+            - name: Install dependencies (backend)
+              run: npm install
+
+            - name: Install dependencies (frontend)
+              run: npm install --prefix ../frontend
+
+            - name: Prerequisites for pkg
+              run: npm run binary:build
+
+            - name: Package into node binary
+              run: |
+                  if [ "${{ matrix.os }}" != "linux" ]; then
+                    pkg --no-bytecode --public-packages "*" --public --compress GZip --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-core-${{ matrix.os }}-${{ matrix.arch }} .
+                  else
+                    pkg --no-bytecode --public-packages "*" --public --compress GZip --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-core .
+                  fi
+
+            # Set up .deb package structure (Debian/Ubuntu only)
+            - name: Set up .deb package structure
+              if: matrix.os == 'linux'
+              run: |
+                  mkdir -p infisical-core/DEBIAN
+                  mkdir -p infisical-core/usr/local/bin
+                  cp ./binary/infisical-core infisical-core/usr/local/bin/
+                  chmod +x infisical-core/usr/local/bin/infisical-core
+
+            - name: Create control file
+              if: matrix.os == 'linux'
+              run: |
+                  cat <<EOF > infisical-core/DEBIAN/control
+                  Package: infisical-core
+                  Version: ${{ github.event.inputs.version }}
+                  Section: base
+                  Priority: optional
+                  Architecture: ${{ matrix.arch == 'x64' && 'amd64' || matrix.arch }}
+                  Maintainer: Infisical <daniel@infisical.com>
+                  Description: Infisical Core standalone executable (app.infisical.com)
+                  EOF
+
+            # Build .deb file (Debian/Ubunutu only)
+            - name: Build .deb package
+              if: matrix.os == 'linux'
+              run: |
+                  dpkg-deb --build infisical-core
+                  mv infisical-core.deb ./binary/infisical-core-${{matrix.arch}}.deb
+
+            ### RPM
+
+            # Set up .rpm package structure
+            - name: Set up .rpm package structure
+              if: matrix.os == 'linux'
+              run: |
+                  mkdir -p infisical-core-rpm/usr/local/bin
+                  cp ./binary/infisical-core infisical-core-rpm/usr/local/bin/
+                  chmod +x infisical-core-rpm/usr/local/bin/infisical-core
+
+            # Install RPM build tools
+            - name: Install RPM build tools
+              if: matrix.os == 'linux'
+              run: sudo apt-get update && sudo apt-get install -y rpm
+
+            # Create .spec file for RPM
+            - name: Create .spec file for RPM
+              if: matrix.os == 'linux'
+              run: |
+                  cat <<EOF > infisical-core.spec
+
+                  %global _enable_debug_package 0
+                  %global debug_package %{nil}
+                  %global __os_install_post /usr/lib/rpm/brp-compress %{nil}
+
+                  Name:           infisical-core
+                  Version:        ${{ github.event.inputs.version }}
+                  Release:        1%{?dist}
+                  Summary:        Infisical Core standalone executable
+                  License:        Proprietary
+                  URL:            https://app.infisical.com
+
+                  %description
+                  Infisical Core standalone executable (app.infisical.com)
+
+                  %install
+                  mkdir -p %{buildroot}/usr/local/bin
+                  cp %{_sourcedir}/infisical-core %{buildroot}/usr/local/bin/
+
+                  %files
+                  /usr/local/bin/infisical-core
+
+                  %pre
+
+                  %post
+
+                  %preun
+
+                  %postun
+                  EOF
+
+            # Build .rpm file
+            - name: Build .rpm package
+              if: matrix.os == 'linux'
+              run: |
+                  # Create necessary directories
+                  mkdir -p rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+
+                  # Copy the binary directly to SOURCES
+                  cp ./binary/infisical-core rpmbuild/SOURCES/
+
+                  # Run rpmbuild with verbose output
+                  rpmbuild -vv -bb \
+                    --define "_topdir $(pwd)/rpmbuild" \
+                    --define "_sourcedir $(pwd)/rpmbuild/SOURCES" \
+                    --define "_rpmdir $(pwd)/rpmbuild/RPMS" \
+                    --target ${{ matrix.arch == 'x64' && 'x86_64' || 'aarch64' }} \
+                    infisical-core.spec
+
+                  # Try to find the RPM file
+                  find rpmbuild -name "*.rpm"
+
+                  # Move the RPM file if found
+                  if [ -n "$(find rpmbuild -name '*.rpm')" ]; then
+                    mv $(find rpmbuild -name '*.rpm') ./binary/infisical-core-${{matrix.arch}}.rpm
+                  else
+                    echo "RPM file not found!"
+                    exit 1
+                  fi
+
+            - uses: actions/setup-python@v4
+              with:
+                  python-version: "3.x" # Specify the Python version you need
+            - name: Install Python dependencies
+              run: |
+                  python -m pip install --upgrade pip
+                  pip install --upgrade cloudsmith-cli
+
+            # Publish .deb file to Cloudsmith (Debian/Ubuntu only)
+            - name: Publish to Cloudsmith (Debian/Ubuntu)
+              if: matrix.os == 'linux'
+              working-directory: ./backend
+              run: cloudsmith push deb --republish --no-wait-for-sync --api-key=${{ secrets.CLOUDSMITH_API_KEY }} infisical/infisical-core/any-distro/any-version ./binary/infisical-core-${{ matrix.arch }}.deb
+
+            # Publish .rpm file to Cloudsmith (Red Hat-based systems only)
+            - name: Publish .rpm to Cloudsmith
+              if: matrix.os == 'linux'
+              working-directory: ./backend
+              run: cloudsmith push rpm --republish --no-wait-for-sync --api-key=${{ secrets.CLOUDSMITH_API_KEY }} infisical/infisical-core/any-distro/any-version ./binary/infisical-core-${{ matrix.arch }}.rpm
+
+            # Publish .exe file to Cloudsmith (Windows only)
+            - name: Publish to Cloudsmith (Windows)
+              if: matrix.os == 'win'
+              working-directory: ./backend
+              run: cloudsmith push raw infisical/infisical-core ./binary/infisical-core-${{ matrix.os }}-${{ matrix.arch }}.exe --republish --no-wait-for-sync --version ${{ github.event.inputs.version }} --api-key ${{ secrets.CLOUDSMITH_API_KEY }}

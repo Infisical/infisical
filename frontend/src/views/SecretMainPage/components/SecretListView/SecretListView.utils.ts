@@ -10,6 +10,9 @@ import {
   faCopy,
   faEllipsis,
   faKey,
+  faLock,
+  faProjectDiagram,
+  faShare,
   faTags
 } from "@fortawesome/free-solid-svg-icons";
 import { z } from "zod";
@@ -22,7 +25,10 @@ export enum SecretActionType {
 
 export const formSchema = z.object({
   key: z.string().trim().min(1, { message: "Secret key is required" }),
-  value: z.string().transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim())),
+  value: z
+    .string()
+    .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
+    .optional(),
   idOverride: z.string().trim().optional(),
   valueOverride: z
     .string()
@@ -45,12 +51,12 @@ export const formSchema = z.object({
   tags: z
     .object({
       id: z.string(),
-      name: z.string(),
       slug: z.string(),
       tagColor: z.string().optional()
     })
     .array()
     .default([])
+    .optional()
 });
 
 export type TFormSchema = z.infer<typeof formSchema>;
@@ -66,7 +72,10 @@ export enum FontAwesomeSpriteName {
   Override = "secret-override",
   Close = "close",
   CheckedCircle = "check-circle",
-  ReplicatedSecretKey = "secret-replicated"
+  ReplicatedSecretKey = "secret-replicated",
+  ShareSecret = "share-secret",
+  KeyLock = "key-lock",
+  SecretReferenceTree = "secret-reference-tree"
 }
 
 // this is an optimization technique
@@ -82,5 +91,8 @@ export const FontAwesomeSpriteSymbols = [
   { icon: faCodeBranch, symbol: FontAwesomeSpriteName.Override },
   { icon: faClose, symbol: FontAwesomeSpriteName.Close },
   { icon: faCheckCircle, symbol: FontAwesomeSpriteName.CheckedCircle },
-  { icon: faClone, symbol: FontAwesomeSpriteName.ReplicatedSecretKey }
+  { icon: faClone, symbol: FontAwesomeSpriteName.ReplicatedSecretKey },
+  { icon: faShare, symbol: FontAwesomeSpriteName.ShareSecret },
+  { icon: faLock, symbol: FontAwesomeSpriteName.KeyLock },
+  { icon: faProjectDiagram, symbol: FontAwesomeSpriteName.SecretReferenceTree }
 ];

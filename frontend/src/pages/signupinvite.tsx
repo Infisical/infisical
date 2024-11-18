@@ -23,13 +23,16 @@ import issueBackupKey from "@app/components/utilities/cryptography/issueBackupKe
 import { saveTokenToLocalStorage } from "@app/components/utilities/saveTokenToLocalStorage";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { useServerConfig } from "@app/context";
+import { useToggle } from "@app/hooks";
 import {
   completeAccountSignupInvite,
   useSelectOrganization,
   verifySignupInvite
 } from "@app/hooks/api/auth/queries";
+import { MfaMethod } from "@app/hooks/api/auth/types";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { navigateUserToOrg } from "@app/views/Login/Login.utils";
+import { Mfa } from "@app/views/Login/Mfa";
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
@@ -57,6 +60,9 @@ export default function SignupInvite() {
   const [backupKeyIssued, setBackupKeyIssued] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
 
+  const [shouldShowMfa, toggleShowMfa] = useToggle(false);
+  const [requiredMfaMethod, setRequiredMfaMethod] = useState(MfaMethod.EMAIL);
+  const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
   const router = useRouter();
   const parsedUrl = queryString.parse(router.asPath.split("?")[1]);
   const token = parsedUrl.token as string;
@@ -64,18 +70,21 @@ export default function SignupInvite() {
   const email = (parsedUrl.to as string)?.replace(" ", "+").trim();
   const { config } = useServerConfig();
 
-  const { mutateAsync: selectOrganization } = useSelectOrganization();
+  const queryParams = new URLSearchParams(window.location.search);
 
-  useEffect(() => {
-    if (!config.allowSignUp) {
-      router.push("/login");
-    }
-  }, [config.allowSignUp]);
+  const metadata = queryParams.get("metadata") || undefined;
+
+  const { mutateAsync: selectOrganization } = useSelectOrganization();
 
   // Verifies if the information that the users entered (name, workspace) is there, and if the password matched the criteria.
   const signupErrorCheck = async () => {
     setIsLoading(true);
-    let errorCheck = false;
+
+    let errorCheck = await checkPassword({
+      password,
+      setErrors
+    });
+
     if (!firstName) {
       setFirstNameError(true);
       errorCheck = true;
@@ -88,11 +97,6 @@ export default function SignupInvite() {
     } else {
       setLastNameError(false);
     }
-
-    errorCheck = await checkPassword({
-      password,
-      setErrors
-    });
 
     if (!errorCheck) {
       // Generate a random pair of a public and a private key
@@ -149,6 +153,7 @@ export default function SignupInvite() {
 
               const { token: jwtToken } = await completeAccountSignupInvite({
                 email,
+                password,
                 firstName,
                 lastName,
                 protectedKey,
@@ -159,7 +164,8 @@ export default function SignupInvite() {
                 encryptedPrivateKeyIV,
                 encryptedPrivateKeyTag,
                 salt: result.salt,
-                verifier: result.verifier
+                verifier: result.verifier,
+                tokenMetadata: metadata
               });
 
               // unset temporary signup JWT token and set JWT token
@@ -180,11 +186,31 @@ export default function SignupInvite() {
 
               if (!orgId) throw new Error("You are not part of any organization");
 
-              await selectOrganization({ organizationId: orgId });
+              const completeSignupFlow = async () => {
+                const {
+                  token: mfaToken,
+                  isMfaEnabled,
+                  mfaMethod
+                } = await selectOrganization({
+                  organizationId: orgId
+                });
 
-              localStorage.setItem("orgData.id", orgId);
+                if (isMfaEnabled) {
+                  SecurityClient.setMfaToken(mfaToken);
+                  if (mfaMethod) {
+                    setRequiredMfaMethod(mfaMethod);
+                  }
+                  toggleShowMfa.on();
+                  setMfaSuccessCallback(() => completeSignupFlow);
+                  return;
+                }
 
-              setStep(3);
+                localStorage.setItem("orgData.id", orgId);
+
+                setStep(3);
+              };
+
+              await completeSignupFlow();
             } catch (error) {
               setIsLoading(false);
               console.error(error);
@@ -222,11 +248,24 @@ export default function SignupInvite() {
                   SecurityClient.setSignupToken(response.token);
                   setStep(2);
                 } else {
-                  await selectOrganization({ organizationId });
+                  const redirectExistingUser = async () => {
+                    const { token: mfaToken, isMfaEnabled } = await selectOrganization({
+                      organizationId
+                    });
 
-                  // user will be redirected to dashboard
-                  // if not logged in gets kicked out to login
-                  await navigateUserToOrg(router, organizationId);
+                    if (isMfaEnabled) {
+                      SecurityClient.setMfaToken(mfaToken);
+                      toggleShowMfa.on();
+                      setMfaSuccessCallback(() => redirectExistingUser);
+                      return;
+                    }
+
+                    // user will be redirected to dashboard
+                    // if not logged in gets kicked out to login
+                    await navigateUserToOrg(router, organizationId);
+                  };
+
+                  await redirectExistingUser();
                 }
               }
             } catch (err) {
@@ -361,12 +400,23 @@ export default function SignupInvite() {
         <title>Sign Up</title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
-      <Link href="/">
-        <div className="mb-4 mt-20 flex justify-center">
-          <Image src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical Logo" />
-        </div>
-      </Link>
-      {step === 1 ? stepConfirmEmail : step === 2 ? main : step4}
+      {shouldShowMfa ? (
+        <Mfa
+          email={email}
+          successCallback={mfaSuccessCallback}
+          method={requiredMfaMethod}
+          closeMfa={() => toggleShowMfa.off()}
+        />
+      ) : (
+        <>
+          <Link href="/">
+            <div className="mb-4 mt-20 flex justify-center">
+              <Image src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical Logo" />
+            </div>
+          </Link>
+          {step === 1 ? stepConfirmEmail : step === 2 ? main : step4}
+        </>
+      )}
     </div>
   );
 }

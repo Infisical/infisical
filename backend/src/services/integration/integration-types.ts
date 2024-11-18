@@ -27,6 +27,10 @@ export type TCreateIntegrationDTO = {
       key: string;
       value: string;
     }[];
+
+    githubVisibility?: string;
+    githubVisibilityRepoIds?: string[];
+
     kmsKeyId?: string;
     shouldDisableDelete?: boolean;
     shouldMaskSecrets?: boolean;
@@ -35,15 +39,19 @@ export type TCreateIntegrationDTO = {
   };
 } & Omit<TProjectPermission, "projectId">;
 
+export type TGetIntegrationDTO = {
+  id: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TUpdateIntegrationDTO = {
   id: string;
   app?: string;
   appId?: string;
   isActive?: boolean;
-  secretPath: string;
-  targetEnvironment: string;
-  owner: string;
-  environment: string;
+  secretPath?: string;
+  targetEnvironment?: string;
+  owner?: string;
+  environment?: string;
   metadata?: {
     secretPrefix?: string;
     secretSuffix?: string;
@@ -63,6 +71,7 @@ export type TUpdateIntegrationDTO = {
 
 export type TDeleteIntegrationDTO = {
   id: string;
+  shouldDeleteIntegrationSecrets?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TSyncIntegrationDTO = {

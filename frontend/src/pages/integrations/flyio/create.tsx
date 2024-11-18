@@ -15,6 +15,8 @@ import queryString from "query-string";
 import { useCreateIntegration } from "@app/hooks/api";
 
 import {
+  Alert,
+  AlertDescription,
   Button,
   Card,
   CardTitle,
@@ -40,7 +42,7 @@ export default function FlyioCreateIntegrationPage() {
   const { data: integrationAuth, isLoading: isIntegrationAuthLoading } = useGetIntegrationAuthById(
     (integrationAuthId as string) ?? ""
   );
-  const { data: integrationAuthApps, isLoading: isIntegrationAuthAppsLoading } =
+  const { data: integrationAuthApps = [], isLoading: isIntegrationAuthAppsLoading } =
     useGetIntegrationAuthApps({
       integrationAuthId: (integrationAuthId as string) ?? ""
     });
@@ -130,6 +132,13 @@ export default function FlyioCreateIntegrationPage() {
             </Link>
           </div>
         </CardTitle>
+        <div className="px-6 pb-4">
+          <Alert hideTitle variant="warning">
+            <AlertDescription>
+              All current secrets linked to the related Fly.io project will be deleted before Infisical secrets are pushed to your Fly.io project.
+            </AlertDescription>
+          </Alert>
+        </div>
         <FormControl label="Project Environment" className="px-6">
           <Select
             value={selectedSourceEnvironment}
@@ -191,7 +200,7 @@ export default function FlyioCreateIntegrationPage() {
       <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4">
         <div className="flex flex-row items-center">
           <FontAwesomeIcon icon={faCircleInfo} className="text-xl text-mineshaft-200" />{" "}
-          <span className="text-md ml-3 text-mineshaft-100">Pro Tips</span>
+          <span className="text-md ml-3 text-mineshaft-100">Pro Tip</span>
         </div>
         <span className="mt-4 text-sm text-mineshaft-300">
           After creating an integration, your secrets will start syncing immediately. This might

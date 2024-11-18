@@ -1,6 +1,7 @@
 import { TProjectPermission } from "@app/lib/types";
 
-export type TGetProjectMembershipDTO = TProjectPermission;
+export type TGetProjectMembershipDTO = { includeGroupMembers?: boolean } & TProjectPermission;
+export type TLeaveProjectDTO = Omit<TProjectPermission, "actorOrgId" | "actorAuthMethod">;
 export enum ProjectUserMembershipTemporaryMode {
   Relative = "relative"
 }
@@ -11,6 +12,10 @@ export type TInviteUserToProjectDTO = {
 
 export type TGetProjectMembershipByUsernameDTO = {
   username: string;
+} & TProjectPermission;
+
+export type TGetProjectMembershipByIdDTO = {
+  id: string;
 } & TProjectPermission;
 
 export type TUpdateProjectMembershipDTO = {
@@ -52,4 +57,5 @@ export type TAddUsersToWorkspaceNonE2EEDTO = {
   sendEmails?: boolean;
   emails: string[];
   usernames: string[];
+  roleSlugs?: string[];
 } & TProjectPermission;

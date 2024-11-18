@@ -1,12 +1,17 @@
 import { useEffect } from "react";
-import { Controller, useForm } from "react-hook-form";
-import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { useRouter } from "next/router";
+import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
   FormControl,
+  FormLabel,
+  IconButton,
   Input,
   Modal,
   ModalContent,
@@ -16,34 +21,43 @@ import {
 import { useOrganization } from "@app/context";
 import { useCreateIdentity, useGetOrgRoles, useUpdateIdentity } from "@app/hooks/api";
 import {
-  IdentityAuthMethod
-  // useAddIdentityUniversalAuth
+  // IdentityAuthMethod,
+  useAddIdentityUniversalAuth
 } from "@app/hooks/api/identities";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-const schema = yup
+const schema = z
   .object({
-    name: yup.string().required("MI name is required"),
-    role: yup.string()
+    name: z.string(),
+    role: z.string(),
+    metadata: z
+      .object({
+        key: z.string().trim().min(1),
+        value: z.string().trim().min(1)
+      })
+      .array()
+      .default([])
+      .optional()
   })
   .required();
 
-export type FormData = yup.InferType<typeof schema>;
+export type FormData = z.infer<typeof schema>;
 
 type Props = {
   popUp: UsePopUpState<["identity"]>;
-  handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["identityAuthMethod"]>,
-    data: {
-      identityId: string;
-      name: string;
-      authMethod?: IdentityAuthMethod;
-    }
-  ) => void;
+  // handlePopUpOpen: (
+  //   popUpName: keyof UsePopUpState<["identityAuthMethod"]>,
+  //   data: {
+  //     identityId: string;
+  //     name: string;
+  //     authMethod?: IdentityAuthMethod;
+  //   }
+  // ) => void;
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["identity"]>, state?: boolean) => void;
 };
 
-export const IdentityModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Props) => {
+export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
+  const router = useRouter();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
 
@@ -51,7 +65,7 @@ export const IdentityModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Pro
 
   const { mutateAsync: createMutateAsync } = useCreateIdentity();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentity();
-  // const { mutateAsync: addMutateAsync } = useAddIdentityUniversalAuth();
+  const { mutateAsync: addMutateAsync } = useAddIdentityUniversalAuth();
 
   const {
     control,
@@ -59,10 +73,15 @@ export const IdentityModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Pro
     reset,
     formState: { isSubmitting }
   } = useForm<FormData>({
-    resolver: yupResolver(schema),
+    resolver: zodResolver(schema),
     defaultValues: {
       name: ""
     }
+  });
+
+  const metadataFormFields = useFieldArray({
+    control,
+    name: "metadata"
   });
 
   useEffect(() => {
@@ -70,6 +89,7 @@ export const IdentityModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Pro
       identityId: string;
       name: string;
       role: string;
+      metadata?: { key: string; value: string }[];
       customRole: {
         name: string;
         slug: string;
@@ -81,7 +101,8 @@ export const IdentityModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Pro
     if (identity) {
       reset({
         name: identity.name,
-        role: identity?.customRole?.slug ?? identity.role
+        role: identity?.customRole?.slug ?? identity.role,
+        metadata: identity.metadata
       });
     } else {
       reset({
@@ -91,7 +112,7 @@ export const IdentityModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Pro
     }
   }, [popUp?.identity?.data, roles]);
 
-  const onFormSubmit = async ({ name, role }: FormData) => {
+  const onFormSubmit = async ({ name, role, metadata }: FormData) => {
     try {
       const identity = popUp?.identity?.data as {
         identityId: string;
@@ -106,39 +127,33 @@ export const IdentityModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Pro
           identityId: identity.identityId,
           name,
           role: role || undefined,
-          organizationId: orgId
+          organizationId: orgId,
+          metadata
         });
 
         handlePopUpToggle("identity", false);
       } else {
         // create
 
-        const {
-          id: createdId,
-          name: createdName,
-          authMethod
-        } = await createMutateAsync({
+        const { id: createdId } = await createMutateAsync({
           name,
           role: role || undefined,
-          organizationId: orgId
+          organizationId: orgId,
+          metadata
         });
 
-        // await addMutateAsync({
-        //   organizationId: orgId,
-        //   identityId: createdId,
-        //   clientSecretTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
-        //   accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
-        //   accessTokenTTL: 2592000,
-        //   accessTokenMaxTTL: 2592000,
-        //   accessTokenNumUsesLimit: 0
-        // });
+        await addMutateAsync({
+          organizationId: orgId,
+          identityId: createdId,
+          clientSecretTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
+          accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
+          accessTokenTTL: 2592000,
+          accessTokenMaxTTL: 2592000,
+          accessTokenNumUsesLimit: 0
+        });
 
         handlePopUpToggle("identity", false);
-        handlePopUpOpen("identityAuthMethod", {
-          identityId: createdId,
-          name: createdName,
-          authMethod
-        });
+        router.push(`/org/${orgId}/identities/${createdId}`);
       }
 
       createNotification({
@@ -207,6 +222,67 @@ export const IdentityModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Pro
               </FormControl>
             )}
           />
+          <div>
+            <FormLabel label="Metadata" />
+          </div>
+          <div className="mb-3 flex flex-col space-y-2">
+            {metadataFormFields.fields.map(({ id: metadataFieldId }, i) => (
+              <div key={metadataFieldId} className="flex items-end space-x-2">
+                <div className="flex-grow">
+                  {i === 0 && <span className="text-xs text-mineshaft-400">Key</span>}
+                  <Controller
+                    control={control}
+                    name={`metadata.${i}.key`}
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        isError={Boolean(error?.message)}
+                        errorText={error?.message}
+                        className="mb-0"
+                      >
+                        <Input {...field} />
+                      </FormControl>
+                    )}
+                  />
+                </div>
+                <div className="flex-grow">
+                  {i === 0 && (
+                    <FormLabel label="Value" className="text-xs text-mineshaft-400" isOptional />
+                  )}
+                  <Controller
+                    control={control}
+                    name={`metadata.${i}.value`}
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        isError={Boolean(error?.message)}
+                        errorText={error?.message}
+                        className="mb-0"
+                      >
+                        <Input {...field} />
+                      </FormControl>
+                    )}
+                  />
+                </div>
+                <IconButton
+                  ariaLabel="delete key"
+                  className="bottom-0.5 h-9"
+                  variant="outline_bg"
+                  onClick={() => metadataFormFields.remove(i)}
+                >
+                  <FontAwesomeIcon icon={faTrash} />
+                </IconButton>
+              </div>
+            ))}
+            <div className="mt-2 flex justify-end">
+              <Button
+                leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                size="xs"
+                variant="outline_bg"
+                onClick={() => metadataFormFields.append({ key: "", value: "" })}
+              >
+                Add Key
+              </Button>
+            </div>
+          </div>
           <div className="flex items-center">
             <Button
               className="mr-4"

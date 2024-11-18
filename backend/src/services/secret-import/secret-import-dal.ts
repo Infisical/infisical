@@ -49,10 +49,30 @@ export const secretImportDALFactory = (db: TDbClient) => {
     }
   };
 
-  const find = async (filter: Partial<TSecretImports & { projectId: string }>, tx?: Knex) => {
+  const find = async (
+    {
+      search,
+      limit,
+      offset,
+      ...filter
+    }: Partial<
+      TSecretImports & {
+        projectId: string;
+        search?: string;
+        limit?: number;
+        offset?: number;
+      }
+    >,
+    tx?: Knex
+  ) => {
     try {
-      const docs = await (tx || db)(TableName.SecretImport)
+      const query = (tx || db.replicaNode())(TableName.SecretImport)
         .where(filter)
+        .where((bd) => {
+          if (search) {
+            void bd.whereILike("importPath", `%${search}%`);
+          }
+        })
         .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)
         .select(
           db.ref("*").withSchema(TableName.SecretImport) as unknown as keyof TSecretImports,
@@ -61,6 +81,13 @@ export const secretImportDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.Environment).as("envId")
         )
         .orderBy("position", "asc");
+
+      if (limit) {
+        void query.limit(limit).offset(offset ?? 0);
+      }
+
+      const docs = await query;
+
       return docs.map(({ envId, slug, name, ...el }) => ({
         ...el,
         importEnv: { id: envId, slug, name }
@@ -70,9 +97,59 @@ export const secretImportDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findById = async (id: string, tx?: Knex) => {
+    try {
+      const doc = await (tx || db.replicaNode())(TableName.SecretImport)
+        .where({ [`${TableName.SecretImport}.id` as "id"]: id })
+        .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)
+        .select(
+          db.ref("*").withSchema(TableName.SecretImport) as unknown as keyof TSecretImports,
+          db.ref("slug").withSchema(TableName.Environment),
+          db.ref("name").withSchema(TableName.Environment),
+          db.ref("id").withSchema(TableName.Environment).as("envId")
+        )
+        .first();
+
+      if (!doc) {
+        return null;
+      }
+
+      const { envId, slug, name, ...el } = doc;
+
+      return {
+        ...el,
+        importEnv: { id: envId, slug, name }
+      };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find secret imports" });
+    }
+  };
+
+  const getProjectImportCount = async (
+    { search, ...filter }: Partial<TSecretImports & { projectId: string; search?: string }>,
+    tx?: Knex
+  ) => {
+    try {
+      const docs = await (tx || db.replicaNode())(TableName.SecretImport)
+        .where(filter)
+        .where("isReplication", false)
+        .where((bd) => {
+          if (search) {
+            void bd.whereILike("importPath", `%${search}%`);
+          }
+        })
+        .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)
+        .count();
+
+      return Number(docs[0]?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "get secret imports count" });
+    }
+  };
+
   const findByFolderIds = async (folderIds: string[], tx?: Knex) => {
     try {
-      const docs = await (tx || db)(TableName.SecretImport)
+      const docs = await (tx || db.replicaNode())(TableName.SecretImport)
         .whereIn("folderId", folderIds)
         .where("isReplication", false)
         .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)
@@ -95,8 +172,10 @@ export const secretImportDALFactory = (db: TDbClient) => {
   return {
     ...secretImportOrm,
     find,
+    findById,
     findByFolderIds,
     findLastImportPosition,
-    updateAllPosition
+    updateAllPosition,
+    getProjectImportCount
   };
 };

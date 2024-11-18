@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { IdentityKubernetesAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { KUBERNETES_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -29,7 +30,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
     schema: {
       description: "Login with Kubernetes Auth",
       body: z.object({
-        identityId: z.string().trim(),
+        identityId: z.string().trim().describe(KUBERNETES_AUTH.LOGIN.identityId),
         jwt: z.string().trim()
       }),
       response: {
@@ -84,38 +85,48 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
         }
       ],
       params: z.object({
-        identityId: z.string().trim()
+        identityId: z.string().trim().describe(KUBERNETES_AUTH.ATTACH.identityId)
       }),
       body: z.object({
-        kubernetesHost: z.string().trim().min(1),
-        caCert: z.string().trim().default(""),
-        tokenReviewerJwt: z.string().trim().min(1),
-        allowedNamespaces: z.string(), // TODO: validation
-        allowedNames: z.string(),
-        allowedAudience: z.string(),
+        kubernetesHost: z.string().trim().min(1).describe(KUBERNETES_AUTH.ATTACH.kubernetesHost),
+        caCert: z.string().trim().default("").describe(KUBERNETES_AUTH.ATTACH.caCert),
+        tokenReviewerJwt: z.string().trim().min(1).describe(KUBERNETES_AUTH.ATTACH.tokenReviewerJwt),
+        allowedNamespaces: z.string().describe(KUBERNETES_AUTH.ATTACH.allowedNamespaces), // TODO: validation
+        allowedNames: z.string().describe(KUBERNETES_AUTH.ATTACH.allowedNames),
+        allowedAudience: z.string().describe(KUBERNETES_AUTH.ATTACH.allowedAudience),
         accessTokenTrustedIps: z
           .object({
             ipAddress: z.string().trim()
           })
           .array()
           .min(1)
-          .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]),
+          .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
+          .describe(KUBERNETES_AUTH.ATTACH.accessTokenTrustedIps),
         accessTokenTTL: z
           .number()
           .int()
           .min(1)
+          .max(315360000)
           .refine((value) => value !== 0, {
             message: "accessTokenTTL must have a non zero number"
           })
-          .default(2592000),
+          .default(2592000)
+          .describe(KUBERNETES_AUTH.ATTACH.accessTokenTTL),
         accessTokenMaxTTL: z
           .number()
           .int()
+          .max(315360000)
           .refine((value) => value !== 0, {
             message: "accessTokenMaxTTL must have a non zero number"
           })
-          .default(2592000),
-        accessTokenNumUsesLimit: z.number().int().min(0).default(0)
+          .default(2592000)
+          .describe(KUBERNETES_AUTH.ATTACH.accessTokenMaxTTL),
+        accessTokenNumUsesLimit: z
+          .number()
+          .int()
+          .min(0)
+          .default(0)
+          .describe(KUBERNETES_AUTH.ATTACH.accessTokenNumUsesLimit)
       }),
       response: {
         200: z.object({
@@ -170,35 +181,49 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
         }
       ],
       params: z.object({
-        identityId: z.string()
+        identityId: z.string().describe(KUBERNETES_AUTH.UPDATE.identityId)
       }),
       body: z.object({
-        kubernetesHost: z.string().trim().min(1).optional(),
-        caCert: z.string().trim().optional(),
-        tokenReviewerJwt: z.string().trim().min(1).optional(),
-        allowedNamespaces: z.string().optional(), // TODO: validation
-        allowedNames: z.string().optional(),
-        allowedAudience: z.string().optional(),
+        kubernetesHost: z.string().trim().min(1).optional().describe(KUBERNETES_AUTH.UPDATE.kubernetesHost),
+        caCert: z.string().trim().optional().describe(KUBERNETES_AUTH.UPDATE.caCert),
+        tokenReviewerJwt: z.string().trim().min(1).optional().describe(KUBERNETES_AUTH.UPDATE.tokenReviewerJwt),
+        allowedNamespaces: z.string().optional().describe(KUBERNETES_AUTH.UPDATE.allowedNamespaces), // TODO: validation
+        allowedNames: z.string().optional().describe(KUBERNETES_AUTH.UPDATE.allowedNames),
+        allowedAudience: z.string().optional().describe(KUBERNETES_AUTH.UPDATE.allowedAudience),
         accessTokenTrustedIps: z
           .object({
             ipAddress: z.string().trim()
           })
           .array()
           .min(1)
-          .optional(),
-        accessTokenTTL: z.number().int().min(0).optional(),
-        accessTokenNumUsesLimit: z.number().int().min(0).optional(),
+          .optional()
+          .describe(KUBERNETES_AUTH.UPDATE.accessTokenTrustedIps),
+        accessTokenTTL: z
+          .number()
+          .int()
+          .min(0)
+          .max(315360000)
+          .optional()
+          .describe(KUBERNETES_AUTH.UPDATE.accessTokenTTL),
+        accessTokenNumUsesLimit: z
+          .number()
+          .int()
+          .min(0)
+          .optional()
+          .describe(KUBERNETES_AUTH.UPDATE.accessTokenNumUsesLimit),
         accessTokenMaxTTL: z
           .number()
           .int()
+          .max(315360000)
           .refine((value) => value !== 0, {
             message: "accessTokenMaxTTL must have a non zero number"
           })
           .optional()
+          .describe(KUBERNETES_AUTH.UPDATE.accessTokenMaxTTL)
       }),
       response: {
         200: z.object({
-          identityKubernetesAuth: IdentityKubernetesAuthsSchema
+          identityKubernetesAuth: IdentityKubernetesAuthResponseSchema
         })
       }
     },
@@ -249,7 +274,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
         }
       ],
       params: z.object({
-        identityId: z.string()
+        identityId: z.string().describe(KUBERNETES_AUTH.RETRIEVE.identityId)
       }),
       response: {
         200: z.object({
@@ -278,6 +303,56 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
       });
 
       return { identityKubernetesAuth: IdentityKubernetesAuthResponseSchema.parse(identityKubernetesAuth) };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/kubernetes-auth/identities/:identityId",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Delete Kubernetes Auth configuration on identity",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        identityId: z.string().describe(KUBERNETES_AUTH.REVOKE.identityId)
+      }),
+      response: {
+        200: z.object({
+          identityKubernetesAuth: IdentityKubernetesAuthResponseSchema.omit({
+            caCert: true,
+            tokenReviewerJwt: true
+          })
+        })
+      }
+    },
+    handler: async (req) => {
+      const identityKubernetesAuth = await server.services.identityKubernetesAuth.revokeIdentityKubernetesAuth({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        identityId: req.params.identityId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: identityKubernetesAuth.orgId,
+        event: {
+          type: EventType.REVOKE_IDENTITY_KUBERNETES_AUTH,
+          metadata: {
+            identityId: identityKubernetesAuth.identityId
+          }
+        }
+      });
+
+      return { identityKubernetesAuth };
     }
   });
 };

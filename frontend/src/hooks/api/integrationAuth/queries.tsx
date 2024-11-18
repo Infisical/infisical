@@ -1,10 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { workspaceKeys } from "../workspace/queries";
+import { workspaceKeys } from "../workspace";
 import {
   App,
+  BitBucketEnvironment,
   BitBucketWorkspace,
   ChecklyGroup,
   Environment,
@@ -94,6 +95,17 @@ const integrationAuthKeys = {
   }) => [{ integrationAuthId, appId }, "integrationAuthRailwayServices"] as const,
   getIntegrationAuthBitBucketWorkspaces: (integrationAuthId: string) =>
     [{ integrationAuthId }, "integrationAuthBitbucketWorkspaces"] as const,
+  getIntegrationAuthBitBucketEnvironments: (
+    integrationAuthId: string,
+    workspaceSlug: string,
+    repoSlug: string
+  ) =>
+    [
+      { integrationAuthId },
+      workspaceSlug,
+      repoSlug,
+      "integrationAuthBitbucketEnvironments"
+    ] as const,
   getIntegrationAuthNorthflankSecretGroups: ({
     integrationAuthId,
     appId
@@ -120,16 +132,22 @@ const fetchIntegrationAuthById = async (integrationAuthId: string) => {
 const fetchIntegrationAuthApps = async ({
   integrationAuthId,
   teamId,
+  azureDevOpsOrgName,
   workspaceSlug
 }: {
   integrationAuthId: string;
   teamId?: string;
+  azureDevOpsOrgName?: string;
   workspaceSlug?: string;
 }) => {
   const params: Record<string, string> = {};
   if (teamId) {
     params.teamId = teamId;
   }
+  if (azureDevOpsOrgName) {
+    params.azureDevOpsOrgName = azureDevOpsOrgName;
+  }
+
   if (workspaceSlug) {
     params.workspaceSlug = workspaceSlug;
   }
@@ -397,6 +415,25 @@ const fetchIntegrationAuthBitBucketWorkspaces = async (integrationAuthId: string
   return workspaces;
 };
 
+const fetchIntegrationAuthBitBucketEnvironments = async (
+  integrationAuthId: string,
+  workspaceSlug: string,
+  repoSlug: string
+) => {
+  const {
+    data: { environments }
+  } = await apiRequest.get<{ environments: BitBucketEnvironment[] }>(
+    `/api/v1/integration-auth/${integrationAuthId}/bitbucket/environments`,
+    {
+      params: {
+        workspaceSlug,
+        repoSlug
+      }
+    }
+  );
+  return environments;
+};
+
 const fetchIntegrationAuthNorthflankSecretGroups = async ({
   integrationAuthId,
   appId
@@ -452,10 +489,12 @@ export const useGetIntegrationAuthById = (integrationAuthId: string) => {
 export const useGetIntegrationAuthApps = ({
   integrationAuthId,
   teamId,
+  azureDevOpsOrgName,
   workspaceSlug
 }: {
   integrationAuthId: string;
   teamId?: string;
+  azureDevOpsOrgName?: string;
   workspaceSlug?: string;
 }) => {
   return useQuery({
@@ -464,6 +503,7 @@ export const useGetIntegrationAuthApps = ({
       fetchIntegrationAuthApps({
         integrationAuthId,
         teamId,
+        azureDevOpsOrgName,
         workspaceSlug
       }),
     enabled: true
@@ -718,6 +758,30 @@ export const useGetIntegrationAuthBitBucketWorkspaces = (integrationAuthId: stri
   });
 };
 
+export const useGetIntegrationAuthBitBucketEnvironments = (
+  {
+    integrationAuthId,
+    workspaceSlug,
+    repoSlug
+  }: {
+    integrationAuthId: string;
+    workspaceSlug: string;
+    repoSlug: string;
+  },
+  options?: UseQueryOptions<BitBucketEnvironment[]>
+) => {
+  return useQuery({
+    queryKey: integrationAuthKeys.getIntegrationAuthBitBucketEnvironments(
+      integrationAuthId,
+      workspaceSlug,
+      repoSlug
+    ),
+    queryFn: () =>
+      fetchIntegrationAuthBitBucketEnvironments(integrationAuthId, workspaceSlug, repoSlug),
+    ...options
+  });
+};
+
 export const useGetIntegrationAuthNorthflankSecretGroups = ({
   integrationAuthId,
   appId
@@ -768,11 +832,13 @@ export const useAuthorizeIntegration = () => {
       workspaceId,
       code,
       integration,
+      installationId,
       url
     }: {
       workspaceId: string;
       code: string;
       integration: string;
+      installationId?: string;
       url?: string;
     }) => {
       const {
@@ -781,6 +847,7 @@ export const useAuthorizeIntegration = () => {
         workspaceId,
         code,
         integration,
+        installationId,
         url
       });
 
@@ -802,6 +869,7 @@ export const useSaveIntegrationAccessToken = () => {
       refreshToken,
       accessId,
       accessToken,
+      awsAssumeIamRoleArn,
       url,
       namespace
     }: {
@@ -810,6 +878,7 @@ export const useSaveIntegrationAccessToken = () => {
       refreshToken?: string;
       accessId?: string;
       accessToken?: string;
+      awsAssumeIamRoleArn?: string;
       url?: string;
       namespace?: string;
     }) => {
@@ -821,6 +890,7 @@ export const useSaveIntegrationAccessToken = () => {
         refreshToken,
         accessId,
         accessToken,
+        awsAssumeIamRoleArn,
         url,
         namespace
       });

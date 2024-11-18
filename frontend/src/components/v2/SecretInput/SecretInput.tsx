@@ -4,7 +4,7 @@ import { twMerge } from "tailwind-merge";
 
 import { useToggle } from "@app/hooks";
 
-const REGEX = /(\${([^}]+)})/g;
+const REGEX = /(\${([a-zA-Z0-9-_.]+)})/g;
 const replaceContentWithDot = (str: string) => {
   let finalStr = "";
   for (let i = 0; i < str.length; i += 1) {
@@ -15,7 +15,7 @@ const replaceContentWithDot = (str: string) => {
 };
 
 const syntaxHighlight = (content?: string | null, isVisible?: boolean, isImport?: boolean) => {
-  if (isImport) return "IMPORTED";
+  if (isImport && !content) return "IMPORTED";
   if (content === "") return "EMPTY";
   if (!content) return "EMPTY";
   if (!isVisible) return replaceContentWithDot(content);
