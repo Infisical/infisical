@@ -14,7 +14,7 @@ import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
 const formSchema = z.object({
   provider: z.object({
-    url: z.string().trim().min(1)
+    url: z.string().url().trim().min(1)
   }),
   defaultTTL: z.string().superRefine((val, ctx) => {
     const valMs = ms(val);

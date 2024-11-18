@@ -15,7 +15,7 @@ import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 const formSchema = z.object({
   inputs: z
     .object({
-      url: z.string().trim().min(1)
+      url: z.string().url().trim().min(1)
     })
     .partial(),
   defaultTTL: z.string().superRefine((val, ctx) => {
