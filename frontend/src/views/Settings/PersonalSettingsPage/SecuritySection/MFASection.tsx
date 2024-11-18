@@ -203,7 +203,7 @@ export const MFASection = () => {
                   For added security, you can configure a mobile authenticator and set it as your
                   selected 2FA method.
                 </div>
-                <div className="mt-6 flex min-w-full justify-center">
+                <div className="ml-6 mt-6 flex min-w-full">
                   <TotpRegistration
                     onComplete={async () => {
                       await queryClient.invalidateQueries(userKeys.totpConfiguration);
