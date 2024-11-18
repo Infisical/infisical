@@ -213,7 +213,6 @@ export type TDynamicSecretProvider =
       inputs: {
         host: string;
         port: number;
-        database: string;
         username: string;
         password: string;
         creationStatement: string;
@@ -228,10 +227,10 @@ export type TDynamicSecretProvider =
         host: string;
         port: number;
         username: string;
+        database: string;
         password: string;
         creationStatement: string;
         revocationStatement: string;
-        ca?: string | undefined;
       };
     }
   | {

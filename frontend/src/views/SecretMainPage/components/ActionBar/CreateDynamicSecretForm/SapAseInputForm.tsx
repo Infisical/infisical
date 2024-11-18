@@ -13,7 +13,6 @@ import {
   Button,
   FormControl,
   Input,
-  SecretInput,
   TextArea
 } from "@app/components/v2";
 import { useCreateDynamicSecret } from "@app/hooks/api";
@@ -27,8 +26,7 @@ const formSchema = z.object({
     username: z.string().min(1),
     password: z.string().min(1),
     creationStatement: z.string().min(1),
-    revocationStatement: z.string().min(1),
-    ca: z.string().optional()
+    revocationStatement: z.string().min(1)
   }),
   defaultTTL: z.string().superRefine((val, ctx) => {
     const valMs = ms(val);
@@ -248,23 +246,6 @@ sp_droplogin '{{username}}';`
                 />
               </div>
               <div>
-                <Controller
-                  control={control}
-                  name="provider.ca"
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      isOptional
-                      label="CA(SSL)"
-                      isError={Boolean(error?.message)}
-                      errorText={error?.message}
-                    >
-                      <SecretInput
-                        {...field}
-                        containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
-                      />
-                    </FormControl>
-                  )}
-                />
                 <Accordion type="single" collapsible className="mb-2 w-full bg-mineshaft-700">
                   <AccordionItem value="advance-statements">
                     <AccordionTrigger>Modify SQL Statements</AccordionTrigger>

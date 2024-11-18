@@ -126,8 +126,7 @@ export const DynamicSecretSapAseSchema = z.object({
   username: z.string().trim(),
   password: z.string().trim(),
   creationStatement: z.string().trim(),
-  revocationStatement: z.string().trim(),
-  ca: z.string().optional()
+  revocationStatement: z.string().trim()
 });
 
 export const DynamicSecretAwsIamSchema = z.object({
