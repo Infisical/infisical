@@ -37,11 +37,17 @@ export const TotpProvider = (): TDynamicProviderFns => {
     const digitsFromUrl = urlObj.searchParams.get("digits");
     const algorithm = urlObj.searchParams.get("algorithm");
 
-    authenticatorInstance.options = {
-      digits: digitsFromUrl ? +digitsFromUrl : undefined,
-      algorithm: algorithm ? (algorithm.toLowerCase() as HashAlgorithms) : undefined,
-      step: periodFromUrl ? +periodFromUrl : undefined
-    };
+    if (digitsFromUrl) {
+      authenticatorInstance.options = { digits: +digitsFromUrl };
+    }
+
+    if (algorithm) {
+      authenticatorInstance.options = { algorithm: algorithm.toLowerCase() as HashAlgorithms };
+    }
+
+    if (periodFromUrl) {
+      authenticatorInstance.options = { step: +periodFromUrl };
+    }
 
     return { entityId, data: { TOTP: authenticatorInstance.generate(secret) } };
   };
