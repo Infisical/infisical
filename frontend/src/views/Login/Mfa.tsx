@@ -118,6 +118,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
         </div>
         <div className="mx-auto w-max pb-4 pt-4 md:mb-16 md:px-8">
           <TotpRegistration
+            shouldCenterQr
             onComplete={async () => {
               setShouldShowTotpRegistration(false);
               await successCallback();
