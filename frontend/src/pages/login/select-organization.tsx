@@ -91,10 +91,12 @@ export default function LoginPage() {
         return;
       }
 
-      const { token, isMfaEnabled, mfaMethod } = await selectOrg.mutateAsync({
-        organizationId: organization.id,
-        userAgent: callbackPort ? UserAgentType.CLI : undefined
-      });
+      const { token, isMfaEnabled, mfaMethod } = await selectOrg
+        .mutateAsync({
+          organizationId: organization.id,
+          userAgent: callbackPort ? UserAgentType.CLI : undefined
+        })
+        .finally(() => setIsInitialOrgCheckLoading(false));
 
       if (isMfaEnabled) {
         SecurityClient.setMfaToken(token);

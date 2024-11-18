@@ -226,7 +226,8 @@
           "pages": [
             "documentation/platform/identities/oidc-auth/general",
             "documentation/platform/identities/oidc-auth/github",
-            "documentation/platform/identities/oidc-auth/circleci"
+            "documentation/platform/identities/oidc-auth/circleci",
+            "documentation/platform/identities/oidc-auth/gitlab"
           ]
         },
         "documentation/platform/mfa",
@@ -292,7 +293,10 @@
         },
         {
           "group": "Reference architectures",
-          "pages": ["self-hosting/reference-architectures/aws-ecs"]
+          "pages": [
+            "self-hosting/reference-architectures/aws-ecs",
+            "self-hosting/reference-architectures/linux-deployment-ha"
+          ]
         },
         "self-hosting/ee",
         "self-hosting/faq"

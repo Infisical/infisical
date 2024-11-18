@@ -11,7 +11,7 @@ import { SecretType } from "@app/hooks/api/types";
 import Button from "../basic/buttons/Button";
 import Error from "../basic/Error";
 import { createNotification } from "../notifications";
-import { parseDotEnv } from "../utilities/parseDotEnv";
+import { parseDotEnv } from "../utilities/parseSecrets";
 import guidGenerator from "../utilities/randomId";
 
 interface DropZoneProps {

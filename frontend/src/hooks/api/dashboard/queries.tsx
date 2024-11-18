@@ -5,6 +5,7 @@ import axios from "axios";
 import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
 import {
+  DashboardProjectSecretsByKeys,
   DashboardProjectSecretsDetails,
   DashboardProjectSecretsDetailsResponse,
   DashboardProjectSecretsOverview,
@@ -12,6 +13,7 @@ import {
   DashboardSecretsOrderBy,
   TDashboardProjectSecretsQuickSearch,
   TDashboardProjectSecretsQuickSearchResponse,
+  TGetDashboardProjectSecretsByKeys,
   TGetDashboardProjectSecretsDetailsDTO,
   TGetDashboardProjectSecretsOverviewDTO,
   TGetDashboardProjectSecretsQuickSearchDTO
@@ -94,6 +96,23 @@ export const fetchProjectSecretsDetails = async ({
             .map(([tag]) => tag)
             .join(",")
         )
+      }
+    }
+  );
+
+  return data;
+};
+
+export const fetchDashboardProjectSecretsByKeys = async ({
+  keys,
+  ...params
+}: TGetDashboardProjectSecretsByKeys) => {
+  const { data } = await apiRequest.get<DashboardProjectSecretsByKeys>(
+    "/api/v1/dashboard/secrets-by-keys",
+    {
+      params: {
+        ...params,
+        keys: encodeURIComponent(keys.join(","))
       }
     }
   );

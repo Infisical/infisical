@@ -185,6 +185,7 @@ export type TGetSecretsRawDTO = {
   offset?: number;
   limit?: number;
   search?: string;
+  keys?: string[];
 } & TProjectPermission;
 
 export type TGetASecretRawDTO = {

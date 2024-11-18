@@ -1,5 +1,3 @@
-import crypto from "node:crypto";
-
 import { authenticator } from "otplib";
 
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -7,6 +5,7 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TTotpConfigDALFactory } from "./totp-config-dal";
+import { generateRecoveryCode } from "./totp-fns";
 import {
   TCreateUserTotpRecoveryCodesDTO,
   TDeleteUserTotpConfigDTO,
@@ -24,6 +23,8 @@ type TTotpServiceFactoryDep = {
 };
 
 export type TTotpServiceFactory = ReturnType<typeof totpServiceFactory>;
+
+const MAX_RECOVERY_CODE_LIMIT = 10;
 
 export const totpServiceFactory = ({ totpConfigDAL, kmsService, userDAL }: TTotpServiceFactoryDep) => {
   const getUserTotpConfig = async ({ userId }: TGetUserTotpConfigDTO) => {
@@ -82,7 +83,7 @@ export const totpServiceFactory = ({ totpConfigDAL, kmsService, userDAL }: TTotp
       // create new TOTP configuration
       const secret = authenticator.generateSecret();
       const encryptedSecret = encryptWithRoot(Buffer.from(secret));
-      const recoveryCodes = Array.from({ length: 10 }).map(() => String(crypto.randomInt(10 ** 7, 10 ** 8 - 1)));
+      const recoveryCodes = Array.from({ length: MAX_RECOVERY_CODE_LIMIT }).map(generateRecoveryCode);
       const encryptedRecoveryCodes = encryptWithRoot(Buffer.from(recoveryCodes.join(",")));
       const newTotpConfig = await totpConfigDAL.create({
         userId,
@@ -241,16 +242,14 @@ export const totpServiceFactory = ({ totpConfigDAL, kmsService, userDAL }: TTotp
       }
 
       const recoveryCodes = decryptWithRoot(totpConfig.encryptedRecoveryCodes).toString().split(",");
-      if (recoveryCodes.length >= 10) {
+      if (recoveryCodes.length >= MAX_RECOVERY_CODE_LIMIT) {
         throw new BadRequestError({
-          message: "Cannot have more than 10 recovery codes at a time"
+          message: `Cannot have more than ${MAX_RECOVERY_CODE_LIMIT} recovery codes at a time`
         });
       }
 
-      const toGenerateCount = 10 - recoveryCodes.length;
-      const newRecoveryCodes = Array.from({ length: toGenerateCount }).map(() =>
-        String(crypto.randomInt(10 ** 7, 10 ** 8 - 1))
-      );
+      const toGenerateCount = MAX_RECOVERY_CODE_LIMIT - recoveryCodes.length;
+      const newRecoveryCodes = Array.from({ length: toGenerateCount }).map(generateRecoveryCode);
       const encryptedRecoveryCodes = encryptWithRoot(Buffer.from([...recoveryCodes, ...newRecoveryCodes].join(",")));
 
       await totpConfigDAL.updateById(totpConfig.id, {

@@ -3,6 +3,7 @@ import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import {
   faClone,
+  faFileImport,
   faKey,
   faSearch,
   faSquareCheck,
@@ -151,6 +152,7 @@ export const CopySecretsFromBoard = ({
           >
             {(isAllowed) => (
               <Button
+                leftIcon={<FontAwesomeIcon icon={faFileImport} />}
                 onClick={() => onToggle(true)}
                 isDisabled={!isAllowed}
                 variant="star"

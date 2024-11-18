@@ -1,0 +1,25 @@
+{
+  "name": "@infisical/cli",
+  "private": false,
+  "version": "0.0.0",
+  "keywords": [
+    "infisical",
+    "cli",
+    "command-line"
+  ],
+  "bin": {
+    "infisical": "./bin/infisical"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Infisical/infisical.git"
+  },
+  "author": "Infisical Inc, <daniel@infisical.com>",
+  "scripts": {
+    "preinstall": "node src/index.cjs"
+  },
+  "dependencies": {
+    "tar": "^6.2.0",
+    "yauzl": "^3.2.0"
+  }
+}
