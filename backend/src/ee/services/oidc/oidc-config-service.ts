@@ -425,7 +425,8 @@ export const oidcConfigServiceFactory = ({
       const isSmtpConnected = await smtpService.verify();
       if (!isSmtpConnected) {
         throw new BadRequestError({
-          message: "Cannot enable OIDC when there are issues with the instance's SMTP configuration"
+          message:
+            "Cannot enable OIDC when there are issues with the instance's SMTP configuration. Bypass this by turning on trust for OIDC emails in the server admin console."
         });
       }
     }
