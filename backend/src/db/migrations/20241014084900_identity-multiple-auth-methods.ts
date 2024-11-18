@@ -2,7 +2,7 @@ import { Knex } from "knex";
 
 import { TableName } from "../schemas";
 
-const BATCH_SIZE = 30_000;
+const BATCH_SIZE = 10_000;
 
 export async function up(knex: Knex): Promise<void> {
   const hasAuthMethodColumnAccessToken = await knex.schema.hasColumn(TableName.IdentityAccessToken, "authMethod");
@@ -12,7 +12,18 @@ export async function up(knex: Knex): Promise<void> {
       t.string("authMethod").nullable();
     });
 
-    let nullableAccessTokens = await knex(TableName.IdentityAccessToken).whereNull("authMethod").limit(BATCH_SIZE);
+    // first we remove identities without auth method that is unused
+    // ! We delete all access tokens where the identity has no auth method set!
+    // ! Which means un-configured identities that for some reason have access tokens, will have their access tokens deleted.
+    await knex(TableName.IdentityAccessToken)
+      .leftJoin(TableName.Identity, `${TableName.Identity}.id`, `${TableName.IdentityAccessToken}.identityId`)
+      .whereNull(`${TableName.Identity}.authMethod`)
+      .delete();
+
+    let nullableAccessTokens = await knex(TableName.IdentityAccessToken)
+      .whereNull("authMethod")
+      .limit(BATCH_SIZE)
+      .select("id");
     let totalUpdated = 0;
 
     do {
@@ -33,23 +44,14 @@ export async function up(knex: Knex): Promise<void> {
         });
 
       // eslint-disable-next-line no-await-in-loop
-      nullableAccessTokens = await knex(TableName.IdentityAccessToken).whereNull("authMethod").limit(BATCH_SIZE);
+      nullableAccessTokens = await knex(TableName.IdentityAccessToken)
+        .whereNull("authMethod")
+        .limit(BATCH_SIZE)
+        .select("id");
 
       totalUpdated += batchIds.length;
       console.log(`Updated ${batchIds.length} access tokens in batch <> Total updated: ${totalUpdated}`);
     } while (nullableAccessTokens.length > 0);
-
-    // ! We delete all access tokens where the identity has no auth method set!
-    // ! Which means un-configured identities that for some reason have access tokens, will have their access tokens deleted.
-    await knex(TableName.IdentityAccessToken)
-      .whereNotExists((queryBuilder) => {
-        void queryBuilder
-          .select("id")
-          .from(TableName.Identity)
-          .whereRaw(`${TableName.IdentityAccessToken}."identityId" = ${TableName.Identity}.id`)
-          .whereNotNull("authMethod");
-      })
-      .delete();
 
     // Finally we set the authMethod to notNullable after populating the column.
     // This will fail if the data is not populated correctly, so it's safe.
