@@ -80,7 +80,7 @@ const ElastiCacheUserManager = (credentials: TBasicAWSCredentials, region: strin
     }
   };
 
-  const addUserToInfisicalGroup = async (userId: string) => {
+  const $addUserToInfisicalGroup = async (userId: string) => {
     // figure out if the default user is already in the group, if it is, then we shouldn't add it again
 
     const addUserToGroupCommand = new ModifyUserGroupCommand({
@@ -96,7 +96,7 @@ const ElastiCacheUserManager = (credentials: TBasicAWSCredentials, region: strin
     await ensureInfisicalGroupExists(clusterName);
 
     await elastiCache.send(new CreateUserCommand(creationInput)); // First create the user
-    await addUserToInfisicalGroup(creationInput.UserId); // Then add the user to the group. We know the group is already a part of the cluster because of ensureInfisicalGroupExists()
+    await $addUserToInfisicalGroup(creationInput.UserId); // Then add the user to the group. We know the group is already a part of the cluster because of ensureInfisicalGroupExists()
 
     return {
       userId: creationInput.UserId,

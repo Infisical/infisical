@@ -34,7 +34,7 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
     return providerInputs;
   };
 
-  const getClient = async (providerInputs: z.infer<typeof DynamicSecretSnowflakeSchema>) => {
+  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretSnowflakeSchema>) => {
     const client = snowflake.createConnection({
       account: `${providerInputs.orgId}-${providerInputs.accountId}`,
       username: providerInputs.username,
@@ -49,7 +49,7 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
 
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
 
     let isValidConnection: boolean;
 
@@ -72,7 +72,7 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
   const create = async (inputs: unknown, expireAt: number) => {
     const providerInputs = await validateProviderInputs(inputs);
 
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
 
     const username = generateUsername();
     const password = generatePassword();
@@ -107,7 +107,7 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
   const revoke = async (inputs: unknown, username: string) => {
     const providerInputs = await validateProviderInputs(inputs);
 
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
 
     try {
       const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username });
@@ -135,7 +135,7 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
     const providerInputs = await validateProviderInputs(inputs);
     if (!providerInputs.renewStatement) return { entityId };
 
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
 
     try {
       const expiration = getDaysToExpiry(new Date(expireAt));

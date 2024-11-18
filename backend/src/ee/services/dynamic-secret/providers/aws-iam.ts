@@ -33,7 +33,7 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
     return providerInputs;
   };
 
-  const getClient = async (providerInputs: z.infer<typeof DynamicSecretAwsIamSchema>) => {
+  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretAwsIamSchema>) => {
     const client = new IAMClient({
       region: providerInputs.region,
       credentials: {
@@ -47,7 +47,7 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
 
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
 
     const isConnected = await client.send(new GetUserCommand({})).then(() => true);
     return isConnected;
@@ -55,7 +55,7 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
 
   const create = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
 
     const username = generateUsername();
     const { policyArns, userGroups, policyDocument, awsPath, permissionBoundaryPolicyArn } = providerInputs;
@@ -118,7 +118,7 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
 
   const revoke = async (inputs: unknown, entityId: string) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
 
     const username = entityId;
 
