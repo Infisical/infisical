@@ -1,17 +1,17 @@
-<h1 align="center">Infisical</h1>
+<h1 align="center">Infisical CLI</h1>
 <p align="center">
-  <p align="center"><b>The open-source secret management platform</b>: Sync secrets/configs across your team/infrastructure and prevent secret leaks.</p>
+  <p align="center"><b>The Infisical CLI is powerful command line tool that can be used to retrieve, modify, export and inject secrets into any process or application as environment variables.</b></p>
 </p>
 
 <h4 align="center">
   <a href="https://infisical.com/slack">Slack</a> |
+  <a href="https://www.npmjs.com/package/@infisical/sdk">Node.js SDK</a> |
   <a href="https://infisical.com/">Infisical Cloud</a> |
   <a href="https://infisical.com/docs/self-hosting/overview">Self-Hosting</a> |
   <a href="https://infisical.com/docs/documentation/getting-started/introduction">Docs</a> |
   <a href="https://www.infisical.com">Website</a> |
   <a href="https://infisical.com/careers">Hiring (Remote/SF)</a>
 </h4>
-
 
 <h4 align="center">
   <a href="https://github.com/Infisical/infisical/blob/main/LICENSE">
@@ -36,10 +36,7 @@
 
 ### Introduction
 
-**[Infisical](https://infisical.com)** is the open source secret management platform that teams use to centralize their application configuration and secrets like API keys and database credentials as well as manage their internal PKI.
-
-We're on a mission to make security tooling more accessible to everyone, not just security teams, and that means redesigning the entire developer experience from ground up.
-
+The Infisical CLI is powerful command line tool that can be used to retrieve, modify, export and inject secrets into any process or application as environment variables. You can use it across various environments, whether it’s local development, CI/CD, staging, or production.
 
 ### Installation
 
