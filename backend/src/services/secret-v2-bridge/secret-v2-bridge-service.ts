@@ -414,12 +414,13 @@ export const secretV2BridgeServiceFactory = ({
       type: KmsDataKey.SecretManager,
       projectId
     });
-    const encryptedValue = secretValue
-      ? {
-          encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(secretValue) }).cipherTextBlob,
-          references: getAllSecretReferences(secretValue).nestedReferences
-        }
-      : {};
+    const encryptedValue =
+      typeof secretValue === "string"
+        ? {
+            encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(secretValue) }).cipherTextBlob,
+            references: getAllSecretReferences(secretValue).nestedReferences
+          }
+        : {};
 
     if (secretValue) {
       const { nestedReferences, localReferences } = getAllSecretReferences(secretValue);
@@ -1165,7 +1166,7 @@ export const secretV2BridgeServiceFactory = ({
     const newSecrets = await secretDAL.transaction(async (tx) =>
       fnSecretBulkInsert({
         inputSecrets: inputSecrets.map((el) => {
-          const references = secretReferencesGroupByInputSecretKey[el.secretKey].nestedReferences;
+          const references = secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences;
 
           return {
             version: 1,
@@ -1372,7 +1373,7 @@ export const secretV2BridgeServiceFactory = ({
             typeof el.secretValue !== "undefined"
               ? {
                   encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(el.secretValue) }).cipherTextBlob,
-                  references: secretReferencesGroupByInputSecretKey[el.secretKey].nestedReferences
+                  references: secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences
                 }
               : {};
 
