@@ -157,7 +157,8 @@ const fetchIntegrationAuthApps = async ({
     `/api/v1/integration-auth/${integrationAuthId}/apps`,
     { params: searchParams }
   );
-  return data.apps;
+
+  return data.apps.sort((a, b) => a.name.localeCompare(b.name));
 };
 
 const fetchIntegrationAuthTeams = async (integrationAuthId: string) => {
