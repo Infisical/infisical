@@ -70,7 +70,9 @@ export const identityAzureAuthServiceFactory = ({
         .map((servicePrincipalId) => servicePrincipalId.trim())
         .some((servicePrincipalId) => servicePrincipalId === azureIdentity.oid);
 
-      if (!isServicePrincipalAllowed) throw new UnauthorizedError({ message: "Service principal not allowed" });
+      if (!isServicePrincipalAllowed) {
+        throw new UnauthorizedError({ message: `Service principal '${azureIdentity.oid}' not allowed` });
+      }
     }
 
     const identityAccessToken = await identityAzureAuthDAL.transaction(async (tx) => {
