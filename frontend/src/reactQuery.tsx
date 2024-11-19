@@ -28,20 +28,26 @@ export const queryClient = new QueryClient({
                     </div>
                   </div>
                 ))}
+                <div className="mt-2">Request ID: {serverResponse.requestId}</div>
               </div>
             )
           });
           return;
         }
-        if (serverResponse.statusCode === 401) {
-          createNotification({
-            title: "Forbidden Access",
-            type: "error",
-            text: serverResponse.message
-          });
-          return;
-        }
-        createNotification({ title: "Bad Request", type: "error", text: serverResponse.message });
+
+        const title =
+          // eslint-disable-next-line no-nested-ternary
+          serverResponse.statusCode === 403
+            ? "Forbidden Access"
+            : serverResponse.statusCode === 401
+            ? "Unauthorized Access"
+            : "Bad Request";
+
+        createNotification({
+          title,
+          type: "error",
+          text: `${serverResponse.message} [requestId=${serverResponse.requestId}]`
+        });
       }
     }
   }),

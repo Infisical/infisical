@@ -17,6 +17,7 @@ import { Logger } from "pino";
 import { HsmModule } from "@app/ee/services/hsm/hsm-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, IS_PACKAGED } from "@app/lib/config/env";
+import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TQueueServiceFactory } from "@app/queue";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
@@ -47,6 +48,7 @@ export const main = async ({ db, hsmModule, auditLogDb, smtp, logger, queue, key
 
   const server = fastify({
     logger: appCfg.NODE_ENV === "test" ? false : logger,
+    genReqId: () => `req-${alphaNumericNanoId(14)}`,
     trustProxy: true,
     connectionTimeout: appCfg.isHsmConfigured ? 90_000 : 30_000,
     ignoreTrailingSlash: true,
