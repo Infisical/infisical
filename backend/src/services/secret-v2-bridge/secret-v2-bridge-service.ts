@@ -414,12 +414,13 @@ export const secretV2BridgeServiceFactory = ({
       type: KmsDataKey.SecretManager,
       projectId
     });
-    const encryptedValue = secretValue
-      ? {
-          encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(secretValue) }).cipherTextBlob,
-          references: getAllSecretReferences(secretValue).nestedReferences
-        }
-      : {};
+    const encryptedValue =
+      typeof secretValue === "string"
+        ? {
+            encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(secretValue) }).cipherTextBlob,
+            references: getAllSecretReferences(secretValue).nestedReferences
+          }
+        : {};
 
     if (secretValue) {
       const { nestedReferences, localReferences } = getAllSecretReferences(secretValue);
