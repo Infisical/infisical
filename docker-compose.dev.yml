@@ -86,6 +86,7 @@ services:
       - .env
     ports:
       - 4000:4000
+      - 9464:9464 # for OTEL collection of Prometheus metrics
     environment:
       - NODE_ENV=development
       - DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
@@ -94,6 +95,28 @@ services:
       - ./backend/src:/app/src
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    profiles: [metrics]
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      - GF_LOG_LEVEL=debug
+    ports:
+      - "3005:3000"
+    volumes:
+      - "grafana_storage:/var/lib/grafana"
+    profiles: [metrics]
 
   frontend:
     container_name: infisical-dev-frontend
@@ -166,3 +189,4 @@ volumes:
     driver: local
   ldap_data:
   ldap_config:
+  grafana_storage:

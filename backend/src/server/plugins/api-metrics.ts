@@ -3,7 +3,7 @@ import fp from "fastify-plugin";
 
 export const apiMetrics = fp(async (fastify) => {
   const apiMeter = opentelemetry.metrics.getMeter("API");
-  const latencyHistogram = apiMeter.createHistogram("API latency", {
+  const latencyHistogram = apiMeter.createHistogram("API_latency", {
     unit: "ms"
   });
 

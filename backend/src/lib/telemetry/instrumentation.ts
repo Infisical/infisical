@@ -5,9 +5,14 @@ import { PrometheusExporter } from "@opentelemetry/exporter-prometheus";
 import { registerInstrumentations } from "@opentelemetry/instrumentation";
 import { Resource } from "@opentelemetry/resources";
 import { AggregationTemporality, MeterProvider, PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
-import { SEMRESATTRS_SERVICE_NAME, SEMRESATTRS_SERVICE_VERSION } from "@opentelemetry/semantic-conventions";
+import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from "@opentelemetry/semantic-conventions";
+import dotenv from "dotenv";
 
-export const initTelemetryInstrumentation = async ({
+import { initEnvConfig } from "../config/env";
+
+dotenv.config();
+
+const initTelemetryInstrumentation = ({
   exportType,
   otlpURL,
   otlpUser,
@@ -24,8 +29,8 @@ export const initTelemetryInstrumentation = async ({
 
   const resource = Resource.default().merge(
     new Resource({
-      [SEMRESATTRS_SERVICE_NAME]: "infisical-server",
-      [SEMRESATTRS_SERVICE_VERSION]: "0.1.0"
+      [ATTR_SERVICE_NAME]: "infisical-server",
+      [ATTR_SERVICE_VERSION]: "0.1.0"
     })
   );
 
@@ -67,3 +72,20 @@ export const initTelemetryInstrumentation = async ({
     instrumentations: [getNodeAutoInstrumentations()]
   });
 };
+
+const setupTelemetry = () => {
+  const appCfg = initEnvConfig();
+
+  if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+    console.log("Initializing telemetry instrumentation");
+    initTelemetryInstrumentation({
+      otlpURL: appCfg.OTEL_EXPORT_OTLP_ENDPOINT,
+      otlpUser: appCfg.OTEL_COLLECTOR_BASIC_AUTH_USERNAME,
+      otlpPassword: appCfg.OTEL_COLLECTOR_BASIC_AUTH_PASSWORD,
+      otlpPushInterval: appCfg.OTEL_OTLP_PUSH_INTERVAL,
+      exportType: appCfg.OTEL_EXPORT_TYPE
+    });
+  }
+};
+
+void setupTelemetry();

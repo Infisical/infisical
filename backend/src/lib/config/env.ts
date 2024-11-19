@@ -212,11 +212,11 @@ let envCfg: Readonly<z.infer<typeof envSchema>>;
 
 export const getConfig = () => envCfg;
 // cannot import singleton logger directly as it needs config to load various transport
-export const initEnvConfig = (logger: Logger) => {
+export const initEnvConfig = (logger?: Logger) => {
   const parsedEnv = envSchema.safeParse(process.env);
   if (!parsedEnv.success) {
-    logger.error("Invalid environment variables. Check the error below");
-    logger.error(parsedEnv.error.issues);
+    (logger ?? console).error("Invalid environment variables. Check the error below");
+    (logger ?? console).error(parsedEnv.error.issues);
     process.exit(-1);
   }
 
