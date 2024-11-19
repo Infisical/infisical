@@ -56,6 +56,7 @@ export type TGetUpgradeProjectStatusDTO = {
 // mutation dto
 export type CreateWorkspaceDTO = {
   projectName: string;
+  projectDescription?: string;
   kmsKeyId?: string;
   template?: string;
 };
