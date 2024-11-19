@@ -29,7 +29,7 @@ import {
 } from "./identity-aws-auth-types";
 
 type TIdentityAwsAuthServiceFactoryDep = {
-  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create">;
+  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   identityAwsAuthDAL: Pick<TIdentityAwsAuthDALFactory, "findOne" | "transaction" | "create" | "updateById" | "delete">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -346,6 +346,8 @@ export const identityAwsAuthServiceFactory = ({
 
     const revokedIdentityAwsAuth = await identityAwsAuthDAL.transaction(async (tx) => {
       const deletedAwsAuth = await identityAwsAuthDAL.delete({ identityId }, tx);
+      await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.AWS_AUTH }, tx);
+
       return { ...deletedAwsAuth?.[0], orgId: identityMembershipOrg.orgId };
     });
     return revokedIdentityAwsAuth;

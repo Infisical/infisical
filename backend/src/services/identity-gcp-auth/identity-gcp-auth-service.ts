@@ -28,7 +28,7 @@ import {
 type TIdentityGcpAuthServiceFactoryDep = {
   identityGcpAuthDAL: Pick<TIdentityGcpAuthDALFactory, "findOne" | "transaction" | "create" | "updateById" | "delete">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
-  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create">;
+  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
@@ -365,6 +365,8 @@ export const identityGcpAuthServiceFactory = ({
 
     const revokedIdentityGcpAuth = await identityGcpAuthDAL.transaction(async (tx) => {
       const deletedGcpAuth = await identityGcpAuthDAL.delete({ identityId }, tx);
+      await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.GCP_AUTH }, tx);
+
       return { ...deletedGcpAuth?.[0], orgId: identityMembershipOrg.orgId };
     });
     return revokedIdentityGcpAuth;

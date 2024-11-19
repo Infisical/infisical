@@ -41,7 +41,7 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
     TIdentityKubernetesAuthDALFactory,
     "create" | "findOne" | "transaction" | "updateById" | "delete"
   >;
-  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create">;
+  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne" | "findById">;
   orgBotDAL: Pick<TOrgBotDALFactory, "findOne" | "transaction" | "create">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
@@ -622,6 +622,7 @@ export const identityKubernetesAuthServiceFactory = ({
 
     const revokedIdentityKubernetesAuth = await identityKubernetesAuthDAL.transaction(async (tx) => {
       const deletedKubernetesAuth = await identityKubernetesAuthDAL.delete({ identityId }, tx);
+      await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.KUBERNETES_AUTH }, tx);
       return { ...deletedKubernetesAuth?.[0], orgId: identityMembershipOrg.orgId };
     });
     return revokedIdentityKubernetesAuth;

@@ -39,7 +39,7 @@ import {
 type TIdentityOidcAuthServiceFactoryDep = {
   identityOidcAuthDAL: TIdentityOidcAuthDALFactory;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
-  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create">;
+  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   orgBotDAL: Pick<TOrgBotDALFactory, "findOne" | "transaction" | "create">;
@@ -539,6 +539,8 @@ export const identityOidcAuthServiceFactory = ({
 
     const revokedIdentityOidcAuth = await identityOidcAuthDAL.transaction(async (tx) => {
       const deletedOidcAuth = await identityOidcAuthDAL.delete({ identityId }, tx);
+      await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.OIDC_AUTH }, tx);
+
       return { ...deletedOidcAuth?.[0], orgId: identityMembershipOrg.orgId };
     });
 
