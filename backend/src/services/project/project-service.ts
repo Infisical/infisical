@@ -56,6 +56,7 @@ import {
   TLoadProjectKmsBackupDTO,
   TToggleProjectAutoCapitalizationDTO,
   TUpdateAuditLogsRetentionDTO,
+  TUpdateProjectDescriptionDTO,
   TUpdateProjectDTO,
   TUpdateProjectKmsDTO,
   TUpdateProjectNameDTO,
@@ -616,6 +617,27 @@ export const projectServiceFactory = ({
     return updatedProject;
   };
 
+  const updateDescription = async ({
+    projectId,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    description
+  }: TUpdateProjectDescriptionDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+
+    const updatedProject = await projectDAL.updateById(projectId, { description });
+    return updatedProject;
+  };
+
   const upgradeProject = async ({
     projectId,
     actor,
@@ -1086,6 +1108,7 @@ export const projectServiceFactory = ({
     getAProject,
     toggleAutoCapitalization,
     updateName,
+    updateDescription,
     upgradeProject,
     listProjectCas,
     listProjectCertificates,

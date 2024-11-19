@@ -66,6 +66,10 @@ export type TUpdateProjectNameDTO = {
   name: string;
 } & TProjectPermission;
 
+export type TUpdateProjectDescriptionDTO = {
+  description: string;
+} & TProjectPermission;
+
 export type TUpdateProjectDTO = {
   filter: Filter;
   update: {

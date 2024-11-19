@@ -16,6 +16,7 @@ export type Workspace = {
   __v: number;
   id: string;
   name: string;
+  description?: string;
   orgId: string;
   version: ProjectVersion;
   upgradeStatus: string | null;
@@ -26,7 +27,6 @@ export type Workspace = {
   auditLogsRetentionDays: number;
   slug: string;
   createdAt: string;
-
   roles?: TProjectRole[];
 };
 
@@ -62,6 +62,7 @@ export type CreateWorkspaceDTO = {
 };
 
 export type RenameWorkspaceDTO = { workspaceID: string; newWorkspaceName: string };
+export type SetWorkspaceDescriptionDTO = { workspaceID: string; newWorkspaceDescription: string };
 export type UpdatePitVersionLimitDTO = { projectSlug: string; pitVersionLimit: number };
 export type UpdateAuditLogsRetentionDTO = { projectSlug: string; auditLogsRetentionDays: number };
 export type ToggleAutoCapitalizationDTO = { workspaceID: string; state: boolean };

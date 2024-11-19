@@ -206,6 +206,7 @@ export const SanitizedAuditLogStreamSchema = z.object({
 export const SanitizedProjectSchema = ProjectsSchema.pick({
   id: true,
   name: true,
+  description: true,
   slug: true,
   autoCapitalization: true,
   orgId: true,

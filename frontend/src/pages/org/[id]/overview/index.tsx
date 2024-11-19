@@ -583,6 +583,7 @@ const OrganizationPage = () => {
           />
         )}
       </div>
+      <div className="mt-0 text-base  text-mineshaft-200">{workspace.description}</div>
       <div className="mt-0 pb-6 text-sm text-mineshaft-300">
         {workspace.environments?.length || 0} environments
       </div>

@@ -7,6 +7,7 @@ import { BackfillSecretReferenceSecretion } from "../BackfillSecretReferenceSect
 import { DeleteProjectSection } from "../DeleteProjectSection";
 import { EnvironmentSection } from "../EnvironmentSection";
 import { PointInTimeVersionLimitSection } from "../PointInTimeVersionLimitSection";
+import { ProjectDescriptionChangeSection } from "../ProjectDescriptionChangeSection";
 import { ProjectNameChangeSection } from "../ProjectNameChangeSection";
 import { RebuildSecretIndicesSection } from "../RebuildSecretIndicesSection/RebuildSecretIndicesSection";
 import { SecretTagsSection } from "../SecretTagsSection";
@@ -17,6 +18,7 @@ export const ProjectGeneralTab = () => {
   return (
     <div>
       <ProjectNameChangeSection />
+      <ProjectDescriptionChangeSection />
       <EnvironmentSection />
       <SecretTagsSection />
       <AutoCapitalizationSection />
