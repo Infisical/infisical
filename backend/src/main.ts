@@ -1,3 +1,5 @@
+import "./lib/telemetry/instrumentation";
+
 import dotenv from "dotenv";
 import path from "path";
 
@@ -18,6 +20,7 @@ dotenv.config();
 const run = async () => {
   const logger = await initLogger();
   const appCfg = initEnvConfig(logger);
+
   const db = initDbConnection({
     dbConnectionUri: appCfg.DB_CONNECTION_URI,
     dbRootCert: appCfg.DB_ROOT_CERT,

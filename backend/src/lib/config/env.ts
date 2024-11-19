@@ -157,6 +157,15 @@ const envSchema = z
     INFISICAL_CLOUD: zodStrBool.default("false"),
     MAINTENANCE_MODE: zodStrBool.default("false"),
     CAPTCHA_SECRET: zpStr(z.string().optional()),
+
+    // TELEMETRY
+    OTEL_TELEMETRY_COLLECTION_ENABLED: zodStrBool.default("false"),
+    OTEL_EXPORT_OTLP_ENDPOINT: zpStr(z.string().optional()),
+    OTEL_OTLP_PUSH_INTERVAL: z.coerce.number().default(30000),
+    OTEL_COLLECTOR_BASIC_AUTH_USERNAME: zpStr(z.string().optional()),
+    OTEL_COLLECTOR_BASIC_AUTH_PASSWORD: zpStr(z.string().optional()),
+    OTEL_EXPORT_TYPE: z.enum(["prometheus", "otlp"]).optional(),
+
     PLAIN_API_KEY: zpStr(z.string().optional()),
     PLAIN_WISH_LABEL_IDS: zpStr(z.string().optional()),
     DISABLE_AUDIT_LOG_GENERATION: zodStrBool.default("false"),
@@ -203,11 +212,11 @@ let envCfg: Readonly<z.infer<typeof envSchema>>;
 
 export const getConfig = () => envCfg;
 // cannot import singleton logger directly as it needs config to load various transport
-export const initEnvConfig = (logger: Logger) => {
+export const initEnvConfig = (logger?: Logger) => {
   const parsedEnv = envSchema.safeParse(process.env);
   if (!parsedEnv.success) {
-    logger.error("Invalid environment variables. Check the error below");
-    logger.error(parsedEnv.error.issues);
+    (logger ?? console).error("Invalid environment variables. Check the error below");
+    (logger ?? console).error(parsedEnv.error.issues);
     process.exit(-1);
   }
 
