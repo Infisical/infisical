@@ -30,7 +30,7 @@ type TIdentityAzureAuthServiceFactoryDep = {
     "findOne" | "transaction" | "create" | "updateById" | "delete"
   >;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
-  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create">;
+  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
@@ -319,6 +319,8 @@ export const identityAzureAuthServiceFactory = ({
 
     const revokedIdentityAzureAuth = await identityAzureAuthDAL.transaction(async (tx) => {
       const deletedAzureAuth = await identityAzureAuthDAL.delete({ identityId }, tx);
+      await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.AZURE_AUTH }, tx);
+
       return { ...deletedAzureAuth?.[0], orgId: identityMembershipOrg.orgId };
     });
     return revokedIdentityAzureAuth;
