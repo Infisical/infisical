@@ -559,7 +559,7 @@ const OrganizationPage = () => {
         localStorage.setItem("projectData.id", workspace.id);
       }}
       key={workspace.id}
-      className="min-w-72 flex h-40 cursor-pointer flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
+      className="min-w-72 flex h-40 cursor-pointer flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
     >
       <div className="flex flex-row justify-between">
         <div className="mt-0 truncate text-lg text-mineshaft-100">{workspace.name}</div>
@@ -583,19 +583,23 @@ const OrganizationPage = () => {
           />
         )}
       </div>
-      <div className="mt-0 text-base  text-mineshaft-200">{workspace.description}</div>
-      <div className="mt-0 pb-6 text-sm text-mineshaft-300">
+      <div className="mt-0 max-h-12 truncate text-base text-mineshaft-200">
+        {workspace.description}
+      </div>
+      <div className="mt-0 text-sm text-mineshaft-300">
         {workspace.environments?.length || 0} environments
       </div>
-      <button type="button">
-        <div className="group ml-auto w-max cursor-pointer rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 transition-all hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200">
-          Explore{" "}
-          <FontAwesomeIcon
-            icon={faArrowRight}
-            className="pl-1.5 pr-0.5 duration-200 hover:pl-2 hover:pr-0"
-          />
-        </div>
-      </button>
+      <div className=" flex grow items-end place-self-end ">
+        <button type="button">
+          <div className="group ml-auto w-max cursor-pointer rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 transition-all hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200">
+            Explore{" "}
+            <FontAwesomeIcon
+              icon={faArrowRight}
+              className="pl-1.5 pr-0.5 duration-200 hover:pl-2 hover:pr-0"
+            />
+          </div>
+        </button>
+      </div>
     </div>
   );
 
