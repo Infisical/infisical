@@ -1,6 +1,6 @@
 <h1 align="center">Infisical CLI</h1>
 <p align="center">
-  <p align="center"><b>The Infisical CLI is powerful command line tool that can be used to retrieve, modify, export and inject secrets into any process or application as environment variables.</b></p>
+  <p align="center"><b>Embrace shift-left security with Infisical CLI and strengthen your DevSecOps practices by seamlessly managing secrets across your workflows, pipelines and applications.</b></p>
 </p>
 
 <h4 align="center">
@@ -36,7 +36,7 @@
 
 ### Introduction
 
-The Infisical CLI is powerful command line tool that can be used to retrieve, modify, export and inject secrets into any process or application as environment variables. You can use it across various environments, whether it’s local development, CI/CD, staging, or production.
+The Infisical CLI is a powerful command line tool that can be used to retrieve, modify, export and inject secrets into any process or application as environment variables. You can use it across various environments, whether it’s local development, CI/CD, staging, or production.
 
 ### Installation
 
