@@ -1,4 +1,4 @@
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -62,7 +62,60 @@ const OutputDisplay = ({
   );
 };
 
-const renderOutputForm = (provider: DynamicSecretProviders, data: unknown) => {
+const TotpOutputDisplay = ({
+  totp,
+  remainingSeconds,
+  triggerLeaseCreation
+}: {
+  totp: string;
+  remainingSeconds: number;
+  triggerLeaseCreation: (details: { ttl?: string }) => Promise<void>;
+}) => {
+  const [remainingTime, setRemainingTime] = useState(remainingSeconds);
+  const [shouldShowRegenerate, setShouldShowRegenerate] = useToggle(false);
+
+  useEffect(() => {
+    setRemainingTime(remainingSeconds);
+    setShouldShowRegenerate.off();
+
+    // Set up countdown interval
+    const intervalId = setInterval(() => {
+      setRemainingTime((prevTime) => {
+        if (prevTime <= 1) {
+          clearInterval(intervalId);
+          setShouldShowRegenerate.on();
+          return 0;
+        }
+        return prevTime - 1;
+      });
+    }, 1000);
+
+    // Cleanup interval on unmount or when totp changes
+    return () => clearInterval(intervalId);
+  }, [totp, remainingSeconds]);
+
+  return (
+    <div>
+      <OutputDisplay label="Time-based one-time password" value={totp} />
+      {remainingTime > 0 && (
+        <div>
+          Valid for {remainingTime} {remainingTime > 1 ? "seconds" : "second"}
+        </div>
+      )}
+      {shouldShowRegenerate && (
+        <Button colorSchema="secondary" className="mt-2" onClick={() => triggerLeaseCreation({})}>
+          Regenerate
+        </Button>
+      )}
+    </div>
+  );
+};
+
+const renderOutputForm = (
+  provider: DynamicSecretProviders,
+  data: unknown,
+  triggerLeaseCreation: (details: { ttl?: string }) => Promise<void>
+) => {
   if (
     provider === DynamicSecretProviders.SqlDatabase ||
     provider === DynamicSecretProviders.Cassandra ||
@@ -251,14 +304,17 @@ const renderOutputForm = (provider: DynamicSecretProviders, data: unknown) => {
   }
 
   if (provider === DynamicSecretProviders.Totp) {
-    const { TOTP } = data as {
+    const { TOTP, TIME_REMAINING } = data as {
       TOTP: string;
+      TIME_REMAINING: number;
     };
 
     return (
-      <div>
-        <OutputDisplay label="Time-based one-time password" value={TOTP} />
-      </div>
+      <TotpOutputDisplay
+        totp={TOTP}
+        remainingSeconds={TIME_REMAINING}
+        triggerLeaseCreation={triggerLeaseCreation}
+      />
     );
   }
 
@@ -391,7 +447,11 @@ export const CreateDynamicSecretLease = ({
             animate={{ opacity: 1, translateX: 0 }}
             exit={{ opacity: 0, translateX: 30 }}
           >
-            {renderOutputForm(provider, createDynamicSecretLease.data?.data)}
+            {renderOutputForm(
+              provider,
+              createDynamicSecretLease.data?.data,
+              handleDynamicSecretLeaseCreate
+            )}
           </motion.div>
         )}
       </AnimatePresence>

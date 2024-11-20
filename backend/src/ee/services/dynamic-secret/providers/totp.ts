@@ -65,7 +65,10 @@ export const TotpProvider = (): TDynamicProviderFns => {
       authenticatorInstance.options = { step: period };
     }
 
-    return { entityId, data: { TOTP: authenticatorInstance.generate(secret) } };
+    return {
+      entityId,
+      data: { TOTP: authenticatorInstance.generate(secret), TIME_REMAINING: authenticatorInstance.timeRemaining() }
+    };
   };
 
   const revoke = async (_inputs: unknown, entityId: string) => {
