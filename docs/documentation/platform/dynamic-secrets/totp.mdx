@@ -7,7 +7,7 @@ The Infisical TOTP dynamic secret allows you to generate time-based one-time pas
 
 ## Prerequisite
 
-- Infisical requires the OTP url from the TOTP provider.
+- Infisical requires either the OTP url or the secret key from the TOTP provider.
 
 ## Set up Dynamic Secrets with TOTP
 
@@ -41,10 +41,10 @@ The Infisical TOTP dynamic secret allows you to generate time-based one-time pas
     <ParamField path="Period" type="number">
       Time interval in seconds between generating new TOTP codes.
     </ParamField>
-    <ParamField path="Digits" type="number" required>
+    <ParamField path="Digits" type="number">
       Number of digits to generate in each TOTP code.
     </ParamField>
-    <ParamField path="Algorithm" type="string" required>
+    <ParamField path="Algorithm" type="string">
       Hash algorithm to use when generating TOTP codes. The supported algorithms are sha1, sha256, and sha512.
     </ParamField>
 
@@ -58,33 +58,13 @@ The Infisical TOTP dynamic secret allows you to generate time-based one-time pas
   </Step>
   <Step title="Generate dynamic secrets">
 	Once you've successfully configured the dynamic secret, you're ready to generate on-demand TOTPs. 
-	To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item. 
-	Alternatively, you can initiate the creation of a new lease by selecting 'New Lease' from the dynamic secret lease list section.
+	To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item.
 
     ![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate.png)
-    ![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-lease-empty.png)
 
-
-    Once you click the `Generate` or the `New Lease` button, a new secret lease will be generated and the TOTP will be shown to you.
+    Once you click the `Generate` button, a new secret lease will be generated and the TOTP will be shown to you.
 
     ![Provision Lease](/images/platform/dynamic-secrets/totp-lease-value.png)
 
   </Step>
 </Steps>
-
-## Audit or Revoke Leases
-
-Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard.
-This will allow you to see the lease details and delete the lease ahead of its expiration time.
-
-![Provision Lease](/images/platform/dynamic-secrets/lease-data.png)
-
-## Renew Leases
-
-To extend the life of the generated dynamic secret lease past its initial time to live, simply click on the **Renew** button as illustrated below.
-![Provision Lease](/images/platform/dynamic-secrets/dynamic-secret-lease-renew.png)
-
-<Warning>
-  Lease renewals cannot exceed the maximum TTL set when configuring the dynamic
-  secret.
-</Warning>

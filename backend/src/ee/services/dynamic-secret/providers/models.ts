@@ -249,7 +249,11 @@ export const DynamicSecretTotpSchema = z.discriminatedUnion("configType", [
   }),
   z.object({
     configType: z.literal(TotpConfigType.MANUAL),
-    secret: z.string().min(1),
+    secret: z
+      .string()
+      .trim()
+      .min(1)
+      .transform((val) => val.replace(/\s+/g, "")),
     period: z.number().optional(),
     algorithm: z.nativeEnum(TotpAlgorithm).optional(),
     digits: z.number().optional()

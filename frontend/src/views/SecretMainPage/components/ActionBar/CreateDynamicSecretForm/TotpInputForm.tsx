@@ -39,7 +39,11 @@ const formSchema = z.object({
     }),
     z.object({
       configType: z.literal(ConfigType.MANUAL),
-      secret: z.string().min(1),
+      secret: z
+        .string()
+        .trim()
+        .min(1)
+        .transform((val) => val.replace(/\s+/g, "")),
       period: z.number().optional(),
       algorithm: z.nativeEnum(TotpAlgorithm).optional(),
       digits: z.number().optional()
@@ -214,7 +218,7 @@ export const TotpInputForm = ({
                       </FormControl>
                     )}
                   />
-                  <div className="flex flex-row">
+                  <div className="flex flex-row gap-2">
                     <Controller
                       control={control}
                       name="provider.period"
@@ -287,6 +291,10 @@ export const TotpInputForm = ({
                       )}
                     />
                   </div>
+                  <p className="mb-8 text-sm font-normal text-gray-400">
+                    The period, digits, and algorithm values can remain at their defaults unless
+                    your TOTP provider specifies otherwise.
+                  </p>
                 </>
               )}
             </div>
