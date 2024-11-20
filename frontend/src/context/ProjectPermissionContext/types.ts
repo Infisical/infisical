@@ -34,12 +34,12 @@ export enum PermissionConditionOperators {
 }
 
 export const formatedConditionsOperatorNames: { [K in PermissionConditionOperators]: string } = {
-  [PermissionConditionOperators.$EQ]: "equal",
-  [PermissionConditionOperators.$IN]: "containing",
+  [PermissionConditionOperators.$EQ]: "equal to",
+  [PermissionConditionOperators.$IN]: "contains",
   [PermissionConditionOperators.$ALL]: "contains all",
-  [PermissionConditionOperators.$NEQ]: "not equal",
-  [PermissionConditionOperators.$GLOB]: "glob matching",
-  [PermissionConditionOperators.$REGEX]: "regex"
+  [PermissionConditionOperators.$NEQ]: "not equal to",
+  [PermissionConditionOperators.$GLOB]: "matches glob pattern",
+  [PermissionConditionOperators.$REGEX]: "matches regex pattern"
 };
 
 export type TPermissionConditionOperators = {

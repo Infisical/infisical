@@ -867,7 +867,7 @@ export const SecretOverviewPage = () => {
         <div className="thin-scrollbar mt-4">
           <TableContainer
             onScroll={(e) => setScrollOffset(e.currentTarget.scrollLeft)}
-            className="thin-scrollbar"
+            className="thin-scrollbar rounded-b-none"
           >
             <Table>
               <THead>
