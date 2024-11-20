@@ -3,10 +3,8 @@ import Link from "next/link";
 import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import ms from "ms";
 import { z } from "zod";
 
-import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { useUpdateDynamicSecret } from "@app/hooks/api";
@@ -18,26 +16,6 @@ const formSchema = z.object({
       url: z.string().url().trim().min(1)
     })
     .partial(),
-  defaultTTL: z.string().superRefine((val, ctx) => {
-    const valMs = ms(val);
-    if (valMs < 60 * 1000)
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1min" });
-    // a day
-    if (valMs > 24 * 60 * 60 * 1000)
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
-  }),
-  maxTTL: z
-    .string()
-    .optional()
-    .superRefine((val, ctx) => {
-      if (!val) return;
-      const valMs = ms(val);
-      if (valMs < 60 * 1000)
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1min" });
-      // a day
-      if (valMs > 24 * 60 * 60 * 1000)
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
-    }),
   newName: z
     .string()
     .trim()
@@ -68,8 +46,6 @@ export const EditDynamicSecretTotpForm = ({
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
     values: {
-      defaultTTL: dynamicSecret.defaultTTL,
-      maxTTL: dynamicSecret.maxTTL,
       newName: dynamicSecret.name,
       inputs: {
         ...(dynamicSecret.inputs as TForm["inputs"])
@@ -79,7 +55,7 @@ export const EditDynamicSecretTotpForm = ({
 
   const updateDynamicSecret = useUpdateDynamicSecret();
 
-  const handleUpdateDynamicSecret = async ({ inputs, maxTTL, defaultTTL, newName }: TForm) => {
+  const handleUpdateDynamicSecret = async ({ inputs, newName }: TForm) => {
     // wait till previous request is finished
     if (updateDynamicSecret.isLoading) return;
     try {
@@ -89,8 +65,6 @@ export const EditDynamicSecretTotpForm = ({
         projectSlug,
         environmentSlug: environment,
         data: {
-          maxTTL: maxTTL || undefined,
-          defaultTTL,
           inputs,
           newName: newName === dynamicSecret.name ? undefined : newName
         }
@@ -125,38 +99,6 @@ export const EditDynamicSecretTotpForm = ({
                     errorText={error?.message}
                   >
                     <Input {...field} placeholder="dynamic-secret" />
-                  </FormControl>
-                )}
-              />
-            </div>
-            <div className="w-32">
-              <Controller
-                control={control}
-                name="defaultTTL"
-                defaultValue="1m"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label={<TtlFormLabel label="Default TTL" />}
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                  >
-                    <Input {...field} />
-                  </FormControl>
-                )}
-              />
-            </div>
-            <div className="w-32">
-              <Controller
-                control={control}
-                name="maxTTL"
-                defaultValue="24h"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label={<TtlFormLabel label="Max TTL" />}
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                  >
-                    <Input {...field} />
                   </FormControl>
                 )}
               />
