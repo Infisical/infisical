@@ -3,19 +3,10 @@ import axios from "axios";
 
 import { createNotification } from "@app/components/notifications";
 
-import {
-  Button,
-  Modal,
-  ModalContent,
-  ModalTrigger,
-  Table,
-  TableContainer,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr
-} from "./components/v2";
+// akhilmhdh: doing individual imports to avoid cyclic import error
+import { Button } from "./components/v2/Button";
+import { Modal, ModalContent, ModalTrigger } from "./components/v2/Modal";
+import { Table, TableContainer, TBody, Td, Th, THead, Tr } from "./components/v2/Table";
 import {
   formatedConditionsOperatorNames,
   PermissionConditionOperators
