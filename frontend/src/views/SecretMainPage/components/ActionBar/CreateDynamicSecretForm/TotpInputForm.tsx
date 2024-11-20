@@ -6,20 +6,52 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input } from "@app/components/v2";
+import { Button, FormControl, Input, Select, SelectItem } from "@app/components/v2";
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
+enum ConfigType {
+  URL = "url",
+  MANUAL = "manual"
+}
+
+enum TotpAlgorithm {
+  SHA1 = "sha1",
+  SHA256 = "sha256",
+  SHA512 = "sha512"
+}
+
 const formSchema = z.object({
-  provider: z.object({
-    url: z.string().url().trim().min(1)
-  }),
+  provider: z.discriminatedUnion("configType", [
+    z.object({
+      configType: z.literal(ConfigType.URL),
+      url: z
+        .string()
+        .url()
+        .trim()
+        .min(1)
+        .refine((val) => {
+          const urlObj = new URL(val);
+          const secret = urlObj.searchParams.get("secret");
+
+          return Boolean(secret);
+        }, "OTP URL must contain secret field")
+    }),
+    z.object({
+      configType: z.literal(ConfigType.MANUAL),
+      secret: z.string().min(1),
+      period: z.number().optional(),
+      algorithm: z.nativeEnum(TotpAlgorithm).optional(),
+      digits: z.number().optional()
+    })
+  ]),
   name: z
     .string()
     .trim()
     .min(1)
     .refine((val) => val.toLowerCase() === val, "Must be lowercase")
 });
+
 type TForm = z.infer<typeof formSchema>;
 
 type Props = {
@@ -39,11 +71,19 @@ export const TotpInputForm = ({
 }: Props) => {
   const {
     control,
+    watch,
     formState: { isSubmitting },
     handleSubmit
   } = useForm<TForm>({
-    resolver: zodResolver(formSchema)
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      provider: {
+        configType: ConfigType.URL
+      }
+    }
   });
+
+  const selectedConfigType = watch("provider.configType");
 
   const createDynamicSecret = useCreateDynamicSecret();
 
@@ -113,19 +153,142 @@ export const TotpInputForm = ({
             <div className="flex flex-col">
               <Controller
                 control={control}
-                name="provider.url"
-                defaultValue=""
+                name="provider.configType"
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
-                    label="OTP URL"
-                    className="flex-grow"
+                    label="Configuration Type"
                     isError={Boolean(error?.message)}
                     errorText={error?.message}
+                    className="w-full"
                   >
-                    <Input {...field} />
+                    <Select
+                      defaultValue={field.value}
+                      {...field}
+                      className="w-full"
+                      onValueChange={(val) => {
+                        field.onChange(val);
+                      }}
+                      dropdownContainerClassName="max-w-full"
+                    >
+                      <SelectItem value={ConfigType.URL} key="config-type-url">
+                        URL
+                      </SelectItem>
+                      <SelectItem value={ConfigType.MANUAL} key="config-type-manual">
+                        Manual
+                      </SelectItem>
+                    </Select>
                   </FormControl>
                 )}
               />
+              {selectedConfigType === ConfigType.URL && (
+                <Controller
+                  control={control}
+                  name="provider.url"
+                  defaultValue=""
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="OTP URL"
+                      className="flex-grow"
+                      isError={Boolean(error?.message)}
+                      errorText={error?.message}
+                    >
+                      <Input {...field} placeholder="otpauth://" />
+                    </FormControl>
+                  )}
+                />
+              )}
+              {selectedConfigType === ConfigType.MANUAL && (
+                <>
+                  <Controller
+                    control={control}
+                    name="provider.secret"
+                    defaultValue=""
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="Secret Key"
+                        className="flex-grow"
+                        isError={Boolean(error?.message)}
+                        errorText={error?.message}
+                      >
+                        <Input {...field} />
+                      </FormControl>
+                    )}
+                  />
+                  <div className="flex flex-row">
+                    <Controller
+                      control={control}
+                      name="provider.period"
+                      defaultValue={30}
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          label="Period"
+                          className="flex-grow"
+                          isError={Boolean(error?.message)}
+                          errorText={error?.message}
+                        >
+                          <Input
+                            {...field}
+                            type="number"
+                            onChange={(e) => field.onChange(Number(e.target.value))}
+                          />
+                        </FormControl>
+                      )}
+                    />
+                    <Controller
+                      control={control}
+                      name="provider.digits"
+                      defaultValue={6}
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          label="Digits"
+                          className="flex-grow"
+                          isError={Boolean(error?.message)}
+                          errorText={error?.message}
+                        >
+                          <Input
+                            {...field}
+                            type="number"
+                            onChange={(e) => field.onChange(Number(e.target.value))}
+                          />
+                        </FormControl>
+                      )}
+                    />
+                    <Controller
+                      control={control}
+                      name="provider.algorithm"
+                      defaultValue={TotpAlgorithm.SHA1}
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          label="Algorithm"
+                          isError={Boolean(error?.message)}
+                          errorText={error?.message}
+                          className="w-full"
+                        >
+                          <Select
+                            defaultValue={field.value}
+                            {...field}
+                            className="w-full"
+                            dropdownContainerClassName="max-w-full"
+                            onValueChange={(val) => {
+                              field.onChange(val);
+                            }}
+                          >
+                            <SelectItem value={TotpAlgorithm.SHA1} key="algorithm-sha-1">
+                              SHA1
+                            </SelectItem>
+                            <SelectItem value={TotpAlgorithm.SHA256} key="algorithm-sha-256">
+                              SHA256
+                            </SelectItem>
+                            <SelectItem value={TotpAlgorithm.SHA512} key="algorithm-sha-512">
+                              SHA512
+                            </SelectItem>
+                          </Select>
+                        </FormControl>
+                      )}
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

@@ -22,23 +22,34 @@ The Infisical TOTP dynamic secret allows you to generate time-based one-time pas
 	![Dynamic Secret Modal](/images/platform/dynamic-secrets/dynamic-secret-modal-totp.png)
   </Step>
   <Step title="Provide the inputs for dynamic secret parameters">
-	<ParamField path="Secret Name" type="string" required>
-		Name by which you want the secret to be referenced
-	</ParamField>
+    <ParamField path="Secret Name" type="string" required>
+      Name by which you want the secret to be referenced
+    </ParamField>
+    <ParamField path="Configuration Type" type="string" required>
+     There are two supported configuration types - `url` and `manual`.
 
-    <ParamField path="Default TTL" type="string" required>
-    	Default time-to-live for a generated secret (it is possible to modify this value after a secret is generated)
+     When `url` is selected, you can configure the TOTP generator using the OTP URL.
+
+     When `manual` is selected, you can configure the TOTP generator using the secret key along with other configurations like period, number of digits, and algorithm.
+    </ParamField>
+    <ParamField path="URL" type="string">
+      OTP URL in `otpauth://` format used to generate TOTP codes.
+    </ParamField>
+    <ParamField path="Secret Key" type="string">
+      Base32 encoded secret used to generate TOTP codes.
+    </ParamField>
+    <ParamField path="Period" type="number">
+      Time interval in seconds between generating new TOTP codes.
+    </ParamField>
+    <ParamField path="Digits" type="number" required>
+      Number of digits to generate in each TOTP code.
+    </ParamField>
+    <ParamField path="Algorithm" type="string" required>
+      Hash algorithm to use when generating TOTP codes. The supported algorithms are sha1, sha256, and sha512.
     </ParamField>
 
-    <ParamField path="Max TTL" type="string" required>
-    	Maximum time-to-live for a generated secret
-    </ParamField>
-
-    <ParamField path="URL" type="string" required>
-    	OTP url from the TOTP provider
-    </ParamField>
-
-    ![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-setup-modal-totp.png)
+    ![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-setup-modal-totp-url.png)
+    ![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-setup-modal-totp-manual.png)
 
   </Step>
   <Step title="Click 'Submit'">
