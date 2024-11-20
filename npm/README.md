@@ -1,6 +1,6 @@
 <h1 align="center">Infisical CLI</h1>
 <p align="center">
-  <p align="center"><b>Embrace shift-left security with Infisical CLI and strengthen your DevSecOps practices by seamlessly managing secrets across your workflows, pipelines and applications.</b></p>
+  <p align="center"><b>Embrace shift-left security with the Infisical CLI and strengthen your DevSecOps practices by seamlessly managing secrets across your workflows, pipelines, and applications.</b></p>
 </p>
 
 <h4 align="center">
