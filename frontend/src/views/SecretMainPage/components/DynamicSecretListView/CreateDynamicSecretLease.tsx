@@ -11,11 +11,11 @@ import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  ContentLoader,
   FormControl,
   IconButton,
   Input,
   SecretInput,
+  Spinner,
   Tooltip
 } from "@app/components/v2";
 import { useTimedReset, useToggle } from "@app/hooks";
@@ -420,7 +420,7 @@ export const CreateDynamicSecretLease = ({
   const isOutputMode = Boolean(createDynamicSecretLease?.data);
 
   if (isPreloading) {
-    return <ContentLoader className="h-40" />;
+    return <Spinner className="mx-auto h-40 text-mineshaft-700" />;
   }
 
   return (
