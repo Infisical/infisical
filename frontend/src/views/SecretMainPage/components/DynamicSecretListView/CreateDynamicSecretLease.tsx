@@ -65,11 +65,11 @@ const OutputDisplay = ({
 const TotpOutputDisplay = ({
   totp,
   remainingSeconds,
-  triggerLeaseCreation
+  triggerLeaseRegeneration
 }: {
   totp: string;
   remainingSeconds: number;
-  triggerLeaseCreation: (details: { ttl?: string }) => Promise<void>;
+  triggerLeaseRegeneration: (details: { ttl?: string }) => Promise<void>;
 }) => {
   const [remainingTime, setRemainingTime] = useState(remainingSeconds);
   const [shouldShowRegenerate, setShouldShowRegenerate] = useToggle(false);
@@ -103,7 +103,11 @@ const TotpOutputDisplay = ({
         </div>
       )}
       {shouldShowRegenerate && (
-        <Button colorSchema="secondary" className="mt-2" onClick={() => triggerLeaseCreation({})}>
+        <Button
+          colorSchema="secondary"
+          className="mt-2"
+          onClick={() => triggerLeaseRegeneration({})}
+        >
           Regenerate
         </Button>
       )}
@@ -114,7 +118,7 @@ const TotpOutputDisplay = ({
 const renderOutputForm = (
   provider: DynamicSecretProviders,
   data: unknown,
-  triggerLeaseCreation: (details: { ttl?: string }) => Promise<void>
+  triggerLeaseRegeneration: (details: { ttl?: string }) => Promise<void>
 ) => {
   if (
     provider === DynamicSecretProviders.SqlDatabase ||
@@ -313,7 +317,7 @@ const renderOutputForm = (
       <TotpOutputDisplay
         totp={TOTP}
         remainingSeconds={TIME_REMAINING}
-        triggerLeaseCreation={triggerLeaseCreation}
+        triggerLeaseRegeneration={triggerLeaseRegeneration}
       />
     );
   }
@@ -390,6 +394,11 @@ export const CreateDynamicSecretLease = ({
     }
   };
 
+  const handleLeaseRegeneration = async (data: { ttl?: string }) => {
+    setIsPreloading.on();
+    handleDynamicSecretLeaseCreate(data);
+  };
+
   useEffect(() => {
     if (provider === DynamicSecretProviders.Totp) {
       handleDynamicSecretLeaseCreate({});
@@ -450,7 +459,7 @@ export const CreateDynamicSecretLease = ({
             {renderOutputForm(
               provider,
               createDynamicSecretLease.data?.data,
-              handleDynamicSecretLeaseCreate
+              handleLeaseRegeneration
             )}
           </motion.div>
         )}
