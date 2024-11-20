@@ -27,7 +27,7 @@ The Infisical TOTP dynamic secret allows you to generate time-based one-time pas
 	</ParamField>
 
     <ParamField path="Default TTL" type="string" required>
-    	Default time-to-live for a generated secret (it is possible to modify this value when a secret is generate)
+    	Default time-to-live for a generated secret (it is possible to modify this value after a secret is generated)
     </ParamField>
 
     <ParamField path="Max TTL" type="string" required>
@@ -64,13 +64,13 @@ The Infisical TOTP dynamic secret allows you to generate time-based one-time pas
 ## Audit or Revoke Leases
 
 Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard.
-This will allow you see the lease details and delete the lease ahead of its expiration time.
+This will allow you to see the lease details and delete the lease ahead of its expiration time.
 
 ![Provision Lease](/images/platform/dynamic-secrets/lease-data.png)
 
 ## Renew Leases
 
-To extend the life of the generated dynamic secret lease past its initial time to live, simply click on the **Renew** as illustrated below.
+To extend the life of the generated dynamic secret lease past its initial time to live, simply click on the **Renew** button as illustrated below.
 ![Provision Lease](/images/platform/dynamic-secrets/dynamic-secret-lease-renew.png)
 
 <Warning>
