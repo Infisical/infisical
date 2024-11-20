@@ -196,7 +196,7 @@ export const NewProjectModal: FC<NewProjectModalProps> = ({ isOpen, onClose }) =
                   errorText={error?.message}
                   className="flex-1"
                 >
-                  <Input {...field} placeholder="Give your project a description (optional)" />
+                  <Input {...field} placeholder="Give your project a description" />
                 </FormControl>
               )}
             />
