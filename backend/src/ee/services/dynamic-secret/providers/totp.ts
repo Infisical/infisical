@@ -4,19 +4,11 @@ import { HashAlgorithms } from "otplib/core";
 import { BadRequestError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
-import { DynamicSecretTotpSchema, TDynamicProviderFns } from "./models";
+import { DynamicSecretTotpSchema, TDynamicProviderFns, TotpConfigType } from "./models";
 
 export const TotpProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretTotpSchema.parseAsync(inputs);
-
-    const urlObj = new URL(providerInputs.url);
-    const secret = urlObj.searchParams.get("secret");
-    if (!secret) {
-      throw new BadRequestError({
-        message: "TOTP secret is missing from URL"
-      });
-    }
 
     return providerInputs;
   };
@@ -31,22 +23,46 @@ export const TotpProvider = (): TDynamicProviderFns => {
     const entityId = alphaNumericNanoId(32);
     const authenticatorInstance = authenticator.clone();
 
-    const urlObj = new URL(providerInputs.url);
-    const secret = urlObj.searchParams.get("secret") as string;
-    const periodFromUrl = urlObj.searchParams.get("period");
-    const digitsFromUrl = urlObj.searchParams.get("digits");
-    const algorithm = urlObj.searchParams.get("algorithm");
+    let secret: string;
+    let period: number | null | undefined;
+    let digits: number | null | undefined;
+    let algorithm: HashAlgorithms | null | undefined;
 
-    if (digitsFromUrl) {
-      authenticatorInstance.options = { digits: +digitsFromUrl };
+    if (providerInputs.configType === TotpConfigType.URL) {
+      const urlObj = new URL(providerInputs.url);
+      secret = urlObj.searchParams.get("secret") as string;
+      const periodFromUrl = urlObj.searchParams.get("period");
+      const digitsFromUrl = urlObj.searchParams.get("digits");
+      const algorithmFromUrl = urlObj.searchParams.get("algorithm");
+
+      if (periodFromUrl) {
+        period = +periodFromUrl;
+      }
+
+      if (digitsFromUrl) {
+        digits = +digitsFromUrl;
+      }
+
+      if (algorithmFromUrl) {
+        algorithm = algorithmFromUrl.toLowerCase() as HashAlgorithms;
+      }
+    } else {
+      secret = providerInputs.secret;
+      period = providerInputs.period;
+      digits = providerInputs.digits;
+      algorithm = providerInputs.algorithm as unknown as HashAlgorithms;
+    }
+
+    if (digits) {
+      authenticatorInstance.options = { digits };
     }
 
     if (algorithm) {
-      authenticatorInstance.options = { algorithm: algorithm.toLowerCase() as HashAlgorithms };
+      authenticatorInstance.options = { algorithm };
     }
 
-    if (periodFromUrl) {
-      authenticatorInstance.options = { step: +periodFromUrl };
+    if (period) {
+      authenticatorInstance.options = { step: period };
     }
 
     return { entityId, data: { TOTP: authenticatorInstance.generate(secret) } };

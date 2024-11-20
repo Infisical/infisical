@@ -6,16 +6,47 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input } from "@app/components/v2";
+import { Button, FormControl, Input, Select, SelectItem } from "@app/components/v2";
 import { useUpdateDynamicSecret } from "@app/hooks/api";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 
+enum ConfigType {
+  URL = "url",
+  MANUAL = "manual"
+}
+
+enum TotpAlgorithm {
+  SHA1 = "sha1",
+  SHA256 = "sha256",
+  SHA512 = "sha512"
+}
+
 const formSchema = z.object({
   inputs: z
-    .object({
-      url: z.string().url().trim().min(1)
-    })
-    .partial(),
+    .discriminatedUnion("configType", [
+      z.object({
+        configType: z.literal(ConfigType.URL),
+        url: z
+          .string()
+          .url()
+          .trim()
+          .min(1)
+          .refine((val) => {
+            const urlObj = new URL(val);
+            const secret = urlObj.searchParams.get("secret");
+
+            return Boolean(secret);
+          }, "OTP URL must contain secret field")
+      }),
+      z.object({
+        configType: z.literal(ConfigType.MANUAL),
+        secret: z.string().min(1),
+        period: z.number().optional(),
+        algorithm: z.nativeEnum(TotpAlgorithm).optional(),
+        digits: z.number().optional()
+      })
+    ])
+    .optional(),
   newName: z
     .string()
     .trim()
@@ -42,17 +73,17 @@ export const EditDynamicSecretTotpForm = ({
   const {
     control,
     formState: { isSubmitting },
+    watch,
     handleSubmit
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
     values: {
       newName: dynamicSecret.name,
-      inputs: {
-        ...(dynamicSecret.inputs as TForm["inputs"])
-      }
+      inputs: dynamicSecret.inputs as TForm["inputs"]
     }
   });
 
+  const selectedConfigType = watch("inputs.configType");
   const updateDynamicSecret = useUpdateDynamicSecret();
 
   const handleUpdateDynamicSecret = async ({ inputs, newName }: TForm) => {
@@ -126,19 +157,142 @@ export const EditDynamicSecretTotpForm = ({
             <div className="flex flex-col">
               <Controller
                 control={control}
-                name="inputs.url"
-                defaultValue=""
+                name="inputs.configType"
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
-                    label="OTP URL"
-                    className="flex-grow"
+                    label="Configuration Type"
                     isError={Boolean(error?.message)}
                     errorText={error?.message}
+                    className="w-full"
                   >
-                    <Input {...field} />
+                    <Select
+                      defaultValue={field.value}
+                      {...field}
+                      className="w-full"
+                      onValueChange={(val) => {
+                        field.onChange(val);
+                      }}
+                      dropdownContainerClassName="max-w-full"
+                    >
+                      <SelectItem value={ConfigType.URL} key="config-type-url">
+                        URL
+                      </SelectItem>
+                      <SelectItem value={ConfigType.MANUAL} key="config-type-manual">
+                        Manual
+                      </SelectItem>
+                    </Select>
                   </FormControl>
                 )}
               />
+              {selectedConfigType === ConfigType.URL && (
+                <Controller
+                  control={control}
+                  name="inputs.url"
+                  defaultValue=""
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="OTP URL"
+                      className="flex-grow"
+                      isError={Boolean(error?.message)}
+                      errorText={error?.message}
+                    >
+                      <Input {...field} />
+                    </FormControl>
+                  )}
+                />
+              )}
+              {selectedConfigType === ConfigType.MANUAL && (
+                <>
+                  <Controller
+                    control={control}
+                    name="inputs.secret"
+                    defaultValue=""
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="Secret Key"
+                        className="flex-grow"
+                        isError={Boolean(error?.message)}
+                        errorText={error?.message}
+                      >
+                        <Input {...field} />
+                      </FormControl>
+                    )}
+                  />
+                  <div className="flex flex-row">
+                    <Controller
+                      control={control}
+                      name="inputs.period"
+                      defaultValue={30}
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          label="Period"
+                          className="flex-grow"
+                          isError={Boolean(error?.message)}
+                          errorText={error?.message}
+                        >
+                          <Input
+                            {...field}
+                            type="number"
+                            onChange={(e) => field.onChange(Number(e.target.value))}
+                          />
+                        </FormControl>
+                      )}
+                    />
+                    <Controller
+                      control={control}
+                      name="inputs.digits"
+                      defaultValue={6}
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          label="Digits"
+                          className="flex-grow"
+                          isError={Boolean(error?.message)}
+                          errorText={error?.message}
+                        >
+                          <Input
+                            {...field}
+                            type="number"
+                            onChange={(e) => field.onChange(Number(e.target.value))}
+                          />
+                        </FormControl>
+                      )}
+                    />
+                    <Controller
+                      control={control}
+                      name="inputs.algorithm"
+                      defaultValue={TotpAlgorithm.SHA1}
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          label="Algorithm"
+                          isError={Boolean(error?.message)}
+                          errorText={error?.message}
+                          className="w-full"
+                        >
+                          <Select
+                            defaultValue={field.value}
+                            {...field}
+                            className="w-full"
+                            dropdownContainerClassName="max-w-full"
+                            onValueChange={(val) => {
+                              field.onChange(val);
+                            }}
+                          >
+                            <SelectItem value={TotpAlgorithm.SHA1} key="algorithm-sha-1">
+                              SHA1
+                            </SelectItem>
+                            <SelectItem value={TotpAlgorithm.SHA256} key="algorithm-sha-256">
+                              SHA256
+                            </SelectItem>
+                            <SelectItem value={TotpAlgorithm.SHA512} key="algorithm-sha-512">
+                              SHA512
+                            </SelectItem>
+                          </Select>
+                        </FormControl>
+                      )}
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
