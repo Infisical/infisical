@@ -9,7 +9,15 @@ import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, IconButton, Input, SecretInput, Tooltip } from "@app/components/v2";
+import {
+  Button,
+  ContentLoader,
+  FormControl,
+  IconButton,
+  Input,
+  SecretInput,
+  Tooltip
+} from "@app/components/v2";
 import { useTimedReset, useToggle } from "@app/hooks";
 import { useCreateDynamicSecretLease } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
@@ -335,7 +343,7 @@ export const CreateDynamicSecretLease = ({
   const isOutputMode = Boolean(createDynamicSecretLease?.data);
 
   if (isPreloading) {
-    return <div />;
+    return <ContentLoader className="h-40" />;
   }
 
   return (
