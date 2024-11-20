@@ -3,6 +3,23 @@ import axios from "axios";
 
 import { createNotification } from "@app/components/notifications";
 
+import {
+  Button,
+  Modal,
+  ModalContent,
+  ModalTrigger,
+  Table,
+  TableContainer,
+  TBody,
+  Td,
+  Th,
+  THead,
+  Tr
+} from "./components/v2";
+import {
+  formatedConditionsOperatorNames,
+  PermissionConditionOperators
+} from "./context/ProjectPermissionContext/types";
 import { ApiErrorTypes, TApiErrors } from "./hooks/api/types";
 
 // this is saved in react-query cache
@@ -10,35 +27,142 @@ export const SIGNUP_TEMP_TOKEN_CACHE_KEY = ["infisical__signup-temp-token"];
 export const MFA_TEMP_TOKEN_CACHE_KEY = ["infisical__mfa-temp-token"];
 export const AUTH_TOKEN_CACHE_KEY = ["infisical__auth-token"];
 
+const camelCaseToSpaces = (input: string) => {
+  return input.replace(/([a-z])([A-Z])/g, "$1 $2");
+};
+
 export const queryClient = new QueryClient({
   mutationCache: new MutationCache({
     onError: (error) => {
       if (axios.isAxiosError(error)) {
         const serverResponse = error.response?.data as TApiErrors;
         if (serverResponse?.error === ApiErrorTypes.ValidationError) {
-          createNotification({
-            title: "Validation Error",
-            type: "error",
-            text: (
-              <div>
-                {serverResponse.message?.map(({ message, path }) => (
-                  <div className="flex space-y-2" key={path.join(".")}>
-                    <div>
-                      Field <i>{path.join(".")}</i> {message.toLowerCase()}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )
-          });
+          createNotification(
+            {
+              title: "Validation Error",
+              type: "error",
+              text: "Please check the input and try again.",
+              children: (
+                <Modal>
+                  <ModalTrigger>
+                    <Button variant="outline_bg" size="xs">
+                      Show more
+                    </Button>
+                  </ModalTrigger>
+                  <ModalContent title="Validation Error Details">
+                    <TableContainer>
+                      <Table>
+                        <THead>
+                          <Tr>
+                            <Th>Field</Th>
+                            <Th>Issue</Th>
+                          </Tr>
+                        </THead>
+                        <TBody>
+                          {serverResponse.message?.map(({ message, path }) => (
+                            <Tr key={path.join(".")}>
+                              <Td>{path.join(".")}</Td>
+                              <Td>{message.toLowerCase()}</Td>
+                            </Tr>
+                          ))}
+                        </TBody>
+                      </Table>
+                    </TableContainer>
+                  </ModalContent>
+                </Modal>
+              )
+            },
+            { closeOnClick: false }
+          );
           return;
         }
-        if (serverResponse.statusCode === 401) {
-          createNotification({
-            title: "Forbidden Access",
-            type: "error",
-            text: serverResponse.message
-          });
+        if (serverResponse?.error === ApiErrorTypes.ForbiddenError) {
+          createNotification(
+            {
+              title: "Forbidden Access",
+              type: "error",
+              text: serverResponse.message,
+              children: serverResponse?.details?.length ? (
+                <Modal>
+                  <ModalTrigger>
+                    <Button variant="outline_bg" size="xs">
+                      Show more
+                    </Button>
+                  </ModalTrigger>
+                  <ModalContent
+                    title="Validation Rules"
+                    subTitle="Please review the allowed rules below."
+                  >
+                    <div className="flex flex-col gap-2">
+                      {serverResponse.details?.map((el, index) => {
+                        const hasConditions = Object.keys(el.conditions || {}).length;
+                        return (
+                          <div
+                            key={`Forbidden-error-details-${index + 1}`}
+                            className="rounded-md border border-gray-600 p-4"
+                          >
+                            <div>
+                              {el.inverted ? "Cannot" : "Can"}{" "}
+                              <span className="text-primary-600">{el.action.toString()}</span>{" "}
+                              {el.subject.toString()} {hasConditions && "with conditions"}
+                            </div>
+                            {hasConditions && (
+                              <div className="flex flex-col gap-1 pt-2 text-sm">
+                                {Object.keys(el.conditions || {}).flatMap((field, fieldIndex) => {
+                                  const operators = (
+                                    el.conditions as Record<
+                                      string,
+                                      | string
+                                      | { [K in PermissionConditionOperators]: string | string[] }
+                                    >
+                                  )[field];
+
+                                  const formattedFieldName = camelCaseToSpaces(field).toLowerCase();
+                                  if (typeof operators === "string") {
+                                    return (
+                                      <div
+                                        key={`Forbidden-error-details-${index + 1}-${
+                                          fieldIndex + 1
+                                        }`}
+                                      >
+                                        {formattedFieldName} equal{" "}
+                                        <span className="text-primary-600">{operators}</span>
+                                      </div>
+                                    );
+                                  }
+
+                                  return Object.keys(operators).map((operator, operatorIndex) => (
+                                    <div
+                                      key={`Forbidden-error-details-${index + 1}-${
+                                        fieldIndex + 1
+                                      }-${operatorIndex + 1}`}
+                                    >
+                                      <span className="capitalize">{formattedFieldName}</span>{" "}
+                                      {
+                                        formatedConditionsOperatorNames[
+                                          operator as PermissionConditionOperators
+                                        ]
+                                      }{" "}
+                                      <span className="text-primary-600">
+                                        {operators[
+                                          operator as PermissionConditionOperators
+                                        ].toString()}
+                                      </span>
+                                    </div>
+                                  ));
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </ModalContent>
+                </Modal>
+              ) : undefined
+            },
+            { closeOnClick: false }
+          );
           return;
         }
         createNotification({ title: "Bad Request", type: "error", text: serverResponse.message });

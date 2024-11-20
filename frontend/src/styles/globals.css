@@ -13,6 +13,14 @@ html {
   @apply rounded-md;
 }
 
+.Toastify__toast-body {
+  @apply items-start;
+}
+
+.Toastify__toast-icon {
+  @apply w-4 pt-1;
+}
+
 .rdp-day,
 .rdp-nav_button {
   @apply rounded-md hover:text-mineshaft-500;
