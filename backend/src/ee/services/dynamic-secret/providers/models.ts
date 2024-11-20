@@ -17,6 +17,17 @@ export enum LdapCredentialType {
   Static = "static"
 }
 
+export enum TotpConfigType {
+  URL = "url",
+  MANUAL = "manual"
+}
+
+export enum TotpAlgorithm {
+  SHA1 = "sha1",
+  SHA256 = "sha256",
+  SHA512 = "sha512"
+}
+
 export const DynamicSecretRedisDBSchema = z.object({
   host: z.string().trim().toLowerCase(),
   port: z.number(),
@@ -221,9 +232,29 @@ export const LdapSchema = z.union([
   })
 ]);
 
-export const DynamicSecretTotpSchema = z.object({
-  url: z.string().url().trim().min(1)
-});
+export const DynamicSecretTotpSchema = z.discriminatedUnion("configType", [
+  z.object({
+    configType: z.literal(TotpConfigType.URL),
+    url: z
+      .string()
+      .url()
+      .trim()
+      .min(1)
+      .refine((val) => {
+        const urlObj = new URL(val);
+        const secret = urlObj.searchParams.get("secret");
+
+        return Boolean(secret);
+      }, "OTP URL must contain secret field")
+  }),
+  z.object({
+    configType: z.literal(TotpConfigType.MANUAL),
+    secret: z.string().min(1),
+    period: z.number().optional(),
+    algorithm: z.nativeEnum(TotpAlgorithm).optional(),
+    digits: z.number().optional()
+  })
+]);
 
 export enum DynamicSecretProviders {
   SqlDatabase = "sql-database",

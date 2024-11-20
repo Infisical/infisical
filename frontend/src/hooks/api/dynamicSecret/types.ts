@@ -234,9 +234,18 @@ export type TDynamicSecretProvider =
     }
   | {
       type: DynamicSecretProviders.Totp;
-      inputs: {
-        url: string;
-      };
+      inputs:
+        | {
+            configType: "url";
+            url: string;
+          }
+        | {
+            configType: "manual";
+            secret: string;
+            period?: number;
+            algorithm?: string;
+            digits?: number;
+          };
     };
 export type TCreateDynamicSecretDTO = {
   projectSlug: string;
