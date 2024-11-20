@@ -61,8 +61,14 @@ export type CreateWorkspaceDTO = {
   template?: string;
 };
 
-export type RenameWorkspaceDTO = { workspaceID: string; newWorkspaceName: string };
-export type SetWorkspaceDescriptionDTO = { workspaceID: string; newWorkspaceDescription: string };
+export type SetWorkspaceOverviewDTO = {
+  workspaceID: string;
+  newWorkspaceName: string;
+  newWorkspaceDescription: string;
+};
+// export type RenameWorkspaceDTO = { workspaceID: string; newWorkspaceName: string };
+// export type SetWorkspaceDescriptionDTO = { workspaceID: string; newWorkspaceDescription: string };
+
 export type UpdatePitVersionLimitDTO = { projectSlug: string; pitVersionLimit: number };
 export type UpdateAuditLogsRetentionDTO = { projectSlug: string; auditLogsRetentionDays: number };
 export type ToggleAutoCapitalizationDTO = { workspaceID: string; state: boolean };

@@ -33,10 +33,11 @@ export {
   useListWorkspacePkiAlerts,
   useListWorkspacePkiCollections,
   useNameWorkspaceSecrets,
-  useRenameWorkspace,
+  useSetWorkspaceOverview,
   useToggleAutoCapitalization,
   useUpdateIdentityWorkspaceRole,
   useUpdateUserWorkspaceRole,
   useUpdateWsEnvironment,
-  useUpgradeProject} from "./queries";
+  useUpgradeProject
+} from "./queries";
 export { workspaceKeys } from "./query-keys";

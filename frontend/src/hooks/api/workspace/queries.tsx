@@ -26,8 +26,7 @@ import {
   DeleteWorkspaceDTO,
   NameWorkspaceSecretsDTO,
   ProjectIdentityOrderBy,
-  RenameWorkspaceDTO,
-  SetWorkspaceDescriptionDTO,
+  SetWorkspaceOverviewDTO,
   TGetUpgradeProjectStatusDTO,
   TListProjectIdentitiesDTO,
   ToggleAutoCapitalizationDTO,
@@ -238,25 +237,13 @@ export const useCreateWorkspace = () => {
   });
 };
 
-export const useRenameWorkspace = () => {
+export const useSetWorkspaceOverview = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, RenameWorkspaceDTO>({
-    mutationFn: ({ workspaceID, newWorkspaceName }) => {
-      return apiRequest.post(`/api/v1/workspace/${workspaceID}/name`, { name: newWorkspaceName });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
-    }
-  });
-};
-
-export const useSetWorkspaceDescription = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation<{}, {}, SetWorkspaceDescriptionDTO>({
-    mutationFn: ({ workspaceID, newWorkspaceDescription }) => {
-      return apiRequest.post(`/api/v1/workspace/${workspaceID}/description`, {
+  return useMutation<{}, {}, SetWorkspaceOverviewDTO>({
+    mutationFn: ({ workspaceID, newWorkspaceName, newWorkspaceDescription }) => {
+      return apiRequest.post(`/api/v1/workspace/${workspaceID}/overview`, {
+        name: newWorkspaceName,
         description: newWorkspaceDescription
       });
     },

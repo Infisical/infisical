@@ -237,6 +237,45 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    url: "/:workspaceId/overview",
+    method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      body: z.object({
+        name: z.string().trim(),
+        description: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          message: z.string(),
+          workspace: SanitizedProjectSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const workspace = await server.services.project.updateOverview({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.workspaceId,
+        name: req.body.name,
+        description: req.body.description
+      });
+      return {
+        message: "Successfully changed workspace overview",
+        workspace
+      };
+    }
+  });
+
+  server.route({
     url: "/:workspaceId/name",
     method: "POST",
     config: {
@@ -265,43 +304,6 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId,
         name: req.body.name
-      });
-      return {
-        message: "Successfully changed workspace name",
-        workspace
-      };
-    }
-  });
-
-  server.route({
-    url: "/:workspaceId/description",
-    method: "POST",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      params: z.object({
-        workspaceId: z.string().trim()
-      }),
-      body: z.object({
-        description: z.string().trim()
-      }),
-      response: {
-        200: z.object({
-          message: z.string(),
-          workspace: SanitizedProjectSchema
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const workspace = await server.services.project.updateDescription({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        projectId: req.params.workspaceId,
-        description: req.body.description
       });
       return {
         message: "Successfully changed workspace name",
