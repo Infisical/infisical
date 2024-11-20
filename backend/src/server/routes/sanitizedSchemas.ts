@@ -47,6 +47,7 @@ export const DefaultResponseErrorsSchema = {
   403: z.object({
     statusCode: z.literal(403),
     message: z.string(),
+    details: z.any().optional(),
     error: z.string()
   }),
   500: z.object({
