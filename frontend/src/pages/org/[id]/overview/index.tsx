@@ -583,13 +583,23 @@ const OrganizationPage = () => {
           />
         )}
       </div>
-      <div className="mt-0 max-h-12 truncate text-base text-mineshaft-200">
+
+      <div
+        className="mt-1 mb-2.5 grow text-sm text-mineshaft-300"
+        style={{
+          overflow: "hidden",
+          display: "-webkit-box",
+          WebkitBoxOrient: "vertical",
+          WebkitLineClamp: 2
+        }}
+      >
         {workspace.description}
       </div>
-      <div className="mt-0 text-sm text-mineshaft-300">
-        {workspace.environments?.length || 0} environments
-      </div>
-      <div className=" flex grow items-end place-self-end ">
+
+      <div className="flex w-full flex-row items-end justify-between place-self-end">
+        <div className="mt-0 text-xs text-mineshaft-400">
+          {workspace.environments?.length || 0} environments
+        </div>
         <button type="button">
           <div className="group ml-auto w-max cursor-pointer rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 transition-all hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200">
             Explore{" "}
