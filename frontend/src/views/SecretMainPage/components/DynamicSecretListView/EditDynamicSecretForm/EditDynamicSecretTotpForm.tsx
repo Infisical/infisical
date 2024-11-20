@@ -40,7 +40,11 @@ const formSchema = z.object({
       }),
       z.object({
         configType: z.literal(ConfigType.MANUAL),
-        secret: z.string().min(1),
+        secret: z
+          .string()
+          .trim()
+          .min(1)
+          .transform((val) => val.replace(/\s+/g, "")),
         period: z.number().optional(),
         algorithm: z.nativeEnum(TotpAlgorithm).optional(),
         digits: z.number().optional()
@@ -218,7 +222,7 @@ export const EditDynamicSecretTotpForm = ({
                       </FormControl>
                     )}
                   />
-                  <div className="flex flex-row">
+                  <div className="flex flex-row gap-2">
                     <Controller
                       control={control}
                       name="inputs.period"
