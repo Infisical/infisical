@@ -1,14 +1,7 @@
 import picomatch from "picomatch";
 import { z } from "zod";
 
-export enum PermissionConditionOperators {
-  $IN = "$in",
-  $ALL = "$all",
-  $REGEX = "$regex",
-  $EQ = "$eq",
-  $NEQ = "$ne",
-  $GLOB = "$glob"
-}
+import { PermissionConditionOperators } from "@app/lib/casl";
 
 export const PermissionConditionSchema = {
   [PermissionConditionOperators.$IN]: z.string().trim().min(1).array(),

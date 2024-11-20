@@ -1,10 +1,10 @@
 import { AbilityBuilder, createMongoAbility, ForcedSubject, MongoAbility } from "@casl/ability";
 import { z } from "zod";
 
-import { conditionsMatcher } from "@app/lib/casl";
+import { conditionsMatcher, PermissionConditionOperators } from "@app/lib/casl";
 import { UnpackedPermissionSchema } from "@app/server/routes/santizedSchemas/permission";
 
-import { PermissionConditionOperators, PermissionConditionSchema } from "./permission-types";
+import { PermissionConditionSchema } from "./permission-types";
 
 export enum ProjectPermissionActions {
   Read = "read",

@@ -54,3 +54,12 @@ export const isAtLeastAsPrivileged = (permissions1: MongoAbility, permissions2: 
 
   return set1.size >= set2.size;
 };
+
+export enum PermissionConditionOperators {
+  $IN = "$in",
+  $ALL = "$all",
+  $REGEX = "$regex",
+  $EQ = "$eq",
+  $NEQ = "$ne",
+  $GLOB = "$glob"
+}
