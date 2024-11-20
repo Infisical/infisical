@@ -295,6 +295,10 @@ export const EditDynamicSecretTotpForm = ({
                       )}
                     />
                   </div>
+                  <p className="mb-8 text-sm font-normal text-gray-400">
+                    The period, digits, and algorithm values can remain at their defaults unless
+                    your TOTP provider specifies otherwise.
+                  </p>
                 </>
               )}
             </div>
