@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faClock, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence, motion } from "framer-motion";
@@ -95,11 +95,23 @@ const TotpOutputDisplay = ({
   }, [totp, remainingSeconds]);
 
   return (
-    <div>
+    <div className="h-36">
       <OutputDisplay label="Time-based one-time password" value={totp} />
-      {remainingTime > 0 && (
-        <div>
-          Valid for {remainingTime} {remainingTime > 1 ? "seconds" : "second"}
+      {remainingTime > 0 ? (
+        <div
+          className={`ml-2 flex items-center text-sm ${
+            remainingTime < 10 ? "text-red-500" : "text-yellow-500"
+          } transition-colors duration-500`}
+        >
+          <FontAwesomeIcon className="mr-1" icon={faClock} size="sm" />
+          <span>
+            Expires in {remainingTime} {remainingTime > 1 ? "seconds" : "second"}
+          </span>
+        </div>
+      ) : (
+        <div className="ml-2 flex items-center text-sm text-red-500">
+          <FontAwesomeIcon className="mr-1" icon={faClock} size="sm" />
+          Expired
         </div>
       )}
       {shouldShowRegenerate && (
