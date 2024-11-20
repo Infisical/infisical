@@ -94,11 +94,13 @@ export const queryClient = new QueryClient({
                           >
                             <div>
                               {el.inverted ? "Cannot" : "Can"}{" "}
-                              <span className="text-primary-600">{el.action.toString()}</span>{" "}
-                              {el.subject.toString()} {hasConditions && "with conditions"}
+                              <span className="text-yellow-600">
+                                {el.action.toString().replaceAll(",", ", ")}
+                              </span>{" "}
+                              {el.subject.toString()} {hasConditions && "with conditions:"}
                             </div>
                             {hasConditions && (
-                              <div className="flex flex-col gap-1 pt-2 text-sm">
+                              <ul className="flex list-disc flex-col gap-1 pl-5 pt-2 text-sm">
                                 {Object.keys(el.conditions || {}).flatMap((field, fieldIndex) => {
                                   const operators = (
                                     el.conditions as Record<
@@ -111,38 +113,45 @@ export const queryClient = new QueryClient({
                                   const formattedFieldName = camelCaseToSpaces(field).toLowerCase();
                                   if (typeof operators === "string") {
                                     return (
-                                      <div
+                                      <li
                                         key={`Forbidden-error-details-${index + 1}-${
                                           fieldIndex + 1
                                         }`}
                                       >
-                                        {formattedFieldName} equal{" "}
-                                        <span className="text-primary-600">{operators}</span>
-                                      </div>
+                                        <span className="font-bold capitalize">
+                                          {formattedFieldName}
+                                        </span>{" "}
+                                        <span className="text-mineshaft-200">equal to</span>{" "}
+                                        <span className="text-yellow-600">{operators}</span>
+                                      </li>
                                     );
                                   }
 
                                   return Object.keys(operators).map((operator, operatorIndex) => (
-                                    <div
+                                    <li
                                       key={`Forbidden-error-details-${index + 1}-${
                                         fieldIndex + 1
                                       }-${operatorIndex + 1}`}
                                     >
-                                      <span className="capitalize">{formattedFieldName}</span>{" "}
-                                      {
-                                        formatedConditionsOperatorNames[
-                                          operator as PermissionConditionOperators
-                                        ]
-                                      }{" "}
-                                      <span className="text-primary-600">
+                                      <span className="font-bold capitalize">
+                                        {formattedFieldName}
+                                      </span>{" "}
+                                      <span className="text-mineshaft-200">
+                                        {
+                                          formatedConditionsOperatorNames[
+                                            operator as PermissionConditionOperators
+                                          ]
+                                        }
+                                      </span>{" "}
+                                      <span className="text-yellow-600">
                                         {operators[
                                           operator as PermissionConditionOperators
                                         ].toString()}
                                       </span>
-                                    </div>
+                                    </li>
                                   ));
                                 })}
-                              </div>
+                              </ul>
                             )}
                           </div>
                         );
