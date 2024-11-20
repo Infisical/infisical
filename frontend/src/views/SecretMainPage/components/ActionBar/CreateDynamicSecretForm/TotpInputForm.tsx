@@ -3,10 +3,8 @@ import Link from "next/link";
 import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import ms from "ms";
 import { z } from "zod";
 
-import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { useCreateDynamicSecret } from "@app/hooks/api";
@@ -16,26 +14,6 @@ const formSchema = z.object({
   provider: z.object({
     url: z.string().url().trim().min(1)
   }),
-  defaultTTL: z.string().superRefine((val, ctx) => {
-    const valMs = ms(val);
-    if (valMs < 60 * 1000)
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1min" });
-    // a day
-    if (valMs > 24 * 60 * 60 * 1000)
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
-  }),
-  maxTTL: z
-    .string()
-    .optional()
-    .superRefine((val, ctx) => {
-      if (!val) return;
-      const valMs = ms(val);
-      if (valMs < 60 * 1000)
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1min" });
-      // a day
-      if (valMs > 24 * 60 * 60 * 1000)
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
-    }),
   name: z
     .string()
     .trim()
@@ -69,16 +47,16 @@ export const TotpInputForm = ({
 
   const createDynamicSecret = useCreateDynamicSecret();
 
-  const handleCreateDynamicSecret = async ({ name, maxTTL, provider, defaultTTL }: TForm) => {
+  const handleCreateDynamicSecret = async ({ name, provider }: TForm) => {
     // wait till previous request is finished
     if (createDynamicSecret.isLoading) return;
     try {
       await createDynamicSecret.mutateAsync({
         provider: { type: DynamicSecretProviders.Totp, inputs: provider },
-        maxTTL,
+        maxTTL: "24h",
         name,
         path: secretPath,
-        defaultTTL,
+        defaultTTL: "1m",
         projectSlug,
         environmentSlug: environment
       });
@@ -108,38 +86,6 @@ export const TotpInputForm = ({
                     errorText={error?.message}
                   >
                     <Input {...field} placeholder="dynamic-secret" />
-                  </FormControl>
-                )}
-              />
-            </div>
-            <div className="w-32">
-              <Controller
-                control={control}
-                name="defaultTTL"
-                defaultValue="1m"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label={<TtlFormLabel label="Default TTL" />}
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                  >
-                    <Input {...field} />
-                  </FormControl>
-                )}
-              />
-            </div>
-            <div className="w-32">
-              <Controller
-                control={control}
-                name="maxTTL"
-                defaultValue="24h"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label={<TtlFormLabel label="Max TTL" />}
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                  >
-                    <Input {...field} />
                   </FormControl>
                 )}
               />

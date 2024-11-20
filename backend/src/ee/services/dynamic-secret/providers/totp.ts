@@ -52,12 +52,15 @@ export const TotpProvider = (): TDynamicProviderFns => {
     return { entityId, data: { TOTP: authenticatorInstance.generate(secret) } };
   };
 
-  const revoke = async (inputs: unknown, entityId: string) => {
+  const revoke = async (_inputs: unknown, entityId: string) => {
     return { entityId };
   };
 
-  const renew = async (inputs: unknown, entityId: string) => {
-    return { entityId };
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const renew = async (_inputs: unknown, _entityId: string) => {
+    throw new BadRequestError({
+      message: "Lease renewal is not supported for TOTPs"
+    });
   };
 
   return {
