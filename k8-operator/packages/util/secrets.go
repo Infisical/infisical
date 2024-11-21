@@ -69,10 +69,11 @@ func GetPlainTextSecretsViaMachineIdentity(infisicalClient infisical.InfisicalCl
 	for _, secret := range secrets {
 
 		environmentVariables = append(environmentVariables, model.SingleEnvironmentVariable{
-			Key:   secret.SecretKey,
-			Value: secret.SecretValue,
-			Type:  secret.Type,
-			ID:    secret.ID,
+			Key:        secret.SecretKey,
+			Value:      secret.SecretValue,
+			Type:       secret.Type,
+			ID:         secret.ID,
+			SecretPath: secret.SecretPath,
 		})
 	}
 
@@ -120,10 +121,11 @@ func GetPlainTextSecretsViaServiceToken(infisicalClient infisical.InfisicalClien
 	for _, secret := range secrets {
 
 		environmentVariables = append(environmentVariables, model.SingleEnvironmentVariable{
-			Key:   secret.SecretKey,
-			Value: secret.SecretValue,
-			Type:  secret.Type,
-			ID:    secret.ID,
+			Key:        secret.SecretKey,
+			Value:      secret.SecretValue,
+			Type:       secret.Type,
+			ID:         secret.ID,
+			SecretPath: secret.SecretPath,
 		})
 	}
 
@@ -183,10 +185,11 @@ func GetPlainTextSecretsViaServiceAccount(infisicalClient infisical.InfisicalCli
 
 	for _, secret := range secrets {
 		environmentVariables = append(environmentVariables, model.SingleEnvironmentVariable{
-			Key:   secret.SecretKey,
-			Value: secret.SecretValue,
-			Type:  secret.Type,
-			ID:    secret.ID,
+			Key:        secret.SecretKey,
+			Value:      secret.SecretValue,
+			Type:       secret.Type,
+			ID:         secret.ID,
+			SecretPath: secret.SecretPath,
 		})
 	}
 

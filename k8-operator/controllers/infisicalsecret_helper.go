@@ -1,10 +1,12 @@
 package controllers
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"strings"
+	"text/template"
 
 	"github.com/Infisical/infisical/k8-operator/api/v1alpha1"
 	"github.com/Infisical/infisical/k8-operator/packages/api"
@@ -225,12 +227,44 @@ func (r *InfisicalSecretReconciler) GetInfisicalServiceAccountCredentialsFromKub
 	return model.ServiceAccountDetails{AccessKey: string(accessKeyFromSecret), PrivateKey: string(privateKeyFromSecret), PublicKey: string(publicKeyFromSecret)}, nil
 }
 
+type TemplateSecret struct {
+	Value      string `json:"value"`
+	SecretPath string `json:"secretPath"`
+}
+
 func (r *InfisicalSecretReconciler) CreateInfisicalManagedKubeSecret(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret, secretsFromAPI []model.SingleEnvironmentVariable, ETag string) error {
 	plainProcessedSecrets := make(map[string][]byte)
 	secretType := infisicalSecret.Spec.ManagedSecretReference.SecretType
+	managedTemplateData := infisicalSecret.Spec.ManagedSecretReference.Template
 
-	for _, secret := range secretsFromAPI {
-		plainProcessedSecrets[secret.Key] = []byte(secret.Value) // plain process
+	if managedTemplateData == nil || managedTemplateData.IncludeAllSecrets {
+		for _, secret := range secretsFromAPI {
+			plainProcessedSecrets[secret.Key] = []byte(secret.Value) // plain process
+		}
+	}
+
+	if managedTemplateData != nil {
+		secretKeyValue := make(map[string]TemplateSecret)
+		for _, secret := range secretsFromAPI {
+			secretKeyValue[secret.Key] = TemplateSecret{
+				Value:      secret.Value,
+				SecretPath: secret.SecretPath,
+			}
+		}
+
+		for tmplKey, userTmpl := range managedTemplateData.Data {
+			tmpl, err := template.New("secret-templates").Parse(userTmpl)
+			if err != nil {
+				return fmt.Errorf("Unable to compile template: %s", tmplKey, err)
+			}
+
+			buf := bytes.NewBuffer(nil)
+			err = tmpl.Execute(buf, secretKeyValue)
+			if err != nil {
+				return fmt.Errorf("Unable to execute template: %s", tmplKey, err)
+			}
+			plainProcessedSecrets[tmplKey] = buf.Bytes()
+		}
 	}
 
 	// copy labels and annotations from InfisicalSecret CRD
@@ -285,10 +319,38 @@ func (r *InfisicalSecretReconciler) CreateInfisicalManagedKubeSecret(ctx context
 	return nil
 }
 
-func (r *InfisicalSecretReconciler) UpdateInfisicalManagedKubeSecret(ctx context.Context, managedKubeSecret corev1.Secret, secretsFromAPI []model.SingleEnvironmentVariable, ETag string) error {
+func (r *InfisicalSecretReconciler) UpdateInfisicalManagedKubeSecret(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret, managedKubeSecret corev1.Secret, secretsFromAPI []model.SingleEnvironmentVariable, ETag string) error {
+	managedTemplateData := infisicalSecret.Spec.ManagedSecretReference.Template
+
 	plainProcessedSecrets := make(map[string][]byte)
-	for _, secret := range secretsFromAPI {
-		plainProcessedSecrets[secret.Key] = []byte(secret.Value)
+	if managedTemplateData == nil || managedTemplateData.IncludeAllSecrets {
+		for _, secret := range secretsFromAPI {
+			plainProcessedSecrets[secret.Key] = []byte(secret.Value)
+		}
+	}
+
+	if managedTemplateData != nil {
+		secretKeyValue := make(map[string]TemplateSecret)
+		for _, secret := range secretsFromAPI {
+			secretKeyValue[secret.Key] = TemplateSecret{
+				Value:      secret.Value,
+				SecretPath: secret.SecretPath,
+			}
+		}
+
+		for tmplKey, userTmpl := range managedTemplateData.Data {
+			tmpl, err := template.New("secret-templates").Parse(userTmpl)
+			if err != nil {
+				return fmt.Errorf("Unable to compile template: %s", tmplKey, err)
+			}
+
+			buf := bytes.NewBuffer(nil)
+			err = tmpl.Execute(buf, secretKeyValue)
+			if err != nil {
+				return fmt.Errorf("Unable to execute template: %s", tmplKey, err)
+			}
+			plainProcessedSecrets[tmplKey] = buf.Bytes()
+		}
 	}
 
 	// Initialize the Annotations map if it's nil
@@ -434,7 +496,7 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 	if managedKubeSecret == nil {
 		return r.CreateInfisicalManagedKubeSecret(ctx, infisicalSecret, plainTextSecretsFromApi, updateDetails.ETag)
 	} else {
-		return r.UpdateInfisicalManagedKubeSecret(ctx, *managedKubeSecret, plainTextSecretsFromApi, updateDetails.ETag)
+		return r.UpdateInfisicalManagedKubeSecret(ctx, infisicalSecret, *managedKubeSecret, plainTextSecretsFromApi, updateDetails.ETag)
 	}
 
 }
