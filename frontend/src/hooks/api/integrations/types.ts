@@ -57,6 +57,9 @@ export type TIntegration = {
     shouldMaskSecrets?: boolean;
     shouldProtectSecrets?: boolean;
     shouldEnableDelete?: boolean;
+
+    awsIamRole?: string;
+    region?: string;
   };
 };
 
