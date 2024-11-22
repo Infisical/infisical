@@ -148,17 +148,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
     "upgradePlan",
     "createOrg"
   ] as const);
-  // const {
-  //   control,
-  //   formState: { isSubmitting },
-  //   reset,
-  //   handleSubmit
-  // } = useForm<TAddProjectFormData>({
-  //   resolver: yupResolver(formSchema),
-  //   defaultValues: {
-  //     kmsKeyId: INTERNAL_KMS_KEY_ID
-  //   }
-  // });
 
   const { t } = useTranslation();
 
@@ -826,7 +815,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
           </aside>
           <NewProjectModal
             isOpen={popUp.addNewWs.isOpen}
-            onClose={() => handlePopUpToggle("addNewWs", false)}
+            onOpenChange={(isOpen) => handlePopUpToggle("addNewWs", isOpen)}
           />
           <UpgradePlanModal
             isOpen={popUp.upgradePlan.isOpen}

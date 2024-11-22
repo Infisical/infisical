@@ -64,10 +64,8 @@ export type CreateWorkspaceDTO = {
 export type SetWorkspaceOverviewDTO = {
   workspaceID: string;
   newWorkspaceName: string;
-  newWorkspaceDescription: string;
+  newWorkspaceDescription?: string;
 };
-// export type RenameWorkspaceDTO = { workspaceID: string; newWorkspaceName: string };
-// export type SetWorkspaceDescriptionDTO = { workspaceID: string; newWorkspaceDescription: string };
 
 export type UpdatePitVersionLimitDTO = { projectSlug: string; pitVersionLimit: number };
 export type UpdateAuditLogsRetentionDTO = { projectSlug: string; auditLogsRetentionDays: number };

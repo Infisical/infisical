@@ -12,8 +12,12 @@ import { useSetWorkspaceOverview } from "@app/hooks/api";
 import { CopyButton } from "./CopyButton";
 
 const formSchema = z.object({
-  name: z.string().max(64, "Too long, maximum length is 64 characters"),
-  description: z.string().trim().max(256, "Description too long, max length is 256 characters")
+  name: z.string().min(1, "Required").max(64, "Too long, maximum length is 64 characters"),
+  description: z
+    .string()
+    .trim()
+    .max(256, "Description too long, max length is 256 characters")
+    .optional()
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -127,7 +131,7 @@ export const ProjectOverviewChangeSection = () => {
                         <TextArea
                           placeholder="Project description"
                           {...field}
-                          className="bg-mineshaft-800"
+                          className="max-w-md !resize-none overflow-scroll bg-mineshaft-800"
                           isDisabled={!isAllowed}
                         />
                       </FormControl>

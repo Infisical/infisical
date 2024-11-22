@@ -59,7 +59,6 @@ import {
   TUpdateProjectDTO,
   TUpdateProjectKmsDTO,
   TUpdateProjectNameDTO,
-  TUpdateProjectOverviewDTO,
   TUpdateProjectSlackConfig,
   TUpdateProjectVersionLimitDTO,
   TUpgradeProjectDTO
@@ -596,28 +595,6 @@ export const projectServiceFactory = ({
     return projectDAL.updateById(project.id, { auditLogsRetentionDays });
   };
 
-  const updateOverview = async ({
-    projectId,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    name,
-    description
-  }: TUpdateProjectOverviewDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
-
-    const updatedProject = await projectDAL.updateById(projectId, { name, description });
-    return updatedProject;
-  };
-
   const updateName = async ({
     projectId,
     actor,
@@ -1108,7 +1085,6 @@ export const projectServiceFactory = ({
     getProjectUpgradeStatus,
     getAProject,
     toggleAutoCapitalization,
-    updateOverview,
     updateName,
     upgradeProject,
     listProjectCas,

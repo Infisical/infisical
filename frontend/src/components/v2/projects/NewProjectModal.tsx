@@ -18,6 +18,7 @@ import {
   FormControl,
   Input,
   Modal,
+  ModalClose,
   ModalContent,
   Select,
   SelectItem
@@ -40,7 +41,7 @@ import { INTERNAL_KMS_KEY_ID } from "@app/hooks/api/kms/types";
 import { InfisicalProjectTemplate, useListProjectTemplates } from "@app/hooks/api/projectTemplates";
 
 const formSchema = z.object({
-  name: z.string().trim().max(64, "Too long, maximum length is 64 characters"),
+  name: z.string().trim().min(1, "Required").max(64, "Too long, maximum length is 64 characters"),
   description: z
     .string()
     .trim()
@@ -55,10 +56,10 @@ type TAddProjectFormData = z.infer<typeof formSchema>;
 
 interface NewProjectModalProps {
   isOpen: boolean;
-  onClose: () => void;
+  onOpenChange: (isOpen: boolean) => void;
 }
 
-export const NewProjectModal: FC<NewProjectModalProps> = ({ isOpen, onClose }) => {
+export const NewProjectModal: FC<NewProjectModalProps> = ({ isOpen, onOpenChange }) => {
   const router = useRouter();
   const { currentOrg } = useOrganization();
   const { permission } = useOrgPermission();
@@ -137,33 +138,20 @@ export const NewProjectModal: FC<NewProjectModalProps> = ({ isOpen, onClose }) =
       await new Promise((resolve) => setTimeout(resolve, 2_000));
 
       createNotification({ text: "Project created", type: "success" });
-      onClose();
+      reset();
+      onOpenChange(false);
       router.push(`/project/${newProjectId}/secrets/overview`);
     } catch (err) {
       console.error(err);
       createNotification({ text: "Failed to create project", type: "error" });
     }
   };
-  const onSubmit = handleSubmit(
-    (data) => {
-      return onCreateProject(data);
-    },
-    (formErrors) => {
-      createNotification({ text: "Failed to create project", type: "error" });
-      console.log("Form validation failed", formErrors);
-    }
-  );
+  const onSubmit = handleSubmit((data) => {
+    return onCreateProject(data);
+  });
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onOpenChange={() => {
-        if (!isOpen) {
-          reset();
-          onClose();
-        }
-      }}
-    >
+    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
         title="Create a new project"
         subTitle="This project will contain your secrets and configurations."
@@ -191,8 +179,9 @@ export const NewProjectModal: FC<NewProjectModalProps> = ({ isOpen, onClose }) =
               defaultValue=""
               render={({ field, fieldState: { error } }) => (
                 <FormControl
-                  label="Project Description (optional)"
+                  label="Project Description"
                   isError={Boolean(error)}
+                  isOptional
                   errorText={error?.message}
                   className="flex-1"
                 >
@@ -309,14 +298,11 @@ export const NewProjectModal: FC<NewProjectModalProps> = ({ isOpen, onClose }) =
               </AccordionItem>
             </Accordion>
             <div className="absolute right-0 bottom-0 mr-6 mb-6 flex items-start justify-end">
-              <Button
-                onClick={() => onClose()}
-                colorSchema="secondary"
-                variant="plain"
-                className="py-2"
-              >
-                Cancel
-              </Button>
+              <ModalClose>
+                <Button colorSchema="secondary" variant="plain" className="py-2">
+                  Cancel
+                </Button>
+              </ModalClose>
               <Button
                 isDisabled={isSubmitting}
                 isLoading={isSubmitting}
