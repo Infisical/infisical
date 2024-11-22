@@ -59,7 +59,6 @@ export type TIntegration = {
     shouldEnableDelete?: boolean;
 
     awsIamRole?: string;
-    awsRegion?: string;
     region?: string;
   };
 };

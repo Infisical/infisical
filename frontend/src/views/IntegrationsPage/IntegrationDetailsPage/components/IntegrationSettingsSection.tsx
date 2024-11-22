@@ -28,7 +28,6 @@ const metadataMappings: Record<keyof NonNullable<TIntegrationWithEnv["metadata"]
   shouldProtectSecrets: "GitLab Secret Protection Enabled",
   shouldEnableDelete: "GitHub Secret Deletion Enabled",
   awsIamRole: "AWS IAM Role",
-  awsRegion: "AWS Region",
   region: "Region"
 } as const;
 

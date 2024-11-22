@@ -262,7 +262,7 @@ export const integrationServiceFactory = ({
       type: KmsDataKey.SecretManager,
       projectId: integration.projectId
     });
-    let awsIamRole;
+    let awsIamRole: string | null = null;
     if (integrationAuth.encryptedAwsAssumeIamRoleArn) {
       const awsAssumeRoleArn = secretManagerDecryptor({
         cipherTextBlob: Buffer.from(integrationAuth.encryptedAwsAssumeIamRoleArn)
@@ -370,7 +370,7 @@ export const integrationServiceFactory = ({
     deleteIntegration,
     listIntegrationByProject,
     getIntegration,
-    getIntegrationAWSAssumeRoleArn: getIntegrationAWSIamRole,
+    getIntegrationAWSIamRole,
     syncIntegration
   };
 };
