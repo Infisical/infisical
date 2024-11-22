@@ -50,11 +50,34 @@ export const IdentityRoleDetailsSection = ({
   const handleRoleDelete = async () => {
     const { id } = popUp?.deleteRole?.data as TProjectRole;
     try {
-      const updatedRole = identityMembershipDetails?.roles?.filter((el) => el.id !== id);
+      const updatedRoles = identityMembershipDetails?.roles?.filter((el) => el.id !== id);
       await updateIdentityWorkspaceRole({
         workspaceId: currentWorkspace?.id || "",
         identityId: identityMembershipDetails.identity.id,
-        roles: updatedRole
+        roles: updatedRoles.map(
+          ({
+            role,
+            customRoleSlug,
+            isTemporary,
+            temporaryMode,
+            temporaryRange,
+            temporaryAccessStartTime,
+            temporaryAccessEndTime
+          }) => ({
+            role: role === "custom" ? customRoleSlug : role,
+            ...(isTemporary
+              ? {
+                  isTemporary,
+                  temporaryMode,
+                  temporaryRange,
+                  temporaryAccessStartTime,
+                  temporaryAccessEndTime
+                }
+              : {
+                  isTemporary
+                })
+          })
+        )
       });
       createNotification({ type: "success", text: "Successfully removed role" });
       handlePopUpClose("deleteRole");
