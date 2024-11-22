@@ -41,8 +41,8 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       response: {
         200: z.object({
           approvals: SecretApprovalRequestsSchema.extend({
-            // secretPath: z.string(),
             policy: z.object({
+              secretPaths: z.string().array(),
               id: z.string(),
               name: z.string(),
               approvals: z.number(),
@@ -51,7 +51,6 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
                   userId: z.string().nullable().optional()
                 })
                 .array(),
-              secretPath: z.string().optional().nullable(),
               enforcementLevel: z.string()
             }),
             committerUser: approvalRequestUser,
@@ -253,13 +252,12 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         200: z.object({
           approval: SecretApprovalRequestsSchema.merge(
             z.object({
-              // secretPath: z.string(),
               policy: z.object({
                 id: z.string(),
                 name: z.string(),
                 approvals: z.number(),
                 approvers: approvalRequestUser.array(),
-                secretPath: z.string().optional().nullable(),
+                secretPaths: z.string().array(),
                 enforcementLevel: z.string()
               }),
               environment: z.string(),
@@ -308,6 +306,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         actorOrgId: req.permission.orgId,
         id: req.params.id
       });
+
       return { approval };
     }
   });

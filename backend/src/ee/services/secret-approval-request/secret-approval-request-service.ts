@@ -831,7 +831,7 @@ export const secretApprovalRequestServiceFactory = ({
           requesterFullName: `${requestedByUser.firstName} ${requestedByUser.lastName}`,
           requesterEmail: requestedByUser.email,
           bypassReason,
-          secretPath: policy.secretPath,
+          secretPath: folder.path,
           environment: env.name,
           approvalUrl: `${cfg.SITE_URL}/project/${project.id}/approval`
         },

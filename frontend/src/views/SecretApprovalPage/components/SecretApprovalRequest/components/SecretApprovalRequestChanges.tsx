@@ -193,9 +193,9 @@ export const SecretApprovalRequestChanges = ({
                 <div className="border-r border-mineshaft-500 pr-1">
                   <FontAwesomeIcon icon={faFolder} className="text-primary" size="sm" />
                 </div>
-                <Tooltip content={formatReservedPaths(secretApprovalRequestDetails.secretPath)}>
+                <Tooltip content={formatReservedPaths(secretApprovalRequestDetails.secretPaths)}>
                   <div className="truncate pl-2 pb-0.5 text-sm" style={{ maxWidth: "10rem" }}>
-                    {formatReservedPaths(secretApprovalRequestDetails.secretPath)}
+                    {formatReservedPaths(secretApprovalRequestDetails.secretPaths)}
                   </div>
                 </Tooltip>
               </div>

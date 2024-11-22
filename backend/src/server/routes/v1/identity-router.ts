@@ -207,7 +207,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
               .object({
                 key: z.string().trim().min(1),
                 id: z.string().trim().min(1),
-                value: z.string().trim().min(1)
+                value: z.string().trim().min(1).nullable().optional()
               })
               .array()
               .optional(),

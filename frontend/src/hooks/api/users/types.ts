@@ -51,7 +51,7 @@ export type UserEnc = {
 
 export type OrgUser = {
   id: string;
-  metadata: { key: string; value: string; id: string }[];
+  metadata: { key: string; value?: string | null; id: string }[];
   user: {
     username: string;
     email?: string;

@@ -37,7 +37,7 @@ export type IdentityMembershipOrg = {
   id: string;
   identity: Identity;
   organization: string;
-  metadata: { key: string; value: string; id: string }[];
+  metadata: { key: string; value?: string | null; id: string }[];
   role: "admin" | "member" | "viewer" | "no-access" | "custom";
   customRole?: TOrgRole;
   createdAt: string;
