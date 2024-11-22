@@ -238,11 +238,11 @@ export const secretScanningQueueFactory = ({
   });
 
   queueService.listen(QueueName.SecretPushEventScan, "failed", (job, err) => {
-    logger.error("Failed to secret scan on push", job?.data, err);
+    logger.error(err, "Failed to secret scan on push", job?.data);
   });
 
   queueService.listen(QueueName.SecretFullRepoScan, "failed", (job, err) => {
-    logger.error("Failed to do full repo secret scan", job?.data, err);
+    logger.error(err, "Failed to do full repo secret scan", job?.data);
   });
 
   return { startFullRepoScan, startPushEventScan };

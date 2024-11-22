@@ -10,13 +10,14 @@ import fastifyFormBody from "@fastify/formbody";
 import helmet from "@fastify/helmet";
 import type { FastifyRateLimitOptions } from "@fastify/rate-limit";
 import ratelimiter from "@fastify/rate-limit";
+import { fastifyRequestContext } from "@fastify/request-context";
 import fastify from "fastify";
 import { Knex } from "knex";
-import { Logger } from "pino";
 
 import { HsmModule } from "@app/ee/services/hsm/hsm-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, IS_PACKAGED } from "@app/lib/config/env";
+import { CustomLogger } from "@app/lib/logger/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TQueueServiceFactory } from "@app/queue";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
@@ -36,7 +37,7 @@ type TMain = {
   auditLogDb?: Knex;
   db: Knex;
   smtp: TSmtpService;
-  logger?: Logger;
+  logger?: CustomLogger;
   queue: TQueueServiceFactory;
   keyStore: TKeyStoreFactory;
   hsmModule: HsmModule;
@@ -50,6 +51,7 @@ export const main = async ({ db, hsmModule, auditLogDb, smtp, logger, queue, key
     logger: appCfg.NODE_ENV === "test" ? false : logger,
     genReqId: () => `req-${alphaNumericNanoId(14)}`,
     trustProxy: true,
+
     connectionTimeout: appCfg.isHsmConfigured ? 90_000 : 30_000,
     ignoreTrailingSlash: true,
     pluginTimeout: 40_000
@@ -105,6 +107,13 @@ export const main = async ({ db, hsmModule, auditLogDb, smtp, logger, queue, key
     await server.register(helmet, { contentSecurityPolicy: false });
 
     await server.register(maintenanceMode);
+
+    await server.register(fastifyRequestContext, {
+      defaultStoreValues: (request) => ({
+        requestId: request.id,
+        log: request.log.child({ requestId: request.id })
+      })
+    });
 
     await server.register(registerRoutes, { smtp, queue, db, auditLogDb, keyStore, hsmModule });
 
