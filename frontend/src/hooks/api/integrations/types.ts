@@ -60,6 +60,7 @@ export type TIntegration = {
 
     awsIamRole?: string;
     awsRegion?: string;
+    region?: string;
   };
 };
 
