@@ -385,8 +385,8 @@ export const identityTokenAuthServiceFactory = ({
     actorOrgId
   }: TUpdateTokenAuthTokenDTO) => {
     const foundToken = await identityAccessTokenDAL.findOne({
-      id: tokenId,
-      authMethod: IdentityAuthMethod.TOKEN_AUTH
+      [`${TableName.IdentityAccessToken}.id` as "id"]: tokenId,
+      [`${TableName.IdentityAccessToken}.authMethod` as "authMethod"]: IdentityAuthMethod.TOKEN_AUTH
     });
     if (!foundToken) throw new NotFoundError({ message: `Token with ID ${tokenId} not found` });
 
@@ -444,8 +444,8 @@ export const identityTokenAuthServiceFactory = ({
   }: TRevokeTokenAuthTokenDTO) => {
     const identityAccessToken = await identityAccessTokenDAL.findOne({
       [`${TableName.IdentityAccessToken}.id` as "id"]: tokenId,
-      isAccessTokenRevoked: false,
-      authMethod: IdentityAuthMethod.TOKEN_AUTH
+      [`${TableName.IdentityAccessToken}.isAccessTokenRevoked` as "isAccessTokenRevoked"]: false,
+      [`${TableName.IdentityAccessToken}.authMethod` as "authMethod"]: IdentityAuthMethod.TOKEN_AUTH
     });
     if (!identityAccessToken)
       throw new NotFoundError({

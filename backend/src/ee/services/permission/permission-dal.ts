@@ -127,14 +127,15 @@ export const permissionDALFactory = (db: TDbClient) => {
 
   const getProjectPermission = async (userId: string, projectId: string) => {
     try {
+      const subQueryUserGroups = db(TableName.UserGroupMembership).where("userId", userId).select("groupId");
       const docs = await db
         .replicaNode()(TableName.Users)
         .where(`${TableName.Users}.id`, userId)
-        .leftJoin(TableName.UserGroupMembership, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
         .leftJoin(TableName.GroupProjectMembership, (queryBuilder) => {
           void queryBuilder
             .on(`${TableName.GroupProjectMembership}.projectId`, db.raw("?", [projectId]))
-            .andOn(`${TableName.GroupProjectMembership}.groupId`, `${TableName.UserGroupMembership}.groupId`);
+            // @ts-expect-error akhilmhdh: this is valid knexjs query. Its just ts type argument is missing it
+            .andOnIn(`${TableName.GroupProjectMembership}.groupId`, subQueryUserGroups);
         })
         .leftJoin(
           TableName.GroupProjectMembershipRole,
