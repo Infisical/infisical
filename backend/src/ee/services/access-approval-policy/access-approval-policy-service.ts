@@ -48,7 +48,7 @@ export const accessApprovalPolicyServiceFactory = ({
     actor,
     actorId,
     actorOrgId,
-    secretPath,
+    secretPaths,
     actorAuthMethod,
     approvals,
     approvers,
@@ -138,7 +138,7 @@ export const accessApprovalPolicyServiceFactory = ({
         {
           envId: env.id,
           approvals,
-          secretPath,
+          secretPaths: JSON.stringify(secretPaths),
           name,
           enforcementLevel
         },
@@ -166,7 +166,7 @@ export const accessApprovalPolicyServiceFactory = ({
 
       return doc;
     });
-    return { ...accessApproval, environment: env, projectId: project.id };
+    return { ...accessApproval, environment: env, projectId: project.id, secretPaths };
   };
 
   const getAccessApprovalPolicyByProjectSlug = async ({
@@ -190,13 +190,14 @@ export const accessApprovalPolicyServiceFactory = ({
     // ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
 
     const accessApprovalPolicies = await accessApprovalPolicyDAL.find({ projectId: project.id });
+
     return accessApprovalPolicies;
   };
 
   const updateAccessApprovalPolicy = async ({
     policyId,
     approvers,
-    secretPath,
+    secretPaths,
     name,
     actorId,
     actor,
@@ -246,7 +247,7 @@ export const accessApprovalPolicyServiceFactory = ({
         accessApprovalPolicy.id,
         {
           approvals,
-          secretPath,
+          secretPaths: JSON.stringify(secretPaths),
           name,
           enforcementLevel
         },
@@ -321,13 +322,14 @@ export const accessApprovalPolicyServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
       ProjectPermissionSub.SecretApproval
     );
 
     await accessApprovalPolicyDAL.deleteById(policyId);
-    return policy;
+    return { ...policy, secretPaths: policy.secretPaths as string[] };
   };
 
   const getAccessPolicyCountByEnvSlug = async ({

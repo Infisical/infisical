@@ -6,7 +6,7 @@ export type TAccessApprovalPolicy = {
   id: string;
   name: string;
   approvals: number;
-  secretPath: string;
+  secretPaths: string[];
   envId: string;
   workspace: string;
   environment: WorkspaceEnv;
@@ -18,15 +18,15 @@ export type TAccessApprovalPolicy = {
   approvers?: Approver[];
 };
 
-export enum ApproverType{
+export enum ApproverType {
   User = "user",
   Group = "group"
 }
 
-export type Approver ={
+export type Approver = {
   id: string;
   type: ApproverType;
-}
+};
 
 export type TAccessApprovalRequest = {
   id: string;
@@ -67,7 +67,7 @@ export type TAccessApprovalRequest = {
     name: string;
     approvals: number;
     approvers: string[];
-    secretPath?: string | null;
+    secretPaths?: string[] | null;
     envId: string;
     enforcementLevel: EnforcementLevel;
   };
@@ -116,7 +116,18 @@ export type TProjectUserPrivilege = {
 
 export type TCreateAccessRequestDTO = {
   projectSlug: string;
-} & Omit<TProjectUserPrivilege, "id" | "createdAt" | "updatedAt" | "slug" | "projectMembershipId">;
+  secretPaths: string[];
+  environment: string;
+  requestedActions: {
+    read: boolean;
+    edit: boolean;
+    create: boolean;
+    delete: boolean;
+  };
+} & Omit<
+  TProjectUserPrivilege,
+  "id" | "createdAt" | "updatedAt" | "slug" | "projectMembershipId" | "permissions"
+>;
 
 export type TGetAccessApprovalRequestsDTO = {
   projectSlug: string;
@@ -132,7 +143,7 @@ export type TGetAccessPolicyApprovalCountDTO = {
 export type TGetSecretApprovalPolicyOfBoardDTO = {
   workspaceId: string;
   environment: string;
-  secretPath: string;
+  secretPaths: string[];
 };
 
 export type TCreateAccessPolicyDTO = {
@@ -141,7 +152,7 @@ export type TCreateAccessPolicyDTO = {
   environment: string;
   approvers?: Approver[];
   approvals?: number;
-  secretPath?: string;
+  secretPaths?: string[];
   enforcementLevel?: EnforcementLevel;
 };
 
@@ -149,7 +160,7 @@ export type TUpdateAccessPolicyDTO = {
   id: string;
   name?: string;
   approvers?: Approver[];
-  secretPath?: string;
+  secretPaths?: string[];
   environment?: string;
   approvals?: number;
   enforcementLevel?: EnforcementLevel;

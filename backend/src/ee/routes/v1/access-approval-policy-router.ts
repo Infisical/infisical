@@ -2,6 +2,7 @@ import { nanoid } from "nanoid";
 import { z } from "zod";
 
 import { ApproverType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
+import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { EnforcementLevel } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -19,7 +20,10 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       body: z.object({
         projectSlug: z.string().trim(),
         name: z.string().optional(),
-        secretPath: z.string().trim().default("/"),
+        secretPaths: z
+          .string()
+          .array()
+          .transform((val) => val.map((v) => prefixWithSlash(removeTrailingSlash(v)).trim())),
         environment: z.string(),
         approvers: z
           .discriminatedUnion("type", [
@@ -49,6 +53,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         name: req.body.name ?? `${req.body.environment}-${nanoid(3)}`,
         enforcementLevel: req.body.enforcementLevel
       });
+
       return { approval };
     }
   });
@@ -134,11 +139,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       body: z.object({
         name: z.string().optional(),
-        secretPath: z
-          .string()
-          .trim()
-          .optional()
-          .transform((val) => (val === "" ? "/" : val)),
+        secretPaths: z.string().array().optional(),
         approvers: z
           .discriminatedUnion("type", [
             z.object({ type: z.literal(ApproverType.Group), id: z.string() }),

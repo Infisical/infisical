@@ -20,7 +20,14 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     method: "POST",
     schema: {
       body: z.object({
-        permissions: z.any().array(),
+        requestedActions: z.object({
+          read: z.boolean(),
+          edit: z.boolean(),
+          create: z.boolean(),
+          delete: z.boolean()
+        }),
+        environment: z.string(),
+        secretPaths: z.string().array(),
         isTemporary: z.boolean(),
         temporaryRange: z.string().optional()
       }),
@@ -39,7 +46,9 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
-        permissions: req.body.permissions,
+        environment: req.body.environment,
+        secretPaths: req.body.secretPaths,
+        requestedActions: req.body.requestedActions,
         actorOrgId: req.permission.orgId,
         projectSlug: req.query.projectSlug,
         temporaryRange: req.body.temporaryRange,
@@ -107,7 +116,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
               name: z.string(),
               approvals: z.number(),
               approvers: z.string().array(),
-              secretPath: z.string().nullish(),
+              secretPaths: z.string().array(),
               envId: z.string(),
               enforcementLevel: z.string()
             }),

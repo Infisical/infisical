@@ -1,4 +1,3 @@
-import { packRules } from "@casl/ability/extra";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
@@ -22,7 +21,7 @@ export const useCreateAccessApprovalPolicy = () => {
       approvals,
       approvers,
       name,
-      secretPath,
+      secretPaths,
       enforcementLevel
     }) => {
       const { data } = await apiRequest.post("/api/v1/access-approvals/policies", {
@@ -30,7 +29,7 @@ export const useCreateAccessApprovalPolicy = () => {
         projectSlug,
         approvals,
         approvers,
-        secretPath,
+        secretPaths,
         name,
         enforcementLevel
       });
@@ -46,11 +45,11 @@ export const useUpdateAccessApprovalPolicy = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, TUpdateAccessPolicyDTO>({
-    mutationFn: async ({ id, approvers, approvals, name, secretPath, enforcementLevel }) => {
+    mutationFn: async ({ id, approvers, approvals, name, secretPaths, enforcementLevel }) => {
       const { data } = await apiRequest.patch(`/api/v1/access-approvals/policies/${id}`, {
         approvals,
         approvers,
-        secretPath,
+        secretPaths,
         name,
         enforcementLevel
       });
@@ -83,8 +82,8 @@ export const useCreateAccessRequest = () => {
       const { data } = await apiRequest.post<TAccessApproval>(
         "/api/v1/access-approvals/requests",
         {
-          ...request,
-          permissions: request.permissions ? packRules(request.permissions) : undefined
+          ...request
+          // permissions: request.permissions ? packRules(request.permissions) : undefined
         },
         {
           params: {

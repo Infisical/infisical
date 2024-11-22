@@ -51,7 +51,7 @@ import {
 import { TAccessApprovalPolicy } from "@app/hooks/api/types";
 
 const secretPermissionSchema = z.object({
-  secretPath: z.string().optional(),
+  secretPaths: z.string().optional(),
   environmentSlug: z.string(),
   [ProjectPermissionActions.Edit]: z.boolean().optional(),
   [ProjectPermissionActions.Read]: z.boolean().optional(),
@@ -99,7 +99,7 @@ export const SpecificPrivilegeSecretForm = ({
         ? {
             environmentSlug: privilege.permissions?.[0]?.conditions?.environment,
             // secret path will be inside $glob operator
-            secretPath: privilege.permissions?.[0]?.conditions?.secretPath?.$glob
+            secretPaths: privilege.permissions?.[0]?.conditions?.secretPath?.$glob
               ? removeTrailingSlash(privilege.permissions?.[0]?.conditions?.secretPath?.$glob)
               : "",
             read: privilege.permissions?.some(({ action }) =>
@@ -132,7 +132,7 @@ export const SpecificPrivilegeSecretForm = ({
 
   const temporaryAccessField = privilegeForm.watch("temporaryAccess");
   const selectedEnvironment = privilegeForm.watch("environmentSlug");
-  const secretPath = privilegeForm.watch("secretPath");
+  const secretPath = privilegeForm.watch("secretPaths");
 
   const readAccess = privilegeForm.watch("read");
   const createAccess = privilegeForm.watch("create");
@@ -147,11 +147,11 @@ export const SpecificPrivilegeSecretForm = ({
       (policy) => policy.environment.slug === selectedEnvironment
     );
 
-    privilegeForm.setValue("secretPath", "", {
+    privilegeForm.setValue("secretPaths", "", {
       shouldValidate: true
     });
 
-    return [...environmentPolicies.map((policy) => policy.secretPath)];
+    return [...environmentPolicies.map((policy) => policy.secretPaths)];
   }, [policies, selectedEnvironment]);
 
   const isTemporary = temporaryAccessField?.isTemporary;
@@ -199,7 +199,7 @@ export const SpecificPrivilegeSecretForm = ({
       return;
     }
 
-    if (!data.secretPath) {
+    if (!data.secretPaths) {
       createNotification({
         type: "error",
         text: "Please select a secret path",
@@ -208,30 +208,21 @@ export const SpecificPrivilegeSecretForm = ({
       return;
     }
 
-    const actions = [
-      { action: ProjectPermissionActions.Read, allowed: data.read },
-      { action: ProjectPermissionActions.Create, allowed: data.create },
-      { action: ProjectPermissionActions.Delete, allowed: data.delete },
-      { action: ProjectPermissionActions.Edit, allowed: data.edit }
-    ];
-    const conditions: Record<string, any> = { environment: data.environmentSlug };
-    if (data.secretPath) {
-      conditions.secretPath = { $glob: data.secretPath };
-    }
     await requestAccess.mutateAsync({
       ...data,
       ...(data.temporaryAccess.isTemporary && {
         temporaryRange: data.temporaryAccess.temporaryRange
       }),
+      secretPaths: JSON.parse(data.secretPaths) as string[],
+      environment: data.environmentSlug,
+      requestedActions: {
+        read: data.read || false,
+        create: data.create || false,
+        edit: data.edit || false,
+        delete: data.delete || false
+      },
       projectSlug: currentWorkspace.slug,
-      isTemporary: data.temporaryAccess.isTemporary,
-      permissions: actions
-        .filter(({ allowed }) => allowed)
-        .map(({ action }) => ({
-          action,
-          subject: [ProjectPermissionSub.Secrets],
-          conditions
-        }))
+      isTemporary: data.temporaryAccess.isTemporary
     });
 
     createNotification({
@@ -285,7 +276,7 @@ export const SpecificPrivilegeSecretForm = ({
           />
           <Controller
             control={privilegeForm.control}
-            name="secretPath"
+            name="secretPaths"
             render={({ field }) => {
               if (policies) {
                 return (
@@ -294,18 +285,28 @@ export const SpecificPrivilegeSecretForm = ({
                     content="The selected environment doesn't have any policies."
                   >
                     <div>
-                      <FormControl label="Secret Path">
+                      <FormControl label="Secret Paths">
                         <Select
                           {...field}
                           isDisabled={isMemberEditDisabled || !selectablePaths.length}
                           className="w-48"
                           onValueChange={(e) => field.onChange(e)}
                         >
-                          {selectablePaths.map((path) => (
-                            <SelectItem value={path} key={path}>
-                              {path}
-                            </SelectItem>
-                          ))}
+                          {selectablePaths.map((paths) => {
+                            if (!paths || paths.length === 0) {
+                              return (
+                                <SelectItem value={JSON.stringify([])} key="empty">
+                                  Full Environment Access
+                                </SelectItem>
+                              );
+                            }
+
+                            return (
+                              <SelectItem value={JSON.stringify(paths)} key={paths.join("-")}>
+                                {paths.join(", ")}
+                              </SelectItem>
+                            );
+                          })}
                         </Select>
                       </FormControl>
                     </div>

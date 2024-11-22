@@ -4,7 +4,7 @@ import { ApproverType } from "../access-approval-policy/access-approval-policy-t
 
 export type TCreateSapDTO = {
   approvals: number;
-  secretPath?: string | null;
+  secretPaths: string[];
   environment: string;
   approvers: ({ type: ApproverType.Group; id: string } | { type: ApproverType.User; id?: string; name?: string })[];
   projectId: string;
@@ -15,7 +15,7 @@ export type TCreateSapDTO = {
 export type TUpdateSapDTO = {
   secretPolicyId: string;
   approvals?: number;
-  secretPath?: string | null;
+  secretPaths?: string[];
   approvers: ({ type: ApproverType.Group; id: string } | { type: ApproverType.User; id?: string; name?: string })[];
   name?: string;
   enforcementLevel?: EnforcementLevel;

@@ -59,7 +59,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.AccessApprovalPolicy).as("policyId"),
           db.ref("name").withSchema(TableName.AccessApprovalPolicy).as("policyName"),
           db.ref("approvals").withSchema(TableName.AccessApprovalPolicy).as("policyApprovals"),
-          db.ref("secretPath").withSchema(TableName.AccessApprovalPolicy).as("policySecretPath"),
+          db.ref("secretPaths").withSchema(TableName.AccessApprovalPolicy).as("policySecretPaths"),
           db.ref("enforcementLevel").withSchema(TableName.AccessApprovalPolicy).as("policyEnforcementLevel"),
           db.ref("envId").withSchema(TableName.AccessApprovalPolicy).as("policyEnvId")
         )
@@ -78,7 +78,6 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
           db.ref("status").withSchema(TableName.AccessApprovalRequestReviewer).as("reviewerStatus")
         )
 
-        // TODO: ADD SUPPORT FOR GROUPS!!!!
         .select(
           db.ref("email").withSchema("requestedByUser").as("requestedByUserEmail"),
           db.ref("username").withSchema("requestedByUser").as("requestedByUserUsername"),
@@ -116,9 +115,9 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
             id: doc.policyId,
             name: doc.policyName,
             approvals: doc.policyApprovals,
-            secretPath: doc.policySecretPath,
             enforcementLevel: doc.policyEnforcementLevel,
-            envId: doc.policyEnvId
+            envId: doc.policyEnvId,
+            secretPaths: doc.policySecretPaths as string[]
           },
           requestedByUser: {
             userId: doc.requestedByUserId,
@@ -250,7 +249,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
         tx.ref("name").withSchema(TableName.AccessApprovalPolicy).as("policyName"),
         tx.ref("projectId").withSchema(TableName.Environment),
         tx.ref("slug").withSchema(TableName.Environment).as("environment"),
-        tx.ref("secretPath").withSchema(TableName.AccessApprovalPolicy).as("policySecretPath"),
+        tx.ref("secretPaths").withSchema(TableName.AccessApprovalPolicy).as("policySecretPaths"),
         tx.ref("enforcementLevel").withSchema(TableName.AccessApprovalPolicy).as("policyEnforcementLevel"),
         tx.ref("approvals").withSchema(TableName.AccessApprovalPolicy).as("policyApprovals")
       );
@@ -270,8 +269,8 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
             id: el.policyId,
             name: el.policyName,
             approvals: el.policyApprovals,
-            secretPath: el.policySecretPath,
-            enforcementLevel: el.policyEnforcementLevel
+            enforcementLevel: el.policyEnforcementLevel,
+            secretPaths: el.policySecretPaths as string[]
           },
           requestedByUser: {
             userId: el.requestedByUserId,

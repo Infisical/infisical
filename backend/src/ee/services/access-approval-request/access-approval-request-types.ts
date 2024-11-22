@@ -8,6 +8,7 @@ export enum ApprovalStatus {
 
 export type TVerifyPermission = {
   permissions: unknown;
+  checkPath?: boolean;
 };
 
 export type TGetAccessRequestCountDTO = {
@@ -21,7 +22,15 @@ export type TReviewAccessRequestDTO = {
 
 export type TCreateAccessApprovalRequestDTO = {
   projectSlug: string;
-  permissions: unknown;
+  environment: string;
+  // permissions: unknown;
+  requestedActions: {
+    read: boolean;
+    edit: boolean;
+    create: boolean;
+    delete: boolean;
+  };
+  secretPaths: string[];
   isTemporary: boolean;
   temporaryRange?: string;
 } & Omit<TProjectPermission, "projectId">;

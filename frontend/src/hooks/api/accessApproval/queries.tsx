@@ -73,7 +73,7 @@ const fetchApprovalRequests = async ({
     { params: { projectSlug, envSlug, authorProjectMembershipId } }
   );
 
-  return data.requests.map((request) => ({
+  const result = data.requests.map((request) => ({
     ...request,
 
     privilege: request.privilege
@@ -86,6 +86,10 @@ const fetchApprovalRequests = async ({
       : null,
     permissions: unpackRules(request.permissions as unknown as PackRule<TProjectPermission>[])
   }));
+
+  console.log("after");
+
+  return result;
 };
 
 const fetchAccessRequestsCount = async (projectSlug: string) => {

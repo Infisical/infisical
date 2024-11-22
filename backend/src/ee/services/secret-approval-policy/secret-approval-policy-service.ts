@@ -22,10 +22,22 @@ import {
   TUpdateSapDTO
 } from "./secret-approval-policy-types";
 
-const getPolicyScore = (policy: { secretPath?: string | null }) =>
-  // if glob pattern score is 1, if not exist score is 0 and if its not both then its exact path meaning score 2
-  // eslint-disable-next-line
-  policy.secretPath ? (containsGlobPatterns(policy.secretPath) ? 1 : 2) : 0;
+/*
+ *  '1': The secret path is a glob pattern
+ *  '0': The secret path is not defined (whole environment is scoped)
+ *  '2': The secret path is an exact path
+ */
+const getPolicyScore = (policy: { secretPaths: string[] }) => {
+  let score = 0;
+
+  if (!policy.secretPaths.length) return 0;
+
+  for (const secretPath of policy.secretPaths) {
+    score += containsGlobPatterns(secretPath) ? 1 : 2;
+  }
+
+  return score;
+};
 
 type TSecretApprovalPolicyServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -55,7 +67,7 @@ export const secretApprovalPolicyServiceFactory = ({
     approvals,
     approvers,
     projectId,
-    secretPath,
+    secretPaths,
     environment,
     enforcementLevel
   }: TCreateSapDTO) => {
@@ -105,7 +117,7 @@ export const secretApprovalPolicyServiceFactory = ({
         {
           envId: env.id,
           approvals,
-          secretPath,
+          secretPaths: JSON.stringify(secretPaths),
           name,
           enforcementLevel
         },
@@ -153,12 +165,12 @@ export const secretApprovalPolicyServiceFactory = ({
       return doc;
     });
 
-    return { ...secretApproval, environment: env, projectId };
+    return { ...secretApproval, environment: env, projectId, secretPaths };
   };
 
   const updateSecretApprovalPolicy = async ({
     approvers,
-    secretPath,
+    secretPaths,
     name,
     actorId,
     actor,
@@ -209,7 +221,7 @@ export const secretApprovalPolicyServiceFactory = ({
         secretApprovalPolicy.id,
         {
           approvals,
-          secretPath,
+          secretPaths: secretPaths ? JSON.stringify(secretPaths) : undefined,
           name,
           enforcementLevel
         },
@@ -261,7 +273,7 @@ export const secretApprovalPolicyServiceFactory = ({
         );
       }
 
-      return doc;
+      return { ...doc, secretPaths: doc.secretPaths as string[] };
     });
     return {
       ...updatedSap,
@@ -302,7 +314,7 @@ export const secretApprovalPolicyServiceFactory = ({
     }
 
     await secretApprovalPolicyDAL.deleteById(secretPolicyId);
-    return sapPolicy;
+    return { ...sapPolicy, secretPaths: sapPolicy.secretPaths as string[] };
   };
 
   const getSecretApprovalPolicyByProjectId = async ({
@@ -325,8 +337,9 @@ export const secretApprovalPolicyServiceFactory = ({
     return sapPolicies;
   };
 
-  const getSecretApprovalPolicy = async (projectId: string, environment: string, path: string) => {
-    const secretPath = removeTrailingSlash(path);
+  const getSecretApprovalPolicy = async (projectId: string, environment: string, paths: string[] | string) => {
+    const secretPaths = (Array.isArray(paths) ? paths : [paths]).map((p) => removeTrailingSlash(p).trim());
+
     const env = await projectEnvDAL.findOne({ slug: environment, projectId });
     if (!env) {
       throw new NotFoundError({
@@ -336,14 +349,24 @@ export const secretApprovalPolicyServiceFactory = ({
 
     const policies = await secretApprovalPolicyDAL.find({ envId: env.id });
     if (!policies.length) return;
-    // this will filter policies either without scoped to secret path or the one that matches with secret path
-    const policiesFilteredByPath = policies.filter(
-      ({ secretPath: policyPath }) => !policyPath || picomatch.isMatch(secretPath, policyPath, { strictSlashes: false })
-    );
+
+    // A policy matches if either:
+    // 1. It has no secretPaths (applies to all paths)
+    // 2. At least one of the provided secretPaths matches at least one of the policy paths
+    const matchingPolicies = policies.filter((policy) => {
+      if (!policy.secretPaths.length) return true; // Policy applies to all paths
+
+      // For each provided secret path, check if it matches any of the policy paths
+      return secretPaths.some((secretPath) =>
+        policy.secretPaths.some((policyPath) => picomatch.isMatch(secretPath, policyPath, { strictSlashes: false }))
+      );
+    });
+
     // now sort by priority. exact secret path gets first match followed by glob followed by just env scoped
     // if that is tie get by first createdAt
-    const policiesByPriority = policiesFilteredByPath.sort((a, b) => getPolicyScore(b) - getPolicyScore(a));
+    const policiesByPriority = matchingPolicies.sort((a, b) => getPolicyScore(b) - getPolicyScore(a));
     const finalPolicy = policiesByPriority.shift();
+
     return finalPolicy;
   };
 

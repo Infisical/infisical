@@ -56,16 +56,15 @@ export const DefaultResponseErrorsSchema = {
   })
 };
 
-export const sapPubSchema = SecretApprovalPoliciesSchema.merge(
-  z.object({
-    environment: z.object({
-      id: z.string(),
-      name: z.string(),
-      slug: z.string()
-    }),
-    projectId: z.string()
-  })
-);
+export const sapPubSchema = SecretApprovalPoliciesSchema.extend({
+  secretPaths: z.string().array(),
+  environment: z.object({
+    id: z.string(),
+    name: z.string(),
+    slug: z.string()
+  }),
+  projectId: z.string()
+});
 
 export const sanitizedServiceTokenUserSchema = UsersSchema.pick({
   authMethods: true,

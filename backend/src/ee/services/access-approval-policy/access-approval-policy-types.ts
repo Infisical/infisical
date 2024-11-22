@@ -20,7 +20,7 @@ export enum ApproverType {
 
 export type TCreateAccessApprovalPolicy = {
   approvals: number;
-  secretPath: string;
+  secretPaths: string[];
   environment: string;
   approvers: ({ type: ApproverType.Group; id: string } | { type: ApproverType.User; id?: string; name?: string })[];
   projectSlug: string;
@@ -32,7 +32,7 @@ export type TUpdateAccessApprovalPolicy = {
   policyId: string;
   approvals?: number;
   approvers: ({ type: ApproverType.Group; id: string } | { type: ApproverType.User; id?: string; name?: string })[];
-  secretPath?: string;
+  secretPaths?: string[];
   name?: string;
   enforcementLevel?: EnforcementLevel;
 } & Omit<TProjectPermission, "projectId">;

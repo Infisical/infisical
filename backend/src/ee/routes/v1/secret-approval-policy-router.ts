@@ -2,7 +2,7 @@ import { nanoid } from "nanoid";
 import { z } from "zod";
 
 import { ApproverType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
-import { removeTrailingSlash } from "@app/lib/fn";
+import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { EnforcementLevel } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -21,12 +21,10 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         workspaceId: z.string(),
         name: z.string().optional(),
         environment: z.string(),
-        secretPath: z
+        secretPaths: z
           .string()
-          .optional()
-          .nullable()
-          .default("/")
-          .transform((val) => (val ? removeTrailingSlash(val) : val)),
+          .array()
+          .transform((val) => val.map((v) => prefixWithSlash(removeTrailingSlash(v)).trim())),
         approvers: z
           .discriminatedUnion("type", [
             z.object({ type: z.literal(ApproverType.Group), id: z.string() }),
@@ -55,6 +53,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         name: req.body.name ?? `${req.body.environment}-${nanoid(3)}`,
         enforcementLevel: req.body.enforcementLevel
       });
+
       return { approval };
     }
   });
@@ -79,12 +78,12 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           .array()
           .min(1, { message: "At least one approver should be provided" }),
         approvals: z.number().min(1).default(1),
-        secretPath: z
+        secretPaths: z
           .string()
+          .array()
           .optional()
-          .nullable()
-          .transform((val) => (val ? removeTrailingSlash(val) : val))
-          .transform((val) => (val === "" ? "/" : val)),
+          .transform((val) => (val ? val.map((v) => prefixWithSlash(removeTrailingSlash(v)).trim()) : val)),
+
         enforcementLevel: z.nativeEnum(EnforcementLevel).optional()
       }),
       response: {

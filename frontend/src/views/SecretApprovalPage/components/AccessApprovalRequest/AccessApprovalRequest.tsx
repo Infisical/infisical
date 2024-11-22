@@ -56,7 +56,9 @@ const generateRequestText = (request: TAccessApprovalRequest, userId: string) =>
       <div>
         Requested {isTemporary ? "temporary" : "permanent"} access to{" "}
         <code className="mx-1 rounded-sm bg-primary-500/20 px-1.5 py-0.5 font-mono text-xs text-primary">
-          {request.policy.secretPath}
+          {request.policy.secretPaths?.length
+            ? request.policy.secretPaths.join(", ")
+            : "Full environment"}
         </code>
         in
         <code className="mx-1 rounded-sm bg-primary-500/20 px-1.5 py-0.5 font-mono text-xs text-primary">
@@ -120,19 +122,26 @@ export const AccessApprovalRequest = ({
     projectSlug
   });
 
-  const { data: requests } = useGetAccessApprovalRequests({
+  const {
+    data: requests,
+    isLoading: isRequestsLoading,
+    error
+  } = useGetAccessApprovalRequests({
     projectSlug,
     authorProjectMembershipId: requestedByFilter,
     envSlug: envFilter
   });
 
   const filteredRequests = useMemo(() => {
-    if (statusFilter === "open")
+    console.log("the error", error);
+    console.log("requests", requests);
+    if (statusFilter === "open") {
       return requests?.filter(
         (request) =>
           !request.isApproved &&
           !request.reviewers.some((reviewer) => reviewer.status === ApprovalStatus.REJECTED)
       );
+    }
     if (statusFilter === "close")
       return requests?.filter(
         (request) =>
@@ -141,7 +150,8 @@ export const AccessApprovalRequest = ({
       );
 
     return requests;
-  }, [requests, statusFilter, requestedByFilter, envFilter]);
+    return [];
+  }, [requests, statusFilter, requestedByFilter, envFilter, isRequestsLoading]);
 
   const generateRequestDetails = (request: TAccessApprovalRequest) => {
     console.log(request);
@@ -423,6 +433,12 @@ export const AccessApprovalRequest = ({
           policies={policies}
           isOpen={popUp.requestAccess.isOpen}
           onOpenChange={() => {
+            console.log({
+              projectSlug,
+              envFilter,
+              requestedByFilter
+            });
+
             queryClient.invalidateQueries(
               accessApprovalKeys.getAccessApprovalRequests(
                 projectSlug,

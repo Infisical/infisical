@@ -1,3 +1,4 @@
+import { packRules } from "@casl/ability/extra";
 import slugify from "@sindresorhus/slugify";
 import ms from "ms";
 
@@ -19,6 +20,7 @@ import { TAccessApprovalPolicyApproverDALFactory } from "../access-approval-poli
 import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
 import { TGroupDALFactory } from "../group/group-dal";
 import { TPermissionServiceFactory } from "../permission/permission-service";
+import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "../project-user-additional-privilege/project-user-additional-privilege-dal";
 import { ProjectUserAdditionalPrivilegeTemporaryMode } from "../project-user-additional-privilege/project-user-additional-privilege-types";
 import { TAccessApprovalRequestDALFactory } from "./access-approval-request-dal";
@@ -89,7 +91,9 @@ export const accessApprovalRequestServiceFactory = ({
     isTemporary,
     temporaryRange,
     actorId,
-    permissions: requestedPermissions,
+    environment: envSlug,
+    secretPaths,
+    requestedActions,
     actor,
     actorOrgId,
     actorAuthMethod,
@@ -116,18 +120,75 @@ export const accessApprovalRequestServiceFactory = ({
 
     await projectDAL.checkProjectUpgradeStatus(project.id);
 
-    const { envSlug, secretPath, accessTypes } = verifyRequestedPermissions({ permissions: requestedPermissions });
+    const requestedPermissions: unknown[] = [];
+
+    const actions = [
+      { action: ProjectPermissionActions.Read, allowed: requestedActions.read },
+      { action: ProjectPermissionActions.Create, allowed: requestedActions.create },
+      { action: ProjectPermissionActions.Delete, allowed: requestedActions.delete },
+      { action: ProjectPermissionActions.Edit, allowed: requestedActions.edit }
+    ];
+
+    const enabledActions = actions
+      .filter(({ allowed }) => allowed)
+      .map(({ action }) => action[0].toUpperCase() + action.slice(1));
+
+    if (secretPaths.length) {
+      for (const secretPath of secretPaths) {
+        const permission = packRules(
+          actions
+            .filter(({ allowed }) => allowed)
+            .map(({ action }) => ({
+              action,
+              subject: [ProjectPermissionSub.Secrets],
+              conditions: {
+                environment: envSlug,
+                secretPath: {
+                  $glob: secretPath
+                }
+              }
+            }))
+        );
+
+        verifyRequestedPermissions({ permissions: permission });
+        requestedPermissions.push(...permission);
+      }
+    } else {
+      const permission = packRules(
+        actions
+          .filter(({ allowed }) => allowed)
+          .map(({ action }) => ({
+            action,
+            subject: [ProjectPermissionSub.Secrets],
+            conditions: {
+              environment: envSlug
+            }
+          }))
+      );
+
+      // We disable path checking here as there will be no path to check (full environment access)
+      verifyRequestedPermissions({ permissions: permission, checkPath: false });
+      requestedPermissions.push(...permission);
+    }
+
     const environment = await projectEnvDAL.findOne({ projectId: project.id, slug: envSlug });
 
     if (!environment) throw new NotFoundError({ message: `Environment with slug '${envSlug}' not found` });
 
-    const policy = await accessApprovalPolicyDAL.findOne({
-      envId: environment.id,
-      secretPath
-    });
+    const policy = await accessApprovalPolicyDAL.findOne(
+      {
+        envId: environment.id
+      },
+      {
+        secretPaths: secretPaths?.length ? secretPaths : []
+      }
+    );
+
     if (!policy) {
       throw new NotFoundError({
-        message: `No policy in environment with slug '${environment.slug}' and with secret path '${secretPath}' was found.`
+        message: `No policy in environment with slug '${environment.slug}' and with secret paths '${secretPaths?.join(
+          ", "
+        )}' was found.`
       });
     }
 
@@ -224,9 +285,9 @@ export const accessApprovalRequestServiceFactory = ({
             requesterFullName,
             isTemporary,
             requesterEmail: requestedByUser.email as string,
-            secretPath,
+            secretPath: secretPaths?.join(", ") || "",
             environment: envSlug,
-            permissions: accessTypes,
+            permissions: enabledActions,
             approvalUrl
           }
         }
@@ -244,9 +305,9 @@ export const accessApprovalRequestServiceFactory = ({
           ...(isTemporary && {
             expiresIn: ms(ms(temporaryRange || ""), { long: true })
           }),
-          secretPath,
+          secretPath: secretPaths?.join(", ") || "",
           environment: envSlug,
-          permissions: accessTypes,
+          permissions: enabledActions,
           approvalUrl
         },
         template: SmtpTemplates.AccessApprovalRequest

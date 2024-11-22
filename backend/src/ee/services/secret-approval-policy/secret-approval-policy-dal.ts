@@ -135,7 +135,8 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
         parentMapper: (data) => ({
           environment: { id: data.envId, name: data.envName, slug: data.envSlug },
           projectId: data.projectId,
-          ...SecretApprovalPoliciesSchema.parse(data)
+          ...SecretApprovalPoliciesSchema.parse(data),
+          secretPaths: data.secretPaths as string[]
         }),
         childrenMapper: [
           {

@@ -14,7 +14,7 @@ export const useCreateSecretApprovalPolicy = () => {
       workspaceId,
       approvals,
       approvers,
-      secretPath,
+      secretPaths,
       name,
       enforcementLevel
     }) => {
@@ -23,7 +23,7 @@ export const useCreateSecretApprovalPolicy = () => {
         workspaceId,
         approvals,
         approvers,
-        secretPath,
+        secretPaths,
         name,
         enforcementLevel
       });
@@ -39,11 +39,11 @@ export const useUpdateSecretApprovalPolicy = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, TUpdateSecretPolicyDTO>({
-    mutationFn: async ({ id, approvers, approvals, secretPath, name, enforcementLevel }) => {
+    mutationFn: async ({ id, approvers, approvals, secretPaths, name, enforcementLevel }) => {
       const { data } = await apiRequest.patch(`/api/v1/secret-approvals/${id}`, {
         approvals,
         approvers,
-        secretPath,
+        secretPaths,
         name,
         enforcementLevel
       });

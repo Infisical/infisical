@@ -36,7 +36,7 @@ export const ReviewAccessRequestModal = ({
   const accessDetails = {
     env: request.environmentName,
     // secret path will be inside $glob operator
-    secretPath: request.policy.secretPath,
+    secretPaths: request.policy.secretPaths,
     read: request.permissions?.some(({ action }) => action.includes(ProjectPermissionActions.Read)),
     edit: request.permissions?.some(({ action }) => action.includes(ProjectPermissionActions.Edit)),
     create: request.permissions?.some(({ action }) =>
@@ -123,8 +123,16 @@ export const ReviewAccessRequestModal = ({
 
           <div className="mt-4 mb-2 border-l border-blue-500 bg-blue-500/20 px-3 py-2 text-mineshaft-200">
             <div className="mb-1 lowercase">
-              <span className="font-bold capitalize">Requested path: </span>
-              <Badge>{accessDetails.env + accessDetails.secretPath || ""}</Badge>
+              <span className="font-bold capitalize">Requested environment: </span>
+              <Badge>{accessDetails.env}</Badge>
+            </div>
+            <div className="mb-1 lowercase">
+              <span className="font-bold capitalize">Requested paths: </span>
+              <Badge>
+                {accessDetails?.secretPaths?.length
+                  ? accessDetails.secretPaths.join(", ")
+                  : "Entire environment"}
+              </Badge>
             </div>
 
             <div className="mb-1">
@@ -142,8 +150,7 @@ export const ReviewAccessRequestModal = ({
             <Button
               isLoading={isLoading === "approved"}
               isDisabled={
-                !!isLoading ||
-                (!request.isApprover && !byPassApproval && isSoftEnforcement)
+                !!isLoading || (!request.isApprover && !byPassApproval && isSoftEnforcement)
               }
               onClick={() => handleReview("approved")}
               className="mt-4"
@@ -169,9 +176,9 @@ export const ReviewAccessRequestModal = ({
                 isChecked={byPassApproval}
                 id="byPassApproval"
                 checkIndicatorBg="text-white"
-                className={byPassApproval ? "bg-red hover:bg-red-600 border-red" : ""}
+                className={byPassApproval ? "border-red bg-red hover:bg-red-600" : ""}
               >
-                <span className="text-red text-sm">
+                <span className="text-sm text-red">
                   Approve without waiting for requirements to be met (bypass policy protection)
                 </span>
               </Checkbox>
