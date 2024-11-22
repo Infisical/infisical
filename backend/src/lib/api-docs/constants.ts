@@ -1080,7 +1080,8 @@ export const INTEGRATION = {
       shouldDisableDelete: "The flag to disable deletion of secrets in AWS Parameter Store.",
       shouldMaskSecrets: "Specifies if the secrets synced from Infisical to Gitlab should be marked as 'Masked'.",
       shouldProtectSecrets: "Specifies if the secrets synced from Infisical to Gitlab should be marked as 'Protected'.",
-      shouldEnableDelete: "The flag to enable deletion of secrets."
+      shouldEnableDelete: "The flag to enable deletion of secrets.",
+      octopusDeployScopeValues: "Specifies the scope values to set on synced secrets to Octopus Deploy."
     }
   },
   UPDATE: {

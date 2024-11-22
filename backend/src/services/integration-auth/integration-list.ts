@@ -34,7 +34,8 @@ export enum Integrations {
   HASURA_CLOUD = "hasura-cloud",
   RUNDECK = "rundeck",
   AZURE_DEVOPS = "azure-devops",
-  AZURE_APP_CONFIGURATION = "azure-app-configuration"
+  AZURE_APP_CONFIGURATION = "azure-app-configuration",
+  OCTOPUS_DEPLOY = "octopus-deploy"
 }
 
 export enum IntegrationType {
@@ -411,6 +412,15 @@ export const getIntegrationOptions = async () => {
       image: "Microsoft Azure.png",
       isAvailable: true,
       type: "pat",
+      clientId: "",
+      docsLink: ""
+    },
+    {
+      name: "Octopus Deploy",
+      slug: "octopus-deploy",
+      image: "Octopus Deploy.png",
+      isAvailable: true,
+      type: "sat",
       clientId: "",
       docsLink: ""
     }

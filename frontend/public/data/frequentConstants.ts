@@ -36,7 +36,8 @@ const integrationSlugNameMapping: Mapping = {
   "hasura-cloud": "Hasura Cloud",
   rundeck: "Rundeck",
   "azure-devops": "Azure DevOps",
-  "azure-app-configuration": "Azure App Configuration"
+  "azure-app-configuration": "Azure App Configuration",
+  "octopus-deploy": "Octopus Deploy"
 };
 
 const envMapping: Mapping = {

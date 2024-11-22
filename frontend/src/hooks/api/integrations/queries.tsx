@@ -87,6 +87,14 @@ export const useCreateIntegration = () => {
         shouldMaskSecrets?: boolean;
         shouldProtectSecrets?: boolean;
         shouldEnableDelete?: boolean;
+        octopusDeployScopeValues?: {
+          Environment?: string[];
+          Action?: string[];
+          Channel?: string[];
+          Machine?: string[];
+          ProcessOwner?: string[];
+          Role?: string[];
+        };
       };
     }) => {
       const {

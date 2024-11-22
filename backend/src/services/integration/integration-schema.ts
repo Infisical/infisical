@@ -46,5 +46,18 @@ export const IntegrationMetadataSchema = z.object({
   shouldDisableDelete: z.boolean().optional().describe(INTEGRATION.CREATE.metadata.shouldDisableDelete),
   shouldEnableDelete: z.boolean().optional().describe(INTEGRATION.CREATE.metadata.shouldEnableDelete),
   shouldMaskSecrets: z.boolean().optional().describe(INTEGRATION.CREATE.metadata.shouldMaskSecrets),
-  shouldProtectSecrets: z.boolean().optional().describe(INTEGRATION.CREATE.metadata.shouldProtectSecrets)
+  shouldProtectSecrets: z.boolean().optional().describe(INTEGRATION.CREATE.metadata.shouldProtectSecrets),
+
+  octopusDeployScopeValues: z
+    .object({
+      // in Octopus Deploy Scope Value Format
+      Environment: z.string().array().optional(),
+      Action: z.string().array().optional(),
+      Channel: z.string().array().optional(),
+      Machine: z.string().array().optional(),
+      ProcessOwner: z.string().array().optional(),
+      Role: z.string().array().optional()
+    })
+    .optional()
+    .describe(INTEGRATION.CREATE.metadata.octopusDeployScopeValues)
 });

@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
+import { Client as OctopusClient, SpaceRepository as OctopusSpaceRepository } from "@octopusdeploy/api-client";
 import AWS from "aws-sdk";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding, TIntegrationAuths, TIntegrationAuthsInsert } from "@app/db/schemas";
@@ -9,7 +10,7 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { decryptSymmetric128BitHexKeyUTF8, encryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { TGenericPermission, TProjectPermission } from "@app/lib/types";
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
@@ -20,6 +21,7 @@ import { getApps } from "./integration-app-list";
 import { TIntegrationAuthDALFactory } from "./integration-auth-dal";
 import { IntegrationAuthMetadataSchema, TIntegrationAuthMetadata } from "./integration-auth-schema";
 import {
+  OctopusDeployScope,
   TBitbucketEnvironment,
   TBitbucketWorkspace,
   TChecklyGroups,
@@ -38,6 +40,8 @@ import {
   TIntegrationAuthGithubOrgsDTO,
   TIntegrationAuthHerokuPipelinesDTO,
   TIntegrationAuthNorthflankSecretGroupDTO,
+  TIntegrationAuthOctopusDeployProjectScopeValuesDTO,
+  TIntegrationAuthOctopusDeploySpacesDTO,
   TIntegrationAuthQoveryEnvironmentsDTO,
   TIntegrationAuthQoveryOrgsDTO,
   TIntegrationAuthQoveryProjectDTO,
@@ -48,6 +52,7 @@ import {
   TIntegrationAuthVercelBranchesDTO,
   TNorthflankSecretGroup,
   TOauthExchangeDTO,
+  TOctopusDeployVariableSet,
   TSaveIntegrationAccessTokenDTO,
   TTeamCityBuildConfig,
   TVercelBranches
@@ -1521,6 +1526,88 @@ export const integrationAuthServiceFactory = ({
     return integrationAuthDAL.create(newIntegrationAuth);
   };
 
+  const getOctopusDeploySpaces = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    id
+  }: TIntegrationAuthOctopusDeploySpacesDTO) => {
+    const integrationAuth = await integrationAuthDAL.findById(id);
+    if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
+
+    const client = await OctopusClient.create({
+      apiKey: accessToken,
+      instanceURL: integrationAuth.url!,
+      userAgentApp: "Infisical Integration"
+    });
+
+    const spaceRepository = new OctopusSpaceRepository(client);
+
+    const spaces = await spaceRepository.list({
+      partialName: "", // throws error if no string is present...
+      take: 1000
+    });
+
+    return spaces.Items;
+  };
+
+  const getOctopusDeployScopeValues = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    id,
+    scope,
+    spaceId,
+    resourceId
+  }: TIntegrationAuthOctopusDeployProjectScopeValuesDTO) => {
+    const integrationAuth = await integrationAuthDAL.findById(id);
+    if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
+
+    let url: string;
+    switch (scope) {
+      case OctopusDeployScope.Project:
+        url = `${integrationAuth.url}/api/${spaceId}/projects/${resourceId}/variables`;
+        break;
+      // future support tenant, variable set etc.
+      default:
+        throw new InternalServerError({ message: `Unhandled Octopus Deploy scope` });
+    }
+
+    // SDK doesn't support variable set...
+    const { data: variableSet } = await request.get<TOctopusDeployVariableSet>(url, {
+      headers: {
+        "X-NuGet-ApiKey": accessToken,
+        Accept: "application/json"
+      }
+    });
+
+    return variableSet.ScopeValues;
+  };
+
   return {
     listIntegrationAuthByProjectId,
     listOrgIntegrationAuth,
@@ -1552,6 +1639,8 @@ export const integrationAuthServiceFactory = ({
     getBitbucketWorkspaces,
     getBitbucketEnvironments,
     getIntegrationAccessToken,
-    duplicateIntegrationAuth
+    duplicateIntegrationAuth,
+    getOctopusDeploySpaces,
+    getOctopusDeployScopeValues
   };
 };
