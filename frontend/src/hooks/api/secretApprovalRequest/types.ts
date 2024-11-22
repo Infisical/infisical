@@ -52,7 +52,7 @@ export type TSecretApprovalRequest = {
   workspace: string;
   environment: string;
   folderId: string;
-  secretPaths: string[];
+  secretPath: string;
   hasMerged: boolean;
   status: "open" | "close";
   policy: Omit<TSecretApprovalPolicy, "approvers"> & {

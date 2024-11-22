@@ -294,10 +294,10 @@ export const secretApprovalRequestServiceFactory = ({
           : undefined
       }));
     }
-    const secretPath = await folderDAL.findSecretPathByFolderIds(secretApprovalRequest.projectId, [
+    const [secretPath] = await folderDAL.findSecretPathByFolderIds(secretApprovalRequest.projectId, [
       secretApprovalRequest.folderId
     ]);
-    return { ...secretApprovalRequest, secretPath: secretPath?.[0]?.path || "/", commits: secrets };
+    return { ...secretApprovalRequest, secretPath: secretPath?.path || "/", commits: secrets };
   };
 
   const reviewApproval = async ({
