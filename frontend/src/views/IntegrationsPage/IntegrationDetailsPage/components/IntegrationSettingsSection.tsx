@@ -26,7 +26,9 @@ const metadataMappings: Record<keyof NonNullable<TIntegrationWithEnv["metadata"]
   shouldDisableDelete: "AWS Secret Deletion Disabled",
   shouldMaskSecrets: "GitLab Secrets Masking Enabled",
   shouldProtectSecrets: "GitLab Secret Protection Enabled",
-  shouldEnableDelete: "GitHub Secret Deletion Enabled"
+  shouldEnableDelete: "GitHub Secret Deletion Enabled",
+  awsIamRole: "AWS IAM Role",
+  awsRegion: "AWS Region"
 } as const;
 
 export const IntegrationSettingsSection = ({ integration }: Props) => {

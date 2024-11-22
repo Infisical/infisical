@@ -206,6 +206,30 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         id: req.params.integrationId
       });
 
+      if (integration.integration === "aws-secret-manager") {
+        // Fetch additional AWS integration details
+        const awsRoleDetails = await server.services.integration.getIntegrationAWSAssumeRoleArn({
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          id: req.params.integrationId
+        });
+
+        if (integration.metadata) {
+          integration.metadata = {
+            ...integration.metadata,
+            awsRegion: integration.region,
+            awsIamRole: awsRoleDetails.role
+          };
+        } else {
+          integration.metadata = {
+            awsRegion: integration.region,
+            awsIamRole: awsRoleDetails.role
+          };
+        }
+      }
+
       return { integration };
     }
   });
