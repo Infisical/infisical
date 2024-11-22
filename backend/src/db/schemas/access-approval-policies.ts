@@ -11,11 +11,12 @@ export const AccessApprovalPoliciesSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
   approvals: z.number().default(1),
-  secretPaths: z.unknown(),
+  secretPath: z.string().nullable().optional(),
   envId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  enforcementLevel: z.string().default("hard")
+  enforcementLevel: z.string().default("hard"),
+  secretPaths: z.unknown()
 });
 
 export type TAccessApprovalPolicies = z.infer<typeof AccessApprovalPoliciesSchema>;

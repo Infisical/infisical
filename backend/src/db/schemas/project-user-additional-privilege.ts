@@ -20,7 +20,8 @@ export const ProjectUserAdditionalPrivilegeSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   userId: z.string().uuid(),
-  projectId: z.string()
+  projectId: z.string(),
+  accessRequestId: z.string().uuid().nullable().optional()
 });
 
 export type TProjectUserAdditionalPrivilege = z.infer<typeof ProjectUserAdditionalPrivilegeSchema>;

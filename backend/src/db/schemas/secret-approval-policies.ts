@@ -10,12 +10,13 @@ import { TImmutableDBKeys } from "./models";
 export const SecretApprovalPoliciesSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
-  secretPaths: z.unknown(),
+  secretPath: z.string().nullable().optional(),
   approvals: z.number().default(1),
   envId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  enforcementLevel: z.string().default("hard")
+  enforcementLevel: z.string().default("hard"),
+  secretPaths: z.unknown()
 });
 
 export type TSecretApprovalPolicies = z.infer<typeof SecretApprovalPoliciesSchema>;
