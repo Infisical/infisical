@@ -17,6 +17,17 @@ export enum LdapCredentialType {
   Static = "static"
 }
 
+export enum TotpConfigType {
+  URL = "url",
+  MANUAL = "manual"
+}
+
+export enum TotpAlgorithm {
+  SHA1 = "sha1",
+  SHA256 = "sha256",
+  SHA512 = "sha512"
+}
+
 export const DynamicSecretRedisDBSchema = z.object({
   host: z.string().trim().toLowerCase(),
   port: z.number(),
@@ -221,6 +232,34 @@ export const LdapSchema = z.union([
   })
 ]);
 
+export const DynamicSecretTotpSchema = z.discriminatedUnion("configType", [
+  z.object({
+    configType: z.literal(TotpConfigType.URL),
+    url: z
+      .string()
+      .url()
+      .trim()
+      .min(1)
+      .refine((val) => {
+        const urlObj = new URL(val);
+        const secret = urlObj.searchParams.get("secret");
+
+        return Boolean(secret);
+      }, "OTP URL must contain secret field")
+  }),
+  z.object({
+    configType: z.literal(TotpConfigType.MANUAL),
+    secret: z
+      .string()
+      .trim()
+      .min(1)
+      .transform((val) => val.replace(/\s+/g, "")),
+    period: z.number().optional(),
+    algorithm: z.nativeEnum(TotpAlgorithm).optional(),
+    digits: z.number().optional()
+  })
+]);
+
 export enum DynamicSecretProviders {
   SqlDatabase = "sql-database",
   Cassandra = "cassandra",
@@ -234,7 +273,8 @@ export enum DynamicSecretProviders {
   AzureEntraID = "azure-entra-id",
   Ldap = "ldap",
   SapHana = "sap-hana",
-  Snowflake = "snowflake"
+  Snowflake = "snowflake",
+  Totp = "totp"
 }
 
 export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
@@ -250,7 +290,8 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.RabbitMq), inputs: DynamicSecretRabbitMqSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.AzureEntraID), inputs: AzureEntraIDSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Ldap), inputs: LdapSchema }),
-  z.object({ type: z.literal(DynamicSecretProviders.Snowflake), inputs: DynamicSecretSnowflakeSchema })
+  z.object({ type: z.literal(DynamicSecretProviders.Snowflake), inputs: DynamicSecretSnowflakeSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Totp), inputs: DynamicSecretTotpSchema })
 ]);
 
 export type TDynamicProviderFns = {

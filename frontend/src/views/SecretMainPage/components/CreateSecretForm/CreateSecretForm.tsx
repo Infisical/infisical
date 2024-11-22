@@ -154,7 +154,7 @@ export const CreateSecretForm = ({
               isMulti
               name="tagIds"
               isDisabled={!canReadTags}
-              isLoading={isTagsLoading}
+              isLoading={isTagsLoading && canReadTags}
               options={projectTags?.map((el) => ({ label: el.slug, value: el.id }))}
               value={field.value}
               onChange={field.onChange}

@@ -101,10 +101,20 @@ export const DynamicSecretListView = ({
               role="button"
               tabIndex={0}
               onKeyDown={(evt) => {
+                // no lease view for TOTP because it's irrelevant
+                if (secret.type === DynamicSecretProviders.Totp) {
+                  return;
+                }
+
                 if (evt.key === "Enter" && !isRevoking)
                   handlePopUpOpen("dynamicSecretLeases", secret.id);
               }}
               onClick={() => {
+                // no lease view for TOTP because it's irrelevant
+                if (secret.type === DynamicSecretProviders.Totp) {
+                  return;
+                }
+
                 if (!isRevoking) {
                   handlePopUpOpen("dynamicSecretLeases", secret.id);
                 }

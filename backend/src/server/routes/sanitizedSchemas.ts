@@ -51,6 +51,7 @@ export const DefaultResponseErrorsSchema = {
     requestId: z.string(),
     statusCode: z.literal(403),
     message: z.string(),
+    details: z.any().optional(),
     error: z.string()
   }),
   500: z.object({

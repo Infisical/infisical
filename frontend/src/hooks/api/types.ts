@@ -1,3 +1,4 @@
+import { PureAbility } from "@casl/ability";
 import { ZodIssue } from "zod";
 
 export type { TAccessApprovalPolicy } from "./accessApproval/types";
@@ -53,10 +54,21 @@ export type TApiErrors =
       requestId: string;
       error: ApiErrorTypes.ValidationError;
       message: ZodIssue[];
+      statusCode: 401;
+    }
+  | {
+      requestId: string;
+      error: ApiErrorTypes.UnauthorizedError;
+      message: string;
+      statusCode: 401;
+    }
+  | {
+      requestId: string;
+      error: ApiErrorTypes.ForbiddenError;
+      message: string;
+      details: PureAbility["rules"];
       statusCode: 403;
     }
-  | { requestId: string; error: ApiErrorTypes.ForbiddenError; message: string; statusCode: 403 }
-  | { requestId: string; error: ApiErrorTypes.UnauthorizedError; message: string; statusCode: 401 }
   | {
       requestId: string;
       statusCode: 400;

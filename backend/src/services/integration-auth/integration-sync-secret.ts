@@ -3075,7 +3075,7 @@ const syncSecretsTerraformCloud = async ({
 }) => {
   // get secrets from Terraform Cloud
   const terraformSecrets = (
-    await request.get<{ data: { attributes: { key: string; value: string }; id: string }[] }>(
+    await request.get<{ data: { attributes: { key: string; value: string; sensitive: boolean }; id: string }[] }>(
       `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars`,
       {
         headers: {
@@ -3089,7 +3089,7 @@ const syncSecretsTerraformCloud = async ({
       ...obj,
       [secret.attributes.key]: secret
     }),
-    {} as Record<string, { attributes: { key: string; value: string }; id: string }>
+    {} as Record<string, { attributes: { key: string; value: string; sensitive: boolean }; id: string }>
   );
 
   const secretsToAdd: { [key: string]: string } = {};
@@ -3170,7 +3170,8 @@ const syncSecretsTerraformCloud = async ({
             attributes: {
               key,
               value: secrets[key]?.value,
-              category: integration.targetService
+              category: integration.targetService,
+              sensitive: true
             }
           }
         },
@@ -3183,7 +3184,11 @@ const syncSecretsTerraformCloud = async ({
         }
       );
       // case: secret exists in Terraform Cloud
-    } else if (secrets[key]?.value !== terraformSecrets[key].attributes.value) {
+    } else if (
+      // we now set secrets to sensitive in Terraform Cloud, this checks if existing secrets are not sensitive and updates them accordingly
+      !terraformSecrets[key].attributes.sensitive ||
+      secrets[key]?.value !== terraformSecrets[key].attributes.value
+    ) {
       // -> update secret
       await request.patch(
         `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars/${terraformSecrets[key].id}`,
@@ -3193,7 +3198,8 @@ const syncSecretsTerraformCloud = async ({
             id: terraformSecrets[key].id,
             attributes: {
               ...terraformSecrets[key],
-              value: secrets[key]?.value
+              value: secrets[key]?.value,
+              sensitive: true
             }
           }
         },

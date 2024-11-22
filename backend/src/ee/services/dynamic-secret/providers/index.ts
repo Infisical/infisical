@@ -13,6 +13,7 @@ import { RabbitMqProvider } from "./rabbit-mq";
 import { RedisDatabaseProvider } from "./redis";
 import { SapHanaProvider } from "./sap-hana";
 import { SqlDatabaseProvider } from "./sql-database";
+import { TotpProvider } from "./totp";
 
 export const buildDynamicSecretProviders = () => ({
   [DynamicSecretProviders.SqlDatabase]: SqlDatabaseProvider(),
@@ -27,5 +28,6 @@ export const buildDynamicSecretProviders = () => ({
   [DynamicSecretProviders.AzureEntraID]: AzureEntraIDProvider(),
   [DynamicSecretProviders.Ldap]: LdapProvider(),
   [DynamicSecretProviders.SapHana]: SapHanaProvider(),
-  [DynamicSecretProviders.Snowflake]: SnowflakeProvider()
+  [DynamicSecretProviders.Snowflake]: SnowflakeProvider(),
+  [DynamicSecretProviders.Totp]: TotpProvider()
 });

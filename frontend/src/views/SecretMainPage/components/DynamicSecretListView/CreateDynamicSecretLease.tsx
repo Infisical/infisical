@@ -1,6 +1,6 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faClock, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence, motion } from "framer-motion";
@@ -9,8 +9,16 @@ import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, IconButton, Input, SecretInput, Tooltip } from "@app/components/v2";
-import { useTimedReset } from "@app/hooks";
+import {
+  Button,
+  FormControl,
+  IconButton,
+  Input,
+  SecretInput,
+  Spinner,
+  Tooltip
+} from "@app/components/v2";
+import { useTimedReset, useToggle } from "@app/hooks";
 import { useCreateDynamicSecretLease } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
@@ -54,7 +62,76 @@ const OutputDisplay = ({
   );
 };
 
-const renderOutputForm = (provider: DynamicSecretProviders, data: unknown) => {
+const TotpOutputDisplay = ({
+  totp,
+  remainingSeconds,
+  triggerLeaseRegeneration
+}: {
+  totp: string;
+  remainingSeconds: number;
+  triggerLeaseRegeneration: (details: { ttl?: string }) => Promise<void>;
+}) => {
+  const [remainingTime, setRemainingTime] = useState(remainingSeconds);
+  const [shouldShowRegenerate, setShouldShowRegenerate] = useToggle(false);
+
+  useEffect(() => {
+    setRemainingTime(remainingSeconds);
+    setShouldShowRegenerate.off();
+
+    // Set up countdown interval
+    const intervalId = setInterval(() => {
+      setRemainingTime((prevTime) => {
+        if (prevTime <= 1) {
+          clearInterval(intervalId);
+          setShouldShowRegenerate.on();
+          return 0;
+        }
+        return prevTime - 1;
+      });
+    }, 1000);
+
+    // Cleanup interval on unmount or when totp changes
+    return () => clearInterval(intervalId);
+  }, [totp, remainingSeconds]);
+
+  return (
+    <div className="h-36">
+      <OutputDisplay label="Time-based one-time password" value={totp} />
+      {remainingTime > 0 ? (
+        <div
+          className={`ml-2 flex items-center text-sm ${
+            remainingTime < 10 ? "text-red-500" : "text-yellow-500"
+          } transition-colors duration-500`}
+        >
+          <FontAwesomeIcon className="mr-1" icon={faClock} size="sm" />
+          <span>
+            Expires in {remainingTime} {remainingTime > 1 ? "seconds" : "second"}
+          </span>
+        </div>
+      ) : (
+        <div className="ml-2 flex items-center text-sm text-red-500">
+          <FontAwesomeIcon className="mr-1" icon={faClock} size="sm" />
+          Expired
+        </div>
+      )}
+      {shouldShowRegenerate && (
+        <Button
+          colorSchema="secondary"
+          className="mt-2"
+          onClick={() => triggerLeaseRegeneration({})}
+        >
+          Regenerate
+        </Button>
+      )}
+    </div>
+  );
+};
+
+const renderOutputForm = (
+  provider: DynamicSecretProviders,
+  data: unknown,
+  triggerLeaseRegeneration: (details: { ttl?: string }) => Promise<void>
+) => {
   if (
     provider === DynamicSecretProviders.SqlDatabase ||
     provider === DynamicSecretProviders.Cassandra ||
@@ -242,11 +319,29 @@ const renderOutputForm = (provider: DynamicSecretProviders, data: unknown) => {
     );
   }
 
+  if (provider === DynamicSecretProviders.Totp) {
+    const { TOTP, TIME_REMAINING } = data as {
+      TOTP: string;
+      TIME_REMAINING: number;
+    };
+
+    return (
+      <TotpOutputDisplay
+        totp={TOTP}
+        remainingSeconds={TIME_REMAINING}
+        triggerLeaseRegeneration={triggerLeaseRegeneration}
+      />
+    );
+  }
+
   return null;
 };
 
 const formSchema = z.object({
-  ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number")
+  ttl: z
+    .string()
+    .refine((val) => ms(val) > 0, "TTL must be a positive number")
+    .optional()
 });
 type TForm = z.infer<typeof formSchema>;
 
@@ -258,6 +353,8 @@ type Props = {
   environment: string;
   secretPath: string;
 };
+
+const PROVIDERS_WITH_AUTOGENERATE_SUPPORT = [DynamicSecretProviders.Totp];
 
 export const CreateDynamicSecretLease = ({
   onClose,
@@ -277,6 +374,9 @@ export const CreateDynamicSecretLease = ({
       ttl: "1h"
     }
   });
+  const [isPreloading, setIsPreloading] = useToggle(
+    PROVIDERS_WITH_AUTOGENERATE_SUPPORT.includes(provider)
+  );
 
   const createDynamicSecretLease = useCreateDynamicSecretLease();
 
@@ -290,10 +390,13 @@ export const CreateDynamicSecretLease = ({
         ttl,
         dynamicSecretName
       });
+
       createNotification({
         type: "success",
         text: "Successfully leased dynamic secret"
       });
+
+      setIsPreloading.off();
     } catch (error) {
       console.log(error);
       createNotification({
@@ -303,7 +406,22 @@ export const CreateDynamicSecretLease = ({
     }
   };
 
+  const handleLeaseRegeneration = async (data: { ttl?: string }) => {
+    setIsPreloading.on();
+    handleDynamicSecretLeaseCreate(data);
+  };
+
+  useEffect(() => {
+    if (provider === DynamicSecretProviders.Totp) {
+      handleDynamicSecretLeaseCreate({});
+    }
+  }, [provider]);
+
   const isOutputMode = Boolean(createDynamicSecretLease?.data);
+
+  if (isPreloading) {
+    return <Spinner className="mx-auto h-40 text-mineshaft-700" />;
+  }
 
   return (
     <div>
@@ -350,7 +468,11 @@ export const CreateDynamicSecretLease = ({
             animate={{ opacity: 1, translateX: 0 }}
             exit={{ opacity: 0, translateX: 30 }}
           >
-            {renderOutputForm(provider, createDynamicSecretLease.data?.data)}
+            {renderOutputForm(
+              provider,
+              createDynamicSecretLease.data?.data,
+              handleLeaseRegeneration
+            )}
           </motion.div>
         )}
       </AnimatePresence>

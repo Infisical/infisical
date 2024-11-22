@@ -98,7 +98,7 @@ export const LogsSection = ({
           userAgentType,
           startDate,
           endDate,
-          actorId: actor
+          actor
         }}
       />
       <UpgradePlanModal

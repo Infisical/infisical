@@ -1,4 +1,4 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, PureAbility } from "@casl/ability";
 import fastifyPlugin from "fastify-plugin";
 import jwt from "jsonwebtoken";
 import { ZodError } from "zod";
@@ -77,7 +77,13 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         requestId: req.id,
         statusCode: HttpStatusCodes.Forbidden,
         error: "PermissionDenied",
-        message: `You are not allowed to ${error.action} on ${error.subjectType} - ${JSON.stringify(error.subject)}`
+        message: `You are not allowed to ${error.action} on ${error.subjectType}`,
+        details: (error.ability as PureAbility).rulesFor(error.action as string, error.subjectType).map((el) => ({
+          action: el.action,
+          inverted: el.inverted,
+          subject: el.subject,
+          conditions: el.conditions
+        }))
       });
     } else if (error instanceof ForbiddenRequestError) {
       void res.status(HttpStatusCodes.Forbidden).send({

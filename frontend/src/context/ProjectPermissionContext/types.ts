@@ -33,6 +33,15 @@ export enum PermissionConditionOperators {
   $GLOB = "$glob"
 }
 
+export const formatedConditionsOperatorNames: { [K in PermissionConditionOperators]: string } = {
+  [PermissionConditionOperators.$EQ]: "equal to",
+  [PermissionConditionOperators.$IN]: "contains",
+  [PermissionConditionOperators.$ALL]: "contains all",
+  [PermissionConditionOperators.$NEQ]: "not equal to",
+  [PermissionConditionOperators.$GLOB]: "matches glob pattern",
+  [PermissionConditionOperators.$REGEX]: "matches regex pattern"
+};
+
 export type TPermissionConditionOperators = {
   [PermissionConditionOperators.$IN]: string[];
   [PermissionConditionOperators.$ALL]: string[];

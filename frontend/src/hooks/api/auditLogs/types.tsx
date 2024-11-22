@@ -9,7 +9,7 @@ export type TGetAuditLogsFilter = {
   eventMetadata?: Record<string, string>;
   actorType?: ActorType;
   projectId?: string;
-  actorId?: string; // user ID format
+  actor?: string; // user ID format
   startDate?: Date;
   endDate?: Date;
   limit: number;
