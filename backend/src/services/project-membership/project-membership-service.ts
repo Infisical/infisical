@@ -280,7 +280,12 @@ export const projectMembershipServiceFactory = ({
 
     // validate custom roles input
     const customInputRoles = roles.filter(
-      ({ role }) => !Object.values(ProjectMembershipRole).includes(role as ProjectMembershipRole)
+      ({ role }) =>
+        !Object.values(ProjectMembershipRole)
+          // we don't want to include custom in this check;
+          // this unintentionally enables setting slug to custom which is reserved
+          .filter((r) => r !== ProjectMembershipRole.Custom)
+          .includes(role as ProjectMembershipRole)
     );
     const hasCustomRole = Boolean(customInputRoles.length);
     if (hasCustomRole) {
