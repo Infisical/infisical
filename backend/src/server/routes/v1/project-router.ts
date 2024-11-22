@@ -236,45 +236,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  server.route({
-    url: "/:workspaceId/overview",
-    method: "POST",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      params: z.object({
-        workspaceId: z.string().trim()
-      }),
-      body: z.object({
-        name: z.string().trim(),
-        description: z.string().trim()
-      }),
-      response: {
-        200: z.object({
-          message: z.string(),
-          workspace: SanitizedProjectSchema
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const workspace = await server.services.project.updateOverview({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        projectId: req.params.workspaceId,
-        name: req.body.name,
-        description: req.body.description
-      });
-      return {
-        message: "Successfully changed workspace overview",
-        workspace
-      };
-    }
-  });
-
+  // DEPRECATED - keeping it for now for backwards compatibility
+  // TODO: Remove this route in v3
   server.route({
     url: "/:workspaceId/name",
     method: "POST",
@@ -335,6 +298,12 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .max(64, { message: "Name must be 64 or fewer characters" })
           .optional()
           .describe(PROJECTS.UPDATE.name),
+        description: z
+          .string()
+          .trim()
+          .max(256, { message: "Description must be 256 or fewer characters" })
+          .optional()
+          .describe(PROJECTS.UPDATE.projectDescription),
         autoCapitalization: z.boolean().optional().describe(PROJECTS.UPDATE.autoCapitalization)
       }),
       response: {
@@ -352,6 +321,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         },
         update: {
           name: req.body.name,
+          description: req.body.description,
           autoCapitalization: req.body.autoCapitalization
         },
         actorAuthMethod: req.permission.authMethod,

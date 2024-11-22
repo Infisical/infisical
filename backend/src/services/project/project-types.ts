@@ -62,11 +62,6 @@ export type TUpdateAuditLogsRetentionDTO = {
   workspaceSlug: string;
 } & Omit<TProjectPermission, "projectId">;
 
-export type TUpdateProjectOverviewDTO = {
-  name: string;
-  description: string;
-} & TProjectPermission;
-
 export type TUpdateProjectNameDTO = {
   name: string;
 } & TProjectPermission;

@@ -242,7 +242,7 @@ export const useSetWorkspaceOverview = () => {
 
   return useMutation<{}, {}, SetWorkspaceOverviewDTO>({
     mutationFn: ({ workspaceID, newWorkspaceName, newWorkspaceDescription }) => {
-      return apiRequest.post(`/api/v1/workspace/${workspaceID}/overview`, {
+      return apiRequest.patch(`/api/v1/workspace/${workspaceID}`, {
         name: newWorkspaceName,
         description: newWorkspaceDescription
       });
