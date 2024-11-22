@@ -228,6 +228,10 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
             awsIamRole: awsRoleDetails.role
           };
         }
+      } else {
+        integration.metadata = {
+          region: integration.region
+        };
       }
 
       return { integration };
