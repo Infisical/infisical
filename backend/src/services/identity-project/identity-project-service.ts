@@ -185,7 +185,7 @@ export const identityProjectServiceFactory = ({
       ({ role }) =>
         !Object.values(ProjectMembershipRole)
           // we don't want to include custom in this check;
-          // this unintentionally lets users set slug to custom which is reserved
+          // this unintentionally enables setting slug to custom which is reserved
           .filter((r) => r !== ProjectMembershipRole.Custom)
           .includes(role as ProjectMembershipRole)
     );
