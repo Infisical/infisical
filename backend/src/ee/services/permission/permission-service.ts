@@ -232,7 +232,7 @@ export const permissionServiceFactory = ({
       objectify(
         userProjectPermission.metadata,
         (i) => i.key,
-        (i) => i.value || ""
+        (i) => i.value
       )
     );
     const interpolateRules = templatedRules(
@@ -299,7 +299,7 @@ export const permissionServiceFactory = ({
       objectify(
         identityProjectPermission.metadata,
         (i) => i.key,
-        (i) => i.value || ""
+        (i) => i.value
       )
     );
 
