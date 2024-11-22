@@ -122,19 +122,13 @@ export const AccessApprovalRequest = ({
     projectSlug
   });
 
-  const {
-    data: requests,
-    isLoading: isRequestsLoading,
-    error
-  } = useGetAccessApprovalRequests({
+  const { data: requests, isLoading: isRequestsLoading } = useGetAccessApprovalRequests({
     projectSlug,
     authorProjectMembershipId: requestedByFilter,
     envSlug: envFilter
   });
 
   const filteredRequests = useMemo(() => {
-    console.log("the error", error);
-    console.log("requests", requests);
     if (statusFilter === "open") {
       return requests?.filter(
         (request) =>
@@ -154,8 +148,6 @@ export const AccessApprovalRequest = ({
   }, [requests, statusFilter, requestedByFilter, envFilter, isRequestsLoading]);
 
   const generateRequestDetails = (request: TAccessApprovalRequest) => {
-    console.log(request);
-
     const isReviewedByUser = request.reviewers.findIndex(({ member }) => member === user.id) !== -1;
     const isRejectedByAnyone = request.reviewers.some(
       ({ status }) => status === ApprovalStatus.REJECTED
@@ -433,12 +425,6 @@ export const AccessApprovalRequest = ({
           policies={policies}
           isOpen={popUp.requestAccess.isOpen}
           onOpenChange={() => {
-            console.log({
-              projectSlug,
-              envFilter,
-              requestedByFilter
-            });
-
             queryClient.invalidateQueries(
               accessApprovalKeys.getAccessApprovalRequests(
                 projectSlug,

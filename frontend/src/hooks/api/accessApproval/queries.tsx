@@ -87,8 +87,6 @@ const fetchApprovalRequests = async ({
     permissions: unpackRules(request.permissions as unknown as PackRule<TProjectPermission>[])
   }));
 
-  console.log("after");
-
   return result;
 };
 
