@@ -52,7 +52,7 @@ export type Invoice = {
 };
 
 export type PmtMethod = {
-  id: string;
+  _id: string;
   brand: string;
   exp_month: number;
   exp_year: number;
