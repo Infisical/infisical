@@ -11,6 +11,7 @@ import { SecretScanningLogsTable } from "@app/views/SecretScanning/components";
 import createNewIntegrationSession from "../../../api/secret-scanning/createSecretScanningSession";
 import getInstallationStatus from "../../../api/secret-scanning/getInstallationStatus";
 import linkGitAppInstallationWithOrganization from "../../../api/secret-scanning/linkGitAppInstallationWithOrganization";
+import { createNotification } from "@app/components/notifications";
 
 const SecretScanning = withPermission(
   () => {
@@ -52,9 +53,13 @@ const SecretScanning = withPermission(
 
     const generateNewIntegrationSession = async () => {
       const session = await createNewIntegrationSession(String(localStorage.getItem("orgData.id")));
-      router.push(
-        `https://github.com/apps/infisical-radar/installations/new?state=${session.sessionId}`
-      );
+      if(session){
+        router.push(
+          `https://github.com/apps/infisical-radar/installations/new?state=${session.sessionId}`
+        );
+      }else{
+        createNotification({text : "Secret scanning is temporarily unavailable.",type:"error"});
+      }
     };
 
     return (
