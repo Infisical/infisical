@@ -1,11 +1,11 @@
 import { packRules } from "@casl/ability/extra";
-import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { ProjectMembershipRole, ProjectRolesSchema } from "@app/db/schemas";
 import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
 import { PROJECT_ROLE } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedRoleSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -29,18 +29,11 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         projectId: z.string().trim().describe(PROJECT_ROLE.CREATE.projectId)
       }),
       body: z.object({
-        slug: z
-          .string()
-          .toLowerCase()
-          .trim()
-          .min(1)
+        slug: slugSchema({ min: 1 })
           .refine(
             (val) => !Object.values(ProjectMembershipRole).includes(val as ProjectMembershipRole),
             "Please choose a different slug, the slug you have entered is reserved"
           )
-          .refine((v) => slugify(v) === v, {
-            message: "Slug must be a valid"
-          })
           .describe(PROJECT_ROLE.CREATE.slug),
         name: z.string().min(1).trim().describe(PROJECT_ROLE.CREATE.name),
         description: z.string().trim().optional().describe(PROJECT_ROLE.CREATE.description),
@@ -90,21 +83,15 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         roleId: z.string().trim().describe(PROJECT_ROLE.UPDATE.roleId)
       }),
       body: z.object({
-        slug: z
-          .string()
-          .toLowerCase()
-          .trim()
-          .optional()
-          .describe(PROJECT_ROLE.UPDATE.slug)
+        slug: slugSchema({ min: 1 })
           .refine(
             (val) =>
               typeof val === "undefined" ||
               !Object.values(ProjectMembershipRole).includes(val as ProjectMembershipRole),
             "Please choose a different slug, the slug you have entered is reserved"
           )
-          .refine((val) => typeof val === "undefined" || slugify(val) === val, {
-            message: "Slug must be a valid"
-          }),
+          .optional()
+          .describe(PROJECT_ROLE.UPDATE.slug),
         name: z.string().trim().optional().describe(PROJECT_ROLE.UPDATE.name),
         description: z.string().trim().optional().describe(PROJECT_ROLE.UPDATE.description),
         permissions: ProjectPermissionV2Schema.array().describe(PROJECT_ROLE.UPDATE.permissions).optional()

@@ -9,6 +9,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { PROJECT_ROLE } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedRoleSchemaV1 } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -32,18 +33,11 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         projectSlug: z.string().trim().describe(PROJECT_ROLE.CREATE.projectSlug)
       }),
       body: z.object({
-        slug: z
-          .string()
-          .toLowerCase()
-          .trim()
-          .min(1)
+        slug: slugSchema()
           .refine(
             (val) => !Object.values(ProjectMembershipRole).includes(val as ProjectMembershipRole),
             "Please choose a different slug, the slug you have entered is reserved"
           )
-          .refine((v) => slugify(v) === v, {
-            message: "Slug must be a valid"
-          })
           .describe(PROJECT_ROLE.CREATE.slug),
         name: z.string().min(1).trim().describe(PROJECT_ROLE.CREATE.name),
         description: z.string().trim().optional().describe(PROJECT_ROLE.CREATE.description),
@@ -94,6 +88,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         roleId: z.string().trim().describe(PROJECT_ROLE.UPDATE.roleId)
       }),
       body: z.object({
+        // TODO: Switch to slugSchema after verifying correct methods with Akhil - Omar 11/24
         slug: z
           .string()
           .toLowerCase()

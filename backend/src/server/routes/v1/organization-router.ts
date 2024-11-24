@@ -1,4 +1,3 @@
-import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import {
@@ -14,6 +13,7 @@ import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-t
 import { AUDIT_LOGS, ORGANIZATIONS } from "@app/lib/api-docs";
 import { getLastMidnightDateISO } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode, MfaMethod } from "@app/services/auth/auth-type";
 
@@ -243,22 +243,10 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       params: z.object({ organizationId: z.string().trim() }),
       body: z.object({
         name: z.string().trim().max(64, { message: "Name must be 64 or fewer characters" }).optional(),
-        slug: z
-          .string()
-          .trim()
-          .max(64, { message: "Slug must be 64 or fewer characters" })
-          .regex(/^[a-zA-Z0-9-]+$/, "Slug must only contain alphanumeric characters or hyphens")
-          .optional(),
+        slug: slugSchema({ max: 64 }).optional(),
         authEnforced: z.boolean().optional(),
         scimEnabled: z.boolean().optional(),
-        defaultMembershipRoleSlug: z
-          .string()
-          .min(1)
-          .trim()
-          .refine((v) => slugify(v) === v, {
-            message: "Membership role must be a valid slug"
-          })
-          .optional(),
+        defaultMembershipRoleSlug: slugSchema({ field: "Default Membership Role" }).optional(),
         enforceMfa: z.boolean().optional(),
         selectedMfaMethod: z.nativeEnum(MfaMethod).optional()
       }),

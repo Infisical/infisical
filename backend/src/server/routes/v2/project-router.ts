@@ -1,4 +1,3 @@
-import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import {
@@ -12,6 +11,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { InfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-types";
 import { PROJECTS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -26,14 +26,6 @@ const projectWithEnv = SanitizedProjectSchema.extend({
   _id: z.string(),
   environments: z.object({ name: z.string(), slug: z.string(), id: z.string() }).array()
 });
-
-const slugSchema = z
-  .string()
-  .min(5)
-  .max(36)
-  .refine((v) => slugify(v) === v, {
-    message: "Slug must be at least 5 character but no more than 36"
-  });
 
 export const registerProjectRouter = async (server: FastifyZodProvider) => {
   /* Get project key */
@@ -162,21 +154,9 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         projectName: z.string().trim().describe(PROJECTS.CREATE.projectName),
         projectDescription: z.string().trim().optional().describe(PROJECTS.CREATE.projectDescription),
-        slug: z
-          .string()
-          .min(5)
-          .max(36)
-          .refine((v) => slugify(v) === v, {
-            message: "Slug must be a valid slug"
-          })
-          .optional()
-          .describe(PROJECTS.CREATE.slug),
+        slug: slugSchema({ min: 5, max: 36 }).optional().describe(PROJECTS.CREATE.slug),
         kmsKeyId: z.string().optional(),
-        template: z
-          .string()
-          .refine((v) => slugify(v) === v, {
-            message: "Template name must be in slug format"
-          })
+        template: slugSchema({ field: "Template Name" })
           .optional()
           .default(InfisicalProjectTemplate.Default)
           .describe(PROJECTS.CREATE.template)
@@ -244,7 +224,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        slug: slugSchema.describe("The slug of the project to delete.")
+        slug: slugSchema({ min: 5, max: 36 }).describe("The slug of the project to delete.")
       }),
       response: {
         200: SanitizedProjectSchema
@@ -278,7 +258,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       params: z.object({
-        slug: slugSchema.describe("The slug of the project to get.")
+        slug: slugSchema({ min: 5, max: 36 }).describe("The slug of the project to get.")
       }),
       response: {
         200: projectWithEnv
@@ -311,7 +291,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       params: z.object({
-        slug: slugSchema.describe("The slug of the project to update.")
+        slug: slugSchema({ min: 5, max: 36 }).describe("The slug of the project to update.")
       }),
       body: z.object({
         name: z.string().trim().optional().describe(PROJECTS.UPDATE.name),
@@ -354,7 +334,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       params: z.object({
-        slug: slugSchema.describe(PROJECTS.LIST_CAS.slug)
+        slug: slugSchema({ min: 5, max: 36 }).describe(PROJECTS.LIST_CAS.slug)
       }),
       querystring: z.object({
         status: z.enum([CaStatus.ACTIVE, CaStatus.PENDING_CERTIFICATE]).optional().describe(PROJECTS.LIST_CAS.status),
@@ -395,7 +375,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       params: z.object({
-        slug: slugSchema.describe(PROJECTS.LIST_CERTIFICATES.slug)
+        slug: slugSchema({ min: 5, max: 36 }).describe(PROJECTS.LIST_CERTIFICATES.slug)
       }),
       querystring: z.object({
         friendlyName: z.string().optional().describe(PROJECTS.LIST_CERTIFICATES.friendlyName),
