@@ -55,11 +55,6 @@ export const AzureEntraIDProvider = (): TDynamicProviderFns & {
     return data.success;
   };
 
-  const renew = async (inputs: unknown, entityId: string) => {
-    // Do nothing
-    return { entityId };
-  };
-
   const create = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
     const data = await getToken(providerInputs.tenantId, providerInputs.applicationId, providerInputs.clientSecret);
@@ -125,6 +120,11 @@ export const AzureEntraIDProvider = (): TDynamicProviderFns & {
       };
     });
     return users;
+  };
+
+  const renew = async (inputs: unknown, entityId: string) => {
+    // No renewal necessary
+    return { entityId };
   };
 
   return {

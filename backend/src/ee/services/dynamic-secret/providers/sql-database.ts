@@ -110,13 +110,19 @@ export const SqlDatabaseProvider = (): TDynamicProviderFns => {
 
   const renew = async (inputs: unknown, entityId: string, expireAt: number) => {
     const providerInputs = await validateProviderInputs(inputs);
+    if (!providerInputs.renewStatement) return { entityId };
+
     const db = await getClient(providerInputs);
 
-    const username = entityId;
     const expiration = new Date(expireAt).toISOString();
     const { database } = providerInputs;
 
-    const renewStatement = handlebars.compile(providerInputs.renewStatement)({ username, expiration, database });
+    const renewStatement = handlebars.compile(providerInputs.renewStatement)({
+      username: entityId,
+      expiration,
+      database
+    });
+
     if (renewStatement) {
       const queries = renewStatement.toString().split(";").filter(Boolean);
       await db.transaction(async (tx) => {
@@ -128,7 +134,7 @@ export const SqlDatabaseProvider = (): TDynamicProviderFns => {
     }
 
     await db.destroy();
-    return { entityId: username };
+    return { entityId };
   };
 
   return {

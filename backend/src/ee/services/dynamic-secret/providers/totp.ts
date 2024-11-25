@@ -1,7 +1,6 @@
 import { authenticator } from "otplib";
 import { HashAlgorithms } from "otplib/core";
 
-import { BadRequestError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { DynamicSecretTotpSchema, TDynamicProviderFns, TotpConfigType } from "./models";
@@ -76,10 +75,9 @@ export const TotpProvider = (): TDynamicProviderFns => {
   };
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const renew = async (_inputs: unknown, _entityId: string) => {
-    throw new BadRequestError({
-      message: "Lease renewal is not supported for TOTPs"
-    });
+  const renew = async (_inputs: unknown, entityId: string) => {
+    // No renewal necessary
+    return { entityId };
   };
 
   return {

@@ -141,6 +141,8 @@ export const RedisDatabaseProvider = (): TDynamicProviderFns => {
 
   const renew = async (inputs: unknown, entityId: string, expireAt: number) => {
     const providerInputs = await validateProviderInputs(inputs);
+    if (!providerInputs.renewStatement) return { entityId };
+
     const connection = await getClient(providerInputs);
 
     const username = entityId;

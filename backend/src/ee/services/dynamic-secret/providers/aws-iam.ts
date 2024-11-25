@@ -179,9 +179,8 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
   };
 
   const renew = async (_inputs: unknown, entityId: string) => {
-    // do nothing
-    const username = entityId;
-    return { entityId: username };
+    // No renewal necessary
+    return { entityId };
   };
 
   return {
