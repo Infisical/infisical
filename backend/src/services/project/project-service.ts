@@ -149,6 +149,7 @@ export const projectServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     workspaceName,
+    workspaceDescription,
     slug: projectSlug,
     kmsKeyId,
     tx: trx,
@@ -206,6 +207,7 @@ export const projectServiceFactory = ({
       const project = await projectDAL.create(
         {
           name: workspaceName,
+          description: workspaceDescription,
           orgId: organization.id,
           slug: projectSlug || slugify(`${workspaceName}-${alphaNumericNanoId(4)}`),
           kmsSecretManagerKeyId: kmsKeyId,
@@ -496,6 +498,7 @@ export const projectServiceFactory = ({
 
     const updatedProject = await projectDAL.updateById(project.id, {
       name: update.name,
+      description: update.description,
       autoCapitalization: update.autoCapitalization
     });
     return updatedProject;

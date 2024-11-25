@@ -34,9 +34,9 @@ export type {
   CreateWorkspaceDTO,
   DeleteEnvironmentDTO,
   DeleteWorkspaceDTO,
-  RenameWorkspaceDTO,
   ToggleAutoCapitalizationDTO,
   UpdateEnvironmentDTO,
+  UpdateProjectDTO,
   Workspace,
   WorkspaceEnv,
   WorkspaceTag

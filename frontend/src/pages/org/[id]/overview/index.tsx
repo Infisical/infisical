@@ -1,7 +1,6 @@
 // REFACTOR(akhilmhdh): This file needs to be split into multiple components too complex
 
 import { useEffect, useMemo, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import Head from "next/head";
 import Link from "next/link";
@@ -19,7 +18,6 @@ import {
   faExclamationCircle,
   faFileShield,
   faHandPeace,
-  faInfoCircle,
   faList,
   faMagnifyingGlass,
   faNetworkWired,
@@ -29,48 +27,22 @@ import {
   faUserPlus
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { yupResolver } from "@hookform/resolvers/yup";
 import * as Tabs from "@radix-ui/react-tabs";
-import * as yup from "yup";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import onboardingCheck from "@app/components/utilities/checks/OnboardingCheck";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-  Button,
-  Checkbox,
-  FormControl,
-  IconButton,
-  Input,
-  Modal,
-  ModalContent,
-  Select,
-  SelectItem,
-  Skeleton,
-  UpgradePlanModal
-} from "@app/components/v2";
+import { Button, IconButton, Input, Skeleton, UpgradePlanModal } from "@app/components/v2";
+import { NewProjectModal } from "@app/components/v2/projects";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
-  useOrgPermission,
   useSubscription,
   useUser,
   useWorkspace
 } from "@app/context";
-import {
-  fetchOrgUsers,
-  useAddUserToWsNonE2EE,
-  useCreateWorkspace,
-  useGetExternalKmsList,
-  useRegisterUserAction
-} from "@app/hooks/api";
-import { INTERNAL_KMS_KEY_ID } from "@app/hooks/api/kms/types";
-import { InfisicalProjectTemplate, useListProjectTemplates } from "@app/hooks/api/projectTemplates";
+import { useRegisterUserAction } from "@app/hooks/api";
 // import { fetchUserWsKey } from "@app/hooks/api/keys/queries";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { Workspace } from "@app/hooks/api/types";
@@ -476,20 +448,6 @@ const LearningItemSquare = ({
   );
 };
 
-const formSchema = yup.object({
-  name: yup
-    .string()
-    .required()
-    .label("Project Name")
-    .trim()
-    .max(64, "Too long, maximum length is 64 characters"),
-  addMembers: yup.bool().required().label("Add Members"),
-  kmsKeyId: yup.string().label("KMS Key ID"),
-  template: yup.string().label("Project Template Name")
-});
-
-type TAddProjectFormData = yup.InferType<typeof formSchema>;
-
 // #TODO: Update all the workspaceIds
 const OrganizationPage = () => {
   const { t } = useTranslation();
@@ -498,7 +456,6 @@ const OrganizationPage = () => {
 
   const { workspaces, isLoading: isWorkspaceLoading } = useWorkspace();
   const { currentOrg } = useOrganization();
-  const { permission } = useOrgPermission();
   const routerOrgId = String(router.query.id);
   const orgWorkspaces = workspaces?.filter((workspace) => workspace.orgId === routerOrgId) || [];
   const { data: projectFavorites, isLoading: isProjectFavoritesLoading } =
@@ -506,91 +463,24 @@ const OrganizationPage = () => {
   const { mutateAsync: updateUserProjectFavorites } = useUpdateUserProjectFavorites();
 
   const isProjectViewLoading = isWorkspaceLoading || isProjectFavoritesLoading;
-  const addUsersToProject = useAddUserToWsNonE2EE();
 
-  const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "addNewWs",
     "upgradePlan"
   ] as const);
-  const {
-    control,
-    formState: { isSubmitting },
-    reset,
-    handleSubmit
-  } = useForm<TAddProjectFormData>({
-    resolver: yupResolver(formSchema),
-    defaultValues: {
-      kmsKeyId: INTERNAL_KMS_KEY_ID
-    }
-  });
 
   const [hasUserClickedSlack, setHasUserClickedSlack] = useState(false);
   const [hasUserClickedIntro, setHasUserClickedIntro] = useState(false);
   const [hasUserPushedSecrets, setHasUserPushedSecrets] = useState(false);
   const [usersInOrg, setUsersInOrg] = useState(false);
   const [searchFilter, setSearchFilter] = useState("");
-  const createWs = useCreateWorkspace();
   const { user } = useUser();
   const { data: serverDetails } = useFetchServerStatus();
   const [projectsViewMode, setProjectsViewMode] = useState<ProjectsViewMode>(
     (localStorage.getItem("projectsViewMode") as ProjectsViewMode) || ProjectsViewMode.GRID
   );
 
-  const { data: externalKmsList } = useGetExternalKmsList(currentOrg?.id!, {
-    enabled: permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Kms)
-  });
-
-  const onCreateProject = async ({ name, addMembers, kmsKeyId, template }: TAddProjectFormData) => {
-    // type check
-    if (!currentOrg) return;
-    if (!user) return;
-    try {
-      const {
-        data: {
-          project: { id: newProjectId }
-        }
-      } = await createWs.mutateAsync({
-        projectName: name,
-        kmsKeyId: kmsKeyId !== INTERNAL_KMS_KEY_ID ? kmsKeyId : undefined,
-        template
-      });
-
-      if (addMembers) {
-        const orgUsers = await fetchOrgUsers(currentOrg.id);
-
-        await addUsersToProject.mutateAsync({
-          usernames: orgUsers
-            .filter(
-              (member) => member.user.username !== user.username && member.status === "accepted"
-            )
-            .map((member) => member.user.username),
-          projectId: newProjectId,
-          orgId: currentOrg.id
-        });
-      }
-
-      // eslint-disable-next-line no-promise-executor-return -- We do this because the function returns too fast, which sometimes causes an error when the user is redirected.
-      await new Promise((resolve) => setTimeout(resolve, 2_000));
-
-      handlePopUpClose("addNewWs");
-      createNotification({ text: "Project created", type: "success" });
-      router.push(`/project/${newProjectId}/secrets/overview`);
-    } catch (err) {
-      console.error(err);
-      createNotification({ text: "Failed to create project", type: "error" });
-    }
-  };
-
   const { subscription } = useSubscription();
-
-  const canReadProjectTemplates = permission.can(
-    OrgPermissionActions.Read,
-    OrgPermissionSubjects.ProjectTemplates
-  );
-
-  const { data: projectTemplates = [] } = useListProjectTemplates({
-    enabled: Boolean(canReadProjectTemplates && subscription?.projectTemplates)
-  });
 
   const isAddingProjectsAllowed = subscription?.workspaceLimit
     ? subscription.workspacesUsed < subscription.workspaceLimit
@@ -669,7 +559,7 @@ const OrganizationPage = () => {
         localStorage.setItem("projectData.id", workspace.id);
       }}
       key={workspace.id}
-      className="min-w-72 flex h-40 cursor-pointer flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
+      className="min-w-72 flex h-40 cursor-pointer flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
     >
       <div className="flex flex-row justify-between">
         <div className="mt-0 truncate text-lg text-mineshaft-100">{workspace.name}</div>
@@ -693,18 +583,33 @@ const OrganizationPage = () => {
           />
         )}
       </div>
-      <div className="mt-0 pb-6 text-sm text-mineshaft-300">
-        {workspace.environments?.length || 0} environments
+
+      <div
+        className="mt-1 mb-2.5 grow text-sm text-mineshaft-300"
+        style={{
+          overflow: "hidden",
+          display: "-webkit-box",
+          WebkitBoxOrient: "vertical",
+          WebkitLineClamp: 2
+        }}
+      >
+        {workspace.description}
       </div>
-      <button type="button">
-        <div className="group ml-auto w-max cursor-pointer rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 transition-all hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200">
-          Explore{" "}
-          <FontAwesomeIcon
-            icon={faArrowRight}
-            className="pl-1.5 pr-0.5 duration-200 hover:pl-2 hover:pr-0"
-          />
+
+      <div className="flex w-full flex-row items-end justify-between place-self-end">
+        <div className="mt-0 text-xs text-mineshaft-400">
+          {workspace.environments?.length || 0} environments
         </div>
-      </button>
+        <button type="button">
+          <div className="group ml-auto w-max cursor-pointer rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 transition-all hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200">
+            Explore{" "}
+            <FontAwesomeIcon
+              icon={faArrowRight}
+              className="pl-1.5 pr-0.5 duration-200 hover:pl-2 hover:pr-0"
+            />
+          </div>
+        </button>
+      </div>
     </div>
   );
 
@@ -1038,170 +943,10 @@ const OrganizationPage = () => {
           )}
         </div>
       )}
-      <Modal
+      <NewProjectModal
         isOpen={popUp.addNewWs.isOpen}
-        onOpenChange={(isModalOpen) => {
-          handlePopUpToggle("addNewWs", isModalOpen);
-          reset();
-        }}
-      >
-        <ModalContent
-          title="Create a new project"
-          subTitle="This project will contain your secrets and configurations."
-        >
-          <form onSubmit={handleSubmit(onCreateProject)}>
-            <div className="flex gap-2">
-              <Controller
-                control={control}
-                name="name"
-                defaultValue=""
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Project Name"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    className="flex-1"
-                  >
-                    <Input {...field} placeholder="Type your project name" />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="template"
-                render={({ field: { value, onChange } }) => (
-                  <OrgPermissionCan
-                    I={OrgPermissionActions.Read}
-                    a={OrgPermissionSubjects.ProjectTemplates}
-                  >
-                    {(isAllowed) => (
-                      <FormControl
-                        label="Project Template"
-                        icon={<FontAwesomeIcon icon={faInfoCircle} size="sm" />}
-                        tooltipText={
-                          <>
-                            <p>
-                              Create this project from a template to provision it with custom
-                              environments and roles.
-                            </p>
-                            {subscription && !subscription.projectTemplates && (
-                              <p className="pt-2">Project templates are a paid feature.</p>
-                            )}
-                          </>
-                        }
-                      >
-                        <Select
-                          defaultValue={InfisicalProjectTemplate.Default}
-                          placeholder={InfisicalProjectTemplate.Default}
-                          isDisabled={!isAllowed || !subscription?.projectTemplates}
-                          value={value}
-                          onValueChange={onChange}
-                          className="w-44"
-                        >
-                          {projectTemplates.length
-                            ? projectTemplates.map((template) => (
-                                <SelectItem key={template.id} value={template.name}>
-                                  {template.name}
-                                </SelectItem>
-                              ))
-                            : Object.values(InfisicalProjectTemplate).map((template) => (
-                                <SelectItem key={template} value={template}>
-                                  {template}
-                                </SelectItem>
-                              ))}
-                        </Select>
-                      </FormControl>
-                    )}
-                  </OrgPermissionCan>
-                )}
-              />
-            </div>
-            <div className="mt-4 pl-1">
-              <Controller
-                control={control}
-                name="addMembers"
-                defaultValue={false}
-                render={({ field: { onBlur, value, onChange } }) => (
-                  <OrgPermissionCan I={OrgPermissionActions.Read} a={OrgPermissionSubjects.Member}>
-                    {(isAllowed) => (
-                      <div>
-                        <Checkbox
-                          id="add-project-layout"
-                          isChecked={value}
-                          onCheckedChange={onChange}
-                          isDisabled={!isAllowed}
-                          onBlur={onBlur}
-                        >
-                          Add all members of my organization to this project
-                        </Checkbox>
-                      </div>
-                    )}
-                  </OrgPermissionCan>
-                )}
-              />
-            </div>
-            <div className="mt-14 flex">
-              <Accordion type="single" collapsible className="w-full">
-                <AccordionItem value="advance-settings" className="data-[state=open]:border-none">
-                  <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
-                    <div className="order-1 ml-3">Advanced Settings</div>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <Controller
-                      render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                        <FormControl
-                          errorText={error?.message}
-                          isError={Boolean(error)}
-                          label="KMS"
-                        >
-                          <Select
-                            {...field}
-                            onValueChange={(e) => {
-                              onChange(e);
-                            }}
-                            className="mb-12 w-full bg-mineshaft-600"
-                          >
-                            <SelectItem value={INTERNAL_KMS_KEY_ID} key="kms-internal">
-                              Default Infisical KMS
-                            </SelectItem>
-                            {externalKmsList?.map((kms) => (
-                              <SelectItem value={kms.id} key={`kms-${kms.id}`}>
-                                {kms.name}
-                              </SelectItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-                      )}
-                      control={control}
-                      name="kmsKeyId"
-                    />
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-              <div className="absolute right-0 bottom-0 mr-6 mb-6 flex items-start justify-end">
-                <Button
-                  key="layout-cancel-create-project"
-                  onClick={() => handlePopUpClose("addNewWs")}
-                  colorSchema="secondary"
-                  variant="plain"
-                  className="py-2"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  isDisabled={isSubmitting}
-                  isLoading={isSubmitting}
-                  key="layout-create-project-submit"
-                  className="ml-4"
-                  type="submit"
-                >
-                  Create Project
-                </Button>
-              </div>
-            </div>
-          </form>
-        </ModalContent>
-      </Modal>
+        onOpenChange={(isOpen) => handlePopUpToggle("addNewWs", isOpen)}
+      />
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}

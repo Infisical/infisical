@@ -296,6 +296,12 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .max(64, { message: "Name must be 64 or fewer characters" })
           .optional()
           .describe(PROJECTS.UPDATE.name),
+        description: z
+          .string()
+          .trim()
+          .max(256, { message: "Description must be 256 or fewer characters" })
+          .optional()
+          .describe(PROJECTS.UPDATE.projectDescription),
         autoCapitalization: z.boolean().optional().describe(PROJECTS.UPDATE.autoCapitalization)
       }),
       response: {
@@ -313,6 +319,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         },
         update: {
           name: req.body.name,
+          description: req.body.description,
           autoCapitalization: req.body.autoCapitalization
         },
         actorAuthMethod: req.permission.authMethod,

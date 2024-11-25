@@ -161,6 +161,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       ],
       body: z.object({
         projectName: z.string().trim().describe(PROJECTS.CREATE.projectName),
+        projectDescription: z.string().trim().optional().describe(PROJECTS.CREATE.projectDescription),
         slug: z
           .string()
           .min(5)
@@ -194,6 +195,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         workspaceName: req.body.projectName,
+        workspaceDescription: req.body.projectDescription,
         slug: req.body.slug,
         kmsKeyId: req.body.kmsKeyId,
         template: req.body.template
@@ -312,8 +314,9 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         slug: slugSchema.describe("The slug of the project to update.")
       }),
       body: z.object({
-        name: z.string().trim().optional().describe("The new name of the project."),
-        autoCapitalization: z.boolean().optional().describe("The new auto-capitalization setting.")
+        name: z.string().trim().optional().describe(PROJECTS.UPDATE.name),
+        description: z.string().trim().optional().describe(PROJECTS.UPDATE.projectDescription),
+        autoCapitalization: z.boolean().optional().describe(PROJECTS.UPDATE.autoCapitalization)
       }),
       response: {
         200: SanitizedProjectSchema
@@ -330,6 +333,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         },
         update: {
           name: req.body.name,
+          description: req.body.description,
           autoCapitalization: req.body.autoCapitalization
         },
         actorId: req.permission.id,
