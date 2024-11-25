@@ -9,7 +9,7 @@ import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
 import { infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { generateUserSrpKeys, getUserPrivateKey } from "@app/lib/crypto/srp";
-import { NotFoundError } from "@app/lib/errors";
+import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { isDisposableEmail } from "@app/lib/validator";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -23,6 +23,7 @@ import { TOrgServiceFactory } from "../org/org-service";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
+import { getServerCfg } from "../super-admin/super-admin-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { UserEncryption } from "../user/user-types";
 import { TAuthDALFactory } from "./auth-dal";
@@ -151,6 +152,8 @@ export const authSignupServiceFactory = ({
     authorization
   }: TCompleteAccountSignupDTO) => {
     const appCfg = getConfig();
+    const serverCfg = await getServerCfg();
+
     const user = await userDAL.findOne({ username: email });
     if (!user || (user && user.isAccepted)) {
       throw new Error("Failed to complete account for complete user");
@@ -163,6 +166,12 @@ export const authSignupServiceFactory = ({
       authMethod = userAuthMethod;
       organizationId = orgId;
     } else {
+      // disallow signup if disabled. we are not doing this for providerAuthToken because we allow signups via saml or sso
+      if (!serverCfg.allowSignUp) {
+        throw new ForbiddenRequestError({
+          message: "Signup's are disabled"
+        });
+      }
       validateSignUpAuthorization(authorization, user.id);
     }
 
