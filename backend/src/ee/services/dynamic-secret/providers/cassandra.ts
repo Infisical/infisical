@@ -99,20 +99,24 @@ export const CassandraProvider = (): TDynamicProviderFns => {
 
   const renew = async (inputs: unknown, entityId: string, expireAt: number) => {
     const providerInputs = await validateProviderInputs(inputs);
+    if (!providerInputs.renewStatement) return { entityId };
+
     const client = await getClient(providerInputs);
 
-    const username = entityId;
     const expiration = new Date(expireAt).toISOString();
     const { keyspace } = providerInputs;
 
-    const renewStatement = handlebars.compile(providerInputs.revocationStatement)({ username, keyspace, expiration });
+    const renewStatement = handlebars.compile(providerInputs.renewStatement)({
+      username: entityId,
+      keyspace,
+      expiration
+    });
     const queries = renewStatement.toString().split(";").filter(Boolean);
-    for (const query of queries) {
-      // eslint-disable-next-line
+    for await (const query of queries) {
       await client.execute(query);
     }
     await client.shutdown();
-    return { entityId: username };
+    return { entityId };
   };
 
   return {

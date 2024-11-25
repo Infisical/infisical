@@ -131,17 +131,16 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
     return { entityId: username };
   };
 
-  const renew = async (inputs: unknown, username: string, expireAt: number) => {
+  const renew = async (inputs: unknown, entityId: string, expireAt: number) => {
     const providerInputs = await validateProviderInputs(inputs);
-
-    if (!providerInputs.renewStatement) return { entityId: username };
+    if (!providerInputs.renewStatement) return { entityId };
 
     const client = await getClient(providerInputs);
 
     try {
       const expiration = getDaysToExpiry(new Date(expireAt));
       const renewStatement = handlebars.compile(providerInputs.renewStatement)({
-        username,
+        username: entityId,
         expiration
       });
 
@@ -161,7 +160,7 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
       client.destroy(noop);
     }
 
-    return { entityId: username };
+    return { entityId };
   };
 
   return {

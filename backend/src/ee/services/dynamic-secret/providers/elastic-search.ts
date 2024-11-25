@@ -96,7 +96,7 @@ export const ElasticSearchProvider = (): TDynamicProviderFns => {
   };
 
   const renew = async (inputs: unknown, entityId: string) => {
-    // Do nothing
+    // No renewal necessary
     return { entityId };
   };
 

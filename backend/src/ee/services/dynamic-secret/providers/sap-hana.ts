@@ -135,13 +135,15 @@ export const SapHanaProvider = (): TDynamicProviderFns => {
     return { entityId: username };
   };
 
-  const renew = async (inputs: unknown, username: string, expireAt: number) => {
+  const renew = async (inputs: unknown, entityId: string, expireAt: number) => {
     const providerInputs = await validateProviderInputs(inputs);
+    if (!providerInputs.renewStatement) return { entityId };
+
     const client = await getClient(providerInputs);
     try {
       const expiration = new Date(expireAt).toISOString();
 
-      const renewStatement = handlebars.compile(providerInputs.renewStatement)({ username, expiration });
+      const renewStatement = handlebars.compile(providerInputs.renewStatement)({ username: entityId, expiration });
       const queries = renewStatement.toString().split(";").filter(Boolean);
       for await (const query of queries) {
         await new Promise((resolve, reject) => {
@@ -161,7 +163,7 @@ export const SapHanaProvider = (): TDynamicProviderFns => {
       client.disconnect();
     }
 
-    return { entityId: username };
+    return { entityId };
   };
 
   return {
