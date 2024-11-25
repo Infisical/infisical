@@ -191,6 +191,10 @@ export const projectDALFactory = (db: TDbClient) => {
 
       return project;
     } catch (error) {
+      if (error instanceof NotFoundError) {
+        throw error;
+      }
+
       throw new DatabaseError({ error, name: "Find all projects" });
     }
   };
@@ -240,6 +244,10 @@ export const projectDALFactory = (db: TDbClient) => {
 
       return project;
     } catch (error) {
+      if (error instanceof NotFoundError || error instanceof UnauthorizedError) {
+        throw error;
+      }
+
       throw new DatabaseError({ error, name: "Find project by slug" });
     }
   };
@@ -260,7 +268,7 @@ export const projectDALFactory = (db: TDbClient) => {
       }
       throw new BadRequestError({ message: "Invalid filter type" });
     } catch (error) {
-      if (error instanceof BadRequestError) {
+      if (error instanceof BadRequestError || error instanceof NotFoundError || error instanceof UnauthorizedError) {
         throw error;
       }
       throw new DatabaseError({ error, name: `Failed to find project by ${filter.type}` });
