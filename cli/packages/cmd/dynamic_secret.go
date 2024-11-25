@@ -237,6 +237,7 @@ func createDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 		fmt.Println("Dynamic Secret Leasing")
 		fmt.Printf("Name: %s\n", dynamicSecretRootCredential.Name)
 		fmt.Printf("Provider: %s\n", dynamicSecretRootCredential.Type)
+		fmt.Printf("Lease ID: %s\n", leaseDetails.Id)
 		fmt.Printf("Expire At: %s\n", leaseDetails.ExpireAt.Local().Format("02-Jan-2006 03:04:05 PM"))
 		visualize.PrintAllDyamicSecretLeaseCredentials(leaseCredentials)
 	}
@@ -245,7 +246,7 @@ func createDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 }
 
 var dynamicSecretLeaseRenewCmd = &cobra.Command{
-	Example:               `lease create <dynamic secret name>"`,
+	Example:               `lease renew <dynamic secret name>"`,
 	Short:                 "Used to renew dynamic secret lease by name",
 	Use:                   "renew [lease-id]",
 	DisableFlagsInUseLine: true,

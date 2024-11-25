@@ -95,25 +95,6 @@ func getLongestValues(rows [][3]string) (longestSecretName, longestSecretType in
 }
 
 func GenericTable(headers []string, rows [][]string) {
-	// if we're not in a terminal or cygwin terminal, don't truncate the secret value
-	shouldTruncate := isatty.IsTerminal(os.Stdout.Fd())
-
-	// This will return an error if we're not in a terminal or
-	// if the terminal is a cygwin terminal like Git Bash.
-	width, _, err := term.GetSize(int(os.Stdout.Fd()))
-	if err != nil {
-		if shouldTruncate {
-			log.Error().Msgf("error getting terminal size: %s", err)
-		} else {
-			log.Debug().Err(err)
-		}
-	}
-
-	availableWidth := width - borderWidths
-	if availableWidth < 0 {
-		availableWidth = 0
-	}
-
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
 	t.SetStyle(table.StyleLight)

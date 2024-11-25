@@ -28,8 +28,9 @@ func PrintAllDynamicRootCredentials(dynamicRootCredentials []infisicalModels.Dyn
 
 func PrintAllDynamicSecretLeases(dynamicSecretLeases []infisicalModels.DynamicSecretLease) {
 	rows := [][]string{}
+	const timeformat = "02-Jan-2006 03:04:05 PM"
 	for _, el := range dynamicSecretLeases {
-		rows = append(rows, []string{el.Id, el.ExpireAt.Local().Format("02-Jan-2006 03:04:05 PM"), el.CreatedAt.Local().Format("02-Jan-2006 03:04:05 PM")})
+		rows = append(rows, []string{el.Id, el.ExpireAt.Local().Format(timeformat), el.CreatedAt.Local().Format(timeformat)})
 	}
 
 	headers := []string{"ID", "Expire At", "Created At"}
