@@ -33,7 +33,7 @@ export type {
   CreateWorkspaceDTO,
   DeleteEnvironmentDTO,
   DeleteWorkspaceDTO,
-  SetWorkspaceOverviewDTO,
+  UpdateProjectDTO as SetWorkspaceOverviewDTO,
   ToggleAutoCapitalizationDTO,
   UpdateEnvironmentDTO,
   Workspace,

@@ -61,10 +61,10 @@ export type CreateWorkspaceDTO = {
   template?: string;
 };
 
-export type SetWorkspaceOverviewDTO = {
-  workspaceID: string;
-  newWorkspaceName: string;
-  newWorkspaceDescription?: string;
+export type UpdateProjectDTO = {
+  projectID: string;
+  newProjectName: string;
+  newProjectDescription?: string;
 };
 
 export type UpdatePitVersionLimitDTO = { projectSlug: string; pitVersionLimit: number };

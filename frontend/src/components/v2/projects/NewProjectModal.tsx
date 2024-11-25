@@ -21,7 +21,8 @@ import {
   ModalClose,
   ModalContent,
   Select,
-  SelectItem
+  SelectItem,
+  TextArea
 } from "@app/components/v2";
 import {
   OrgPermissionActions,
@@ -59,7 +60,9 @@ interface NewProjectModalProps {
   onOpenChange: (isOpen: boolean) => void;
 }
 
-export const NewProjectModal: FC<NewProjectModalProps> = ({ isOpen, onOpenChange }) => {
+type NewProjectFormProps = Pick<NewProjectModalProps, "onOpenChange">;
+
+const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
   const router = useRouter();
   const { currentOrg } = useOrganization();
   const { permission } = useOrgPermission();
@@ -149,171 +152,176 @@ export const NewProjectModal: FC<NewProjectModalProps> = ({ isOpen, onOpenChange
   const onSubmit = handleSubmit((data) => {
     return onCreateProject(data);
   });
+  return (
+    <form onSubmit={onSubmit}>
+      <div className="flex flex-col gap-2">
+        <Controller
+          control={control}
+          name="name"
+          defaultValue=""
+          render={({ field, fieldState: { error } }) => (
+            <FormControl
+              label="Project Name"
+              isError={Boolean(error)}
+              errorText={error?.message}
+              className="flex-1"
+            >
+              <Input {...field} placeholder="Type your project name" />
+            </FormControl>
+          )}
+        />
+        <Controller
+          control={control}
+          name="description"
+          defaultValue=""
+          render={({ field, fieldState: { error } }) => (
+            <FormControl
+              label="Project Description"
+              isError={Boolean(error)}
+              isOptional
+              errorText={error?.message}
+              className="flex-1"
+            >
+              <TextArea
+                placeholder="Project description"
+                {...field}
+                rows={3}
+                className="thin-scrollbar w-full !resize-none bg-mineshaft-900"
+              />
+            </FormControl>
+          )}
+        />
+        <Controller
+          control={control}
+          name="template"
+          render={({ field: { value, onChange } }) => (
+            <OrgPermissionCan
+              I={OrgPermissionActions.Read}
+              a={OrgPermissionSubjects.ProjectTemplates}
+            >
+              {(isAllowed) => (
+                <FormControl
+                  label="Project Template"
+                  icon={<FontAwesomeIcon icon={faInfoCircle} size="sm" />}
+                  tooltipText={
+                    <>
+                      <p>
+                        Create this project from a template to provision it with custom environments
+                        and roles.
+                      </p>
+                      {subscription && !subscription.projectTemplates && (
+                        <p className="pt-2">Project templates are a paid feature.</p>
+                      )}
+                    </>
+                  }
+                >
+                  <Select
+                    defaultValue={InfisicalProjectTemplate.Default}
+                    placeholder={InfisicalProjectTemplate.Default}
+                    isDisabled={!isAllowed || !subscription?.projectTemplates}
+                    value={value}
+                    onValueChange={onChange}
+                    className="w-full"
+                  >
+                    {projectTemplates.length
+                      ? projectTemplates.map((template) => (
+                          <SelectItem key={template.id} value={template.name}>
+                            {template.name}
+                          </SelectItem>
+                        ))
+                      : Object.values(InfisicalProjectTemplate).map((template) => (
+                          <SelectItem key={template} value={template}>
+                            {template}
+                          </SelectItem>
+                        ))}
+                  </Select>
+                </FormControl>
+              )}
+            </OrgPermissionCan>
+          )}
+        />
+      </div>
+      <div className="mt-4 pl-1">
+        <Controller
+          control={control}
+          name="addMembers"
+          defaultValue={false}
+          render={({ field: { onBlur, value, onChange } }) => (
+            <OrgPermissionCan I={OrgPermissionActions.Read} a={OrgPermissionSubjects.Member}>
+              {(isAllowed) => (
+                <div>
+                  <Checkbox
+                    id="add-project-layout"
+                    isChecked={value}
+                    onCheckedChange={onChange}
+                    isDisabled={!isAllowed}
+                    onBlur={onBlur}
+                  >
+                    Add all members of my organization to this project
+                  </Checkbox>
+                </div>
+              )}
+            </OrgPermissionCan>
+          )}
+        />
+      </div>
+      <div className="mt-14 flex">
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="advance-settings" className="data-[state=open]:border-none">
+            <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
+              <div className="order-1 ml-3">Advanced Settings</div>
+            </AccordionTrigger>
+            <AccordionContent>
+              <Controller
+                render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                  <FormControl errorText={error?.message} isError={Boolean(error)} label="KMS">
+                    <Select
+                      {...field}
+                      onValueChange={(e) => {
+                        onChange(e);
+                      }}
+                      className="mb-12 w-full bg-mineshaft-600"
+                    >
+                      <SelectItem value={INTERNAL_KMS_KEY_ID} key="kms-internal">
+                        Default Infisical KMS
+                      </SelectItem>
+                      {externalKmsList?.map((kms) => (
+                        <SelectItem value={kms.id} key={`kms-${kms.id}`}>
+                          {kms.name}
+                        </SelectItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+                control={control}
+                name="kmsKeyId"
+              />
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+        <div className="absolute right-0 bottom-0 mr-6 mb-6 flex items-start justify-end">
+          <ModalClose>
+            <Button colorSchema="secondary" variant="plain" className="py-2">
+              Cancel
+            </Button>
+          </ModalClose>
+          <Button isDisabled={isSubmitting} isLoading={isSubmitting} className="ml-4" type="submit">
+            Create Project
+          </Button>
+        </div>
+      </div>
+    </form>
+  );
+};
 
+export const NewProjectModal: FC<NewProjectModalProps> = ({ isOpen, onOpenChange }) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
         title="Create a new project"
         subTitle="This project will contain your secrets and configurations."
       >
-        <form onSubmit={onSubmit}>
-          <div className="flex flex-col gap-2">
-            <Controller
-              control={control}
-              name="name"
-              defaultValue=""
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Project Name"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  className="flex-1"
-                >
-                  <Input {...field} placeholder="Type your project name" />
-                </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              name="description"
-              defaultValue=""
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Project Description"
-                  isError={Boolean(error)}
-                  isOptional
-                  errorText={error?.message}
-                  className="flex-1"
-                >
-                  <Input {...field} placeholder="Give your project a description" />
-                </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              name="template"
-              render={({ field: { value, onChange } }) => (
-                <OrgPermissionCan
-                  I={OrgPermissionActions.Read}
-                  a={OrgPermissionSubjects.ProjectTemplates}
-                >
-                  {(isAllowed) => (
-                    <FormControl
-                      label="Project Template"
-                      icon={<FontAwesomeIcon icon={faInfoCircle} size="sm" />}
-                      tooltipText={
-                        <>
-                          <p>
-                            Create this project from a template to provision it with custom
-                            environments and roles.
-                          </p>
-                          {subscription && !subscription.projectTemplates && (
-                            <p className="pt-2">Project templates are a paid feature.</p>
-                          )}
-                        </>
-                      }
-                    >
-                      <Select
-                        defaultValue={InfisicalProjectTemplate.Default}
-                        placeholder={InfisicalProjectTemplate.Default}
-                        isDisabled={!isAllowed || !subscription?.projectTemplates}
-                        value={value}
-                        onValueChange={onChange}
-                        className="w-full"
-                      >
-                        {projectTemplates.length
-                          ? projectTemplates.map((template) => (
-                              <SelectItem key={template.id} value={template.name}>
-                                {template.name}
-                              </SelectItem>
-                            ))
-                          : Object.values(InfisicalProjectTemplate).map((template) => (
-                              <SelectItem key={template} value={template}>
-                                {template}
-                              </SelectItem>
-                            ))}
-                      </Select>
-                    </FormControl>
-                  )}
-                </OrgPermissionCan>
-              )}
-            />
-          </div>
-          <div className="mt-4 pl-1">
-            <Controller
-              control={control}
-              name="addMembers"
-              defaultValue={false}
-              render={({ field: { onBlur, value, onChange } }) => (
-                <OrgPermissionCan I={OrgPermissionActions.Read} a={OrgPermissionSubjects.Member}>
-                  {(isAllowed) => (
-                    <div>
-                      <Checkbox
-                        id="add-project-layout"
-                        isChecked={value}
-                        onCheckedChange={onChange}
-                        isDisabled={!isAllowed}
-                        onBlur={onBlur}
-                      >
-                        Add all members of my organization to this project
-                      </Checkbox>
-                    </div>
-                  )}
-                </OrgPermissionCan>
-              )}
-            />
-          </div>
-          <div className="mt-14 flex">
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="advance-settings" className="data-[state=open]:border-none">
-                <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
-                  <div className="order-1 ml-3">Advanced Settings</div>
-                </AccordionTrigger>
-                <AccordionContent>
-                  <Controller
-                    render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                      <FormControl errorText={error?.message} isError={Boolean(error)} label="KMS">
-                        <Select
-                          {...field}
-                          onValueChange={(e) => {
-                            onChange(e);
-                          }}
-                          className="mb-12 w-full bg-mineshaft-600"
-                        >
-                          <SelectItem value={INTERNAL_KMS_KEY_ID} key="kms-internal">
-                            Default Infisical KMS
-                          </SelectItem>
-                          {externalKmsList?.map((kms) => (
-                            <SelectItem value={kms.id} key={`kms-${kms.id}`}>
-                              {kms.name}
-                            </SelectItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    )}
-                    control={control}
-                    name="kmsKeyId"
-                  />
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-            <div className="absolute right-0 bottom-0 mr-6 mb-6 flex items-start justify-end">
-              <ModalClose>
-                <Button colorSchema="secondary" variant="plain" className="py-2">
-                  Cancel
-                </Button>
-              </ModalClose>
-              <Button
-                isDisabled={isSubmitting}
-                isLoading={isSubmitting}
-                className="ml-4"
-                type="submit"
-              >
-                Create Project
-              </Button>
-            </div>
-          </div>
-        </form>
+        <NewProjectForm onOpenChange={onOpenChange} />
       </ModalContent>
     </Modal>
   );

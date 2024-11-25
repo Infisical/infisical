@@ -236,8 +236,6 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // DEPRECATED - keeping it for now for backwards compatibility
-  // TODO: Remove this route in v3
   server.route({
     url: "/:workspaceId/name",
     method: "POST",

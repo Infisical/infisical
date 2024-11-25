@@ -32,7 +32,7 @@ export const ProjectOverviewChangeSection = () => {
     if (currentWorkspace) {
       reset({
         name: currentWorkspace.name,
-        description: currentWorkspace.description
+        description: currentWorkspace.description ?? ""
       });
     }
   }, [currentWorkspace]);
@@ -42,9 +42,9 @@ export const ProjectOverviewChangeSection = () => {
       if (!currentWorkspace?.id) return;
 
       await mutateAsync({
-        workspaceID: currentWorkspace.id,
-        newWorkspaceName: name,
-        newWorkspaceDescription: description
+        projectID: currentWorkspace.id,
+        newProjectName: name,
+        newProjectDescription: description
       });
 
       createNotification({
@@ -131,7 +131,8 @@ export const ProjectOverviewChangeSection = () => {
                         <TextArea
                           placeholder="Project description"
                           {...field}
-                          className="max-w-md !resize-none overflow-scroll bg-mineshaft-800"
+                          rows={3}
+                          className="thin-scrollbar max-w-md !resize-none bg-mineshaft-800"
                           isDisabled={!isAllowed}
                         />
                       </FormControl>

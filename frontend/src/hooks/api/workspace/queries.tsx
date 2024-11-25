@@ -26,7 +26,6 @@ import {
   DeleteWorkspaceDTO,
   NameWorkspaceSecretsDTO,
   ProjectIdentityOrderBy,
-  SetWorkspaceOverviewDTO,
   TGetUpgradeProjectStatusDTO,
   TListProjectIdentitiesDTO,
   ToggleAutoCapitalizationDTO,
@@ -35,6 +34,7 @@ import {
   UpdateAuditLogsRetentionDTO,
   UpdateEnvironmentDTO,
   UpdatePitVersionLimitDTO,
+  UpdateProjectDTO,
   Workspace
 } from "./types";
 
@@ -237,14 +237,14 @@ export const useCreateWorkspace = () => {
   });
 };
 
-export const useSetWorkspaceOverview = () => {
+export const useUpdateProject = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, SetWorkspaceOverviewDTO>({
-    mutationFn: ({ workspaceID, newWorkspaceName, newWorkspaceDescription }) => {
-      return apiRequest.patch(`/api/v1/workspace/${workspaceID}`, {
-        name: newWorkspaceName,
-        description: newWorkspaceDescription
+  return useMutation<{}, {}, UpdateProjectDTO>({
+    mutationFn: ({ projectID, newProjectName, newProjectDescription }) => {
+      return apiRequest.patch(`/api/v1/workspace/${projectID}`, {
+        name: newProjectName,
+        description: newProjectDescription
       });
     },
     onSuccess: () => {

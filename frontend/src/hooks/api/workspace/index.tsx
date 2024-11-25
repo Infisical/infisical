@@ -33,7 +33,7 @@ export {
   useListWorkspacePkiAlerts,
   useListWorkspacePkiCollections,
   useNameWorkspaceSecrets,
-  useSetWorkspaceOverview,
+  useUpdateProject as useSetWorkspaceOverview,
   useToggleAutoCapitalization,
   useUpdateIdentityWorkspaceRole,
   useUpdateUserWorkspaceRole,
