@@ -39,29 +39,42 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
     if (error instanceof BadRequestError) {
       void res
         .status(HttpStatusCodes.BadRequest)
-        .send({ statusCode: HttpStatusCodes.BadRequest, message: error.message, error: error.name });
+        .send({ requestId: req.id, statusCode: HttpStatusCodes.BadRequest, message: error.message, error: error.name });
     } else if (error instanceof NotFoundError) {
       void res
         .status(HttpStatusCodes.NotFound)
-        .send({ statusCode: HttpStatusCodes.NotFound, message: error.message, error: error.name });
+        .send({ requestId: req.id, statusCode: HttpStatusCodes.NotFound, message: error.message, error: error.name });
     } else if (error instanceof UnauthorizedError) {
-      void res
-        .status(HttpStatusCodes.Unauthorized)
-        .send({ statusCode: HttpStatusCodes.Unauthorized, message: error.message, error: error.name });
+      void res.status(HttpStatusCodes.Unauthorized).send({
+        requestId: req.id,
+        statusCode: HttpStatusCodes.Unauthorized,
+        message: error.message,
+        error: error.name
+      });
     } else if (error instanceof DatabaseError || error instanceof InternalServerError) {
-      void res
-        .status(HttpStatusCodes.InternalServerError)
-        .send({ statusCode: HttpStatusCodes.InternalServerError, message: "Something went wrong", error: error.name });
+      void res.status(HttpStatusCodes.InternalServerError).send({
+        requestId: req.id,
+        statusCode: HttpStatusCodes.InternalServerError,
+        message: "Something went wrong",
+        error: error.name
+      });
     } else if (error instanceof GatewayTimeoutError) {
-      void res
-        .status(HttpStatusCodes.GatewayTimeout)
-        .send({ statusCode: HttpStatusCodes.GatewayTimeout, message: error.message, error: error.name });
+      void res.status(HttpStatusCodes.GatewayTimeout).send({
+        requestId: req.id,
+        statusCode: HttpStatusCodes.GatewayTimeout,
+        message: error.message,
+        error: error.name
+      });
     } else if (error instanceof ZodError) {
-      void res
-        .status(HttpStatusCodes.Unauthorized)
-        .send({ statusCode: HttpStatusCodes.Unauthorized, error: "ValidationFailure", message: error.issues });
+      void res.status(HttpStatusCodes.Unauthorized).send({
+        requestId: req.id,
+        statusCode: HttpStatusCodes.Unauthorized,
+        error: "ValidationFailure",
+        message: error.issues
+      });
     } else if (error instanceof ForbiddenError) {
       void res.status(HttpStatusCodes.Forbidden).send({
+        requestId: req.id,
         statusCode: HttpStatusCodes.Forbidden,
         error: "PermissionDenied",
         message: `You are not allowed to ${error.action} on ${error.subjectType}`,
@@ -74,48 +87,54 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
       });
     } else if (error instanceof ForbiddenRequestError) {
       void res.status(HttpStatusCodes.Forbidden).send({
+        requestId: req.id,
         statusCode: HttpStatusCodes.Forbidden,
         message: error.message,
         error: error.name
       });
     } else if (error instanceof RateLimitError) {
       void res.status(HttpStatusCodes.TooManyRequests).send({
+        requestId: req.id,
         statusCode: HttpStatusCodes.TooManyRequests,
         message: error.message,
         error: error.name
       });
     } else if (error instanceof ScimRequestError) {
       void res.status(error.status).send({
+        requestId: req.id,
         schemas: error.schemas,
         status: error.status,
         detail: error.detail
       });
     } else if (error instanceof OidcAuthError) {
-      void res
-        .status(HttpStatusCodes.InternalServerError)
-        .send({ statusCode: HttpStatusCodes.InternalServerError, message: error.message, error: error.name });
+      void res.status(HttpStatusCodes.InternalServerError).send({
+        requestId: req.id,
+        statusCode: HttpStatusCodes.InternalServerError,
+        message: error.message,
+        error: error.name
+      });
     } else if (error instanceof jwt.JsonWebTokenError) {
-      const message = (() => {
-        if (error.message === JWTErrors.JwtExpired) {
-          return "Your token has expired. Please re-authenticate.";
-        }
-        if (error.message === JWTErrors.JwtMalformed) {
-          return "The provided access token is malformed. Please use a valid token or generate a new one and try again.";
-        }
-        if (error.message === JWTErrors.InvalidAlgorithm) {
-          return "The access token is signed with an invalid algorithm. Please provide a valid token and try again.";
-        }
+      let errorMessage = error.message;
 
-        return error.message;
-      })();
+      if (error.message === JWTErrors.JwtExpired) {
+        errorMessage = "Your token has expired. Please re-authenticate.";
+      } else if (error.message === JWTErrors.JwtMalformed) {
+        errorMessage =
+          "The provided access token is malformed. Please use a valid token or generate a new one and try again.";
+      } else if (error.message === JWTErrors.InvalidAlgorithm) {
+        errorMessage =
+          "The access token is signed with an invalid algorithm. Please provide a valid token and try again.";
+      }
 
       void res.status(HttpStatusCodes.Forbidden).send({
+        requestId: req.id,
         statusCode: HttpStatusCodes.Forbidden,
         error: "TokenError",
-        message
+        message: errorMessage
       });
     } else {
       void res.status(HttpStatusCodes.InternalServerError).send({
+        requestId: req.id,
         statusCode: HttpStatusCodes.InternalServerError,
         error: "InternalServerError",
         message: "Something went wrong"

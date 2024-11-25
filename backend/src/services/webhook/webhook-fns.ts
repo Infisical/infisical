@@ -142,7 +142,7 @@ export const fnTriggerWebhook = async ({
       !isDisabled && picomatch.isMatch(secretPath, hookSecretPath, { strictSlashes: false })
   );
   if (!toBeTriggeredHooks.length) return;
-  logger.info("Secret webhook job started", { environment, secretPath, projectId });
+  logger.info({ environment, secretPath, projectId }, "Secret webhook job started");
   const project = await projectDAL.findById(projectId);
   const webhooksTriggered = await Promise.allSettled(
     toBeTriggeredHooks.map((hook) =>
@@ -195,5 +195,5 @@ export const fnTriggerWebhook = async ({
       );
     }
   });
-  logger.info("Secret webhook job ended", { environment, secretPath, projectId });
+  logger.info({ environment, secretPath, projectId }, "Secret webhook job ended");
 };

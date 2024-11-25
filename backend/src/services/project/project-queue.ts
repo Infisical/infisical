@@ -285,11 +285,14 @@ export const projectQueueFactory = ({
 
           if (!orgMembership) {
             // This can happen. Since we don't remove project memberships and project keys when a user is removed from an org, this is a valid case.
-            logger.info("User is not in organization", {
-              userId: key.receiverId,
-              orgId: project.orgId,
-              projectId: project.id
-            });
+            logger.info(
+              {
+                userId: key.receiverId,
+                orgId: project.orgId,
+                projectId: project.id
+              },
+              "User is not in organization"
+            );
             // eslint-disable-next-line no-continue
             continue;
           }
@@ -551,10 +554,10 @@ export const projectQueueFactory = ({
         .catch(() => [null]);
 
       if (!project) {
-        logger.error("Failed to upgrade project, because no project was found", data);
+        logger.error(data, "Failed to upgrade project, because no project was found");
       } else {
         await projectDAL.setProjectUpgradeStatus(data.projectId, ProjectUpgradeStatus.Failed);
-        logger.error("Failed to upgrade project", err, {
+        logger.error(err, "Failed to upgrade project", {
           extra: {
             project,
             jobData: data

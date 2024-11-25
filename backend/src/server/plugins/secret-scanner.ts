@@ -19,7 +19,7 @@ export const registerSecretScannerGhApp = async (server: FastifyZodProvider) => 
 
     app.on("installation", async (context) => {
       const { payload } = context;
-      logger.info("Installed secret scanner to:", { repositories: payload.repositories });
+      logger.info({ repositories: payload.repositories }, "Installed secret scanner to");
     });
 
     app.on("push", async (context) => {

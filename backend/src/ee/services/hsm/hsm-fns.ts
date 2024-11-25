@@ -27,7 +27,7 @@ export const initializeHsmModule = () => {
 
       logger.info("PKCS#11 module initialized");
     } catch (err) {
-      logger.error("Failed to initialize PKCS#11 module:", err);
+      logger.error(err, "Failed to initialize PKCS#11 module");
       throw err;
     }
   };
@@ -39,7 +39,7 @@ export const initializeHsmModule = () => {
         isInitialized = false;
         logger.info("PKCS#11 module finalized");
       } catch (err) {
-        logger.error("Failed to finalize PKCS#11 module:", err);
+        logger.error(err, "Failed to finalize PKCS#11 module");
         throw err;
       }
     }
