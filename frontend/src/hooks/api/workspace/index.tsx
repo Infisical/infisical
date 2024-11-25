@@ -33,9 +33,9 @@ export {
   useListWorkspacePkiAlerts,
   useListWorkspacePkiCollections,
   useNameWorkspaceSecrets,
-  useUpdateProject as useSetWorkspaceOverview,
   useToggleAutoCapitalization,
   useUpdateIdentityWorkspaceRole,
+  useUpdateProject,
   useUpdateUserWorkspaceRole,
   useUpdateWsEnvironment,
   useUpgradeProject

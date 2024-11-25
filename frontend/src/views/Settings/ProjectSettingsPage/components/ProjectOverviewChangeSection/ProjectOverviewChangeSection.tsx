@@ -7,7 +7,7 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, FormControl, Input, TextArea } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
-import { useSetWorkspaceOverview } from "@app/hooks/api";
+import { useUpdateProject } from "@app/hooks/api";
 
 import { CopyButton } from "./CopyButton";
 
@@ -24,7 +24,7 @@ type FormData = z.infer<typeof formSchema>;
 
 export const ProjectOverviewChangeSection = () => {
   const { currentWorkspace } = useWorkspace();
-  const { mutateAsync, isLoading } = useSetWorkspaceOverview();
+  const { mutateAsync, isLoading } = useUpdateProject();
 
   const { handleSubmit, control, reset } = useForm<FormData>({ resolver: zodResolver(formSchema) });
 
