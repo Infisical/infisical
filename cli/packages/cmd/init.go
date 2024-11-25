@@ -41,7 +41,7 @@ var initCmd = &cobra.Command{
 			}
 		}
 
-		userCreds, err := util.GetCurrentLoggedInUserDetails()
+		userCreds, err := util.GetCurrentLoggedInUserDetails(true)
 		if err != nil {
 			util.HandleError(err, "Unable to get your login details")
 		}

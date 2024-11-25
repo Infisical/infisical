@@ -41,7 +41,7 @@ var tokensCreateCmd = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		// get plain text workspace key
-		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
+		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
 
 		if err != nil {
 			util.HandleError(err, "Unable to retrieve your logged in your details. Please login in then try again")
