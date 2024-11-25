@@ -22,7 +22,11 @@ import {
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { policyDetails } from "@app/helpers/policies";
-import { useCreateSecretApprovalPolicy, useListWorkspaceGroups, useUpdateSecretApprovalPolicy } from "@app/hooks/api";
+import {
+  useCreateSecretApprovalPolicy,
+  useListWorkspaceGroups,
+  useUpdateSecretApprovalPolicy
+} from "@app/hooks/api";
 import {
   useCreateAccessApprovalPolicy,
   useUpdateAccessApprovalPolicy
@@ -46,7 +50,11 @@ const formSchema = z
     name: z.string().optional(),
     secretPath: z.string().optional(),
     approvals: z.number().min(1),
-    approvers: z.object({type: z.nativeEnum(ApproverType), id: z.string()}).array().min(1).default([]),
+    approvers: z
+      .object({ type: z.nativeEnum(ApproverType), id: z.string() })
+      .array()
+      .min(1)
+      .default([]),
     policyType: z.nativeEnum(PolicyType),
     enforcementLevel: z.nativeEnum(EnforcementLevel)
   })
@@ -99,6 +107,8 @@ export const AccessPolicyForm = ({
   const { mutateAsync: updateSecretApprovalPolicy } = useUpdateSecretApprovalPolicy();
 
   const policyName = policyDetails[watch("policyType")]?.name || "Policy";
+
+  const approversRequired = watch("approvals") || 1;
 
   const handleCreatePolicy = async (data: TFormSchema) => {
     if (!projectId) return;
@@ -167,12 +177,6 @@ export const AccessPolicyForm = ({
     } else {
       await handleCreatePolicy(data);
     }
-  };
-
-  const formatEnforcementLevel = (level: EnforcementLevel) => {
-    if (level === EnforcementLevel.Hard) return "Hard";
-    if (level === EnforcementLevel.Soft) return "Soft";
-    return level;
   };
 
   return (
@@ -257,14 +261,15 @@ export const AccessPolicyForm = ({
               name="secretPath"
               render={({ field, fieldState: { error } }) => (
                 <FormControl
-                label="Secret Path"
-                isError={Boolean(error)}
-                errorText={error?.message}
+                  tooltipText="Secret paths support glob patterns. For example, '/**' will match all paths."
+                  label="Secret Path"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
                 >
                   <Input {...field} value={field.value || ""} />
                 </FormControl>
               )}
-              />
+            />
             <Controller
               control={control}
               name="approvals"
@@ -295,9 +300,11 @@ export const AccessPolicyForm = ({
                   errorText={error?.message}
                   tooltipText="Determines the level of enforcement for required approvers of a request"
                   helperText={
-                    field.value === EnforcementLevel.Hard
-                      ? "All approvers must approve the request."
-                      : "All approvers must approve the request; however, the requester can bypass approval requirements in emergencies."
+                    <div className="ml-1">
+                      {field.value === EnforcementLevel.Hard
+                        ? `Hard enforcement requires at least ${approversRequired} approver(s) to approve the request.`
+                        : `At least ${approversRequired} approver(s) must approve the request; however, the requester can bypass approval requirements in emergencies.`}
+                    </div>
                   }
                 >
                   <Select
@@ -307,12 +314,8 @@ export const AccessPolicyForm = ({
                   >
                     {Object.values(EnforcementLevel).map((level) => {
                       return (
-                        <SelectItem
-                          value={level}
-                          key={`enforcement-level-${level}`}
-                          className="text-xs"
-                        >
-                          {formatEnforcementLevel(level)}
+                        <SelectItem value={level} key={`enforcement-level-${level}`}>
+                          <span className="capitalize">{level}</span>
                         </SelectItem>
                       );
                     })}
@@ -320,7 +323,12 @@ export const AccessPolicyForm = ({
                 </FormControl>
               )}
             />
-            <p>Approvers</p>
+            <div className="mb-2">
+              <p>Approvers</p>
+              <p className="font-inter text-xs text-mineshaft-300 opacity-90">
+                Select members or groups that are allowed to approve requests from this policy.
+              </p>
+            </div>
             <Controller
               control={control}
               name="approvers"
@@ -334,7 +342,11 @@ export const AccessPolicyForm = ({
                     <DropdownMenuTrigger asChild>
                       <Input
                         isReadOnly
-                        value={value?.filter((e) => e.type=== ApproverType.User).length ? `${value.filter((e) => e.type=== ApproverType.User).length} selected` : "None"}
+                        value={
+                          value?.filter((e) => e.type === ApproverType.User).length
+                            ? `${value.filter((e) => e.type === ApproverType.User).length} selected`
+                            : "None"
+                        }
                         className="text-left"
                       />
                     </DropdownMenuTrigger>
@@ -347,15 +359,22 @@ export const AccessPolicyForm = ({
                       </DropdownMenuLabel>
                       {members.map(({ user }) => {
                         const { id: userId } = user;
-                        const isChecked = value?.filter((el: {id: string, type: ApproverType}) => el.id === userId && el.type === ApproverType.User).length > 0;
+                        const isChecked =
+                          value?.filter(
+                            (el: { id: string; type: ApproverType }) =>
+                              el.id === userId && el.type === ApproverType.User
+                          ).length > 0;
                         return (
                           <DropdownMenuItem
                             onClick={(evt) => {
                               evt.preventDefault();
                               onChange(
                                 isChecked
-                                  ? value?.filter((el: {id: string, type: ApproverType}) => el.id !== userId && el.type !== ApproverType.User)
-                                  : [...(value || []), {id:userId, type: ApproverType.User}]
+                                  ? value?.filter(
+                                      (el: { id: string; type: ApproverType }) =>
+                                        el.id !== userId && el.type !== ApproverType.User
+                                    )
+                                  : [...(value || []), { id: userId, type: ApproverType.User }]
                               );
                             }}
                             key={`create-policy-members-${userId}`}
@@ -384,7 +403,13 @@ export const AccessPolicyForm = ({
                     <DropdownMenuTrigger asChild>
                       <Input
                         isReadOnly
-                        value={value?.filter((e) => e.type=== ApproverType.Group).length ? `${value?.filter((e) => e.type=== ApproverType.Group).length} selected` : "None"}
+                        value={
+                          value?.filter((e) => e.type === ApproverType.Group).length
+                            ? `${
+                                value?.filter((e) => e.type === ApproverType.Group).length
+                              } selected`
+                            : "None"
+                        }
                         className="text-left"
                       />
                     </DropdownMenuTrigger>
@@ -395,28 +420,36 @@ export const AccessPolicyForm = ({
                       <DropdownMenuLabel>
                         Select groups that are allowed to approve requests
                       </DropdownMenuLabel>
-                      {groups && groups.map(({ group }) => {
-                        const { id } = group;
-                        const isChecked = value?.filter((el: {id: string, type: ApproverType}) => el.id === id && el.type === ApproverType.Group).length > 0;
+                      {groups &&
+                        groups.map(({ group }) => {
+                          const { id } = group;
+                          const isChecked =
+                            value?.filter(
+                              (el: { id: string; type: ApproverType }) =>
+                                el.id === id && el.type === ApproverType.Group
+                            ).length > 0;
 
-                        return (
-                          <DropdownMenuItem
-                            onClick={(evt) => {
-                              evt.preventDefault();
-                              onChange(
-                                isChecked
-                                  ? value?.filter((el: {id: string, type: ApproverType}) => el.id !== id && el.type !== ApproverType.Group)
-                                  : [...(value || []), {id, type: ApproverType.Group}]
-                              );
-                            }}
-                            key={`create-policy-members-${id}`}
-                            iconPos="right"
-                            icon={isChecked && <FontAwesomeIcon icon={faCheckCircle} />}
-                          >
-                            {group.name}
-                          </DropdownMenuItem>
-                        );
-                      })}
+                          return (
+                            <DropdownMenuItem
+                              onClick={(evt) => {
+                                evt.preventDefault();
+                                onChange(
+                                  isChecked
+                                    ? value?.filter(
+                                        (el: { id: string; type: ApproverType }) =>
+                                          el.id !== id && el.type !== ApproverType.Group
+                                      )
+                                    : [...(value || []), { id, type: ApproverType.Group }]
+                                );
+                              }}
+                              key={`create-policy-members-${id}`}
+                              iconPos="right"
+                              icon={isChecked && <FontAwesomeIcon icon={faCheckCircle} />}
+                            >
+                              {group.name}
+                            </DropdownMenuItem>
+                          );
+                        })}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </FormControl>
