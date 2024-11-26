@@ -10,7 +10,7 @@ export const GITLAB_URL = "https://gitlab.com";
 export const IS_PACKAGED = (process as any)?.pkg !== undefined;
 
 const zodStrBool = z
-  .enum(["true", "false"])
+  .string()
   .optional()
   .transform((val) => val === "true");
 
