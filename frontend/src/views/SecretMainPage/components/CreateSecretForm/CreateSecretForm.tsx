@@ -6,11 +6,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FilterableSelect, FormControl, Input } from "@app/components/v2";
+import { Button, FormControl, Input } from "@app/components/v2";
+import { CreatableSelect } from "@app/components/v2/CreatableSelect";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { getKeyValue } from "@app/helpers/parseEnvVar";
-import { useCreateSecretV3, useGetWsTags } from "@app/hooks/api";
+import { useCreateSecretV3, useCreateWsTag, useGetWsTags } from "@app/hooks/api";
 import { SecretType } from "@app/hooks/api/types";
 
 import { PopUpNames, usePopUpAction } from "../../SecretMainPage.store";
@@ -50,11 +51,31 @@ export const CreateSecretForm = ({
   const { closePopUp } = usePopUpAction();
 
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
+  const createWsTag = useCreateWsTag();
+
   const { permission } = useProjectPermission();
   const canReadTags = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
   const { data: projectTags, isLoading: isTagsLoading } = useGetWsTags(
     canReadTags ? workspaceId : ""
   );
+
+  const slugSchema = z.string().trim().toLowerCase().min(1);
+  const createNewTag = async (slug: string) => {
+    // TODO: Replace with slugSchema generic
+    try {
+      const parsedSlug = slugSchema.parse(slug);
+      await createWsTag.mutateAsync({
+        workspaceID: workspaceId,
+        tagSlug: parsedSlug,
+        tagColor: ""
+      });
+    } catch {
+      createNotification({
+        type: "error",
+        text: "Failed to create new tag"
+      });
+    }
+  };
 
   const handleFormSubmit = async ({ key, value, tags }: TFormSchema) => {
     try {
@@ -148,16 +169,18 @@ export const CreateSecretForm = ({
               )
             }
           >
-            <FilterableSelect
+            <CreatableSelect
+              isMulti
               className="w-full"
               placeholder="Select tags to assign to secret..."
-              isMulti
+              isValidNewOption={(v) => slugSchema.safeParse(v).success}
               name="tagIds"
               isDisabled={!canReadTags}
               isLoading={isTagsLoading && canReadTags}
               options={projectTags?.map((el) => ({ label: el.slug, value: el.id }))}
               value={field.value}
               onChange={field.onChange}
+              onCreateOption={createNewTag}
             />
           </FormControl>
         )}
