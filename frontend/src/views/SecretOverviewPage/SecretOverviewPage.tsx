@@ -186,7 +186,7 @@ export const SecretOverviewPage = () => {
     useGetImportedSecretsAllEnvs({
       projectId: workspaceId,
       path: secretPath,
-      environments: userAvailableEnvs.map(({ slug }) => slug)
+      environments: (userAvailableEnvs || []).map(({ slug }) => slug)
     });
 
   const { isLoading: isOverviewLoading, data: overview } = useGetProjectSecretsOverview(
@@ -618,7 +618,7 @@ export const SecretOverviewPage = () => {
     }
   }, [router.query.search]);
 
-  if (isWorkspaceLoading || (isProjectV3 && isOverviewLoading)) {
+  if (isWorkspaceLoading || (isProjectV3 && visibleEnvs.length > 0 && isOverviewLoading)) {
     return (
       <div className="container mx-auto flex h-screen w-full items-center justify-center px-8 text-mineshaft-50 dark:[color-scheme:dark]">
         <img
