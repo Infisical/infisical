@@ -1,5 +1,4 @@
 import { packRules } from "@casl/ability/extra";
-import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { ProjectMembershipRole, ProjectMembershipsSchema, ProjectRolesSchema } from "@app/db/schemas";
@@ -33,7 +32,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         projectSlug: z.string().trim().describe(PROJECT_ROLE.CREATE.projectSlug)
       }),
       body: z.object({
-        slug: slugSchema()
+        slug: slugSchema({ max: 64 })
           .refine(
             (val) => !Object.values(ProjectMembershipRole).includes(val as ProjectMembershipRole),
             "Please choose a different slug, the slug you have entered is reserved"
@@ -88,22 +87,13 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         roleId: z.string().trim().describe(PROJECT_ROLE.UPDATE.roleId)
       }),
       body: z.object({
-        // TODO: Switch to slugSchema after verifying correct methods with Akhil - Omar 11/24
-        slug: z
-          .string()
-          .toLowerCase()
-          .trim()
-          .optional()
-          .describe(PROJECT_ROLE.UPDATE.slug)
+        slug: slugSchema()
           .refine(
-            (val) =>
-              typeof val === "undefined" ||
-              !Object.values(ProjectMembershipRole).includes(val as ProjectMembershipRole),
+            (val) => !Object.values(ProjectMembershipRole).includes(val as ProjectMembershipRole),
             "Please choose a different slug, the slug you have entered is reserved"
           )
-          .refine((val) => typeof val === "undefined" || slugify(val) === val, {
-            message: "Slug must be a valid"
-          }),
+          .describe(PROJECT_ROLE.UPDATE.slug)
+          .optional(),
         name: z.string().trim().optional().describe(PROJECT_ROLE.UPDATE.name),
         description: z.string().trim().optional().describe(PROJECT_ROLE.UPDATE.description),
         permissions: ProjectPermissionV1Schema.array().describe(PROJECT_ROLE.UPDATE.permissions).optional()

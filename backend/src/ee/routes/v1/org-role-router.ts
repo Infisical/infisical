@@ -18,7 +18,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
         organizationId: z.string().trim()
       }),
       body: z.object({
-        slug: slugSchema({ min: 1 }).refine(
+        slug: slugSchema({ min: 1, max: 64 }).refine(
           (val) => !Object.values(OrgMembershipRole).includes(val as OrgMembershipRole),
           "Please choose a different slug, the slug you have entered is reserved"
         ),
@@ -88,12 +88,12 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
       }),
       body: z.object({
         // TODO: Switch to slugSchema after verifying correct methods with Akhil - Omar 11/24
-        slug: slugSchema({ min: 1 })
-          .optional()
+        slug: slugSchema({ min: 1, max: 64 })
           .refine(
-            (val) => typeof val !== "undefined" && !Object.keys(OrgMembershipRole).includes(val),
+            (val) => !Object.keys(OrgMembershipRole).includes(val),
             "Please choose a different slug, the slug you have entered is reserved."
-          ),
+          )
+          .optional(),
         name: z.string().trim().optional(),
         description: z.string().trim().optional(),
         permissions: z.any().array().optional()

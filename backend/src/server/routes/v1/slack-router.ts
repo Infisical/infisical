@@ -35,7 +35,7 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
         }
       ],
       querystring: z.object({
-        slug: slugSchema(),
+        slug: slugSchema({ max: 64 }),
         description: z.string().optional()
       }),
       response: {
@@ -283,7 +283,7 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
         id: z.string()
       }),
       body: z.object({
-        slug: slugSchema().optional(),
+        slug: slugSchema({ max: 64 }).optional(),
         description: z.string().optional()
       }),
       response: {

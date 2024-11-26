@@ -156,7 +156,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectDescription: z.string().trim().optional().describe(PROJECTS.CREATE.projectDescription),
         slug: slugSchema({ min: 5, max: 36 }).optional().describe(PROJECTS.CREATE.slug),
         kmsKeyId: z.string().optional(),
-        template: slugSchema({ field: "Template Name" })
+        template: slugSchema({ field: "Template Name", max: 64 })
           .optional()
           .default(InfisicalProjectTemplate.Default)
           .describe(PROJECTS.CREATE.template)

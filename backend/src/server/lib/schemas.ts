@@ -10,6 +10,7 @@ interface SlugSchemaInputs {
 export const slugSchema = ({ min = 1, max = 32, field = "Slug" }: SlugSchemaInputs = {}) => {
   return z
     .string()
+    .toLowerCase()
     .trim()
     .min(min, {
       message: `${field} field must be at least ${min} character${min === 1 ? "" : "s"}`

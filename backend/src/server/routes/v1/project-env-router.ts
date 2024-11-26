@@ -124,7 +124,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         name: z.string().trim().describe(ENVIRONMENTS.CREATE.name),
         position: z.number().min(1).optional().describe(ENVIRONMENTS.CREATE.position),
-        slug: slugSchema().describe(ENVIRONMENTS.CREATE.slug)
+        slug: slugSchema({ max: 64 }).describe(ENVIRONMENTS.CREATE.slug)
       }),
       response: {
         200: z.object({
@@ -182,7 +182,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         id: z.string().trim().describe(ENVIRONMENTS.UPDATE.id)
       }),
       body: z.object({
-        slug: slugSchema().describe(ENVIRONMENTS.UPDATE.slug),
+        slug: slugSchema({ max: 64 }).optional().describe(ENVIRONMENTS.UPDATE.slug),
         name: z.string().trim().optional().describe(ENVIRONMENTS.UPDATE.name),
         position: z.number().optional().describe(ENVIRONMENTS.UPDATE.position)
       }),

@@ -29,7 +29,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         projectId: z.string().trim().describe(PROJECT_ROLE.CREATE.projectId)
       }),
       body: z.object({
-        slug: slugSchema({ min: 1 })
+        slug: slugSchema({ min: 1, max: 64 })
           .refine(
             (val) => !Object.values(ProjectMembershipRole).includes(val as ProjectMembershipRole),
             "Please choose a different slug, the slug you have entered is reserved"
@@ -83,11 +83,9 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         roleId: z.string().trim().describe(PROJECT_ROLE.UPDATE.roleId)
       }),
       body: z.object({
-        slug: slugSchema({ min: 1 })
+        slug: slugSchema({ min: 1, max: 64 })
           .refine(
-            (val) =>
-              typeof val === "undefined" ||
-              !Object.values(ProjectMembershipRole).includes(val as ProjectMembershipRole),
+            (val) => !Object.values(ProjectMembershipRole).includes(val as ProjectMembershipRole),
             "Please choose a different slug, the slug you have entered is reserved"
           )
           .optional()

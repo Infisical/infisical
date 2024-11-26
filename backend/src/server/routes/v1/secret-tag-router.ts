@@ -111,7 +111,7 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
         projectId: z.string().trim().describe(SECRET_TAGS.CREATE.projectId)
       }),
       body: z.object({
-        slug: slugSchema().describe(SECRET_TAGS.CREATE.slug),
+        slug: slugSchema({ max: 64 }).describe(SECRET_TAGS.CREATE.slug),
         color: z.string().trim().describe(SECRET_TAGS.CREATE.color)
       }),
       response: {
@@ -146,7 +146,7 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
         tagId: z.string().trim().describe(SECRET_TAGS.UPDATE.tagId)
       }),
       body: z.object({
-        slug: slugSchema().describe(SECRET_TAGS.UPDATE.slug),
+        slug: slugSchema({ max: 64 }).describe(SECRET_TAGS.UPDATE.slug),
         color: z.string().trim().describe(SECRET_TAGS.UPDATE.color)
       }),
       response: {

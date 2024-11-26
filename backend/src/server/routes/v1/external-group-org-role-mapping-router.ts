@@ -48,7 +48,7 @@ export const registerExternalGroupOrgRoleMappingRouter = async (server: FastifyZ
         mappings: z
           .object({
             groupName: z.string().trim().min(1),
-            roleSlug: slugSchema()
+            roleSlug: slugSchema({ max: 64 })
           })
           .array()
       }),
