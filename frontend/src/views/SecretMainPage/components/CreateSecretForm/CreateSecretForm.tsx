@@ -59,9 +59,9 @@ export const CreateSecretForm = ({
     canReadTags ? workspaceId : ""
   );
 
+  const slugSchema = z.string().trim().toLowerCase().min(1);
   const createNewTag = async (slug: string) => {
     // TODO: Replace with slugSchema generic
-    const slugSchema = z.string().trim().toLowerCase().min(1);
     try {
       const parsedSlug = slugSchema.parse(slug);
       await createWsTag.mutateAsync({
@@ -70,17 +70,10 @@ export const CreateSecretForm = ({
         tagColor: ""
       });
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        createNotification({
-          type: "error",
-          text: `Failed to create new tag: ${error.message}`
-        });
-      } else {
-        createNotification({
-          type: "error",
-          text: "Failed to create new tag"
-        });
-      }
+      createNotification({
+        type: "error",
+        text: "Failed to create new tag"
+      });
     }
   };
 
@@ -180,6 +173,7 @@ export const CreateSecretForm = ({
               isMulti
               className="w-full"
               placeholder="Select tags to assign to secret..."
+              isValidNewOption={(v) => slugSchema.safeParse(v).success}
               name="tagIds"
               isDisabled={!canReadTags}
               isLoading={isTagsLoading && canReadTags}

@@ -7,15 +7,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import {
-  Button,
-  Checkbox,
-  FilterableSelect,
-  FormControl,
-  FormLabel,
-  Input,
-  Tooltip
-} from "@app/components/v2";
+import { Button, Checkbox, FormControl, FormLabel, Input, Tooltip } from "@app/components/v2";
+import { CreatableSelect } from "@app/components/v2/CreatableSelect";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
   ProjectPermissionActions,
@@ -27,6 +20,7 @@ import { getKeyValue } from "@app/helpers/parseEnvVar";
 import {
   useCreateFolder,
   useCreateSecretV3,
+  useCreateWsTag,
   useGetWsTags,
   useUpdateSecretV3
 } from "@app/hooks/api";
@@ -199,6 +193,25 @@ export const CreateSecretForm = ({ secretPath = "/", getSecretByKey, onClose }: 
     setValue("value", value);
   };
 
+  const createWsTag = useCreateWsTag();
+  const slugSchema = z.string().trim().toLowerCase().min(1);
+  const createNewTag = async (slug: string) => {
+    // TODO: Replace with slugSchema generic
+    try {
+      const parsedSlug = slugSchema.parse(slug);
+      await createWsTag.mutateAsync({
+        workspaceID: workspaceId,
+        tagSlug: parsedSlug,
+        tagColor: ""
+      });
+    } catch (error) {
+      createNotification({
+        type: "error",
+        text: "Failed to create new tag"
+      });
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} noValidate>
       <FormControl
@@ -249,16 +262,18 @@ export const CreateSecretForm = ({ secretPath = "/", getSecretByKey, onClose }: 
               )
             }
           >
-            <FilterableSelect
-              className="w-full"
-              placeholder="Select tags to assign to secrets..."
+            <CreatableSelect
               isMulti
+              className="w-full"
+              placeholder="Select tags to assign to secret..."
+              isValidNewOption={(v) => slugSchema.safeParse(v).success}
               name="tagIds"
               isDisabled={!canReadTags}
               isLoading={isTagsLoading && canReadTags}
               options={projectTags?.map((el) => ({ label: el.slug, value: el.id }))}
               value={field.value}
               onChange={field.onChange}
+              onCreateOption={createNewTag}
             />
           </FormControl>
         )}
