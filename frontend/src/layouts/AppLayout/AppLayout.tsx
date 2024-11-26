@@ -457,8 +457,11 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         value={currentWorkspace?.id}
                         className="w-full bg-mineshaft-600 py-2.5 font-medium [&>*:first-child]:truncate"
                         onValueChange={(value) => {
-                          router.push(`/project/${value}/secrets/overview`);
                           localStorage.setItem("projectData.id", value);
+                          // this is not using react query because react query in overview is throwing error when envs are not exact same count
+                          // to reproduce change this back to router.push and switch between two projects with different env count
+                          // look into this on dashboard revamp
+                          window.location.assign(`/project/${value}/secrets/overview`);
                         }}
                         position="popper"
                         dropdownContainerClassName="text-bunker-200 bg-mineshaft-800 border border-mineshaft-600 z-50 max-h-96 border-gray-700"
