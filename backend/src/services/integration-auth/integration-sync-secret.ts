@@ -519,16 +519,11 @@ const syncSecretsAzureKeyVault = async ({
           lastSlashIndex = getAzureKeyVaultSecret.id.lastIndexOf("/");
         }
 
-        let azureKeyVaultSecret;
-        try {
-          azureKeyVaultSecret = await request.get(`${getAzureKeyVaultSecret.id}?api-version=7.3`, {
-            headers: {
-              Authorization: `Bearer ${accessToken}`
-            }
-          });
-        } catch (err) {
-          throw new Error(`Failed to fetch Azure Key Vault secret: ${(err as Error).message}`);
-        }
+        const azureKeyVaultSecret = await request.get(`${getAzureKeyVaultSecret.id}?api-version=7.3`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        });
 
         return {
           ...azureKeyVaultSecret.data,
