@@ -507,7 +507,9 @@ const syncSecretsAzureKeyVault = async ({
     return result;
   };
 
-  const getAzureKeyVaultSecrets = await paginateAzureKeyVaultSecrets(`${integration.app}/secrets?api-version=7.3`);
+  const getAzureKeyVaultSecrets = (
+    await paginateAzureKeyVaultSecrets(`${integration.app}/secrets?api-version=7.3`)
+  ).filter((secret) => secret.attributes.enabled);
 
   let lastSlashIndex: number;
   const res = (
@@ -516,7 +518,6 @@ const syncSecretsAzureKeyVault = async ({
         if (!lastSlashIndex) {
           lastSlashIndex = getAzureKeyVaultSecret.id.lastIndexOf("/");
         }
-        if (!getAzureKeyVaultSecret.attributes.enabled) return null;
 
         let azureKeyVaultSecret;
         try {
@@ -535,15 +536,13 @@ const syncSecretsAzureKeyVault = async ({
         };
       })
     )
-  )
-    .filter((secret) => secret !== null)
-    .reduce(
-      (obj, secret) => ({
-        ...obj,
-        [secret.key]: secret
-      }),
-      {}
-    );
+  ).reduce(
+    (obj, secret) => ({
+      ...obj,
+      [secret.key]: secret
+    }),
+    {}
+  );
 
   const setSecrets: {
     key: string;
