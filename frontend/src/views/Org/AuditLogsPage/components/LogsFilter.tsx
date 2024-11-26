@@ -12,6 +12,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  FilterableSelect,
   FormControl,
   Select,
   SelectItem
@@ -64,7 +65,7 @@ export const LogsFilter = ({
 
   useEffect(() => {
     if (workspacesInOrg.length) {
-      setValue("projectId", workspacesInOrg[0].id);
+      setValue("project", workspacesInOrg[0]);
     }
   }, [workspaces]);
 
@@ -111,11 +112,33 @@ export const LogsFilter = ({
   return (
     <div
       className={twMerge(
-        "sticky top-20 z-10 flex items-center justify-between bg-bunker-800",
+        "sticky top-20 z-10 flex flex-wrap items-center justify-between bg-bunker-800",
         className
       )}
     >
-      <div className="flex items-center space-x-2">
+      {isOrgAuditLogs && workspacesInOrg.length > 0 && (
+        <Controller
+          control={control}
+          name="project"
+          render={({ field: { onChange, value }, fieldState: { error } }) => (
+            <FormControl
+              label="Project"
+              errorText={error?.message}
+              isError={Boolean(error)}
+              className="mr-12 w-64"
+            >
+              <FilterableSelect
+                value={value}
+                onChange={onChange}
+                options={workspacesInOrg.map(({ name, id }) => ({ name, id }))}
+                getOptionValue={(option) => option.id}
+                getOptionLabel={(option) => option.name}
+              />
+            </FormControl>
+          )}
+        />
+      )}
+      <div className="mt-1 flex items-center space-x-2">
         <Controller
           control={control}
           name="eventType"
@@ -123,7 +146,7 @@ export const LogsFilter = ({
             <FormControl label="Events">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <div className="inline-flex w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-500 bg-mineshaft-700 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
+                  <div className="inline-flex w-full cursor-pointer items-center justify-between whitespace-nowrap rounded-md border border-mineshaft-500 bg-mineshaft-700 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
                     {selectedEventTypes?.length === 1
                       ? eventTypes.find((eventType) => eventType.value === selectedEventTypes[0])
                           ?.label
@@ -235,37 +258,6 @@ export const LogsFilter = ({
             </FormControl>
           )}
         />
-
-        {isOrgAuditLogs && workspacesInOrg.length > 0 && (
-          <Controller
-            control={control}
-            name="projectId"
-            render={({ field: { onChange, value, ...field }, fieldState: { error } }) => (
-              <FormControl
-                label="Project"
-                errorText={error?.message}
-                isError={Boolean(error)}
-                className="w-40"
-              >
-                <Select
-                  value={value}
-                  {...field}
-                  onValueChange={(e) => onChange(e)}
-                  className={twMerge(
-                    "w-full border border-mineshaft-500 bg-mineshaft-700 ",
-                    value === undefined && "text-mineshaft-400"
-                  )}
-                >
-                  {workspacesInOrg.map((project) => (
-                    <SelectItem value={String(project.id || "")} key={project.id}>
-                      {project.name}
-                    </SelectItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-          />
-        )}
         <Controller
           name="startDate"
           control={control}
@@ -275,6 +267,7 @@ export const LogsFilter = ({
                 <DatePicker
                   value={field.value || undefined}
                   onChange={onChange}
+                  dateFormat="P"
                   popUpProps={{
                     open: isStartDatePickerOpen,
                     onOpenChange: setIsStartDatePickerOpen
@@ -294,6 +287,7 @@ export const LogsFilter = ({
                 <DatePicker
                   value={field.value || undefined}
                   onChange={onChange}
+                  dateFormat="P"
                   popUpProps={{
                     open: isEndDatePickerOpen,
                     onOpenChange: setIsEndDatePickerOpen
@@ -304,27 +298,27 @@ export const LogsFilter = ({
             );
           }}
         />
+        <Button
+          isLoading={false}
+          colorSchema="primary"
+          variant="outline_bg"
+          className="mt-[0.45rem]"
+          type="submit"
+          leftIcon={<FontAwesomeIcon icon={faFilterCircleXmark} />}
+          onClick={() =>
+            reset({
+              eventType: presets?.eventType || [],
+              actor: presets?.actorId,
+              userAgentType: undefined,
+              startDate: undefined,
+              endDate: undefined,
+              project: null
+            })
+          }
+        >
+          Clear filters
+        </Button>
       </div>
-      <Button
-        isLoading={false}
-        colorSchema="primary"
-        variant="outline_bg"
-        className="mt-1.5"
-        type="submit"
-        leftIcon={<FontAwesomeIcon icon={faFilterCircleXmark} />}
-        onClick={() =>
-          reset({
-            eventType: presets?.eventType || [],
-            actor: presets?.actorId,
-            userAgentType: undefined,
-            startDate: undefined,
-            endDate: undefined,
-            projectId: undefined
-          })
-        }
-      >
-        Clear filters
-      </Button>
     </div>
   );
 };

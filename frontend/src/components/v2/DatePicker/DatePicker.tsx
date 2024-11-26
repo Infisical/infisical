@@ -14,6 +14,7 @@ export type DatePickerProps = Omit<DayPickerProps, "selected"> & {
   onChange: (date?: Date) => void;
   popUpProps: PopoverProps;
   popUpContentProps: PopoverContentProps;
+  dateFormat?: string;
 };
 
 // Doc: https://react-day-picker.js.org/
@@ -22,6 +23,7 @@ export const DatePicker = ({
   onChange,
   popUpProps,
   popUpContentProps,
+  dateFormat = "PPP",
   ...props
 }: DatePickerProps) => {
   const [timeValue, setTimeValue] = useState<string>(value ? format(value, "HH:mm") : "00:00");
@@ -53,7 +55,7 @@ export const DatePicker = ({
     <Popover {...popUpProps}>
       <PopoverTrigger asChild>
         <Button variant="outline_bg" leftIcon={<FontAwesomeIcon icon={faCalendar} />}>
-          {value ? format(value, "PPP") : "Pick a date and time"}
+          {value ? format(value, dateFormat) : "Pick a date and time"}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-fit p-2" {...popUpContentProps}>
