@@ -1,5 +1,7 @@
 import "fastify";
 
+import { Redis } from "ioredis";
+
 import { TUsers } from "@app/db/schemas";
 import { TAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-service";
 import { TAccessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
@@ -87,6 +89,10 @@ import { TWebhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { TWorkflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
 
 declare module "fastify" {
+  interface Session {
+    callbackPort: string;
+  }
+
   interface FastifyRequest {
     realIp: string;
     // used for mfa session authentication
@@ -115,6 +121,7 @@ declare module "fastify" {
   }
 
   interface FastifyInstance {
+    redis: Redis;
     services: {
       login: TAuthLoginFactory;
       password: TAuthPasswordFactory;
