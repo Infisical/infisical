@@ -232,7 +232,7 @@ export const AddOrgMemberModal = ({
               )}
             />
 
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-start justify-between gap-2">
               <div className="w-full">
                 <Controller
                   control={control}
@@ -258,7 +258,7 @@ export const AddOrgMemberModal = ({
                   )}
                 />
               </div>
-              <div className="flex min-w-fit justify-end">
+              <div className="mt-[0.15rem] flex min-w-fit justify-end">
                 <Controller
                   control={control}
                   name="projectRoleSlug"
