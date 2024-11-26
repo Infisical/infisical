@@ -130,6 +130,7 @@ export const LogsFilter = ({
               <FilterableSelect
                 value={value}
                 onChange={onChange}
+                placeholder="Select a project..."
                 options={workspacesInOrg.map(({ name, id }) => ({ name, id }))}
                 getOptionValue={(option) => option.id}
                 getOptionLabel={(option) => option.name}
