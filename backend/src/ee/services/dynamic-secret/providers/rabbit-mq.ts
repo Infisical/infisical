@@ -84,7 +84,7 @@ export const RabbitMqProvider = (): TDynamicProviderFns => {
     return providerInputs;
   };
 
-  const getClient = async (providerInputs: z.infer<typeof DynamicSecretRabbitMqSchema>) => {
+  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretRabbitMqSchema>) => {
     const axiosInstance = axios.create({
       baseURL: `${removeTrailingSlash(providerInputs.host)}:${providerInputs.port}/api`,
       auth: {
@@ -105,7 +105,7 @@ export const RabbitMqProvider = (): TDynamicProviderFns => {
 
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const connection = await getClient(providerInputs);
+    const connection = await $getClient(providerInputs);
 
     const infoResponse = await connection.get("/whoami").then(() => true);
 
@@ -114,7 +114,7 @@ export const RabbitMqProvider = (): TDynamicProviderFns => {
 
   const create = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const connection = await getClient(providerInputs);
+    const connection = await $getClient(providerInputs);
 
     const username = generateUsername();
     const password = generatePassword();
@@ -134,7 +134,7 @@ export const RabbitMqProvider = (): TDynamicProviderFns => {
 
   const revoke = async (inputs: unknown, entityId: string) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const connection = await getClient(providerInputs);
+    const connection = await $getClient(providerInputs);
 
     await deleteRabbitMqUser({ axiosInstance: connection, usernameToDelete: entityId });
 
@@ -142,7 +142,7 @@ export const RabbitMqProvider = (): TDynamicProviderFns => {
   };
 
   const renew = async (inputs: unknown, entityId: string) => {
-    // Do nothing
+    // No renewal necessary
     return { entityId };
   };
 

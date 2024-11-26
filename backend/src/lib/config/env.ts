@@ -1,7 +1,7 @@
-import { Logger } from "pino";
 import { z } from "zod";
 
 import { removeTrailingSlash } from "../fn";
+import { CustomLogger } from "../logger/logger";
 import { zpStr } from "../zod";
 
 export const GITLAB_URL = "https://gitlab.com";
@@ -212,7 +212,7 @@ let envCfg: Readonly<z.infer<typeof envSchema>>;
 
 export const getConfig = () => envCfg;
 // cannot import singleton logger directly as it needs config to load various transport
-export const initEnvConfig = (logger?: Logger) => {
+export const initEnvConfig = (logger?: CustomLogger) => {
   const parsedEnv = envSchema.safeParse(process.env);
   if (!parsedEnv.success) {
     (logger ?? console).error("Invalid environment variables. Check the error below");

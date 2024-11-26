@@ -194,7 +194,7 @@ var secretsSetCmd = &cobra.Command{
 				projectId = workspaceFile.WorkspaceId
 			}
 
-			loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
+			loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
 			if err != nil {
 				util.HandleError(err, "unable to authenticate [err=%v]")
 			}
@@ -278,7 +278,7 @@ var secretsDeleteCmd = &cobra.Command{
 			util.RequireLogin()
 			util.RequireLocalWorkspaceFile()
 
-			loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
+			loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
 			if err != nil {
 				util.HandleError(err, "Unable to authenticate")
 			}

@@ -161,8 +161,8 @@ export const licenseServiceFactory = ({
       }
     } catch (error) {
       logger.error(
-        `getPlan: encountered an error when fetching pan [orgId=${orgId}] [projectId=${projectId}] [error]`,
-        error
+        error,
+        `getPlan: encountered an error when fetching pan [orgId=${orgId}] [projectId=${projectId}] [error]`
       );
       await keyStore.setItemWithExpiry(
         FEATURE_CACHE_KEY(orgId),

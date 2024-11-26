@@ -9,6 +9,7 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { IntegrationMetadataSchema } from "@app/services/integration/integration-schema";
+import { Integrations } from "@app/services/integration-auth/integration-list";
 import { PostHogEventTypes, TIntegrationCreatedEvent } from "@app/services/telemetry/telemetry-types";
 
 import {} from "../sanitizedSchemas";
@@ -205,6 +206,33 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         id: req.params.integrationId
       });
+
+      if (integration.region) {
+        integration.metadata = {
+          ...(integration.metadata || {}),
+          region: integration.region
+        };
+      }
+
+      if (
+        integration.integration === Integrations.AWS_SECRET_MANAGER ||
+        integration.integration === Integrations.AWS_PARAMETER_STORE
+      ) {
+        const awsRoleDetails = await server.services.integration.getIntegrationAWSIamRole({
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          id: req.params.integrationId
+        });
+
+        if (awsRoleDetails) {
+          integration.metadata = {
+            ...(integration.metadata || {}),
+            awsIamRole: awsRoleDetails.role
+          };
+        }
+      }
 
       return { integration };
     }

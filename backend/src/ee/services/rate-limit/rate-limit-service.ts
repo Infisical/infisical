@@ -46,7 +46,7 @@ export const rateLimitServiceFactory = ({ rateLimitDAL, licenseService }: TRateL
       }
       return rateLimit;
     } catch (err) {
-      logger.error("Error fetching rate limits %o", err);
+      logger.error(err, "Error fetching rate limits");
       return undefined;
     }
   };
@@ -69,12 +69,12 @@ export const rateLimitServiceFactory = ({ rateLimitDAL, licenseService }: TRateL
           mfaRateLimit: rateLimit.mfaRateLimit
         };
 
-        logger.info(`syncRateLimitConfiguration: rate limit configuration: %o`, newRateLimitMaxConfiguration);
+        logger.info(newRateLimitMaxConfiguration, "syncRateLimitConfiguration: rate limit configuration");
         Object.freeze(newRateLimitMaxConfiguration);
         rateLimitMaxConfiguration = newRateLimitMaxConfiguration;
       }
     } catch (error) {
-      logger.error(`Error syncing rate limit configurations: %o`, error);
+      logger.error(error, "Error syncing rate limit configurations");
     }
   };
 

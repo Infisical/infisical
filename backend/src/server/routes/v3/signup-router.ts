@@ -119,13 +119,6 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       if (!userAgent) throw new Error("user agent header is required");
       const appCfg = getConfig();
 
-      const serverCfg = await getServerCfg();
-      if (!serverCfg.allowSignUp) {
-        throw new ForbiddenRequestError({
-          message: "Signup's are disabled"
-        });
-      }
-
       const { user, accessToken, refreshToken, organizationId } =
         await server.services.signup.completeEmailAccountSignup({
           ...req.body,

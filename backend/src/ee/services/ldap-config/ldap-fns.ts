@@ -36,8 +36,7 @@ export const testLDAPConfig = async (ldapConfig: TLDAPConfig): Promise<boolean> 
     });
 
     ldapClient.on("error", (err) => {
-      logger.error("LDAP client error:", err);
-      logger.error(err);
+      logger.error(err, "LDAP client error");
       resolve(false);
     });
 

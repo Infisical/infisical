@@ -391,6 +391,7 @@ export const PROJECTS = {
   CREATE: {
     organizationSlug: "The slug of the organization to create the project in.",
     projectName: "The name of the project to create.",
+    projectDescription: "An optional description label for the project.",
     slug: "An optional slug for the project.",
     template: "The name of the project template, if specified, to apply to this project."
   },
@@ -403,6 +404,7 @@ export const PROJECTS = {
   UPDATE: {
     workspaceId: "The ID of the project to update.",
     name: "The new name of the project.",
+    projectDescription: "An optional description label for the project.",
     autoCapitalization: "Disable or enable auto-capitalization for the project."
   },
   GET_KEY: {

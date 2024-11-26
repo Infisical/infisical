@@ -59,6 +59,8 @@ export type TIntegration = {
     shouldEnableDelete?: boolean;
 
     octopusDeployScopeValues?: TOctopusDeployScopeValues;
+    awsIamRole?: string;
+    region?: string;
   };
 };
 

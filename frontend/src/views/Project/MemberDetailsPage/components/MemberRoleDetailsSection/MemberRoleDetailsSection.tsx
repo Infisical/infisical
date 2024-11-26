@@ -61,10 +61,33 @@ export const MemberRoleDetailsSection = ({
   const handleRoleDelete = async () => {
     const { id } = popUp?.deleteRole?.data as TProjectRole;
     try {
-      const updatedRole = membershipDetails?.roles?.filter((el) => el.id !== id);
+      const updatedRoles = membershipDetails?.roles?.filter((el) => el.id !== id);
       await updateUserWorkspaceRole({
         workspaceId: currentWorkspace?.id || "",
-        roles: updatedRole,
+        roles: updatedRoles.map(
+          ({
+            role,
+            customRoleSlug,
+            isTemporary,
+            temporaryMode,
+            temporaryRange,
+            temporaryAccessStartTime,
+            temporaryAccessEndTime
+          }) => ({
+            role: role === "custom" ? customRoleSlug : role,
+            ...(isTemporary
+              ? {
+                  isTemporary,
+                  temporaryMode,
+                  temporaryRange,
+                  temporaryAccessStartTime,
+                  temporaryAccessEndTime
+                }
+              : {
+                  isTemporary
+                })
+          })
+        ),
         membershipId: membershipDetails.id
       });
       createNotification({ type: "success", text: "Successfully removed role" });
@@ -215,7 +238,10 @@ export const MemberRoleDetailsSection = ({
           title="Roles"
           subTitle="Select one or more of the pre-defined or custom roles to configure project permissions."
         >
-          <MemberRoleModify projectMember={membershipDetails}  onOpenUpgradeModal={onOpenUpgradeModal} />
+          <MemberRoleModify
+            projectMember={membershipDetails}
+            onOpenUpgradeModal={onOpenUpgradeModal}
+          />
         </ModalContent>
       </Modal>
     </div>

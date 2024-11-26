@@ -28,7 +28,9 @@ const metadataMappings: Record<keyof NonNullable<TIntegrationWithEnv["metadata"]
   shouldMaskSecrets: "GitLab Secrets Masking Enabled",
   shouldProtectSecrets: "GitLab Secret Protection Enabled",
   shouldEnableDelete: "GitHub Secret Deletion Enabled",
-  octopusDeployScopeValues: "Octopus Deploy Scope Values"
+  octopusDeployScopeValues: "Octopus Deploy Scope Values",
+  awsIamRole: "AWS IAM Role",
+  region: "Region"
 } as const;
 
 export const IntegrationSettingsSection = ({ integration }: Props) => {

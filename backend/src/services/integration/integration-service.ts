@@ -9,6 +9,7 @@ import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth
 import { TIntegrationAuthServiceFactory } from "../integration-auth/integration-auth-service";
 import { deleteIntegrationSecrets } from "../integration-auth/integration-delete-secret";
 import { TKmsServiceFactory } from "../kms/kms-service";
+import { KmsDataKey } from "../kms/kms-types";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { TSecretQueueFactory } from "../secret/secret-queue";
@@ -237,6 +238,46 @@ export const integrationServiceFactory = ({
     return { ...integration, envId: integration.environment.id };
   };
 
+  const getIntegrationAWSIamRole = async ({ id, actor, actorAuthMethod, actorId, actorOrgId }: TGetIntegrationDTO) => {
+    const integration = await integrationDAL.findById(id);
+
+    if (!integration) {
+      throw new NotFoundError({
+        message: `Integration with ID '${id}' not found`
+      });
+    }
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integration?.projectId || "",
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
+
+    const integrationAuth = await integrationAuthDAL.findById(integration.integrationAuthId);
+
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: integration.projectId
+    });
+    let awsIamRole: string | null = null;
+    if (integrationAuth.encryptedAwsAssumeIamRoleArn) {
+      const awsAssumeRoleArn = secretManagerDecryptor({
+        cipherTextBlob: Buffer.from(integrationAuth.encryptedAwsAssumeIamRoleArn)
+      }).toString();
+      if (awsAssumeRoleArn) {
+        const [, role] = awsAssumeRoleArn.split(":role/");
+        awsIamRole = role;
+      }
+    }
+
+    return {
+      role: awsIamRole
+    };
+  };
+
   const deleteIntegration = async ({
     actorId,
     id,
@@ -329,6 +370,7 @@ export const integrationServiceFactory = ({
     deleteIntegration,
     listIntegrationByProject,
     getIntegration,
+    getIntegrationAWSIamRole,
     syncIntegration
   };
 };

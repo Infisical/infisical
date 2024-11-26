@@ -30,27 +30,32 @@ export const integrationAuthPubSchema = IntegrationAuthsSchema.pick({
 
 export const DefaultResponseErrorsSchema = {
   400: z.object({
+    requestId: z.string(),
     statusCode: z.literal(400),
     message: z.string(),
     error: z.string()
   }),
   404: z.object({
+    requestId: z.string(),
     statusCode: z.literal(404),
     message: z.string(),
     error: z.string()
   }),
   401: z.object({
+    requestId: z.string(),
     statusCode: z.literal(401),
     message: z.any(),
     error: z.string()
   }),
   403: z.object({
+    requestId: z.string(),
     statusCode: z.literal(403),
     message: z.string(),
     details: z.any().optional(),
     error: z.string()
   }),
   500: z.object({
+    requestId: z.string(),
     statusCode: z.literal(500),
     message: z.string(),
     error: z.string()
@@ -207,6 +212,7 @@ export const SanitizedAuditLogStreamSchema = z.object({
 export const SanitizedProjectSchema = ProjectsSchema.pick({
   id: true,
   name: true,
+  description: true,
   slug: true,
   autoCapitalization: true,
   orgId: true,

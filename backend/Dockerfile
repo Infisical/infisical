@@ -9,6 +9,15 @@ RUN apk --update add \
         make \
         g++
 
+# install dependencies for TDS driver (required for SAP ASE dynamic secrets)
+RUN apk add --no-cache \
+    unixodbc \
+    freetds \
+    unixodbc-dev \
+    libc-dev \
+    freetds-dev
+
+
 COPY package*.json ./
 RUN npm ci --only-production
 
@@ -27,6 +36,17 @@ RUN apk --update add \
         python3 \
         make \
         g++
+
+# install dependencies for TDS driver (required for SAP ASE dynamic secrets)
+RUN apk add --no-cache \
+    unixodbc \
+    freetds \
+    unixodbc-dev \
+    libc-dev \
+    freetds-dev
+
+
+RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/libtdsodbc.so\nSetup = /usr/lib/libtdsodbc.so\nFileUsage = 1\n" > /etc/odbcinst.ini
 
 RUN npm ci --only-production && npm cache clean --force
 

@@ -23,7 +23,7 @@ export const MongoDBProvider = (): TDynamicProviderFns => {
     return providerInputs;
   };
 
-  const getClient = async (providerInputs: z.infer<typeof DynamicSecretMongoDBSchema>) => {
+  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretMongoDBSchema>) => {
     const isSrv = !providerInputs.port;
     const uri = isSrv
       ? `mongodb+srv://${providerInputs.host}`
@@ -42,7 +42,7 @@ export const MongoDBProvider = (): TDynamicProviderFns => {
 
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
 
     const isConnected = await client
       .db(providerInputs.database)
@@ -55,7 +55,7 @@ export const MongoDBProvider = (): TDynamicProviderFns => {
 
   const create = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
 
     const username = generateUsername();
     const password = generatePassword();
@@ -74,7 +74,7 @@ export const MongoDBProvider = (): TDynamicProviderFns => {
 
   const revoke = async (inputs: unknown, entityId: string) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
 
     const username = entityId;
 
@@ -88,6 +88,7 @@ export const MongoDBProvider = (): TDynamicProviderFns => {
   };
 
   const renew = async (_inputs: unknown, entityId: string) => {
+    // No renewal necessary
     return { entityId };
   };
 

@@ -63,32 +63,21 @@ export const IdentityClientSecretModal = ({ popUp, handlePopUpToggle }: Props) =
   };
 
   const onFormSubmit = async ({ description, ttl, numUsesLimit }: FormData) => {
-    try {
-      const { clientSecret } = await createClientSecret({
-        identityId: popUpData.identityId,
-        description,
-        ttl: Number(ttl),
-        numUsesLimit: Number(numUsesLimit)
-      });
+    const { clientSecret } = await createClientSecret({
+      identityId: popUpData.identityId,
+      description,
+      ttl: Number(ttl),
+      numUsesLimit: Number(numUsesLimit)
+    });
 
-      setToken(clientSecret);
+    setToken(clientSecret);
 
-      createNotification({
-        text: "Successfully created client secret",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully created client secret",
+      type: "success"
+    });
 
-      reset();
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text = error?.response?.data?.message ?? "Failed to create client secret";
-
-      createNotification({
-        text,
-        type: "error"
-      });
-    }
+    reset();
   };
 
   return (

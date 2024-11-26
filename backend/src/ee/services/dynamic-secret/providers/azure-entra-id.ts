@@ -23,7 +23,7 @@ export const AzureEntraIDProvider = (): TDynamicProviderFns & {
     return providerInputs;
   };
 
-  const getToken = async (
+  const $getToken = async (
     tenantId: string,
     applicationId: string,
     clientSecret: string
@@ -51,18 +51,13 @@ export const AzureEntraIDProvider = (): TDynamicProviderFns & {
 
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const data = await getToken(providerInputs.tenantId, providerInputs.applicationId, providerInputs.clientSecret);
+    const data = await $getToken(providerInputs.tenantId, providerInputs.applicationId, providerInputs.clientSecret);
     return data.success;
-  };
-
-  const renew = async (inputs: unknown, entityId: string) => {
-    // Do nothing
-    return { entityId };
   };
 
   const create = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const data = await getToken(providerInputs.tenantId, providerInputs.applicationId, providerInputs.clientSecret);
+    const data = await $getToken(providerInputs.tenantId, providerInputs.applicationId, providerInputs.clientSecret);
     if (!data.success) {
       throw new BadRequestError({ message: "Failed to authorize to Microsoft Entra ID" });
     }
@@ -98,7 +93,7 @@ export const AzureEntraIDProvider = (): TDynamicProviderFns & {
   };
 
   const fetchAzureEntraIdUsers = async (tenantId: string, applicationId: string, clientSecret: string) => {
-    const data = await getToken(tenantId, applicationId, clientSecret);
+    const data = await $getToken(tenantId, applicationId, clientSecret);
     if (!data.success) {
       throw new BadRequestError({ message: "Failed to authorize to Microsoft Entra ID" });
     }
@@ -125,6 +120,11 @@ export const AzureEntraIDProvider = (): TDynamicProviderFns & {
       };
     });
     return users;
+  };
+
+  const renew = async (inputs: unknown, entityId: string) => {
+    // No renewal necessary
+    return { entityId };
   };
 
   return {

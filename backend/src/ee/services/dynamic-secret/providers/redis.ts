@@ -55,7 +55,7 @@ export const RedisDatabaseProvider = (): TDynamicProviderFns => {
     return providerInputs;
   };
 
-  const getClient = async (providerInputs: z.infer<typeof DynamicSecretRedisDBSchema>) => {
+  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretRedisDBSchema>) => {
     let connection: Redis | null = null;
     try {
       connection = new Redis({
@@ -92,7 +92,7 @@ export const RedisDatabaseProvider = (): TDynamicProviderFns => {
 
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const connection = await getClient(providerInputs);
+    const connection = await $getClient(providerInputs);
 
     const pingResponse = await connection
       .ping()
@@ -104,7 +104,7 @@ export const RedisDatabaseProvider = (): TDynamicProviderFns => {
 
   const create = async (inputs: unknown, expireAt: number) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const connection = await getClient(providerInputs);
+    const connection = await $getClient(providerInputs);
 
     const username = generateUsername();
     const password = generatePassword();
@@ -126,7 +126,7 @@ export const RedisDatabaseProvider = (): TDynamicProviderFns => {
 
   const revoke = async (inputs: unknown, entityId: string) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const connection = await getClient(providerInputs);
+    const connection = await $getClient(providerInputs);
 
     const username = entityId;
 
@@ -141,7 +141,9 @@ export const RedisDatabaseProvider = (): TDynamicProviderFns => {
 
   const renew = async (inputs: unknown, entityId: string, expireAt: number) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const connection = await getClient(providerInputs);
+    if (!providerInputs.renewStatement) return { entityId };
+
+    const connection = await $getClient(providerInputs);
 
     const username = entityId;
     const expiration = new Date(expireAt).toISOString();

@@ -32,7 +32,7 @@ export const SapHanaProvider = (): TDynamicProviderFns => {
     return providerInputs;
   };
 
-  const getClient = async (providerInputs: z.infer<typeof DynamicSecretSapHanaSchema>) => {
+  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretSapHanaSchema>) => {
     const client = hdb.createClient({
       host: providerInputs.host,
       port: providerInputs.port,
@@ -64,9 +64,9 @@ export const SapHanaProvider = (): TDynamicProviderFns => {
 
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
 
-    const testResult: boolean = await new Promise((resolve, reject) => {
+    const testResult = await new Promise<boolean>((resolve, reject) => {
       client.exec("SELECT 1 FROM DUMMY;", (err: any) => {
         if (err) {
           reject();
@@ -86,7 +86,7 @@ export const SapHanaProvider = (): TDynamicProviderFns => {
     const password = generatePassword();
     const expiration = new Date(expireAt).toISOString();
 
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
     const creationStatement = handlebars.compile(providerInputs.creationStatement, { noEscape: true })({
       username,
       password,
@@ -114,7 +114,7 @@ export const SapHanaProvider = (): TDynamicProviderFns => {
 
   const revoke = async (inputs: unknown, username: string) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
     const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username });
     const queries = revokeStatement.toString().split(";").filter(Boolean);
     for await (const query of queries) {
@@ -135,13 +135,15 @@ export const SapHanaProvider = (): TDynamicProviderFns => {
     return { entityId: username };
   };
 
-  const renew = async (inputs: unknown, username: string, expireAt: number) => {
+  const renew = async (inputs: unknown, entityId: string, expireAt: number) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await getClient(providerInputs);
+    if (!providerInputs.renewStatement) return { entityId };
+
+    const client = await $getClient(providerInputs);
     try {
       const expiration = new Date(expireAt).toISOString();
 
-      const renewStatement = handlebars.compile(providerInputs.renewStatement)({ username, expiration });
+      const renewStatement = handlebars.compile(providerInputs.renewStatement)({ username: entityId, expiration });
       const queries = renewStatement.toString().split(";").filter(Boolean);
       for await (const query of queries) {
         await new Promise((resolve, reject) => {
@@ -161,7 +163,7 @@ export const SapHanaProvider = (): TDynamicProviderFns => {
       client.disconnect();
     }
 
-    return { entityId: username };
+    return { entityId };
   };
 
   return {

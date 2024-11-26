@@ -34,9 +34,9 @@ export type {
   CreateWorkspaceDTO,
   DeleteEnvironmentDTO,
   DeleteWorkspaceDTO,
-  RenameWorkspaceDTO,
   ToggleAutoCapitalizationDTO,
   UpdateEnvironmentDTO,
+  UpdateProjectDTO,
   Workspace,
   WorkspaceEnv,
   WorkspaceTag
@@ -51,17 +51,26 @@ export enum ApiErrorTypes {
 
 export type TApiErrors =
   | {
+      requestId: string;
       error: ApiErrorTypes.ValidationError;
       message: ZodIssue[];
       statusCode: 401;
     }
   | {
+      requestId: string;
+      error: ApiErrorTypes.UnauthorizedError;
+      message: string;
+      statusCode: 401;
+    }
+  | {
+      requestId: string;
       error: ApiErrorTypes.ForbiddenError;
       message: string;
       details: PureAbility["rules"];
       statusCode: 403;
     }
   | {
+      requestId: string;
       statusCode: 400;
       message: string;
       error: ApiErrorTypes.BadRequestError;

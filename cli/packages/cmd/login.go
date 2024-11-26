@@ -154,6 +154,8 @@ var loginCmd = &cobra.Command{
 	DisableFlagsInUseLine: true,
 	Run: func(cmd *cobra.Command, args []string) {
 
+		presetDomain := config.INFISICAL_URL
+
 		clearSelfHostedDomains, err := cmd.Flags().GetBool("clear-domains")
 		if err != nil {
 			util.HandleError(err)
@@ -198,7 +200,7 @@ var loginCmd = &cobra.Command{
 
 		// standalone user auth
 		if loginMethod == "user" {
-			currentLoggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
+			currentLoggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
 			// if the key can't be found or there is an error getting current credentials from key ring, allow them to override
 			if err != nil && (strings.Contains(err.Error(), "we couldn't find your logged in details")) {
 				log.Debug().Err(err)
@@ -216,11 +218,19 @@ var loginCmd = &cobra.Command{
 					return
 				}
 			}
+
+			usePresetDomain, err := usePresetDomain(presetDomain)
+
+			if err != nil {
+				util.HandleError(err)
+			}
+
 			//override domain
 			domainQuery := true
 			if config.INFISICAL_URL_MANUAL_OVERRIDE != "" &&
 				config.INFISICAL_URL_MANUAL_OVERRIDE != fmt.Sprintf("%s/api", util.INFISICAL_DEFAULT_EU_URL) &&
-				config.INFISICAL_URL_MANUAL_OVERRIDE != fmt.Sprintf("%s/api", util.INFISICAL_DEFAULT_US_URL) {
+				config.INFISICAL_URL_MANUAL_OVERRIDE != fmt.Sprintf("%s/api", util.INFISICAL_DEFAULT_US_URL) &&
+				!usePresetDomain {
 				overrideDomain, err := DomainOverridePrompt()
 				if err != nil {
 					util.HandleError(err)
@@ -228,7 +238,7 @@ var loginCmd = &cobra.Command{
 
 				//if not override set INFISICAL_URL to exported var
 				//set domainQuery to false
-				if !overrideDomain {
+				if !overrideDomain && !usePresetDomain {
 					domainQuery = false
 					config.INFISICAL_URL = util.AppendAPIEndpoint(config.INFISICAL_URL_MANUAL_OVERRIDE)
 					config.INFISICAL_LOGIN_URL = fmt.Sprintf("%s/login", strings.TrimSuffix(config.INFISICAL_URL, "/api"))
@@ -237,7 +247,7 @@ var loginCmd = &cobra.Command{
 			}
 
 			//prompt user to select domain between Infisical cloud and self-hosting
-			if domainQuery {
+			if domainQuery && !usePresetDomain {
 				err = askForDomain()
 				if err != nil {
 					util.HandleError(err, "Unable to parse domain url")
@@ -524,6 +534,45 @@ func DomainOverridePrompt() (bool, error) {
 	}
 
 	return selectedOption == OVERRIDE, err
+}
+
+func usePresetDomain(presetDomain string) (bool, error) {
+	infisicalConfig, err := util.GetConfigFile()
+	if err != nil {
+		return false, fmt.Errorf("askForDomain: unable to get config file because [err=%s]", err)
+	}
+
+	preconfiguredUrl := strings.TrimSuffix(presetDomain, "/api")
+
+	if preconfiguredUrl != "" && preconfiguredUrl != util.INFISICAL_DEFAULT_US_URL && preconfiguredUrl != util.INFISICAL_DEFAULT_EU_URL {
+		parsedDomain := strings.TrimSuffix(strings.Trim(preconfiguredUrl, "/"), "/api")
+
+		_, err := url.ParseRequestURI(parsedDomain)
+		if err != nil {
+			return false, errors.New(fmt.Sprintf("Invalid domain URL: '%s'", parsedDomain))
+		}
+
+		config.INFISICAL_URL = fmt.Sprintf("%s/api", parsedDomain)
+		config.INFISICAL_LOGIN_URL = fmt.Sprintf("%s/login", parsedDomain)
+
+		if !slices.Contains(infisicalConfig.Domains, parsedDomain) {
+			infisicalConfig.Domains = append(infisicalConfig.Domains, parsedDomain)
+			err = util.WriteConfigFile(&infisicalConfig)
+
+			if err != nil {
+				return false, fmt.Errorf("askForDomain: unable to write domains to config file because [err=%s]", err)
+			}
+		}
+
+		whilte := color.New(color.FgGreen)
+		boldWhite := whilte.Add(color.Bold)
+		time.Sleep(time.Second * 1)
+		boldWhite.Printf("[INFO] Using domain '%s' from domain flag or INFISICAL_API_URL environment variable\n", parsedDomain)
+
+		return true, nil
+	}
+
+	return false, nil
 }
 
 func askForDomain() error {

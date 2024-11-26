@@ -54,7 +54,7 @@ func init() {
 			util.CheckForUpdate()
 		}
 
-		loggedInDetails, err := util.GetCurrentLoggedInUserDetails()
+		loggedInDetails, err := util.GetCurrentLoggedInUserDetails(false)
 
 		if !silent && err == nil && loggedInDetails.IsUserLoggedIn && !loggedInDetails.LoginExpired {
 			token, err := util.GetInfisicalToken(cmd)
