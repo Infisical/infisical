@@ -27,7 +27,7 @@ export const CassandraProvider = (): TDynamicProviderFns => {
     return providerInputs;
   };
 
-  const getClient = async (providerInputs: z.infer<typeof DynamicSecretCassandraSchema>) => {
+  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretCassandraSchema>) => {
     const sslOptions = providerInputs.ca ? { rejectUnauthorized: false, ca: providerInputs.ca } : undefined;
     const client = new cassandra.Client({
       sslOptions,
@@ -47,7 +47,7 @@ export const CassandraProvider = (): TDynamicProviderFns => {
 
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
 
     const isConnected = await client.execute("SELECT * FROM system_schema.keyspaces").then(() => true);
     await client.shutdown();
@@ -56,7 +56,7 @@ export const CassandraProvider = (): TDynamicProviderFns => {
 
   const create = async (inputs: unknown, expireAt: number) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
 
     const username = generateUsername();
     const password = generatePassword();
@@ -82,7 +82,7 @@ export const CassandraProvider = (): TDynamicProviderFns => {
 
   const revoke = async (inputs: unknown, entityId: string) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
 
     const username = entityId;
     const { keyspace } = providerInputs;
@@ -101,7 +101,7 @@ export const CassandraProvider = (): TDynamicProviderFns => {
     const providerInputs = await validateProviderInputs(inputs);
     if (!providerInputs.renewStatement) return { entityId };
 
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
 
     const expiration = new Date(expireAt).toISOString();
     const { keyspace } = providerInputs;

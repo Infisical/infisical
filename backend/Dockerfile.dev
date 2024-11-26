@@ -7,7 +7,7 @@ ARG SOFTHSM2_VERSION=2.5.0
 ENV SOFTHSM2_VERSION=${SOFTHSM2_VERSION} \
     SOFTHSM2_SOURCES=/tmp/softhsm2
 
-# install build dependencies including python3
+# install build dependencies including python3 (required for pkcs11js and partially TDS driver)
 RUN apk --update add \
         alpine-sdk \
         autoconf \
@@ -19,7 +19,19 @@ RUN apk --update add \
         make \
         g++
 
+# install dependencies for TDS driver (required for SAP ASE dynamic secrets)
+RUN apk add --no-cache \
+    unixodbc \
+    freetds \
+    unixodbc-dev \
+    libc-dev \
+    freetds-dev
+
+
+RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/libtdsodbc.so\nSetup = /usr/lib/libtdsodbc.so\nFileUsage = 1\n" > /etc/odbcinst.ini
+
 # build and install SoftHSM2
+
 RUN git clone https://github.com/opendnssec/SoftHSMv2.git ${SOFTHSM2_SOURCES}
 WORKDIR ${SOFTHSM2_SOURCES}
 

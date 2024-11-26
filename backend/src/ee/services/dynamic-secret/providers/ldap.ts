@@ -52,7 +52,7 @@ export const LdapProvider = (): TDynamicProviderFns => {
     return providerInputs;
   };
 
-  const getClient = async (providerInputs: z.infer<typeof LdapSchema>): Promise<ldapjs.Client> => {
+  const $getClient = async (providerInputs: z.infer<typeof LdapSchema>): Promise<ldapjs.Client> => {
     return new Promise((resolve, reject) => {
       const client = ldapjs.createClient({
         url: providerInputs.url,
@@ -83,7 +83,7 @@ export const LdapProvider = (): TDynamicProviderFns => {
 
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
     return client.connected;
   };
 
@@ -191,7 +191,7 @@ export const LdapProvider = (): TDynamicProviderFns => {
 
   const create = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
 
     if (providerInputs.credentialType === LdapCredentialType.Static) {
       const dnMatch = providerInputs.rotationLdif.match(/^dn:\s*(.+)/m);
@@ -235,7 +235,7 @@ export const LdapProvider = (): TDynamicProviderFns => {
 
   const revoke = async (inputs: unknown, entityId: string) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await getClient(providerInputs);
+    const client = await $getClient(providerInputs);
 
     if (providerInputs.credentialType === LdapCredentialType.Static) {
       const dnMatch = providerInputs.rotationLdif.match(/^dn:\s*(.+)/m);

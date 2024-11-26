@@ -24,7 +24,7 @@ export const ElasticSearchProvider = (): TDynamicProviderFns => {
     return providerInputs;
   };
 
-  const getClient = async (providerInputs: z.infer<typeof DynamicSecretElasticSearchSchema>) => {
+  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretElasticSearchSchema>) => {
     const connection = new ElasticSearchClient({
       node: {
         url: new URL(`${providerInputs.host}:${providerInputs.port}`),
@@ -55,7 +55,7 @@ export const ElasticSearchProvider = (): TDynamicProviderFns => {
 
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const connection = await getClient(providerInputs);
+    const connection = await $getClient(providerInputs);
 
     const infoResponse = await connection
       .info()
@@ -67,7 +67,7 @@ export const ElasticSearchProvider = (): TDynamicProviderFns => {
 
   const create = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const connection = await getClient(providerInputs);
+    const connection = await $getClient(providerInputs);
 
     const username = generateUsername();
     const password = generatePassword();
@@ -85,7 +85,7 @@ export const ElasticSearchProvider = (): TDynamicProviderFns => {
 
   const revoke = async (inputs: unknown, entityId: string) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const connection = await getClient(providerInputs);
+    const connection = await $getClient(providerInputs);
 
     await connection.security.deleteUser({
       username: entityId

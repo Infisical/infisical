@@ -32,7 +32,7 @@ export const SqlDatabaseProvider = (): TDynamicProviderFns => {
     return providerInputs;
   };
 
-  const getClient = async (providerInputs: z.infer<typeof DynamicSecretSqlDBSchema>) => {
+  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretSqlDBSchema>) => {
     const ssl = providerInputs.ca ? { rejectUnauthorized: false, ca: providerInputs.ca } : undefined;
     const db = knex({
       client: providerInputs.client,
@@ -52,7 +52,7 @@ export const SqlDatabaseProvider = (): TDynamicProviderFns => {
 
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const db = await getClient(providerInputs);
+    const db = await $getClient(providerInputs);
     // oracle needs from keyword
     const testStatement = providerInputs.client === SqlProviders.Oracle ? "SELECT 1 FROM DUAL" : "SELECT 1";
 
@@ -63,7 +63,7 @@ export const SqlDatabaseProvider = (): TDynamicProviderFns => {
 
   const create = async (inputs: unknown, expireAt: number) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const db = await getClient(providerInputs);
+    const db = await $getClient(providerInputs);
 
     const username = generateUsername(providerInputs.client);
     const password = generatePassword(providerInputs.client);
@@ -90,7 +90,7 @@ export const SqlDatabaseProvider = (): TDynamicProviderFns => {
 
   const revoke = async (inputs: unknown, entityId: string) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const db = await getClient(providerInputs);
+    const db = await $getClient(providerInputs);
 
     const username = entityId;
     const { database } = providerInputs;
@@ -112,7 +112,7 @@ export const SqlDatabaseProvider = (): TDynamicProviderFns => {
     const providerInputs = await validateProviderInputs(inputs);
     if (!providerInputs.renewStatement) return { entityId };
 
-    const db = await getClient(providerInputs);
+    const db = await $getClient(providerInputs);
 
     const expiration = new Date(expireAt).toISOString();
     const { database } = providerInputs;
