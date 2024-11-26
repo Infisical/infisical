@@ -87,7 +87,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         roleId: z.string().trim().describe(PROJECT_ROLE.UPDATE.roleId)
       }),
       body: z.object({
-        slug: slugSchema()
+        slug: slugSchema({ max: 64 })
           .refine(
             (val) => !Object.values(ProjectMembershipRole).includes(val as ProjectMembershipRole),
             "Please choose a different slug, the slug you have entered is reserved"
