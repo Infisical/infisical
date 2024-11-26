@@ -10,7 +10,7 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 import { slugSchema } from "@app/lib/schemas";
 
 const schema = z.object({
-  slug: slugSchema({ min: 10, field: "Tag Slug" })
+  slug: slugSchema({ min: 1, field: "Tag Slug" })
 });
 
 export type FormData = z.infer<typeof schema>;
