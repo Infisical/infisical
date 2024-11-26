@@ -69,7 +69,7 @@ export default function OctopusDeployIntegrationPage() {
                 src="/images/integrations/Octopus Deploy.png"
                 height={30}
                 width={30}
-                alt="Databricks logo"
+                alt="Octopus Deploy logo"
               />
             </div>
             <span className="ml-1.5">Octopus Deploy Integration</span>

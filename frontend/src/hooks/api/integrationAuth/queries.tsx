@@ -19,7 +19,7 @@ import {
   Team,
   TeamCityBuildConfig,
   TGetIntegrationAuthOctopusDeployScopeValuesDTO,
-  TOctopusDeployScopeValues
+  TOctopusDeployVariableSetScopeValues
 } from "./types";
 
 const integrationAuthKeys = {
@@ -503,7 +503,7 @@ const fetchIntegrationAuthOctopusDeployScopeValues = async ({
   spaceId,
   resourceId
 }: TGetIntegrationAuthOctopusDeployScopeValuesDTO) => {
-  const { data } = await apiRequest.get<TOctopusDeployScopeValues>(
+  const { data } = await apiRequest.get<TOctopusDeployVariableSetScopeValues>(
     `/api/v1/integration-auth/${integrationAuthId}/octopus-deploy/scope-values`,
     { params: { scope, spaceId, resourceId } }
   );
@@ -799,14 +799,18 @@ export const useGetIntegrationAuthBitBucketWorkspaces = (integrationAuthId: stri
 
 export const useGetIntegrationAuthOctopusDeploySpaces = (integrationAuthId: string) => {
   return useQuery({
-    queryKey: integrationAuthKeys.getIntegrationAuthBitBucketWorkspaces(integrationAuthId),
+    queryKey: integrationAuthKeys.getIntegrationAuthOctopusDeploySpaces(integrationAuthId),
     queryFn: () => fetchIntegrationAuthOctopusDeploySpaces(integrationAuthId)
   });
 };
 
 export const useGetIntegrationAuthOctopusDeployScopeValues = (
   params: TGetIntegrationAuthOctopusDeployScopeValuesDTO,
-  options?: UseQueryOptions<TOctopusDeployScopeValues, unknown, TOctopusDeployScopeValues>
+  options?: UseQueryOptions<
+    TOctopusDeployVariableSetScopeValues,
+    unknown,
+    TOctopusDeployVariableSetScopeValues
+  >
 ) =>
   useQuery({
     queryKey: integrationAuthKeys.getIntegrationAuthOctopusDeployScopeValues(params),

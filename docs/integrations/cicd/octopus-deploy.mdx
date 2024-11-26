@@ -29,12 +29,18 @@ Prerequisites:
         ![integrations octopus deploy
         generate api key](/images/integrations/octopus-deploy/integrations-octopus-deploy-generate-api-key.png)
 
+        <Note>If you configure your access token to expire,
+            you will need to generate a new API key for Infisical prior to this date to keep your integration running.</Note>
+
         Copy the generated **API Key** and click on the **Close** button.
 
         ![integrations octopus deploy
         copy api key](/images/integrations/octopus-deploy/integrations-octopus-deploy-copy-api-key.png)
     </Step>
     <Step title="Create a Service Accounts Team and assign your Service Account">
+        <Note>You can skip creating a new team if you already have an Octopus Deploy team configured with
+            the **Project Contributor** role to assign your Service Account to.</Note>
+
         Navigate to **Configuration** > **Teams** and click on the **Add Team** button.
 
         ![integrations octopus deploy
@@ -47,7 +53,8 @@ Prerequisites:
         On the **Members** tab, click on the **Add Member** button, add your **Infisical Service Account** and click on the **Add** button.
         ![integrations octopus deploy add service account to team](/images/integrations/octopus-deploy/integrations-octopus-deploy-add-to-team.png)
 
-        On the **User Roles** tab, click on the **Include User Role** button, add the **Project Contributor** role and click on the **Apply** button.
+        On the **User Roles** tab, click on the **Include User Role** button, and add the **Project Contributor** role. Optionally,
+        click on the **Define Scope** button to further refine what projects your Service Account has access to. Click on the **Apply** button once complete.
         ![integrations octopus deploy add user roles to team](/images/integrations/octopus-deploy/integrations-octopus-deploy-add-role.png)
 
         Save your team changes by clicking on the **Save** button.

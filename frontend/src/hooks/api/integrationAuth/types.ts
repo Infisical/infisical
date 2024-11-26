@@ -112,7 +112,7 @@ export type TGetIntegrationAuthOctopusDeployScopeValuesDTO = {
   scope: OctopusDeployScope;
 };
 
-export type TOctopusDeployScopeValues = {
+export type TOctopusDeployVariableSetScopeValues = {
   Environments: { Id: string; Name: string }[];
   Machines: { Id: string; Name: string }[];
   Actions: { Id: string; Name: string }[];

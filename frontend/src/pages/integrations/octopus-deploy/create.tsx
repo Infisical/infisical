@@ -12,9 +12,9 @@ import {
   CardTitle,
   FilterableSelect,
   FormControl,
-  Input,
   Spinner
 } from "@app/components/v2";
+import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { useWorkspace } from "@app/context";
 import { useCreateIntegration, useGetIntegrationAuthApps } from "@app/hooks/api";
 import {
@@ -63,6 +63,7 @@ export default function OctopusDeployCreateIntegrationPage() {
 
   const currentSpace = watch("targetSpace", octopusDeploySpaces?.[0]);
   const currentScope = watch("scope");
+  const sourceEnv = watch("sourceEnvironment");
 
   const { data: octopusDeployResources, isLoading: isOctopusDeployResourcesLoading } =
     useGetIntegrationAuthApps(
@@ -195,11 +196,11 @@ export default function OctopusDeployCreateIntegrationPage() {
             name="secretPath"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <FormControl isError={Boolean(error)} label="Secrets Path">
-                <Input
-                  className="mt-[1px] h-[2.46rem]"
+                <SecretPathInput
+                  placeholder="/"
+                  environment={sourceEnv?.slug}
                   value={value}
                   onChange={onChange}
-                  placeholder={'Provide a path (defaults to "/")'}
                 />
               </FormControl>
             )}
