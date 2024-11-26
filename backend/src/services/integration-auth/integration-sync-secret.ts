@@ -473,7 +473,7 @@ const syncSecretsAzureKeyVault = async ({
     id: string; // secret URI
     value: string;
     attributes: {
-      enabled: true;
+      enabled: boolean;
       created: number;
       updated: number;
       recoveryLevel: string;
@@ -509,10 +509,19 @@ const syncSecretsAzureKeyVault = async ({
 
   const getAzureKeyVaultSecrets = await paginateAzureKeyVaultSecrets(`${integration.app}/secrets?api-version=7.3`);
 
+  const enabledAzureKeyVaultSecrets = getAzureKeyVaultSecrets.filter((secret) => secret.attributes.enabled);
+
+  // disabled keys to skip sending updates to
+  const disabledAzureKeyVaultSecretKeys = getAzureKeyVaultSecrets
+    .filter(({ attributes }) => !attributes.enabled)
+    .map((getAzureKeyVaultSecret) => {
+      return getAzureKeyVaultSecret.id.substring(getAzureKeyVaultSecret.id.lastIndexOf("/") + 1);
+    });
+
   let lastSlashIndex: number;
   const res = (
     await Promise.all(
-      getAzureKeyVaultSecrets.map(async (getAzureKeyVaultSecret) => {
+      enabledAzureKeyVaultSecrets.map(async (getAzureKeyVaultSecret) => {
         if (!lastSlashIndex) {
           lastSlashIndex = getAzureKeyVaultSecret.id.lastIndexOf("/");
         }
@@ -658,6 +667,7 @@ const syncSecretsAzureKeyVault = async ({
   }) => {
     let isSecretSet = false;
     let maxTries = 6;
+    if (disabledAzureKeyVaultSecretKeys.includes(key)) return;
 
     while (!isSecretSet && maxTries > 0) {
       // try to set secret
