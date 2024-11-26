@@ -69,7 +69,7 @@ export const CreateSecretForm = ({
         tagSlug: parsedSlug,
         tagColor: ""
       });
-    } catch (error) {
+    } catch {
       createNotification({
         type: "error",
         text: "Failed to create new tag"

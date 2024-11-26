@@ -204,7 +204,7 @@ export const CreateSecretForm = ({ secretPath = "/", getSecretByKey, onClose }: 
         tagSlug: parsedSlug,
         tagColor: ""
       });
-    } catch (error) {
+    } catch {
       createNotification({
         type: "error",
         text: "Failed to create new tag"
