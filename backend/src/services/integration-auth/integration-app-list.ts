@@ -1,6 +1,7 @@
 /* eslint-disable no-await-in-loop */
 import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
+import { Client as OctopusDeployClient, ProjectRepository as OctopusDeployRepository } from "@octopusdeploy/api-client";
 
 import { TIntegrationAuths } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
@@ -1087,6 +1088,33 @@ const getAppsAzureDevOps = async ({ accessToken, orgName }: { accessToken: strin
   return apps;
 };
 
+const getAppsOctopusDeploy = async ({
+  apiKey,
+  instanceURL,
+  spaceName = "Default"
+}: {
+  apiKey: string;
+  instanceURL: string;
+  spaceName?: string;
+}) => {
+  const client = await OctopusDeployClient.create({
+    instanceURL,
+    apiKey,
+    userAgentApp: "Infisical Integration"
+  });
+
+  const repository = new OctopusDeployRepository(client, spaceName);
+
+  const projects = await repository.list({
+    take: 1000
+  });
+
+  return projects.Items.map((project) => ({
+    name: project.Name,
+    appId: project.Id
+  }));
+};
+
 export const getApps = async ({
   integration,
   integrationAuth,
@@ -1258,6 +1286,13 @@ export const getApps = async ({
       return getAppsAzureDevOps({
         accessToken,
         orgName: azureDevOpsOrgName as string
+      });
+
+    case Integrations.OCTOPUS_DEPLOY:
+      return getAppsOctopusDeploy({
+        apiKey: accessToken,
+        instanceURL: url!,
+        spaceName: workspaceSlug
       });
 
     default:

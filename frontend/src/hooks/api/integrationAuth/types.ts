@@ -99,3 +99,29 @@ export type TDuplicateIntegrationAuthDTO = {
   integrationAuthId: string;
   projectId: string;
 };
+
+export enum OctopusDeployScope {
+  Project = "project"
+  // tenant, variable set
+}
+
+export type TGetIntegrationAuthOctopusDeployScopeValuesDTO = {
+  integrationAuthId: string;
+  spaceId: string;
+  resourceId: string;
+  scope: OctopusDeployScope;
+};
+
+export type TOctopusDeployVariableSetScopeValues = {
+  Environments: { Id: string; Name: string }[];
+  Machines: { Id: string; Name: string }[];
+  Actions: { Id: string; Name: string }[];
+  Roles: { Id: string; Name: string }[];
+  Channels: { Id: string; Name: string }[];
+  TenantTags: { Id: string; Name: string }[];
+  Processes: {
+    ProcessType: string;
+    Id: string;
+    Name: string;
+  }[];
+};

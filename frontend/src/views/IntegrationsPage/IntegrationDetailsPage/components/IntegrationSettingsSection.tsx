@@ -1,4 +1,5 @@
 import { TIntegrationWithEnv } from "@app/hooks/api/integrations/types";
+import { OctopusDeployScopeValues } from "@app/views/IntegrationsPage/IntegrationDetailsPage/components/OctopusDeployScopeValues";
 
 type Props = {
   integration: TIntegrationWithEnv;
@@ -27,6 +28,7 @@ const metadataMappings: Record<keyof NonNullable<TIntegrationWithEnv["metadata"]
   shouldMaskSecrets: "GitLab Secrets Masking Enabled",
   shouldProtectSecrets: "GitLab Secret Protection Enabled",
   shouldEnableDelete: "GitHub Secret Deletion Enabled",
+  octopusDeployScopeValues: "Octopus Deploy Scope Values",
   awsIamRole: "AWS IAM Role",
   region: "Region"
 } as const;
@@ -34,6 +36,9 @@ const metadataMappings: Record<keyof NonNullable<TIntegrationWithEnv["metadata"]
 export const IntegrationSettingsSection = ({ integration }: Props) => {
   const renderValue = <K extends MetadataKey>(key: K, value: MetadataValue<K>) => {
     if (!value) return null;
+
+    if (key === "octopusDeployScopeValues")
+      return <OctopusDeployScopeValues integration={integration} />;
 
     // If it's a boolean, we render a generic "Yes" or "No" response.
     if (typeof value === "boolean") {
@@ -51,7 +56,7 @@ export const IntegrationSettingsSection = ({ integration }: Props) => {
       }
 
       if (key === "githubVisibilityRepoIds") {
-        return value.join(", ");
+        return (value as string[]).join(", ");
       }
     }
 

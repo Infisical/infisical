@@ -76,6 +76,14 @@ export const ConfiguredIntegrationItem = ({
             {integrationSlugNameMapping[integration.integration]}
           </div>
         </div>
+        {integration.integration === "octopus-deploy" && (
+          <div className="ml-2 flex flex-col">
+            <FormLabel label="Space" />
+            <div className="overflow-clip text-ellipsis whitespace-nowrap rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
+              {integration.targetEnvironment || integration.targetEnvironmentId}
+            </div>
+          </div>
+        )}
         {integration.integration === "qovery" && (
           <div className="flex flex-row">
             <div className="ml-2 flex flex-col">
@@ -108,6 +116,7 @@ export const ConfiguredIntegrationItem = ({
                 (integration.integration === "qovery" && integration?.scope) ||
                 (integration.integration === "circleci" && "Project") ||
                 (integration.integration === "bitbucket" && "Repository") ||
+                (integration.integration === "octopus-deploy" && "Project") ||
                 (integration.integration === "aws-secret-manager" && "Secret") ||
                 (["aws-parameter-store", "rundeck"].includes(integration.integration) && "Path") ||
                 (integration?.integration === "terraform-cloud" && "Project") ||

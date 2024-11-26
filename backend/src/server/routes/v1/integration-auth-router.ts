@@ -5,6 +5,7 @@ import { INTEGRATION_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { OctopusDeployScope } from "@app/services/integration-auth/integration-auth-types";
 
 import { integrationAuthPubSchema } from "../sanitizedSchemas";
 
@@ -1006,6 +1007,120 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
         appId: req.query.appId
       });
       return { buildConfigs };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:integrationAuthId/octopus-deploy/scope-values",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      params: z.object({
+        integrationAuthId: z.string().trim()
+      }),
+      querystring: z.object({
+        scope: z.nativeEnum(OctopusDeployScope),
+        spaceId: z.string().trim(),
+        resourceId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          Environments: z
+            .object({
+              Name: z.string(),
+              Id: z.string()
+            })
+            .array(),
+          Machines: z
+            .object({
+              Name: z.string(),
+              Id: z.string()
+            })
+            .array(),
+          Actions: z
+            .object({
+              Name: z.string(),
+              Id: z.string()
+            })
+            .array(),
+          Roles: z
+            .object({
+              Name: z.string(),
+              Id: z.string()
+            })
+            .array(),
+          Channels: z
+            .object({
+              Name: z.string(),
+              Id: z.string()
+            })
+            .array(),
+          TenantTags: z
+            .object({
+              Name: z.string(),
+              Id: z.string()
+            })
+            .array(),
+          Processes: z
+            .object({
+              ProcessType: z.string(),
+              Name: z.string(),
+              Id: z.string()
+            })
+            .array()
+        })
+      }
+    },
+    handler: async (req) => {
+      const scopeValues = await server.services.integrationAuth.getOctopusDeployScopeValues({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        id: req.params.integrationAuthId,
+        scope: req.query.scope,
+        spaceId: req.query.spaceId,
+        resourceId: req.query.resourceId
+      });
+      return scopeValues;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:integrationAuthId/octopus-deploy/spaces",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      params: z.object({
+        integrationAuthId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          spaces: z
+            .object({
+              Name: z.string(),
+              Id: z.string(),
+              IsDefault: z.boolean()
+            })
+            .array()
+        })
+      }
+    },
+    handler: async (req) => {
+      const spaces = await server.services.integrationAuth.getOctopusDeploySpaces({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        id: req.params.integrationAuthId
+      });
+      return { spaces };
     }
   });
 };

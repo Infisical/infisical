@@ -193,3 +193,72 @@ export type TIntegrationsWithEnvironment = TIntegrations & {
     | null
     | undefined;
 };
+
+export type TIntegrationAuthOctopusDeploySpacesDTO = {
+  id: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TIntegrationAuthOctopusDeployProjectScopeValuesDTO = {
+  id: string;
+  spaceId: string;
+  resourceId: string;
+  scope: OctopusDeployScope;
+} & Omit<TProjectPermission, "projectId">;
+
+export enum OctopusDeployScope {
+  Project = "project"
+  // add tenant, variable set, etc.
+}
+
+export type TOctopusDeployVariableSet = {
+  Id: string;
+  OwnerId: string;
+  Version: number;
+  Variables: {
+    Id: string;
+    Name: string;
+    Value: string;
+    Description: string;
+    Scope: {
+      Environment?: string[];
+      Machine?: string[];
+      Role?: string[];
+      TargetRole?: string[];
+      Action?: string[];
+      User?: string[];
+      Trigger?: string[];
+      ParentDeployment?: string[];
+      Private?: string[];
+      Channel?: string[];
+      TenantTag?: string[];
+      Tenant?: string[];
+      ProcessOwner?: string[];
+    };
+    IsEditable: boolean;
+    Prompt: {
+      Description: string;
+      DisplaySettings: Record<string, string>;
+      Label: string;
+      Required: boolean;
+    } | null;
+    Type: "String";
+    IsSensitive: boolean;
+  }[];
+  ScopeValues: {
+    Environments: { Id: string; Name: string }[];
+    Machines: { Id: string; Name: string }[];
+    Actions: { Id: string; Name: string }[];
+    Roles: { Id: string; Name: string }[];
+    Channels: { Id: string; Name: string }[];
+    TenantTags: { Id: string; Name: string }[];
+    Processes: {
+      ProcessType: string;
+      Id: string;
+      Name: string;
+    }[];
+  };
+  SpaceId: string;
+  Links: {
+    Self: string;
+  };
+};

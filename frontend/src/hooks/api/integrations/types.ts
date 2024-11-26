@@ -58,9 +58,19 @@ export type TIntegration = {
     shouldProtectSecrets?: boolean;
     shouldEnableDelete?: boolean;
 
+    octopusDeployScopeValues?: TOctopusDeployScopeValues;
     awsIamRole?: string;
     region?: string;
   };
+};
+
+export type TOctopusDeployScopeValues = {
+  Environment?: string[];
+  Action?: string[];
+  Channel?: string[];
+  Machine?: string[];
+  ProcessOwner?: string[];
+  Role?: string[];
 };
 
 export type TIntegrationWithEnv = TIntegration & {

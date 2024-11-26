@@ -32,14 +32,14 @@ import { z } from "zod";
 import { SecretType, TIntegrationAuths, TIntegrations } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TCreateManySecretsRawFn, TUpdateManySecretsRawFn } from "@app/services/secret/secret-types";
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
 import { IntegrationMetadataSchema } from "../integration/integration-schema";
 import { IntegrationAuthMetadataSchema } from "./integration-auth-schema";
-import { TIntegrationsWithEnvironment } from "./integration-auth-types";
+import { OctopusDeployScope, TIntegrationsWithEnvironment, TOctopusDeployVariableSet } from "./integration-auth-types";
 import {
   IntegrationInitialSyncBehavior,
   IntegrationMappingBehavior,
@@ -4201,6 +4201,61 @@ const syncSecretsRundeck = async ({
   }
 };
 
+const syncSecretsOctopusDeploy = async ({
+  integration,
+  integrationAuth,
+  secrets,
+  accessToken
+}: {
+  integration: TIntegrations;
+  integrationAuth: TIntegrationAuths;
+  secrets: Record<string, { value: string; comment?: string }>;
+  accessToken: string;
+}) => {
+  let url: string;
+  switch (integration.scope) {
+    case OctopusDeployScope.Project:
+      url = `${integrationAuth.url}/api/${integration.targetEnvironmentId}/projects/${integration.appId}/variables`;
+      break;
+    // future support tenant, variable set, etc.
+    default:
+      throw new InternalServerError({ message: `Unhandled Octopus Deploy scope: ${integration.scope}` });
+  }
+
+  // SDK doesn't support variable set...
+  const { data: variableSet } = await request.get<TOctopusDeployVariableSet>(url, {
+    headers: {
+      "X-NuGet-ApiKey": accessToken,
+      Accept: "application/json"
+    }
+  });
+
+  await request.put(
+    url,
+    {
+      ...variableSet,
+      Variables: Object.entries(secrets).map(([key, value]) => ({
+        Name: key,
+        Value: value.value,
+        Description: value.comment ?? "",
+        Scope:
+          (integration.metadata as { octopusDeployScopeValues: TOctopusDeployVariableSet["ScopeValues"] })
+            ?.octopusDeployScopeValues ?? {},
+        IsEditable: false,
+        Prompt: null,
+        Type: "String",
+        IsSensitive: true
+      }))
+    } as unknown as TOctopusDeployVariableSet,
+    {
+      headers: {
+        "X-NuGet-ApiKey": accessToken,
+        Accept: "application/json"
+      }
+    }
+  );
+};
+
 /**
  * Sync/push [secrets] to [app] in integration named [integration]
  *
@@ -4509,6 +4564,14 @@ export const syncIntegrationSecrets = async ({
     case Integrations.RUNDECK:
       await syncSecretsRundeck({
         integration,
+        secrets,
+        accessToken
+      });
+      break;
+    case Integrations.OCTOPUS_DEPLOY:
+      await syncSecretsOctopusDeploy({
+        integration,
+        integrationAuth,
         secrets,
         accessToken
       });

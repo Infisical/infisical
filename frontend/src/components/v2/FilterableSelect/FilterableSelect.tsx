@@ -79,7 +79,8 @@ export const FilterableSelect = <T,>({ isMulti, closeMenuOnSelect, ...props }: P
         ),
       placeholder: () => "text-mineshaft-400 text-sm pl-1 py-0.5",
       input: () => "pl-1 py-0.5",
-      valueContainer: () => `p-1 max-h-[14rem] ${isMulti ? "!overflow-y-scroll" : ""} gap-1`,
+      valueContainer: () =>
+        `p-1 max-h-[14rem] ${isMulti ? "!overflow-y-auto thin-scrollbar" : ""} gap-1`,
       singleValue: () => "leading-7 ml-1",
       multiValue: () => "bg-mineshaft-600 rounded items-center py-0.5 px-2 gap-1.5",
       multiValueLabel: () => "leading-6 text-sm",

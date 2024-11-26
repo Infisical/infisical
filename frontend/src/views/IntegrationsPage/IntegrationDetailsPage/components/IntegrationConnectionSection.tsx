@@ -55,6 +55,8 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
           return "Path";
         case "bitbucket":
           return "Repository";
+        case "octopus-deploy":
+          return "Project";
         case "github":
           if (["github-env", "github-repo"].includes(integration.scope!)) {
             return "Repository";
@@ -104,6 +106,16 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
         </div>
       );
     }
+
+    if (integration.integration === "octopus-deploy") {
+      return (
+        <div>
+          <FormLabel className="text-sm font-semibold text-mineshaft-300" label="Space" />
+          <div className="text-sm text-mineshaft-300">{integration.targetEnvironment}</div>
+        </div>
+      );
+    }
+
     if (
       ["vercel", "netlify", "railway", "gitlab", "teamcity"].includes(integration.integration) ||
       (integration.integration === "github" && integration.scope === "github-env")

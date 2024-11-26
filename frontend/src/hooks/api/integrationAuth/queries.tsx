@@ -17,7 +17,9 @@ import {
   Project,
   Service,
   Team,
-  TeamCityBuildConfig
+  TeamCityBuildConfig,
+  TGetIntegrationAuthOctopusDeployScopeValuesDTO,
+  TOctopusDeployVariableSetScopeValues
 } from "./types";
 
 const integrationAuthKeys = {
@@ -119,7 +121,14 @@ const integrationAuthKeys = {
   }: {
     integrationAuthId: string;
     appId: string;
-  }) => [{ integrationAuthId, appId }, "integrationAuthTeamCityBranchConfigs"] as const
+  }) => [{ integrationAuthId, appId }, "integrationAuthTeamCityBranchConfigs"] as const,
+  getIntegrationAuthOctopusDeploySpaces: (integrationAuthId: string) =>
+    [{ integrationAuthId }, "getIntegrationAuthOctopusDeploySpaces"] as const,
+  getIntegrationAuthOctopusDeployScopeValues: ({
+    integrationAuthId,
+    ...params
+  }: TGetIntegrationAuthOctopusDeployScopeValuesDTO) =>
+    [{ integrationAuthId }, "getIntegrationAuthOctopusDeployScopeValues", params] as const
 };
 
 const fetchIntegrationAuthById = async (integrationAuthId: string) => {
@@ -479,6 +488,28 @@ const fetchIntegrationAuthTeamCityBuildConfigs = async ({
   return buildConfigs;
 };
 
+const fetchIntegrationAuthOctopusDeploySpaces = async (integrationAuthId: string) => {
+  const {
+    data: { spaces }
+  } = await apiRequest.get<{
+    spaces: { Name: string; Slug: string; Id: string; IsDefault: boolean }[];
+  }>(`/api/v1/integration-auth/${integrationAuthId}/octopus-deploy/spaces`);
+  return spaces;
+};
+
+const fetchIntegrationAuthOctopusDeployScopeValues = async ({
+  integrationAuthId,
+  scope,
+  spaceId,
+  resourceId
+}: TGetIntegrationAuthOctopusDeployScopeValuesDTO) => {
+  const { data } = await apiRequest.get<TOctopusDeployVariableSetScopeValues>(
+    `/api/v1/integration-auth/${integrationAuthId}/octopus-deploy/scope-values`,
+    { params: { scope, spaceId, resourceId } }
+  );
+  return data;
+};
+
 export const useGetIntegrationAuthById = (integrationAuthId: string) => {
   return useQuery({
     queryKey: integrationAuthKeys.getIntegrationAuthById(integrationAuthId),
@@ -487,17 +518,24 @@ export const useGetIntegrationAuthById = (integrationAuthId: string) => {
   });
 };
 
-export const useGetIntegrationAuthApps = ({
-  integrationAuthId,
-  teamId,
-  azureDevOpsOrgName,
-  workspaceSlug
-}: {
-  integrationAuthId: string;
-  teamId?: string;
-  azureDevOpsOrgName?: string;
-  workspaceSlug?: string;
-}) => {
+export const useGetIntegrationAuthApps = (
+  {
+    integrationAuthId,
+    teamId,
+    azureDevOpsOrgName,
+    workspaceSlug
+  }: {
+    integrationAuthId: string;
+    teamId?: string;
+    azureDevOpsOrgName?: string;
+    workspaceSlug?: string;
+  },
+  options?: UseQueryOptions<
+    Awaited<ReturnType<typeof fetchIntegrationAuthApps>>,
+    unknown,
+    Awaited<ReturnType<typeof fetchIntegrationAuthApps>>
+  >
+) => {
   return useQuery({
     queryKey: integrationAuthKeys.getIntegrationAuthApps(integrationAuthId, teamId, workspaceSlug),
     queryFn: () =>
@@ -507,7 +545,7 @@ export const useGetIntegrationAuthApps = ({
         azureDevOpsOrgName,
         workspaceSlug
       }),
-    enabled: true
+    ...options
   });
 };
 
@@ -758,6 +796,27 @@ export const useGetIntegrationAuthBitBucketWorkspaces = (integrationAuthId: stri
     enabled: true
   });
 };
+
+export const useGetIntegrationAuthOctopusDeploySpaces = (integrationAuthId: string) => {
+  return useQuery({
+    queryKey: integrationAuthKeys.getIntegrationAuthOctopusDeploySpaces(integrationAuthId),
+    queryFn: () => fetchIntegrationAuthOctopusDeploySpaces(integrationAuthId)
+  });
+};
+
+export const useGetIntegrationAuthOctopusDeployScopeValues = (
+  params: TGetIntegrationAuthOctopusDeployScopeValuesDTO,
+  options?: UseQueryOptions<
+    TOctopusDeployVariableSetScopeValues,
+    unknown,
+    TOctopusDeployVariableSetScopeValues
+  >
+) =>
+  useQuery({
+    queryKey: integrationAuthKeys.getIntegrationAuthOctopusDeployScopeValues(params),
+    queryFn: () => fetchIntegrationAuthOctopusDeployScopeValues(params),
+    ...options
+  });
 
 export const useGetIntegrationAuthBitBucketEnvironments = (
   {

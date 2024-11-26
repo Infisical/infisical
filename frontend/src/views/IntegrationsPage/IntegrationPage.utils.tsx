@@ -140,6 +140,9 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
       case "azure-devops":
         link = `${window.location.origin}/integrations/azure-devops/authorize`;
         break;
+      case "octopus-deploy":
+        link = `${window.location.origin}/integrations/octopus-deploy/authorize`;
+        break;
       default:
         break;
     }

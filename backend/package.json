@@ -141,6 +141,7 @@
     "@octokit/plugin-retry": "^5.0.5",
     "@octokit/rest": "^20.0.2",
     "@octokit/webhooks-types": "^7.3.1",
+    "@octopusdeploy/api-client": "^3.4.1",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/auto-instrumentations-node": "^0.53.0",
     "@opentelemetry/exporter-metrics-otlp-proto": "^0.55.0",

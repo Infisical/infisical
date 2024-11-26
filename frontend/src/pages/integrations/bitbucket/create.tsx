@@ -181,7 +181,7 @@ export default function BitBucketCreateIntegrationPage() {
                 onChange={onChange}
                 options={currentWorkspace?.environments}
                 placeholder="Select a project environment"
-                isDisabled={!bitbucketWorkspaces?.length}
+                isDisabled={!currentWorkspace?.environments.length}
               />
             </FormControl>
           )}
