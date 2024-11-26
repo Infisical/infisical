@@ -516,12 +516,18 @@ const syncSecretsAzureKeyVault = async ({
         if (!lastSlashIndex) {
           lastSlashIndex = getAzureKeyVaultSecret.id.lastIndexOf("/");
         }
+        if (!getAzureKeyVaultSecret.attributes.enabled) return null;
 
-        const azureKeyVaultSecret = await request.get(`${getAzureKeyVaultSecret.id}?api-version=7.3`, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`
-          }
-        });
+        let azureKeyVaultSecret;
+        try {
+          azureKeyVaultSecret = await request.get(`${getAzureKeyVaultSecret.id}?api-version=7.3`, {
+            headers: {
+              Authorization: `Bearer ${accessToken}`
+            }
+          });
+        } catch (err) {
+          throw new Error(`Failed to fetch Azure Key Vault secret: ${(err as Error).message}`);
+        }
 
         return {
           ...azureKeyVaultSecret.data,
@@ -529,13 +535,15 @@ const syncSecretsAzureKeyVault = async ({
         };
       })
     )
-  ).reduce(
-    (obj, secret) => ({
-      ...obj,
-      [secret.key]: secret
-    }),
-    {}
-  );
+  )
+    .filter((secret) => secret !== null)
+    .reduce(
+      (obj, secret) => ({
+        ...obj,
+        [secret.key]: secret
+      }),
+      {}
+    );
 
   const setSecrets: {
     key: string;
