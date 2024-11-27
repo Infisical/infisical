@@ -1,28 +1,18 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
-import {
-  faCheckCircle,
-  faChevronDown,
-  faExclamationCircle
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+  FilterableSelect,
   FormControl,
   Modal,
   ModalContent,
   Select,
   SelectItem,
-  TextArea,
-  Tooltip
+  TextArea
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { isCustomOrgRole } from "@app/helpers/roles";
@@ -44,7 +34,16 @@ const EmailSchema = z.string().email().min(1).trim().toLowerCase();
 
 const addMemberFormSchema = z.object({
   emails: z.string().min(1).trim().toLowerCase(),
-  projectIds: z.array(z.string().min(1).trim().toLowerCase()).default([]),
+  projects: z
+    .array(
+      z.object({
+        name: z.string(),
+        id: z.string(),
+        slug: z.string(),
+        version: z.nativeEnum(ProjectVersion)
+      })
+    )
+    .default([]),
   projectRoleSlug: z.string().min(1).default(DEFAULT_ORG_AND_PROJECT_MEMBER_ROLE_SLUG),
   organizationRoleSlug: z.string().min(1).default(DEFAULT_ORG_AND_PROJECT_MEMBER_ROLE_SLUG)
 });
@@ -72,7 +71,7 @@ export const AddOrgMemberModal = ({
   const { data: organizationRoles } = useGetOrgRoles(currentOrg?.id ?? "");
   const { data: serverDetails } = useFetchServerStatus();
   const { mutateAsync: addUsersMutateAsync } = useAddUsersToOrg();
-  const { data: projects } = useGetUserWorkspaces(true);
+  const { data: projects, isLoading: isProjectsLoading } = useGetUserWorkspaces(true);
 
   const {
     control,
@@ -95,17 +94,13 @@ export const AddOrgMemberModal = ({
     }
   }, [organizationRoles]);
 
-  const selectedProjectIds = watch("projectIds", []);
-
   const onAddMembers = async ({
     emails,
     organizationRoleSlug,
-    projectIds,
+    projects: selectedProjects,
     projectRoleSlug
   }: TAddMemberForm) => {
     if (!currentOrg?.id) return;
-
-    const selectedProjects = projects?.filter((project) => projectIds.includes(String(project.id)));
 
     if (selectedProjects?.length) {
       // eslint-disable-next-line no-restricted-syntax
@@ -144,7 +139,7 @@ export const AddOrgMemberModal = ({
         organizationId: currentOrg?.id,
         inviteeEmails: emails.split(",").map((email) => email.trim()),
         organizationRoleSlug,
-        projects: projectIds.map((id) => ({ id, projectRoleSlug: [projectRoleSlug] }))
+        projects: selectedProjects.map(({ id }) => ({ id, projectRoleSlug: [projectRoleSlug] }))
       });
 
       setCompleteInviteLinks(data?.completeInviteLinks ?? null);
@@ -182,6 +177,7 @@ export const AddOrgMemberModal = ({
       }}
     >
       <ModalContent
+        bodyClassName="overflow-visible"
         title={`Invite others to ${currentOrg?.name}`}
         subTitle={
           <div>
@@ -236,98 +232,33 @@ export const AddOrgMemberModal = ({
               )}
             />
 
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-start justify-between gap-2">
               <div className="w-full">
                 <Controller
                   control={control}
-                  name="projectIds"
-                  render={({ field, fieldState: { error } }) => (
+                  name="projects"
+                  render={({ field: { value, onChange }, fieldState: { error } }) => (
                     <FormControl
-                      label="Assign users to projects (optional)"
+                      label="Assign users to projects"
+                      isOptional
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                     >
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          {projects && projects.length > 0 ? (
-                            <div className="inline-flex w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
-                              {/* eslint-disable-next-line no-nested-ternary */}
-                              {selectedProjectIds.length === 1
-                                ? projects.find((project) => project.id === selectedProjectIds[0])
-                                    ?.name
-                                : selectedProjectIds.length === 0
-                                ? "No projects selected"
-                                : `${selectedProjectIds.length} projects selected`}
-                              <FontAwesomeIcon icon={faChevronDown} className="text-xs" />
-                            </div>
-                          ) : (
-                            <div className="inline-flex w-full cursor-default items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
-                              No projects found
-                            </div>
-                          )}
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="start"
-                          className="thin-scrollbar z-[100] max-h-80"
-                        >
-                          {projects && projects.length > 0 ? (
-                            projects.map((project) => {
-                              const isSelected = selectedProjectIds.includes(String(project.id));
-
-                              return (
-                                <DropdownMenuItem
-                                  onSelect={(event) =>
-                                    projects.length > 1 && event.preventDefault()
-                                  }
-                                  onClick={() => {
-                                    if (selectedProjectIds.includes(String(project.id))) {
-                                      field.onChange(
-                                        selectedProjectIds.filter(
-                                          (projectId: string) => projectId !== String(project.id)
-                                        )
-                                      );
-                                    } else {
-                                      field.onChange([...selectedProjectIds, String(project.id)]);
-                                    }
-                                  }}
-                                  key={`project-id-${project.id}`}
-                                  icon={
-                                    isSelected ? (
-                                      <FontAwesomeIcon
-                                        icon={faCheckCircle}
-                                        className="pr-0.5 text-primary"
-                                      />
-                                    ) : (
-                                      <div className="pl-[1.01rem]" />
-                                    )
-                                  }
-                                  iconPos="left"
-                                  className="w-[28.4rem] text-sm"
-                                >
-                                  <div className="flex items-center gap-2 capitalize">
-                                    {project.name}
-                                    {project.version !== ProjectVersion.V3 && (
-                                      <Tooltip content="Project is not compatible with this action, please upgrade this project.">
-                                        <FontAwesomeIcon
-                                          icon={faExclamationCircle}
-                                          className="text-xs opacity-50"
-                                        />
-                                      </Tooltip>
-                                    )}
-                                  </div>
-                                </DropdownMenuItem>
-                              );
-                            })
-                          ) : (
-                            <div />
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <FilterableSelect
+                        isMulti
+                        value={value}
+                        onChange={onChange}
+                        isLoading={isProjectsLoading}
+                        getOptionLabel={(project) => project.name}
+                        getOptionValue={(project) => project.id}
+                        options={projects}
+                        placeholder="Select projects..."
+                      />
                     </FormControl>
                   )}
                 />
               </div>
-              <div className="flex min-w-fit justify-end">
+              <div className="mt-[0.15rem] flex min-w-fit justify-end">
                 <Controller
                   control={control}
                   name="projectRoleSlug"
@@ -340,7 +271,7 @@ export const AddOrgMemberModal = ({
                     >
                       <div>
                         <Select
-                          isDisabled={selectedProjectIds.length === 0}
+                          isDisabled={watch("projects", []).length === 0}
                           defaultValue={DEFAULT_ORG_AND_PROJECT_MEMBER_ROLE_SLUG}
                           {...field}
                           onValueChange={(val) => field.onChange(val)}
