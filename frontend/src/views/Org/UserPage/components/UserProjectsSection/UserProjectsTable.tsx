@@ -49,7 +49,6 @@ export const UserProjectsTable = ({ membershipId, handlePopUpOpen }: Props) => {
     perPage,
     setPerPage,
     offset,
-    limit,
     orderDirection,
     toggleOrderDirection
   } = usePagination(UserProjectsOrderBy.Name, { initPerPage: 10 });
@@ -59,7 +58,7 @@ export const UserProjectsTable = ({ membershipId, handlePopUpOpen }: Props) => {
     membershipId
   );
 
-  const filteredProjects = useMemo(
+  const filteredProjectMemberships = useMemo(
     () =>
       projectMemberships
         ?.filter((membership) =>
@@ -77,7 +76,7 @@ export const UserProjectsTable = ({ membershipId, handlePopUpOpen }: Props) => {
   );
 
   useResetPageHelper({
-    totalCount: filteredProjects.length,
+    totalCount: filteredProjectMemberships.length,
     offset,
     setPage
   });
@@ -116,7 +115,7 @@ export const UserProjectsTable = ({ membershipId, handlePopUpOpen }: Props) => {
           <TBody>
             {isLoading && <TableSkeleton columns={3} innerKey="user-project-memberships" />}
             {!isLoading &&
-              filteredProjects?.slice(offset, limit * page)?.map((membership) => {
+              filteredProjectMemberships.slice(offset, perPage * page).map((membership) => {
                 return (
                   <UserProjectRow
                     key={`user-project-membership-${membership.id}`}
@@ -127,16 +126,16 @@ export const UserProjectsTable = ({ membershipId, handlePopUpOpen }: Props) => {
               })}
           </TBody>
         </Table>
-        {Boolean(filteredProjects.length) && (
+        {Boolean(filteredProjectMemberships.length) && (
           <Pagination
-            count={filteredProjects.length}
+            count={filteredProjectMemberships.length}
             page={page}
             perPage={perPage}
             onChangePage={setPage}
             onChangePerPage={setPerPage}
           />
         )}
-        {!isLoading && !filteredProjects?.length && (
+        {!isLoading && !filteredProjectMemberships?.length && (
           <EmptyState
             title={
               projectMemberships.length
