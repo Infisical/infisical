@@ -14,7 +14,7 @@ export type DatePickerProps = Omit<DayPickerProps, "selected"> & {
   onChange: (date?: Date) => void;
   popUpProps: PopoverProps;
   popUpContentProps: PopoverContentProps;
-  dateFormat?: string;
+  dateFormat?: "PPP" | "PP" | "P"; // extend as needed
 };
 
 // Doc: https://react-day-picker.js.org/
