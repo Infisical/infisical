@@ -91,7 +91,7 @@ const ProjectOption = ({
       isSelected={isSelected}
       data={data}
       {...props}
-      className={twMerge(props.className, isSelected && "bg-mineshaft-600")}
+      className={twMerge(props.className, isSelected && "bg-mineshaft-500")}
     >
       <div className="flex w-full items-center">
         {isSelected && (
