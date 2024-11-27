@@ -109,7 +109,7 @@ const Content = ({ identityId, handlePopUpToggle }: Omit<Props, "popUp">) => {
         name="project"
         render={({ field: { onChange, value }, fieldState: { error } }) => (
           <FormControl
-            label="Projects"
+            label="Project"
             errorText={error?.message}
             isError={Boolean(error)}
             className="mt-4"
@@ -177,7 +177,7 @@ export const IdentityAddToProjectModal = ({ identityId, popUp, handlePopUpToggle
         handlePopUpToggle("addIdentityToProject", isOpen);
       }}
     >
-      <ModalContent bodyClassName="overflow-visible" title="Add Identity to Projects">
+      <ModalContent bodyClassName="overflow-visible" title="Add Identity to Project">
         <Content identityId={identityId} handlePopUpToggle={handlePopUpToggle} />
       </ModalContent>
     </Modal>
