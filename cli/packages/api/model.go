@@ -128,6 +128,10 @@ type GetWorkSpacesResponse struct {
 	} `json:"workspaces"`
 }
 
+type GetProjectByIdResponse struct {
+	Project Project `json:"workspace"`
+}
+
 type GetOrganizationsResponse struct {
 	Organizations []struct {
 		ID   string `json:"id"`
@@ -161,6 +165,12 @@ type Secret struct {
 	Type                    string `json:"type,omitempty"`
 	ID                      string `json:"id,omitempty"`
 	PlainTextKey            string `json:"plainTextKey"`
+}
+
+type Project struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Slug string `json:"slug"`
 }
 
 type RawSecret struct {
