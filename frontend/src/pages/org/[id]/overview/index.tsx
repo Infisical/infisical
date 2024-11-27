@@ -523,8 +523,8 @@ const OrganizationPage = () => {
         .filter((ws) => ws?.name?.toLowerCase().includes(searchFilter.toLowerCase()))
         .sort((a, b) =>
           orderDirection === OrderByDirection.ASC
-            ? a.name.localeCompare(b.name)
-            : b.name.localeCompare(a.name)
+            ? a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+            : b.name.toLowerCase().localeCompare(a.name.toLowerCase())
         ),
     [searchFilter, page, perPage, orderDirection, offset, limit]
   );
