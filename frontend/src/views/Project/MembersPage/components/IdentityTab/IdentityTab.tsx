@@ -181,7 +181,7 @@ export const IdentityTab = withProjectPermission(
                   onClick={() => handlePopUpOpen("identity")}
                   isDisabled={!isAllowed}
                 >
-                  Add identity
+                  Add Identity
                 </Button>
               )}
             </ProjectPermissionCan>
