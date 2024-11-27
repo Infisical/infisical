@@ -32,7 +32,13 @@ export const FilterableSelect = <T,>({
       })
     }}
     tabSelectsValue={tabSelectsValue}
-    components={{ DropdownIndicator, ClearIndicator, MultiValueRemove, Option }}
+    components={{
+      DropdownIndicator,
+      ClearIndicator,
+      MultiValueRemove,
+      Option,
+      ...props.components
+    }}
     classNames={{
       container: () => "w-full font-inter",
       control: ({ isFocused }) =>
