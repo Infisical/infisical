@@ -514,8 +514,16 @@ const OrganizationPage = () => {
 
   const isWorkspaceEmpty = !isProjectViewLoading && orgWorkspaces?.length === 0;
 
-  const { setPage, perPage, setPerPage, page, offset, limit, setOrderDirection, orderDirection } =
-    usePagination(ProjectOrderBy.Name, { initPerPage: 24 });
+  const {
+    setPage,
+    perPage,
+    setPerPage,
+    page,
+    offset,
+    limit,
+    toggleOrderDirection,
+    orderDirection
+  } = usePagination(ProjectOrderBy.Name, { initPerPage: 24 });
 
   const filteredWorkspaces = useMemo(
     () =>
@@ -805,11 +813,7 @@ const OrganizationPage = () => {
                 variant="plain"
                 size="xs"
                 colorSchema="secondary"
-                onClick={() =>
-                  setOrderDirection((prev) =>
-                    prev === OrderByDirection.ASC ? OrderByDirection.DESC : OrderByDirection.ASC
-                  )
-                }
+                onClick={toggleOrderDirection}
               >
                 <FontAwesomeIcon
                   icon={orderDirection === OrderByDirection.ASC ? faArrowDownAZ : faArrowUpZA}

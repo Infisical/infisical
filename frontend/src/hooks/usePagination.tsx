@@ -33,6 +33,10 @@ export const usePagination = <T extends string>(
     search,
     setSearch,
     orderBy,
-    setOrderBy
+    setOrderBy,
+    toggleOrderDirection: () =>
+      setOrderDirection((prev) =>
+        prev === OrderByDirection.DESC ? OrderByDirection.ASC : OrderByDirection.DESC
+      )
   };
 };
