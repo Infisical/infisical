@@ -127,13 +127,15 @@ export const UserProjectsTable = ({ membershipId, handlePopUpOpen }: Props) => {
               })}
           </TBody>
         </Table>
-        <Pagination
-          count={filteredProjects.length}
-          page={page}
-          perPage={perPage}
-          onChangePage={setPage}
-          onChangePerPage={setPerPage}
-        />
+        {Boolean(filteredProjects.length) && (
+          <Pagination
+            count={filteredProjects.length}
+            page={page}
+            perPage={perPage}
+            onChangePage={setPage}
+            onChangePerPage={setPerPage}
+          />
+        )}
         {!isLoading && !filteredProjects?.length && (
           <EmptyState
             title={
