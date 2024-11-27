@@ -168,7 +168,7 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
           isLoading={isSubmitting}
           isDisabled={isSubmitting}
         >
-          {popUp?.identity?.data ? "Update" : "Create"}
+          {popUp?.identity?.data ? "Update" : "Add"}
         </Button>
         <ModalClose asChild>
           <Button colorSchema="secondary" variant="plain">
