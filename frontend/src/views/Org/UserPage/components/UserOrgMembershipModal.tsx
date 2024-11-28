@@ -18,7 +18,7 @@ import {
   ModalContent
 } from "@app/components/v2";
 import { useOrganization, useSubscription } from "@app/context";
-import { isCustomOrgRole } from "@app/helpers/roles";
+import { findOrgMembershipRole, isCustomOrgRole } from "@app/helpers/roles";
 import { useGetOrgRoles, useUpdateOrgMembership } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -75,18 +75,13 @@ export const UserOrgMembershipModal = ({ popUp, handlePopUpOpen, handlePopUpTogg
     if (!roles?.length) return;
 
     if (popUpData) {
-      console.log("roles", roles, popUpData.roleId);
       reset({
-        role: popUpData.roleId
-          ? roles?.find((role) => role.id === popUpData.roleId)
-          : roles?.find((role) => role.slug === popUpData.role),
+        role: findOrgMembershipRole(roles, popUpData.roleId ?? popUpData.role),
         metadata: popUpData.metadata
       });
     } else {
       reset({
-        role: isCustomOrgRole(currentOrg?.defaultMembershipRole!)
-          ? roles?.find((role) => role.id === currentOrg?.defaultMembershipRole)
-          : roles?.find((role) => role.slug === currentOrg?.defaultMembershipRole)
+        role: findOrgMembershipRole(roles, currentOrg!.defaultMembershipRole!)
       });
     }
   }, [popUp?.orgMembership?.data, roles]);

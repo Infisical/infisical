@@ -18,7 +18,7 @@ import {
   ModalContent
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
-import { isCustomOrgRole } from "@app/helpers/roles";
+import { findOrgMembershipRole } from "@app/helpers/roles";
 import { useCreateIdentity, useGetOrgRoles, useUpdateIdentity } from "@app/hooks/api";
 import { useAddIdentityUniversalAuth } from "@app/hooks/api/identities";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -98,15 +98,13 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
     if (identity) {
       reset({
         name: identity.name,
-        role: identity?.customRole ?? roles.find((role) => role.slug === identity.role),
+        role: identity.customRole ?? findOrgMembershipRole(roles, identity.role),
         metadata: identity.metadata
       });
     } else {
       reset({
         name: "",
-        role: isCustomOrgRole(currentOrg?.defaultMembershipRole!)
-          ? roles?.find((role) => role.id === currentOrg?.defaultMembershipRole)
-          : roles?.find((role) => role.slug === currentOrg?.defaultMembershipRole)
+        role: findOrgMembershipRole(roles, currentOrg!.defaultMembershipRole)
       });
     }
   }, [popUp?.identity?.data, roles]);
