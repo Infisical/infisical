@@ -1,0 +1,60 @@
+# Name of the CSI provider deployment
+name: infisical-csi-provider
+# Namespace where CSI provider will be deployed
+namespace: kube-system
+
+# Container image configuration
+image:
+  repository: infisical-csi-provider # Image repository name
+  tag: latest # Image tag
+  pullPolicy: IfNotPresent # Pull policy: Always|IfNotPresent|Never
+
+# Unix domain socket path for CSI driver communication
+endpoint: /provider/infisical.sock
+
+# Resource limits and requests
+resources:
+  requests:
+    cpu: 50m # Minimum CPU needed
+    memory: 100Mi # Minimum memory needed
+  limits:
+    cpu: 50m # Maximum CPU allowed
+    memory: 100Mi # Maximum memory allowed
+
+# Volume configuration for provider socket
+providerVolume:
+  mountPath: /provider # Container mount path
+  hostPath: /etc/kubernetes/secrets-store-csi-providers # Host path
+
+# Health check for container liveness
+livenessProbe:
+  httpGet:
+    path: /health/ready
+    port: 8080
+    scheme: HTTP
+  failureThreshold: 2 # Number of failures before considered failed
+  initialDelaySeconds: 5 # Wait time before first probe
+  periodSeconds: 5 # Time between probes
+  successThreshold: 1 # Minimum consecutive successes
+  timeoutSeconds: 3 # Probe timeout
+
+# Health check for container readiness
+readinessProbe:
+  httpGet:
+    path: /health/ready
+    port: 8080
+    scheme: HTTP
+  failureThreshold: 2
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  successThreshold: 1
+  timeoutSeconds: 3
+
+# Node selection criteria
+nodeSelector:
+  kubernetes.io/os: linux # Only deploy on Linux nodes
+
+# Optional configurations
+labels: {} # Additional labels for resources
+podLabels: {} # Additional labels for pods
+tolerations: [] # Pod tolerations for node taints

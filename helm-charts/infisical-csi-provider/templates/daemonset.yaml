@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app: {{ .Values.name | default "infisical-csi-provider" }}
+    {{- with .Values.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  name: {{ .Values.name | default "infisical-csi-provider" }}
+  namespace: {{ .Values.namespace | default "kube-system" }}
+spec:
+  updateStrategy:
+    type: {{ .Values.updateStrategy | default "RollingUpdate" }}
+  selector:
+    matchLabels:
+      app: {{ .Values.name | default "infisical-csi-provider" }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.name | default "infisical-csi-provider" }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.tolerations }}
+      tolerations:
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
+      containers:
+        - name: {{ .Values.name | default "infisical-csi-provider" }}
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag | default "latest" }}
+          imagePullPolicy: {{ .Values.image.pullPolicy | default "Never" }}
+          args:
+            - -endpoint={{ .Values.endpoint | default "/provider/infisical.sock" }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: providervol
+              mountPath: {{ .Values.providerVolume.mountPath | default "/provider" }}
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+      volumes:
+        - name: providervol
+          hostPath:
+            path: {{ .Values.providerVolume.hostPath | default "/etc/kubernetes/secrets-store-csi-providers" }}
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
