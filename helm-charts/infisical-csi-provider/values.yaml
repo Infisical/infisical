@@ -5,9 +5,13 @@ namespace: kube-system
 
 # Container image configuration
 image:
-  repository: infisical-csi-provider # Image repository name
+  repository: infisical/infisical-csi-provider # Image repository name
   tag: latest # Image tag
   pullPolicy: IfNotPresent # Pull policy: Always|IfNotPresent|Never
+
+# Infisical provider arguments
+args:
+  - -endpoint=/provider/infisical.sock
 
 # Unix domain socket path for CSI driver communication
 endpoint: /provider/infisical.sock
