@@ -14,10 +14,12 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
-import { NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { fetchGithubEmails } from "@app/lib/requests/github";
+import { authRateLimit } from "@app/server/config/rateLimiter";
 import { AuthMethod } from "@app/services/auth/auth-type";
+import { OrgAuthMethod } from "@app/services/org/org-types";
 
 export const registerSsoRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
@@ -194,6 +196,44 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
         }) as any
       )(req, res),
     handler: () => {}
+  });
+
+  server.route({
+    url: "/redirect/organizations/:orgSlug",
+    method: "GET",
+    config: {
+      rateLimit: authRateLimit
+    },
+    schema: {
+      params: z.object({
+        orgSlug: z.string().trim()
+      }),
+      querystring: z.object({
+        callback_port: z.string().optional()
+      })
+    },
+    handler: async (req, res) => {
+      const org = await server.services.org.findOrgBySlug(req.params.orgSlug);
+      if (org.orgAuthMethod === OrgAuthMethod.SAML) {
+        return res.redirect(
+          `${appCfg.SITE_URL}/api/v1/sso/redirect/saml2/organizations/${org.slug}?${
+            req.query.callback_port ? `callback_port=${req.query.callback_port}` : ""
+          }`
+        );
+      }
+
+      if (org.orgAuthMethod === OrgAuthMethod.OIDC) {
+        return res.redirect(
+          `${appCfg.SITE_URL}/api/v1/sso/oidc/login?orgSlug=${org.slug}${
+            req.query.callback_port ? `&callbackPort=${req.query.callback_port}` : ""
+          }`
+        );
+      }
+
+      throw new BadRequestError({
+        message: "The organization does not have any SSO configured."
+      });
+    }
   });
 
   server.route({

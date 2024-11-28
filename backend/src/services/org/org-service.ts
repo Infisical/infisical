@@ -187,6 +187,15 @@ export const orgServiceFactory = ({
     return members;
   };
 
+  const findOrgBySlug = async (slug: string) => {
+    const org = await orgDAL.findOrgBySlug(slug);
+    if (!org) {
+      throw new NotFoundError({ message: `Organization with slug '${slug}' not found` });
+    }
+
+    return org;
+  };
+
   const findAllWorkspaces = async ({ actor, actorId, orgId }: TFindAllWorkspacesDTO) => {
     const organizationWorkspaceIds = new Set((await projectDAL.find({ orgId })).map((workspace) => workspace.id));
 
@@ -275,6 +284,7 @@ export const orgServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
 
     const plan = await licenseService.getPlan(orgId);
+    const currentOrg = await orgDAL.findOrgById(actorOrgId);
 
     if (enforceMfa !== undefined) {
       if (!plan.enforceMfa) {
@@ -305,6 +315,11 @@ export const orgServiceFactory = ({
             "Failed to enable/disable SCIM provisioning due to plan restriction. Upgrade plan to enable/disable SCIM provisioning."
         });
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Scim);
+      if (scimEnabled && !currentOrg.orgAuthMethod) {
+        throw new BadRequestError({
+          message: "Cannot enable SCIM when neither SAML or OIDC is configured."
+        });
+      }
     }
 
     if (authEnforced) {
@@ -1132,6 +1147,7 @@ export const orgServiceFactory = ({
     createIncidentContact,
     deleteIncidentContact,
     getOrgGroups,
-    listProjectMembershipsByOrgMembershipId
+    listProjectMembershipsByOrgMembershipId,
+    findOrgBySlug
   };
 };

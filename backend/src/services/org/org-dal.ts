@@ -14,6 +14,8 @@ import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt, withTransaction } from "@app/lib/knex";
 import { generateKnexQueryFromScim } from "@app/lib/knex/scim";
 
+import { OrgAuthMethod } from "./org-types";
+
 export type TOrgDALFactory = ReturnType<typeof orgDALFactory>;
 
 export const orgDALFactory = (db: TDbClient) => {
@@ -21,10 +23,75 @@ export const orgDALFactory = (db: TDbClient) => {
 
   const findOrgById = async (orgId: string) => {
     try {
-      const org = await db.replicaNode()(TableName.Organization).where({ id: orgId }).first();
+      const org = (await db
+        .replicaNode()(TableName.Organization)
+        .where({ [`${TableName.Organization}.id` as "id"]: orgId })
+        .leftJoin(TableName.SamlConfig, (qb) => {
+          qb.on(`${TableName.SamlConfig}.orgId`, "=", `${TableName.Organization}.id`).andOn(
+            `${TableName.SamlConfig}.isActive`,
+            "=",
+            db.raw("true")
+          );
+        })
+        .leftJoin(TableName.OidcConfig, (qb) => {
+          qb.on(`${TableName.OidcConfig}.orgId`, "=", `${TableName.Organization}.id`).andOn(
+            `${TableName.OidcConfig}.isActive`,
+            "=",
+            db.raw("true")
+          );
+        })
+        .select(selectAllTableCols(TableName.Organization))
+        .select(
+          db.raw(`
+            CASE 
+              WHEN ${TableName.SamlConfig}."orgId" IS NOT NULL THEN '${OrgAuthMethod.SAML}'
+              WHEN ${TableName.OidcConfig}."orgId" IS NOT NULL THEN '${OrgAuthMethod.OIDC}'
+              ELSE ''
+            END as "orgAuthMethod"
+        `)
+        )
+        .first()) as TOrganizations & { orgAuthMethod?: string };
+
       return org;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find org by id" });
+    }
+  };
+
+  const findOrgBySlug = async (orgSlug: string) => {
+    try {
+      const org = (await db
+        .replicaNode()(TableName.Organization)
+        .where({ [`${TableName.Organization}.slug` as "slug"]: orgSlug })
+        .leftJoin(TableName.SamlConfig, (qb) => {
+          qb.on(`${TableName.SamlConfig}.orgId`, "=", `${TableName.Organization}.id`).andOn(
+            `${TableName.SamlConfig}.isActive`,
+            "=",
+            db.raw("true")
+          );
+        })
+        .leftJoin(TableName.OidcConfig, (qb) => {
+          qb.on(`${TableName.OidcConfig}.orgId`, "=", `${TableName.Organization}.id`).andOn(
+            `${TableName.OidcConfig}.isActive`,
+            "=",
+            db.raw("true")
+          );
+        })
+        .select(selectAllTableCols(TableName.Organization))
+        .select(
+          db.raw(`
+            CASE 
+              WHEN ${TableName.SamlConfig}."orgId" IS NOT NULL THEN '${OrgAuthMethod.SAML}'
+              WHEN ${TableName.OidcConfig}."orgId" IS NOT NULL THEN '${OrgAuthMethod.OIDC}'
+              ELSE ''
+            END as "orgAuthMethod"
+        `)
+        )
+        .first()) as TOrganizations & { orgAuthMethod?: string };
+
+      return org;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find org by slug" });
     }
   };
 
@@ -398,6 +465,7 @@ export const orgDALFactory = (db: TDbClient) => {
     findAllOrgMembers,
     countAllOrgMembers,
     findOrgById,
+    findOrgBySlug,
     findAllOrgsByUserId,
     ghostUserExists,
     findOrgMembersByUsername,
