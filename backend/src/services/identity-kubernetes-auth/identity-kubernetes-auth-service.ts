@@ -120,7 +120,8 @@ export const identityKubernetesAuthServiceFactory = ({
           apiVersion: "authentication.k8s.io/v1",
           kind: "TokenReview",
           spec: {
-            token: serviceAccountJwt
+            token: serviceAccountJwt,
+            ...(identityKubernetesAuth.allowedAudience ? { audiences: [identityKubernetesAuth.allowedAudience] } : {})
           }
         },
         {
