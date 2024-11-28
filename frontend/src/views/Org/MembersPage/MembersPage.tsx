@@ -7,7 +7,7 @@ import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { withPermission } from "@app/hoc";
 import { isTabSection, TabSections } from "@app/views/Org/Types";
 
-import { OrgIdentityTab, OrgMembersTab, OrgRoleTabSection } from "./components";
+import { OrgGroupsTab, OrgIdentityTab, OrgMembersTab, OrgRoleTabSection } from "./components";
 
 export const MembersPage = withPermission(
   () => {
@@ -25,9 +25,9 @@ export const MembersPage = withPermission(
     const updateSelectedTab = (tab: string) => {
       router.push({
         pathname: router.pathname,
-        query: { ...router.query, selectedTab: tab },
+        query: { ...router.query, selectedTab: tab }
       });
-    }
+    };
 
     return (
       <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
@@ -36,15 +36,19 @@ export const MembersPage = withPermission(
           <Tabs value={activeTab} onValueChange={updateSelectedTab}>
             <TabList>
               <Tab value={TabSections.Member}>Users</Tab>
+              <Tab value={TabSections.Groups}>Groups</Tab>
               <Tab value={TabSections.Identities}>
                 <div className="flex items-center">
                   <p>Machine Identities</p>
                 </div>
               </Tab>
-            <Tab value={TabSections.Roles}>Organization Roles</Tab>
+              <Tab value={TabSections.Roles}>Organization Roles</Tab>
             </TabList>
             <TabPanel value={TabSections.Member}>
               <OrgMembersTab />
+            </TabPanel>
+            <TabPanel value={TabSections.Groups}>
+              <OrgGroupsTab />
             </TabPanel>
             <TabPanel value={TabSections.Identities}>
               <OrgIdentityTab />

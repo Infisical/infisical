@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
 
-import { OrgGroupsSection } from "../OrgGroupsTab/components";
 import { OrgMembersSection } from "./components";
 
 export const OrgMembersTab = () => {
@@ -13,7 +12,6 @@ export const OrgMembersTab = () => {
       exit={{ opacity: 0, translateX: 30 }}
     >
       <OrgMembersSection />
-      <OrgGroupsSection />
     </motion.div>
   );
 };

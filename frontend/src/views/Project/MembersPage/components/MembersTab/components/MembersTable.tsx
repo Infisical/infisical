@@ -1,9 +1,12 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useRouter } from "next/router";
 import {
+  faArrowDown,
+  faArrowUp,
   faClock,
   faEllipsisV,
   faMagnifyingGlass,
+  faSearch,
   faTrash,
   faUsers
 } from "@fortawesome/free-solid-svg-icons";
@@ -18,6 +21,7 @@ import {
   HoverCardTrigger,
   IconButton,
   Input,
+  Pagination,
   Table,
   TableContainer,
   TableSkeleton,
@@ -35,7 +39,9 @@ import {
   useUser,
   useWorkspace
 } from "@app/context";
+import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useGetWorkspaceUsers } from "@app/hooks/api";
+import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -54,9 +60,12 @@ type Props = {
   ) => void;
 };
 
-export const MembersTable = ({ handlePopUpOpen }: Props) => {
-  const [searchMemberFilter, setSearchMemberFilter] = useState("");
+enum MembersOrderBy {
+  Name = "firstName",
+  Email = "email"
+}
 
+export const MembersTable = ({ handlePopUpOpen }: Props) => {
   const { currentWorkspace } = useWorkspace();
   const { user } = useUser();
   const router = useRouter();
@@ -64,26 +73,80 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
   const userId = user?.id || "";
   const workspaceId = currentWorkspace?.id || "";
 
-  const { data: members, isLoading: isMembersLoading } = useGetWorkspaceUsers(workspaceId);
+  const {
+    search,
+    setSearch,
+    setPage,
+    page,
+    perPage,
+    setPerPage,
+    offset,
+    orderDirection,
+    orderBy,
+    setOrderBy,
+    setOrderDirection,
+    toggleOrderDirection
+  } = usePagination<MembersOrderBy>(MembersOrderBy.Name, { initPerPage: 20 });
 
-  const filterdUsers = useMemo(
+  const { data: members = [], isLoading: isMembersLoading } = useGetWorkspaceUsers(workspaceId);
+
+  const filteredUsers = useMemo(
     () =>
-      members?.filter(
-        ({ user: u, inviteEmail }) =>
-          u?.firstName?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
-          u?.lastName?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
-          u?.username?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
-          u?.email?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
-          inviteEmail?.includes(searchMemberFilter.toLowerCase())
-      ),
-    [members, searchMemberFilter]
+      members
+        ?.filter(
+          ({ user: u, inviteEmail }) =>
+            u?.firstName?.toLowerCase().includes(search.toLowerCase()) ||
+            u?.lastName?.toLowerCase().includes(search.toLowerCase()) ||
+            u?.username?.toLowerCase().includes(search.toLowerCase()) ||
+            u?.email?.toLowerCase().includes(search.toLowerCase()) ||
+            inviteEmail?.toLowerCase().includes(search.toLowerCase())
+        )
+        .sort((a, b) => {
+          const [memberOne, memberTwo] = orderDirection === OrderByDirection.ASC ? [a, b] : [b, a];
+
+          let valueOne: string;
+          let valueTwo: string;
+
+          switch (orderBy) {
+            case MembersOrderBy.Email:
+              valueOne = memberOne.user.email || memberOne.inviteEmail;
+              valueTwo = memberTwo.user.email || memberTwo.inviteEmail;
+              break;
+            case MembersOrderBy.Name:
+            default:
+              valueOne = memberOne.user.firstName;
+              valueTwo = memberTwo.user.firstName;
+          }
+
+          if (!valueOne) return 1;
+          if (!valueTwo) return -1;
+
+          return valueOne.toLowerCase().localeCompare(valueTwo.toLowerCase());
+        }),
+    [members, search, orderDirection, orderBy]
   );
+
+  useResetPageHelper({
+    totalCount: filteredUsers.length,
+    offset,
+    setPage
+  });
+
+  const handleSort = (column: MembersOrderBy) => {
+    if (column === orderBy) {
+      toggleOrderDirection();
+      return;
+    }
+
+    setOrderBy(column);
+    setOrderDirection(OrderByDirection.ASC);
+  };
 
   return (
     <div>
       <Input
-        value={searchMemberFilter}
-        onChange={(e) => setSearchMemberFilter(e.target.value)}
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
         leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
         placeholder="Search members..."
       />
@@ -91,8 +154,44 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
         <Table>
           <THead>
             <Tr>
-              <Th>Name</Th>
-              <Th>Username</Th>
+              <Th className="w-1/3">
+                <div className="flex items-center">
+                  Name
+                  <IconButton
+                    variant="plain"
+                    className={`ml-2 ${orderBy === MembersOrderBy.Name ? "" : "opacity-30"}`}
+                    ariaLabel="sort"
+                    onClick={() => handleSort(MembersOrderBy.Name)}
+                  >
+                    <FontAwesomeIcon
+                      icon={
+                        orderDirection === OrderByDirection.DESC && orderBy === MembersOrderBy.Name
+                          ? faArrowUp
+                          : faArrowDown
+                      }
+                    />
+                  </IconButton>
+                </div>
+              </Th>
+              <Th>
+                <div className="flex items-center">
+                  Email
+                  <IconButton
+                    variant="plain"
+                    className={`ml-2 ${orderBy === MembersOrderBy.Email ? "" : "opacity-30"}`}
+                    ariaLabel="sort"
+                    onClick={() => handleSort(MembersOrderBy.Email)}
+                  >
+                    <FontAwesomeIcon
+                      icon={
+                        orderDirection === OrderByDirection.DESC && orderBy === MembersOrderBy.Email
+                          ? faArrowUp
+                          : faArrowDown
+                      }
+                    />
+                  </IconButton>
+                </div>
+              </Th>
               <Th>Role</Th>
               <Th className="w-5" />
             </Tr>
@@ -100,7 +199,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
           <TBody>
             {isMembersLoading && <TableSkeleton columns={4} innerKey="project-members" />}
             {!isMembersLoading &&
-              filterdUsers?.map((projectMember) => {
+              filteredUsers.slice(offset, perPage * page).map((projectMember) => {
                 const { user: u, inviteEmail, id: membershipId, roles } = projectMember;
                 const name = u.firstName || u.lastName ? `${u.firstName} ${u.lastName || ""}` : "-";
                 const email = u?.email || inviteEmail;
@@ -239,8 +338,22 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
               })}
           </TBody>
         </Table>
-        {!isMembersLoading && filterdUsers?.length === 0 && (
-          <EmptyState title="No project members found" icon={faUsers} />
+        {Boolean(filteredUsers.length) && (
+          <Pagination
+            count={filteredUsers.length}
+            page={page}
+            perPage={perPage}
+            onChangePage={setPage}
+            onChangePerPage={setPerPage}
+          />
+        )}
+        {!isMembersLoading && !filteredUsers?.length && (
+          <EmptyState
+            title={
+              members.length ? "No project members match search..." : "No project members found"
+            }
+            icon={members.length ? faSearch : faUsers}
+          />
         )}
       </TableContainer>
     </div>

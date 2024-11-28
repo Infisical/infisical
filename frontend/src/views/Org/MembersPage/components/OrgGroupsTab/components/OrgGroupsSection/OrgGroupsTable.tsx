@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   faArrowDown,
   faArrowUp,
   faEllipsis,
   faMagnifyingGlass,
+  faSearch,
   faUsers
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -19,6 +20,7 @@ import {
   EmptyState,
   IconButton,
   Input,
+  Pagination,
   Select,
   SelectItem,
   Table,
@@ -31,7 +33,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
-import { useDebounce } from "@app/hooks";
+import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useGetOrganizationGroups, useGetOrgRoles, useUpdateGroup } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -59,14 +61,10 @@ enum GroupsOrderBy {
 }
 
 export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
-  const [searchGroupsFilter, setSearchGroupsFilter] = useState("");
-  const [debouncedSearch] = useDebounce(searchGroupsFilter.trim());
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
-  const { isLoading, data: groups } = useGetOrganizationGroups(orgId);
+  const { isLoading, data: groups = [] } = useGetOrganizationGroups(orgId);
   const { mutateAsync: updateMutateAsync } = useUpdateGroup();
-  const [orderBy, setOrderBy] = useState(GroupsOrderBy.Name);
-  const [orderDirection, setOrderDirection] = useState(OrderByDirection.ASC);
 
   const { data: roles } = useGetOrgRoles(orgId);
 
@@ -90,12 +88,27 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
     }
   };
 
+  const {
+    search,
+    setSearch,
+    setPage,
+    page,
+    perPage,
+    setPerPage,
+    offset,
+    orderDirection,
+    orderBy,
+    setOrderBy,
+    setOrderDirection,
+    toggleOrderDirection
+  } = usePagination<GroupsOrderBy>(GroupsOrderBy.Name, { initPerPage: 20 });
+
   const filteredGroups = useMemo(() => {
-    const filtered = debouncedSearch
+    const filtered = search
       ? groups?.filter(
           ({ name, slug }) =>
-            name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-            slug.toLowerCase().includes(debouncedSearch.toLowerCase())
+            name.toLowerCase().includes(search.toLowerCase()) ||
+            slug.toLowerCase().includes(search.toLowerCase())
         )
       : groups;
 
@@ -113,13 +126,11 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
     });
 
     return orderDirection === OrderByDirection.ASC ? ordered : ordered?.reverse();
-  }, [debouncedSearch, groups, orderBy, orderDirection]);
+  }, [search, groups, orderBy, orderDirection]);
 
   const handleSort = (column: GroupsOrderBy) => {
     if (column === orderBy) {
-      setOrderDirection((prev) =>
-        prev === OrderByDirection.ASC ? OrderByDirection.DESC : OrderByDirection.ASC
-      );
+      toggleOrderDirection();
       return;
     }
 
@@ -127,11 +138,17 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
     setOrderDirection(OrderByDirection.ASC);
   };
 
+  useResetPageHelper({
+    totalCount: filteredGroups.length,
+    offset,
+    setPage
+  });
+
   return (
     <div>
       <Input
-        value={searchGroupsFilter}
-        onChange={(e) => setSearchGroupsFilter(e.target.value)}
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
         leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
         placeholder="Search groups..."
       />
@@ -202,143 +219,160 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
           <TBody>
             {isLoading && <TableSkeleton columns={4} innerKey="org-groups" />}
             {!isLoading &&
-              filteredGroups?.map(({ id, name, slug, role, customRole }) => {
-                return (
-                  <Tr className="h-10" key={`org-group-${id}`}>
-                    <Td>{name}</Td>
-                    <Td>{slug}</Td>
-                    <Td>
-                      <OrgPermissionCan
-                        I={OrgPermissionActions.Edit}
-                        a={OrgPermissionSubjects.Groups}
-                      >
-                        {(isAllowed) => {
-                          return (
-                            <Select
-                              value={role === "custom" ? (customRole?.slug as string) : role}
-                              isDisabled={!isAllowed}
-                              className="w-48 bg-mineshaft-600"
-                              dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"
-                              onValueChange={(selectedRole) =>
-                                handleChangeRole({
-                                  id,
-                                  role: selectedRole
-                                })
-                              }
+              filteredGroups
+                .slice(offset, perPage * page)
+                .map(({ id, name, slug, role, customRole }) => {
+                  return (
+                    <Tr className="h-10" key={`org-group-${id}`}>
+                      <Td>{name}</Td>
+                      <Td>{slug}</Td>
+                      <Td>
+                        <OrgPermissionCan
+                          I={OrgPermissionActions.Edit}
+                          a={OrgPermissionSubjects.Groups}
+                        >
+                          {(isAllowed) => {
+                            return (
+                              <Select
+                                value={role === "custom" ? (customRole?.slug as string) : role}
+                                isDisabled={!isAllowed}
+                                className="w-48 bg-mineshaft-600"
+                                dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"
+                                onValueChange={(selectedRole) =>
+                                  handleChangeRole({
+                                    id,
+                                    role: selectedRole
+                                  })
+                                }
+                              >
+                                {(roles || []).map(({ slug: roleSlug, name: roleName }) => (
+                                  <SelectItem value={roleSlug} key={`role-option-${roleSlug}`}>
+                                    {roleName}
+                                  </SelectItem>
+                                ))}
+                              </Select>
+                            );
+                          }}
+                        </OrgPermissionCan>
+                      </Td>
+                      <Td>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild className="rounded-lg">
+                            <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
+                              <FontAwesomeIcon size="sm" icon={faEllipsis} />
+                            </div>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start" className="p-1">
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                createNotification({
+                                  text: "Copied group ID to clipboard",
+                                  type: "info"
+                                });
+                                navigator.clipboard.writeText(id);
+                              }}
                             >
-                              {(roles || []).map(({ slug: roleSlug, name: roleName }) => (
-                                <SelectItem value={roleSlug} key={`role-option-${roleSlug}`}>
-                                  {roleName}
-                                </SelectItem>
-                              ))}
-                            </Select>
-                          );
-                        }}
-                      </OrgPermissionCan>
-                    </Td>
-                    <Td>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild className="rounded-lg">
-                          <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
-                            <FontAwesomeIcon size="sm" icon={faEllipsis} />
-                          </div>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="p-1">
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              createNotification({
-                                text: "Copied group ID to clipboard",
-                                type: "info"
-                              });
-                              navigator.clipboard.writeText(id);
-                            }}
-                          >
-                            Copy Group ID
-                          </DropdownMenuItem>
-                          <OrgPermissionCan
-                            I={OrgPermissionActions.Edit}
-                            a={OrgPermissionSubjects.Identity}
-                          >
-                            {(isAllowed) => (
-                              <DropdownMenuItem
-                                className={twMerge(
-                                  !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                                )}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePopUpOpen("groupMembers", {
-                                    groupId: id,
-                                    slug
-                                  });
-                                }}
-                                disabled={!isAllowed}
-                              >
-                                Manage Users
-                              </DropdownMenuItem>
-                            )}
-                          </OrgPermissionCan>
-                          <OrgPermissionCan
-                            I={OrgPermissionActions.Edit}
-                            a={OrgPermissionSubjects.Identity}
-                          >
-                            {(isAllowed) => (
-                              <DropdownMenuItem
-                                className={twMerge(
-                                  !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                                )}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePopUpOpen("group", {
-                                    groupId: id,
-                                    name,
-                                    slug,
-                                    role,
-                                    customRole
-                                  });
-                                }}
-                                disabled={!isAllowed}
-                              >
-                                Edit Group
-                              </DropdownMenuItem>
-                            )}
-                          </OrgPermissionCan>
-                          <OrgPermissionCan
-                            I={OrgPermissionActions.Delete}
-                            a={OrgPermissionSubjects.Groups}
-                          >
-                            {(isAllowed) => (
-                              <DropdownMenuItem
-                                className={twMerge(
-                                  isAllowed
-                                    ? "hover:!bg-red-500 hover:!text-white"
-                                    : "pointer-events-none cursor-not-allowed opacity-50"
-                                )}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePopUpOpen("deleteGroup", {
-                                    groupId: id,
-                                    name
-                                  });
-                                }}
-                                disabled={!isAllowed}
-                              >
-                                Delete Group
-                              </DropdownMenuItem>
-                            )}
-                          </OrgPermissionCan>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </Td>
-                  </Tr>
-                );
-              })}
+                              Copy Group ID
+                            </DropdownMenuItem>
+                            <OrgPermissionCan
+                              I={OrgPermissionActions.Edit}
+                              a={OrgPermissionSubjects.Identity}
+                            >
+                              {(isAllowed) => (
+                                <DropdownMenuItem
+                                  className={twMerge(
+                                    !isAllowed &&
+                                      "pointer-events-none cursor-not-allowed opacity-50"
+                                  )}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePopUpOpen("groupMembers", {
+                                      groupId: id,
+                                      slug
+                                    });
+                                  }}
+                                  disabled={!isAllowed}
+                                >
+                                  Manage Users
+                                </DropdownMenuItem>
+                              )}
+                            </OrgPermissionCan>
+                            <OrgPermissionCan
+                              I={OrgPermissionActions.Edit}
+                              a={OrgPermissionSubjects.Identity}
+                            >
+                              {(isAllowed) => (
+                                <DropdownMenuItem
+                                  className={twMerge(
+                                    !isAllowed &&
+                                      "pointer-events-none cursor-not-allowed opacity-50"
+                                  )}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePopUpOpen("group", {
+                                      groupId: id,
+                                      name,
+                                      slug,
+                                      role,
+                                      customRole
+                                    });
+                                  }}
+                                  disabled={!isAllowed}
+                                >
+                                  Edit Group
+                                </DropdownMenuItem>
+                              )}
+                            </OrgPermissionCan>
+                            <OrgPermissionCan
+                              I={OrgPermissionActions.Delete}
+                              a={OrgPermissionSubjects.Groups}
+                            >
+                              {(isAllowed) => (
+                                <DropdownMenuItem
+                                  className={twMerge(
+                                    isAllowed
+                                      ? "hover:!bg-red-500 hover:!text-white"
+                                      : "pointer-events-none cursor-not-allowed opacity-50"
+                                  )}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePopUpOpen("deleteGroup", {
+                                      groupId: id,
+                                      name
+                                    });
+                                  }}
+                                  disabled={!isAllowed}
+                                >
+                                  Delete Group
+                                </DropdownMenuItem>
+                              )}
+                            </OrgPermissionCan>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </Td>
+                    </Tr>
+                  );
+                })}
           </TBody>
         </Table>
-        {filteredGroups?.length === 0 && (
+        {Boolean(filteredGroups.length) && (
+          <Pagination
+            count={filteredGroups.length}
+            page={page}
+            perPage={perPage}
+            onChangePage={setPage}
+            onChangePerPage={setPerPage}
+          />
+        )}
+        {!isLoading && !filteredGroups?.length && (
           <EmptyState
-            title={groups?.length === 0 ? "No groups found" : "No groups match search"}
-            icon={faUsers}
+            title={
+              groups.length
+                ? "No organization groups match search..."
+                : "No organization groups found"
+            }
+            icon={groups.length ? faSearch : faUsers}
           />
         )}
       </TableContainer>
