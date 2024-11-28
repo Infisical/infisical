@@ -35,6 +35,8 @@ func (r *InfisicalSecretReconciler) GetLogger(req ctrl.Request) logr.Logger {
 	return r.BaseLogger.WithValues("infisicalsecret", req.NamespacedName)
 }
 
+var resourceVariablesMap map[string]util.ResourceVariables = make(map[string]util.ResourceVariables)
+
 //+kubebuilder:rbac:groups=secrets.infisical.com,resources=infisicalsecrets,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=secrets.infisical.com,resources=infisicalsecrets/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=secrets.infisical.com,resources=infisicalsecrets/finalizers,verbs=update
