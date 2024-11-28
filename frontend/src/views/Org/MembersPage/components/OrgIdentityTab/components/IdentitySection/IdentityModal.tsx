@@ -9,27 +9,24 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  FilterableSelect,
   FormControl,
   FormLabel,
   IconButton,
   Input,
   Modal,
-  ModalContent,
-  Select,
-  SelectItem
+  ModalContent
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
+import { isCustomOrgRole } from "@app/helpers/roles";
 import { useCreateIdentity, useGetOrgRoles, useUpdateIdentity } from "@app/hooks/api";
-import {
-  // IdentityAuthMethod,
-  useAddIdentityUniversalAuth
-} from "@app/hooks/api/identities";
+import { useAddIdentityUniversalAuth } from "@app/hooks/api/identities";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z
   .object({
-    name: z.string(),
-    role: z.string(),
+    name: z.string().min(1, "Required"),
+    role: z.object({ slug: z.string(), name: z.string() }),
     metadata: z
       .object({
         key: z.string().trim().min(1),
@@ -101,13 +98,15 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
     if (identity) {
       reset({
         name: identity.name,
-        role: identity?.customRole?.slug ?? identity.role,
+        role: identity?.customRole ?? roles.find((role) => role.slug === identity.role),
         metadata: identity.metadata
       });
     } else {
       reset({
         name: "",
-        role: roles[0].slug
+        role: isCustomOrgRole(currentOrg?.defaultMembershipRole!)
+          ? roles?.find((role) => role.id === currentOrg?.defaultMembershipRole)
+          : roles?.find((role) => role.slug === currentOrg?.defaultMembershipRole)
       });
     }
   }, [popUp?.identity?.data, roles]);
@@ -126,7 +125,7 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
         await updateMutateAsync({
           identityId: identity.identityId,
           name,
-          role: role || undefined,
+          role: role.slug || undefined,
           organizationId: orgId,
           metadata
         });
@@ -137,7 +136,7 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
 
         const { id: createdId } = await createMutateAsync({
           name,
-          role: role || undefined,
+          role: role.slug || undefined,
           organizationId: orgId,
           metadata
         });
@@ -184,7 +183,10 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
         reset();
       }}
     >
-      <ModalContent title={`${popUp?.identity?.data ? "Update" : "Create"} Identity`}>
+      <ModalContent
+        bodyClassName="overflow-visible"
+        title={`${popUp?.identity?.data ? "Update" : "Create"} Identity`}
+      >
         <form onSubmit={handleSubmit(onFormSubmit)}>
           <Controller
             control={control}
@@ -199,26 +201,21 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
           <Controller
             control={control}
             name="role"
-            defaultValue=""
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+            render={({ field: { onChange, value }, fieldState: { error } }) => (
               <FormControl
                 label={`${popUp?.identity?.data ? "Update" : ""} Role`}
                 errorText={error?.message}
                 isError={Boolean(error)}
                 className="mt-4"
               >
-                <Select
-                  defaultValue={field.value}
-                  {...field}
-                  onValueChange={(e) => onChange(e)}
-                  className="w-full"
-                >
-                  {(roles || []).map(({ name, slug }) => (
-                    <SelectItem value={slug} key={`st-role-${slug}`}>
-                      {name}
-                    </SelectItem>
-                  ))}
-                </Select>
+                <FilterableSelect
+                  placeholder="Select role..."
+                  options={roles}
+                  onChange={onChange}
+                  value={value}
+                  getOptionValue={(option) => option.slug}
+                  getOptionLabel={(option) => option.name}
+                />
               </FormControl>
             )}
           />
