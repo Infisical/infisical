@@ -59,13 +59,13 @@ export const FilterableSelect = <T,>({
       indicatorSeparator: () => "bg-bunker-400",
       dropdownIndicator: () => "text-bunker-200 p-1",
       menu: () =>
-        "mt-2 border text-sm text-mineshaft-200 thin-scrollbar bg-mineshaft-900 border-mineshaft-600 rounded-md",
+        "mt-2 p-2 border text-sm text-mineshaft-200 thin-scrollbar bg-mineshaft-900 border-mineshaft-600 rounded-md",
       groupHeading: () => "ml-3 mt-2 mb-1 text-mineshaft-400 text-sm",
       option: ({ isFocused, isSelected }) =>
         twMerge(
           isFocused && "bg-mineshaft-700 active:bg-mineshaft-600",
           isSelected && "text-mineshaft-200",
-          "hover:cursor-pointer text-xs px-3 py-2"
+          "hover:cursor-pointer mb-1 rounded text-xs px-3 py-2"
         ),
       noOptionsMessage: () => "text-mineshaft-400 p-2 rounded-md"
     }}
