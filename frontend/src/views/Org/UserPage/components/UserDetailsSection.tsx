@@ -100,6 +100,7 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
                       handlePopUpOpen("orgMembership", {
                         membershipId: membership.id,
                         role: membership.role,
+                        roleId: membership.roleId,
                         metadata: membership.metadata
                       });
                     }}
