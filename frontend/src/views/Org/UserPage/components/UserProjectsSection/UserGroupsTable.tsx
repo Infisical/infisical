@@ -57,7 +57,7 @@ export const UserGroupsTable = ({ handlePopUpOpen, orgMembership }: Props) => {
   const filteredGroupMemberships = useMemo(
     () =>
       groupMemberships
-        ?.filter((group) => group.name.toLowerCase().includes(search.trim().toLowerCase()))
+        .filter((group) => group.name.toLowerCase().includes(search.trim().toLowerCase()))
         .sort((a, b) => {
           const [membershipOne, membershipTwo] =
             orderDirection === OrderByDirection.ASC ? [a, b] : [b, a];
@@ -72,13 +72,14 @@ export const UserGroupsTable = ({ handlePopUpOpen, orgMembership }: Props) => {
     offset,
     setPage
   });
+
   return (
     <div>
       <Input
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search projects..."
+        placeholder="Search groups..."
       />
       <TableContainer className="mt-4">
         <Table>
