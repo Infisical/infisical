@@ -121,9 +121,12 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
     });
     return (orgUsers || [])
       .filter(({ user: u }) => !wsUserUsernames.has(u.username))
-      .map((member) => ({
-        value: member.id,
-        label: `${member.user.firstName} ${member.user.lastName}`
+      .map(({ id, inviteEmail, user: { firstName, lastName, email } }) => ({
+        value: id,
+        label:
+          firstName && lastName
+            ? `${firstName} ${lastName}`
+            : firstName || lastName || email || inviteEmail
       }));
   }, [orgUsers, members]);
 

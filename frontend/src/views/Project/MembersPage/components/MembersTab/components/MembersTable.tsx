@@ -118,6 +118,9 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
               valueTwo = memberTwo.user.firstName;
           }
 
+          if (!valueOne) return 1;
+          if (!valueTwo) return -1;
+
           return valueOne.toLowerCase().localeCompare(valueTwo.toLowerCase());
         }),
     [members, search, orderDirection, orderBy]
