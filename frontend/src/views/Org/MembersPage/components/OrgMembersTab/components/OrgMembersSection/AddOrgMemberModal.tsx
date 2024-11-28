@@ -45,7 +45,7 @@ const addMemberFormSchema = z.object({
     )
     .default([]),
   projectRoleSlug: z.string().min(1).default(DEFAULT_ORG_AND_PROJECT_MEMBER_ROLE_SLUG),
-  organizationRoleSlug: z.string().min(1).default(DEFAULT_ORG_AND_PROJECT_MEMBER_ROLE_SLUG)
+  organizationRole: z.object({ name: z.string(), slug: z.string() })
 });
 
 type TAddMemberForm = z.infer<typeof addMemberFormSchema>;
@@ -87,16 +87,16 @@ export const AddOrgMemberModal = ({
   useEffect(() => {
     if (organizationRoles) {
       reset({
-        organizationRoleSlug: isCustomOrgRole(currentOrg?.defaultMembershipRole!)
-          ? organizationRoles?.find((role) => role.id === currentOrg?.defaultMembershipRole)?.slug!
-          : currentOrg?.defaultMembershipRole
+        organizationRole: isCustomOrgRole(currentOrg?.defaultMembershipRole!)
+          ? organizationRoles?.find((role) => role.id === currentOrg?.defaultMembershipRole)
+          : organizationRoles?.find((role) => role.slug === currentOrg?.defaultMembershipRole)
       });
     }
   }, [organizationRoles]);
 
   const onAddMembers = async ({
     emails,
-    organizationRoleSlug,
+    organizationRole,
     projects: selectedProjects,
     projectRoleSlug
   }: TAddMemberForm) => {
@@ -138,7 +138,7 @@ export const AddOrgMemberModal = ({
       const { data } = await addUsersMutateAsync({
         organizationId: currentOrg?.id,
         inviteeEmails: emails.split(",").map((email) => email.trim()),
-        organizationRoleSlug,
+        organizationRoleSlug: organizationRole.slug,
         projects: selectedProjects.map(({ id }) => ({ id, projectRoleSlug: [projectRoleSlug] }))
       });
 
@@ -207,27 +207,22 @@ export const AddOrgMemberModal = ({
 
             <Controller
               control={control}
-              name="organizationRoleSlug"
-              render={({ field, fieldState: { error } }) => (
+              name="organizationRole"
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <FormControl
                   tooltipText="Select which organization role you want to assign to the user."
                   label="Assign organization role"
                   isError={Boolean(error)}
                   errorText={error?.message}
                 >
-                  <div>
-                    <Select
-                      className="w-full"
-                      {...field}
-                      onValueChange={(val) => field.onChange(val)}
-                    >
-                      {organizationRoles?.map((role) => (
-                        <SelectItem key={role.id} value={role.slug}>
-                          {role.name}
-                        </SelectItem>
-                      ))}
-                    </Select>
-                  </div>
+                  <FilterableSelect
+                    placeholder="Select role..."
+                    options={organizationRoles}
+                    getOptionValue={(option) => option.slug}
+                    getOptionLabel={(option) => option.name}
+                    value={value}
+                    onChange={onChange}
+                  />
                 </FormControl>
               )}
             />
