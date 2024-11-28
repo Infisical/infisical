@@ -24,5 +24,7 @@ export const formatProjectRoleName = (name: string) => {
 export const isCustomProjectRole = (slug: string) =>
   !Object.values(ProjectMembershipRole).includes(slug as ProjectMembershipRole);
 
-export const findOrgMembershipRole = (roles: TOrgRole[], role: string) =>
-  isCustomOrgRole(role) ? roles.find((r) => r.id === role) : roles.find((r) => r.slug === role);
+export const findOrgMembershipRole = (roles: TOrgRole[], roleIdOrSlug: string) =>
+  isCustomOrgRole(roleIdOrSlug)
+    ? roles.find((r) => r.id === roleIdOrSlug)
+    : roles.find((r) => r.slug === roleIdOrSlug);

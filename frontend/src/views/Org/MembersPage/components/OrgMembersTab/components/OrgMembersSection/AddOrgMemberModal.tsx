@@ -15,7 +15,7 @@ import {
   TextArea
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
-import { isCustomOrgRole } from "@app/helpers/roles";
+import { findOrgMembershipRole } from "@app/helpers/roles";
 import {
   useAddUsersToOrg,
   useFetchServerStatus,
@@ -87,9 +87,10 @@ export const AddOrgMemberModal = ({
   useEffect(() => {
     if (organizationRoles) {
       reset({
-        organizationRole: isCustomOrgRole(currentOrg?.defaultMembershipRole!)
-          ? organizationRoles?.find((role) => role.id === currentOrg?.defaultMembershipRole)
-          : organizationRoles?.find((role) => role.slug === currentOrg?.defaultMembershipRole)
+        organizationRole: findOrgMembershipRole(
+          organizationRoles,
+          currentOrg?.defaultMembershipRole!
+        )
       });
     }
   }, [organizationRoles]);
