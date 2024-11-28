@@ -10,8 +10,10 @@ import (
 
 	"github.com/Infisical/infisical/k8-operator/api/v1alpha1"
 	"github.com/Infisical/infisical/k8-operator/packages/api"
+	"github.com/Infisical/infisical/k8-operator/packages/constants"
 	"github.com/Infisical/infisical/k8-operator/packages/model"
 	"github.com/Infisical/infisical/k8-operator/packages/util"
+	"github.com/go-logr/logr"
 
 	"k8s.io/apimachinery/pkg/types"
 
@@ -20,113 +22,61 @@ import (
 	k8Errors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const SERVICE_ACCOUNT_ACCESS_KEY = "serviceAccountAccessKey"
-const SERVICE_ACCOUNT_PUBLIC_KEY = "serviceAccountPublicKey"
-const SERVICE_ACCOUNT_PRIVATE_KEY = "serviceAccountPrivateKey"
-
-const INFISICAL_MACHINE_IDENTITY_CLIENT_ID = "clientId"
-const INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET = "clientSecret"
-
-const INFISICAL_TOKEN_SECRET_KEY_NAME = "infisicalToken"
-const SECRET_VERSION_ANNOTATION = "secrets.infisical.com/version" // used to set the version of secrets via Etag
-const OPERATOR_SETTINGS_CONFIGMAP_NAME = "infisical-config"
-const OPERATOR_SETTINGS_CONFIGMAP_NAMESPACE = "infisical-operator-system"
-const INFISICAL_DOMAIN = "https://app.infisical.com/api"
-
-func (r *InfisicalSecretReconciler) HandleAuthentication(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret, infisicalClient infisicalSdk.InfisicalClientInterface) (AuthenticationDetails, error) {
+func (r *InfisicalSecretReconciler) handleAuthentication(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret, infisicalClient infisicalSdk.InfisicalClientInterface) (util.AuthenticationDetails, error) {
 
 	// ? Legacy support, service token auth
-	infisicalToken, err := r.GetInfisicalTokenFromKubeSecret(ctx, infisicalSecret)
+	infisicalToken, err := r.getInfisicalTokenFromKubeSecret(ctx, infisicalSecret)
 	if err != nil {
-		return AuthenticationDetails{}, fmt.Errorf("ReconcileInfisicalSecret: unable to get service token from kube secret [err=%s]", err)
+		return util.AuthenticationDetails{}, fmt.Errorf("ReconcileInfisicalSecret: unable to get service token from kube secret [err=%s]", err)
 	}
 	if infisicalToken != "" {
 		infisicalClient.Auth().SetAccessToken(infisicalToken)
-		return AuthenticationDetails{authStrategy: AuthStrategy.SERVICE_TOKEN}, nil
+		return util.AuthenticationDetails{AuthStrategy: util.AuthStrategy.SERVICE_TOKEN}, nil
 	}
 
 	// ? Legacy support, service account auth
-	serviceAccountCreds, err := r.GetInfisicalServiceAccountCredentialsFromKubeSecret(ctx, infisicalSecret)
+	serviceAccountCreds, err := r.getInfisicalServiceAccountCredentialsFromKubeSecret(ctx, infisicalSecret)
 	if err != nil {
-		return AuthenticationDetails{}, fmt.Errorf("ReconcileInfisicalSecret: unable to get service account creds from kube secret [err=%s]", err)
+		return util.AuthenticationDetails{}, fmt.Errorf("ReconcileInfisicalSecret: unable to get service account creds from kube secret [err=%s]", err)
 	}
 
 	if serviceAccountCreds.AccessKey != "" || serviceAccountCreds.PrivateKey != "" || serviceAccountCreds.PublicKey != "" {
 		infisicalClient.Auth().SetAccessToken(serviceAccountCreds.AccessKey)
-		return AuthenticationDetails{authStrategy: AuthStrategy.SERVICE_ACCOUNT}, nil
+		return util.AuthenticationDetails{AuthStrategy: util.AuthStrategy.SERVICE_ACCOUNT}, nil
 	}
 
-	authStrategies := map[AuthStrategyType]func(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret, infisicalClient infisicalSdk.InfisicalClientInterface) (AuthenticationDetails, error){
-		AuthStrategy.UNIVERSAL_MACHINE_IDENTITY:    r.handleUniversalAuth,
-		AuthStrategy.KUBERNETES_MACHINE_IDENTITY:   r.handleKubernetesAuth,
-		AuthStrategy.AWS_IAM_MACHINE_IDENTITY:      r.handleAwsIamAuth,
-		AuthStrategy.AZURE_MACHINE_IDENTITY:        r.handleAzureAuth,
-		AuthStrategy.GCP_ID_TOKEN_MACHINE_IDENTITY: r.handleGcpIdTokenAuth,
-		AuthStrategy.GCP_IAM_MACHINE_IDENTITY:      r.handleGcpIamAuth,
+	authStrategies := map[util.AuthStrategyType]func(ctx context.Context, reconcilerClient client.Client, secretCrd util.SecretAuthInput, infisicalClient infisicalSdk.InfisicalClientInterface) (util.AuthenticationDetails, error){
+		util.AuthStrategy.UNIVERSAL_MACHINE_IDENTITY:    util.HandleUniversalAuth,
+		util.AuthStrategy.KUBERNETES_MACHINE_IDENTITY:   util.HandleKubernetesAuth,
+		util.AuthStrategy.AWS_IAM_MACHINE_IDENTITY:      util.HandleAwsIamAuth,
+		util.AuthStrategy.AZURE_MACHINE_IDENTITY:        util.HandleAzureAuth,
+		util.AuthStrategy.GCP_ID_TOKEN_MACHINE_IDENTITY: util.HandleGcpIdTokenAuth,
+		util.AuthStrategy.GCP_IAM_MACHINE_IDENTITY:      util.HandleGcpIamAuth,
 	}
 
 	for authStrategy, authHandler := range authStrategies {
-		authDetails, err := authHandler(ctx, infisicalSecret, infisicalClient)
+		authDetails, err := authHandler(ctx, r.Client, util.SecretAuthInput{
+			Secret: infisicalSecret,
+			Type:   util.SecretCrd.INFISICAL_SECRET,
+		}, infisicalClient)
 
 		if err == nil {
 			return authDetails, nil
 		}
 
-		if !errors.Is(err, ErrAuthNotApplicable) {
-			return AuthenticationDetails{}, fmt.Errorf("authentication failed for strategy [%s] [err=%w]", authStrategy, err)
+		if !errors.Is(err, util.ErrAuthNotApplicable) {
+			return util.AuthenticationDetails{}, fmt.Errorf("authentication failed for strategy [%s] [err=%w]", authStrategy, err)
 		}
 	}
 
-	return AuthenticationDetails{}, fmt.Errorf("no authentication method provided")
+	return util.AuthenticationDetails{}, fmt.Errorf("no authentication method provided")
 
 }
 
-func (r *InfisicalSecretReconciler) GetInfisicalConfigMap(ctx context.Context) (configMap map[string]string, errToReturn error) {
-	// default key values
-	defaultConfigMapData := make(map[string]string)
-	defaultConfigMapData["hostAPI"] = INFISICAL_DOMAIN
-
-	kubeConfigMap := &corev1.ConfigMap{}
-	err := r.Client.Get(ctx, types.NamespacedName{
-		Namespace: OPERATOR_SETTINGS_CONFIGMAP_NAMESPACE,
-		Name:      OPERATOR_SETTINGS_CONFIGMAP_NAME,
-	}, kubeConfigMap)
-
-	if err != nil {
-		if k8Errors.IsNotFound(err) {
-			kubeConfigMap = nil
-		} else {
-			return nil, fmt.Errorf("GetConfigMapByNamespacedName: unable to fetch config map in [namespacedName=%s] [err=%s]", OPERATOR_SETTINGS_CONFIGMAP_NAMESPACE, err)
-		}
-	}
-
-	if kubeConfigMap == nil {
-		return defaultConfigMapData, nil
-	} else {
-		for key, value := range defaultConfigMapData {
-			_, exists := kubeConfigMap.Data[key]
-			if !exists {
-				kubeConfigMap.Data[key] = value
-			}
-		}
-
-		return kubeConfigMap.Data, nil
-	}
-}
-
-func (r *InfisicalSecretReconciler) GetKubeSecretByNamespacedName(ctx context.Context, namespacedName types.NamespacedName) (*corev1.Secret, error) {
-	kubeSecret := &corev1.Secret{}
-	err := r.Client.Get(ctx, namespacedName, kubeSecret)
-	if err != nil {
-		kubeSecret = nil
-	}
-
-	return kubeSecret, err
-}
-
-func (r *InfisicalSecretReconciler) GetInfisicalTokenFromKubeSecret(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret) (string, error) {
+func (r *InfisicalSecretReconciler) getInfisicalTokenFromKubeSecret(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret) (string, error) {
 	// default to new secret ref structure
 	secretName := infisicalSecret.Spec.Authentication.ServiceToken.ServiceTokenSecretReference.SecretName
 	secretNamespace := infisicalSecret.Spec.Authentication.ServiceToken.ServiceTokenSecretReference.SecretNamespace
@@ -139,7 +89,7 @@ func (r *InfisicalSecretReconciler) GetInfisicalTokenFromKubeSecret(ctx context.
 		secretNamespace = infisicalSecret.Spec.TokenSecretReference.SecretNamespace
 	}
 
-	tokenSecret, err := r.GetKubeSecretByNamespacedName(ctx, types.NamespacedName{
+	tokenSecret, err := util.GetKubeSecretByNamespacedName(ctx, r.Client, types.NamespacedName{
 		Namespace: secretNamespace,
 		Name:      secretName,
 	})
@@ -152,36 +102,14 @@ func (r *InfisicalSecretReconciler) GetInfisicalTokenFromKubeSecret(ctx context.
 		return "", fmt.Errorf("failed to read Infisical token secret from secret named [%s] in namespace [%s]: with error [%w]", infisicalSecret.Spec.TokenSecretReference.SecretName, infisicalSecret.Spec.TokenSecretReference.SecretNamespace, err)
 	}
 
-	infisicalServiceToken := tokenSecret.Data[INFISICAL_TOKEN_SECRET_KEY_NAME]
+	infisicalServiceToken := tokenSecret.Data[constants.INFISICAL_TOKEN_SECRET_KEY_NAME]
 
 	return strings.Replace(string(infisicalServiceToken), " ", "", -1), nil
 }
 
-func (r *InfisicalSecretReconciler) GetInfisicalUniversalAuthFromKubeSecret(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret) (machineIdentityDetails model.MachineIdentityDetails, err error) {
+func (r *InfisicalSecretReconciler) getInfisicalCaCertificateFromKubeSecret(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret) (caCertificate string, err error) {
 
-	universalAuthCredsFromKubeSecret, err := r.GetKubeSecretByNamespacedName(ctx, types.NamespacedName{
-		Namespace: infisicalSecret.Spec.Authentication.UniversalAuth.CredentialsRef.SecretNamespace,
-		Name:      infisicalSecret.Spec.Authentication.UniversalAuth.CredentialsRef.SecretName,
-	})
-
-	if k8Errors.IsNotFound(err) {
-		return model.MachineIdentityDetails{}, nil
-	}
-
-	if err != nil {
-		return model.MachineIdentityDetails{}, fmt.Errorf("something went wrong when fetching your machine identity credentials [err=%s]", err)
-	}
-
-	clientIdFromSecret := universalAuthCredsFromKubeSecret.Data[INFISICAL_MACHINE_IDENTITY_CLIENT_ID]
-	clientSecretFromSecret := universalAuthCredsFromKubeSecret.Data[INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET]
-
-	return model.MachineIdentityDetails{ClientId: string(clientIdFromSecret), ClientSecret: string(clientSecretFromSecret)}, nil
-
-}
-
-func (r *InfisicalSecretReconciler) GetInfisicalCaCertificateFromKubeSecret(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret) (caCertificate string, err error) {
-
-	caCertificateFromKubeSecret, err := r.GetKubeSecretByNamespacedName(ctx, types.NamespacedName{
+	caCertificateFromKubeSecret, err := util.GetKubeSecretByNamespacedName(ctx, r.Client, types.NamespacedName{
 		Namespace: infisicalSecret.Spec.TLS.CaRef.SecretNamespace,
 		Name:      infisicalSecret.Spec.TLS.CaRef.SecretName,
 	})
@@ -197,13 +125,12 @@ func (r *InfisicalSecretReconciler) GetInfisicalCaCertificateFromKubeSecret(ctx 
 	caCertificateFromSecret := string(caCertificateFromKubeSecret.Data[infisicalSecret.Spec.TLS.CaRef.SecretKey])
 
 	return caCertificateFromSecret, nil
-
 }
 
 // Fetches service account credentials from a Kubernetes secret specified in the infisicalSecret object, extracts the access key, public key, and private key from the secret, and returns them as a ServiceAccountCredentials object.
 // If any keys are missing or an error occurs, returns an empty object or an error object, respectively.
-func (r *InfisicalSecretReconciler) GetInfisicalServiceAccountCredentialsFromKubeSecret(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret) (serviceAccountDetails model.ServiceAccountDetails, err error) {
-	serviceAccountCredsFromKubeSecret, err := r.GetKubeSecretByNamespacedName(ctx, types.NamespacedName{
+func (r *InfisicalSecretReconciler) getInfisicalServiceAccountCredentialsFromKubeSecret(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret) (serviceAccountDetails model.ServiceAccountDetails, err error) {
+	serviceAccountCredsFromKubeSecret, err := util.GetKubeSecretByNamespacedName(ctx, r.Client, types.NamespacedName{
 		Namespace: infisicalSecret.Spec.Authentication.ServiceAccount.ServiceAccountSecretReference.SecretNamespace,
 		Name:      infisicalSecret.Spec.Authentication.ServiceAccount.ServiceAccountSecretReference.SecretName,
 	})
@@ -216,9 +143,9 @@ func (r *InfisicalSecretReconciler) GetInfisicalServiceAccountCredentialsFromKub
 		return model.ServiceAccountDetails{}, fmt.Errorf("something went wrong when fetching your service account credentials [err=%s]", err)
 	}
 
-	accessKeyFromSecret := serviceAccountCredsFromKubeSecret.Data[SERVICE_ACCOUNT_ACCESS_KEY]
-	publicKeyFromSecret := serviceAccountCredsFromKubeSecret.Data[SERVICE_ACCOUNT_PUBLIC_KEY]
-	privateKeyFromSecret := serviceAccountCredsFromKubeSecret.Data[SERVICE_ACCOUNT_PRIVATE_KEY]
+	accessKeyFromSecret := serviceAccountCredsFromKubeSecret.Data[constants.SERVICE_ACCOUNT_ACCESS_KEY]
+	publicKeyFromSecret := serviceAccountCredsFromKubeSecret.Data[constants.SERVICE_ACCOUNT_PUBLIC_KEY]
+	privateKeyFromSecret := serviceAccountCredsFromKubeSecret.Data[constants.SERVICE_ACCOUNT_PRIVATE_KEY]
 
 	if accessKeyFromSecret == nil || publicKeyFromSecret == nil || privateKeyFromSecret == nil {
 		return model.ServiceAccountDetails{}, nil
@@ -227,7 +154,7 @@ func (r *InfisicalSecretReconciler) GetInfisicalServiceAccountCredentialsFromKub
 	return model.ServiceAccountDetails{AccessKey: string(accessKeyFromSecret), PrivateKey: string(privateKeyFromSecret), PublicKey: string(publicKeyFromSecret)}, nil
 }
 
-func (r *InfisicalSecretReconciler) CreateInfisicalManagedKubeSecret(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret, secretsFromAPI []model.SingleEnvironmentVariable, ETag string) error {
+func (r *InfisicalSecretReconciler) createInfisicalManagedKubeSecret(ctx context.Context, logger logr.Logger, infisicalSecret v1alpha1.InfisicalSecret, secretsFromAPI []model.SingleEnvironmentVariable, ETag string) error {
 	plainProcessedSecrets := make(map[string][]byte)
 	secretType := infisicalSecret.Spec.ManagedSecretReference.SecretType
 	managedTemplateData := infisicalSecret.Spec.ManagedSecretReference.Template
@@ -283,7 +210,7 @@ func (r *InfisicalSecretReconciler) CreateInfisicalManagedKubeSecret(ctx context
 		}
 	}
 
-	annotations[SECRET_VERSION_ANNOTATION] = ETag
+	annotations[constants.SECRET_VERSION_ANNOTATION] = ETag
 
 	// create a new secret as specified by the managed secret spec of CRD
 	newKubeSecretInstance := &corev1.Secret{
@@ -310,11 +237,11 @@ func (r *InfisicalSecretReconciler) CreateInfisicalManagedKubeSecret(ctx context
 		return fmt.Errorf("unable to create the managed Kubernetes secret : %w", err)
 	}
 
-	fmt.Printf("Successfully created a managed Kubernetes secret with your Infisical secrets. Type: %s\n", secretType)
+	logger.Info(fmt.Sprintf("Successfully created a managed Kubernetes secret with your Infisical secrets. Type: %s", secretType))
 	return nil
 }
 
-func (r *InfisicalSecretReconciler) UpdateInfisicalManagedKubeSecret(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret, managedKubeSecret corev1.Secret, secretsFromAPI []model.SingleEnvironmentVariable, ETag string) error {
+func (r *InfisicalSecretReconciler) updateInfisicalManagedKubeSecret(ctx context.Context, logger logr.Logger, infisicalSecret v1alpha1.InfisicalSecret, managedKubeSecret corev1.Secret, secretsFromAPI []model.SingleEnvironmentVariable, ETag string) error {
 	managedTemplateData := infisicalSecret.Spec.ManagedSecretReference.Template
 
 	plainProcessedSecrets := make(map[string][]byte)
@@ -354,20 +281,20 @@ func (r *InfisicalSecretReconciler) UpdateInfisicalManagedKubeSecret(ctx context
 	}
 
 	managedKubeSecret.Data = plainProcessedSecrets
-	managedKubeSecret.ObjectMeta.Annotations[SECRET_VERSION_ANNOTATION] = ETag
+	managedKubeSecret.ObjectMeta.Annotations[constants.SECRET_VERSION_ANNOTATION] = ETag
 
 	err := r.Client.Update(ctx, &managedKubeSecret)
 	if err != nil {
 		return fmt.Errorf("unable to update Kubernetes secret because [%w]", err)
 	}
 
-	fmt.Println("successfully updated managed Kubernetes secret")
+	logger.Info("successfully updated managed Kubernetes secret")
 	return nil
 }
 
-func (r *InfisicalSecretReconciler) GetResourceVariables(infisicalSecret v1alpha1.InfisicalSecret) ResourceVariables {
+func (r *InfisicalSecretReconciler) getResourceVariables(infisicalSecret v1alpha1.InfisicalSecret) util.ResourceVariables {
 
-	var resourceVariables ResourceVariables
+	var resourceVariables util.ResourceVariables
 
 	if _, ok := resourceVariablesMap[string(infisicalSecret.UID)]; !ok {
 
@@ -379,10 +306,10 @@ func (r *InfisicalSecretReconciler) GetResourceVariables(infisicalSecret v1alpha
 			UserAgent:     api.USER_AGENT_NAME,
 		})
 
-		resourceVariablesMap[string(infisicalSecret.UID)] = ResourceVariables{
-			infisicalClient: client,
-			cancelCtx:       cancel,
-			authDetails:     AuthenticationDetails{},
+		resourceVariablesMap[string(infisicalSecret.UID)] = util.ResourceVariables{
+			InfisicalClient: client,
+			CancelCtx:       cancel,
+			AuthDetails:     util.AuthenticationDetails{},
 		}
 
 		resourceVariables = resourceVariablesMap[string(infisicalSecret.UID)]
@@ -395,36 +322,36 @@ func (r *InfisicalSecretReconciler) GetResourceVariables(infisicalSecret v1alpha
 
 }
 
-func (r *InfisicalSecretReconciler) UpdateResourceVariables(infisicalSecret v1alpha1.InfisicalSecret, resourceVariables ResourceVariables) {
+func (r *InfisicalSecretReconciler) updateResourceVariables(infisicalSecret v1alpha1.InfisicalSecret, resourceVariables util.ResourceVariables) {
 	resourceVariablesMap[string(infisicalSecret.UID)] = resourceVariables
 }
 
-func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret) error {
+func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context, logger logr.Logger, infisicalSecret v1alpha1.InfisicalSecret) error {
 
-	resourceVariables := r.GetResourceVariables(infisicalSecret)
-	infisicalClient := resourceVariables.infisicalClient
-	cancelCtx := resourceVariables.cancelCtx
-	authDetails := resourceVariables.authDetails
+	resourceVariables := r.getResourceVariables(infisicalSecret)
+	infisicalClient := resourceVariables.InfisicalClient
+	cancelCtx := resourceVariables.CancelCtx
+	authDetails := resourceVariables.AuthDetails
 	var err error
 
-	if authDetails.authStrategy == "" {
-		fmt.Println("ReconcileInfisicalSecret: No authentication strategy found. Attempting to authenticate")
-		authDetails, err = r.HandleAuthentication(ctx, infisicalSecret, infisicalClient)
-		r.SetInfisicalTokenLoadCondition(ctx, &infisicalSecret, authDetails.authStrategy, err)
+	if authDetails.AuthStrategy == "" {
+		logger.Info("No authentication strategy found. Attempting to authenticate")
+		authDetails, err = r.handleAuthentication(ctx, infisicalSecret, infisicalClient)
+		r.SetInfisicalTokenLoadCondition(ctx, logger, &infisicalSecret, authDetails.AuthStrategy, err)
 
 		if err != nil {
 			return fmt.Errorf("unable to authenticate [err=%s]", err)
 		}
 
-		r.UpdateResourceVariables(infisicalSecret, ResourceVariables{
-			infisicalClient: infisicalClient,
-			cancelCtx:       cancelCtx,
-			authDetails:     authDetails,
+		r.updateResourceVariables(infisicalSecret, util.ResourceVariables{
+			InfisicalClient: infisicalClient,
+			CancelCtx:       cancelCtx,
+			AuthDetails:     authDetails,
 		})
 	}
 
 	// Look for managed secret by name and namespace
-	managedKubeSecret, err := r.GetKubeSecretByNamespacedName(ctx, types.NamespacedName{
+	managedKubeSecret, err := util.GetKubeSecretByNamespacedName(ctx, r.Client, types.NamespacedName{
 		Name:      infisicalSecret.Spec.ManagedSecretReference.SecretName,
 		Namespace: infisicalSecret.Spec.ManagedSecretReference.SecretNamespace,
 	})
@@ -436,14 +363,14 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 	// Get exiting Etag if exists
 	secretVersionBasedOnETag := ""
 	if managedKubeSecret != nil {
-		secretVersionBasedOnETag = managedKubeSecret.Annotations[SECRET_VERSION_ANNOTATION]
+		secretVersionBasedOnETag = managedKubeSecret.Annotations[constants.SECRET_VERSION_ANNOTATION]
 	}
 
 	var plainTextSecretsFromApi []model.SingleEnvironmentVariable
 	var updateDetails model.RequestUpdateUpdateDetails
 
-	if authDetails.authStrategy == AuthStrategy.SERVICE_ACCOUNT { // Service Account // ! Legacy auth method
-		serviceAccountCreds, err := r.GetInfisicalServiceAccountCredentialsFromKubeSecret(ctx, infisicalSecret)
+	if authDetails.AuthStrategy == util.AuthStrategy.SERVICE_ACCOUNT { // Service Account // ! Legacy auth method
+		serviceAccountCreds, err := r.getInfisicalServiceAccountCredentialsFromKubeSecret(ctx, infisicalSecret)
 		if err != nil {
 			return fmt.Errorf("ReconcileInfisicalSecret: unable to get service account creds from kube secret [err=%s]", err)
 		}
@@ -453,10 +380,10 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 			return fmt.Errorf("\nfailed to get secrets because [err=%v]", err)
 		}
 
-		fmt.Println("ReconcileInfisicalSecret: Fetched secrets via service account")
+		logger.Info("ReconcileInfisicalSecret: Fetched secrets via service account")
 
-	} else if authDetails.authStrategy == AuthStrategy.SERVICE_TOKEN { // Service Tokens // ! Legacy / Deprecated auth method
-		infisicalToken, err := r.GetInfisicalTokenFromKubeSecret(ctx, infisicalSecret)
+	} else if authDetails.AuthStrategy == util.AuthStrategy.SERVICE_TOKEN { // Service Tokens // ! Legacy / Deprecated auth method
+		infisicalToken, err := r.getInfisicalTokenFromKubeSecret(ctx, infisicalSecret)
 		if err != nil {
 			return fmt.Errorf("ReconcileInfisicalSecret: unable to get service token from kube secret [err=%s]", err)
 		}
@@ -470,28 +397,30 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 			return fmt.Errorf("\nfailed to get secrets because [err=%v]", err)
 		}
 
-		fmt.Println("ReconcileInfisicalSecret: Fetched secrets via [type=SERVICE_TOKEN]")
-	} else if authDetails.isMachineIdentityAuth { // * Machine Identity authentication, the SDK will be authenticated at this point
-		plainTextSecretsFromApi, updateDetails, err = util.GetPlainTextSecretsViaMachineIdentity(infisicalClient, secretVersionBasedOnETag, authDetails.machineIdentityScope)
+		logger.Info("ReconcileInfisicalSecret: Fetched secrets via [type=SERVICE_TOKEN]")
+
+	} else if authDetails.IsMachineIdentityAuth { // * Machine Identity authentication, the SDK will be authenticated at this point
+		plainTextSecretsFromApi, updateDetails, err = util.GetPlainTextSecretsViaMachineIdentity(infisicalClient, secretVersionBasedOnETag, authDetails.MachineIdentityScope)
 
 		if err != nil {
 			return fmt.Errorf("\nfailed to get secrets because [err=%v]", err)
 		}
-		fmt.Printf("ReconcileInfisicalSecret: Fetched secrets via machine identity [type=%v]\n", authDetails.authStrategy)
+
+		logger.Info(fmt.Sprintf("ReconcileInfisicalSecret: Fetched secrets via machine identity [type=%v]", authDetails.AuthStrategy))
 
 	} else {
 		return errors.New("no authentication method provided yet. Please configure a authentication method then try again")
 	}
 
 	if !updateDetails.Modified {
-		fmt.Println("No secrets modified so reconcile not needed")
+		logger.Info("ReconcileInfisicalSecret: No secrets modified so reconcile not needed")
 		return nil
 	}
 
 	if managedKubeSecret == nil {
-		return r.CreateInfisicalManagedKubeSecret(ctx, infisicalSecret, plainTextSecretsFromApi, updateDetails.ETag)
+		return r.createInfisicalManagedKubeSecret(ctx, logger, infisicalSecret, plainTextSecretsFromApi, updateDetails.ETag)
 	} else {
-		return r.UpdateInfisicalManagedKubeSecret(ctx, infisicalSecret, *managedKubeSecret, plainTextSecretsFromApi, updateDetails.ETag)
+		return r.updateInfisicalManagedKubeSecret(ctx, logger, infisicalSecret, *managedKubeSecret, plainTextSecretsFromApi, updateDetails.ETag)
 	}
 
 }

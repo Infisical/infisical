@@ -15,14 +15,19 @@ import (
 
 	secretsv1alpha1 "github.com/Infisical/infisical/k8-operator/api/v1alpha1"
 	"github.com/Infisical/infisical/k8-operator/packages/api"
-	infisicalSdk "github.com/infisical/go-sdk"
+	controllerhelpers "github.com/Infisical/infisical/k8-operator/packages/controllerutil"
+	"github.com/Infisical/infisical/k8-operator/packages/util"
+	"github.com/go-logr/logr"
 )
 
 // InfisicalSecretReconciler reconciles a InfisicalSecret object
 type InfisicalSecretReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	BaseLogger logr.Logger
+	Scheme     *runtime.Scheme
 }
+
+var resourceVariablesMap map[string]util.ResourceVariables = make(map[string]util.ResourceVariables)
 
 //+kubebuilder:rbac:groups=secrets.infisical.com,resources=infisicalsecrets,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=secrets.infisical.com,resources=infisicalsecrets/status,verbs=get;update;patch
@@ -37,20 +42,25 @@ type InfisicalSecretReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.1/pkg/reconcile
 
-type ResourceVariables struct {
-	infisicalClient infisicalSdk.InfisicalClientInterface
-	cancelCtx       context.CancelFunc
-	authDetails     AuthenticationDetails
-}
-
 const FINALIZER_NAME = "secrets.finalizers.infisical.com"
 
 // Maps the infisicalSecretCR.UID to a infisicalSdk.InfisicalClientInterface and AuthenticationDetails.
-var resourceVariablesMap = make(map[string]ResourceVariables)
+// var resourceVariablesMap = make(map[string]ResourceVariables)
+
+func (r *InfisicalSecretReconciler) GetLogger(req ctrl.Request) logr.Logger {
+	return r.BaseLogger.WithValues("infisicalsecret", req.NamespacedName)
+}
 
 func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+
+	logger := r.GetLogger(req)
+
 	var infisicalSecretCR secretsv1alpha1.InfisicalSecret
 	requeueTime := time.Minute // seconds
+
+	if resourceVariablesMap == nil {
+		resourceVariablesMap = make(map[string]util.ResourceVariables)
+	}
 
 	err := r.Get(ctx, req.NamespacedName, &infisicalSecretCR)
 	if err != nil {
@@ -59,7 +69,7 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 				Requeue: false,
 			}, nil
 		} else {
-			fmt.Printf("\nUnable to fetch Infisical Secret CRD from cluster because [err=%v]", err)
+			logger.Error(err, "unable to fetch Infisical Secret CRD from cluster")
 			return ctrl.Result{
 				RequeueAfter: requeueTime,
 			}, nil
@@ -71,7 +81,7 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	if !infisicalSecretCR.ObjectMeta.DeletionTimestamp.IsZero() && len(infisicalSecretCR.ObjectMeta.Finalizers) > 0 {
 		infisicalSecretCR.ObjectMeta.Finalizers = []string{}
 		if err := r.Update(ctx, &infisicalSecretCR); err != nil {
-			fmt.Printf("Error removing finalizers from Infisical Secret %s: %v\n", infisicalSecretCR.Name, err)
+			logger.Error(err, fmt.Sprintf("Error removing finalizers from Infisical Secret %s", infisicalSecretCR.Name))
 			return ctrl.Result{}, err
 		}
 		// Our finalizers have been removed, so the reconciler can do nothing.
@@ -80,9 +90,10 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	if infisicalSecretCR.Spec.ResyncInterval != 0 {
 		requeueTime = time.Second * time.Duration(infisicalSecretCR.Spec.ResyncInterval)
-		fmt.Printf("\nManual re-sync interval set. Interval: %v\n", requeueTime)
+		logger.Info(fmt.Sprintf("Manual re-sync interval set. Interval: %v", requeueTime))
+
 	} else {
-		fmt.Printf("\nRe-sync interval set. Interval: %v\n", requeueTime)
+		logger.Info(fmt.Sprintf("Re-sync interval set. Interval: %v", requeueTime))
 	}
 
 	// Check if the resource is already marked for deletion
@@ -93,9 +104,9 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	// Get modified/default config
-	infisicalConfig, err := r.GetInfisicalConfigMap(ctx)
+	infisicalConfig, err := controllerhelpers.GetInfisicalConfigMap(ctx, r.Client)
 	if err != nil {
-		fmt.Printf("unable to fetch infisical-config [err=%s]. Will requeue after [requeueTime=%v]\n", err, requeueTime)
+		logger.Error(err, fmt.Sprintf("unable to fetch infisical-config. Will requeue after [requeueTime=%v]", requeueTime))
 		return ctrl.Result{
 			RequeueAfter: requeueTime,
 		}, nil
@@ -108,40 +119,41 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	if infisicalSecretCR.Spec.TLS.CaRef.SecretName != "" {
-		api.API_CA_CERTIFICATE, err = r.GetInfisicalCaCertificateFromKubeSecret(ctx, infisicalSecretCR)
+		api.API_CA_CERTIFICATE, err = r.getInfisicalCaCertificateFromKubeSecret(ctx, infisicalSecretCR)
 		if err != nil {
-			fmt.Printf("unable to fetch CA certificate [err=%s]. Will requeue after [requeueTime=%v]\n", err, requeueTime)
+			logger.Error(err, fmt.Sprintf("unable to fetch CA certificate. Will requeue after [requeueTime=%v]", requeueTime))
 			return ctrl.Result{
 				RequeueAfter: requeueTime,
 			}, nil
 		}
 
-		fmt.Println("Using custom CA certificate...")
+		logger.Info("Using custom CA certificate...")
 	} else {
 		api.API_CA_CERTIFICATE = ""
 	}
 
-	err = r.ReconcileInfisicalSecret(ctx, infisicalSecretCR)
+	err = r.ReconcileInfisicalSecret(ctx, logger, infisicalSecretCR)
 	r.SetReadyToSyncSecretsConditions(ctx, &infisicalSecretCR, err)
 
 	if err != nil {
-		fmt.Printf("unable to reconcile Infisical Secret because [err=%v]. Will requeue after [requeueTime=%v]\n", err, requeueTime)
+
+		logger.Error(err, fmt.Sprintf("unable to reconcile InfisicalSecret. Will requeue after [requeueTime=%v]", requeueTime))
 		return ctrl.Result{
 			RequeueAfter: requeueTime,
 		}, nil
 	}
 
-	numDeployments, err := r.ReconcileDeploymentsWithManagedSecrets(ctx, infisicalSecretCR)
-	r.SetInfisicalAutoRedeploymentReady(ctx, &infisicalSecretCR, numDeployments, err)
+	numDeployments, err := r.ReconcileDeploymentsWithManagedSecrets(ctx, logger, infisicalSecretCR)
+	r.SetInfisicalAutoRedeploymentReady(ctx, logger, &infisicalSecretCR, numDeployments, err)
 	if err != nil {
-		fmt.Printf("unable to reconcile auto redeployment because [err=%v]", err)
+		logger.Error(err, fmt.Sprintf("unable to reconcile auto redeployment. Will requeue after [requeueTime=%v]", requeueTime))
 		return ctrl.Result{
 			RequeueAfter: requeueTime,
 		}, nil
 	}
 
 	// Sync again after the specified time
-	fmt.Printf("Operator will requeue after [%v] \n", requeueTime)
+	logger.Info(fmt.Sprintf("Operator will requeue after [%v]", requeueTime))
 	return ctrl.Result{
 		RequeueAfter: requeueTime,
 	}, nil
@@ -151,16 +163,20 @@ func (r *InfisicalSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&secretsv1alpha1.InfisicalSecret{}, builder.WithPredicates(predicate.Funcs{
 			UpdateFunc: func(e event.UpdateEvent) bool {
-				if rv, ok := resourceVariablesMap[string(e.ObjectNew.GetUID())]; ok {
-					rv.cancelCtx()
-					delete(resourceVariablesMap, string(e.ObjectNew.GetUID()))
+				if resourceVariablesMap != nil {
+					if rv, ok := resourceVariablesMap[string(e.ObjectNew.GetUID())]; ok {
+						rv.CancelCtx()
+						delete(resourceVariablesMap, string(e.ObjectNew.GetUID()))
+					}
 				}
 				return true
 			},
 			DeleteFunc: func(e event.DeleteEvent) bool {
-				if rv, ok := resourceVariablesMap[string(e.Object.GetUID())]; ok {
-					rv.cancelCtx()
-					delete(resourceVariablesMap, string(e.Object.GetUID()))
+				if resourceVariablesMap != nil {
+					if rv, ok := resourceVariablesMap[string(e.Object.GetUID())]; ok {
+						rv.CancelCtx()
+						delete(resourceVariablesMap, string(e.Object.GetUID()))
+					}
 				}
 				return true
 			},

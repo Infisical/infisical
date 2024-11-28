@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"github.com/Infisical/infisical/k8-operator/api/v1alpha1"
+	"github.com/Infisical/infisical/k8-operator/packages/util"
+	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -40,7 +42,7 @@ func (r *InfisicalSecretReconciler) SetReadyToSyncSecretsConditions(ctx context.
 	return r.Client.Status().Update(ctx, infisicalSecret)
 }
 
-func (r *InfisicalSecretReconciler) SetInfisicalTokenLoadCondition(ctx context.Context, infisicalSecret *v1alpha1.InfisicalSecret, authStrategy AuthStrategyType, errorToConditionOn error) {
+func (r *InfisicalSecretReconciler) SetInfisicalTokenLoadCondition(ctx context.Context, logger logr.Logger, infisicalSecret *v1alpha1.InfisicalSecret, authStrategy util.AuthStrategyType, errorToConditionOn error) {
 	if infisicalSecret.Status.Conditions == nil {
 		infisicalSecret.Status.Conditions = []metav1.Condition{}
 	}
@@ -63,11 +65,11 @@ func (r *InfisicalSecretReconciler) SetInfisicalTokenLoadCondition(ctx context.C
 
 	err := r.Client.Status().Update(ctx, infisicalSecret)
 	if err != nil {
-		fmt.Println("Could not set condition for LoadedInfisicalToken")
+		logger.Error(err, "Could not set condition for LoadedInfisicalToken")
 	}
 }
 
-func (r *InfisicalSecretReconciler) SetInfisicalAutoRedeploymentReady(ctx context.Context, infisicalSecret *v1alpha1.InfisicalSecret, numDeployments int, errorToConditionOn error) {
+func (r *InfisicalSecretReconciler) SetInfisicalAutoRedeploymentReady(ctx context.Context, logger logr.Logger, infisicalSecret *v1alpha1.InfisicalSecret, numDeployments int, errorToConditionOn error) {
 	if infisicalSecret.Status.Conditions == nil {
 		infisicalSecret.Status.Conditions = []metav1.Condition{}
 	}
@@ -90,6 +92,6 @@ func (r *InfisicalSecretReconciler) SetInfisicalAutoRedeploymentReady(ctx contex
 
 	err := r.Client.Status().Update(ctx, infisicalSecret)
 	if err != nil {
-		fmt.Println("Could not set condition for AutoRedeployReady")
+		logger.Error(err, "Could not set condition for AutoRedeployReady")
 	}
 }
