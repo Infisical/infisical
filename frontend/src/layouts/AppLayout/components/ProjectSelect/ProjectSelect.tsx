@@ -27,24 +27,22 @@ const ProjectsMenu = ({ children, ...props }: MenuProps<TWorkspaceWithFaveProp>)
   return (
     <components.Menu {...props}>
       {children}
-      <div className=" m-2 mt-0 ">
-        <hr className="mb-2 h-px border-0 bg-mineshaft-500" />
-        <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Workspace}>
-          {(isAllowed) => (
-            <Button
-              className="w-full bg-mineshaft-700 py-2 text-bunker-200"
-              colorSchema="primary"
-              variant="outline_bg"
-              size="xs"
-              isDisabled={!isAllowed}
-              onClick={() => props.clearValue()}
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-            >
-              Add Project
-            </Button>
-          )}
-        </OrgPermissionCan>
-      </div>
+      <hr className="mb-2 h-px border-0 bg-mineshaft-500" />
+      <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Workspace}>
+        {(isAllowed) => (
+          <Button
+            className="w-full bg-mineshaft-700 pt-2 text-bunker-200"
+            colorSchema="primary"
+            variant="outline_bg"
+            size="xs"
+            isDisabled={!isAllowed}
+            onClick={() => props.clearValue()}
+            leftIcon={<FontAwesomeIcon icon={faPlus} />}
+          >
+            Add Project
+          </Button>
+        )}
+      </OrgPermissionCan>
     </components.Menu>
   );
 };
