@@ -86,7 +86,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
     setOrderBy,
     setOrderDirection,
     toggleOrderDirection
-  } = usePagination<MembersOrderBy>(MembersOrderBy.Name);
+  } = usePagination<MembersOrderBy>(MembersOrderBy.Name, { initPerPage: 20 });
 
   const { data: members = [], isLoading: isMembersLoading } = useGetWorkspaceUsers(workspaceId);
 

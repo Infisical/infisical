@@ -171,7 +171,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
     setOrderBy,
     setOrderDirection,
     toggleOrderDirection
-  } = usePagination<OrgMembersOrderBy>(OrgMembersOrderBy.Name);
+  } = usePagination<OrgMembersOrderBy>(OrgMembersOrderBy.Name, { initPerPage: 20 });
 
   const filteredUsers = useMemo(
     () =>
