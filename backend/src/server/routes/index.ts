@@ -85,7 +85,7 @@ import { sshCertificateTemplateServiceFactory } from "@app/ee/services/ssh-certi
 import { trustedIpDALFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal";
 import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
-import { getConfig } from "@app/lib/config/env";
+import { getConfig, TEnvConfig } from "@app/lib/config/env";
 import { TQueueServiceFactory } from "@app/queue";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue/access-token-queue";
@@ -244,7 +244,8 @@ export const registerRoutes = async (
     hsmModule,
     smtp: smtpService,
     queue: queueService,
-    keyStore
+    keyStore,
+    envConfig
   }: {
     auditLogDb?: Knex;
     db: Knex;
@@ -252,6 +253,7 @@ export const registerRoutes = async (
     smtp: TSmtpService;
     queue: TQueueServiceFactory;
     keyStore: TKeyStoreFactory;
+    envConfig: TEnvConfig;
   }
 ) => {
   const appCfg = getConfig();
@@ -391,7 +393,8 @@ export const registerRoutes = async (
   const licenseService = licenseServiceFactory({ permissionService, orgDAL, licenseDAL, keyStore });
 
   const hsmService = hsmServiceFactory({
-    hsmModule
+    hsmModule,
+    envConfig
   });
 
   const kmsService = kmsServiceFactory({
@@ -401,7 +404,8 @@ export const registerRoutes = async (
     internalKmsDAL,
     orgDAL,
     projectDAL,
-    hsmService
+    hsmService,
+    envConfig
   });
 
   const externalKmsService = externalKmsServiceFactory({

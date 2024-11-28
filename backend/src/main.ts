@@ -20,21 +20,21 @@ dotenv.config();
 
 const run = async () => {
   const logger = await initLogger();
-  const appCfg = initEnvConfig(logger);
+  const envConfig = initEnvConfig(logger);
 
   const db = initDbConnection({
-    dbConnectionUri: appCfg.DB_CONNECTION_URI,
-    dbRootCert: appCfg.DB_ROOT_CERT,
-    readReplicas: appCfg.DB_READ_REPLICAS?.map((el) => ({
+    dbConnectionUri: envConfig.DB_CONNECTION_URI,
+    dbRootCert: envConfig.DB_ROOT_CERT,
+    readReplicas: envConfig.DB_READ_REPLICAS?.map((el) => ({
       dbRootCert: el.DB_ROOT_CERT,
       dbConnectionUri: el.DB_CONNECTION_URI
     }))
   });
 
-  const auditLogDb = appCfg.AUDIT_LOGS_DB_CONNECTION_URI
+  const auditLogDb = envConfig.AUDIT_LOGS_DB_CONNECTION_URI
     ? initAuditLogDbConnection({
-        dbConnectionUri: appCfg.AUDIT_LOGS_DB_CONNECTION_URI,
-        dbRootCert: appCfg.AUDIT_LOGS_DB_ROOT_CERT
+        dbConnectionUri: envConfig.AUDIT_LOGS_DB_CONNECTION_URI,
+        dbRootCert: envConfig.AUDIT_LOGS_DB_ROOT_CERT
       })
     : undefined;
 
@@ -57,20 +57,30 @@ const run = async () => {
 
   const smtp = smtpServiceFactory(formatSmtpConfig());
 
-  const queue = queueServiceFactory(appCfg.REDIS_URL, {
-    dbConnectionUrl: appCfg.DB_CONNECTION_URI,
-    dbRootCert: appCfg.DB_ROOT_CERT
+  const queue = queueServiceFactory(envConfig.REDIS_URL, {
+    dbConnectionUrl: envConfig.DB_CONNECTION_URI,
+    dbRootCert: envConfig.DB_ROOT_CERT
   });
 
   await queue.initialize();
 
-  const keyStore = keyStoreFactory(appCfg.REDIS_URL);
-  const redis = new Redis(appCfg.REDIS_URL);
+  const keyStore = keyStoreFactory(envConfig.REDIS_URL);
+  const redis = new Redis(envConfig.REDIS_URL);
 
-  const hsmModule = initializeHsmModule();
+  const hsmModule = initializeHsmModule(envConfig);
   hsmModule.initialize();
 
-  const server = await main({ db, auditLogDb, hsmModule: hsmModule.getModule(), smtp, logger, queue, keyStore, redis });
+  const server = await main({
+    db,
+    auditLogDb,
+    hsmModule: hsmModule.getModule(),
+    smtp,
+    logger,
+    queue,
+    keyStore,
+    redis,
+    envConfig
+  });
   const bootstrap = await bootstrapCheck({ db });
 
   // eslint-disable-next-line
@@ -90,8 +100,8 @@ const run = async () => {
   });
 
   await server.listen({
-    port: appCfg.PORT,
-    host: appCfg.HOST,
+    port: envConfig.PORT,
+    host: envConfig.HOST,
     listenTextResolver: (address) => {
       void bootstrap();
       return address;

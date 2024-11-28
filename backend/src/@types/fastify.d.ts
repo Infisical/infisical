@@ -93,6 +93,12 @@ import { TUserEngagementServiceFactory } from "@app/services/user-engagement/use
 import { TWebhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { TWorkflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
 
+declare module "@fastify/request-context" {
+  interface RequestContextData {
+    requestId: string;
+  }
+}
+
 declare module "fastify" {
   interface Session {
     callbackPort: string;
