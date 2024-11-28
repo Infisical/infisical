@@ -68,7 +68,7 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
           return membershipOne.project.name
             .toLowerCase()
             .localeCompare(membershipTwo.project.name.toLowerCase());
-        }) ?? [],
+        }),
     [projectMemberships, orderDirection, search]
   );
 
