@@ -1,13 +1,13 @@
 import { ClipboardEvent } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
-import { faTriangleExclamation, faWarning } from "@fortawesome/free-solid-svg-icons";
+import { faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, Checkbox, FormControl, FormLabel, Input, Tooltip } from "@app/components/v2";
+import { Button, FilterableSelect, FormControl, Input } from "@app/components/v2";
 import { CreatableSelect } from "@app/components/v2/CreatableSelect";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
@@ -17,20 +17,14 @@ import {
   useWorkspace
 } from "@app/context";
 import { getKeyValue } from "@app/helpers/parseEnvVar";
-import {
-  useCreateFolder,
-  useCreateSecretV3,
-  useCreateWsTag,
-  useGetWsTags,
-  useUpdateSecretV3
-} from "@app/hooks/api";
-import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/types";
+import { useCreateFolder, useCreateSecretV3, useCreateWsTag, useGetWsTags } from "@app/hooks/api";
+import { SecretType } from "@app/hooks/api/types";
 
 const typeSchema = z
   .object({
     key: z.string().trim().min(1, "Key is required"),
     value: z.string().optional(),
-    environments: z.record(z.boolean().optional()),
+    environments: z.object({ name: z.string(), slug: z.string() }).array(),
     tags: z.array(z.object({ label: z.string().trim(), value: z.string().trim() })).optional()
   })
   .refine((data) => data.key !== undefined, {
@@ -41,22 +35,19 @@ type TFormSchema = z.infer<typeof typeSchema>;
 
 type Props = {
   secretPath?: string;
-  getSecretByKey: (slug: string, key: string) => SecretV3RawSanitized | undefined;
   // modal props
   onClose: () => void;
 };
 
-export const CreateSecretForm = ({ secretPath = "/", getSecretByKey, onClose }: Props) => {
+export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
   const {
     register,
     handleSubmit,
     control,
     reset,
-    watch,
     setValue,
     formState: { isSubmitting, errors }
   } = useForm<TFormSchema>({ resolver: zodResolver(typeSchema) });
-  const newSecretKey = watch("key");
 
   const { currentWorkspace } = useWorkspace();
   const { permission } = useProjectPermission();
@@ -65,22 +56,14 @@ export const CreateSecretForm = ({ secretPath = "/", getSecretByKey, onClose }: 
   const environments = currentWorkspace?.environments || [];
 
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
-  const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
+  // const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
   const { mutateAsync: createFolder } = useCreateFolder();
   const { data: projectTags, isLoading: isTagsLoading } = useGetWsTags(
     canReadTags ? workspaceId : ""
   );
 
   const handleFormSubmit = async ({ key, value, environments: selectedEnv, tags }: TFormSchema) => {
-    const environmentsSelected = environments.filter(({ slug }) => selectedEnv[slug]);
-    const isEnvironmentsSelected = environmentsSelected.length;
-
-    if (!isEnvironmentsSelected) {
-      createNotification({ type: "error", text: "Select at least one environment" });
-      return;
-    }
-
-    const promises = environmentsSelected.map(async (env) => {
+    const promises = selectedEnv.map(async (env) => {
       const environment = env.slug;
       // create folder if not existing
       if (secretPath !== "/") {
@@ -106,21 +89,22 @@ export const CreateSecretForm = ({ secretPath = "/", getSecretByKey, onClose }: 
         }
       }
 
-      const isEdit = getSecretByKey(environment, key) !== undefined;
-      if (isEdit) {
-        return {
-          ...(await updateSecretV3({
-            environment,
-            workspaceId,
-            secretPath,
-            secretKey: key,
-            secretValue: value || "",
-            type: SecretType.Shared,
-            tagIds: tags?.map((el) => el.value)
-          })),
-          environment
-        };
-      }
+      // TODO: add back - need to fetch secrets by key to check for conflicts as this method broke with pagination
+      // const isEdit = getSecretByKey(environment, key) !== undefined;
+      // if (isEdit) {
+      //   return {
+      //     ...(await updateSecretV3({
+      //       environment,
+      //       workspaceId,
+      //       secretPath,
+      //       secretKey: key,
+      //       secretValue: value || "",
+      //       type: SecretType.Shared,
+      //       tagIds: tags?.map((el) => el.value)
+      //     })),
+      //     environment
+      //   };
+      // }
 
       return {
         ...(await createSecretV3({
@@ -278,54 +262,33 @@ export const CreateSecretForm = ({ secretPath = "/", getSecretByKey, onClose }: 
           </FormControl>
         )}
       />
-      <FormLabel label="Environments" className="mb-2" />
-      <div className="thin-scrollbar grid max-h-64 grid-cols-3 gap-4 overflow-auto py-2">
-        {environments
-          .filter((environmentSlug) =>
-            permission.can(
-              ProjectPermissionActions.Create,
-              subject(ProjectPermissionSub.Secrets, {
-                environment: environmentSlug.slug,
-                secretPath,
-                secretName: "*",
-                secretTags: ["*"]
-              })
-            )
-          )
-          .map((env) => {
-            return (
-              <Controller
-                name={`environments.${env.slug}`}
-                key={`secret-input-${env.slug}`}
-                control={control}
-                render={({ field }) => (
-                  <Checkbox
-                    isChecked={field.value}
-                    onCheckedChange={field.onChange}
-                    id={`secret-input-${env.slug}`}
-                    className="!justify-start"
-                  >
-                    <span className="flex w-full flex-row items-center justify-start whitespace-pre-wrap">
-                      <span title={env.name} className="truncate">
-                        {env.name}
-                      </span>
-                      <span>
-                        {getSecretByKey(env.slug, newSecretKey) && (
-                          <Tooltip
-                            className="max-w-[150px]"
-                            content="Secret already exists, and it will be overwritten"
-                          >
-                            <FontAwesomeIcon icon={faWarning} className="ml-1 text-yellow-400" />
-                          </Tooltip>
-                        )}
-                      </span>
-                    </span>
-                  </Checkbox>
-                )}
-              />
-            );
-          })}
-      </div>
+      <Controller
+        control={control}
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
+          <FormControl label="Environments" isError={Boolean(error)} errorText={error?.message}>
+            <FilterableSelect
+              isMulti
+              options={environments.filter((environment) =>
+                permission.can(
+                  ProjectPermissionActions.Create,
+                  subject(ProjectPermissionSub.Secrets, {
+                    environment: environment.slug,
+                    secretPath,
+                    secretName: "*",
+                    secretTags: ["*"]
+                  })
+                )
+              )}
+              value={value}
+              onChange={onChange}
+              placeholder="Select environments to create secret in..."
+              getOptionLabel={(option) => option.name}
+              getOptionValue={(option) => option.slug}
+            />
+          </FormControl>
+        )}
+        name="environments"
+      />
       <div className="mt-7 flex items-center">
         <Button
           isDisabled={isSubmitting}
