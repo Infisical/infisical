@@ -213,13 +213,9 @@ export const AccessPolicyForm = ({
 
   const memberOptions = useMemo(
     () =>
-      members.map(({ inviteEmail, user: { firstName, lastName, id: userId, username } }) => ({
-        id: userId,
-        type: ApproverType.User,
-        label:
-          firstName || lastName
-            ? `${firstName ?? ""} ${lastName ?? ""}`.trim()
-            : username || inviteEmail
+      members.map((member) => ({
+        id: member.user.id,
+        type: ApproverType.User
       })),
     [members]
   );
@@ -228,8 +224,7 @@ export const AccessPolicyForm = ({
     () =>
       groups?.map(({ group }) => ({
         id: group.id,
-        type: ApproverType.Group,
-        label: group.name
+        type: ApproverType.Group
       })),
     [groups]
   );
