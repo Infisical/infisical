@@ -259,13 +259,14 @@ For additional guidance on setting this up for your production cluster, you can 
 ## Frequently Asked Questions
 
 <AccordionGroup>
-  <Accordion title="Is it possible to sync Infisical secrets as ENV?">
-  Yes, you can use secrets as environment variables in your pods. This requires two steps:
-  
-  1. Enable syncing to Kubernetes secrets using `syncSecret.enabled=true` in the CSI driver configuration.
-  2. Configure your pod to use these synced Kubernetes secrets as environment variables.
+  <Accordion title="Is it possible to sync Infisical secrets as environment variables?">
+    Yes, but it requires an indirect approach:
 
-You can find detailed examples in the [Secrets Store CSI driver documentation](https://secrets-store-csi-driver.sigs.k8s.io/topics/set-as-env-var).
+    1. First enable syncing to Kubernetes secrets by setting `syncSecret.enabled=true` in the CSI driver installation
+    2. Configure the Secret Provider Class to sync specific secrets to Kubernetes secrets
+    3. Use the resulting Kubernetes secrets in your pod's environment variables
+
+    This means secrets are first synced to Kubernetes secrets before they can be used as environment variables. You can find detailed examples in the [Secrets Store CSI driver documentation](https://secrets-store-csi-driver.sigs.k8s.io/topics/set-as-env-var).
 
   </Accordion>
 </AccordionGroup>
