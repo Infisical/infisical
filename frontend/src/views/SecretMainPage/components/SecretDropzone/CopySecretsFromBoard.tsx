@@ -1,14 +1,7 @@
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
-import {
-  faClone,
-  faFileImport,
-  faKey,
-  faSearch,
-  faSquareCheck,
-  faSquareXmark
-} from "@fortawesome/free-solid-svg-icons";
+import { faClone, faFileImport, faSquareCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -16,17 +9,13 @@ import { z } from "zod";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
-  Checkbox,
-  EmptyState,
+  FilterableSelect,
   FormControl,
   IconButton,
-  Input,
   Modal,
   ModalContent,
   ModalTrigger,
-  Select,
-  SelectItem,
-  Skeleton,
+  Switch,
   Tooltip
 } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
@@ -35,14 +24,14 @@ import { useDebounce } from "@app/hooks";
 import { useGetProjectSecrets } from "@app/hooks/api";
 
 const formSchema = z.object({
-  environment: z.string().trim(),
+  environment: z.object({ name: z.string(), slug: z.string() }),
   secretPath: z
     .string()
     .trim()
     .transform((val) =>
       typeof val === "string" && val.at(-1) === "/" && val.length > 1 ? val.slice(0, -1) : val
     ),
-  secrets: z.record(z.string().optional().nullable())
+  secrets: z.object({ key: z.string(), value: z.string().optional() }).array().min(1)
 });
 
 type TFormSchema = z.infer<typeof formSchema>;
@@ -68,7 +57,6 @@ export const CopySecretsFromBoard = ({
   onToggle,
   onParsedEnv
 }: Props) => {
-  const [searchFilter, setSearchFilter] = useState("");
   const [shouldIncludeValues, setShouldIncludeValues] = useState(true);
 
   const {
@@ -80,7 +68,7 @@ export const CopySecretsFromBoard = ({
     formState: { isDirty }
   } = useForm<TFormSchema>({
     resolver: zodResolver(formSchema),
-    defaultValues: { secretPath: "/", environment: environments?.[0]?.slug }
+    defaultValues: { secretPath: "/", environment: environments?.[0] }
   });
 
   const envCopySecPath = watch("secretPath");
@@ -89,7 +77,7 @@ export const CopySecretsFromBoard = ({
 
   const { data: secrets, isLoading: isSecretsLoading } = useGetProjectSecrets({
     workspaceId,
-    environment: selectedEnvSlug,
+    environment: selectedEnvSlug.slug,
     secretPath: debouncedEnvCopySecretPath,
     options: {
       enabled:
@@ -101,29 +89,22 @@ export const CopySecretsFromBoard = ({
   });
 
   useEffect(() => {
-    setValue("secrets", {});
-    setSearchFilter("");
-  }, [debouncedEnvCopySecretPath]);
+    setValue("secrets", []);
+  }, [debouncedEnvCopySecretPath, selectedEnvSlug]);
 
   const handleSecSelectAll = () => {
     if (secrets) {
-      setValue(
-        "secrets",
-        secrets?.reduce((prev, curr) => ({ ...prev, [curr.key]: curr.value }), {}),
-        { shouldDirty: true }
-      );
+      setValue("secrets", secrets, { shouldDirty: true });
     }
   };
 
   const handleFormSubmit = async (data: TFormSchema) => {
     const secretsToBePulled: Record<string, { value: string; comments: string[] }> = {};
-    Object.keys(data.secrets || {}).forEach((key) => {
-      if (data.secrets[key]) {
-        secretsToBePulled[key] = {
-          value: (shouldIncludeValues && data.secrets[key]) || "",
-          comments: [""]
-        };
-      }
+    data.secrets.forEach(({ key, value }) => {
+      secretsToBePulled[key] = {
+        value: (shouldIncludeValues && value) || "",
+        comments: [""]
+      };
     });
     onParsedEnv(secretsToBePulled);
     onToggle(false);
@@ -136,7 +117,6 @@ export const CopySecretsFromBoard = ({
       onOpenChange={(state) => {
         onToggle(state);
         reset();
-        setSearchFilter("");
       }}
     >
       <ModalTrigger asChild>
@@ -176,22 +156,14 @@ export const CopySecretsFromBoard = ({
               name="environment"
               render={({ field: { value, onChange } }) => (
                 <FormControl label="Environment" isRequired className="w-1/3">
-                  <Select
+                  <FilterableSelect
                     value={value}
-                    onValueChange={(val) => onChange(val)}
-                    className="w-full border border-mineshaft-500"
-                    defaultValue={environments?.[0]?.slug}
-                    position="popper"
-                  >
-                    {environments.map((sourceEnvironment) => (
-                      <SelectItem
-                        value={sourceEnvironment.slug}
-                        key={`source-environment-${sourceEnvironment.slug}`}
-                      >
-                        {sourceEnvironment.name}
-                      </SelectItem>
-                    ))}
-                  </Select>
+                    onChange={onChange}
+                    options={environments}
+                    placeholder="Select environment..."
+                    getOptionLabel={(option) => option.name}
+                    getOptionValue={(option) => option.slug}
+                  />
                 </FormControl>
               )}
             />
@@ -203,7 +175,7 @@ export const CopySecretsFromBoard = ({
                   <SecretPathInput
                     {...field}
                     placeholder="Provide a path, default is /"
-                    environment={selectedEnvSlug}
+                    environment={selectedEnvSlug?.slug}
                   />
                 </FormControl>
               )}
@@ -212,72 +184,57 @@ export const CopySecretsFromBoard = ({
           <div className="border-t border-mineshaft-600 pt-4">
             <div className="mb-4 flex items-center justify-between">
               <div>Secrets</div>
-              <div className="flex w-1/2 items-center space-x-2">
-                <Input
-                  placeholder="Search for secret"
-                  value={searchFilter}
+            </div>
+            <div className="flex w-full items-center gap-3">
+              <Controller
+                control={control}
+                name="secrets"
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <FormControl
+                    className="flex-1"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                  >
+                    <FilterableSelect
+                      placeholder={
+                        // eslint-disable-next-line no-nested-ternary
+                        isSecretsLoading
+                          ? "Loading secrets..."
+                          : secrets?.length
+                          ? "select secrets..."
+                          : "No secrets found..."
+                      }
+                      isLoading={isSecretsLoading}
+                      options={secrets}
+                      value={value}
+                      onChange={onChange}
+                      isMulti
+                      getOptionValue={(option) => option.key}
+                      getOptionLabel={(option) => option.key}
+                    />
+                  </FormControl>
+                )}
+              />
+              <Tooltip content="Select All">
+                <IconButton
+                  className="mb-3.5 h-9 w-9"
+                  ariaLabel="Select all"
+                  variant="outline_bg"
                   size="xs"
-                  leftIcon={<FontAwesomeIcon icon={faSearch} />}
-                  onChange={(evt) => setSearchFilter(evt.target.value)}
-                />
-                <Tooltip content="Select All">
-                  <IconButton
-                    ariaLabel="Select all"
-                    variant="outline_bg"
-                    size="xs"
-                    onClick={handleSecSelectAll}
-                  >
-                    <FontAwesomeIcon icon={faSquareCheck} size="lg" />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip content="Unselect All">
-                  <IconButton
-                    ariaLabel="UnSelect all"
-                    variant="outline_bg"
-                    size="xs"
-                    onClick={() => reset()}
-                  >
-                    <FontAwesomeIcon icon={faSquareXmark} size="lg" />
-                  </IconButton>
-                </Tooltip>
-              </div>
+                  onClick={handleSecSelectAll}
+                >
+                  <FontAwesomeIcon icon={faSquareCheck} size="lg" />
+                </IconButton>
+              </Tooltip>
             </div>
-            {!isSecretsLoading && !secrets?.length && (
-              <EmptyState title="No secrets found" icon={faKey} />
-            )}
-            <div className="thin-scrollbar grid max-h-64 grid-cols-2 gap-4 overflow-auto ">
-              {isSecretsLoading &&
-                Array.apply(0, Array(2)).map((_x, i) => (
-                  <Skeleton key={`secret-pull-loading-${i + 1}`} className="bg-mineshaft-700" />
-                ))}
-
-              {secrets
-                ?.filter(({ key }) => key.toLowerCase().includes(searchFilter.toLowerCase()))
-                ?.map(({ id, key, value: secVal }) => (
-                  <Controller
-                    key={`pull-secret--${id}`}
-                    control={control}
-                    name={`secrets.${key}`}
-                    render={({ field: { value, onChange } }) => (
-                      <Checkbox
-                        id={`pull-secret-${id}`}
-                        isChecked={Boolean(value)}
-                        onCheckedChange={(isChecked) => onChange(isChecked ? secVal : "")}
-                      >
-                        {key}
-                      </Checkbox>
-                    )}
-                  />
-                ))}
-            </div>
-            <div className="mt-6 mb-4">
-              <Checkbox
+            <div className="my-6 ml-2">
+              <Switch
                 id="populate-include-value"
                 isChecked={shouldIncludeValues}
                 onCheckedChange={(isChecked) => setShouldIncludeValues(isChecked as boolean)}
               >
                 Include secret values
-              </Checkbox>
+              </Switch>
             </div>
             <div className="flex items-center space-x-4">
               <Button
