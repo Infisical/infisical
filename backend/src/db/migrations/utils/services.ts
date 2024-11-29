@@ -19,6 +19,8 @@ type TDependencies = {
 };
 
 export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }: TDependencies) => {
+  // eslint-disable-next-line no-param-reassign
+  db.replicaNode = () => db;
   const hsmModule = initializeHsmModule(envConfig);
   hsmModule.initialize();
 
@@ -45,6 +47,7 @@ export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }
   });
 
   await hsmService.startService();
+  await kmsService.startService();
 
   return { kmsService };
 };

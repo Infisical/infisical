@@ -33,7 +33,18 @@ export async function up(knex: Knex): Promise<void> {
   const webhooks = await knex(TableName.Webhook)
     .where({})
     .leftJoin(TableName.Environment, `${TableName.Environment}.id`, `${TableName.Webhook}.envId`)
-    .select("url", "encryptedSecretKey", "iv", "tag", "keyEncoding", "urlCipherText", "urlIV", "urlTag", "id", "envId")
+    .select(
+      "url",
+      "encryptedSecretKey",
+      "iv",
+      "tag",
+      "keyEncoding",
+      "urlCipherText",
+      "urlIV",
+      "urlTag",
+      knex.ref("id").withSchema(TableName.Webhook),
+      "envId"
+    )
     .select(knex.ref("projectId").withSchema(TableName.Environment));
 
   const updatedWebhooks = await Promise.all(
@@ -55,7 +66,9 @@ export async function up(knex: Knex): Promise<void> {
           tag: el.tag,
           ciphertext: el.encryptedSecretKey
         });
-        encryptedSecretKey = projectKmsService.encryptor({ plainText: Buffer.from(decyptedSecretKey, "utf8") });
+        encryptedSecretKey = projectKmsService.encryptor({
+          plainText: Buffer.from(decyptedSecretKey, "utf8")
+        }).cipherTextBlob;
       }
 
       const decryptedUrl =
@@ -68,7 +81,9 @@ export async function up(knex: Knex): Promise<void> {
             })
           : null;
 
-      const encryptedUrl = projectKmsService.encryptor({ plainText: Buffer.from(decryptedUrl || el.url) });
+      const encryptedUrl = projectKmsService.encryptor({
+        plainText: Buffer.from(decryptedUrl || el.url)
+      }).cipherTextBlob;
       return { id: el.id, encryptedUrl, encryptedSecretKey, envId: el.envId };
     })
   );
