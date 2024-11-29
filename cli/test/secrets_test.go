@@ -96,7 +96,7 @@ func TestUserAuth_SecretsGetAll(t *testing.T) {
 	// testUserAuth_SecretsGetAllWithoutConnection(t)
 }
 
-func testUserAuth_SecretsGetAllWithoutConnection(t *testing.T) {
+func TestUserAuth_SecretsGetAllWithoutConnection(t *testing.T) {
 	originalConfigFile, err := util.GetConfigFile()
 	if err != nil {
 		t.Fatalf("error getting config file")
