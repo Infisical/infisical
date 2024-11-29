@@ -1,18 +1,12 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faCheckCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
+  FilterableSelect,
   FormControl,
   Input,
   Modal,
@@ -46,21 +40,34 @@ type Props = {
 
 const formSchema = z
   .object({
-    environment: z.string(),
+    environment: z.object({ slug: z.string(), name: z.string() }),
     name: z.string().optional(),
     secretPath: z.string().optional(),
     approvals: z.number().min(1),
-    approvers: z
-      .object({ type: z.nativeEnum(ApproverType), id: z.string() })
+    userApprovers: z
+      .object({ type: z.literal(ApproverType.User), id: z.string() })
       .array()
-      .min(1)
+      .default([]),
+    groupApprovers: z
+      .object({ type: z.literal(ApproverType.Group), id: z.string() })
+      .array()
       .default([]),
     policyType: z.nativeEnum(PolicyType),
     enforcementLevel: z.nativeEnum(EnforcementLevel)
   })
-  .refine((data) => data.approvers, {
-    path: ["approvers"],
-    message: "At least one approver should be provided."
+  .superRefine((data, ctx) => {
+    if (!(data.groupApprovers.length || data.userApprovers.length)) {
+      ctx.addIssue({
+        path: ["userApprovers"],
+        code: z.ZodIssueCode.custom,
+        message: "At least one approver should be provided"
+      });
+      ctx.addIssue({
+        path: ["groupApprovers"],
+        code: z.ZodIssueCode.custom,
+        message: "At least one approver should be provided"
+      });
+    }
   });
 
 type TFormSchema = z.infer<typeof formSchema>;
@@ -84,8 +91,15 @@ export const AccessPolicyForm = ({
     values: editValues
       ? {
           ...editValues,
-          environment: editValues.environment.slug,
-          approvers: editValues?.approvers || [],
+          environment: editValues.environment,
+          userApprovers:
+            editValues?.approvers
+              ?.filter((approver) => approver.type === ApproverType.User)
+              .map(({ id, type }) => ({ id, type: type as ApproverType.User })) || [],
+          groupApprovers:
+            editValues?.approvers
+              ?.filter((approver) => approver.type === ApproverType.Group)
+              .map(({ id, type }) => ({ id, type: type as ApproverType.Group })) || [],
           approvals: editValues?.approvals
         }
       : undefined
@@ -110,18 +124,27 @@ export const AccessPolicyForm = ({
 
   const approversRequired = watch("approvals") || 1;
 
-  const handleCreatePolicy = async (data: TFormSchema) => {
+  const handleCreatePolicy = async ({
+    environment,
+    groupApprovers,
+    userApprovers,
+    ...data
+  }: TFormSchema) => {
     if (!projectId) return;
 
     try {
       if (data.policyType === PolicyType.ChangePolicy) {
         await createSecretApprovalPolicy({
           ...data,
+          approvers: [...userApprovers, ...groupApprovers],
+          environment: environment.slug,
           workspaceId: currentWorkspace?.id || ""
         });
       } else {
         await createAccessApprovalPolicy({
           ...data,
+          approvers: [...userApprovers, ...groupApprovers],
+          environment: environment.slug,
           projectSlug
         });
       }
@@ -139,7 +162,12 @@ export const AccessPolicyForm = ({
     }
   };
 
-  const handleUpdatePolicy = async (data: TFormSchema) => {
+  const handleUpdatePolicy = async ({
+    environment,
+    userApprovers,
+    groupApprovers,
+    ...data
+  }: TFormSchema) => {
     if (!projectId || !projectSlug) return;
     if (!editValues?.id) return;
 
@@ -148,12 +176,15 @@ export const AccessPolicyForm = ({
         await updateSecretApprovalPolicy({
           id: editValues?.id,
           ...data,
+          approvers: [...userApprovers, ...groupApprovers],
           workspaceId: currentWorkspace?.id || ""
         });
       } else {
         await updateAccessApprovalPolicy({
           id: editValues?.id,
           ...data,
+          approvers: [...userApprovers, ...groupApprovers],
+          environment: environment.slug,
           projectSlug
         });
       }
@@ -179,9 +210,35 @@ export const AccessPolicyForm = ({
     }
   };
 
+  const memberOptions = useMemo(
+    () =>
+      members.map(({ inviteEmail, user: { firstName, lastName, id: userId, username } }) => ({
+        id: userId,
+        type: ApproverType.User,
+        label:
+          firstName || lastName
+            ? `${firstName ?? ""} ${lastName ?? ""}`.trim()
+            : username || inviteEmail
+      })),
+    [members]
+  );
+
+  const groupOptions = useMemo(
+    () =>
+      groups?.map(({ group }) => ({
+        id: group.id,
+        type: ApproverType.Group,
+        label: group.name
+      })),
+    [groups]
+  );
+
   return (
     <Modal isOpen={isOpen} onOpenChange={onToggle}>
-      <ModalContent title={isEditMode ? `Edit ${policyName}` : "Create Policy"}>
+      <ModalContent
+        bodyClassName="overflow-visible"
+        title={isEditMode ? `Edit ${policyName}` : "Create Policy"}
+      >
         <div className="flex flex-col space-y-3">
           <form onSubmit={handleSubmit(handleFormSubmit)}>
             <Controller
@@ -229,7 +286,6 @@ export const AccessPolicyForm = ({
             <Controller
               control={control}
               name="environment"
-              defaultValue={environments[0]?.slug}
               render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <FormControl
                   label="Environment"
@@ -238,21 +294,15 @@ export const AccessPolicyForm = ({
                   isError={Boolean(error)}
                   errorText={error?.message}
                 >
-                  <Select
+                  <FilterableSelect
                     isDisabled={isEditMode}
                     value={value}
-                    onValueChange={(val) => onChange(val)}
-                    className="w-full border border-mineshaft-500"
-                  >
-                    {environments.map((sourceEnvironment) => (
-                      <SelectItem
-                        value={sourceEnvironment.slug}
-                        key={`azure-key-vault-environment-${sourceEnvironment.slug}`}
-                      >
-                        {sourceEnvironment.name}
-                      </SelectItem>
-                    ))}
-                  </Select>
+                    onChange={onChange}
+                    placeholder="Select environment..."
+                    options={environments}
+                    getOptionValue={(option) => option.slug}
+                    getOptionLabel={(option) => option.name}
+                  />
                 </FormControl>
               )}
             />
@@ -331,127 +381,60 @@ export const AccessPolicyForm = ({
             </div>
             <Controller
               control={control}
-              name="approvers"
+              name="userApprovers"
               render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <FormControl
                   label="User Approvers"
                   isError={Boolean(error)}
                   errorText={error?.message}
                 >
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Input
-                        isReadOnly
-                        value={
-                          value?.filter((e) => e.type === ApproverType.User).length
-                            ? `${value.filter((e) => e.type === ApproverType.User).length} selected`
-                            : "None"
-                        }
-                        className="text-left"
-                      />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      style={{ width: "var(--radix-dropdown-menu-trigger-width)" }}
-                      align="start"
-                    >
-                      <DropdownMenuLabel>
-                        Select members that are allowed to approve requests
-                      </DropdownMenuLabel>
-                      {members.map(({ user }) => {
-                        const { id: userId } = user;
-                        const isChecked =
-                          value?.filter(
-                            (el: { id: string; type: ApproverType }) =>
-                              el.id === userId && el.type === ApproverType.User
-                          ).length > 0;
-                        return (
-                          <DropdownMenuItem
-                            onClick={(evt) => {
-                              evt.preventDefault();
-                              onChange(
-                                isChecked
-                                  ? value?.filter(
-                                      (el: { id: string; type: ApproverType }) =>
-                                        el.id !== userId && el.type !== ApproverType.User
-                                    )
-                                  : [...(value || []), { id: userId, type: ApproverType.User }]
-                              );
-                            }}
-                            key={`create-policy-members-${userId}`}
-                            iconPos="right"
-                            icon={isChecked && <FontAwesomeIcon icon={faCheckCircle} />}
-                          >
-                            {user.username}
-                          </DropdownMenuItem>
-                        );
-                      })}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <FilterableSelect
+                    menuPlacement="top"
+                    isMulti
+                    placeholder="Select members that are allowed to approve requests..."
+                    options={memberOptions}
+                    getOptionValue={(option) => option.id}
+                    getOptionLabel={(option) => {
+                      const member = members?.find((m) => m.user.id === option.id);
+
+                      if (!member) return option.id;
+
+                      const {
+                        inviteEmail,
+                        user: { firstName, lastName, username, email }
+                      } = member;
+
+                      return firstName || lastName
+                        ? `${firstName ?? ""} ${lastName ?? ""}`.trim()
+                        : username || email || inviteEmail;
+                    }}
+                    value={value}
+                    onChange={onChange}
+                  />
                 </FormControl>
               )}
             />
             <Controller
               control={control}
-              name="approvers"
+              name="groupApprovers"
               render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <FormControl
                   label="Group Approvers"
                   isError={Boolean(error)}
                   errorText={error?.message}
                 >
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Input
-                        isReadOnly
-                        value={
-                          value?.filter((e) => e.type === ApproverType.Group).length
-                            ? `${
-                                value?.filter((e) => e.type === ApproverType.Group).length
-                              } selected`
-                            : "None"
-                        }
-                        className="text-left"
-                      />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      style={{ width: "var(--radix-dropdown-menu-trigger-width)" }}
-                      align="start"
-                    >
-                      <DropdownMenuLabel>
-                        Select groups that are allowed to approve requests
-                      </DropdownMenuLabel>
-                      {groups &&
-                        groups.map(({ group }) => {
-                          const { id } = group;
-                          const isChecked =
-                            value?.filter(
-                              (el: { id: string; type: ApproverType }) =>
-                                el.id === id && el.type === ApproverType.Group
-                            ).length > 0;
-
-                          return (
-                            <DropdownMenuItem
-                              onClick={(evt) => {
-                                evt.preventDefault();
-                                onChange(
-                                  isChecked
-                                    ? value?.filter(
-                                        (el: { id: string; type: ApproverType }) =>
-                                          el.id !== id && el.type !== ApproverType.Group
-                                      )
-                                    : [...(value || []), { id, type: ApproverType.Group }]
-                                );
-                              }}
-                              key={`create-policy-members-${id}`}
-                              iconPos="right"
-                              icon={isChecked && <FontAwesomeIcon icon={faCheckCircle} />}
-                            >
-                              {group.name}
-                            </DropdownMenuItem>
-                          );
-                        })}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <FilterableSelect
+                    menuPlacement="top"
+                    isMulti
+                    placeholder="Select groups that are allowed to approve requests..."
+                    options={groupOptions}
+                    getOptionValue={(option) => option.id}
+                    getOptionLabel={(option) =>
+                      groups?.find(({ group }) => group.id === option.id)?.group.name ?? option.id
+                    }
+                    value={value}
+                    onChange={onChange}
+                  />
                 </FormControl>
               )}
             />

@@ -175,7 +175,7 @@ export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
                 isDisabled={!isAllowed}
               >
-                Create policy
+                Create Policy
               </Button>
             )}
           </ProjectPermissionCan>
