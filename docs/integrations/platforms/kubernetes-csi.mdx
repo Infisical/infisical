@@ -106,6 +106,12 @@ In order for the Infisical CSI provider to pull secrets from your Infisical proj
 a machine identity with [Kubernetes authentication](https://infisical.com/docs/documentation/platform/identities/kubernetes-auth) configured with your cluster.
 You can refer to the documentation for setting it up [here](https://infisical.com/docs/documentation/platform/identities/kubernetes-auth#guide).
 
+<Warning>
+  The allowed audience field of the Kubernetes authentication settings should
+  match the audience specified for the Secrets Store CSI driver during
+  installation.
+</Warning>
+
 ### Creating Secret Provider Class
 
 With the Secrets Store CSI driver and the Infisical CSI provider installed, create a Kubernetes [SecretProviderClass](https://secrets-store-csi-driver.sigs.k8s.io/concepts.html#secretproviderclass) resource to establish
