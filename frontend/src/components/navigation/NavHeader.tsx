@@ -1,9 +1,11 @@
 import { ParsedUrlQuery } from "querystring";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { faAngleRight, faCheck, faCopy, faLock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
 import { useOrganization, useWorkspace } from "@app/context";
 import { useToggle } from "@app/hooks";
@@ -56,6 +58,7 @@ export default function NavHeader({
   const { currentOrg } = useOrganization();
 
   const [isCopied, { timedToggle: toggleIsCopied }] = useToggle(false);
+  const [isHoveringCopyButton, setIsHoveringCopyButton] = useState(false);
 
   const router = useRouter();
 
@@ -152,7 +155,14 @@ export default function NavHeader({
               <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-1.5 text-xs text-gray-400" />
               {index + 1 === secretPathSegments?.length ? (
                 <div className="flex items-center space-x-2">
-                  <span className="text-sm font-semibold text-bunker-300">{folderName}</span>
+                  <span
+                    className={twMerge(
+                      "text-sm font-semibold transition-all",
+                      isHoveringCopyButton ? "text-bunker-200" : "text-bunker-300"
+                    )}
+                  >
+                    {folderName}
+                  </span>
                   <Tooltip
                     className="relative right-2"
                     position="bottom"
@@ -161,6 +171,8 @@ export default function NavHeader({
                     <IconButton
                       variant="plain"
                       ariaLabel="copy"
+                      onMouseEnter={() => setIsHoveringCopyButton(true)}
+                      onMouseLeave={() => setIsHoveringCopyButton(false)}
                       onClick={() => {
                         if (isCopied) return;
 
@@ -189,7 +201,12 @@ export default function NavHeader({
                   legacyBehavior
                   href={{ pathname: "/project/[id]/secrets/[env]", query }}
                 >
-                  <a className="text-sm font-semibold text-primary/80 hover:text-primary">
+                  <a
+                    className={twMerge(
+                      "text-sm font-semibold transition-all hover:text-primary",
+                      isHoveringCopyButton ? "text-primary" : "text-primary/80"
+                    )}
+                  >
                     {folderName}
                   </a>
                 </Link>
