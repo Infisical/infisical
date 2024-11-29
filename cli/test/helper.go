@@ -42,8 +42,9 @@ var creds = Credentials{
 func ExecuteCliCommand(command string, args ...string) (string, error) {
 	cmd := exec.Command(command, args...)
 	output, err := cmd.CombinedOutput()
+
 	if err != nil {
-		fmt.Println(fmt.Sprint(err) + ": " + string(output))
+		fmt.Println(fmt.Sprint(err) + ": " + FilterRequestID(strings.TrimSpace(string(output))))
 		return FilterRequestID(strings.TrimSpace(string(output))), err
 	}
 	return FilterRequestID(strings.TrimSpace(string(output))), nil
@@ -70,11 +71,6 @@ func SetupCli() {
 }
 
 func FilterRequestID(input string) string {
-
-	if !strings.Contains(input, "requestId") && !strings.Contains(input, "reqId") {
-		return input
-	}
-
 	// Find the JSON part of the error message
 	start := strings.Index(input, "{")
 	end := strings.LastIndex(input, "}") + 1
