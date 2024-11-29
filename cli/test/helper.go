@@ -71,7 +71,7 @@ func SetupCli() {
 
 func FilterRequestID(input string) string {
 
-	if !strings.Contains(input, "requestId") && strings.Contains(input, "reqId") {
+	if !strings.Contains(input, "requestId") && !strings.Contains(input, "reqId") {
 		return input
 	}
 
