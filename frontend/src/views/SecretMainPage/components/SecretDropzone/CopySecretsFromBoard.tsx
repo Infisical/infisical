@@ -242,7 +242,7 @@ export const CopySecretsFromBoard = ({
                 type="submit"
                 isDisabled={!isDirty}
               >
-                Paste Secrets
+                Copy Secrets
               </Button>
               <Button variant="plain" colorSchema="secondary" onClick={() => onToggle(false)}>
                 Cancel
