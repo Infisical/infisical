@@ -3,7 +3,6 @@ package tests
 import (
 	"testing"
 
-	"github.com/Infisical/infisical-merge/packages/util"
 	"github.com/bradleyjkemp/cupaloy/v2"
 )
 
@@ -97,28 +96,28 @@ func TestUserAuth_SecretsGetAll(t *testing.T) {
 }
 
 // disabled for the time being
-func testUserAuth_SecretsGetAllWithoutConnection(t *testing.T) {
-	originalConfigFile, err := util.GetConfigFile()
-	if err != nil {
-		t.Fatalf("error getting config file")
-	}
-	newConfigFile := originalConfigFile
+// func testUserAuth_SecretsGetAllWithoutConnection(t *testing.T) {
+// 	originalConfigFile, err := util.GetConfigFile()
+// 	if err != nil {
+// 		t.Fatalf("error getting config file")
+// 	}
+// 	newConfigFile := originalConfigFile
 
-	// set it to a URL that will always be unreachable
-	newConfigFile.LoggedInUserDomain = "http://localhost:4999"
-	util.WriteConfigFile(&newConfigFile)
+// 	// set it to a URL that will always be unreachable
+// 	newConfigFile.LoggedInUserDomain = "http://localhost:4999"
+// 	util.WriteConfigFile(&newConfigFile)
 
-	// restore config file
-	defer util.WriteConfigFile(&originalConfigFile)
+// 	// restore config file
+// 	defer util.WriteConfigFile(&originalConfigFile)
 
-	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "secrets", "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--include-imports=false", "--silent")
-	if err != nil {
-		t.Fatalf("error running CLI command: %v", err)
-	}
+// 	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "secrets", "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--include-imports=false", "--silent")
+// 	if err != nil {
+// 		t.Fatalf("error running CLI command: %v", err)
+// 	}
 
-	// Use cupaloy to snapshot test the output
-	err = cupaloy.Snapshot(output)
-	if err != nil {
-		t.Fatalf("snapshot failed: %v", err)
-	}
-}
+// 	// Use cupaloy to snapshot test the output
+// 	err = cupaloy.Snapshot(output)
+// 	if err != nil {
+// 		t.Fatalf("snapshot failed: %v", err)
+// 	}
+// }
