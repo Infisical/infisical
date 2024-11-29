@@ -15,6 +15,7 @@ import {
   SelectItem
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
+import { getMemberLabel } from "@app/helpers/members";
 import { policyDetails } from "@app/helpers/policies";
 import {
   useCreateSecretApprovalPolicy,
@@ -236,143 +237,157 @@ export const AccessPolicyForm = ({
   return (
     <Modal isOpen={isOpen} onOpenChange={onToggle}>
       <ModalContent
+        className="max-w-2xl"
         bodyClassName="overflow-visible"
         title={isEditMode ? `Edit ${policyName}` : "Create Policy"}
       >
         <div className="flex flex-col space-y-3">
           <form onSubmit={handleSubmit(handleFormSubmit)}>
-            <Controller
-              control={control}
-              name="policyType"
-              defaultValue={PolicyType.ChangePolicy}
-              render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl
-                  label="Policy Type"
-                  isRequired
-                  isError={Boolean(error)}
-                  tooltipText="Change polices govern secret changes within a given environment and secret path. Access polices allow underprivileged user to request access to environment/secret path."
-                  errorText={error?.message}
-                >
-                  <Select
-                    isDisabled={isEditMode}
-                    value={value}
-                    onValueChange={(val) => onChange(val as PolicyType)}
-                    className="w-full border border-mineshaft-500"
+            <div className="grid grid-cols-2 gap-x-3">
+              <Controller
+                control={control}
+                name="policyType"
+                defaultValue={PolicyType.ChangePolicy}
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <FormControl
+                    label="Policy Type"
+                    isRequired
+                    isError={Boolean(error)}
+                    tooltipText="Change polices govern secret changes within a given environment and secret path. Access polices allow underprivileged user to request access to environment/secret path."
+                    errorText={error?.message}
                   >
-                    {Object.values(PolicyType).map((policyType) => {
-                      return (
-                        <SelectItem value={policyType} key={`policy-type-${policyType}`}>
-                          {policyDetails[policyType].name}
-                        </SelectItem>
-                      );
-                    })}
-                  </Select>
-                </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              name="name"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Policy Name"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                >
-                  <Input {...field} value={field.value || ""} />
-                </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              name="environment"
-              render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl
-                  label="Environment"
-                  isRequired
-                  className="mt-4"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                >
-                  <FilterableSelect
-                    isDisabled={isEditMode}
-                    value={value}
-                    onChange={onChange}
-                    placeholder="Select environment..."
-                    options={environments}
-                    getOptionValue={(option) => option.slug}
-                    getOptionLabel={(option) => option.name}
-                  />
-                </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              name="secretPath"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  tooltipText="Secret paths support glob patterns. For example, '/**' will match all paths."
-                  label="Secret Path"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                >
-                  <Input {...field} value={field.value || ""} />
-                </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              name="approvals"
-              defaultValue={1}
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Minimum Approvals Required"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                >
-                  <Input
-                    {...field}
-                    type="number"
-                    min={1}
-                    onChange={(el) => field.onChange(parseInt(el.target.value, 10))}
-                  />
-                </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              name="enforcementLevel"
-              defaultValue={EnforcementLevel.Hard}
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Enforcement Level"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  tooltipText="Determines the level of enforcement for required approvers of a request"
-                  helperText={
-                    <div className="ml-1">
-                      {field.value === EnforcementLevel.Hard
-                        ? `Hard enforcement requires at least ${approversRequired} approver(s) to approve the request.`
-                        : `At least ${approversRequired} approver(s) must approve the request; however, the requester can bypass approval requirements in emergencies.`}
-                    </div>
-                  }
-                >
-                  <Select
-                    value={field.value}
-                    onValueChange={(val) => field.onChange(val as EnforcementLevel)}
-                    className="w-full border border-mineshaft-500"
+                    <Select
+                      isDisabled={isEditMode}
+                      value={value}
+                      onValueChange={(val) => onChange(val as PolicyType)}
+                      className="w-full border border-mineshaft-500"
+                    >
+                      {Object.values(PolicyType).map((policyType) => {
+                        return (
+                          <SelectItem value={policyType} key={`policy-type-${policyType}`}>
+                            {policyDetails[policyType].name}
+                          </SelectItem>
+                        );
+                      })}
+                    </Select>
+                  </FormControl>
+                )}
+              />
+              <Controller
+                control={control}
+                name="approvals"
+                defaultValue={1}
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Minimum Approvals Required"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
                   >
-                    {Object.values(EnforcementLevel).map((level) => {
-                      return (
-                        <SelectItem value={level} key={`enforcement-level-${level}`}>
-                          <span className="capitalize">{level}</span>
-                        </SelectItem>
-                      );
-                    })}
-                  </Select>
-                </FormControl>
-              )}
-            />
+                    <Input
+                      {...field}
+                      type="number"
+                      min={1}
+                      onChange={(el) => field.onChange(parseInt(el.target.value, 10))}
+                    />
+                  </FormControl>
+                )}
+              />
+              <Controller
+                control={control}
+                name="name"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Policy Name"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                  >
+                    <Input {...field} value={field.value || ""} />
+                  </FormControl>
+                )}
+              />
+              <Controller
+                control={control}
+                name="enforcementLevel"
+                defaultValue={EnforcementLevel.Hard}
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Enforcement Level"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                    tooltipText={
+                      <>
+                        <p>
+                          Determines the level of enforcement for required approvers of a request:
+                        </p>
+                        <p className="mt-2">
+                          <span className="font-bold">Hard</span> enforcement requires at least{" "}
+                          <span className="font-bold"> {approversRequired}</span> approver(s) to
+                          approve the request.`
+                        </p>
+                        <p className="mt-2">
+                          <span className="font-bold">Soft</span> enforcement At least{" "}
+                          <span className="font-bold">{approversRequired}</span> approver(s) must
+                          approve the request; however, the requester can bypass approval
+                          requirements in emergencies.
+                        </p>
+                      </>
+                    }
+                  >
+                    <Select
+                      value={field.value}
+                      onValueChange={(val) => field.onChange(val as EnforcementLevel)}
+                      className="w-full border border-mineshaft-500"
+                    >
+                      {Object.values(EnforcementLevel).map((level) => {
+                        return (
+                          <SelectItem value={level} key={`enforcement-level-${level}`}>
+                            <span className="capitalize">{level}</span>
+                          </SelectItem>
+                        );
+                      })}
+                    </Select>
+                  </FormControl>
+                )}
+              />
+
+              <Controller
+                control={control}
+                name="environment"
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <FormControl
+                    label="Environment"
+                    isRequired
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                  >
+                    <FilterableSelect
+                      isDisabled={isEditMode}
+                      value={value}
+                      onChange={onChange}
+                      placeholder="Select environment..."
+                      options={environments}
+                      getOptionValue={(option) => option.slug}
+                      getOptionLabel={(option) => option.name}
+                    />
+                  </FormControl>
+                )}
+              />
+              <Controller
+                control={control}
+                name="secretPath"
+                defaultValue="/"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    tooltipText="Secret paths support glob patterns. For example, '/**' will match all paths."
+                    label="Secret Path"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                  >
+                    <Input {...field} value={field.value || ""} />
+                  </FormControl>
+                )}
+              />
+            </div>
             <div className="mb-2">
               <p>Approvers</p>
               <p className="font-inter text-xs text-mineshaft-300 opacity-90">
@@ -399,14 +414,7 @@ export const AccessPolicyForm = ({
 
                       if (!member) return option.id;
 
-                      const {
-                        inviteEmail,
-                        user: { firstName, lastName, username, email }
-                      } = member;
-
-                      return firstName || lastName
-                        ? `${firstName ?? ""} ${lastName ?? ""}`.trim()
-                        : username || email || inviteEmail;
+                      return getMemberLabel(member);
                     }}
                     value={value}
                     onChange={onChange}

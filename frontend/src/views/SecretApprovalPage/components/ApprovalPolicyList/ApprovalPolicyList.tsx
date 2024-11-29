@@ -188,8 +188,8 @@ export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
               <Th>Name</Th>
               <Th>Environment</Th>
               <Th>Secret Path</Th>
-              <Th>Eligible Approvers</Th>
-              <Th>Eligible Group Approvers</Th>
+              <Th className="w-[18%]">Eligible Approvers</Th>
+              <Th className="w-[18%]">Eligible Group Approvers</Th>
               <Th>Approval Required</Th>
               <Th>
                 <DropdownMenu>
@@ -256,9 +256,9 @@ export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
             {!!currentWorkspace &&
               filteredPolicies?.map((policy) => (
                 <ApprovalPolicyRow
-                  projectSlug={currentWorkspace.slug}
+                  // projectSlug={currentWorkspace.slug}
                   policy={policy}
-                  workspaceId={workspaceId}
+                  // workspaceId={workspaceId}
                   key={policy.id}
                   members={members}
                   groups={groups}
