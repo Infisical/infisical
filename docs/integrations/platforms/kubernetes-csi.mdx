@@ -54,11 +54,18 @@ helm repo add secrets-store-csi-driver https://kubernetes-sigs.github.io/secrets
 ```bash
 helm install csi secrets-store-csi-driver/secrets-store-csi-driver \
 --namespace=kube-system \
---set "tokenRequests[0].audience=infisical" \ # Configure authentication for the CSI provider
---set enableSecretRotation=true \ # Enable automatic secret updates from Infisical
---set rotationPollInterval=2m \ # Check for secret updates every 2 minutes
---set "syncSecret.enabled=true" \ # Enable syncing secrets to Kubernetes secrets (optional)
+--set "tokenRequests[0].audience=infisical" \
+--set enableSecretRotation=true \
+--set rotationPollInterval=2m \
+--set "syncSecret.enabled=true" \
 ```
+
+The flags configure the following:
+
+- `tokenRequests[0].audience=infisical`: Configures authentication for the CSI provider (required)
+- `enableSecretRotation=true`: Enables automatic secret updates from Infisical
+- `rotationPollInterval=2m`: Checks for secret updates every 2 minutes
+- `syncSecret.enabled=true`: Enables syncing secrets to Kubernetes secrets (optional)
 
 If you do not wish to use the secret rotation feature of the secrets store CSI driver, you can omit the `enableSecretRotation` and the `rotationPollInterval` flags.
 Do note that by default, secrets from Infisical are only fetched and mounted during pod creation. If there are any changes made to the secrets in Infisical,
