@@ -31,7 +31,6 @@ export enum OrgPermissionSubjects {
 }
 
 export type OrgPermissionSet =
-  | [OrgPermissionActions.Read, OrgPermissionSubjects.Workspace]
   | [OrgPermissionActions.Create, OrgPermissionSubjects.Workspace]
   | [OrgPermissionActions, OrgPermissionSubjects.Role]
   | [OrgPermissionActions, OrgPermissionSubjects.Member]
@@ -52,7 +51,6 @@ export type OrgPermissionSet =
 const buildAdminPermission = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
   // ws permissions
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.Workspace);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
   // role permission
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
@@ -135,7 +133,6 @@ export const orgAdminPermissions = buildAdminPermission();
 const buildMemberPermission = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
 
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.Workspace);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Groups);
