@@ -72,7 +72,7 @@ func getDynamicSecretList(cmd *cobra.Command, args []string) {
 		util.RequireLogin()
 		util.RequireLocalWorkspaceFile()
 
-		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
+		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
 		if err != nil {
 			util.HandleError(err, "Unable to authenticate")
 		}
@@ -180,7 +180,7 @@ func createDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 		util.RequireLogin()
 		util.RequireLocalWorkspaceFile()
 
-		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
+		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
 		if err != nil {
 			util.HandleError(err, "Unable to authenticate")
 		}
@@ -302,7 +302,7 @@ func renewDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 		util.RequireLogin()
 		util.RequireLocalWorkspaceFile()
 
-		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
+		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
 		if err != nil {
 			util.HandleError(err, "Unable to authenticate")
 		}
@@ -400,7 +400,7 @@ func revokeDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 		util.RequireLogin()
 		util.RequireLocalWorkspaceFile()
 
-		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
+		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
 		if err != nil {
 			util.HandleError(err, "Unable to authenticate")
 		}
@@ -497,7 +497,7 @@ func listDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 		util.RequireLogin()
 		util.RequireLocalWorkspaceFile()
 
-		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
+		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
 		if err != nil {
 			util.HandleError(err, "Unable to authenticate")
 		}
