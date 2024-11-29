@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 
+import { zodBuffer } from "@app/lib/zod";
+
 import { TImmutableDBKeys } from "./models";
 
 export const DynamicSecretsSchema = z.object({
@@ -23,7 +25,8 @@ export const DynamicSecretsSchema = z.object({
   status: z.string().nullable().optional(),
   statusDetails: z.string().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  encryptedInput: zodBuffer
 });
 
 export type TDynamicSecrets = z.infer<typeof DynamicSecretsSchema>;

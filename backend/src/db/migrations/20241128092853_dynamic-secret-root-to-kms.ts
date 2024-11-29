@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import { inMemoryKeyStore } from "@app/keystore/memory";
 import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { selectAllTableCols } from "@app/lib/knex";
+import { initLogger } from "@app/lib/logger";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { SecretKeyEncoding, TableName } from "../schemas";
@@ -21,6 +22,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
+  await initLogger();
   const envConfig = getMigrationEnvConfig();
   const keyStore = inMemoryKeyStore();
   const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
@@ -34,31 +36,40 @@ export async function up(knex: Knex): Promise<void> {
     .select(knex.ref("projectId").withSchema(TableName.Environment));
 
   const updatedDynamicSecrets = await Promise.all(
-    dynamicSecretRootCredentials.map(async (el) => {
-      let projectKmsService = projectEncryptionRingBuffer.getItem(el.projectId);
+    dynamicSecretRootCredentials.map(async ({ projectId, ...el }) => {
+      let projectKmsService = projectEncryptionRingBuffer.getItem(projectId);
       if (!projectKmsService) {
         projectKmsService = await kmsService.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
-          projectId: el.projectId
+          projectId
         });
-        projectEncryptionRingBuffer.push(el.projectId, projectKmsService);
+        projectEncryptionRingBuffer.push(projectId, projectKmsService);
       }
 
       const decryptedInputData =
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore This will be removed in next cycle so ignore the ts missing error
         el.inputIV && el.inputTag && el.inputCiphertext && el.keyEncoding
           ? infisicalSymmetricDecrypt({
+              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+              // @ts-ignore This will be removed in next cycle so ignore the ts missing error
               keyEncoding: el.keyEncoding as SecretKeyEncoding,
+              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+              // @ts-ignore This will be removed in next cycle so ignore the ts missing error
               iv: el.inputIV,
+              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+              // @ts-ignore This will be removed in next cycle so ignore the ts missing error
               tag: el.inputTag,
+              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+              // @ts-ignore This will be removed in next cycle so ignore the ts missing error
               ciphertext: el.inputCiphertext
             })
-          : null;
+          : "";
 
-      const encryptedInput = decryptedInputData
-        ? projectKmsService.encryptor({
-            plainText: Buffer.from(decryptedInputData)
-          })
-        : null;
+      const encryptedInput = projectKmsService.encryptor({
+        plainText: Buffer.from(decryptedInputData)
+      }).cipherTextBlob;
+
       return { ...el, encryptedInput };
     })
   );

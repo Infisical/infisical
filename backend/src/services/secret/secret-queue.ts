@@ -1434,7 +1434,18 @@ export const secretQueueFactory = ({
   });
 
   queueService.start(QueueName.SecretWebhook, async (job) => {
-    await fnTriggerWebhook({ ...job.data, projectEnvDAL, webhookDAL, projectDAL });
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: job.data.projectId
+    });
+
+    await fnTriggerWebhook({
+      ...job.data,
+      projectEnvDAL,
+      webhookDAL,
+      projectDAL,
+      secretManagerDecryptor: (value) => secretManagerDecryptor({ cipherTextBlob: value }).toString()
+    });
   });
 
   return {
