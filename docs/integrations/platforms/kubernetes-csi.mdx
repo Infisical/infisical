@@ -67,9 +67,14 @@ The flags configure the following:
 - `rotationPollInterval=2m`: Checks for secret updates every 2 minutes
 - `syncSecret.enabled=true`: Enables syncing secrets to Kubernetes secrets (optional)
 
-If you do not wish to use the secret rotation feature of the secrets store CSI driver, you can omit the `enableSecretRotation` and the `rotationPollInterval` flags.
-Do note that by default, secrets from Infisical are only fetched and mounted during pod creation. If there are any changes made to the secrets in Infisical,
-they will not propagate to the pods unless secret rotation is enabled for the CSI driver.
+<Info>
+  If you do not wish to use the secret rotation feature of the secrets store CSI
+  driver, you can omit the `enableSecretRotation` and the `rotationPollInterval`
+  flags. Do note that by default, secrets from Infisical are only fetched and
+  mounted during pod creation. If there are any changes made to the secrets in
+  Infisical, they will not propagate to the pods unless secret rotation is
+  enabled for the CSI driver.
+</Info>
 
 ### Install Infisical CSI Provider
 
