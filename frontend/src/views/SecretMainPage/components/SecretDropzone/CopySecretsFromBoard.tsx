@@ -31,7 +31,10 @@ const formSchema = z.object({
     .transform((val) =>
       typeof val === "string" && val.at(-1) === "/" && val.length > 1 ? val.slice(0, -1) : val
     ),
-  secrets: z.object({ key: z.string(), value: z.string().optional() }).array().min(1)
+  secrets: z
+    .object({ key: z.string(), value: z.string().optional() })
+    .array()
+    .min(1, "Select one or more secrets to copy")
 });
 
 type TFormSchema = z.infer<typeof formSchema>;
@@ -145,6 +148,7 @@ export const CopySecretsFromBoard = ({
         </div>
       </ModalTrigger>
       <ModalContent
+        bodyClassName="overflow-visible"
         className="max-w-2xl"
         title="Copy Secret From An Environment"
         subTitle="Copy/paste secrets from other environments into this context"
@@ -185,7 +189,7 @@ export const CopySecretsFromBoard = ({
             <div className="mb-4 flex items-center justify-between">
               <div>Secrets</div>
             </div>
-            <div className="flex w-full items-center gap-3">
+            <div className="flex w-full items-start gap-3">
               <Controller
                 control={control}
                 name="secrets"
@@ -201,7 +205,7 @@ export const CopySecretsFromBoard = ({
                         isSecretsLoading
                           ? "Loading secrets..."
                           : secrets?.length
-                          ? "select secrets..."
+                          ? "Select secrets..."
                           : "No secrets found..."
                       }
                       isLoading={isSecretsLoading}
@@ -217,7 +221,7 @@ export const CopySecretsFromBoard = ({
               />
               <Tooltip content="Select All">
                 <IconButton
-                  className="mb-3.5 h-9 w-9"
+                  className="mt-1 h-9 w-9"
                   ariaLabel="Select all"
                   variant="outline_bg"
                   size="xs"
