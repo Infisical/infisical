@@ -112,9 +112,9 @@ export const main = async ({ db, hsmModule, auditLogDb, smtp, logger, queue, key
     await server.register(maintenanceMode);
 
     await server.register(fastifyRequestContext, {
-      defaultStoreValues: (request) => ({
-        requestId: request.id,
-        log: request.log.child({ requestId: request.id })
+      defaultStoreValues: (req) => ({
+        reqId: req.id,
+        log: req.log.child({ reqId: req.id })
       })
     });
 
