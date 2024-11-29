@@ -157,7 +157,7 @@ func (r *InfisicalPushSecretReconciler) Reconcile(ctx context.Context, req ctrl.
 			}, nil
 		}
 
-		fmt.Println("Using custom CA certificate...")
+		logger.Info("Using custom CA certificate...")
 	} else {
 		api.API_CA_CERTIFICATE = ""
 	}
