@@ -6,6 +6,7 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  FilterableSelect,
   FormControl,
   Modal,
   ModalContent,
@@ -17,7 +18,7 @@ import { useSubscription, useWorkspace } from "@app/context";
 import { useCreateSecretImport } from "@app/hooks/api";
 
 const typeSchema = z.object({
-  environment: z.string().trim(),
+  environment: z.object({ name: z.string(), slug: z.string() }),
   secretPath: z
     .string()
     .trim()
@@ -80,7 +81,7 @@ export const CreateSecretImportForm = ({
         path: secretPath,
         isReplication,
         import: {
-          environment: importedEnv,
+          environment: importedEnv.slug,
           path: importedSecPath
         }
       });
@@ -88,8 +89,9 @@ export const CreateSecretImportForm = ({
       reset();
       createNotification({
         type: "success",
-        text: `Successfully linked. ${isReplication ? "Please refresh the dashboard to view changes" : ""
-          }`
+        text: `Successfully linked. ${
+          isReplication ? "Please refresh the dashboard to view changes" : ""
+        }`
       });
     } catch (err) {
       console.error(err);
@@ -118,21 +120,16 @@ export const CreateSecretImportForm = ({
           <Controller
             control={control}
             name="environment"
-            defaultValue={environments?.[0]?.slug}
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+            render={({ field: { onChange, value }, fieldState: { error } }) => (
               <FormControl label="Environment" errorText={error?.message} isError={Boolean(error)}>
-                <Select
-                  defaultValue={field.value}
-                  {...field}
-                  onValueChange={(e) => onChange(e)}
-                  className="w-full"
-                >
-                  {environments.map(({ name, slug }) => (
-                    <SelectItem value={slug} key={slug}>
-                      {name}
-                    </SelectItem>
-                  ))}
-                </Select>
+                <FilterableSelect
+                  options={environments}
+                  getOptionLabel={(option) => option.name}
+                  getOptionValue={(option) => option.slug}
+                  placeholder="Select environment..."
+                  value={value}
+                  onChange={onChange}
+                />
               </FormControl>
             )}
           />
@@ -142,7 +139,7 @@ export const CreateSecretImportForm = ({
             defaultValue="/"
             render={({ field, fieldState: { error } }) => (
               <FormControl label="Secret Path" isError={Boolean(error)} errorText={error?.message}>
-                <SecretPathInput {...field} environment={selectedEnvironment} />
+                <SecretPathInput {...field} environment={selectedEnvironment?.slug} />
               </FormControl>
             )}
           />
