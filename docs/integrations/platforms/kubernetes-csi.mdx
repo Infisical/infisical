@@ -62,10 +62,10 @@ helm install csi secrets-store-csi-driver/secrets-store-csi-driver \
 
 The flags configure the following:
 
-- `tokenRequests[0].audience=infisical`: Configures authentication for the CSI provider (required)
+- `tokenRequests[0].audience=infisical`: Sets the audience value for service account token authentication (required)
 - `enableSecretRotation=true`: Enables automatic secret updates from Infisical
 - `rotationPollInterval=2m`: Checks for secret updates every 2 minutes
-- `syncSecret.enabled=true`: Enables syncing secrets to Kubernetes secrets (optional)
+- `syncSecret.enabled=true`: Enables syncing secrets to Kubernetes secrets
 
 <Info>
   If you do not wish to use the secret rotation feature of the secrets store CSI
