@@ -345,6 +345,7 @@
           "group": "Container orchestrators",
           "pages": [
             "integrations/platforms/kubernetes",
+            "integrations/platforms/kubernetes-csi",
             "integrations/platforms/docker-swarm-with-agent",
             "integrations/platforms/ecs-with-agent"
           ]
