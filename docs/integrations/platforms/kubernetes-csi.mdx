@@ -6,7 +6,7 @@ description: "How to use Infisical to inject secrets directly into Kubernetes po
 ## Overview
 
 The Infisical CSI provider allows you to use Infisical with the [Secrets Store CSI driver](https://secrets-store-csi-driver.sigs.k8s.io) to inject secrets directly into your Kubernetes pods through a volume mount.
-In contrast to the [Infisical Kubernetes Operator](https://infisical.com/docs/integrations/platforms/kubernetes), the Infisical CSI provider will allow you to sync Infisical secrets directly to pods, removing the need for Kubernetes secret resources.
+In contrast to the [Infisical Kubernetes Operator](https://infisical.com/docs/integrations/platforms/kubernetes), the Infisical CSI provider will allow you to sync Infisical secrets directly to pods as files, removing the need for Kubernetes secret resources.
 
 ```mermaid
 flowchart LR
@@ -28,7 +28,7 @@ The following features are supported by the Infisical CSI Provider:
 
 - Integration with Secrets Store CSI Driver for direct pod mounting
 - Authentication using Kubernetes service accounts via machine identities
-- Secret rotation and auto-syncing when enabled via CSI Driver
+- Auto-syncing secrets when enabled via CSI Driver
 - Configurable secret paths and file mounting locations
 - Installation via Helm
 
@@ -68,12 +68,12 @@ The flags configure the following:
 - `syncSecret.enabled=true`: Enables syncing secrets to Kubernetes secrets
 
 <Info>
-  If you do not wish to use the secret rotation feature of the secrets store CSI
+  If you do not wish to use the auto-syncing feature of the secrets store CSI
   driver, you can omit the `enableSecretRotation` and the `rotationPollInterval`
   flags. Do note that by default, secrets from Infisical are only fetched and
   mounted during pod creation. If there are any changes made to the secrets in
-  Infisical, they will not propagate to the pods unless secret rotation is
-  enabled for the CSI driver.
+  Infisical, they will not propagate to the pods unless auto-syncing is enabled
+  for the CSI driver.
 </Info>
 
 ### Install Infisical CSI Provider
@@ -115,7 +115,7 @@ You can refer to the documentation for setting it up [here](https://infisical.co
 ### Creating Secret Provider Class
 
 With the Secrets Store CSI driver and the Infisical CSI provider installed, create a Kubernetes [SecretProviderClass](https://secrets-store-csi-driver.sigs.k8s.io/concepts.html#secretproviderclass) resource to establish
-the connection between the CSI driver and the Infisical CSI provider for secret retrieval. You can create as much Secret Provider Classes as needed for your cluster.
+the connection between the CSI driver and the Infisical CSI provider for secret retrieval. You can create as many Secret Provider Classes as needed for your cluster.
 
 ```yaml
 apiVersion: secrets-store.csi.x-k8s.io/v1
@@ -126,6 +126,7 @@ spec:
   provider: infisical
   parameters:
     infisicalUrl: "https://app.infisical.com"
+    authMethod: "kubernetes"
     identityId: "ad2f8c67-cbe2-417a-b5eb-1339776ec0b3"
     projectId: "09eda1f8-85a3-47a9-8a6f-e27f133b2a36"
     envSlug: "prod"
@@ -155,6 +156,11 @@ spec:
   The CA certificate of the Infisical instance in order to establish SSL/TLS
   when the instance uses a private or self-signed certificate. Unless necessary,
   this should be omitted.
+</Accordion>
+
+<Accordion title="authMethod">
+  The auth method to use for authenticating the Infisical CSI provider with
+  Infisical. For now, the only supported method is `kubernetes`.
 </Accordion>
 
 <Accordion title="identityId">
@@ -249,3 +255,26 @@ kubectl logs csi-secrets-store-csi-driver-7h4jp -n=kube-system
 ## Best Practices
 
 For additional guidance on setting this up for your production cluster, you can refer to the Secrets Store CSI driver documentation [here](https://secrets-store-csi-driver.sigs.k8s.io/topics/best-practices).
+
+## Frequently Asked Questions
+
+<AccordionGroup>
+  <Accordion title="Is it possible to sync Infisical secrets as ENV?">
+  Yes, you can use secrets as environment variables in your pods. This requires two steps:
+  
+  1. Enable syncing to Kubernetes secrets using `syncSecret.enabled=true` in the CSI driver configuration.
+  2. Configure your pod to use these synced Kubernetes secrets as environment variables.
+
+You can find detailed examples in the [Secrets Store CSI driver documentation](https://secrets-store-csi-driver.sigs.k8s.io/topics/set-as-env-var).
+
+  </Accordion>
+</AccordionGroup>
+
+<AccordionGroup>
+  <Accordion title="Do I have to list out every Infisical single secret that I want to sync?">
+    Yes, you will need to explicitly list each secret you want to sync in the
+    Secret Provider Class configuration. This is a common requirement across all
+    CSI providers as the Secrets Store CSI Driver architecture requires specific
+    mapping of secrets to their mounted file locations.
+  </Accordion>
+</AccordionGroup>
