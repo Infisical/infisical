@@ -14,11 +14,17 @@ import { getMigrationEncryptionServices } from "./utils/services";
 const BATCH_SIZE = 500;
 export async function up(knex: Knex): Promise<void> {
   const hasEncryptedInputColumn = await knex.schema.hasColumn(TableName.DynamicSecret, "encryptedInput");
+  const hasInputCiphertextColumn = await knex.schema.hasColumn(TableName.DynamicSecret, "inputCiphertext");
+  const hasInputIVColumn = await knex.schema.hasColumn(TableName.DynamicSecret, "inputIV");
+  const hasInputTagColumn = await knex.schema.hasColumn(TableName.DynamicSecret, "inputTag");
 
   const hasDynamicSecretTable = await knex.schema.hasTable(TableName.DynamicSecret);
   if (hasDynamicSecretTable) {
     await knex.schema.alterTable(TableName.DynamicSecret, (t) => {
       if (!hasEncryptedInputColumn) t.binary("encryptedInput");
+      if (hasInputCiphertextColumn) t.text("inputCiphertext").nullable().alter();
+      if (hasInputIVColumn) t.string("inputIV").nullable().alter();
+      if (hasInputTagColumn) t.string("inputTag").nullable().alter();
     });
   }
 

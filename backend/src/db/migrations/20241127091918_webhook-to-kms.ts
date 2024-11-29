@@ -14,12 +14,14 @@ const BATCH_SIZE = 500;
 export async function up(knex: Knex): Promise<void> {
   const hasEncryptedKey = await knex.schema.hasColumn(TableName.Webhook, "encryptedPassKey");
   const hasEncryptedUrl = await knex.schema.hasColumn(TableName.Webhook, "encryptedUrl");
+  const hasUrl = await knex.schema.hasColumn(TableName.Webhook, "url");
 
   const hasWebhookTable = await knex.schema.hasTable(TableName.Webhook);
   if (hasWebhookTable) {
     await knex.schema.alterTable(TableName.Webhook, (t) => {
       if (!hasEncryptedKey) t.binary("encryptedPassKey");
       if (!hasEncryptedUrl) t.binary("encryptedUrl");
+      if (hasUrl) t.string("url").nullable().alter();
     });
   }
 
