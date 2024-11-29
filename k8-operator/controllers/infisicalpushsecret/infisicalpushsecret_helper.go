@@ -71,7 +71,7 @@ func (r *InfisicalPushSecretReconciler) getResourceVariables(infisicalPushSecret
 
 	var resourceVariables util.ResourceVariables
 
-	if _, ok := resourceVariablesMap[string(infisicalPushSecret.UID)]; !ok {
+	if _, ok := infisicalPushSecretResourceVariablesMap[string(infisicalPushSecret.UID)]; !ok {
 
 		ctx, cancel := context.WithCancel(context.Background())
 
@@ -81,16 +81,16 @@ func (r *InfisicalPushSecretReconciler) getResourceVariables(infisicalPushSecret
 			UserAgent:     api.USER_AGENT_NAME,
 		})
 
-		resourceVariablesMap[string(infisicalPushSecret.UID)] = util.ResourceVariables{
+		infisicalPushSecretResourceVariablesMap[string(infisicalPushSecret.UID)] = util.ResourceVariables{
 			InfisicalClient: client,
 			CancelCtx:       cancel,
 			AuthDetails:     util.AuthenticationDetails{},
 		}
 
-		resourceVariables = resourceVariablesMap[string(infisicalPushSecret.UID)]
+		resourceVariables = infisicalPushSecretResourceVariablesMap[string(infisicalPushSecret.UID)]
 
 	} else {
-		resourceVariables = resourceVariablesMap[string(infisicalPushSecret.UID)]
+		resourceVariables = infisicalPushSecretResourceVariablesMap[string(infisicalPushSecret.UID)]
 	}
 
 	return resourceVariables
@@ -98,7 +98,7 @@ func (r *InfisicalPushSecretReconciler) getResourceVariables(infisicalPushSecret
 }
 
 func (r *InfisicalPushSecretReconciler) updateResourceVariables(infisicalPushSecret v1alpha1.InfisicalPushSecret, resourceVariables util.ResourceVariables) {
-	resourceVariablesMap[string(infisicalPushSecret.UID)] = resourceVariables
+	infisicalPushSecretResourceVariablesMap[string(infisicalPushSecret.UID)] = resourceVariables
 }
 
 func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context.Context, logger logr.Logger, infisicalPushSecret v1alpha1.InfisicalPushSecret) error {
