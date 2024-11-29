@@ -35,7 +35,7 @@ type InfisicalPushSecretReconciler struct {
 	Scheme     *runtime.Scheme
 }
 
-var resourceVariablesMap map[string]util.ResourceVariables
+var infisicalPushSecretResourceVariablesMap map[string]util.ResourceVariables = make(map[string]util.ResourceVariables)
 
 func (r *InfisicalPushSecretReconciler) GetLogger(req ctrl.Request) logr.Logger {
 	return r.BaseLogger.WithValues("infisicalpushsecret", req.NamespacedName)
@@ -60,10 +60,6 @@ func (r *InfisicalPushSecretReconciler) Reconcile(ctx context.Context, req ctrl.
 
 	var infisicalPushSecretCR secretsv1alpha1.InfisicalPushSecret
 	requeueTime := time.Minute // seconds
-
-	if resourceVariablesMap == nil {
-		resourceVariablesMap = make(map[string]util.ResourceVariables)
-	}
 
 	err := r.Get(ctx, req.NamespacedName, &infisicalPushSecretCR)
 	if err != nil {
@@ -185,10 +181,30 @@ func (r *InfisicalPushSecretReconciler) SetupWithManager(mgr ctrl.Manager) error
 	specChangeOrDelete := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			// Only reconcile if spec/generation changed
-			return e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration()
+
+			isSpecOrGenerationChange := e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration()
+
+			if isSpecOrGenerationChange {
+				if infisicalPushSecretResourceVariablesMap != nil {
+					if rv, ok := infisicalPushSecretResourceVariablesMap[string(e.ObjectNew.GetUID())]; ok {
+						rv.CancelCtx()
+						delete(infisicalPushSecretResourceVariablesMap, string(e.ObjectNew.GetUID()))
+					}
+				}
+			}
+
+			return isSpecOrGenerationChange
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			// Always reconcile on deletion
+
+			if infisicalPushSecretResourceVariablesMap != nil {
+				if rv, ok := infisicalPushSecretResourceVariablesMap[string(e.Object.GetUID())]; ok {
+					rv.CancelCtx()
+					delete(infisicalPushSecretResourceVariablesMap, string(e.Object.GetUID()))
+				}
+			}
+
 			return true
 		},
 		CreateFunc: func(e event.CreateEvent) bool {

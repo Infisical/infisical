@@ -27,7 +27,13 @@ type InfisicalSecretReconciler struct {
 	Scheme     *runtime.Scheme
 }
 
-var resourceVariablesMap map[string]util.ResourceVariables = make(map[string]util.ResourceVariables)
+const FINALIZER_NAME = "secrets.finalizers.infisical.com"
+
+var infisicalSecretResourceVariablesMap map[string]util.ResourceVariables = make(map[string]util.ResourceVariables)
+
+func (r *InfisicalSecretReconciler) GetLogger(req ctrl.Request) logr.Logger {
+	return r.BaseLogger.WithValues("infisicalsecret", req.NamespacedName)
+}
 
 //+kubebuilder:rbac:groups=secrets.infisical.com,resources=infisicalsecrets,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=secrets.infisical.com,resources=infisicalsecrets/status,verbs=get;update;patch
@@ -42,25 +48,12 @@ var resourceVariablesMap map[string]util.ResourceVariables = make(map[string]uti
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.1/pkg/reconcile
 
-const FINALIZER_NAME = "secrets.finalizers.infisical.com"
-
-// Maps the infisicalSecretCR.UID to a infisicalSdk.InfisicalClientInterface and AuthenticationDetails.
-// var resourceVariablesMap = make(map[string]ResourceVariables)
-
-func (r *InfisicalSecretReconciler) GetLogger(req ctrl.Request) logr.Logger {
-	return r.BaseLogger.WithValues("infisicalsecret", req.NamespacedName)
-}
-
 func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 
 	logger := r.GetLogger(req)
 
 	var infisicalSecretCR secretsv1alpha1.InfisicalSecret
 	requeueTime := time.Minute // seconds
-
-	if resourceVariablesMap == nil {
-		resourceVariablesMap = make(map[string]util.ResourceVariables)
-	}
 
 	err := r.Get(ctx, req.NamespacedName, &infisicalSecretCR)
 	if err != nil {
@@ -163,19 +156,19 @@ func (r *InfisicalSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&secretsv1alpha1.InfisicalSecret{}, builder.WithPredicates(predicate.Funcs{
 			UpdateFunc: func(e event.UpdateEvent) bool {
-				if resourceVariablesMap != nil {
-					if rv, ok := resourceVariablesMap[string(e.ObjectNew.GetUID())]; ok {
+				if infisicalSecretResourceVariablesMap != nil {
+					if rv, ok := infisicalSecretResourceVariablesMap[string(e.ObjectNew.GetUID())]; ok {
 						rv.CancelCtx()
-						delete(resourceVariablesMap, string(e.ObjectNew.GetUID()))
+						delete(infisicalSecretResourceVariablesMap, string(e.ObjectNew.GetUID()))
 					}
 				}
 				return true
 			},
 			DeleteFunc: func(e event.DeleteEvent) bool {
-				if resourceVariablesMap != nil {
-					if rv, ok := resourceVariablesMap[string(e.Object.GetUID())]; ok {
+				if infisicalSecretResourceVariablesMap != nil {
+					if rv, ok := infisicalSecretResourceVariablesMap[string(e.Object.GetUID())]; ok {
 						rv.CancelCtx()
-						delete(resourceVariablesMap, string(e.Object.GetUID()))
+						delete(infisicalSecretResourceVariablesMap, string(e.Object.GetUID()))
 					}
 				}
 				return true
