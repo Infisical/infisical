@@ -365,9 +365,8 @@ export const recursivelyGetSecretPaths = async ({
     folderId: p.folderId
   }));
 
-  const pathsInCurrentDirectory = paths.filter((folder) =>
-    folder.path.startsWith(currentPath === "/" ? "" : currentPath)
-  );
+  // path relative will start with ../ if its outside directory
+  const pathsInCurrentDirectory = paths.filter((folder) => !path.relative(currentPath, folder.path).startsWith(".."));
 
   return pathsInCurrentDirectory;
 };
