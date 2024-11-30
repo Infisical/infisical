@@ -1,5 +1,6 @@
 export {
   useAddExternalKms,
+  useExternalKmsValidateGcpCredential,
   useLoadProjectKmsBackup,
   useRemoveExternalKms,
   useUpdateExternalKms,

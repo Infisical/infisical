@@ -4,6 +4,8 @@ import { ExternalKmsSchema, KmsKeysSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
   ExternalKmsAwsSchema,
+  ExternalKmsGcpCredentialSchema,
+  ExternalKmsGcpSchema,
   ExternalKmsInputSchema,
   ExternalKmsInputUpdateSchema
 } from "@app/ee/services/external-kms/providers/model";
@@ -44,7 +46,7 @@ const sanitizedExternalSchemaForGetById = KmsKeysSchema.extend({
     statusDetails: true,
     provider: true
   }).extend({
-    providerInput: ExternalKmsAwsSchema
+    providerInput: z.union([ExternalKmsAwsSchema, ExternalKmsGcpSchema])
   })
 });
 
@@ -284,6 +286,38 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
         name: req.params.name
       });
       return { externalKms };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/validate-gcp-credential/",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      body: z.object({
+        region: z.string().trim().min(1),
+        credential: ExternalKmsGcpCredentialSchema
+      }),
+      response: {
+        200: z.object({
+          keys: z.array(z.string())
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const results = await server.services.externalKms.fetchGcpKeys({
+        credential: req.body.credential,
+        gcpRegion: req.body.region,
+        keyName: ""
+      });
+      if (!results) {
+        throw new Error("Failed to validate GCP credential");
+      }
+
+      return results;
     }
   });
 };

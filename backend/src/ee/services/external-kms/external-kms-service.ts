@@ -20,7 +20,8 @@ import {
   TUpdateExternalKmsDTO
 } from "./external-kms-types";
 import { AwsKmsProviderFactory } from "./providers/aws-kms";
-import { ExternalKmsAwsSchema, KmsProviders } from "./providers/model";
+import { GcpKmsProviderFactory } from "./providers/gcp-kms";
+import { ExternalKmsAwsSchema, ExternalKmsGcpSchema, KmsProviders, TExternalKmsGcpSchema } from "./providers/model";
 
 type TExternalKmsServiceFactoryDep = {
   externalKmsDAL: TExternalKmsDALFactory;
@@ -76,6 +77,13 @@ export const externalKmsServiceFactory = ({
           sanitizedProviderInput = JSON.stringify(newProviderInput);
 
           await externalKms.validateConnection();
+        }
+        break;
+      case KmsProviders.GCP:
+        {
+          const externalKms = await GcpKmsProviderFactory({ inputs: provider.inputs });
+          await externalKms.validateConnection();
+          sanitizedProviderInput = JSON.stringify(provider.inputs);
         }
         break;
       default:
@@ -166,6 +174,17 @@ export const externalKmsServiceFactory = ({
             );
             const updatedProviderInput = { ...decryptedProviderInput, ...provider.inputs };
             const externalKms = await AwsKmsProviderFactory({ inputs: updatedProviderInput });
+            await externalKms.validateConnection();
+            sanitizedProviderInput = JSON.stringify(updatedProviderInput);
+          }
+          break;
+        case KmsProviders.GCP:
+          {
+            const decryptedProviderInput = await ExternalKmsGcpSchema.parseAsync(
+              JSON.parse(decryptedProviderInputBlob.toString("utf8"))
+            );
+            const updatedProviderInput = { ...decryptedProviderInput, ...provider.inputs };
+            const externalKms = await GcpKmsProviderFactory({ inputs: updatedProviderInput });
             await externalKms.validateConnection();
             sanitizedProviderInput = JSON.stringify(updatedProviderInput);
           }
@@ -275,6 +294,13 @@ export const externalKmsServiceFactory = ({
         );
         return { ...kmsDoc, external: { ...externalKmsDoc, providerInput: decryptedProviderInput } };
       }
+      case KmsProviders.GCP: {
+        const decryptedProviderInput = await ExternalKmsGcpSchema.parseAsync(
+          JSON.parse(decryptedProviderInputBlob.toString("utf8"))
+        );
+
+        return { ...kmsDoc, external: { ...externalKmsDoc, providerInput: decryptedProviderInput } };
+      }
       default:
         throw new BadRequestError({ message: "external kms provided is invalid" });
     }
@@ -316,9 +342,21 @@ export const externalKmsServiceFactory = ({
         );
         return { ...kmsDoc, external: { ...externalKmsDoc, providerInput: decryptedProviderInput } };
       }
+      case KmsProviders.GCP: {
+        const decryptedProviderInput = await ExternalKmsGcpSchema.parseAsync(
+          JSON.parse(decryptedProviderInputBlob.toString("utf8"))
+        );
+
+        return { ...kmsDoc, external: { ...externalKmsDoc, providerInput: decryptedProviderInput } };
+      }
       default:
         throw new BadRequestError({ message: "external kms provided is invalid" });
     }
+  };
+
+  const fetchGcpKeys = async ({ credential, gcpRegion, keyName }: TExternalKmsGcpSchema) => {
+    const externalKms = await GcpKmsProviderFactory({ inputs: { credential, gcpRegion, keyName } });
+    return externalKms.getKeysList();
   };
 
   return {
@@ -327,6 +365,7 @@ export const externalKmsServiceFactory = ({
     deleteById,
     list,
     findById,
-    findByName
+    findByName,
+    fetchGcpKeys
   };
 };

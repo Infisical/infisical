@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { faAws } from "@fortawesome/free-brands-svg-icons";
+import { faAws, faGoogle } from "@fortawesome/free-brands-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -7,6 +7,7 @@ import { Modal, ModalContent } from "@app/components/v2";
 import { ExternalKmsProvider } from "@app/hooks/api/kms/types";
 
 import { AwsKmsForm } from "./AwsKmsForm";
+import { GcpKmsForm } from "./GcpKmsForm";
 
 type Props = {
   isOpen?: boolean;
@@ -23,6 +24,11 @@ const EXTERNAL_KMS_LIST = [
     icon: faAws,
     provider: ExternalKmsProvider.AWS,
     title: "AWS KMS"
+  },
+  {
+    icon: faGoogle,
+    provider: ExternalKmsProvider.GCP,
+    title: "GCP KMS"
   }
 ];
 
@@ -88,6 +94,18 @@ export const AddExternalKmsForm = ({ isOpen, onToggle }: Props) => {
                 exit={{ opacity: 0, translateX: -30 }}
               >
                 <AwsKmsForm onCancel={() => onToggle(false)} onCompleted={() => onToggle(false)} />
+              </motion.div>
+            )}
+          {wizardStep === WizardSteps.ProviderInputs &&
+            selectedProvider === ExternalKmsProvider.GCP && (
+              <motion.div
+                key="kms-gcp"
+                transition={{ duration: 0.1 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: -30 }}
+              >
+                <GcpKmsForm onCancel={() => onToggle(false)} onCompleted={() => onToggle(false)} />
               </motion.div>
             )}
         </AnimatePresence>

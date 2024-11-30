@@ -4,8 +4,10 @@ import { z } from "zod";
 
 import { KmsKeysSchema, TKmsRootConfig } from "@app/db/schemas";
 import { AwsKmsProviderFactory } from "@app/ee/services/external-kms/providers/aws-kms";
+import { GcpKmsProviderFactory } from "@app/ee/services/external-kms/providers/gcp-kms";
 import {
   ExternalKmsAwsSchema,
+  ExternalKmsGcpSchema,
   KmsProviders,
   TExternalKmsProviderFns
 } from "@app/ee/services/external-kms/providers/model";
@@ -291,6 +293,16 @@ export const kmsServiceFactory = ({
           });
           break;
         }
+        case KmsProviders.GCP: {
+          const decryptedProviderInput = await ExternalKmsGcpSchema.parseAsync(
+            JSON.parse(decryptedProviderInputBlob.toString("utf8"))
+          );
+
+          externalKms = await GcpKmsProviderFactory({
+            inputs: decryptedProviderInput
+          });
+          break;
+        }
         default:
           throw new Error("Invalid KMS provider.");
       }
@@ -349,6 +361,16 @@ export const kmsServiceFactory = ({
           );
 
           externalKms = await AwsKmsProviderFactory({
+            inputs: decryptedProviderInput
+          });
+          break;
+        }
+        case KmsProviders.GCP: {
+          const decryptedProviderInput = await ExternalKmsGcpSchema.parseAsync(
+            JSON.parse(decryptedProviderInputBlob.toString("utf8"))
+          );
+
+          externalKms = await GcpKmsProviderFactory({
             inputs: decryptedProviderInput
           });
           break;

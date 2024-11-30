@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { kmsKeys } from "./queries";
-import { AddExternalKmsType, KmsType } from "./types";
+import { AddExternalKmsType, ExternalKmsGcpSchemaType, KmsType } from "./types";
 
 export const useAddExternalKms = (orgId: string) => {
   const queryClient = useQueryClient();
@@ -93,6 +93,26 @@ export const useLoadProjectKmsBackup = (projectId: string) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries(kmsKeys.getActiveProjectKms(projectId));
+    }
+  });
+};
+
+export const useExternalKmsValidateGcpCredential = (orgId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      gcpRegion,
+      credential
+    }: ExternalKmsGcpSchemaType): Promise<{ keys: string[] }> => {
+      const { data } = await apiRequest.post("/api/v1/external-kms/validate-gcp-credential/", {
+        region: gcpRegion,
+        credential
+      });
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(kmsKeys.getExternalKmsList(orgId));
     }
   });
 };
