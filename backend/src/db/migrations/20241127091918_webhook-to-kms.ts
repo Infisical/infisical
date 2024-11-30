@@ -34,7 +34,7 @@ export async function up(knex: Knex): Promise<void> {
 
   const webhooks = await knex(TableName.Webhook)
     .where({})
-    .leftJoin(TableName.Environment, `${TableName.Environment}.id`, `${TableName.Webhook}.envId`)
+    .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.Webhook}.envId`)
     .select(
       "url",
       "encryptedSecretKey",
@@ -84,7 +84,7 @@ export async function up(knex: Knex): Promise<void> {
           : null;
 
       const encryptedUrl = projectKmsService.encryptor({
-        plainText: Buffer.from(decryptedUrl || el.url)
+        plainText: Buffer.from(decryptedUrl || el.url || "")
       }).cipherTextBlob;
       return { id: el.id, encryptedUrl, encryptedSecretKey, envId: el.envId };
     })

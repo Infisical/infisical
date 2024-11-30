@@ -451,7 +451,6 @@ export const registerRoutes = async (
   const samlService = samlConfigServiceFactory({
     identityMetadataDAL,
     permissionService,
-    orgBotDAL,
     orgDAL,
     orgMembershipDAL,
     userDAL,
@@ -459,7 +458,8 @@ export const registerRoutes = async (
     samlConfigDAL,
     licenseService,
     tokenService,
-    smtpService
+    smtpService,
+    kmsService
   });
   const groupService = groupServiceFactory({
     userDAL,
@@ -510,7 +510,6 @@ export const registerRoutes = async (
     ldapGroupMapDAL,
     orgDAL,
     orgMembershipDAL,
-    orgBotDAL,
     groupDAL,
     groupProjectDAL,
     projectKeyDAL,
@@ -522,7 +521,8 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     tokenService,
-    smtpService
+    smtpService,
+    kmsService
   });
 
   const telemetryService = telemetryServiceFactory({
@@ -1244,9 +1244,9 @@ export const registerRoutes = async (
     identityKubernetesAuthDAL,
     identityOrgMembershipDAL,
     identityAccessTokenDAL,
-    orgBotDAL,
     permissionService,
-    licenseService
+    licenseService,
+    kmsService
   });
   const identityGcpAuthService = identityGcpAuthServiceFactory({
     identityGcpAuthDAL,
@@ -1278,7 +1278,7 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     permissionService,
     licenseService,
-    orgBotDAL
+    kmsService
   });
 
   const identityJwtAuthService = identityJwtAuthServiceFactory({
@@ -1347,7 +1347,7 @@ export const registerRoutes = async (
     licenseService,
     tokenService,
     smtpService,
-    orgBotDAL,
+    kmsService,
     permissionService,
     oidcConfigDAL,
     projectBotDAL,
