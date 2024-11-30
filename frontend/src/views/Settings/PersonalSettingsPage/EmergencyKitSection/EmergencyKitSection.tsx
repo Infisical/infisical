@@ -16,7 +16,6 @@ const schema = yup
 export type FormData = yup.InferType<typeof schema>;
 
 export const EmergencyKitSection = () => {
-  
   const { user } = useUser();
   const { reset, control, handleSubmit } = useForm({
     defaultValues: {
@@ -33,17 +32,32 @@ export const EmergencyKitSection = () => {
         email: user.email,
         password,
         personalName: `${user.firstName} ${user.lastName}`,
-        setBackupKeyError: () => {},
-        setBackupKeyIssued: () => {}
+        setBackupKeyError: (value) => {
+          if (value) {
+            createNotification({
+              text: "Failed to download emergency kit",
+              type: "error"
+            });
+          }
+        },
+        setBackupKeyIssued: (value) => {
+          if (value) {
+            createNotification({
+              text: "Emergency kit successfully downloaded",
+              type: "success"
+            });
+          }
+        }
       });
 
-      reset();
     } catch (err) {
       console.error(err);
       createNotification({
-        text: "Failed to download emergency kit",
+        text: "An unexpected error occurred",
         type: "error"
       });
+    } finally {
+      reset();
     }
   };
 
