@@ -12,12 +12,26 @@ import RedisStore from "connect-redis";
 import { Redis } from "ioredis";
 import { z } from "zod";
 
-import { OidcConfigsSchema } from "@app/db/schemas/oidc-configs";
+import { OidcConfigsSchema } from "@app/db/schemas";
 import { OIDCConfigurationType } from "@app/ee/services/oidc/oidc-config-types";
 import { getConfig } from "@app/lib/config/env";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+
+const SanitizedOidcConfigSchema = OidcConfigsSchema.pick({
+  id: true,
+  issuer: true,
+  authorizationEndpoint: true,
+  configurationType: true,
+  discoveryURL: true,
+  jwksUri: true,
+  tokenEndpoint: true,
+  userinfoEndpoint: true,
+  orgId: true,
+  isActive: true,
+  allowedEmailDomains: true
+});
 
 export const registerOidcRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
@@ -144,7 +158,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
         orgSlug: z.string().trim()
       }),
       response: {
-        200: OidcConfigsSchema.pick({
+        200: SanitizedOidcConfigSchema.pick({
           id: true,
           issuer: true,
           authorizationEndpoint: true,
@@ -214,7 +228,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
         .partial()
         .merge(z.object({ orgSlug: z.string() })),
       response: {
-        200: OidcConfigsSchema.pick({
+        200: SanitizedOidcConfigSchema.pick({
           id: true,
           issuer: true,
           authorizationEndpoint: true,
@@ -325,19 +339,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           }
         }),
       response: {
-        200: OidcConfigsSchema.pick({
-          id: true,
-          issuer: true,
-          authorizationEndpoint: true,
-          configurationType: true,
-          discoveryURL: true,
-          jwksUri: true,
-          tokenEndpoint: true,
-          userinfoEndpoint: true,
-          orgId: true,
-          isActive: true,
-          allowedEmailDomains: true
-        })
+        200: SanitizedOidcConfigSchema
       }
     },
 

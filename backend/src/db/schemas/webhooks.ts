@@ -12,7 +12,7 @@ import { TImmutableDBKeys } from "./models";
 export const WebhooksSchema = z.object({
   id: z.string().uuid(),
   secretPath: z.string().default("/"),
-  url: z.string(),
+  url: z.string().nullable().optional(),
   lastStatus: z.string().nullable().optional(),
   lastRunErrorMessage: z.string().nullable().optional(),
   isDisabled: z.boolean().default(false),

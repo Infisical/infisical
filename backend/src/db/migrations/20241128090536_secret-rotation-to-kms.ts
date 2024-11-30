@@ -30,7 +30,7 @@ export async function up(knex: Knex): Promise<void> {
     newRingBuffer<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
 
   const secretRotations = await knex(TableName.SecretRotation)
-    .leftJoin(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretRotation}.envId`)
+    .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretRotation}.envId`)
     .select(selectAllTableCols(TableName.SecretRotation))
     .select(knex.ref("projectId").withSchema(TableName.Environment));
 

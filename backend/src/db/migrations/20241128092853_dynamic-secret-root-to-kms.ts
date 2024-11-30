@@ -36,8 +36,8 @@ export async function up(knex: Knex): Promise<void> {
     newRingBuffer<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
 
   const dynamicSecretRootCredentials = await knex(TableName.DynamicSecret)
-    .leftJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.DynamicSecret}.folderId`)
-    .leftJoin(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+    .join(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.DynamicSecret}.folderId`)
+    .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
     .select(selectAllTableCols(TableName.DynamicSecret))
     .select(knex.ref("projectId").withSchema(TableName.Environment));
 

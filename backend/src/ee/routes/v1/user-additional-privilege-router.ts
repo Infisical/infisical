@@ -8,7 +8,7 @@ import { PROJECT_USER_ADDITIONAL_PRIVILEGE } from "@app/lib/api-docs";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { SanitizedUserProjectAdditionalPrivilegeSchema } from "@app/server/routes/santizedSchemas/user-additional-privilege";
+import { SanitizedUserProjectAdditionalPrivilegeSchema } from "@app/server/routes/sanitizedSchema/user-additional-privilege";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodProvider) => {
