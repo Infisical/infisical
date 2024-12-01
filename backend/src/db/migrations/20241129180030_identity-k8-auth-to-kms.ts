@@ -137,7 +137,12 @@ const reencryptIdentityK8sAuth = async (knex: Knex) => {
           plainText: Buffer.from(decryptedCertificate)
         }).cipherTextBlob;
 
-        return { ...el, encryptedKubernetesCaCertificate, encryptedKubernetesTokenReviewerJwt };
+        return {
+          ...el,
+          accessTokenTrustedIps: JSON.stringify(el.accessTokenTrustedIps),
+          encryptedKubernetesCaCertificate,
+          encryptedKubernetesTokenReviewerJwt
+        };
       }
     )
   );

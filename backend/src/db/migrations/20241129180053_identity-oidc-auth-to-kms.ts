@@ -96,7 +96,11 @@ const reencryptIdentityOidcAuth = async (knex: Knex) => {
           plainText: Buffer.from(decryptedCertificate)
         }).cipherTextBlob;
 
-        return { ...el, encryptedCaCertificate };
+        return {
+          ...el,
+          accessTokenTrustedIps: JSON.stringify(el.accessTokenTrustedIps),
+          encryptedCaCertificate
+        };
       }
     )
   );

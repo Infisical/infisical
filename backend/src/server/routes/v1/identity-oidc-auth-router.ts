@@ -12,7 +12,7 @@ import {
   validateOidcBoundClaimsField
 } from "@app/services/identity-oidc-auth/identity-oidc-auth-validators";
 
-const IdentityOidcAuthResponseSchema = IdentityOidcAuthsSchema.omit({
+const IdentityOidcAuthResponseSchema = IdentityOidcAuthsSchema.pick({
   id: true,
   accessTokenTTL: true,
   accessTokenMaxTTL: true,
