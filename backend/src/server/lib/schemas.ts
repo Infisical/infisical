@@ -10,15 +10,15 @@ interface SlugSchemaInputs {
 export const slugSchema = ({ min = 1, max = 32, field = "Slug" }: SlugSchemaInputs = {}) => {
   return z
     .string()
-    .toLowerCase()
     .trim()
+    .toLowerCase()
     .min(min, {
-      message: `${field} field must be at least ${min} character${min === 1 ? "" : "s"}`
+      message: `${field} field must be at least ${min} lowercase character${min === 1 ? "" : "s"}`
     })
     .max(max, {
-      message: `${field} field must be at most ${max} character${max === 1 ? "" : "s"}`
+      message: `${field} field must be at most ${max} lowercase character${max === 1 ? "" : "s"}`
     })
-    .refine((v) => slugify(v, { lowercase: true, separator: "-" }) === v, {
-      message: `${field} field can only contain letters, numbers, and hyphens`
+    .refine((v) => slugify(v, { lowercase: true }) === v, {
+      message: `${field} field can only contain lowercase letters, numbers, and hyphens`
     });
 };
