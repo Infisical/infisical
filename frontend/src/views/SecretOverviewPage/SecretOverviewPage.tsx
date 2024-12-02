@@ -1128,7 +1128,6 @@ export const SecretOverviewPage = () => {
         >
           <CreateSecretForm
             secretPath={secretPath}
-            getSecretByKey={getSecretByKey}
             onClose={() => handlePopUpClose("addSecretsInAllEnvs")}
           />
         </ModalContent>

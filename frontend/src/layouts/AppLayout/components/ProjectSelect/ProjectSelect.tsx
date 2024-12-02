@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { components, MenuProps, OptionProps } from "react-select";
 import { faStar } from "@fortawesome/free-regular-svg-icons";
-import { faEye, faPlus, faStar as faSolidStar } from "@fortawesome/free-solid-svg-icons";
+import { faChevronRight, faPlus, faStar as faSolidStar } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
@@ -93,7 +93,7 @@ const ProjectOption = ({
     >
       <div className="flex w-full items-center">
         {isSelected && (
-          <FontAwesomeIcon className="mr-2 text-mineshaft-300" icon={faEye} size="sm" />
+          <FontAwesomeIcon className="mr-2 text-primary" icon={faChevronRight} size="xs" />
         )}
         <p className="truncate">{children}</p>
         {data.isFavorite ? (
