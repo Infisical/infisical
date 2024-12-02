@@ -6,14 +6,14 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  FilterableSelect,
   FormControl,
   Input,
   Modal,
-  ModalContent,
-  Select,
-  SelectItem
+  ModalContent
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
+import { findOrgMembershipRole } from "@app/helpers/roles";
 import { useCreateGroup, useGetOrgRoles, useUpdateGroup } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -23,7 +23,7 @@ const GroupFormSchema = z.object({
     .string()
     .min(5, "Slug must be at least 5 characters long")
     .max(36, "Slug must be 36 characters or fewer"),
-  role: z.string()
+  role: z.object({ name: z.string(), slug: z.string() })
 });
 
 export type TGroupFormData = z.infer<typeof GroupFormSchema>;
@@ -62,13 +62,13 @@ export const OrgGroupModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Pr
       reset({
         name: group.name,
         slug: group.slug,
-        role: group?.customRole?.slug ?? group.role
+        role: group?.customRole ?? findOrgMembershipRole(roles, group.role)
       });
     } else {
       reset({
         name: "",
         slug: "",
-        role: roles[0].slug
+        role: findOrgMembershipRole(roles, currentOrg!.defaultMembershipRole)
       });
     }
   }, [popUp?.group?.data, roles]);
@@ -88,14 +88,14 @@ export const OrgGroupModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Pr
           id: group.groupId,
           name,
           slug,
-          role: role || undefined
+          role: role.slug || undefined
         });
       } else {
         await createMutateAsync({
           name,
           slug,
           organizationId: currentOrg.id,
-          role: role || undefined
+          role: role.slug || undefined
         });
       }
       handlePopUpToggle("group", false);
@@ -121,7 +121,10 @@ export const OrgGroupModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Pr
         reset();
       }}
     >
-      <ModalContent title={`${popUp?.group?.data ? "Update" : "Create"} Group`}>
+      <ModalContent
+        bodyClassName="overflow-visible"
+        title={`${popUp?.group?.data ? "Update" : "Create"} Group`}
+      >
         <form onSubmit={handleSubmit(onGroupModalSubmit)}>
           <Controller
             control={control}
@@ -144,26 +147,21 @@ export const OrgGroupModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Pr
           <Controller
             control={control}
             name="role"
-            defaultValue=""
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+            render={({ field: { onChange, value }, fieldState: { error } }) => (
               <FormControl
                 label={`${popUp?.group?.data ? "Update" : ""} Role`}
                 errorText={error?.message}
                 isError={Boolean(error)}
                 className="mt-4"
               >
-                <Select
-                  defaultValue={field.value}
-                  {...field}
-                  onValueChange={(e) => onChange(e)}
-                  className="w-full"
-                >
-                  {(roles || []).map(({ name, slug }) => (
-                    <SelectItem value={slug} key={`org-group-role-${slug}`}>
-                      {name}
-                    </SelectItem>
-                  ))}
-                </Select>
+                <FilterableSelect
+                  options={roles}
+                  placeholder="Select role..."
+                  onChange={onChange}
+                  value={value}
+                  getOptionValue={(option) => option.slug}
+                  getOptionLabel={(option) => option.name}
+                />
               </FormControl>
             )}
           />
