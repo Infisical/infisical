@@ -722,26 +722,6 @@ export const SecretOverviewPage = () => {
                     </IconButton>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Choose visible environments</DropdownMenuLabel>
-                    {userAvailableEnvs.map((availableEnv) => {
-                      const { id: envId, name } = availableEnv;
-
-                      const isEnvSelected = visibleEnvs.map((env) => env.id).includes(envId);
-                      return (
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handleEnvSelect(envId);
-                          }}
-                          key={envId}
-                          disabled={visibleEnvs?.length === 1}
-                          icon={isEnvSelected && <FontAwesomeIcon icon={faCheckCircle} />}
-                          iconPos="right"
-                        >
-                          <div className="flex items-center">{name}</div>
-                        </DropdownMenuItem>
-                      );
-                    })}
                     {/* <DropdownMenuItem className="px-1.5" asChild>
                     <Button
                       size="xs"
@@ -796,6 +776,26 @@ export const SecretOverviewPage = () => {
                         <span>Secrets</span>
                       </div>
                     </DropdownMenuItem>
+                    <DropdownMenuLabel>Choose visible environments</DropdownMenuLabel>
+                    {userAvailableEnvs.map((availableEnv) => {
+                      const { id: envId, name } = availableEnv;
+
+                      const isEnvSelected = visibleEnvs.map((env) => env.id).includes(envId);
+                      return (
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleEnvSelect(envId);
+                          }}
+                          key={envId}
+                          disabled={visibleEnvs?.length === 1}
+                          icon={isEnvSelected && <FontAwesomeIcon icon={faCheckCircle} />}
+                          iconPos="right"
+                        >
+                          <div className="flex items-center">{name}</div>
+                        </DropdownMenuItem>
+                      );
+                    })}
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
