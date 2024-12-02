@@ -148,7 +148,8 @@ export const UserPage = withPermission(
                           onClick={() =>
                             handlePopUpOpen("orgMembership", {
                               membershipId: membership.id,
-                              role: membership.role
+                              role: membership.role,
+                              roleId: membership.roleId
                             })
                           }
                           disabled={!isAllowed}

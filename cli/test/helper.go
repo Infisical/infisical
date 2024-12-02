@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -41,11 +42,12 @@ var creds = Credentials{
 func ExecuteCliCommand(command string, args ...string) (string, error) {
 	cmd := exec.Command(command, args...)
 	output, err := cmd.CombinedOutput()
+
 	if err != nil {
-		fmt.Println(fmt.Sprint(err) + ": " + string(output))
-		return strings.TrimSpace(string(output)), err
+		fmt.Println(fmt.Sprint(err) + ": " + FilterRequestID(strings.TrimSpace(string(output))))
+		return FilterRequestID(strings.TrimSpace(string(output))), err
 	}
-	return strings.TrimSpace(string(output)), nil
+	return FilterRequestID(strings.TrimSpace(string(output))), nil
 }
 
 func SetupCli() {
@@ -66,4 +68,35 @@ func SetupCli() {
 		}
 	}
 
+}
+
+func FilterRequestID(input string) string {
+	// Find the JSON part of the error message
+	start := strings.Index(input, "{")
+	end := strings.LastIndex(input, "}") + 1
+
+	if start == -1 || end == -1 {
+		return input
+	}
+
+	jsonPart := input[:start] // Pre-JSON content
+
+	// Parse the JSON object
+	var errorObj map[string]interface{}
+	if err := json.Unmarshal([]byte(input[start:end]), &errorObj); err != nil {
+		return input
+	}
+
+	// Remove requestId field
+	delete(errorObj, "requestId")
+	delete(errorObj, "reqId")
+
+	// Convert back to JSON
+	filtered, err := json.Marshal(errorObj)
+	if err != nil {
+		return input
+	}
+
+	// Reconstruct the full string
+	return jsonPart + string(filtered) + input[end:]
 }
