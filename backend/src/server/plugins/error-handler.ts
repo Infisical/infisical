@@ -66,9 +66,9 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         error: error.name
       });
     } else if (error instanceof ZodError) {
-      void res.status(HttpStatusCodes.Unauthorized).send({
+      void res.status(HttpStatusCodes.BadRequest).send({
         requestId: req.id,
-        statusCode: HttpStatusCodes.Unauthorized,
+        statusCode: HttpStatusCodes.BadRequest,
         error: "ValidationFailure",
         message: error.issues
       });
