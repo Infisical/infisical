@@ -113,17 +113,17 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
     useExternalKmsFetchGcpKeys(currentOrg?.id!);
 
   // transforms the credential file into a JSON object
-  async function getCredentialFileJson(): Promise<ExternalKmsGcpCredentialSchemaType | undefined> {
+  async function getCredentialFileJson(): Promise<ExternalKmsGcpCredentialSchemaType | null> {
     const files = getValues("credentialFile");
     if (!files || !files.length) {
-      return undefined;
+      return null;
     }
     const file = files[0];
     if (file.type !== "application/json") {
       setError("credentialFile", {
         message: "Only .json files are accepted."
       });
-      return undefined;
+      return null;
     }
     const jsonContents = await file.text();
     const parsedJson = ExternalKmsGcpCredentialSchema.safeParse(JSON.parse(jsonContents));
@@ -131,14 +131,14 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
       setError("credentialFile", {
         message: "Invalid Service Account credential JSON."
       });
-      return undefined;
+      return null;
     }
     clearErrors("credentialFile");
     return parsedJson.data;
   }
 
   // handles the form submission
-  const handleAddGcpKms = async (data: AddExternalKmsGcpFormSchemaType) => {
+  const handleGcpKmsFormSubmit = async (data: AddExternalKmsGcpFormSchemaType) => {
     const { name, description, gcpRegion: gcpRegionObject, keyObject } = data;
     const gcpRegion = gcpRegionObject.value;
 
@@ -149,7 +149,7 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
           name,
           description,
           provider: {
-            type: ExternalKmsProvider.GCP,
+            type: ExternalKmsProvider.Gcp,
             inputs: {
               gcpRegion,
               keyName: keyObject?.value
@@ -170,7 +170,7 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
           name,
           description,
           provider: {
-            type: ExternalKmsProvider.GCP,
+            type: ExternalKmsProvider.Gcp,
             inputs: {
               gcpRegion,
               keyName: keyObject?.value,
@@ -200,7 +200,7 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
     const gcpRegion = getValues("gcpRegion").value;
     if (!gcpRegion.length) {
       setError("gcpRegion", {
-        message: "Please select a GCP region to fetch GPC Keys."
+        message: "Please select a GCP region to fetch GCP Keys."
       });
       return;
     }
@@ -246,7 +246,7 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
   }, [kms]);
 
   return (
-    <form onSubmit={handleSubmit(handleAddGcpKms)} autoComplete="off">
+    <form onSubmit={handleSubmit(handleGcpKmsFormSubmit)} autoComplete="off">
       <Controller
         control={control}
         name="name"
@@ -286,7 +286,7 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
         )}
       />
 
-      {kms ? null : (
+      {!kms && (
         <Controller
           control={control}
           name="credentialFile"
@@ -332,8 +332,8 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
       />
       {kms && (
         <span className="text-xs text-mineshaft-300">
-          To change your GCP credentials, create a new External KMS server and assign it to project
-          you want to use it with.{" "}
+          To change your GCP credentials, create a new KMS server and assign it to project you want
+          to use it with.{" "}
         </span>
       )}
       <div className="mt-6 flex items-center space-x-4">

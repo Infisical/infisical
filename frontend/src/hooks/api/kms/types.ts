@@ -35,8 +35,8 @@ export enum KmsType {
 }
 
 export enum ExternalKmsProvider {
-  AWS = "aws",
-  GCP = "gcp"
+  Aws = "aws",
+  Gcp = "gcp"
 }
 
 export const INTERNAL_KMS_KEY_ID = "internal";
@@ -114,8 +114,8 @@ export const ExternalKmsGcpSchema = z.object({
 export type ExternalKmsGcpSchemaType = z.infer<typeof ExternalKmsGcpSchema>;
 
 export const ExternalKmsInputSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal(ExternalKmsProvider.AWS), inputs: ExternalKmsAwsSchema }),
-  z.object({ type: z.literal(ExternalKmsProvider.GCP), inputs: ExternalKmsGcpSchema })
+  z.object({ type: z.literal(ExternalKmsProvider.Aws), inputs: ExternalKmsAwsSchema }),
+  z.object({ type: z.literal(ExternalKmsProvider.Gcp), inputs: ExternalKmsGcpSchema })
 ]);
 
 export const AddExternalKmsSchema = z.object({
@@ -134,9 +134,9 @@ export type AddExternalKmsType = z.infer<typeof AddExternalKmsSchema>;
 
 // we need separate schema for update because the credential field is not required on GCP
 export const ExternalKmsUpdateInputSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal(ExternalKmsProvider.AWS), inputs: ExternalKmsAwsSchema }),
+  z.object({ type: z.literal(ExternalKmsProvider.Aws), inputs: ExternalKmsAwsSchema }),
   z.object({
-    type: z.literal(ExternalKmsProvider.GCP),
+    type: z.literal(ExternalKmsProvider.Gcp),
     inputs: ExternalKmsGcpSchema.pick({ gcpRegion: true, keyName: true })
   })
 ]);
@@ -169,6 +169,7 @@ export const AddExternalKmsGcpFormSchema = z.discriminatedUnion("formType", [
   z
     .object({
       formType: z.literal("newGcpKms"),
+      // `FileList` is a browser-only (window-specific) type, so we need to handle it differently on the server to avoid SSR errors
       credentialFile:
         typeof window === "undefined"
           ? z.any()

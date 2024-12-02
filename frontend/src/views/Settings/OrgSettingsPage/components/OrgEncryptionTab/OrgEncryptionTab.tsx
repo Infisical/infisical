@@ -1,4 +1,4 @@
-import { faAws } from "@fortawesome/free-brands-svg-icons";
+import { faAws, faGoogle } from "@fortawesome/free-brands-svg-icons";
 import { faEllipsis, faLock, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
@@ -117,8 +117,11 @@ export const OrgEncryptionTab = withPermission(
                 externalKmsList?.map((kms) => (
                   <Tr key={kms.id}>
                     <Td className="flex max-w-xs items-center overflow-hidden text-ellipsis hover:overflow-auto hover:break-all">
-                      {kms.externalKms.provider === ExternalKmsProvider.AWS && (
+                      {kms.externalKms.provider === ExternalKmsProvider.Aws && (
                         <FontAwesomeIcon icon={faAws} />
+                      )}
+                      {kms.externalKms.provider === ExternalKmsProvider.Gcp && (
+                        <FontAwesomeIcon icon={faGoogle} />
                       )}
                       <div className="ml-2">{kms.externalKms.provider.toUpperCase()}</div>
                     </Td>

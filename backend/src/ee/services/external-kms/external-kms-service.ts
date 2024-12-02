@@ -79,7 +79,7 @@ export const externalKmsServiceFactory = ({
           await externalKms.validateConnection();
         }
         break;
-      case KmsProviders.GCP:
+      case KmsProviders.Gcp:
         {
           const externalKms = await GcpKmsProviderFactory({ inputs: provider.inputs });
           await externalKms.validateConnection();
@@ -178,7 +178,7 @@ export const externalKmsServiceFactory = ({
             sanitizedProviderInput = JSON.stringify(updatedProviderInput);
           }
           break;
-        case KmsProviders.GCP:
+        case KmsProviders.Gcp:
           {
             const decryptedProviderInput = await ExternalKmsGcpSchema.parseAsync(
               JSON.parse(decryptedProviderInputBlob.toString("utf8"))
@@ -294,7 +294,7 @@ export const externalKmsServiceFactory = ({
         );
         return { ...kmsDoc, external: { ...externalKmsDoc, providerInput: decryptedProviderInput } };
       }
-      case KmsProviders.GCP: {
+      case KmsProviders.Gcp: {
         const decryptedProviderInput = await ExternalKmsGcpSchema.parseAsync(
           JSON.parse(decryptedProviderInputBlob.toString("utf8"))
         );
@@ -342,7 +342,7 @@ export const externalKmsServiceFactory = ({
         );
         return { ...kmsDoc, external: { ...externalKmsDoc, providerInput: decryptedProviderInput } };
       }
-      case KmsProviders.GCP: {
+      case KmsProviders.Gcp: {
         const decryptedProviderInput = await ExternalKmsGcpSchema.parseAsync(
           JSON.parse(decryptedProviderInputBlob.toString("utf8"))
         );
@@ -354,8 +354,8 @@ export const externalKmsServiceFactory = ({
     }
   };
 
-  const fetchGcpKeys = async ({ credential, gcpRegion, keyName }: TExternalKmsGcpSchema) => {
-    const externalKms = await GcpKmsProviderFactory({ inputs: { credential, gcpRegion, keyName } });
+  const fetchGcpKeys = async ({ credential, gcpRegion }: Pick<TExternalKmsGcpSchema, "credential" | "gcpRegion">) => {
+    const externalKms = await GcpKmsProviderFactory({ inputs: { credential, gcpRegion, keyName: "" } });
     return externalKms.getKeysList();
   };
 

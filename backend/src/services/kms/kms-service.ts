@@ -293,7 +293,7 @@ export const kmsServiceFactory = ({
           });
           break;
         }
-        case KmsProviders.GCP: {
+        case KmsProviders.Gcp: {
           const decryptedProviderInput = await ExternalKmsGcpSchema.parseAsync(
             JSON.parse(decryptedProviderInputBlob.toString("utf8"))
           );
@@ -365,7 +365,7 @@ export const kmsServiceFactory = ({
           });
           break;
         }
-        case KmsProviders.GCP: {
+        case KmsProviders.Gcp: {
           const decryptedProviderInput = await ExternalKmsGcpSchema.parseAsync(
             JSON.parse(decryptedProviderInputBlob.toString("utf8"))
           );

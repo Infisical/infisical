@@ -22,12 +22,12 @@ enum WizardSteps {
 const EXTERNAL_KMS_LIST = [
   {
     icon: faAws,
-    provider: ExternalKmsProvider.AWS,
+    provider: ExternalKmsProvider.Aws,
     title: "AWS KMS"
   },
   {
     icon: faGoogle,
-    provider: ExternalKmsProvider.GCP,
+    provider: ExternalKmsProvider.Gcp,
     title: "GCP KMS"
   }
 ];
@@ -48,6 +48,7 @@ export const AddExternalKmsForm = ({ isOpen, onToggle }: Props) => {
         title="Add a Key Management System"
         subTitle="Configure an external key management system (KMS)"
         className="my-4"
+        bodyClassName="overflow-visible"
       >
         <AnimatePresence exitBeforeEnter>
           {wizardStep === WizardSteps.SelectProvider && (
@@ -85,7 +86,7 @@ export const AddExternalKmsForm = ({ isOpen, onToggle }: Props) => {
             </motion.div>
           )}
           {wizardStep === WizardSteps.ProviderInputs &&
-            selectedProvider === ExternalKmsProvider.AWS && (
+            selectedProvider === ExternalKmsProvider.Aws && (
               <motion.div
                 key="kms-aws"
                 transition={{ duration: 0.1 }}
@@ -97,7 +98,7 @@ export const AddExternalKmsForm = ({ isOpen, onToggle }: Props) => {
               </motion.div>
             )}
           {wizardStep === WizardSteps.ProviderInputs &&
-            selectedProvider === ExternalKmsProvider.GCP && (
+            selectedProvider === ExternalKmsProvider.Gcp && (
               <motion.div
                 key="kms-gcp"
                 transition={{ duration: 0.1 }}

@@ -294,84 +294,60 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
-    url: "/fetch-gcp-keys/credential",
+    url: "/gcp/keys",
     config: {
       rateLimit: writeLimit
     },
     schema: {
-      body: z.object({
-        region: z.string().trim().min(1),
-        credential: ExternalKmsGcpCredentialSchema
-      }),
-
+      body: z.discriminatedUnion("authMethod", [
+        z.object({
+          authMethod: z.literal("credential"),
+          region: z.string().trim().min(1),
+          credential: ExternalKmsGcpCredentialSchema
+        }),
+        z.object({
+          authMethod: z.literal("kmsId"),
+          region: z.string().trim().min(1),
+          kmsId: z.string().trim().min(1)
+        })
+      ]),
       response: {
         200: z.object({
-          keys: z.array(z.string())
+          keys: z.string().array()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { region, credential } = req.body;
+      const { region, authMethod } = req.body;
+      let credentialJson: TExternalKmsGcpCredentialSchema | undefined;
 
-      const results = await server.services.externalKms.fetchGcpKeys({
-        credential,
-        gcpRegion: region,
-        keyName: ""
-      });
-      if (!results) {
-        throw new Error("Failed to validate GCP credential");
+      if (authMethod === "credential") {
+        credentialJson = req.body.credential;
+      } else if (authMethod === "kmsId") {
+        const externalKms = await server.services.externalKms.findById({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          id: req.body.kmsId
+        });
+
+        if (!externalKms || externalKms.external.provider !== KmsProviders.Gcp) {
+          throw new Error("KMS not found or not of type GCP");
+        }
+
+        credentialJson = externalKms.external.providerInput.credential as TExternalKmsGcpCredentialSchema;
       }
 
-      return results;
-    }
-  });
-  server.route({
-    method: "POST",
-    url: "/fetch-gcp-keys/:kmsId",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      params: z.object({
-        kmsId: z.string().trim().min(1)
-      }),
-      body: z.object({
-        region: z.string().trim().min(1)
-      }),
-      response: {
-        200: z.object({
-          keys: z.array(z.string())
-        })
+      if (!credentialJson) {
+        throw new Error("Something went wrong while fetching the GCP credential, please check inputs and try again");
       }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const { region } = req.body;
-      const { kmsId } = req.params;
-
-      const externalKms = await server.services.externalKms.findById({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        id: kmsId
-      });
-
-      if (!externalKms || externalKms.external.provider !== KmsProviders.GCP) {
-        throw new Error("KMS not found or not of type GCP");
-      }
-
-      const credentialJson = externalKms.external.providerInput.credential as TExternalKmsGcpCredentialSchema;
 
       const results = await server.services.externalKms.fetchGcpKeys({
         credential: credentialJson,
-        gcpRegion: region,
-        keyName: ""
+        gcpRegion: region
       });
-      if (!results) {
-        throw new Error("Failed to validate GCP credential");
-      }
 
       return results;
     }

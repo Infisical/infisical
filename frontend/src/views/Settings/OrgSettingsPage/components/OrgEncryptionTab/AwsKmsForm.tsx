@@ -64,7 +64,7 @@ export const AwsKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
       name: kms?.name,
       description: kms?.description ?? "",
       provider: {
-        type: ExternalKmsProvider.AWS,
+        type: ExternalKmsProvider.Aws,
         inputs: {
           credential: {
             type: kms?.external?.providerInput?.credential?.type,
@@ -88,7 +88,7 @@ export const AwsKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
 
   const selectedAwsAuthType = watch("provider.inputs.credential.type");
 
-  const handleAddAwsKms = async (data: AddExternalKmsType) => {
+  const handleAwsKmsFormSubmit = async (data: AddExternalKmsType) => {
     const { name, description, provider } = data;
     try {
       if (kms) {
@@ -123,7 +123,7 @@ export const AwsKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
   };
 
   return (
-    <form onSubmit={handleSubmit(handleAddAwsKms)} autoComplete="off">
+    <form onSubmit={handleSubmit(handleAwsKmsFormSubmit)} autoComplete="off">
       <Controller
         control={control}
         name="name"

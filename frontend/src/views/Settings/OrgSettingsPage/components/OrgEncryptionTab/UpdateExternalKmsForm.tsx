@@ -15,16 +15,16 @@ export const UpdateExternalKmsForm = ({ isOpen, kmsId, onOpenChange }: Props) =>
   const { data: externalKms, isLoading } = useGetExternalKmsById(kmsId);
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent title="Edit configuration">
+      <ModalContent title="Edit configuration" bodyClassName="overflow-visible">
         {isLoading && <ContentLoader />}
-        {externalKms?.external?.provider === ExternalKmsProvider.AWS && (
+        {externalKms?.external?.provider === ExternalKmsProvider.Aws && (
           <AwsKmsForm
             kms={externalKms}
             onCancel={() => onOpenChange(false)}
             onCompleted={() => onOpenChange(false)}
           />
         )}
-        {externalKms?.external?.provider === ExternalKmsProvider.GCP && (
+        {externalKms?.external?.provider === ExternalKmsProvider.Gcp && (
           <GcpKmsForm
             kms={externalKms}
             onCancel={() => onOpenChange(false)}

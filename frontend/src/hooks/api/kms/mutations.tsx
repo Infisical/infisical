@@ -119,11 +119,7 @@ export const useExternalKmsFetchGcpKeys = (orgId: string) => {
         throw new Error("Either 'credential' or 'kmsId' must be provided, but not both.");
       }
 
-      const apiUrl = kmsId
-        ? `/api/v1/external-kms/fetch-gcp-keys/${kmsId}`
-        : "/api/v1/external-kms/fetch-gcp-keys/credential";
-
-      const { data } = await apiRequest.post(apiUrl, {
+      const { data } = await apiRequest.post("/api/v1/external-kms/gcp/keys", {
         region: gcpRegion,
         ...rest
       });

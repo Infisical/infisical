@@ -1,6 +1,7 @@
 import { KeyManagementServiceClient } from "@google-cloud/kms";
 
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 
 import { ExternalKmsGcpSchema, TExternalKmsGcpClientSchema, TExternalKmsProviderFns } from "./model";
 
@@ -21,7 +22,6 @@ type GcpKmsProviderArgs = {
   inputs: unknown;
 };
 type TGcpKmsProviderFactoryReturn = TExternalKmsProviderFns & {
-  // generateInputKmsKey: () => Promise<TExternalKmsGcpSchema>;
   getKeysList: () => Promise<{ keys: string[] }>;
 };
 
@@ -77,9 +77,11 @@ export const GcpKmsProviderFactory = async ({ inputs }: GcpKmsProviderArgs): Pro
       const cryptoKeyLists = await Promise.all(keyListPromises);
       keyList.push(...cryptoKeyLists.flat());
       return { keys: keyList };
-    } catch {
+    } catch (error) {
+      logger.error(error, "Could not validate GCP KMS connection and credentials");
       throw new BadRequestError({
-        message: "Could not validate GCP KMS connection and credentials"
+        message: "Could not validate GCP KMS connection and credentials",
+        error
       });
     }
   };

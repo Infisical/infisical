@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export enum KmsProviders {
   Aws = "aws",
-  GCP = "gcp"
+  Gcp = "gcp"
 }
 
 export enum KmsAwsCredentialType {
@@ -78,13 +78,13 @@ export type TExternalKmsGcpClientSchema = z.infer<typeof ExternalKmsGcpClientSch
 // The root schema of the JSON
 export const ExternalKmsInputSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(KmsProviders.Aws), inputs: ExternalKmsAwsSchema }),
-  z.object({ type: z.literal(KmsProviders.GCP), inputs: ExternalKmsGcpSchema })
+  z.object({ type: z.literal(KmsProviders.Gcp), inputs: ExternalKmsGcpSchema })
 ]);
 export type TExternalKmsInputSchema = z.infer<typeof ExternalKmsInputSchema>;
 
 export const ExternalKmsInputUpdateSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(KmsProviders.Aws), inputs: ExternalKmsAwsSchema.partial() }),
-  z.object({ type: z.literal(KmsProviders.GCP), inputs: ExternalKmsGcpSchema.partial() })
+  z.object({ type: z.literal(KmsProviders.Gcp), inputs: ExternalKmsGcpSchema.partial() })
 ]);
 export type TExternalKmsInputUpdateSchema = z.infer<typeof ExternalKmsInputUpdateSchema>;
 
