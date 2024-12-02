@@ -132,30 +132,64 @@ export const AddExternalKmsSchema = z.object({
 
 export type AddExternalKmsType = z.infer<typeof AddExternalKmsSchema>;
 
+// we need separate schema for update because the credential field is not required on GCP
+export const ExternalKmsUpdateInputSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal(ExternalKmsProvider.AWS), inputs: ExternalKmsAwsSchema }),
+  z.object({
+    type: z.literal(ExternalKmsProvider.GCP),
+    inputs: ExternalKmsGcpSchema.pick({ gcpRegion: true, keyName: true })
+  })
+]);
+
+export const UpdateExternalKmsSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1)
+    .refine((v) => slugify(v) === v, {
+      message: "Alias must be a valid slug"
+    }),
+  description: z.string().trim().optional(),
+  provider: ExternalKmsUpdateInputSchema
+});
+
+export type UpdateExternalKmsType = z.infer<typeof UpdateExternalKmsSchema>;
+
 const GCP_CREDENTIAL_MAX_FILE_SIZE = 8 * 1024; // 8KB
 const GCP_CREDENTIAL_ACCEPTED_FILE_TYPES = ["application/json"];
 
-export const AddExternalKmsGcpFormSchema = z
-  .object({
-    keyObject: z
-      .object({ label: z.string().trim(), value: z.string().trim() })
-      .describe("GCP key name"),
-    credentialFile:
-      typeof window === "undefined"
-        ? z.any()
-        : z
-            .instanceof(FileList)
-            .refine((files) => files?.length === 1, "Image is required.")
-            .refine(
-              (files) => files?.[0]?.size <= GCP_CREDENTIAL_MAX_FILE_SIZE,
-              "Max file size is 8KB."
-            )
-            .refine(
-              (files) => GCP_CREDENTIAL_ACCEPTED_FILE_TYPES.includes(files?.[0]?.type),
-              "Only .json files are accepted."
-            )
-  })
-  .merge(AddExternalKmsSchema.pick({ name: true, description: true }))
-  .merge(ExternalKmsGcpSchema.pick({ gcpRegion: true }));
+const AddExternalKmsGcpFormSchemaStandardInputs = z.object({
+  keyObject: z
+    .object({ label: z.string().trim(), value: z.string().trim() })
+    .describe("GCP key name"),
+  gcpRegion: z.object({ label: z.string().trim(), value: z.string().trim() }).describe("GCP Region")
+});
+
+export const AddExternalKmsGcpFormSchema = z.discriminatedUnion("formType", [
+  z
+    .object({
+      formType: z.literal("newGcpKms"),
+      credentialFile:
+        typeof window === "undefined"
+          ? z.any()
+          : z
+              .instanceof(FileList)
+              .refine((files) => files?.length === 1, "Image is required.")
+              .refine(
+                (files) => files?.[0]?.size <= GCP_CREDENTIAL_MAX_FILE_SIZE,
+                "Max file size is 8KB."
+              )
+              .refine(
+                (files) => GCP_CREDENTIAL_ACCEPTED_FILE_TYPES.includes(files?.[0]?.type),
+                "Only .json files are accepted."
+              )
+    })
+    .merge(AddExternalKmsGcpFormSchemaStandardInputs)
+    .merge(AddExternalKmsSchema.pick({ name: true, description: true })),
+  z
+    .object({ formType: z.literal("updateGcpKms") })
+    .merge(AddExternalKmsGcpFormSchemaStandardInputs)
+    .merge(AddExternalKmsSchema.pick({ name: true, description: true }))
+]);
 
 export type AddExternalKmsGcpFormSchemaType = z.infer<typeof AddExternalKmsGcpFormSchema>;

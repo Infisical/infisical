@@ -3,7 +3,12 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { kmsKeys } from "./queries";
-import { AddExternalKmsType, ExternalKmsGcpSchemaType, KmsType } from "./types";
+import {
+  AddExternalKmsType,
+  ExternalKmsGcpSchemaType,
+  KmsType,
+  UpdateExternalKmsType
+} from "./types";
 
 export const useAddExternalKms = (orgId: string) => {
   const queryClient = useQueryClient();
@@ -33,7 +38,7 @@ export const useUpdateExternalKms = (orgId: string) => {
       provider
     }: {
       kmsId: string;
-    } & AddExternalKmsType) => {
+    } & UpdateExternalKmsType) => {
       const { data } = await apiRequest.patch(`/api/v1/external-kms/${kmsId}`, {
         name,
         description,
@@ -97,16 +102,30 @@ export const useLoadProjectKmsBackup = (projectId: string) => {
   });
 };
 
-export const useExternalKmsValidateGcpCredential = (orgId: string) => {
+export const useExternalKmsFetchGcpKeys = (orgId: string) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
       gcpRegion,
-      credential
-    }: ExternalKmsGcpSchemaType): Promise<{ keys: string[] }> => {
-      const { data } = await apiRequest.post("/api/v1/external-kms/validate-gcp-credential/", {
+      ...rest
+    }: Pick<ExternalKmsGcpSchemaType, "gcpRegion"> &
+      (
+        | (Pick<ExternalKmsGcpSchemaType, "credential"> & { kmsId?: never })
+        | { kmsId: string; credential?: never }
+      )): Promise<{ keys: string[] }> => {
+      const { credential, kmsId } = rest;
+
+      if ((credential && kmsId) || (!credential && !kmsId)) {
+        throw new Error("Either 'credential' or 'kmsId' must be provided, but not both.");
+      }
+
+      const apiUrl = kmsId
+        ? `/api/v1/external-kms/fetch-gcp-keys/${kmsId}`
+        : "/api/v1/external-kms/fetch-gcp-keys/credential";
+
+      const { data } = await apiRequest.post(apiUrl, {
         region: gcpRegion,
-        credential
+        ...rest
       });
 
       return data;

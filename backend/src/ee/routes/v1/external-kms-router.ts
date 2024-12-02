@@ -7,7 +7,9 @@ import {
   ExternalKmsGcpCredentialSchema,
   ExternalKmsGcpSchema,
   ExternalKmsInputSchema,
-  ExternalKmsInputUpdateSchema
+  ExternalKmsInputUpdateSchema,
+  KmsProviders,
+  TExternalKmsGcpCredentialSchema
 } from "@app/ee/services/external-kms/providers/model";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -46,7 +48,8 @@ const sanitizedExternalSchemaForGetById = KmsKeysSchema.extend({
     statusDetails: true,
     provider: true
   }).extend({
-    providerInput: z.union([ExternalKmsAwsSchema, ExternalKmsGcpSchema])
+    // for GCP, we don't return the credential object as it is sensitive data that should not be exposed
+    providerInput: z.union([ExternalKmsAwsSchema, ExternalKmsGcpSchema.pick({ gcpRegion: true, keyName: true })])
   })
 });
 
@@ -291,7 +294,7 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
-    url: "/validate-gcp-credential/",
+    url: "/fetch-gcp-keys/credential",
     config: {
       rateLimit: writeLimit
     },
@@ -299,6 +302,42 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         region: z.string().trim().min(1),
         credential: ExternalKmsGcpCredentialSchema
+      }),
+
+      response: {
+        200: z.object({
+          keys: z.array(z.string())
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { region, credential } = req.body;
+
+      const results = await server.services.externalKms.fetchGcpKeys({
+        credential,
+        gcpRegion: region,
+        keyName: ""
+      });
+      if (!results) {
+        throw new Error("Failed to validate GCP credential");
+      }
+
+      return results;
+    }
+  });
+  server.route({
+    method: "POST",
+    url: "/fetch-gcp-keys/:kmsId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        kmsId: z.string().trim().min(1)
+      }),
+      body: z.object({
+        region: z.string().trim().min(1)
       }),
       response: {
         200: z.object({
@@ -308,9 +347,26 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const { region } = req.body;
+      const { kmsId } = req.params;
+
+      const externalKms = await server.services.externalKms.findById({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        id: kmsId
+      });
+
+      if (!externalKms || externalKms.external.provider !== KmsProviders.GCP) {
+        throw new Error("KMS not found or not of type GCP");
+      }
+
+      const credentialJson = externalKms.external.providerInput.credential as TExternalKmsGcpCredentialSchema;
+
       const results = await server.services.externalKms.fetchGcpKeys({
-        credential: req.body.credential,
-        gcpRegion: req.body.region,
+        credential: credentialJson,
+        gcpRegion: region,
         keyName: ""
       });
       if (!results) {

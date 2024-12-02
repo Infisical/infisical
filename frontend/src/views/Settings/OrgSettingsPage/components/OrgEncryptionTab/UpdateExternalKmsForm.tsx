@@ -3,6 +3,7 @@ import { useGetExternalKmsById } from "@app/hooks/api";
 import { ExternalKmsProvider } from "@app/hooks/api/kms/types";
 
 import { AwsKmsForm } from "./AwsKmsForm";
+import { GcpKmsForm } from "./GcpKmsForm";
 
 type Props = {
   isOpen: boolean;
@@ -18,6 +19,13 @@ export const UpdateExternalKmsForm = ({ isOpen, kmsId, onOpenChange }: Props) =>
         {isLoading && <ContentLoader />}
         {externalKms?.external?.provider === ExternalKmsProvider.AWS && (
           <AwsKmsForm
+            kms={externalKms}
+            onCancel={() => onOpenChange(false)}
+            onCompleted={() => onOpenChange(false)}
+          />
+        )}
+        {externalKms?.external?.provider === ExternalKmsProvider.GCP && (
+          <GcpKmsForm
             kms={externalKms}
             onCancel={() => onOpenChange(false)}
             onCompleted={() => onOpenChange(false)}
