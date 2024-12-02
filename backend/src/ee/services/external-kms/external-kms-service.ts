@@ -96,7 +96,7 @@ export const externalKmsServiceFactory = ({
     });
 
     const { cipherTextBlob: encryptedProviderInputs } = orgDataKeyEncryptor({
-      plainText: Buffer.from(sanitizedProviderInput, "utf8")
+      plainText: Buffer.from(sanitizedProviderInput)
     });
 
     const externalKms = await externalKmsDAL.transaction(async (tx) => {
@@ -170,7 +170,7 @@ export const externalKmsServiceFactory = ({
         case KmsProviders.Aws:
           {
             const decryptedProviderInput = await ExternalKmsAwsSchema.parseAsync(
-              JSON.parse(decryptedProviderInputBlob.toString("utf8"))
+              JSON.parse(decryptedProviderInputBlob.toString())
             );
             const updatedProviderInput = { ...decryptedProviderInput, ...provider.inputs };
             const externalKms = await AwsKmsProviderFactory({ inputs: updatedProviderInput });
@@ -181,7 +181,7 @@ export const externalKmsServiceFactory = ({
         case KmsProviders.Gcp:
           {
             const decryptedProviderInput = await ExternalKmsGcpSchema.parseAsync(
-              JSON.parse(decryptedProviderInputBlob.toString("utf8"))
+              JSON.parse(decryptedProviderInputBlob.toString())
             );
             const updatedProviderInput = { ...decryptedProviderInput, ...provider.inputs };
             const externalKms = await GcpKmsProviderFactory({ inputs: updatedProviderInput });
@@ -197,7 +197,7 @@ export const externalKmsServiceFactory = ({
     let encryptedProviderInputs: Buffer | undefined;
     if (sanitizedProviderInput) {
       const { cipherTextBlob } = orgDataKeyEncryptor({
-        plainText: Buffer.from(sanitizedProviderInput, "utf8")
+        plainText: Buffer.from(sanitizedProviderInput)
       });
       encryptedProviderInputs = cipherTextBlob;
     }
@@ -290,13 +290,13 @@ export const externalKmsServiceFactory = ({
     switch (externalKmsDoc.provider) {
       case KmsProviders.Aws: {
         const decryptedProviderInput = await ExternalKmsAwsSchema.parseAsync(
-          JSON.parse(decryptedProviderInputBlob.toString("utf8"))
+          JSON.parse(decryptedProviderInputBlob.toString())
         );
         return { ...kmsDoc, external: { ...externalKmsDoc, providerInput: decryptedProviderInput } };
       }
       case KmsProviders.Gcp: {
         const decryptedProviderInput = await ExternalKmsGcpSchema.parseAsync(
-          JSON.parse(decryptedProviderInputBlob.toString("utf8"))
+          JSON.parse(decryptedProviderInputBlob.toString())
         );
 
         return { ...kmsDoc, external: { ...externalKmsDoc, providerInput: decryptedProviderInput } };
@@ -338,13 +338,13 @@ export const externalKmsServiceFactory = ({
     switch (externalKmsDoc.provider) {
       case KmsProviders.Aws: {
         const decryptedProviderInput = await ExternalKmsAwsSchema.parseAsync(
-          JSON.parse(decryptedProviderInputBlob.toString("utf8"))
+          JSON.parse(decryptedProviderInputBlob.toString())
         );
         return { ...kmsDoc, external: { ...externalKmsDoc, providerInput: decryptedProviderInput } };
       }
       case KmsProviders.Gcp: {
         const decryptedProviderInput = await ExternalKmsGcpSchema.parseAsync(
-          JSON.parse(decryptedProviderInputBlob.toString("utf8"))
+          JSON.parse(decryptedProviderInputBlob.toString())
         );
 
         return { ...kmsDoc, external: { ...externalKmsDoc, providerInput: decryptedProviderInput } };

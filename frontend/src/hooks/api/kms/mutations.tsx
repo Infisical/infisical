@@ -120,6 +120,7 @@ export const useExternalKmsFetchGcpKeys = (orgId: string) => {
       }
 
       const { data } = await apiRequest.post("/api/v1/external-kms/gcp/keys", {
+        authMethod: credential ? "credential" : "kmsId",
         region: gcpRegion,
         ...rest
       });

@@ -70,7 +70,7 @@ export const ExternalKmsGcpSchema = z.object({
 });
 export type TExternalKmsGcpSchema = z.infer<typeof ExternalKmsGcpSchema>;
 
-export const ExternalKmsGcpClientSchema = ExternalKmsGcpSchema.pick({ gcpRegion: true }).extend({
+const ExternalKmsGcpClientSchema = ExternalKmsGcpSchema.pick({ gcpRegion: true }).extend({
   credential: ExternalKmsGcpCredentialSchema
 });
 export type TExternalKmsGcpClientSchema = z.infer<typeof ExternalKmsGcpClientSchema>;
