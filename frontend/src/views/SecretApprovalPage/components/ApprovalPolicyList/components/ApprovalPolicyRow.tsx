@@ -41,8 +41,6 @@ type Props = {
   policy: IPolicy;
   members?: TWorkspaceUser[];
   groups?: TGroupMembership[];
-  // projectSlug: string;
-  // workspaceId: string;
   onEdit: () => void;
   onDelete: () => void;
 };
@@ -51,26 +49,9 @@ export const ApprovalPolicyRow = ({
   policy,
   members = [],
   groups = [],
-  // projectSlug,
-  // workspaceId,
   onEdit,
   onDelete
 }: Props) => {
-  // TODO(scott): add back to enable editing from modal? edit modal for policy is fine for now
-  // const [selectedApprovers, setSelectedApprovers] = useState<Approver[]>(
-  //   policy.approvers?.filter((approver) => approver.type === ApproverType.User) || []
-  // );
-  // const [selectedGroupApprovers, setSelectedGroupApprovers] = useState<Approver[]>(
-  //   policy.approvers?.filter((approver) => approver.type === ApproverType.Group) || []
-  // );
-  // const { mutate: updateAccessApprovalPolicy, isLoading: isAccessApprovalPolicyLoading } =
-  //   useUpdateAccessApprovalPolicy();
-  // const { mutate: updateSecretApprovalPolicy, isLoading: isSecretApprovalPolicyLoading } =
-  //   useUpdateSecretApprovalPolicy();
-  // const isLoading = isAccessApprovalPolicyLoading || isSecretApprovalPolicyLoading;
-  //
-  // const { permission } = useProjectPermission();
-
   const labels = useMemo(() => {
     const usersInPolicy = policy.approvers
       ?.filter((approver) => approver.type === ApproverType.User)
@@ -106,12 +87,18 @@ export const ApprovalPolicyRow = ({
       <Td>{policy.environment.slug}</Td>
       <Td>{policy.secretPath || "*"}</Td>
       <Td className="max-w-0">
-        <Tooltip content={labels.members ?? "No users are assigned as approvers for this policy"}>
+        <Tooltip
+          side="left"
+          content={labels.members ?? "No users are assigned as approvers for this policy"}
+        >
           <p className="truncate">{labels.members ?? "-"}</p>
         </Tooltip>
       </Td>
       <Td className="max-w-0">
-        <Tooltip content={labels.groups ?? "No groups are assigned as approvers for this policy"}>
+        <Tooltip
+          side="left"
+          content={labels.groups ?? "No groups are assigned as approvers for this policy"}
+        >
           <p className="truncate">{labels.groups ?? "-"}</p>
         </Tooltip>
       </Td>
