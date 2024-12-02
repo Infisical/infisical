@@ -56,7 +56,6 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
   const environments = currentWorkspace?.environments || [];
 
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
-  // const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
   const { mutateAsync: createFolder } = useCreateFolder();
   const { data: projectTags, isLoading: isTagsLoading } = useGetWsTags(
     canReadTags ? workspaceId : ""
@@ -89,22 +88,7 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
         }
       }
 
-      // TODO: add back - need to fetch secrets by key to check for conflicts as this method broke with pagination
-      // const isEdit = getSecretByKey(environment, key) !== undefined;
-      // if (isEdit) {
-      //   return {
-      //     ...(await updateSecretV3({
-      //       environment,
-      //       workspaceId,
-      //       secretPath,
-      //       secretKey: key,
-      //       secretValue: value || "",
-      //       type: SecretType.Shared,
-      //       tagIds: tags?.map((el) => el.value)
-      //     })),
-      //     environment
-      //   };
-      // }
+      // TODO: add back ability to overwrite - need to fetch secrets by key to check for conflicts as previous method broke with pagination
 
       return {
         ...(await createSecretV3({
