@@ -141,6 +141,13 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
   const handleGcpKmsFormSubmit = async (data: AddExternalKmsGcpFormSchemaType) => {
     const { name, description, gcpRegion: gcpRegionObject, keyObject } = data;
     const gcpRegion = gcpRegionObject.value;
+    if (!keys.find((k) => k.value === keyObject?.value)) {
+      setError("keyObject", {
+        message: "Please select a valid key."
+      });
+      resetField("keyObject");
+      return;
+    }
 
     try {
       if (kms) {
@@ -192,7 +199,10 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
   };
 
   const fetchGCPKeys = async () => {
-    resetField("keyObject");
+    // @ts-expect-error - issue with the way react-select renders the placeholder. We need to set the value to null explicitly otherwise it will not re-render
+    setValue("keyObject", null);
+    setKeys([]);
+
     const credentialJson = kms ? undefined : await getCredentialFileJson();
     if (!kms && !credentialJson) {
       return;
@@ -217,6 +227,7 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
         label: keyLabel
       };
     });
+
     setKeys(returnedKeys);
     if (kms) {
       const existingKey = returnedKeys.find((k) => k.value === kms.external.providerInput.keyName);
@@ -236,6 +247,7 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
     if (keys.length) {
       return "Select a key";
     }
+
     return "No valid keys found in this region";
   };
 
@@ -277,6 +289,7 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
               options={GCP_REGIONS}
               value={field.value}
               onChange={(e) => {
+                resetField("keyObject");
                 field.onChange(e);
                 fetchGCPKeys();
               }}
@@ -285,7 +298,6 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
           </FormControl>
         )}
       />
-
       {!kms && (
         <Controller
           control={control}
@@ -312,7 +324,6 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
           )}
         />
       )}
-
       <Controller
         control={control}
         name="keyObject"
@@ -332,8 +343,8 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
       />
       {kms && (
         <span className="text-xs text-mineshaft-300">
-          To change your GCP credentials, create a new KMS server and assign it to project you want
-          to use it with.{" "}
+          To change your GCP credentials, create a new externalKMS and assign it to project you want
+          to use it with.
         </span>
       )}
       <div className="mt-6 flex items-center space-x-4">

@@ -8,9 +8,11 @@ import {
   ExternalKmsGcpSchema,
   ExternalKmsInputSchema,
   ExternalKmsInputUpdateSchema,
+  KmsGcpKeyFetchAuthType,
   KmsProviders,
   TExternalKmsGcpCredentialSchema
 } from "@app/ee/services/external-kms/providers/model";
+import { NotFoundError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -301,12 +303,12 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
     schema: {
       body: z.discriminatedUnion("authMethod", [
         z.object({
-          authMethod: z.literal("credential"),
+          authMethod: z.literal(KmsGcpKeyFetchAuthType.Credential),
           region: z.string().trim().min(1),
           credential: ExternalKmsGcpCredentialSchema
         }),
         z.object({
-          authMethod: z.literal("kmsId"),
+          authMethod: z.literal(KmsGcpKeyFetchAuthType.Kms),
           region: z.string().trim().min(1),
           kmsId: z.string().trim().min(1)
         })
@@ -322,9 +324,9 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
       const { region, authMethod } = req.body;
       let credentialJson: TExternalKmsGcpCredentialSchema | undefined;
 
-      if (authMethod === "credential") {
+      if (authMethod === KmsGcpKeyFetchAuthType.Credential) {
         credentialJson = req.body.credential;
-      } else if (authMethod === "kmsId") {
+      } else if (authMethod === KmsGcpKeyFetchAuthType.Kms) {
         const externalKms = await server.services.externalKms.findById({
           actor: req.permission.type,
           actorId: req.permission.id,
@@ -334,14 +336,16 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
         });
 
         if (!externalKms || externalKms.external.provider !== KmsProviders.Gcp) {
-          throw new Error("KMS not found or not of type GCP");
+          throw new NotFoundError({ message: "KMS not found or not of type GCP" });
         }
 
         credentialJson = externalKms.external.providerInput.credential as TExternalKmsGcpCredentialSchema;
       }
 
       if (!credentialJson) {
-        throw new Error("Something went wrong while fetching the GCP credential, please check inputs and try again");
+        throw new NotFoundError({
+          message: "Something went wrong while fetching the GCP credential, please check inputs and try again"
+        });
       }
 
       const results = await server.services.externalKms.fetchGcpKeys({

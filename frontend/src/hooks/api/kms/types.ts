@@ -194,3 +194,8 @@ export const AddExternalKmsGcpFormSchema = z.discriminatedUnion("formType", [
 ]);
 
 export type AddExternalKmsGcpFormSchemaType = z.infer<typeof AddExternalKmsGcpFormSchema>;
+
+export enum KmsGcpKeyFetchAuthType {
+  Credential = "credential",
+  Kms = "kmsId"
+}

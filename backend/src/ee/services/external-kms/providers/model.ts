@@ -14,6 +14,11 @@ export enum KmsGcpCredentialType {
   ServiceAccount = "service_account"
 }
 
+export enum KmsGcpKeyFetchAuthType {
+  Credential = "credential",
+  Kms = "kmsId"
+}
+
 export const ExternalKmsAwsSchema = z.object({
   credential: z
     .discriminatedUnion("type", [

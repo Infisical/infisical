@@ -6,6 +6,7 @@ import { kmsKeys } from "./queries";
 import {
   AddExternalKmsType,
   ExternalKmsGcpSchemaType,
+  KmsGcpKeyFetchAuthType,
   KmsType,
   UpdateExternalKmsType
 } from "./types";
@@ -110,17 +111,27 @@ export const useExternalKmsFetchGcpKeys = (orgId: string) => {
       ...rest
     }: Pick<ExternalKmsGcpSchemaType, "gcpRegion"> &
       (
-        | (Pick<ExternalKmsGcpSchemaType, "credential"> & { kmsId?: never })
-        | { kmsId: string; credential?: never }
+        | (Pick<ExternalKmsGcpSchemaType, KmsGcpKeyFetchAuthType.Credential> & {
+            [KmsGcpKeyFetchAuthType.Kms]?: never;
+          })
+        | {
+            [KmsGcpKeyFetchAuthType.Kms]: string;
+            [KmsGcpKeyFetchAuthType.Credential]?: never;
+          }
       )): Promise<{ keys: string[] }> => {
-      const { credential, kmsId } = rest;
+      const {
+        [KmsGcpKeyFetchAuthType.Credential]: credential,
+        [KmsGcpKeyFetchAuthType.Kms]: kmsId
+      } = rest;
 
       if ((credential && kmsId) || (!credential && !kmsId)) {
-        throw new Error("Either 'credential' or 'kmsId' must be provided, but not both.");
+        throw new Error(
+          `Either '${KmsGcpKeyFetchAuthType.Credential}' or '${KmsGcpKeyFetchAuthType.Kms}' must be provided, but not both.`
+        );
       }
 
       const { data } = await apiRequest.post("/api/v1/external-kms/gcp/keys", {
-        authMethod: credential ? "credential" : "kmsId",
+        authMethod: credential ? KmsGcpKeyFetchAuthType.Credential : KmsGcpKeyFetchAuthType.Kms,
         region: gcpRegion,
         ...rest
       });
