@@ -118,7 +118,7 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
           <p className="text-sm font-semibold text-mineshaft-300">Name</p>
           <p className="text-sm text-mineshaft-300">
             {membership.user.firstName || membership.user.lastName
-              ? `${membership.user.firstName} ${membership.user.lastName}`
+              ? `${membership.user.firstName} ${membership.user.lastName ?? ""}`.trim()
               : "-"}
           </p>
         </div>
