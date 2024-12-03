@@ -37,6 +37,9 @@ import (
 	"golang.org/x/term"
 
 	infisicalSdk "github.com/infisical/go-sdk"
+
+	"runtime"
+	"os/exec"
 )
 
 type params struct {
@@ -45,6 +48,20 @@ type params struct {
 	parallelism uint8
 	saltLength  uint32
 	keyLength   uint32
+}
+
+func openBrowser(url string) bool {
+	var args []string
+	switch runtime.GOOS {
+	case "darwin":
+		args = []string{"open"}
+	case "windows":
+		args = []string{"cmd", "/c", "start"}
+	default:
+		args = []string{"xdg-open"}
+	}
+	cmd := exec.Command(args[0], append(args[1:], url)...)
+	return cmd.Start() == nil
 }
 
 func handleUniversalAuthLogin(cmd *cobra.Command, infisicalClient infisicalSdk.InfisicalClientInterface) (credential infisicalSdk.MachineIdentityCredential, e error) {
@@ -953,7 +970,9 @@ func browserCliLogin() (models.UserCredentials, error) {
 	callbackPort := listener.Addr().(*net.TCPAddr).Port
 	url := fmt.Sprintf("%s?callback_port=%d", config.INFISICAL_LOGIN_URL, callbackPort)
 
-	fmt.Printf("\n\nTo complete your login, open this address in your browser: %v \n", url)
+	openBrowser(url);
+	fmt.Printf("Brower requested to open login")
+	fmt.Printf("\n\nTo complete your login, if browser does not open automatically, open this address in your browser: %v \n", url)
 
 	//flow channels
 	success := make(chan models.UserCredentials)
