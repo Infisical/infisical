@@ -358,7 +358,11 @@ export const accessApprovalPolicyServiceFactory = ({
     const environment = await projectEnvDAL.findOne({ projectId: project.id, slug: envSlug });
     if (!environment) throw new NotFoundError({ message: `Environment with slug '${envSlug}' not found` });
 
-    const policies = await accessApprovalPolicyDAL.find({ envId: environment.id, projectId: project.id });
+    const policies = await accessApprovalPolicyDAL.find({
+      envId: environment.id,
+      projectId: project.id,
+      disabled: false
+    });
     if (!policies) throw new NotFoundError({ message: `No policies found in environment with slug '${envSlug}'` });
 
     return { count: policies.length };

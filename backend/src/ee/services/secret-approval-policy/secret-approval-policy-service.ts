@@ -336,7 +336,7 @@ export const secretApprovalPolicyServiceFactory = ({
       });
     }
 
-    const policies = await secretApprovalPolicyDAL.find({ envId: env.id });
+    const policies = await secretApprovalPolicyDAL.find({ envId: env.id, disabled: false });
     if (!policies.length) return;
     // this will filter policies either without scoped to secret path or the one that matches with secret path
     const policiesFilteredByPath = policies.filter(
