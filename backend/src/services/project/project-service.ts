@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
-import { OrgMembershipRole, ProjectMembershipRole, ProjectVersion, TProjectEnvironments } from "@app/db/schemas";
+import { ProjectMembershipRole, ProjectVersion, TProjectEnvironments } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -9,7 +9,6 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services
 import { TProjectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-service";
 import { InfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
-import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -370,20 +369,6 @@ export const projectServiceFactory = ({
           });
         }
 
-        // Get the role permission for the identity
-        const { permission: rolePermission, role: customRole } = await permissionService.getOrgPermissionByRole(
-          OrgMembershipRole.Member,
-          organization.id
-        );
-
-        // Identity has to be at least a member in order to create projects
-        const hasPrivilege = isAtLeastAsPrivileged(permission, rolePermission);
-        if (!hasPrivilege)
-          throw new ForbiddenRequestError({
-            message: "Failed to add identity to project with more privileged role"
-          });
-        const isCustomRole = Boolean(customRole);
-
         const identityProjectMembership = await identityProjectDAL.create(
           {
             identityId: actorId,
@@ -395,8 +380,7 @@ export const projectServiceFactory = ({
         await identityProjectMembershipRoleDAL.create(
           {
             projectMembershipId: identityProjectMembership.id,
-            role: isCustomRole ? ProjectMembershipRole.Custom : ProjectMembershipRole.Admin,
-            customRoleId: customRole?.id
+            role: ProjectMembershipRole.Admin
           },
           tx
         );
