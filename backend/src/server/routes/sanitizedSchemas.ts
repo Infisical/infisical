@@ -32,7 +32,7 @@ export const DefaultResponseErrorsSchema = {
   400: z.object({
     requestId: z.string(),
     statusCode: z.literal(400),
-    message: z.any(),
+    message: z.string(),
     error: z.string()
   }),
   404: z.object({
@@ -52,6 +52,12 @@ export const DefaultResponseErrorsSchema = {
     statusCode: z.literal(403),
     message: z.string(),
     details: z.any().optional(),
+    error: z.string()
+  }),
+  422: z.object({
+    requestId: z.string(),
+    statusCode: z.literal(422),
+    message: z.any(),
     error: z.string()
   }),
   500: z.object({
