@@ -44,7 +44,7 @@ export const DefaultResponseErrorsSchema = {
   401: z.object({
     requestId: z.string(),
     statusCode: z.literal(401),
-    message: z.any(),
+    message: z.string(),
     error: z.string()
   }),
   403: z.object({
@@ -54,6 +54,7 @@ export const DefaultResponseErrorsSchema = {
     details: z.any().optional(),
     error: z.string()
   }),
+  // Zod errors return a message of varying shapes and sizes, so z.any() is used here
   422: z.object({
     requestId: z.string(),
     statusCode: z.literal(422),
