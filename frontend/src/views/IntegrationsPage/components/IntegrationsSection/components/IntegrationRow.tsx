@@ -43,7 +43,6 @@ export const IntegrationRow = ({
     if (isSynced === false) {
       if (syncMessage)
         try {
-          // format if json
           return JSON.stringify(JSON.parse(syncMessage), null, 2);
         } catch (e) {
           return syncMessage;
