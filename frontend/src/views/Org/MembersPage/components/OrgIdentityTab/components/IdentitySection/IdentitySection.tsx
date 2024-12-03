@@ -42,7 +42,7 @@ export const IdentitySection = withPermission(
       ? subscription.identitiesUsed < subscription.identityLimit
       : true;
 
-    const isEnterprise = subscription?.slug === "enterprise"
+    const isEnterprise = subscription?.slug === "enterprise";
 
     const onDeleteIdentitySubmit = async (identityId: string) => {
       try {
@@ -105,7 +105,7 @@ export const IdentitySection = withPermission(
                 }}
                 isDisabled={!isAllowed}
               >
-                Create identity
+                Create Identity
               </Button>
             )}
           </OrgPermissionCan>

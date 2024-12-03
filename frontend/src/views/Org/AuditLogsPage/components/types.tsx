@@ -5,7 +5,7 @@ import { EventType, UserAgentType } from "@app/hooks/api/auditLogs/enums";
 export const auditLogFilterFormSchema = yup
   .object({
     eventMetadata: yup.object({}).optional(),
-    projectId: yup.string().optional(),
+    project: yup.object({ id: yup.string().required(), name: yup.string().required() }).nullable(),
     eventType: yup.array(yup.string().oneOf(Object.values(EventType), "Invalid event type")),
     actor: yup.string(),
     userAgentType: yup.string().oneOf(Object.values(UserAgentType), "Invalid user agent type"),

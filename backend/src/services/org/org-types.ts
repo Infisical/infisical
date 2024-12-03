@@ -74,3 +74,8 @@ export type TGetOrgGroupsDTO = TOrgPermission;
 export type TListProjectMembershipsByOrgMembershipIdDTO = {
   orgMembershipId: string;
 } & TOrgPermission;
+
+export enum OrgAuthMethod {
+  OIDC = "oidc",
+  SAML = "saml"
+}

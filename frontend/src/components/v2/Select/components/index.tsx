@@ -37,7 +37,7 @@ export const Option = <T,>({ isSelected, children, ...props }: OptionProps<T>) =
   return (
     <components.Option isSelected={isSelected} {...props}>
       <div className="flex flex-row items-center justify-between">
-        {children}
+        <p className="truncate">{children}</p>
         {isSelected && (
           <FontAwesomeIcon className="ml-2 text-primary" icon={faCheckCircle} size="sm" />
         )}

@@ -47,7 +47,7 @@ export const LogsSection = ({
   const { control, reset, watch, setValue } = useForm<AuditLogFilterFormData>({
     resolver: yupResolver(auditLogFilterFormSchema),
     defaultValues: {
-      projectId: undefined,
+      project: null,
       actor: presets?.actorId,
       eventType: presets?.eventType || [],
       page: 1,
@@ -66,7 +66,7 @@ export const LogsSection = ({
   const eventType = watch("eventType") as EventType[] | undefined;
   const userAgentType = watch("userAgentType") as UserAgentType | undefined;
   const actor = watch("actor");
-  const projectId = watch("projectId");
+  const projectId = watch("project")?.id;
 
   const startDate = watch("startDate");
   const endDate = watch("endDate");

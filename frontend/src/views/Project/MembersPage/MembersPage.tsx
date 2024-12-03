@@ -6,9 +6,14 @@ import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
 
-import { isTabSection,TabSections } from "../Types";
-import { IdentityTab, MembersTab,ProjectRoleListTab, ServiceTokenTab } from "./components";
-
+import { isTabSection, TabSections } from "../Types";
+import {
+  GroupsTab,
+  IdentityTab,
+  MembersTab,
+  ProjectRoleListTab,
+  ServiceTokenTab
+} from "./components";
 
 export const MembersPage = withProjectPermission(
   () => {
@@ -26,9 +31,9 @@ export const MembersPage = withProjectPermission(
     const updateSelectedTab = (tab: string) => {
       router.push({
         pathname: router.pathname,
-        query: { ...router.query, selectedTab: tab },
+        query: { ...router.query, selectedTab: tab }
       });
-    }
+    };
 
     return (
       <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
@@ -37,6 +42,7 @@ export const MembersPage = withProjectPermission(
           <Tabs value={activeTab} onValueChange={updateSelectedTab}>
             <TabList>
               <Tab value={TabSections.Member}>Users</Tab>
+              <Tab value={TabSections.Groups}>Groups</Tab>
               <Tab value={TabSections.Identities}>
                 <div className="flex items-center">
                   <p>Machine Identities</p>
@@ -47,6 +53,9 @@ export const MembersPage = withProjectPermission(
             </TabList>
             <TabPanel value={TabSections.Member}>
               <MembersTab />
+            </TabPanel>
+            <TabPanel value={TabSections.Groups}>
+              <GroupsTab />
             </TabPanel>
             <TabPanel value={TabSections.Identities}>
               <IdentityTab />

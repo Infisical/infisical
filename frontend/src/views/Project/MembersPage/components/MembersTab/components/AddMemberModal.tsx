@@ -2,24 +2,11 @@ import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
-import { faCheckCircle, faChevronDown } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  FilterableSelect,
-  FormControl,
-  Modal,
-  ModalContent
-} from "@app/components/v2";
+import { Button, FilterableSelect, FormControl, Modal, ModalContent } from "@app/components/v2";
 import { useOrganization, useWorkspace } from "@app/context";
 import {
   useAddUsersToOrg,
@@ -33,7 +20,7 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const addMemberFormSchema = z.object({
   orgMemberships: z.array(z.object({ label: z.string().trim(), value: z.string().trim() })).min(1),
-  projectRoleSlugs: z.array(z.string().trim().min(1)).min(1)
+  projectRoleSlugs: z.array(z.object({ slug: z.string().trim(), name: z.string().trim() })).min(1)
 });
 
 type TAddMemberForm = z.infer<typeof addMemberFormSchema>;
@@ -64,7 +51,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
     formState: { isSubmitting, errors }
   } = useForm<TAddMemberForm>({
     resolver: zodResolver(addMemberFormSchema),
-    defaultValues: { orgMemberships: [], projectRoleSlugs: [ProjectMembershipRole.Member] }
+    defaultValues: { orgMemberships: [], projectRoleSlugs: [] }
   });
 
   const { mutateAsync: addMembersToProject } = useAddUsersToOrg();
@@ -94,7 +81,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
             {
               slug: currentWorkspace.slug,
               id: currentWorkspace.id,
-              projectRoleSlug: projectRoleSlugs
+              projectRoleSlug: projectRoleSlugs.map((role) => role.slug)
             }
           ]
         });
@@ -121,9 +108,12 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
     });
     return (orgUsers || [])
       .filter(({ user: u }) => !wsUserUsernames.has(u.username))
-      .map((member) => ({
-        value: member.id,
-        label: `${member.user.firstName} ${member.user.lastName}`
+      .map(({ id, inviteEmail, user: { firstName, lastName, email } }) => ({
+        value: id,
+        label:
+          firstName && lastName
+            ? `${firstName} ${lastName}`
+            : firstName || lastName || email || inviteEmail
       }));
   }, [orgUsers, members]);
 
@@ -169,78 +159,23 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
               <Controller
                 control={control}
                 name="projectRoleSlugs"
-                render={({ field }) => (
+                render={({ field: { onChange, value }, fieldState: { error } }) => (
                   <FormControl
                     className="w-full"
                     label="Select roles"
                     tooltipText="Select the roles that you wish to assign to the users"
+                    errorText={error?.message}
+                    isError={Boolean(error)}
                   >
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        {roles && roles.length > 0 ? (
-                          <div className="inline-flex w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
-                            {/* eslint-disable-next-line no-nested-ternary */}
-                            {selectedRoleSlugs.length === 1
-                              ? roles.find((role) => role.slug === selectedRoleSlugs[0])?.name
-                              : selectedRoleSlugs.length === 0
-                              ? "Select at least one role"
-                              : `${selectedRoleSlugs.length} roles selected`}
-                            <FontAwesomeIcon
-                              icon={faChevronDown}
-                              className={twMerge("ml-2 text-xs")}
-                            />
-                          </div>
-                        ) : (
-                          <div className="inline-flex w-full cursor-default items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
-                            No roles found
-                          </div>
-                        )}
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        align="start"
-                        className="thin-scrollbar z-[100] max-h-80"
-                      >
-                        {roles && roles.length > 0 ? (
-                          roles.map((role) => {
-                            const isSelected = selectedRoleSlugs.includes(role.slug);
-
-                            return (
-                              <DropdownMenuItem
-                                onSelect={(event) => roles.length > 1 && event.preventDefault()}
-                                onClick={() => {
-                                  if (selectedRoleSlugs.includes(String(role.slug))) {
-                                    field.onChange(
-                                      selectedRoleSlugs.filter(
-                                        (roleSlug: string) => roleSlug !== String(role.slug)
-                                      )
-                                    );
-                                  } else {
-                                    field.onChange([...selectedRoleSlugs, role.slug]);
-                                  }
-                                }}
-                                key={`role-slug-${role.slug}`}
-                                icon={
-                                  isSelected ? (
-                                    <FontAwesomeIcon
-                                      icon={faCheckCircle}
-                                      className="pr-0.5 text-primary"
-                                    />
-                                  ) : (
-                                    <div className="pl-[1.01rem]" />
-                                  )
-                                }
-                                iconPos="left"
-                                className="w-[28.4rem] text-sm"
-                              >
-                                {role.name}
-                              </DropdownMenuItem>
-                            );
-                          })
-                        ) : (
-                          <div />
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <FilterableSelect
+                      options={roles}
+                      placeholder="Select roles..."
+                      value={value}
+                      onChange={onChange}
+                      isMulti
+                      getOptionValue={(option) => option.slug}
+                      getOptionLabel={(option) => option.name}
+                    />
                   </FormControl>
                 )}
               />

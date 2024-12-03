@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { SingleValue } from "react-select";
 import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,21 +9,21 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  FilterableSelect,
   FormControl,
   FormLabel,
   IconButton,
   Input,
   Modal,
-  ModalContent,
-  Select,
-  SelectItem
+  ModalContent
 } from "@app/components/v2";
 import { useOrganization, useSubscription } from "@app/context";
+import { findOrgMembershipRole, isCustomOrgRole } from "@app/helpers/roles";
 import { useGetOrgRoles, useUpdateOrgMembership } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z.object({
-  role: z.string(),
+  role: z.object({ name: z.string(), slug: z.string() }),
   metadata: z
     .object({
       key: z.string().trim().min(1),
@@ -45,7 +46,7 @@ export const UserOrgMembershipModal = ({ popUp, handlePopUpOpen, handlePopUpTogg
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
 
-  const { data: roles } = useGetOrgRoles(orgId);
+  const { data: roles = [] } = useGetOrgRoles(orgId);
 
   const { mutateAsync: updateOrgMembership } = useUpdateOrgMembership();
 
@@ -66,6 +67,7 @@ export const UserOrgMembershipModal = ({ popUp, handlePopUpOpen, handlePopUpTogg
   const popUpData = popUp?.orgMembership?.data as {
     membershipId: string;
     role: string;
+    roleId?: string;
     metadata: { key: string; value: string }[];
   };
 
@@ -74,12 +76,12 @@ export const UserOrgMembershipModal = ({ popUp, handlePopUpOpen, handlePopUpTogg
 
     if (popUpData) {
       reset({
-        role: popUpData.role,
+        role: findOrgMembershipRole(roles, popUpData.roleId ?? popUpData.role),
         metadata: popUpData.metadata
       });
     } else {
       reset({
-        role: roles[0].slug
+        role: findOrgMembershipRole(roles, currentOrg!.defaultMembershipRole!)
       });
     }
   }, [popUp?.orgMembership?.data, roles]);
@@ -91,7 +93,7 @@ export const UserOrgMembershipModal = ({ popUp, handlePopUpOpen, handlePopUpTogg
       await updateOrgMembership({
         organizationId: orgId,
         membershipId: popUpData.membershipId,
-        role,
+        role: role.slug,
         metadata
       });
 
@@ -123,23 +125,26 @@ export const UserOrgMembershipModal = ({ popUp, handlePopUpOpen, handlePopUpTogg
         reset();
       }}
     >
-      <ModalContent title="Update Membership">
+      <ModalContent bodyClassName="overflow-visible" title="Update Membership">
         <form onSubmit={handleSubmit(onFormSubmit)}>
           <Controller
             control={control}
             name="role"
-            defaultValue=""
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+            render={({ field: { onChange, value }, fieldState: { error } }) => (
               <FormControl
                 label="Update Organization Role"
                 errorText={error?.message}
                 isError={Boolean(error)}
               >
-                <Select
-                  defaultValue={field.value}
-                  {...field}
-                  onValueChange={(e) => {
-                    const isCustomRole = !["admin", "member", "no-access"].includes(e);
+                <FilterableSelect
+                  placeholder="Select role..."
+                  options={roles}
+                  onChange={(newValue) => {
+                    const role = newValue as SingleValue<(typeof roles)[number]>;
+
+                    if (!role) return;
+
+                    const isCustomRole = isCustomOrgRole(role.slug);
 
                     if (isCustomRole && subscription && !subscription?.rbac) {
                       handlePopUpOpen("upgradePlan", {
@@ -149,16 +154,12 @@ export const UserOrgMembershipModal = ({ popUp, handlePopUpOpen, handlePopUpTogg
                       return;
                     }
 
-                    onChange(e);
+                    onChange(role);
                   }}
-                  className="w-full"
-                >
-                  {(roles || []).map(({ name, slug }) => (
-                    <SelectItem value={slug} key={`st-role-${slug}`}>
-                      {name}
-                    </SelectItem>
-                  ))}
-                </Select>
+                  value={value}
+                  getOptionValue={(option) => option.slug}
+                  getOptionLabel={(option) => option.name}
+                />
               </FormControl>
             )}
           />

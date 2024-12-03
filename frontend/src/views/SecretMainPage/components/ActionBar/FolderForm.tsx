@@ -15,7 +15,10 @@ const formSchema = z.object({
   name: z
     .string()
     .trim()
-    .regex(/^[a-zA-Z0-9-_]+$/, "Folder name cannot contain spaces. Only underscore and dashes")
+    .regex(
+      /^[a-zA-Z0-9-_]+$/,
+      "Folder name can only contain letters, numbers, dashes, and underscores"
+    )
 });
 type TFormData = z.infer<typeof formSchema>;
 

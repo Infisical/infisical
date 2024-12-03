@@ -1,6 +1,6 @@
 // REFACTOR(akhilmhdh): This file needs to be split into multiple components too complex
 
-import { useEffect, useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Head from "next/head";
 import Link from "next/link";
@@ -9,20 +9,22 @@ import { IconProp } from "@fortawesome/fontawesome-svg-core";
 import { faSlack } from "@fortawesome/free-brands-svg-icons";
 import { faFolderOpen, faStar } from "@fortawesome/free-regular-svg-icons";
 import {
+  faArrowDownAZ,
   faArrowRight,
   faArrowUpRightFromSquare,
+  faArrowUpZA,
   faBorderAll,
   faCheck,
   faCheckCircle,
   faClipboard,
   faExclamationCircle,
-  faFileShield,
   faHandPeace,
   faList,
   faMagnifyingGlass,
   faNetworkWired,
   faPlug,
   faPlus,
+  faSearch,
   faStar as faSolidStar,
   faUserPlus
 } from "@fortawesome/free-solid-svg-icons";
@@ -32,7 +34,15 @@ import * as Tabs from "@radix-ui/react-tabs";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import onboardingCheck from "@app/components/utilities/checks/OnboardingCheck";
-import { Button, IconButton, Input, Skeleton, UpgradePlanModal } from "@app/components/v2";
+import {
+  Button,
+  IconButton,
+  Input,
+  Pagination,
+  Skeleton,
+  Tooltip,
+  UpgradePlanModal
+} from "@app/components/v2";
 import { NewProjectModal } from "@app/components/v2/projects";
 import {
   OrgPermissionActions,
@@ -42,7 +52,9 @@ import {
   useUser,
   useWorkspace
 } from "@app/context";
+import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useRegisterUserAction } from "@app/hooks/api";
+import { OrderByDirection } from "@app/hooks/api/generic/types";
 // import { fetchUserWsKey } from "@app/hooks/api/keys/queries";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { Workspace } from "@app/hooks/api/types";
@@ -79,6 +91,10 @@ type ItemProps = {
 enum ProjectsViewMode {
   GRID = "grid",
   LIST = "list"
+}
+
+enum ProjectOrderBy {
+  Name = "name"
 }
 
 function copyToClipboard(id: string, setState: (value: boolean) => void) {
@@ -496,26 +512,48 @@ const OrganizationPage = () => {
     });
   }, []);
 
-  const isWorkspaceEmpty = !isWorkspaceLoading && orgWorkspaces?.length === 0;
-  const filteredWorkspaces = orgWorkspaces.filter((ws) =>
-    ws?.name?.toLowerCase().includes(searchFilter.toLowerCase())
+  const isWorkspaceEmpty = !isProjectViewLoading && orgWorkspaces?.length === 0;
+
+  const {
+    setPage,
+    perPage,
+    setPerPage,
+    page,
+    offset,
+    limit,
+    toggleOrderDirection,
+    orderDirection
+  } = usePagination(ProjectOrderBy.Name, { initPerPage: 24 });
+
+  const filteredWorkspaces = useMemo(
+    () =>
+      orgWorkspaces
+        .filter((ws) => ws?.name?.toLowerCase().includes(searchFilter.toLowerCase()))
+        .sort((a, b) =>
+          orderDirection === OrderByDirection.ASC
+            ? a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+            : b.name.toLowerCase().localeCompare(a.name.toLowerCase())
+        ),
+    [searchFilter, page, perPage, orderDirection, offset, limit]
   );
 
-  const { workspacesWithFaveProp, favoriteWorkspaces, nonFavoriteWorkspaces } = useMemo(() => {
+  useResetPageHelper({
+    setPage,
+    offset,
+    totalCount: filteredWorkspaces.length
+  });
+
+  const { workspacesWithFaveProp } = useMemo(() => {
     const workspacesWithFav = filteredWorkspaces
       .map((w): Workspace & { isFavorite: boolean } => ({
         ...w,
         isFavorite: Boolean(projectFavorites?.includes(w.id))
       }))
-      .sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite));
-
-    const favWorkspaces = workspacesWithFav.filter((w) => w.isFavorite);
-    const nonFavWorkspaces = workspacesWithFav.filter((w) => !w.isFavorite);
+      .sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite))
+      .slice(offset, limit * page);
 
     return {
-      workspacesWithFaveProp: workspacesWithFav,
-      favoriteWorkspaces: favWorkspaces,
-      nonFavoriteWorkspaces: nonFavWorkspaces
+      workspacesWithFaveProp: workspacesWithFav
     };
   }, [filteredWorkspaces, projectFavorites]);
 
@@ -566,7 +604,7 @@ const OrganizationPage = () => {
         {isFavorite ? (
           <FontAwesomeIcon
             icon={faSolidStar}
-            className="text-sm text-mineshaft-300 hover:text-mineshaft-400"
+            className="text-sm text-yellow-600 hover:text-mineshaft-400"
             onClick={(e) => {
               e.stopPropagation();
               removeProjectFromFavorites(workspace.id);
@@ -623,11 +661,10 @@ const OrganizationPage = () => {
       key={workspace.id}
       className={`min-w-72 group grid h-14 cursor-pointer grid-cols-6 border-t border-l border-r border-mineshaft-600 bg-mineshaft-800 px-6 hover:bg-mineshaft-700 ${
         index === 0 && "rounded-t-md"
-      } ${index === filteredWorkspaces.length - 1 && "rounded-b-md border-b"}`}
+      }`}
     >
       <div className="flex items-center sm:col-span-3 lg:col-span-4">
-        <FontAwesomeIcon icon={faFileShield} className="text-sm text-primary/70" />
-        <div className="ml-5 truncate text-sm text-mineshaft-100">{workspace.name}</div>
+        <div className="truncate text-sm text-mineshaft-100">{workspace.name}</div>
       </div>
       <div className="flex items-center justify-end sm:col-span-3 lg:col-span-2">
         <div className="text-center text-sm text-mineshaft-300">
@@ -636,7 +673,7 @@ const OrganizationPage = () => {
         {isFavorite ? (
           <FontAwesomeIcon
             icon={faSolidStar}
-            className="ml-6 text-sm text-mineshaft-300 hover:text-mineshaft-400"
+            className="ml-6 text-sm text-yellow-600 hover:text-mineshaft-400"
             onClick={(e) => {
               e.stopPropagation();
               removeProjectFromFavorites(workspace.id);
@@ -656,63 +693,75 @@ const OrganizationPage = () => {
     </div>
   );
 
-  const projectsGridView = (
-    <>
-      {favoriteWorkspaces.length > 0 && (
-        <>
-          <p className="mt-6 text-xl font-semibold text-white">Favorites</p>
-          <div
-            className={`b grid w-full grid-cols-1 gap-4 ${
-              nonFavoriteWorkspaces.length > 0 && "border-b border-mineshaft-600"
-            } py-4 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4`}
-          >
-            {favoriteWorkspaces.map((workspace) => renderProjectGridItem(workspace, true))}
-          </div>
-        </>
-      )}
-      <div className="mt-4 grid w-full grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-        {isProjectViewLoading &&
-          Array.apply(0, Array(3)).map((_x, i) => (
-            <div
-              key={`workspace-cards-loading-${i + 1}`}
-              className="min-w-72 flex h-40 flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
-            >
-              <div className="mt-0 text-lg text-mineshaft-100">
-                <Skeleton className="w-3/4 bg-mineshaft-600" />
-              </div>
-              <div className="mt-0 pb-6 text-sm text-mineshaft-300">
-                <Skeleton className="w-1/2 bg-mineshaft-600" />
-              </div>
-              <div className="flex justify-end">
-                <Skeleton className="w-1/2 bg-mineshaft-600" />
-              </div>
-            </div>
-          ))}
-        {!isProjectViewLoading &&
-          nonFavoriteWorkspaces.map((workspace) => renderProjectGridItem(workspace, false))}
-      </div>
-    </>
-  );
+  let projectsComponents: ReactNode;
 
-  const projectsListView = (
-    <div className="mt-4 w-full rounded-md">
-      {isProjectViewLoading &&
-        Array.apply(0, Array(3)).map((_x, i) => (
-          <div
-            key={`workspace-cards-loading-${i + 1}`}
-            className={`min-w-72 group flex h-12 cursor-pointer flex-row items-center justify-between border border-mineshaft-600 bg-mineshaft-800 px-6 hover:bg-mineshaft-700 ${
-              i === 0 && "rounded-t-md"
-            } ${i === 2 && "rounded-b-md border-b"}`}
-          >
-            <Skeleton className="w-full bg-mineshaft-600" />
+  if (filteredWorkspaces.length || isProjectViewLoading) {
+    switch (projectsViewMode) {
+      case ProjectsViewMode.GRID:
+        projectsComponents = (
+          <div className="mt-4 grid w-full grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            {isProjectViewLoading &&
+              Array.apply(0, Array(3)).map((_x, i) => (
+                <div
+                  key={`workspace-cards-loading-${i + 1}`}
+                  className="min-w-72 flex h-40 flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
+                >
+                  <div className="mt-0 text-lg text-mineshaft-100">
+                    <Skeleton className="w-3/4 bg-mineshaft-600" />
+                  </div>
+                  <div className="mt-0 pb-6 text-sm text-mineshaft-300">
+                    <Skeleton className="w-1/2 bg-mineshaft-600" />
+                  </div>
+                  <div className="flex justify-end">
+                    <Skeleton className="w-1/2 bg-mineshaft-600" />
+                  </div>
+                </div>
+              ))}
+            {!isProjectViewLoading && (
+              <>
+                {workspacesWithFaveProp.map((workspace) =>
+                  renderProjectGridItem(workspace, workspace.isFavorite)
+                )}
+              </>
+            )}
           </div>
-        ))}
-      {!isProjectViewLoading &&
-        workspacesWithFaveProp.map((workspace, ind) =>
-          renderProjectListItem(workspace, workspace.isFavorite, ind)
-        )}
-    </div>
-  );
+        );
+
+        break;
+      case ProjectsViewMode.LIST:
+      default:
+        projectsComponents = (
+          <div className="mt-4 w-full rounded-md">
+            {isProjectViewLoading &&
+              Array.apply(0, Array(3)).map((_x, i) => (
+                <div
+                  key={`workspace-cards-loading-${i + 1}`}
+                  className={`min-w-72 group flex h-12 cursor-pointer flex-row items-center justify-between border border-mineshaft-600 bg-mineshaft-800 px-6 hover:bg-mineshaft-700 ${
+                    i === 0 && "rounded-t-md"
+                  } ${i === 2 && "rounded-b-md border-b"}`}
+                >
+                  <Skeleton className="w-full bg-mineshaft-600" />
+                </div>
+              ))}
+            {!isProjectViewLoading &&
+              workspacesWithFaveProp.map((workspace, ind) =>
+                renderProjectListItem(workspace, workspace.isFavorite, ind)
+              )}
+          </div>
+        );
+        break;
+    }
+  } else if (orgWorkspaces.length) {
+    projectsComponents = (
+      <div className="mt-4 w-full rounded-md border border-mineshaft-700 bg-mineshaft-800 px-4 py-6 text-base text-mineshaft-300">
+        <FontAwesomeIcon
+          icon={faSearch}
+          className="mb-4 mt-2 w-full text-center text-5xl text-mineshaft-400"
+        />
+        <div className="text-center font-light">No projects match search...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col justify-start bg-bunker-800 md:h-screen">
@@ -754,6 +803,24 @@ const OrganizationPage = () => {
             onChange={(e) => setSearchFilter(e.target.value)}
             leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
           />
+          <div className="ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
+            <Tooltip content="Toggle Sort Direction">
+              <IconButton
+                className="min-w-[2.4rem] border-none hover:bg-mineshaft-600"
+                ariaLabel={`Sort ${
+                  orderDirection === OrderByDirection.ASC ? "descending" : "ascending"
+                }`}
+                variant="plain"
+                size="xs"
+                colorSchema="secondary"
+                onClick={toggleOrderDirection}
+              >
+                <FontAwesomeIcon
+                  icon={orderDirection === OrderByDirection.ASC ? faArrowDownAZ : faArrowUpZA}
+                />
+              </IconButton>
+            </Tooltip>
+          </div>
           <div className="ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
             <IconButton
               variant="outline_bg"
@@ -804,9 +871,24 @@ const OrganizationPage = () => {
             )}
           </OrgPermissionCan>
         </div>
-        {projectsViewMode === ProjectsViewMode.LIST ? projectsListView : projectsGridView}
+        {projectsComponents}
+        {!isProjectViewLoading && Boolean(filteredWorkspaces.length) && (
+          <Pagination
+            className={
+              projectsViewMode === ProjectsViewMode.GRID
+                ? "col-span-full !justify-start border-transparent bg-transparent pl-2"
+                : "rounded-b-md border border-mineshaft-600"
+            }
+            perPage={perPage}
+            perPageList={[12, 24, 48, 96]}
+            count={filteredWorkspaces.length}
+            page={page}
+            onChangePage={setPage}
+            onChangePerPage={setPerPage}
+          />
+        )}
         {isWorkspaceEmpty && (
-          <div className="w-full rounded-md border border-mineshaft-700 bg-mineshaft-800 px-4 py-6 text-base text-mineshaft-300">
+          <div className="mt-4 w-full rounded-md border border-mineshaft-700 bg-mineshaft-800 px-4 py-6 text-base text-mineshaft-300">
             <FontAwesomeIcon
               icon={faFolderOpen}
               className="mb-4 mt-2 w-full text-center text-5xl text-mineshaft-400"

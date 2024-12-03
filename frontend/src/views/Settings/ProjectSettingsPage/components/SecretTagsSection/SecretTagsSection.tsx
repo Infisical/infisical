@@ -19,7 +19,6 @@ import { SecretTagsTable } from "./SecretTagsTable";
 type DeleteModalData = { name: string; id: string };
 
 export const SecretTagsSection = (): JSX.Element => {
-  
   const { popUp, handlePopUpToggle, handlePopUpClose, handlePopUpOpen } = usePopUp([
     "CreateSecretTag",
     "deleteTagConfirmation"
@@ -65,7 +64,7 @@ export const SecretTagsSection = (): JSX.Element => {
               }}
               isDisabled={!isAllowed}
             >
-              Create tag
+              Create Tag
             </Button>
           )}
         </ProjectPermissionCan>

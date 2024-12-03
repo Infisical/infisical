@@ -10,7 +10,6 @@ import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
-import { faStar } from "@fortawesome/free-regular-svg-icons";
 import {
   faAngleDown,
   faArrowLeft,
@@ -22,15 +21,11 @@ import {
   faInfo,
   faMobile,
   faPlus,
-  faQuestion,
-  faStar as faSolidStar
+  faQuestion
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
-import { twMerge } from "tailwind-merge";
 
-import { createNotification } from "@app/components/notifications";
-import { OrgPermissionCan } from "@app/components/permissions";
 import { tempLocalStorage } from "@app/components/utilities/checks/tempLocalStorage";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import {
@@ -39,20 +34,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   Menu,
-  MenuItem,
-  Select,
-  SelectItem,
-  UpgradePlanModal
+  MenuItem
 } from "@app/components/v2";
-import { NewProjectModal } from "@app/components/v2/projects/NewProjectModal";
-import {
-  OrgPermissionActions,
-  OrgPermissionSubjects,
-  useOrganization,
-  useSubscription,
-  useUser,
-  useWorkspace
-} from "@app/context";
+import { useOrganization, useSubscription, useUser, useWorkspace } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
 import {
   useGetAccessRequestsCount,
@@ -62,11 +46,9 @@ import {
   useSelectOrganization
 } from "@app/hooks/api";
 import { MfaMethod } from "@app/hooks/api/auth/types";
-import { Workspace } from "@app/hooks/api/types";
-import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
-import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
 import { AuthMethod } from "@app/hooks/api/users/types";
 import { InsecureConnectionBanner } from "@app/layouts/AppLayout/components/InsecureConnectionBanner";
+import { ProjectSelect } from "@app/layouts/AppLayout/components/ProjectSelect";
 import { navigateUserToOrg } from "@app/views/Login/Login.utils";
 import { Mfa } from "@app/views/Login/Mfa";
 import { CreateOrgModal } from "@app/views/Org/components";
@@ -108,22 +90,9 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const { workspaces, currentWorkspace } = useWorkspace();
   const { orgs, currentOrg } = useOrganization();
 
-  const { data: projectFavorites } = useGetUserProjectFavorites(currentOrg?.id!);
-  const { mutateAsync: updateUserProjectFavorites } = useUpdateUserProjectFavorites();
   const [shouldShowMfa, toggleShowMfa] = useToggle(false);
   const [requiredMfaMethod, setRequiredMfaMethod] = useState(MfaMethod.EMAIL);
   const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
-
-  const workspacesWithFaveProp = useMemo(
-    () =>
-      workspaces
-        .map((w): Workspace & { isFavorite: boolean } => ({
-          ...w,
-          isFavorite: Boolean(projectFavorites?.includes(w.id))
-        }))
-        .sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite)),
-    [workspaces, projectFavorites]
-  );
 
   const { user } = useUser();
   const { subscription } = useSubscription();
@@ -137,17 +106,9 @@ export const AppLayout = ({ children }: LayoutProps) => {
     return (secretApprovalReqCount?.open || 0) + (accessApprovalRequestCount?.pendingCount || 0);
   }, [secretApprovalReqCount, accessApprovalRequestCount]);
 
-  const isAddingProjectsAllowed = subscription?.workspaceLimit
-    ? subscription.workspacesUsed < subscription.workspaceLimit
-    : true;
-
   const infisicalPlatformVersion = process.env.NEXT_PUBLIC_INFISICAL_PLATFORM_VERSION;
 
-  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
-    "addNewWs",
-    "upgradePlan",
-    "createOrg"
-  ] as const);
+  const { popUp, handlePopUpToggle } = usePopUp(["createOrg"] as const);
 
   const { t } = useTranslation();
 
@@ -229,38 +190,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
     };
     putUserInOrg();
   }, [router.query.id]);
-
-  const addProjectToFavorites = async (projectId: string) => {
-    try {
-      if (currentOrg?.id) {
-        await updateUserProjectFavorites({
-          orgId: currentOrg?.id,
-          projectFavorites: [...(projectFavorites || []), projectId]
-        });
-      }
-    } catch (err) {
-      createNotification({
-        text: "Failed to add project to favorites.",
-        type: "error"
-      });
-    }
-  };
-
-  const removeProjectFromFavorites = async (projectId: string) => {
-    try {
-      if (currentOrg?.id) {
-        await updateUserProjectFavorites({
-          orgId: currentOrg?.id,
-          projectFavorites: [...(projectFavorites || []).filter((entry) => entry !== projectId)]
-        });
-      }
-    } catch (err) {
-      createNotification({
-        text: "Failed to remove project from favorites.",
-        type: "error"
-      });
-    }
-  };
 
   if (shouldShowMfa) {
     return (
@@ -448,97 +377,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                 )}
                 {!router.asPath.includes("org") &&
                   (!router.asPath.includes("personal") && currentWorkspace ? (
-                    <div className="mt-5 mb-4 w-full p-3">
-                      <p className="ml-1.5 mb-1 text-xs font-semibold uppercase text-gray-400">
-                        Project
-                      </p>
-                      <Select
-                        defaultValue={currentWorkspace?.id}
-                        value={currentWorkspace?.id}
-                        className="w-full bg-mineshaft-600 py-2.5 font-medium [&>*:first-child]:truncate"
-                        onValueChange={(value) => {
-                          localStorage.setItem("projectData.id", value);
-                          // this is not using react query because react query in overview is throwing error when envs are not exact same count
-                          // to reproduce change this back to router.push and switch between two projects with different env count
-                          // look into this on dashboard revamp
-                          window.location.assign(`/project/${value}/secrets/overview`);
-                        }}
-                        position="popper"
-                        dropdownContainerClassName="text-bunker-200 bg-mineshaft-800 border border-mineshaft-600 z-50 max-h-96 border-gray-700"
-                      >
-                        <div className="no-scrollbar::-webkit-scrollbar h-full no-scrollbar">
-                          {workspacesWithFaveProp
-                            .filter((ws) => ws.orgId === currentOrg?.id)
-                            .map(({ id, name, isFavorite }) => (
-                              <div
-                                className={twMerge(
-                                  "mb-1 grid grid-cols-7 rounded-md hover:bg-mineshaft-500",
-                                  id === currentWorkspace?.id && "bg-mineshaft-500"
-                                )}
-                                key={id}
-                              >
-                                <div className="col-span-6">
-                                  <SelectItem
-                                    key={`ws-layout-list-${id}`}
-                                    value={id}
-                                    className="transition-none data-[highlighted]:bg-mineshaft-500"
-                                  >
-                                    {name}
-                                  </SelectItem>
-                                </div>
-                                <div className="col-span-1 flex items-center">
-                                  {isFavorite ? (
-                                    <FontAwesomeIcon
-                                      icon={faSolidStar}
-                                      className="text-sm text-mineshaft-300 hover:text-mineshaft-400"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        removeProjectFromFavorites(id);
-                                      }}
-                                    />
-                                  ) : (
-                                    <FontAwesomeIcon
-                                      icon={faStar}
-                                      className="text-sm text-mineshaft-400 hover:text-mineshaft-300"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        addProjectToFavorites(id);
-                                      }}
-                                    />
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                        </div>
-                        <hr className="mt-1 mb-1 h-px border-0 bg-gray-700" />
-                        <div className="w-full">
-                          <OrgPermissionCan
-                            I={OrgPermissionActions.Create}
-                            a={OrgPermissionSubjects.Workspace}
-                          >
-                            {(isAllowed) => (
-                              <Button
-                                className="w-full bg-mineshaft-700 py-2 text-bunker-200"
-                                colorSchema="primary"
-                                variant="outline_bg"
-                                size="sm"
-                                isDisabled={!isAllowed}
-                                onClick={() => {
-                                  if (isAddingProjectsAllowed) {
-                                    handlePopUpOpen("addNewWs");
-                                  } else {
-                                    handlePopUpOpen("upgradePlan");
-                                  }
-                                }}
-                                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                              >
-                                Add Project
-                              </Button>
-                            )}
-                          </OrgPermissionCan>
-                        </div>
-                      </Select>
-                    </div>
+                    <ProjectSelect />
                   ) : (
                     <Link href={`/org/${currentOrg?.id}/overview`}>
                       <div className="my-6 flex cursor-default items-center justify-center pr-2 text-sm text-mineshaft-300 hover:text-mineshaft-100">
@@ -816,15 +655,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
               </div>
             </nav>
           </aside>
-          <NewProjectModal
-            isOpen={popUp.addNewWs.isOpen}
-            onOpenChange={(isOpen) => handlePopUpToggle("addNewWs", isOpen)}
-          />
-          <UpgradePlanModal
-            isOpen={popUp.upgradePlan.isOpen}
-            onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-            text="You have exceeded the number of projects allowed on the free plan."
-          />
           <CreateOrgModal
             isOpen={popUp?.createOrg?.isOpen}
             onClose={() => handlePopUpToggle("createOrg", false)}
