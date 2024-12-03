@@ -32,7 +32,10 @@
     "thumbsRating": true
   },
   "api": {
-    "baseUrl": ["https://app.infisical.com", "http://localhost:8080"]
+    "baseUrl": [
+      "https://app.infisical.com",
+      "http://localhost:8080"
+    ]
   },
   "topbarLinks": [
     {
@@ -73,7 +76,9 @@
         "documentation/getting-started/introduction",
         {
           "group": "Quickstart",
-          "pages": ["documentation/guides/local-development"]
+          "pages": [
+            "documentation/guides/local-development"
+          ]
         },
         {
           "group": "Guides",
@@ -127,7 +132,8 @@
           "pages": [
             "documentation/platform/kms-configuration/overview",
             "documentation/platform/kms-configuration/aws-kms",
-            "documentation/platform/kms-configuration/aws-hsm"
+            "documentation/platform/kms-configuration/aws-hsm",
+            "documentation/platform/kms-configuration/gcp-kms"
           ]
         },
         {
@@ -461,11 +467,15 @@
     },
     {
       "group": "Build Tool Integrations",
-      "pages": ["integrations/build-tools/gradle"]
+      "pages": [
+        "integrations/build-tools/gradle"
+      ]
     },
     {
       "group": "",
-      "pages": ["sdks/overview"]
+      "pages": [
+        "sdks/overview"
+      ]
     },
     {
       "group": "SDK's",
@@ -485,7 +495,9 @@
         "api-reference/overview/authentication",
         {
           "group": "Examples",
-          "pages": ["api-reference/overview/examples/integration"]
+          "pages": [
+            "api-reference/overview/examples/integration"
+          ]
         }
       ]
     },
@@ -760,11 +772,15 @@
         },
         {
           "group": "Service Tokens",
-          "pages": ["api-reference/endpoints/service-tokens/get"]
+          "pages": [
+            "api-reference/endpoints/service-tokens/get"
+          ]
         },
         {
           "group": "Audit Logs",
-          "pages": ["api-reference/endpoints/audit-logs/export-audit-log"]
+          "pages": [
+            "api-reference/endpoints/audit-logs/export-audit-log"
+          ]
         }
       ]
     },
@@ -863,7 +879,9 @@
     },
     {
       "group": "",
-      "pages": ["changelog/overview"]
+      "pages": [
+        "changelog/overview"
+      ]
     },
     {
       "group": "Contributing",
@@ -887,7 +905,9 @@
         },
         {
           "group": "Contributing to SDK",
-          "pages": ["contributing/sdk/developing"]
+          "pages": [
+            "contributing/sdk/developing"
+          ]
         }
       ]
     }
@@ -911,13 +931,22 @@
       {
         "title": "PRODUCT",
         "links": [
-          { "label": "Secret Management", "url": "https://infisical.com/" },
-          { "label": "Secret Scanning", "url": "https://infisical.com/radar" },
+          {
+            "label": "Secret Management",
+            "url": "https://infisical.com/"
+          },
+          {
+            "label": "Secret Scanning",
+            "url": "https://infisical.com/radar"
+          },
           {
             "label": "Share Secrets",
             "url": "https://app.infisical.com/share-secret"
           },
-          { "label": "Pricing", "url": "https://infisical.com/pricing" },
+          {
+            "label": "Pricing",
+            "url": "https://infisical.com/pricing"
+          },
           {
             "label": "Security",
             "url": "https://infisical.com/docs/internals/security"
