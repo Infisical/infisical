@@ -311,6 +311,15 @@ import {
   TSlackIntegrations,
   TSlackIntegrationsInsert,
   TSlackIntegrationsUpdate,
+  TSshCertificateAuthorities,
+  TSshCertificateAuthoritiesInsert,
+  TSshCertificateAuthoritiesUpdate,
+  TSshCertificateAuthoritySecrets,
+  TSshCertificateAuthoritySecretsInsert,
+  TSshCertificateAuthoritySecretsUpdate,
+  TSshCertificateTemplates,
+  TSshCertificateTemplatesInsert,
+  TSshCertificateTemplatesUpdate,
   TSuperAdmin,
   TSuperAdminInsert,
   TSuperAdminUpdate,
@@ -372,6 +381,21 @@ declare module "knex/types/tables" {
   interface Tables {
     [TableName.Users]: KnexOriginal.CompositeTableType<TUsers, TUsersInsert, TUsersUpdate>;
     [TableName.Groups]: KnexOriginal.CompositeTableType<TGroups, TGroupsInsert, TGroupsUpdate>;
+    [TableName.SshCertificateAuthority]: KnexOriginal.CompositeTableType<
+      TSshCertificateAuthorities,
+      TSshCertificateAuthoritiesInsert,
+      TSshCertificateAuthoritiesUpdate
+    >;
+    [TableName.SshCertificateAuthoritySecret]: KnexOriginal.CompositeTableType<
+      TSshCertificateAuthoritySecrets,
+      TSshCertificateAuthoritySecretsInsert,
+      TSshCertificateAuthoritySecretsUpdate
+    >;
+    [TableName.SshCertificateTemplate]: KnexOriginal.CompositeTableType<
+      TSshCertificateTemplates,
+      TSshCertificateTemplatesInsert,
+      TSshCertificateTemplatesUpdate
+    >;
     [TableName.CertificateAuthority]: KnexOriginal.CompositeTableType<
       TCertificateAuthorities,
       TCertificateAuthoritiesInsert,

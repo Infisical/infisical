@@ -75,6 +75,8 @@ export type TListProjectMembershipsByOrgMembershipIdDTO = {
   orgMembershipId: string;
 } & TOrgPermission;
 
+export type TListOrgSshCasDTO = TOrgPermission;
+
 export enum OrgAuthMethod {
   OIDC = "oidc",
   SAML = "saml"

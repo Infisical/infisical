@@ -11,6 +11,7 @@ import {
   UsersSchema
 } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
+import { sanitizedSshCa } from "@app/ee/services/ssh/ssh-certificate-authority-schema";
 import { AUDIT_LOGS, ORGANIZATIONS } from "@app/lib/api-docs";
 import { getLastMidnightDateISO } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -402,6 +403,36 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       });
 
       return { groups };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:organizationId/ssh-cas",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        organizationId: z.string().trim().describe(ORGANIZATIONS.LIST_SSH_CAS.organizationId)
+      }),
+      response: {
+        200: z.object({
+          cas: z.array(sanitizedSshCa)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const cas = await server.services.org.listOrgSshCas({
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        orgId: req.params.organizationId
+      });
+
+      return { cas };
     }
   });
 };

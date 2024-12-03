@@ -1,0 +1,59 @@
+import { Knex } from "knex";
+
+import { TableName } from "../schemas";
+import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
+
+export async function up(knex: Knex): Promise<void> {
+  if (!(await knex.schema.hasTable(TableName.SshCertificateAuthority))) {
+    await knex.schema.createTable(TableName.SshCertificateAuthority, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.timestamps(true, true, true);
+      t.uuid("orgId").notNullable();
+      t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
+      t.string("status").notNullable(); // active / disabled
+      t.string("friendlyName").notNullable();
+      t.string("keyAlgorithm").notNullable();
+    });
+    await createOnUpdateTrigger(knex, TableName.SshCertificateAuthority);
+  }
+
+  if (!(await knex.schema.hasTable(TableName.SshCertificateAuthoritySecret))) {
+    await knex.schema.createTable(TableName.SshCertificateAuthoritySecret, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.timestamps(true, true, true);
+      t.uuid("sshCaId").notNullable().unique();
+      t.foreign("sshCaId").references("id").inTable(TableName.SshCertificateAuthority).onDelete("CASCADE");
+      t.binary("encryptedPrivateKey").notNullable();
+    });
+    await createOnUpdateTrigger(knex, TableName.SshCertificateAuthoritySecret);
+  }
+
+  if (!(await knex.schema.hasTable(TableName.SshCertificateTemplate))) {
+    await knex.schema.createTable(TableName.SshCertificateTemplate, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.timestamps(true, true, true);
+      t.uuid("sshCaId").notNullable();
+      t.foreign("sshCaId").references("id").inTable(TableName.SshCertificateAuthority).onDelete("CASCADE");
+      t.string("name").notNullable(); // note: how do we handle this being unique? across orgs?
+      t.string("ttl").notNullable();
+      t.string("maxTTL").notNullable();
+      t.specificType("allowedUsers", "text[]").notNullable();
+      t.specificType("allowedHosts", "text[]").notNullable();
+      t.boolean("allowUserCertificates").notNullable();
+      t.boolean("allowHostCertificates").notNullable();
+      t.boolean("allowCustomKeyIds").notNullable();
+    });
+    await createOnUpdateTrigger(knex, TableName.SshCertificateTemplate);
+  }
+}
+
+export async function down(knex: Knex): Promise<void> {
+  await knex.schema.dropTableIfExists(TableName.SshCertificateTemplate);
+  await dropOnUpdateTrigger(knex, TableName.SshCertificateTemplate);
+
+  await knex.schema.dropTableIfExists(TableName.SshCertificateAuthoritySecret);
+  await dropOnUpdateTrigger(knex, TableName.SshCertificateAuthoritySecret);
+
+  await knex.schema.dropTableIfExists(TableName.SshCertificateAuthority);
+  await dropOnUpdateTrigger(knex, TableName.SshCertificateAuthority);
+}

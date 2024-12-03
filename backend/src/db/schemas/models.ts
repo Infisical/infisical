@@ -2,6 +2,9 @@ import { z } from "zod";
 
 export enum TableName {
   Users = "users",
+  SshCertificateAuthority = "ssh_certificate_authorities",
+  SshCertificateAuthoritySecret = "ssh_certificate_authority_secrets",
+  SshCertificateTemplate = "ssh_certificate_templates",
   CertificateAuthority = "certificate_authorities",
   CertificateTemplateEstConfig = "certificate_template_est_configs",
   CertificateAuthorityCert = "certificate_authority_certs",

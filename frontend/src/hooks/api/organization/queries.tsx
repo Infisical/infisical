@@ -4,6 +4,7 @@ import { apiRequest } from "@app/config/request";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 
 import { TGroupOrgMembership } from "../groups/types";
+import { TSshCertificateAuthority } from "../ssh-ca/types";
 import { IntegrationAuth } from "../types";
 import {
   BillingDetails,
@@ -41,7 +42,8 @@ export const organizationKeys = {
   }: TListOrgIdentitiesDTO) =>
     [...organizationKeys.getOrgIdentityMemberships(orgId), params] as const,
   getOrgGroups: (orgId: string) => [{ orgId }, "organization-groups"] as const,
-  getOrgIntegrationAuths: (orgId: string) => [{ orgId }, "integration-auths"] as const
+  getOrgIntegrationAuths: (orgId: string) => [{ orgId }, "integration-auths"] as const,
+  getOrgSshCas: ({ orgId }: { orgId: string }) => [{ orgId }, "org-ssh-cas"] as const
 };
 
 export const fetchOrganizations = async () => {
@@ -493,5 +495,20 @@ export const useGetOrgIntegrationAuths = <TData = IntegrationAuth[],>(
     },
     enabled: Boolean(organizationId),
     select
+  });
+};
+
+export const useListOrgSshCas = ({ orgId }: { orgId: string }) => {
+  return useQuery({
+    queryKey: organizationKeys.getOrgSshCas({ orgId }),
+    queryFn: async () => {
+      const {
+        data: { cas }
+      } = await apiRequest.get<{ cas: TSshCertificateAuthority[] }>(
+        `/api/v1/organization/${orgId}/ssh-cas`
+      );
+      return cas;
+    },
+    enabled: Boolean(orgId)
   });
 };

@@ -75,6 +75,11 @@ import { snapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-da
 import { snapshotFolderDALFactory } from "@app/ee/services/secret-snapshot/snapshot-folder-dal";
 import { snapshotSecretDALFactory } from "@app/ee/services/secret-snapshot/snapshot-secret-dal";
 import { snapshotSecretV2DALFactory } from "@app/ee/services/secret-snapshot/snapshot-secret-v2-dal";
+import { sshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-dal";
+import { sshCertificateAuthoritySecretDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-secret-dal";
+import { sshCertificateAuthorityServiceFactory } from "@app/ee/services/ssh/ssh-certificate-authority-service";
+import { sshCertificateTemplateDALFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-dal";
+import { sshCertificateTemplateServiceFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-service";
 import { trustedIpDALFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal";
 import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
@@ -342,6 +347,10 @@ export const registerRoutes = async (
   const dynamicSecretDAL = dynamicSecretDALFactory(db);
   const dynamicSecretLeaseDAL = dynamicSecretLeaseDALFactory(db);
 
+  const sshCertificateAuthorityDAL = sshCertificateAuthorityDALFactory(db);
+  const sshCertificateAuthoritySecretDAL = sshCertificateAuthoritySecretDALFactory(db);
+  const sshCertificateTemplateDAL = sshCertificateTemplateDALFactory(db);
+
   const kmsDAL = kmskeyDALFactory(db);
   const internalKmsDAL = internalKmsDALFactory(db);
   const externalKmsDAL = externalKmsDALFactory(db);
@@ -554,7 +563,8 @@ export const registerRoutes = async (
     groupDAL,
     orgBotDAL,
     oidcConfigDAL,
-    projectBotService
+    projectBotService,
+    sshCertificateAuthorityDAL
   });
   const signupService = authSignupServiceFactory({
     tokenService,
@@ -702,6 +712,20 @@ export const registerRoutes = async (
     queueService
   });
 
+  const sshCertificateAuthorityService = sshCertificateAuthorityServiceFactory({
+    sshCertificateAuthorityDAL,
+    sshCertificateAuthoritySecretDAL,
+    sshCertificateTemplateDAL,
+    kmsService,
+    permissionService
+  });
+
+  const sshCertificateTemplateService = sshCertificateTemplateServiceFactory({
+    sshCertificateTemplateDAL,
+    sshCertificateAuthorityDAL,
+    permissionService
+  });
+
   const certificateAuthorityService = certificateAuthorityServiceFactory({
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
@@ -784,6 +808,7 @@ export const registerRoutes = async (
     projectRoleDAL,
     folderDAL,
     licenseService,
+    sshCertificateAuthorityDAL,
     certificateAuthorityDAL,
     certificateDAL,
     pkiAlertDAL,
@@ -1354,6 +1379,8 @@ export const registerRoutes = async (
     auditLog: auditLogService,
     auditLogStream: auditLogStreamService,
     certificate: certificateService,
+    sshCertificateAuthority: sshCertificateAuthorityService,
+    sshCertificateTemplate: sshCertificateTemplateService,
     certificateAuthority: certificateAuthorityService,
     certificateTemplate: certificateTemplateService,
     certificateAuthorityCrl: certificateAuthorityCrlService,
