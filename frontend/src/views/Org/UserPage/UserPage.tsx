@@ -123,7 +123,7 @@ export const UserPage = withPermission(
             <div className="mb-4 flex items-center justify-between">
               <p className="text-3xl font-semibold text-white">
                 {membership.user.firstName || membership.user.lastName
-                  ? `${membership.user.firstName} ${membership.user.lastName}`
+                  ? `${membership.user.firstName} ${membership.user.lastName ?? ""}`.trim()
                   : "-"}
               </p>
               {userId !== membership.user.id && (

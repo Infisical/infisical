@@ -296,7 +296,8 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
                     status,
                     isActive
                   }) => {
-                    const name = u && u.firstName ? `${u.firstName} ${u.lastName}` : "-";
+                    const name =
+                      u && u.firstName ? `${u.firstName} ${u.lastName ?? ""}`.trim() : "-";
                     const email = u?.email || inviteEmail;
                     const username = u?.username ?? inviteEmail ?? "-";
                     return (
