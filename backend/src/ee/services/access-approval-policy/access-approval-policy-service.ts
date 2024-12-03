@@ -189,7 +189,7 @@ export const accessApprovalPolicyServiceFactory = ({
     );
     // ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
 
-    const accessApprovalPolicies = await accessApprovalPolicyDAL.find({ projectId: project.id });
+    const accessApprovalPolicies = await accessApprovalPolicyDAL.find({ projectId: project.id, disabled: false });
     return accessApprovalPolicies;
   };
 
@@ -203,7 +203,8 @@ export const accessApprovalPolicyServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     approvals,
-    enforcementLevel
+    enforcementLevel,
+    disabled
   }: TUpdateAccessApprovalPolicy) => {
     const groupApprovers = approvers
       .filter((approver) => approver.type === ApproverType.Group)
@@ -248,7 +249,8 @@ export const accessApprovalPolicyServiceFactory = ({
           approvals,
           secretPath,
           name,
-          enforcementLevel
+          enforcementLevel,
+          disabled
         },
         tx
       );

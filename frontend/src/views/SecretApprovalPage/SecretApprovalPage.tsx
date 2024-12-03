@@ -23,11 +23,14 @@ export const SecretApprovalPage = () => {
   const { currentWorkspace } = useWorkspace();
   const projectId = currentWorkspace?.id || "";
   const projectSlug = currentWorkspace?.slug || "";
-  const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({ workspaceId: projectId });
+  const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({
+    workspaceId: projectId
+  });
   const { data: accessApprovalRequestCount } = useGetAccessRequestsCount({ projectSlug });
-  const defaultTab = (accessApprovalRequestCount?.pendingCount || 0) > (secretApprovalReqCount?.open || 0)
-    ? TabSection.ResourceApprovalRequests
-    : TabSection.SecretApprovalRequests;
+  const defaultTab =
+    (accessApprovalRequestCount?.pendingCount || 0) > (secretApprovalReqCount?.open || 0)
+      ? TabSection.ResourceApprovalRequests
+      : TabSection.SecretApprovalRequests;
 
   return (
     <div className="container mx-auto h-full w-full max-w-7xl bg-bunker-800 px-6 text-white">
@@ -55,11 +58,15 @@ export const SecretApprovalPage = () => {
         <TabList>
           <Tab value={TabSection.SecretApprovalRequests}>
             Secret Requests
-            {Boolean(secretApprovalReqCount?.open) && (<Badge className="ml-2">{secretApprovalReqCount?.open}</Badge>)}
+            {Boolean(secretApprovalReqCount?.open) && (
+              <Badge className="ml-2">{secretApprovalReqCount?.open}</Badge>
+            )}
           </Tab>
           <Tab value={TabSection.ResourceApprovalRequests}>
             Access Requests
-            {Boolean(accessApprovalRequestCount?.pendingCount) && <Badge className="ml-2">{accessApprovalRequestCount?.pendingCount}</Badge>}
+            {Boolean(accessApprovalRequestCount?.pendingCount) && (
+              <Badge className="ml-2">{accessApprovalRequestCount?.pendingCount}</Badge>
+            )}
           </Tab>
           <Tab value={TabSection.Policies}>Policies</Tab>
         </TabList>

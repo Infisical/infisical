@@ -85,7 +85,8 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           .nullable()
           .transform((val) => (val ? removeTrailingSlash(val) : val))
           .transform((val) => (val === "" ? "/" : val)),
-        enforcementLevel: z.nativeEnum(EnforcementLevel).optional()
+        enforcementLevel: z.nativeEnum(EnforcementLevel).optional(),
+        disabled: z.boolean().optional()
       }),
       response: {
         200: z.object({

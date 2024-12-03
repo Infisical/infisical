@@ -166,7 +166,8 @@ export const secretApprovalPolicyServiceFactory = ({
     actorAuthMethod,
     approvals,
     secretPolicyId,
-    enforcementLevel
+    enforcementLevel,
+    disabled
   }: TUpdateSapDTO) => {
     const groupApprovers = approvers
       ?.filter((approver) => approver.type === ApproverType.Group)
@@ -211,7 +212,8 @@ export const secretApprovalPolicyServiceFactory = ({
           approvals,
           secretPath,
           name,
-          enforcementLevel
+          enforcementLevel,
+          disabled
         },
         tx
       );
@@ -321,7 +323,7 @@ export const secretApprovalPolicyServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
 
-    const sapPolicies = await secretApprovalPolicyDAL.find({ projectId });
+    const sapPolicies = await secretApprovalPolicyDAL.find({ projectId, disabled: false });
     return sapPolicies;
   };
 

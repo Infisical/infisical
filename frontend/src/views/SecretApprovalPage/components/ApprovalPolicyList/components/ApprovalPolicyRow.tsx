@@ -42,7 +42,7 @@ type Props = {
   members?: TWorkspaceUser[];
   groups?: TGroupMembership[];
   onEdit: () => void;
-  onDelete: () => void;
+  onDisable: () => void;
 };
 
 export const ApprovalPolicyRow = ({
@@ -50,7 +50,7 @@ export const ApprovalPolicyRow = ({
   members = [],
   groups = [],
   onEdit,
-  onDelete
+  onDisable
 }: Props) => {
   const labels = useMemo(() => {
     const usersInPolicy = policy.approvers
@@ -148,11 +148,11 @@ export const ApprovalPolicyRow = ({
                   )}
                   onClick={(e) => {
                     e.stopPropagation();
-                    onDelete();
+                    onDisable();
                   }}
                   disabled={!isAllowed}
                 >
-                  Delete Policy
+                  Disable Policy
                 </DropdownMenuItem>
               )}
             </ProjectPermissionCan>

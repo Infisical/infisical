@@ -38,11 +38,11 @@ import {
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
-  useDeleteAccessApprovalPolicy,
-  useDeleteSecretApprovalPolicy,
   useGetSecretApprovalPolicies,
   useGetWorkspaceUsers,
-  useListWorkspaceGroups
+  useListWorkspaceGroups,
+  useUpdateAccessApprovalPolicy,
+  useUpdateSecretApprovalPolicy
 } from "@app/hooks/api";
 import { useGetAccessApprovalPolicies } from "@app/hooks/api/accessApproval/queries";
 import { PolicyType } from "@app/hooks/api/policies/enums";
@@ -95,7 +95,7 @@ const useApprovalPolicies = (permission: TProjectPermission, currentWorkspace?: 
 export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
   const { handlePopUpToggle, handlePopUpOpen, handlePopUpClose, popUp } = usePopUp([
     "policyForm",
-    "deletePolicy",
+    "disablePolicy",
     "upgradePlan"
   ] as const);
   const { permission } = useProjectPermission();
@@ -116,35 +116,42 @@ export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
     return filterType ? policies.filter((policy) => policy.policyType === filterType) : policies;
   }, [policies, filterType]);
 
-  const { mutateAsync: deleteSecretApprovalPolicy } = useDeleteSecretApprovalPolicy();
-  const { mutateAsync: deleteAccessApprovalPolicy } = useDeleteAccessApprovalPolicy();
+  const { mutateAsync: updateSecretApprovalPolicy } = useUpdateSecretApprovalPolicy();
+  const { mutateAsync: updateAccessApprovalPolicy } = useUpdateAccessApprovalPolicy();
 
-  const handleDeletePolicy = async () => {
-    const { id, policyType } = popUp.deletePolicy.data as TAccessApprovalPolicy;
+  const handleDisablePolicy = async () => {
+    const { id, policyType, enforcementLevel, approvers } = popUp.disablePolicy
+      .data as TAccessApprovalPolicy;
     if (!currentWorkspace?.slug) return;
 
     try {
       if (policyType === PolicyType.ChangePolicy) {
-        await deleteSecretApprovalPolicy({
+        await updateSecretApprovalPolicy({
           workspaceId,
-          id
+          id,
+          disabled: true,
+          enforcementLevel,
+          approvers
         });
       } else {
-        await deleteAccessApprovalPolicy({
+        await updateAccessApprovalPolicy({
           projectSlug: currentWorkspace?.slug,
-          id
+          id,
+          disabled: true,
+          enforcementLevel,
+          approvers
         });
       }
       createNotification({
         type: "success",
-        text: "Successfully deleted policy"
+        text: "Successfully disabled policy"
       });
-      handlePopUpClose("deletePolicy");
+      handlePopUpClose("disablePolicy");
     } catch (err) {
       console.log(err);
       createNotification({
         type: "error",
-        text: "Failed to delete policy"
+        text: "Failed to disable policy"
       });
     }
   };
@@ -261,7 +268,7 @@ export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
                   members={members}
                   groups={groups}
                   onEdit={() => handlePopUpOpen("policyForm", policy)}
-                  onDelete={() => handlePopUpOpen("deletePolicy", policy)}
+                  onDisable={() => handlePopUpOpen("disablePolicy", policy)}
                 />
               ))}
           </TBody>
@@ -276,11 +283,13 @@ export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
         editValues={popUp.policyForm.data as TAccessApprovalPolicy}
       />
       <DeleteActionModal
-        isOpen={popUp.deletePolicy.isOpen}
-        deleteKey="remove"
-        title="Do you want to remove this policy?"
-        onChange={(isOpen) => handlePopUpToggle("deletePolicy", isOpen)}
-        onDeleteApproved={handleDeletePolicy}
+        isOpen={popUp.disablePolicy.isOpen}
+        deleteKey="disable"
+        title="Do you want to disable this policy?"
+        subTitle="The policy will no longer be enforced and hidden from the UI."
+        buttonText="Disable"
+        onChange={(isOpen) => handlePopUpToggle("disablePolicy", isOpen)}
+        onDeleteApproved={handleDisablePolicy}
       />
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}

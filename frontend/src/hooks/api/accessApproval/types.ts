@@ -18,15 +18,15 @@ export type TAccessApprovalPolicy = {
   approvers?: Approver[];
 };
 
-export enum ApproverType{
+export enum ApproverType {
   User = "user",
   Group = "group"
 }
 
-export type Approver ={
+export type Approver = {
   id: string;
   type: ApproverType;
-}
+};
 
 export type TAccessApprovalRequest = {
   id: string;
@@ -153,12 +153,7 @@ export type TUpdateAccessPolicyDTO = {
   environment?: string;
   approvals?: number;
   enforcementLevel?: EnforcementLevel;
-  // for invalidating list
-  projectSlug: string;
-};
-
-export type TDeleteSecretPolicyDTO = {
-  id: string;
+  disabled?: boolean;
   // for invalidating list
   projectSlug: string;
 };

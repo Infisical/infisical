@@ -15,7 +15,8 @@ export const AccessApprovalPoliciesSchema = z.object({
   envId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  enforcementLevel: z.string().default("hard")
+  enforcementLevel: z.string().default("hard"),
+  disabled: z.boolean().default(false)
 });
 
 export type TAccessApprovalPolicies = z.infer<typeof AccessApprovalPoliciesSchema>;

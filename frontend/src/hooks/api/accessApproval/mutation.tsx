@@ -8,7 +8,6 @@ import {
   TAccessApproval,
   TCreateAccessPolicyDTO,
   TCreateAccessRequestDTO,
-  TDeleteSecretPolicyDTO,
   TUpdateAccessPolicyDTO
 } from "./types";
 
@@ -46,28 +45,23 @@ export const useUpdateAccessApprovalPolicy = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, TUpdateAccessPolicyDTO>({
-    mutationFn: async ({ id, approvers, approvals, name, secretPath, enforcementLevel }) => {
+    mutationFn: async ({
+      id,
+      approvers,
+      approvals,
+      name,
+      secretPath,
+      enforcementLevel,
+      disabled
+    }) => {
       const { data } = await apiRequest.patch(`/api/v1/access-approvals/policies/${id}`, {
         approvals,
         approvers,
         secretPath,
         name,
-        enforcementLevel
+        enforcementLevel,
+        disabled
       });
-      return data;
-    },
-    onSuccess: (_, { projectSlug }) => {
-      queryClient.invalidateQueries(accessApprovalKeys.getAccessApprovalPolicies(projectSlug));
-    }
-  });
-};
-
-export const useDeleteAccessApprovalPolicy = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation<{}, {}, TDeleteSecretPolicyDTO>({
-    mutationFn: async ({ id }) => {
-      const { data } = await apiRequest.delete(`/api/v1/access-approvals/policies/${id}`);
       return data;
     },
     onSuccess: (_, { projectSlug }) => {

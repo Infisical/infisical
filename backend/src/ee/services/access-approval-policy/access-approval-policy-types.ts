@@ -35,6 +35,7 @@ export type TUpdateAccessApprovalPolicy = {
   secretPath?: string;
   name?: string;
   enforcementLevel?: EnforcementLevel;
+  disabled?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteAccessApprovalPolicy = {
