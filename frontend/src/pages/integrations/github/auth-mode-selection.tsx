@@ -18,6 +18,7 @@ import {
   SelectItem
 } from "@app/components/v2";
 import { useGetCloudIntegrations } from "@app/hooks/api";
+import { createIntegrationMissingEnvVarsNotification } from "@app/views/IntegrationsPage/IntegrationPage.utils";
 
 enum AuthMethod {
   APP = "APP",
@@ -84,6 +85,15 @@ export default function GithubIntegrationAuthModeSelectionPage() {
                 if (selectedAuthMethod === AuthMethod.APP) {
                   router.push("/integrations/select-integration-auth?integrationSlug=github");
                 } else {
+                  if (!githubIntegration?.clientId) {
+                    createIntegrationMissingEnvVarsNotification(
+                      "githubactions",
+                      "cicd",
+                      "connecting-with-github-oauth"
+                    );
+                    return;
+                  }
+
                   const state = crypto.randomBytes(16).toString("hex");
                   localStorage.setItem("latestCSRFToken", state);
 

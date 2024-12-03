@@ -1,6 +1,8 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { motion } from "framer-motion";
 
 import { createNotification } from "@app/components/notifications";
+import { ContentLoader } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
 import {
@@ -28,11 +30,17 @@ type Props = {
   }>;
 };
 
+enum IntegrationView {
+  List = "list",
+  New = "new"
+}
+
 export const IntegrationsPage = withProjectPermission(
   ({ frameworkIntegrations, infrastructureIntegrations }: Props) => {
     const { currentWorkspace } = useWorkspace();
     const workspaceId = currentWorkspace?.id || "";
     const environments = currentWorkspace?.environments || [];
+    const [view, setView] = useState<IntegrationView>(IntegrationView.New);
 
     const { data: cloudIntegrations, isLoading: isCloudIntegrationsLoading } =
       useGetCloudIntegrations();
@@ -56,7 +64,8 @@ export const IntegrationsPage = withProjectPermission(
     const {
       data: integrations,
       isLoading: isIntegrationLoading,
-      isFetching: isIntegrationFetching
+      isFetching: isIntegrationFetching,
+      isFetched: isIntegrationsFetched
     } = useGetWorkspaceIntegrations(workspaceId);
 
     const { mutateAsync: deleteIntegration } = useDeleteIntegration();
@@ -88,6 +97,10 @@ export const IntegrationsPage = withProjectPermission(
       isIntegrationsAuthorizedEmpty,
       isIntegrationsEmpty
     ]);
+
+    useEffect(() => {
+      setView(integrations?.length ? IntegrationView.List : IntegrationView.New);
+    }, [isIntegrationsFetched]);
 
     const handleProviderIntegration = async (provider: string) => {
       const selectedCloudIntegration = cloudIntegrations?.find(({ slug }) => provider === slug);
@@ -150,26 +163,64 @@ export const IntegrationsPage = withProjectPermission(
       }
     };
 
+    if (isIntegrationLoading || isCloudIntegrationsLoading)
+      return (
+        <div className="flex flex-col items-center gap-2">
+          <ContentLoader text={["Loading integrations..."]} />
+        </div>
+      );
+
     return (
-      <div className="container mx-auto max-w-7xl pb-12 text-white">
-        <IntegrationsSection
-          isLoading={isIntegrationLoading}
-          integrations={integrations}
-          environments={environments}
-          onIntegrationDelete={handleIntegrationDelete}
-          workspaceId={workspaceId}
-        />
-        <CloudIntegrationSection
-          isLoading={isCloudIntegrationsLoading || isIntegrationAuthLoading}
-          cloudIntegrations={cloudIntegrations}
-          integrationAuths={integrationAuths}
-          onIntegrationStart={handleProviderIntegrationStart}
-          onIntegrationRevoke={handleIntegrationAuthRevoke}
-        />
-        <FrameworkIntegrationSection frameworks={frameworkIntegrations} />
-        <InfrastructureIntegrationSection integrations={infrastructureIntegrations} />
+      <div className="container relative mx-auto max-w-7xl pb-12 text-white">
+        <div className="relative">
+          {view === IntegrationView.List ? (
+            <motion.div
+              key="view-integrations"
+              transition={{ duration: 0.3 }}
+              initial={{ opacity: 0, translateX: 30 }}
+              animate={{ opacity: 1, translateX: 0 }}
+              exit={{ opacity: 0, translateX: 30 }}
+              className="w-full"
+            >
+              <IntegrationsSection
+                cloudIntegrations={cloudIntegrations}
+                onAddIntegration={() => setView(IntegrationView.New)}
+                isLoading={isIntegrationLoading}
+                integrations={integrations}
+                environments={environments}
+                onIntegrationDelete={handleIntegrationDelete}
+                workspaceId={workspaceId}
+              />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="add-integration"
+              transition={{ duration: 0.3 }}
+              initial={{ opacity: 0, translateX: 30 }}
+              animate={{ opacity: 1, translateX: 0 }}
+              exit={{ opacity: 0, translateX: 30 }}
+              className="w-full"
+            >
+              <CloudIntegrationSection
+                onViewActiveIntegrations={
+                  integrations?.length ? () => setView(IntegrationView.List) : undefined
+                }
+                isLoading={isCloudIntegrationsLoading || isIntegrationAuthLoading}
+                cloudIntegrations={cloudIntegrations}
+                integrationAuths={integrationAuths}
+                onIntegrationStart={handleProviderIntegrationStart}
+                onIntegrationRevoke={handleIntegrationAuthRevoke}
+              />
+              <FrameworkIntegrationSection frameworks={frameworkIntegrations} />
+              <InfrastructureIntegrationSection integrations={infrastructureIntegrations} />
+            </motion.div>
+          )}
+        </div>
       </div>
     );
   },
-  { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.Integrations }
+  {
+    action: ProjectPermissionActions.Read,
+    subject: ProjectPermissionSub.Integrations
+  }
 );

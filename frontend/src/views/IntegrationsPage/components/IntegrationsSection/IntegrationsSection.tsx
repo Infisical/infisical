@@ -1,13 +1,16 @@
-import { Checkbox, DeleteActionModal, EmptyState, Skeleton } from "@app/components/v2";
-import { usePopUp, useToggle } from "@app/hooks";
-import { useSyncIntegration } from "@app/hooks/api/integrations/queries";
-import { TIntegration } from "@app/hooks/api/types";
+import { faPlus } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { ConfiguredIntegrationItem } from "./ConfiguredIntegrationItem";
+import { Button, Checkbox, DeleteActionModal } from "@app/components/v2";
+import { usePopUp, useToggle } from "@app/hooks";
+import { TCloudIntegration, TIntegration } from "@app/hooks/api/types";
+
+import { IntegrationsTable } from "./components";
 
 type Props = {
   environments: Array<{ name: string; slug: string; id: string }>;
   integrations?: TIntegration[];
+  cloudIntegrations?: TCloudIntegration[];
   isLoading?: boolean;
   onIntegrationDelete: (
     integrationId: string,
@@ -15,6 +18,7 @@ type Props = {
     cb: () => void
   ) => Promise<void>;
   workspaceId: string;
+  onAddIntegration: () => void;
 };
 
 export const IntegrationsSection = ({
@@ -22,58 +26,47 @@ export const IntegrationsSection = ({
   environments = [],
   isLoading,
   onIntegrationDelete,
-  workspaceId
+  workspaceId,
+  onAddIntegration,
+  cloudIntegrations = []
 }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "deleteConfirmation",
     "deleteSecretsConfirmation"
   ] as const);
 
-  const { mutate: syncIntegration } = useSyncIntegration();
   const [shouldDeleteSecrets, setShouldDeleteSecrets] = useToggle(false);
 
   return (
     <div className="mb-8">
       <div className="mx-4 mb-4 mt-6 flex flex-col items-start justify-between px-2 text-xl">
-        <h1 className="text-3xl font-semibold">Current Integrations</h1>
+        <h1 className="text-3xl font-semibold">Integrations</h1>
         <p className="text-base text-bunker-300">Manage integrations with third-party services.</p>
       </div>
-      {isLoading && (
-        <div className="p-6 pt-0">
-          <Skeleton className="h-28" />
+      <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+        <div className="mb-4 flex items-center justify-between">
+          <p className="text-xl font-semibold text-mineshaft-100">Active Integrations</p>
+          <Button
+            colorSchema="primary"
+            type="submit"
+            leftIcon={<FontAwesomeIcon icon={faPlus} />}
+            onClick={onAddIntegration}
+          >
+            Add Integration
+          </Button>
         </div>
-      )}
-
-      {!isLoading && !integrations.length && (
-        <div className="mx-6">
-          <EmptyState
-            className="rounded-md border border-mineshaft-700 pt-8 pb-4"
-            title="No integrations found. Click on one of the below providers to sync secrets."
-          />
-        </div>
-      )}
-      {!isLoading && (
-        <div className="flex min-w-max flex-col space-y-4 p-6 pt-0">
-          {integrations?.map((integration) => (
-            <ConfiguredIntegrationItem
-              key={`integration-${integration.id}`}
-              onManualSyncIntegration={() => {
-                syncIntegration({
-                  workspaceId,
-                  id: integration.id,
-                  lastUsed: integration.lastUsed as string
-                });
-              }}
-              onRemoveIntegration={() => {
-                setShouldDeleteSecrets.off();
-                handlePopUpOpen("deleteConfirmation", integration);
-              }}
-              integration={integration}
-              environments={environments}
-            />
-          ))}
-        </div>
-      )}
+        <IntegrationsTable
+          cloudIntegrations={cloudIntegrations}
+          integrations={integrations}
+          isLoading={isLoading}
+          workspaceId={workspaceId}
+          environments={environments}
+          onDeleteIntegration={(integration) => {
+            setShouldDeleteSecrets.off();
+            handlePopUpOpen("deleteConfirmation", integration);
+          }}
+        />
+      </div>
       <DeleteActionModal
         isOpen={popUp.deleteConfirmation.isOpen}
         title={`Are you sure want to remove ${

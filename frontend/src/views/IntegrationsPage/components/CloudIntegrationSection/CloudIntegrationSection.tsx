@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { faCheck, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faChevronLeft, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { NoEnvironmentsBanner } from "@app/components/integrations/NoEnvironmentsBanner";
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal, Skeleton, Tooltip } from "@app/components/v2";
+import { Button, DeleteActionModal, Skeleton, Tooltip } from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -22,6 +22,7 @@ type Props = {
   onIntegrationStart: (slug: string) => void;
   // cb: handle popUpClose child->parent communication pattern
   onIntegrationRevoke: (slug: string, cb: () => void) => void;
+  onViewActiveIntegrations?: () => void;
 };
 
 type TRevokeIntegrationPopUp = { provider: string };
@@ -31,7 +32,8 @@ export const CloudIntegrationSection = ({
   cloudIntegrations = [],
   integrationAuths = {},
   onIntegrationStart,
-  onIntegrationRevoke
+  onIntegrationRevoke,
+  onViewActiveIntegrations
 }: Props) => {
   const { t } = useTranslation();
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
@@ -60,11 +62,19 @@ export const CloudIntegrationSection = ({
         )}
       </div>
       <div className="m-4 mt-7 flex max-w-5xl flex-col items-start justify-between px-2 text-xl">
+        {onViewActiveIntegrations && (
+          <Button
+            variant="link"
+            onClick={onViewActiveIntegrations}
+            leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
+          >
+            Back to Integrations
+          </Button>
+        )}
         <h1 className="text-3xl font-semibold">{t("integrations.cloud-integrations")}</h1>
         <p className="text-base text-gray-400">{t("integrations.click-to-start")}</p>
       </div>
-
-      <div className="mx-6 grid grid-cols-2 gap-4 lg:grid-cols-3 2xl:grid-cols-4">
+      <div className="mx-6 grid grid-cols-3 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-7">
         {isLoading &&
           Array.from({ length: 12 }).map((_, index) => (
             <Skeleton className="h-32" key={`cloud-integration-skeleton-${index + 1}`} />
@@ -79,7 +89,7 @@ export const CloudIntegrationSection = ({
                 cloudIntegration.isAvailable
                   ? "cursor-pointer duration-200 hover:bg-mineshaft-700"
                   : "opacity-50"
-              } flex h-32 flex-row items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4`}
+              } flex h-32 flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4`}
               onClick={() => {
                 if (!cloudIntegration.isAvailable) return;
                 if (
@@ -100,11 +110,12 @@ export const CloudIntegrationSection = ({
             >
               <img
                 src={`/images/integrations/${cloudIntegration.image}`}
-                height={70}
-                width={70}
+                height={60}
+                width={60}
+                className="mt-auto"
                 alt="integration logo"
               />
-              <div className="ml-4 max-w-xs text-xl font-semibold text-gray-300 duration-200 group-hover:text-gray-200">
+              <div className="mt-auto max-w-xs text-center text-sm font-semibold text-gray-300 duration-200 group-hover:text-gray-200">
                 {cloudIntegration.name}
               </div>
               {cloudIntegration.isAvailable &&

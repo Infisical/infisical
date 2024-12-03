@@ -10,6 +10,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
 import { useGetCloudIntegrations } from "@app/hooks/api";
+import { createIntegrationMissingEnvVarsNotification } from "@app/views/IntegrationsPage/IntegrationPage.utils";
 
 import { Button, Card, CardTitle, FormControl, Input } from "../../../components/v2";
 
@@ -36,6 +37,11 @@ export default function GitLabAuthorizeIntegrationPage() {
     );
 
     if (!integrationOption) return;
+
+    if (!integrationOption.clientId) {
+      createIntegrationMissingEnvVarsNotification(integrationOption.slug, "cicd");
+      return;
+    }
 
     const baseURL =
       (gitLabURL as string).trim() === "" ? "https://gitlab.com" : (gitLabURL as string).trim();
