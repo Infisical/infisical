@@ -54,7 +54,7 @@ export type TApiErrors =
       requestId: string;
       error: ApiErrorTypes.ValidationError;
       message: ZodIssue[];
-      statusCode: 401;
+      statusCode: 422;
     }
   | {
       requestId: string;

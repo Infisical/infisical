@@ -27,6 +27,7 @@ enum HttpStatusCodes {
   NotFound = 404,
   Unauthorized = 401,
   Forbidden = 403,
+  UnprocessableContent = 422,
   // eslint-disable-next-line @typescript-eslint/no-shadow
   InternalServerError = 500,
   GatewayTimeout = 504,
@@ -66,9 +67,9 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         error: error.name
       });
     } else if (error instanceof ZodError) {
-      void res.status(HttpStatusCodes.Unauthorized).send({
+      void res.status(HttpStatusCodes.UnprocessableContent).send({
         requestId: req.id,
-        statusCode: HttpStatusCodes.Unauthorized,
+        statusCode: HttpStatusCodes.UnprocessableContent,
         error: "ValidationFailure",
         message: error.issues
       });
