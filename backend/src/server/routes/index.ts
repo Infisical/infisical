@@ -808,7 +808,6 @@ export const registerRoutes = async (
     projectRoleDAL,
     folderDAL,
     licenseService,
-    sshCertificateAuthorityDAL,
     certificateAuthorityDAL,
     certificateDAL,
     pkiAlertDAL,

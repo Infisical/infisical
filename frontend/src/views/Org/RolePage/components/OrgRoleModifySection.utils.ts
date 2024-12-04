@@ -62,7 +62,7 @@ export const formSchema = z.object({
       [OrgPermissionSubjects.Kms]: generalPermissionSchema,
       [OrgPermissionSubjects.ProjectTemplates]: generalPermissionSchema,
       [OrgPermissionSubjects.SshCertificateAuthorities]: generalPermissionSchema,
-      [OrgPermissionSubjects.SshCertificateTemplates]: sshCertificateTemplatePermissionSchmea
+      "ssh-certificate-templates": sshCertificateTemplatePermissionSchmea
     })
     .optional()
 });
