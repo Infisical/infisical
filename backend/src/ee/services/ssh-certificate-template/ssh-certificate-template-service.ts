@@ -130,7 +130,7 @@ export const sshCertificateTemplateServiceFactory = ({
 
     if (name) {
       const existingTemplate = await sshCertificateTemplateDAL.getByName(name, actorOrgId);
-      if (existingTemplate) {
+      if (existingTemplate && existingTemplate.id !== id) {
         throw new BadRequestError({
           message: `SSH certificate template with name ${name} already exists`
         });

@@ -122,34 +122,70 @@ export const validateSshCertificatePrincipals = (
 ) => {
   switch (certType) {
     case SshCertType.USER: {
-      const allowsAllUsers = template.allowedUsers?.includes("*") ?? false;
-      return principals.every((principal) => {
-        if (principal === "*") return false;
-        if (allowsAllUsers) return isValidUserPattern(principal);
-        return template.allowedUsers?.includes(principal);
+      if (template.allowedUsers.length === 0) {
+        throw new BadRequestError({
+          message: "No allowed users are configured in the SSH certificate template."
+        });
+      }
+
+      const allowsAllUsers = template.allowedUsers.includes("*") ?? false;
+
+      principals.forEach((principal) => {
+        if (principal === "*") {
+          throw new BadRequestError({
+            message: `Principal '*' is not allowed for user certificates.`
+          });
+        }
+        if (allowsAllUsers && !isValidUserPattern(principal)) {
+          throw new BadRequestError({
+            message: `Principal '${principal}' does not match a valid user pattern.`
+          });
+        }
+        if (!allowsAllUsers && !template.allowedUsers.includes(principal)) {
+          throw new BadRequestError({
+            message: `Principal '${principal}' is not in the list of allowed users.`
+          });
+        }
       });
+      break;
     }
     case SshCertType.HOST: {
-      const allowsAllHosts = template.allowedHosts?.includes("*") ?? false;
-      return principals.every((principal) => {
-        if (principal.includes("*")) return false;
-        if (allowsAllHosts) return isValidHostPattern(principal);
+      if (template.allowedHosts.length === 0) {
+        throw new BadRequestError({
+          message: "No allowed hosts are configured in the SSH certificate template."
+        });
+      }
 
-        // Validate against allowed domains
-        return (
-          isValidHostPattern(principal) &&
-          template.allowedHosts?.some((allowedHost) => {
+      const allowsAllHosts = template.allowedHosts.includes("*") ?? false;
+
+      principals.forEach((principal) => {
+        if (principal.includes("*")) {
+          throw new BadRequestError({
+            message: `Principal '${principal}' with wildcards is not allowed for host certificates.`
+          });
+        }
+        if (allowsAllHosts && !isValidHostPattern(principal)) {
+          throw new BadRequestError({
+            message: `Principal '${principal}' does not match a valid host pattern.`
+          });
+        }
+
+        if (
+          !allowsAllHosts &&
+          !template.allowedHosts.some((allowedHost) => {
             if (allowedHost.startsWith("*.")) {
-              // Match subdomains of a wildcard domain
               const baseDomain = allowedHost.slice(2); // Remove the leading "*."
               return principal.endsWith(`.${baseDomain}`);
             }
-
-            // Exact match for non-wildcard domains
             return principal === allowedHost;
           })
-        );
+        ) {
+          throw new BadRequestError({
+            message: `Principal '${principal}' is not in the list of allowed hosts or domains.`
+          });
+        }
       });
+      break;
     }
     default:
       throw new BadRequestError({
