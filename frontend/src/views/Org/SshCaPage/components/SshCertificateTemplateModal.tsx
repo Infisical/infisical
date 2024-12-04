@@ -12,14 +12,16 @@ import {
   ModalContent,
   Select,
   SelectItem,
-  Switch} from "@app/components/v2";
+  Switch
+} from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import {
   useCreateSshCertTemplate,
   useGetSshCaById,
   useGetSshCertTemplate,
   useListOrgSshCas,
-  useUpdateSshCertTemplate} from "@app/hooks/api";
+  useUpdateSshCertTemplate
+} from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z.object({
@@ -248,7 +250,7 @@ export const SshCertificateTemplateModal = ({ popUp, handlePopUpToggle, sshCaId 
             name="ttl"
             render={({ field, fieldState: { error } }) => (
               <FormControl
-                label="TTL"
+                label="Default TTL"
                 isError={Boolean(error)}
                 errorText={error?.message}
                 isRequired
