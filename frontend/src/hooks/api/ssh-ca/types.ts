@@ -1,5 +1,5 @@
 import { CertKeyAlgorithm } from "../certificates/enums";
-import { SshCaStatus } from "./enums";
+import { SshCaStatus, SshCertType } from "./enums";
 
 export type TSshCertificateAuthority = {
   id: string;
@@ -25,4 +25,21 @@ export type TUpdateSshCaDTO = {
 
 export type TDeleteSshCaDTO = {
   caId: string;
+};
+
+export type TIssueSshCredsDTO = {
+  templateName: string;
+  keyAlgorithm: CertKeyAlgorithm;
+  certType: SshCertType;
+  principals: string[];
+  ttl?: string;
+  keyId?: string;
+};
+
+export type TIssueSshCredsResponse = {
+  serialNumber: string;
+  signedKey: string;
+  privateKey: string;
+  publicKey: string;
+  keyAlgorithm: CertKeyAlgorithm;
 };

@@ -1,4 +1,3 @@
-
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
@@ -7,6 +6,8 @@ import { organizationKeys } from "../organization/queries";
 import {
   TCreateSshCaDTO,
   TDeleteSshCaDTO,
+  TIssueSshCredsDTO,
+  TIssueSshCredsResponse,
   TSshCertificateAuthority,
   TUpdateSshCaDTO} from "./types";
 
@@ -56,6 +57,15 @@ export const useDeleteSshCa = () => {
     },
     onSuccess: ({ orgId }) => {
       queryClient.invalidateQueries(organizationKeys.getOrgSshCas({ orgId }));
+    }
+  });
+};
+
+export const useIssueSshCreds = () => {
+  return useMutation<TIssueSshCredsResponse, {}, TIssueSshCredsDTO>({
+    mutationFn: async (body) => {
+      const { data } = await apiRequest.post<TIssueSshCredsResponse>("/api/v1/ssh/issue", body);
+      return data;
     }
   });
 };

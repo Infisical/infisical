@@ -4,10 +4,11 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, IconButton } from "@app/components/v2";
-import { OrgPermissionSshCertificateTemplateActions,OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionSshCertificateTemplateActions, OrgPermissionSubjects } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteSshCertTemplate } from "@app/hooks/api";
 
+import { SshCertificateModal } from "./SshCertificateModal";
 import { SshCertificateTemplateModal } from "./SshCertificateTemplateModal";
 import { SshCertificateTemplatesTable } from "./SshCertificateTemplatesTable";
 
@@ -18,6 +19,7 @@ type Props = {
 export const SshCertificateTemplatesSection = ({ caId }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "sshCertificateTemplate",
+    "sshCertificate",
     "deleteSshCertificateTemplate",
     "upgradePlan"
   ] as const);
@@ -69,6 +71,7 @@ export const SshCertificateTemplatesSection = ({ caId }: Props) => {
       <div className="py-4">
         <SshCertificateTemplatesTable handlePopUpOpen={handlePopUpOpen} sshCaId={caId} />
       </div>
+      <SshCertificateModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <SshCertificateTemplateModal
         popUp={popUp}
         handlePopUpToggle={handlePopUpToggle}

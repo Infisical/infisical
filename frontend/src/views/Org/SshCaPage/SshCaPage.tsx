@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { OrgPermissionCan, ProjectPermissionCan } from "@app/components/permissions";
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
   DeleteActionModal,
@@ -15,13 +15,7 @@ import {
   DropdownMenuTrigger,
   Tooltip
 } from "@app/components/v2";
-import {
-  OrgPermissionActions,
-  OrgPermissionSubjects,
-  ProjectPermissionActions,
-  ProjectPermissionSub,
-  useOrganization
-} from "@app/context";
+import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { withPermission } from "@app/hoc";
 import { useDeleteSshCa, useGetSshCaById } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";

@@ -1,4 +1,4 @@
-import { faEllipsis, faFileAlt, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faCertificate,faEllipsis, faFileAlt, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
@@ -19,7 +19,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { OrgPermissionSshCertificateTemplateActions,OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionSshCertificateTemplateActions, OrgPermissionSubjects } from "@app/context";
 import { useGetSshCaCertTemplates } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -27,11 +27,13 @@ type Props = {
   sshCaId: string;
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<
-      ["sshCertificateTemplate", "deleteSshCertificateTemplate", "upgradePlan"]
+      ["sshCertificateTemplate", "sshCertificate", "deleteSshCertificateTemplate", "upgradePlan"]
     >,
     data?: {
       id?: string;
       name?: string;
+      sshCaId?: string;
+      templateName?: string;
     }
   ) => void;
 };
@@ -66,6 +68,24 @@ export const SshCertificateTemplatesTable = ({ handlePopUpOpen, sshCaId }: Props
                           </div>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start" className="p-1">
+                          <OrgPermissionCan
+                            I={OrgPermissionSshCertificateTemplateActions.Edit}
+                            a={OrgPermissionSubjects.SshCertificateTemplates}
+                          >
+                            <DropdownMenuItem
+                              onClick={() => {
+                                handlePopUpOpen("sshCertificate", {
+                                  sshCaId,
+                                  templateName: certificateTemplate.name
+                                });
+                              }}
+                              icon={
+                                <FontAwesomeIcon icon={faCertificate} size="sm" className="mr-1" />
+                              }
+                            >
+                              Issue SSH Certificate
+                            </DropdownMenuItem>
+                          </OrgPermissionCan>
                           <OrgPermissionCan
                             I={OrgPermissionSshCertificateTemplateActions.Edit}
                             a={OrgPermissionSubjects.SshCertificateTemplates}
