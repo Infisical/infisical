@@ -13,7 +13,7 @@ import {
 } from "@app/ee/services/external-kms/providers/model";
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
-import { getConfig } from "@app/lib/config/env";
+import { TEnvConfig } from "@app/lib/config/env";
 import { randomSecureBytes } from "@app/lib/crypto";
 import { symmetricCipherService, SymmetricEncryption } from "@app/lib/crypto/cipher";
 import { generateHash } from "@app/lib/crypto/encryption";
@@ -48,6 +48,7 @@ type TKmsServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "waitTillReady" | "setItemWithExpiry">;
   internalKmsDAL: Pick<TInternalKmsDALFactory, "create">;
   hsmService: THsmServiceFactory;
+  envConfig: Pick<TEnvConfig, "ENCRYPTION_KEY" | "ROOT_ENCRYPTION_KEY">;
 };
 
 export type TKmsServiceFactory = ReturnType<typeof kmsServiceFactory>;
@@ -61,6 +62,7 @@ const KMS_VERSION_BLOB_LENGTH = 3;
 const KmsSanitizedSchema = KmsKeysSchema.extend({ isExternal: z.boolean() });
 
 export const kmsServiceFactory = ({
+  envConfig,
   kmsDAL,
   kmsRootConfigDAL,
   keyStore,
@@ -635,10 +637,8 @@ export const kmsServiceFactory = ({
   };
 
   const $getBasicEncryptionKey = () => {
-    const appCfg = getConfig();
-
-    const encryptionKey = appCfg.ENCRYPTION_KEY || appCfg.ROOT_ENCRYPTION_KEY;
-    const isBase64 = !appCfg.ENCRYPTION_KEY;
+    const encryptionKey = envConfig.ENCRYPTION_KEY || envConfig.ROOT_ENCRYPTION_KEY;
+    const isBase64 = !envConfig.ENCRYPTION_KEY;
     if (!encryptionKey)
       throw new Error(
         "Root encryption key not found for KMS service. Did you set the ENCRYPTION_KEY or ROOT_ENCRYPTION_KEY environment variables?"

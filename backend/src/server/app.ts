@@ -16,7 +16,7 @@ import { Knex } from "knex";
 
 import { HsmModule } from "@app/ee/services/hsm/hsm-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
-import { getConfig, IS_PACKAGED } from "@app/lib/config/env";
+import { getConfig, IS_PACKAGED, TEnvConfig } from "@app/lib/config/env";
 import { CustomLogger } from "@app/lib/logger/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TQueueServiceFactory } from "@app/queue";
@@ -41,10 +41,11 @@ type TMain = {
   queue: TQueueServiceFactory;
   keyStore: TKeyStoreFactory;
   hsmModule: HsmModule;
+  envConfig: TEnvConfig;
 };
 
 // Run the server!
-export const main = async ({ db, hsmModule, auditLogDb, smtp, logger, queue, keyStore }: TMain) => {
+export const main = async ({ db, hsmModule, auditLogDb, smtp, logger, queue, keyStore, envConfig }: TMain) => {
   const appCfg = getConfig();
 
   const server = fastify({
@@ -115,7 +116,7 @@ export const main = async ({ db, hsmModule, auditLogDb, smtp, logger, queue, key
       })
     });
 
-    await server.register(registerRoutes, { smtp, queue, db, auditLogDb, keyStore, hsmModule });
+    await server.register(registerRoutes, { smtp, queue, db, auditLogDb, keyStore, hsmModule, envConfig });
 
     if (appCfg.isProductionMode) {
       await server.register(registerExternalNextjs, {

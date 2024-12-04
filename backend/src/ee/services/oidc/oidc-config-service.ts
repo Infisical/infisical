@@ -3,25 +3,18 @@ import { ForbiddenError } from "@casl/ability";
 import jwt from "jsonwebtoken";
 import { Issuer, Issuer as OpenIdIssuer, Strategy as OpenIdStrategy, TokenSet } from "openid-client";
 
-import { OrgMembershipStatus, SecretKeyEncoding, TableName, TUsers } from "@app/db/schemas";
+import { OrgMembershipStatus, TableName, TUsers } from "@app/db/schemas";
 import { TOidcConfigsUpdate } from "@app/db/schemas/oidc-configs";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { getConfig } from "@app/lib/config/env";
-import {
-  decryptSymmetric,
-  encryptSymmetric,
-  generateAsymmetricKeyPair,
-  generateSymmetricKey,
-  infisicalSymmetricDecrypt,
-  infisicalSymmetricEncypt
-} from "@app/lib/crypto/encryption";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
 import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
-import { TOrgBotDALFactory } from "@app/services/org/org-bot-dal";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { getDefaultOrgMembershipRole } from "@app/services/org/org-role-fns";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
@@ -53,12 +46,12 @@ type TOidcConfigServiceFactoryDep = {
     "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById"
   >;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "create">;
-  orgBotDAL: Pick<TOrgBotDALFactory, "findOne" | "create" | "transaction">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail" | "verify">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne" | "update" | "create">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
 export type TOidcConfigServiceFactory = ReturnType<typeof oidcConfigServiceFactory>;
@@ -71,9 +64,9 @@ export const oidcConfigServiceFactory = ({
   licenseService,
   permissionService,
   tokenService,
-  orgBotDAL,
   smtpService,
-  oidcConfigDAL
+  oidcConfigDAL,
+  kmsService
 }: TOidcConfigServiceFactoryDep) => {
   const getOidc = async (dto: TGetOidcCfgDTO) => {
     const org = await orgDAL.findOne({ slug: dto.orgSlug });
@@ -104,43 +97,19 @@ export const oidcConfigServiceFactory = ({
       });
     }
 
-    // decrypt and return cfg
-    const orgBot = await orgBotDAL.findOne({ orgId: oidcCfg.orgId });
-    if (!orgBot) {
-      throw new NotFoundError({
-        message: `Organization bot for organization with ID '${oidcCfg.orgId}' not found`,
-        name: "OrgBotNotFound"
-      });
-    }
-
-    const key = infisicalSymmetricDecrypt({
-      ciphertext: orgBot.encryptedSymmetricKey,
-      iv: orgBot.symmetricKeyIV,
-      tag: orgBot.symmetricKeyTag,
-      keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: oidcCfg.orgId
     });
 
-    const { encryptedClientId, clientIdIV, clientIdTag, encryptedClientSecret, clientSecretIV, clientSecretTag } =
-      oidcCfg;
-
     let clientId = "";
-    if (encryptedClientId && clientIdIV && clientIdTag) {
-      clientId = decryptSymmetric({
-        ciphertext: encryptedClientId,
-        key,
-        tag: clientIdTag,
-        iv: clientIdIV
-      });
+    if (oidcCfg.encryptedOidcClientId) {
+      clientId = decryptor({ cipherTextBlob: oidcCfg.encryptedOidcClientId }).toString();
     }
 
     let clientSecret = "";
-    if (encryptedClientSecret && clientSecretIV && clientSecretTag) {
-      clientSecret = decryptSymmetric({
-        key,
-        tag: clientSecretTag,
-        iv: clientSecretIV,
-        ciphertext: encryptedClientSecret
-      });
+    if (oidcCfg.encryptedOidcClientSecret) {
+      clientSecret = decryptor({ cipherTextBlob: oidcCfg.encryptedOidcClientSecret }).toString();
     }
 
     return {
@@ -413,12 +382,10 @@ export const oidcConfigServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Sso);
 
-    const orgBot = await orgBotDAL.findOne({ orgId: org.id });
-    if (!orgBot)
-      throw new NotFoundError({
-        message: `Organization bot for organization with ID '${org.id}' not found`,
-        name: "OrgBotNotFound"
-      });
+    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: org.id
+    });
 
     const serverCfg = await getServerCfg();
     if (isActive && !serverCfg.trustOidcEmails) {
@@ -430,13 +397,6 @@ export const oidcConfigServiceFactory = ({
         });
       }
     }
-
-    const key = infisicalSymmetricDecrypt({
-      ciphertext: orgBot.encryptedSymmetricKey,
-      iv: orgBot.symmetricKeyIV,
-      tag: orgBot.symmetricKeyTag,
-      keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
-    });
 
     const updateQuery: TOidcConfigsUpdate = {
       allowedEmailDomains,
@@ -452,22 +412,11 @@ export const oidcConfigServiceFactory = ({
     };
 
     if (clientId !== undefined) {
-      const { ciphertext: encryptedClientId, iv: clientIdIV, tag: clientIdTag } = encryptSymmetric(clientId, key);
-      updateQuery.encryptedClientId = encryptedClientId;
-      updateQuery.clientIdIV = clientIdIV;
-      updateQuery.clientIdTag = clientIdTag;
+      updateQuery.encryptedOidcClientId = encryptor({ plainText: Buffer.from(clientId) }).cipherTextBlob;
     }
 
     if (clientSecret !== undefined) {
-      const {
-        ciphertext: encryptedClientSecret,
-        iv: clientSecretIV,
-        tag: clientSecretTag
-      } = encryptSymmetric(clientSecret, key);
-
-      updateQuery.encryptedClientSecret = encryptedClientSecret;
-      updateQuery.clientSecretIV = clientSecretIV;
-      updateQuery.clientSecretTag = clientSecretTag;
+      updateQuery.encryptedOidcClientSecret = encryptor({ plainText: Buffer.from(clientSecret) }).cipherTextBlob;
     }
 
     const [ssoConfig] = await oidcConfigDAL.update({ orgId: org.id }, updateQuery);
@@ -518,60 +467,10 @@ export const oidcConfigServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Sso);
 
-    const orgBot = await orgBotDAL.transaction(async (tx) => {
-      const doc = await orgBotDAL.findOne({ orgId: org.id }, tx);
-      if (doc) return doc;
-
-      const { privateKey, publicKey } = generateAsymmetricKeyPair();
-      const key = generateSymmetricKey();
-      const {
-        ciphertext: encryptedPrivateKey,
-        iv: privateKeyIV,
-        tag: privateKeyTag,
-        encoding: privateKeyKeyEncoding,
-        algorithm: privateKeyAlgorithm
-      } = infisicalSymmetricEncypt(privateKey);
-      const {
-        ciphertext: encryptedSymmetricKey,
-        iv: symmetricKeyIV,
-        tag: symmetricKeyTag,
-        encoding: symmetricKeyKeyEncoding,
-        algorithm: symmetricKeyAlgorithm
-      } = infisicalSymmetricEncypt(key);
-
-      return orgBotDAL.create(
-        {
-          name: "Infisical org bot",
-          publicKey,
-          privateKeyIV,
-          encryptedPrivateKey,
-          symmetricKeyIV,
-          symmetricKeyTag,
-          encryptedSymmetricKey,
-          symmetricKeyAlgorithm,
-          orgId: org.id,
-          privateKeyTag,
-          privateKeyAlgorithm,
-          privateKeyKeyEncoding,
-          symmetricKeyKeyEncoding
-        },
-        tx
-      );
+    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: org.id
     });
-
-    const key = infisicalSymmetricDecrypt({
-      ciphertext: orgBot.encryptedSymmetricKey,
-      iv: orgBot.symmetricKeyIV,
-      tag: orgBot.symmetricKeyTag,
-      keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
-    });
-
-    const { ciphertext: encryptedClientId, iv: clientIdIV, tag: clientIdTag } = encryptSymmetric(clientId, key);
-    const {
-      ciphertext: encryptedClientSecret,
-      iv: clientSecretIV,
-      tag: clientSecretTag
-    } = encryptSymmetric(clientSecret, key);
 
     const oidcCfg = await oidcConfigDAL.create({
       issuer,
@@ -584,12 +483,8 @@ export const oidcConfigServiceFactory = ({
       tokenEndpoint,
       userinfoEndpoint,
       orgId: org.id,
-      encryptedClientId,
-      clientIdIV,
-      clientIdTag,
-      encryptedClientSecret,
-      clientSecretIV,
-      clientSecretTag
+      encryptedOidcClientId: encryptor({ plainText: Buffer.from(clientId) }).cipherTextBlob,
+      encryptedOidcClientSecret: encryptor({ plainText: Buffer.from(clientSecret) }).cipherTextBlob
     });
 
     return oidcCfg;

@@ -15,7 +15,7 @@ import {
 } from "@app/ee/services/project-template/project-template-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
-import { unpackPermissions } from "@app/server/routes/santizedSchemas/permission";
+import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
 import { getPredefinedRoles } from "@app/services/project-role/project-role-fns";
 
 import { TProjectTemplateDALFactory } from "./project-template-dal";

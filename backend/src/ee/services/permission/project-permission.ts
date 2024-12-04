@@ -2,7 +2,7 @@ import { AbilityBuilder, createMongoAbility, ForcedSubject, MongoAbility } from 
 import { z } from "zod";
 
 import { conditionsMatcher, PermissionConditionOperators } from "@app/lib/casl";
-import { UnpackedPermissionSchema } from "@app/server/routes/santizedSchemas/permission";
+import { UnpackedPermissionSchema } from "@app/server/routes/sanitizedSchema/permission";
 
 import { PermissionConditionSchema } from "./permission-types";
 

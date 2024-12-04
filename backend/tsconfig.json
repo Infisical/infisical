@@ -1,7 +1,8 @@
 {
   "ts-node": {
     // Do not forget to `npm i -D tsconfig-paths`
-    "require": ["tsconfig-paths/register"]
+    "require": ["tsconfig-paths/register"],
+    "files": true
   },
   "compilerOptions": {
     "target": "esnext",
@@ -19,6 +20,7 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "moduleResolution": "Node",
+    "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
