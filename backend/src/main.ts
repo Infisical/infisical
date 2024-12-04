@@ -57,11 +57,7 @@ const run = async () => {
   const smtp = smtpServiceFactory(formatSmtpConfig());
 
   const queue = queueServiceFactory(appCfg.REDIS_URL, appCfg.DB_CONNECTION_URI);
-
-  if (appCfg.USE_PG_QUEUE) {
-    logger.info("Initializing PG queue...");
-    await queue.initialize();
-  }
+  await queue.initialize();
 
   const keyStore = keyStoreFactory(appCfg.REDIS_URL);
 
