@@ -55,7 +55,10 @@ const run = async () => {
   }
 
   const smtp = smtpServiceFactory(formatSmtpConfig());
-  const queue = queueServiceFactory(appCfg.REDIS_URL);
+
+  const queue = queueServiceFactory(appCfg.REDIS_URL, appCfg.DB_CONNECTION_URI);
+  await queue.initialize();
+
   const keyStore = keyStoreFactory(appCfg.REDIS_URL);
 
   const hsmModule = initializeHsmModule();

@@ -178,7 +178,9 @@ const envSchema = z
     HSM_LIB_PATH: zpStr(z.string().optional()),
     HSM_PIN: zpStr(z.string().optional()),
     HSM_KEY_LABEL: zpStr(z.string().optional()),
-    HSM_SLOT: z.coerce.number().optional().default(0)
+    HSM_SLOT: z.coerce.number().optional().default(0),
+
+    USE_PG_QUEUE: zodStrBool.default("false")
   })
   // To ensure that basic encryption is always possible.
   .refine(

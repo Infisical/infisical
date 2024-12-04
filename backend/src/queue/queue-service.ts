@@ -1,5 +1,6 @@
 import { Job, JobsOptions, Queue, QueueOptions, RepeatOptions, Worker, WorkerListener } from "bullmq";
 import Redis from "ioredis";
+import PgBoss, { WorkOptions } from "pg-boss";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
@@ -7,6 +8,7 @@ import {
   TScanFullRepoEventPayload,
   TScanPushEventPayload
 } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
+import { logger } from "@app/lib/logger";
 import {
   TFailedIntegrationSyncEmailsPayload,
   TIntegrationSyncPayload,
@@ -184,16 +186,34 @@ export type TQueueJobTypes = {
 };
 
 export type TQueueServiceFactory = ReturnType<typeof queueServiceFactory>;
-export const queueServiceFactory = (redisUrl: string) => {
+export const queueServiceFactory = (redisUrl: string, dbConnectionUrl: string) => {
   const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
   const queueContainer = {} as Record<
     QueueName,
     Queue<TQueueJobTypes[QueueName]["payload"], void, TQueueJobTypes[QueueName]["name"]>
   >;
+
+  const pgBoss = new PgBoss({
+    connectionString: dbConnectionUrl,
+    archiveCompletedAfterSeconds: 60,
+    archiveFailedAfterSeconds: 1000, // we want to keep failed jobs for a longer time so that it can be retried
+    deleteAfterSeconds: 30
+  });
+
+  const queueContainerPg = {} as Record<QueueJobs, boolean>;
+
   const workerContainer = {} as Record<
     QueueName,
     Worker<TQueueJobTypes[QueueName]["payload"], void, TQueueJobTypes[QueueName]["name"]>
   >;
+
+  const initialize = async () => {
+    await pgBoss.start();
+
+    pgBoss.on("error", (error) => {
+      logger.error(error, "pg-queue error");
+    });
+  };
 
   const start = <T extends QueueName>(
     name: T,
@@ -213,6 +233,27 @@ export const queueServiceFactory = (redisUrl: string) => {
       ...queueSettings,
       connection
     });
+  };
+
+  const startPg = async <T extends QueueName>(
+    jobName: QueueJobs,
+    jobsFn: (jobs: PgBoss.Job<TQueueJobTypes[T]["payload"]>[]) => Promise<void>,
+    options: WorkOptions & {
+      workerCount: number;
+    }
+  ) => {
+    if (queueContainerPg[jobName]) {
+      throw new Error(`${jobName} queue is already initialized`);
+    }
+
+    await pgBoss.createQueue(jobName);
+    queueContainerPg[jobName] = true;
+
+    await Promise.all(
+      Array.from({ length: options.workerCount }).map(() =>
+        pgBoss.work<TQueueJobTypes[T]["payload"]>(jobName, options, jobsFn)
+      )
+    );
   };
 
   const listen = <
@@ -236,6 +277,18 @@ export const queueServiceFactory = (redisUrl: string) => {
     const q = queueContainer[name];
 
     await q.add(job, data, opts);
+  };
+
+  const queuePg = async <T extends QueueName>(
+    job: TQueueJobTypes[T]["name"],
+    data: TQueueJobTypes[T]["payload"],
+    opts?: PgBoss.SendOptions & { jobId?: string }
+  ) => {
+    await pgBoss.send({
+      name: job,
+      data,
+      options: opts
+    });
   };
 
   const stopRepeatableJob = async <T extends QueueName>(
@@ -274,5 +327,17 @@ export const queueServiceFactory = (redisUrl: string) => {
     await Promise.all(Object.values(workerContainer).map((worker) => worker.close()));
   };
 
-  return { start, listen, queue, shutdown, stopRepeatableJob, stopRepeatableJobByJobId, clearQueue, stopJobById };
+  return {
+    initialize,
+    start,
+    listen,
+    queue,
+    shutdown,
+    stopRepeatableJob,
+    stopRepeatableJobByJobId,
+    clearQueue,
+    stopJobById,
+    startPg,
+    queuePg
+  };
 };

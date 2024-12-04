@@ -394,13 +394,14 @@ export const registerRoutes = async (
     permissionService
   });
 
-  const auditLogQueue = auditLogQueueServiceFactory({
+  const auditLogQueue = await auditLogQueueServiceFactory({
     auditLogDAL,
     queueService,
     projectDAL,
     licenseService,
     auditLogStreamDAL
   });
+
   const auditLogService = auditLogServiceFactory({ auditLogDAL, permissionService, auditLogQueue });
   const auditLogStreamService = auditLogStreamServiceFactory({
     licenseService,

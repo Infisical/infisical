@@ -10,12 +10,15 @@ export const mockQueue = (): TQueueServiceFactory => {
     queue: async (name, jobData) => {
       job[name] = jobData;
     },
+    queuePg: async () => {},
+    initialize: async () => {},
     shutdown: async () => undefined,
     stopRepeatableJob: async () => true,
     start: (name, jobFn) => {
       queues[name] = jobFn;
       workers[name] = jobFn;
     },
+    startPg: async () => {},
     listen: (name, event) => {
       events[name] = event;
     },

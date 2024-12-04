@@ -53,7 +53,7 @@ export default {
         extension: "ts"
       });
       const smtp = mockSmtpServer();
-      const queue = queueServiceFactory(cfg.REDIS_URL);
+      const queue = queueServiceFactory(cfg.REDIS_URL, cfg.DB_CONNECTION_URI);
       const keyStore = keyStoreFactory(cfg.REDIS_URL);
 
       const hsmModule = initializeHsmModule();
