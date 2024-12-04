@@ -51,6 +51,15 @@ const PROJECT_TEMPLATES_PERMISSIONS = [
   { action: "delete", label: "Remove" }
 ] as const;
 
+const SSH_CERTIFICATE_TEMPLATES_PERMISSIONS = [
+  { action: "read", label: "Read" },
+  { action: "create", label: "Create" },
+  { action: "edit", label: "Modify" },
+  { action: "delete", label: "Remove" },
+  { action: "sign-ssh-key", label: "Sign SSH Key" },
+  { action: "issue-ssh-credentials", label: "Issue SSH Credentials" }
+] as const;
+
 const getPermissionList = (option: string) => {
   switch (option) {
     case "secret-scanning":
@@ -63,6 +72,8 @@ const getPermissionList = (option: string) => {
       return MEMBERS_PERMISSIONS;
     case OrgPermissionSubjects.ProjectTemplates:
       return PROJECT_TEMPLATES_PERMISSIONS;
+    case OrgPermissionSubjects.SshCertificateTemplates:
+      return SSH_CERTIFICATE_TEMPLATES_PERMISSIONS;
     default:
       return PERMISSIONS;
   }
@@ -97,7 +108,7 @@ export const RolePermissionRow = ({ isEditable, title, formName, control, setVal
 
   const selectedPermissionCategory = useMemo(() => {
     const actions = Object.keys(rule || {}) as Array<keyof typeof rule>;
-    const totalActions = PERMISSIONS.length;
+    const totalActions = getPermissionList(formName).length;
     const score = actions.map((key) => (rule?.[key] ? 1 : 0)).reduce((a, b) => a + b, 0 as number);
 
     if (isCustom) return Permission.Custom;

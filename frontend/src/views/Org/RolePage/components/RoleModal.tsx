@@ -70,12 +70,6 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const onFormSubmit = async ({ name, description, slug }: FormData) => {
     try {
-      console.log("onFormSubmit args: ", {
-        name,
-        description,
-        slug
-      });
-
       if (!orgId) return;
 
       if (role) {

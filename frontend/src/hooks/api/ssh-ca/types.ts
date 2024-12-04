@@ -9,6 +9,7 @@ export type TSshCertificateAuthority = {
   keyAlgorithm: CertKeyAlgorithm;
   createdAt: string;
   updatedAt: string;
+  publicKey: string;
 };
 
 export type TCreateSshCaDTO = {
@@ -18,6 +19,7 @@ export type TCreateSshCaDTO = {
 
 export type TUpdateSshCaDTO = {
   caId: string;
+  friendlyName?: string;
   status?: SshCaStatus;
 };
 

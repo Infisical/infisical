@@ -34,5 +34,30 @@ export const sshCertificateTemplateDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...sshCertificateTemplateOrm, getById };
+  const getByName = async (name: string, orgId: string, tx?: Knex) => {
+    try {
+      const certTemplate = await (tx || db.replicaNode())(TableName.SshCertificateTemplate)
+        .join(
+          TableName.SshCertificateAuthority,
+          `${TableName.SshCertificateAuthority}.id`,
+          `${TableName.SshCertificateTemplate}.sshCaId`
+        )
+        .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.SshCertificateAuthority}.orgId`)
+        .where(`${TableName.SshCertificateTemplate}.name`, "=", name)
+        .where(`${TableName.Organization}.id`, "=", orgId)
+        .select(selectAllTableCols(TableName.SshCertificateTemplate))
+        .select(
+          db.ref("orgId").withSchema(TableName.SshCertificateAuthority),
+          db.ref("friendlyName").as("caName").withSchema(TableName.SshCertificateAuthority),
+          db.ref("status").as("caStatus").withSchema(TableName.SshCertificateAuthority)
+        )
+        .first();
+
+      return certTemplate;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Get SSH certificate template by name" });
+    }
+  };
+
+  return { ...sshCertificateTemplateOrm, getById, getByName };
 };

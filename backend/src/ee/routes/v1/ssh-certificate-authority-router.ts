@@ -29,7 +29,9 @@ export const registerSshCaRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          ca: sanitizedSshCa
+          ca: sanitizedSshCa.extend({
+            publicKey: z.string()
+          })
         })
       }
     },
@@ -74,7 +76,9 @@ export const registerSshCaRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          ca: sanitizedSshCa
+          ca: sanitizedSshCa.extend({
+            publicKey: z.string()
+          })
         })
       }
     },
@@ -109,7 +113,7 @@ export const registerSshCaRouter = async (server: FastifyZodProvider) => {
     method: "PATCH",
     url: "/:sshCaId",
     config: {
-      rateLimit: readLimit
+      rateLimit: writeLimit
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
@@ -118,6 +122,7 @@ export const registerSshCaRouter = async (server: FastifyZodProvider) => {
         sshCaId: z.string().trim().describe(SSH_CERTIFICATE_AUTHORITIES.UPDATE.sshCaId)
       }),
       body: z.object({
+        friendlyName: z.string().optional().describe(SSH_CERTIFICATE_AUTHORITIES.UPDATE.friendlyName),
         status: z
           .enum([SshCaStatus.ACTIVE, SshCaStatus.DISABLED])
           .optional()
@@ -125,7 +130,9 @@ export const registerSshCaRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          ca: sanitizedSshCa
+          ca: sanitizedSshCa.extend({
+            publicKey: z.string()
+          })
         })
       }
     },

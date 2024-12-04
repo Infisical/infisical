@@ -19,7 +19,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionSshCertificateTemplateActions,OrgPermissionSubjects } from "@app/context";
 import { useGetSshCaCertTemplates } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -66,18 +66,23 @@ export const SshCertificateTemplatesTable = ({ handlePopUpOpen, sshCaId }: Props
                           </div>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start" className="p-1">
-                          <DropdownMenuItem
-                            onClick={() =>
-                              handlePopUpOpen("sshCertificateTemplate", {
-                                id: certificateTemplate.id
-                              })
-                            }
-                            icon={<FontAwesomeIcon icon={faFileAlt} size="sm" className="mr-1" />}
-                          >
-                            Edit Template
-                          </DropdownMenuItem>
                           <OrgPermissionCan
-                            I={OrgPermissionActions.Delete}
+                            I={OrgPermissionSshCertificateTemplateActions.Edit}
+                            a={OrgPermissionSubjects.SshCertificateTemplates}
+                          >
+                            <DropdownMenuItem
+                              onClick={() =>
+                                handlePopUpOpen("sshCertificateTemplate", {
+                                  id: certificateTemplate.id
+                                })
+                              }
+                              icon={<FontAwesomeIcon icon={faFileAlt} size="sm" className="mr-1" />}
+                            >
+                              Edit Template
+                            </DropdownMenuItem>
+                          </OrgPermissionCan>
+                          <OrgPermissionCan
+                            I={OrgPermissionSshCertificateTemplateActions.Delete}
                             a={OrgPermissionSubjects.SshCertificateTemplates}
                           >
                             {(isAllowed) => (

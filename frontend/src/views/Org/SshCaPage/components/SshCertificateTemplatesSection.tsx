@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, IconButton } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionSshCertificateTemplateActions,OrgPermissionSubjects } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteSshCertTemplate } from "@app/hooks/api";
 
@@ -50,7 +50,7 @@ export const SshCertificateTemplatesSection = ({ caId }: Props) => {
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
         <h3 className="text-lg font-semibold text-mineshaft-100">Certificate Templates</h3>
         <OrgPermissionCan
-          I={OrgPermissionActions.Create}
+          I={OrgPermissionSshCertificateTemplateActions.Create}
           a={OrgPermissionSubjects.SshCertificateTemplates}
         >
           {(isAllowed) => (

@@ -26,6 +26,7 @@ import { withPermission } from "@app/hoc";
 import { useDeleteSshCa, useGetSshCaById } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
+import { SshCaModal } from "../SshPage/components/SshCaModal";
 import { SshCaDetailsSection, SshCertificateTemplatesSection } from "./components";
 
 export const SshCaPage = withPermission(
@@ -123,6 +124,7 @@ export const SshCaPage = withPermission(
             </div>
           </div>
         )}
+        <SshCaModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <DeleteActionModal
           isOpen={popUp.deleteSshCa.isOpen}
           title="Are you sure want to remove the SSH CA from the project?"

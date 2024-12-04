@@ -185,7 +185,7 @@ export const SshCertificateTemplateModal = ({ popUp, handlePopUpToggle, sshCaId 
                 errorText={error?.message}
                 isRequired
               >
-                <Input {...field} placeholder="My SSH Certificate Template" />
+                <Input {...field} placeholder="administrator" />
               </FormControl>
             )}
           />

@@ -504,7 +504,7 @@ export const useListOrgSshCas = ({ orgId }: { orgId: string }) => {
     queryFn: async () => {
       const {
         data: { cas }
-      } = await apiRequest.get<{ cas: TSshCertificateAuthority[] }>(
+      } = await apiRequest.get<{ cas: Omit<TSshCertificateAuthority, "publicKey">[] }>(
         `/api/v1/organization/${orgId}/ssh-cas`
       );
       return cas;

@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
-import { CERTIFICATE_AUTHORITIES, CERTIFICATE_TEMPLATES } from "@app/lib/api-docs"; // TODO: update to SSH CA
+import { SSH_CERTIFICATE_AUTHORITIES } from "@app/lib/api-docs";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -20,21 +20,27 @@ export const registerSshRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "Sign SSH public key",
       body: z.object({
-        name: z.string(), // name of SSH certificate template
-        publicKey: z.string(),
-        certType: z.nativeEnum(SshCertType).default(SshCertType.USER),
-        principals: z.array(z.string().transform((val) => val.trim())).nonempty("Principals array must not be empty"),
+        templateName: z.string().trim().describe(SSH_CERTIFICATE_AUTHORITIES.SIGN_SSH_KEY.templateName),
+        publicKey: z.string().trim().describe(SSH_CERTIFICATE_AUTHORITIES.SIGN_SSH_KEY.publicKey),
+        certType: z
+          .nativeEnum(SshCertType)
+          .default(SshCertType.USER)
+          .describe(SSH_CERTIFICATE_AUTHORITIES.SIGN_SSH_KEY.certType),
+        principals: z
+          .array(z.string().transform((val) => val.trim()))
+          .nonempty("Principals array must not be empty")
+          .describe(SSH_CERTIFICATE_AUTHORITIES.SIGN_SSH_KEY.principals),
         ttl: z
           .string()
           .refine((val) => ms(val) > 0, "TTL must be a positive number")
           .optional()
-          .describe(CERTIFICATE_TEMPLATES.CREATE.ttl),
-        keyId: z.string().optional()
+          .describe(SSH_CERTIFICATE_AUTHORITIES.SIGN_SSH_KEY.ttl),
+        keyId: z.string().trim().optional().describe(SSH_CERTIFICATE_AUTHORITIES.SIGN_SSH_KEY.keyId)
       }),
       response: {
         200: z.object({
-          serialNumber: z.string(),
-          signedKey: z.string()
+          serialNumber: z.string().describe(SSH_CERTIFICATE_AUTHORITIES.SIGN_SSH_KEY.serialNumber),
+          signedKey: z.string().describe(SSH_CERTIFICATE_AUTHORITIES.SIGN_SSH_KEY.signedKey)
         })
       }
     },
@@ -80,26 +86,35 @@ export const registerSshRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "Issue SSH credentials (certificate + key)",
       body: z.object({
-        name: z.string(), // name of SSH certificate template
+        templateName: z.string().trim().describe(SSH_CERTIFICATE_AUTHORITIES.ISSUE_SSH_CREDENTIALS.templateName),
         keyAlgorithm: z
           .nativeEnum(CertKeyAlgorithm)
           .default(CertKeyAlgorithm.RSA_2048)
-          .describe(CERTIFICATE_AUTHORITIES.CREATE.keyAlgorithm),
-        certType: z.nativeEnum(SshCertType).default(SshCertType.USER),
-        principals: z.array(z.string().transform((val) => val.trim())).nonempty("Principals array must not be empty"),
+          .describe(SSH_CERTIFICATE_AUTHORITIES.ISSUE_SSH_CREDENTIALS.keyAlgorithm),
+        certType: z
+          .nativeEnum(SshCertType)
+          .default(SshCertType.USER)
+          .describe(SSH_CERTIFICATE_AUTHORITIES.ISSUE_SSH_CREDENTIALS.certType),
+        principals: z
+          .array(z.string().transform((val) => val.trim()))
+          .nonempty("Principals array must not be empty")
+          .describe(SSH_CERTIFICATE_AUTHORITIES.ISSUE_SSH_CREDENTIALS.principals),
         ttl: z
           .string()
           .refine((val) => ms(val) > 0, "TTL must be a positive number")
           .optional()
-          .describe(CERTIFICATE_TEMPLATES.CREATE.ttl),
-        keyId: z.string().optional()
+          .describe(SSH_CERTIFICATE_AUTHORITIES.ISSUE_SSH_CREDENTIALS.ttl),
+        keyId: z.string().trim().optional()
       }),
       response: {
         200: z.object({
-          serialNumber: z.string(),
-          signedKey: z.string(),
-          privateKey: z.string(),
-          keyAlgorithm: z.nativeEnum(CertKeyAlgorithm)
+          serialNumber: z.string().describe(SSH_CERTIFICATE_AUTHORITIES.ISSUE_SSH_CREDENTIALS.serialNumber),
+          signedKey: z.string().describe(SSH_CERTIFICATE_AUTHORITIES.ISSUE_SSH_CREDENTIALS.signedKey),
+          privateKey: z.string().describe(SSH_CERTIFICATE_AUTHORITIES.ISSUE_SSH_CREDENTIALS.privateKey),
+          publicKey: z.string().describe(SSH_CERTIFICATE_AUTHORITIES.ISSUE_SSH_CREDENTIALS.publicKey),
+          keyAlgorithm: z
+            .nativeEnum(CertKeyAlgorithm)
+            .describe(SSH_CERTIFICATE_AUTHORITIES.ISSUE_SSH_CREDENTIALS.keyAlgorithm)
         })
       }
     },

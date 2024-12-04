@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -55,15 +56,28 @@ export const SshCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     }
   });
 
+  useEffect(() => {
+    if (ca) {
+      reset({
+        friendlyName: ca.friendlyName,
+        keyAlgorithm: ca.keyAlgorithm
+      });
+    } else {
+      reset({
+        friendlyName: "",
+        keyAlgorithm: CertKeyAlgorithm.RSA_2048
+      });
+    }
+  }, [ca]);
+
   const onFormSubmit = async ({ friendlyName, keyAlgorithm }: FormData) => {
     try {
       if (ca) {
-        // update
         await updateMutateAsync({
-          caId: ca.id
+          caId: ca.id,
+          friendlyName
         });
       } else {
-        // create
         await createMutateAsync({
           friendlyName,
           keyAlgorithm
@@ -112,7 +126,7 @@ export const SshCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                 errorText={error?.message}
                 isRequired
               >
-                <Input {...field} placeholder="My SSH CA" isDisabled={Boolean(ca)} />
+                <Input {...field} placeholder="My SSH CA" />
               </FormControl>
             )}
           />

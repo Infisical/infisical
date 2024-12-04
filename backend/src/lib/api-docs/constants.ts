@@ -1148,6 +1148,7 @@ export const SSH_CERTIFICATE_AUTHORITIES = {
   },
   UPDATE: {
     sshCaId: "The ID of the SSH CA to update.",
+    friendlyName: "A friendly name for the SSH CA to update to.",
     status: "The status of the SSH CA to update to. This can be one of active or disabled."
   },
   DELETE: {
@@ -1155,6 +1156,28 @@ export const SSH_CERTIFICATE_AUTHORITIES = {
   },
   GET_CERTIFICATE_TEMPLATES: {
     sshCaId: "The ID of the SSH CA to get the certificate templates for."
+  },
+  SIGN_SSH_KEY: {
+    templateName: "The name of the SSH certificate template to sign the SSH public key with.",
+    publicKey: "The SSH public key to sign.",
+    certType: "The type of certificate to issue. This can be one of user or host.",
+    principals: "The list of principals (usernames, hostnames) to include in the certificate.",
+    ttl: "The time to live for the certificate such as 1m, 1h, 1d, ... If not specified, the default TTL for the template will be used.",
+    keyId: "The key ID to include in the certificate. If not specified, a default key ID will be generated.",
+    serialNumber: "The serial number of the issued SSH certificate.",
+    signedKey: "The SSH certificate or signed SSH public key."
+  },
+  ISSUE_SSH_CREDENTIALS: {
+    templateName: "The name of the SSH certificate template to issue the SSH credentials with.",
+    keyAlgorithm: "The type of public key algorithm and size, in bits, of the key pair for the SSH CA.",
+    certType: "The type of certificate to issue. This can be one of user or host.",
+    principals: "The list of principals (usernames, hostnames) to include in the certificate.",
+    ttl: "The time to live for the certificate such as 1m, 1h, 1d, ... If not specified, the default TTL for the template will be used.",
+    keyId: "The key ID to include in the certificate. If not specified, a default key ID will be generated.",
+    serialNumber: "The serial number of the issued SSH certificate.",
+    signedKey: "The SSH certificate or signed SSH public key.",
+    privateKey: "The private key corresponding to the issued SSH certificate.",
+    publicKey: "The public key of the issued SSH certificate."
   }
 };
 

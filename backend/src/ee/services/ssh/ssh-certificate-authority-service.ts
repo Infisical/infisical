@@ -1,6 +1,10 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  OrgPermissionActions,
+  OrgPermissionSshCertificateTemplateActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { TSshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-dal";
 import { TSshCertificateAuthoritySecretDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-secret-dal";
@@ -12,6 +16,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import {
   createSshCert,
   createSshKeyPair,
+  getSshPublicKey,
   validateSshCertificatePrincipals,
   validateSshCertificateTtl,
   validateSshCertificateType
@@ -33,7 +38,7 @@ type TSshCertificateAuthorityServiceFactoryDep = {
     "transaction" | "create" | "findById" | "updateById" | "deleteById" | "findOne"
   >;
   sshCertificateAuthoritySecretDAL: Pick<TSshCertificateAuthoritySecretDALFactory, "create" | "findOne">;
-  sshCertificateTemplateDAL: Pick<TSshCertificateTemplateDALFactory, "find" | "findOne">;
+  sshCertificateTemplateDAL: Pick<TSshCertificateTemplateDALFactory, "find" | "getByName">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey" | "getOrgKmsKeyId">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
@@ -76,14 +81,14 @@ export const sshCertificateAuthorityServiceFactory = ({
       const ca = await sshCertificateAuthorityDAL.create(
         {
           orgId: actorOrgId,
-          friendlyName: friendlyName || "",
+          friendlyName,
           status: SshCaStatus.ACTIVE,
           keyAlgorithm
         },
         tx
       );
 
-      const { privateKey } = createSshKeyPair(keyAlgorithm, ca.friendlyName);
+      const { publicKey, privateKey } = createSshKeyPair(keyAlgorithm, ca.friendlyName);
 
       const orgKmsKeyId = await kmsService.getOrgKmsKeyId(actorOrgId);
       const kmsEncryptor = await kmsService.encryptWithKmsKey({
@@ -102,7 +107,7 @@ export const sshCertificateAuthorityServiceFactory = ({
         tx
       );
 
-      return ca;
+      return { ...ca, publicKey };
     });
 
     return newCa;
@@ -118,7 +123,7 @@ export const sshCertificateAuthorityServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
-      actorOrgId,
+      ca.orgId,
       actorAuthMethod,
       actorOrgId
     );
@@ -128,21 +133,43 @@ export const sshCertificateAuthorityServiceFactory = ({
       OrgPermissionSubjects.SshCertificateAuthorities
     );
 
-    return ca;
+    const sshCaSecret = await sshCertificateAuthoritySecretDAL.findOne({ sshCaId: ca.id });
+
+    // decrypt secret
+    const orgKmsKeyId = await kmsService.getOrgKmsKeyId(actorOrgId);
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      kmsId: orgKmsKeyId
+    });
+
+    const decryptedCaPrivateKey = await kmsDecryptor({
+      cipherTextBlob: sshCaSecret.encryptedPrivateKey
+    });
+
+    const publicKey = getSshPublicKey(decryptedCaPrivateKey.toString("utf-8"));
+
+    return { ...ca, publicKey };
   };
 
   /**
    * Update SSH CA with id [caId]
    * Note: Used to enable/disable CA
    */
-  const updateSshCaById = async ({ caId, status, actor, actorId, actorAuthMethod, actorOrgId }: TUpdateSshCaDTO) => {
+  const updateSshCaById = async ({
+    caId,
+    friendlyName,
+    status,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TUpdateSshCaDTO) => {
     const ca = await sshCertificateAuthorityDAL.findById(caId);
     if (!ca) throw new NotFoundError({ message: `SSH CA with ID '${caId}' not found` });
 
     const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
-      actorOrgId,
+      ca.orgId,
       actorAuthMethod,
       actorOrgId
     );
@@ -152,9 +179,23 @@ export const sshCertificateAuthorityServiceFactory = ({
       OrgPermissionSubjects.SshCertificateAuthorities
     );
 
-    const updatedCa = await sshCertificateAuthorityDAL.updateById(caId, { status });
+    const updatedCa = await sshCertificateAuthorityDAL.updateById(caId, { friendlyName, status });
 
-    return updatedCa;
+    const sshCaSecret = await sshCertificateAuthoritySecretDAL.findOne({ sshCaId: ca.id });
+
+    // decrypt secret
+    const orgKmsKeyId = await kmsService.getOrgKmsKeyId(actorOrgId);
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      kmsId: orgKmsKeyId
+    });
+
+    const decryptedCaPrivateKey = await kmsDecryptor({
+      cipherTextBlob: sshCaSecret.encryptedPrivateKey
+    });
+
+    const publicKey = getSshPublicKey(decryptedCaPrivateKey.toString("utf-8"));
+
+    return { ...updatedCa, publicKey };
   };
 
   /**
@@ -167,7 +208,7 @@ export const sshCertificateAuthorityServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
-      actorOrgId,
+      ca.orgId,
       actorAuthMethod,
       actorOrgId
     );
@@ -184,10 +225,10 @@ export const sshCertificateAuthorityServiceFactory = ({
 
   /**
    * Return SSH certificate and corresponding new SSH public-private key pair where
-   * SSH public key is signed using CA behind SSH certificate with name [name].
+   * SSH public key is signed using CA behind SSH certificate with name [templateName].
    */
   const issueSshCreds = async ({
-    name,
+    templateName,
     keyAlgorithm,
     certType,
     principals,
@@ -198,7 +239,13 @@ export const sshCertificateAuthorityServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TIssueSshCredsDTO) => {
-    // TODO: proper permission check
+    const sshCertificateTemplate = await sshCertificateTemplateDAL.getByName(templateName, actorOrgId);
+    if (!sshCertificateTemplate) {
+      throw new NotFoundError({
+        message: "No SSH certificate template found with specified name"
+      });
+    }
+
     const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
@@ -208,12 +255,9 @@ export const sshCertificateAuthorityServiceFactory = ({
     );
 
     ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Create,
+      OrgPermissionSshCertificateTemplateActions.IssueSshCredentials,
       OrgPermissionSubjects.SshCertificateTemplates
     );
-
-    // TODO: adjust to find within org
-    const sshCertificateTemplate = await sshCertificateTemplateDAL.findOne({ name });
 
     // validate if the requested [certType] is allowed under the template configuration
     validateSshCertificateType(sshCertificateTemplate, certType);
@@ -266,10 +310,10 @@ export const sshCertificateAuthorityServiceFactory = ({
 
   /**
    * Return SSH certificate by signing SSH public key [publicKey]
-   * using CA behind SSH certificate template with name [name]
+   * using CA behind SSH certificate template with name [templateName]
    */
   const signSshKey = async ({
-    name,
+    templateName,
     publicKey,
     certType,
     principals,
@@ -280,7 +324,13 @@ export const sshCertificateAuthorityServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TSignSshKeyDTO) => {
-    // TODO: proper permission check
+    const sshCertificateTemplate = await sshCertificateTemplateDAL.getByName(templateName, actorOrgId);
+    if (!sshCertificateTemplate) {
+      throw new NotFoundError({
+        message: "No SSH certificate template found with specified name"
+      });
+    }
+
     const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
@@ -290,12 +340,9 @@ export const sshCertificateAuthorityServiceFactory = ({
     );
 
     ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Create,
+      OrgPermissionSshCertificateTemplateActions.SignSshKey,
       OrgPermissionSubjects.SshCertificateTemplates
     );
-
-    // TODO: adjust to find within org
-    const sshCertificateTemplate = await sshCertificateTemplateDAL.findOne({ name });
 
     // validate if the requested [certType] is allowed under the template configuration
     validateSshCertificateType(sshCertificateTemplate, certType);
@@ -354,7 +401,7 @@ export const sshCertificateAuthorityServiceFactory = ({
     );
 
     ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Read,
+      OrgPermissionSshCertificateTemplateActions.Read,
       OrgPermissionSubjects.SshCertificateTemplates
     );
 

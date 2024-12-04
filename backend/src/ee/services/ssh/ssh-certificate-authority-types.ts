@@ -12,7 +12,7 @@ export enum SshCertType {
 }
 
 export type TCreateSshCaDTO = {
-  friendlyName?: string;
+  friendlyName: string;
   keyAlgorithm: CertKeyAlgorithm;
 } & Omit<TOrgPermission, "orgId">;
 
@@ -22,6 +22,7 @@ export type TGetSshCaDTO = {
 
 export type TUpdateSshCaDTO = {
   caId: string;
+  friendlyName?: string;
   status?: SshCaStatus;
 } & Omit<TOrgPermission, "orgId">;
 
@@ -30,7 +31,7 @@ export type TDeleteSshCaDTO = {
 } & Omit<TOrgPermission, "orgId">;
 
 export type TIssueSshCredsDTO = {
-  name: string; // name of SSH certificate template
+  templateName: string;
   keyAlgorithm: CertKeyAlgorithm;
   certType: SshCertType;
   principals: string[];
@@ -39,7 +40,7 @@ export type TIssueSshCredsDTO = {
 } & Omit<TOrgPermission, "orgId">;
 
 export type TSignSshKeyDTO = {
-  name: string; // name of SSH certificate template
+  templateName: string;
   publicKey: string;
   certType: SshCertType;
   principals: string[];

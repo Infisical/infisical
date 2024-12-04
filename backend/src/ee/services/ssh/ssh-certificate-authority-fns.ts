@@ -68,6 +68,32 @@ export const createSshKeyPair = (keyAlgorithm: CertKeyAlgorithm, comment: string
 };
 
 /**
+ * Return the SSH public key for the given SSH private key.
+ * @param privateKey - The SSH private key to get the public key for
+ */
+export const getSshPublicKey = (privateKey: string) => {
+  const uniqueId = crypto.randomBytes(8).toString("hex");
+  const privateKeyFile = `ssh_key_${uniqueId}`;
+  const publicKeyFile = `${privateKeyFile}.pub`;
+
+  if (fs.existsSync(publicKeyFile)) fs.unlinkSync(publicKeyFile);
+  if (fs.existsSync(privateKeyFile)) fs.unlinkSync(privateKeyFile);
+
+  fs.writeFileSync(privateKeyFile, privateKey);
+  fs.chmodSync(privateKeyFile, 0o600);
+
+  const command = `ssh-keygen -y -f ${privateKeyFile} > ${publicKeyFile}`;
+  execSync(command);
+
+  const publicKey = fs.readFileSync(publicKeyFile, "utf8");
+
+  fs.unlinkSync(privateKeyFile);
+  fs.unlinkSync(publicKeyFile);
+
+  return publicKey;
+};
+
+/**
  * Validate the requested SSH certificate type based on the SSH certificate template configuration.
  * @param template - The SSH certificate template configuration
  * @param certType - The SSH certificate type
@@ -160,9 +186,11 @@ export const createSshCert = ({ caPrivateKey, userPublicKey, keyId, principals, 
   const uniqueId = crypto.randomBytes(8).toString("hex");
   const publicKeyFile = `user_key_${uniqueId}.pub`;
   const privateKeyFile = `ssh_ca_key_${uniqueId}`;
+  const signedPublicKeyFile = `user_key_${uniqueId}-cert.pub`;
 
   if (fs.existsSync(publicKeyFile)) fs.unlinkSync(publicKeyFile);
   if (fs.existsSync(privateKeyFile)) fs.unlinkSync(privateKeyFile);
+  if (fs.existsSync(signedPublicKeyFile)) fs.unlinkSync(signedPublicKeyFile);
 
   // write public and private keys to temp files
   fs.writeFileSync(publicKeyFile, userPublicKey);
@@ -170,7 +198,6 @@ export const createSshCert = ({ caPrivateKey, userPublicKey, keyId, principals, 
   fs.chmodSync(privateKeyFile, 0o600);
 
   const serialNumber = createSshCertSerialNumber();
-  console.log("signSshKey serialNumber: ", serialNumber);
 
   const certOptions = [
     `-s ${privateKeyFile}`, // path to SSH CA private key
@@ -189,10 +216,11 @@ export const createSshCert = ({ caPrivateKey, userPublicKey, keyId, principals, 
   // Execute the signing process
   execSync(command);
 
-  const signedPublicKey = fs.readFileSync(publicKeyFile, "utf8");
+  const signedPublicKey = fs.readFileSync(signedPublicKeyFile, "utf8");
 
   fs.unlinkSync(publicKeyFile);
   fs.unlinkSync(privateKeyFile);
+  fs.unlinkSync(signedPublicKeyFile);
 
   return { serialNumber, signedPublicKey };
 };

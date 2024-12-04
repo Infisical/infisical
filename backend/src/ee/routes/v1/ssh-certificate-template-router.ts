@@ -1,3 +1,4 @@
+import slugify from "@sindresorhus/slugify";
 import ms from "ms";
 import { z } from "zod";
 
@@ -61,7 +62,14 @@ export const registerSshCertificateTemplateRouter = async (server: FastifyZodPro
     schema: {
       body: z.object({
         sshCaId: z.string().describe(SSH_CERTIFICATE_TEMPLATES.CREATE.sshCaId),
-        name: z.string().min(1).describe(SSH_CERTIFICATE_TEMPLATES.CREATE.name),
+        name: z
+          .string()
+          .min(1)
+          .max(36)
+          .refine((v) => slugify(v) === v, {
+            message: "Name must be a valid slug"
+          })
+          .describe(SSH_CERTIFICATE_TEMPLATES.CREATE.name),
         ttl: z
           .string()
           .refine((val) => ms(val) > 0, "TTL must be a positive number")
@@ -128,7 +136,15 @@ export const registerSshCertificateTemplateRouter = async (server: FastifyZodPro
     },
     schema: {
       body: z.object({
-        name: z.string().min(1).optional().describe(SSH_CERTIFICATE_TEMPLATES.UPDATE.name),
+        name: z
+          .string()
+          .min(1)
+          .max(36)
+          .refine((v) => slugify(v) === v, {
+            message: "Slug must be a valid slug"
+          })
+          .optional()
+          .describe(SSH_CERTIFICATE_TEMPLATES.UPDATE.name),
         ttl: z
           .string()
           .refine((val) => ms(val) > 0, "TTL must be a positive number")
