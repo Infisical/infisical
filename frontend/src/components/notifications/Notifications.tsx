@@ -9,24 +9,30 @@ export type TNotification = {
   title?: string;
   text: ReactNode;
   children?: ReactNode;
-  cta?: ReactNode;
+  callToAction?: ReactNode;
   copyActions?: { icon?: IconDefinition; value: string; name: string; label?: string }[];
 };
 
-export const NotificationContent = ({ title, text, children, cta, copyActions }: TNotification) => {
+export const NotificationContent = ({
+  title,
+  text,
+  children,
+  callToAction,
+  copyActions
+}: TNotification) => {
   return (
     <div className="msg-container">
       {title && <div className="text-md mb-1 font-medium">{title}</div>}
       <div className={title ? "text-sm text-neutral-400" : "text-md"}>{text}</div>
       {children && <div className="mt-2">{children}</div>}
-      {(cta || copyActions) && (
+      {(callToAction || copyActions) && (
         <div
           className={twMerge(
             "mt-2 flex h-7 w-full flex-row items-end gap-2",
-            cta ? "justify-between" : "justify-end"
+            callToAction ? "justify-between" : "justify-end"
           )}
         >
-          {cta}
+          {callToAction}
 
           {copyActions && (
             <div className="flex h-7 flex-row items-center gap-2">

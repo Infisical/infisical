@@ -33,7 +33,7 @@ export const queryClient = new QueryClient({
               title: "Validation Error",
               type: "error",
               text: "Please check the input and try again.",
-              cta: (
+              callToAction: (
                 <Modal>
                   <ModalTrigger>
                     <Button variant="outline_bg" size="xs">
@@ -80,7 +80,7 @@ export const queryClient = new QueryClient({
               title: "Forbidden Access",
               type: "error",
               text: `${serverResponse.message}.`,
-              cta: serverResponse?.details?.length ? (
+              callToAction: serverResponse?.details?.length ? (
                 <Modal>
                   <ModalTrigger>
                     <Button variant="outline_bg" size="xs">

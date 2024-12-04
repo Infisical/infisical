@@ -24,10 +24,8 @@ export const CopyButton = ({
   name,
   icon = faCopy
 }: CopyButtonProps) => {
-  const tooltipText = name ? `Copy ${name}` : "Copy to clipboard";
-
   const [copyText, isCopying, setCopyText] = useTimedReset<string>({
-    initialState: tooltipText
+    initialState: name ? `Copy ${name}` : "Copy to clipboard"
   });
 
   async function handleCopyText() {
@@ -39,7 +37,7 @@ export const CopyButton = ({
     <div>
       <Tooltip content={copyText} size={size === "xs" || size === "sm" ? "sm" : "md"}>
         <IconButton
-          ariaLabel={tooltipText}
+          ariaLabel={copyText}
           variant={variant}
           className={twMerge("group relative", color)}
           size={size}
