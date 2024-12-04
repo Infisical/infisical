@@ -127,7 +127,7 @@ const ElastiCacheUserManager = (credentials: TBasicAWSCredentials, region: strin
 };
 
 const generatePassword = () => {
-  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*$#";
+  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*";
   return customAlphabet(charset, 64)();
 };
 
@@ -211,7 +211,7 @@ export const AwsElastiCacheDatabaseProvider = (): TDynamicProviderFns => {
     return { entityId };
   };
 
-  const renew = async (inputs: unknown, entityId: string) => {
+  const renew = async (_inputs: unknown, entityId: string) => {
     // No renewal necessary
     return { entityId };
   };

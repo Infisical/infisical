@@ -14,7 +14,7 @@ const generatePassword = (provider: SqlProviders) => {
   // oracle has limit of 48 password length
   const size = provider === SqlProviders.Oracle ? 30 : 48;
 
-  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*$#";
+  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*";
   return customAlphabet(charset, 48)(size);
 };
 
