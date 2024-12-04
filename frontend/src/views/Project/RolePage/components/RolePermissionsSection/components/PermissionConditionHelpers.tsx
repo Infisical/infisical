@@ -21,6 +21,7 @@ export const renderOperatorSelectItems = (type: string) => {
   if (type === "secretTags") {
     return <SelectItem value={PermissionConditionOperators.$IN}>Contains</SelectItem>;
   }
+
   return (
     <>
       <SelectItem value={PermissionConditionOperators.$EQ}>Equal</SelectItem>

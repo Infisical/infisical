@@ -157,7 +157,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                     size="xs"
                     className="mt-2"
                     onClick={() => {
-                      items.insert(rootIndex, [
+                      items.insert(rootIndex + 1, [
                         { read: false, edit: false, create: false, delete: false } as any
                       ]);
                     }}
