@@ -10,7 +10,7 @@ type InfisicalPushSecretDestination struct {
 	SecretsPath string `json:"secretsPath"`
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Immutable
-	EnvSlug string `json:"envSlug"`
+	EnvironmentSlug string `json:"EnvironmentSlug"`
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Immutable
 	ProjectID string `json:"projectId"`

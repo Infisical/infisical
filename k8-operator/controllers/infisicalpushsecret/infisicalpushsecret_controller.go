@@ -58,10 +58,10 @@ func (r *InfisicalPushSecretReconciler) Reconcile(ctx context.Context, req ctrl.
 
 	logger := r.GetLogger(req)
 
-	var infisicalPushSecretCR secretsv1alpha1.InfisicalPushSecret
+	var infisicalPushSecretCRD secretsv1alpha1.InfisicalPushSecret
 	requeueTime := time.Minute // seconds
 
-	err := r.Get(ctx, req.NamespacedName, &infisicalPushSecretCR)
+	err := r.Get(ctx, req.NamespacedName, &infisicalPushSecretCRD)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			logger.Info("Infisical Push Secret CRD not found")
@@ -77,25 +77,25 @@ func (r *InfisicalPushSecretReconciler) Reconcile(ctx context.Context, req ctrl.
 	}
 
 	// Add finalizer if it doesn't exist
-	if !controllerutil.ContainsFinalizer(&infisicalPushSecretCR, constants.INFISICAL_PUSH_SECRET_FINALIZER_NAME) {
-		controllerutil.AddFinalizer(&infisicalPushSecretCR, constants.INFISICAL_PUSH_SECRET_FINALIZER_NAME)
-		if err := r.Update(ctx, &infisicalPushSecretCR); err != nil {
+	if !controllerutil.ContainsFinalizer(&infisicalPushSecretCRD, constants.INFISICAL_PUSH_SECRET_FINALIZER_NAME) {
+		controllerutil.AddFinalizer(&infisicalPushSecretCRD, constants.INFISICAL_PUSH_SECRET_FINALIZER_NAME)
+		if err := r.Update(ctx, &infisicalPushSecretCRD); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
 
 	// Check if it's being deleted
-	if !infisicalPushSecretCR.DeletionTimestamp.IsZero() {
+	if !infisicalPushSecretCRD.DeletionTimestamp.IsZero() {
 		logger.Info("Handling deletion of InfisicalPushSecret")
-		if controllerutil.ContainsFinalizer(&infisicalPushSecretCR, constants.INFISICAL_PUSH_SECRET_FINALIZER_NAME) {
+		if controllerutil.ContainsFinalizer(&infisicalPushSecretCRD, constants.INFISICAL_PUSH_SECRET_FINALIZER_NAME) {
 			// We remove finalizers before running deletion logic to be completely safe from stuck resources
-			infisicalPushSecretCR.ObjectMeta.Finalizers = []string{}
-			if err := r.Update(ctx, &infisicalPushSecretCR); err != nil {
-				logger.Error(err, fmt.Sprintf("Error removing finalizers from InfisicalPushSecret %s", infisicalPushSecretCR.Name))
+			infisicalPushSecretCRD.ObjectMeta.Finalizers = []string{}
+			if err := r.Update(ctx, &infisicalPushSecretCRD); err != nil {
+				logger.Error(err, fmt.Sprintf("Error removing finalizers from InfisicalPushSecret %s", infisicalPushSecretCRD.Name))
 				return ctrl.Result{}, err
 			}
 
-			if err := r.DeleteManagedSecrets(ctx, logger, infisicalPushSecretCR); err != nil {
+			if err := r.DeleteManagedSecrets(ctx, logger, infisicalPushSecretCRD); err != nil {
 				return ctrl.Result{}, err // Even if this fails, we still want to delete the CRD
 			}
 
@@ -103,9 +103,9 @@ func (r *InfisicalPushSecretReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, nil
 	}
 
-	if infisicalPushSecretCR.Spec.ResyncInterval != "" {
+	if infisicalPushSecretCRD.Spec.ResyncInterval != "" {
 
-		duration, err := util.ConvertResyncIntervalToDuration(infisicalPushSecretCR.Spec.ResyncInterval)
+		duration, err := util.ConvertResyncIntervalToDuration(infisicalPushSecretCRD.Spec.ResyncInterval)
 
 		if err != nil {
 			logger.Error(err, fmt.Sprintf("unable to convert resync interval to duration. Will requeue after [requeueTime=%v]", requeueTime))
@@ -123,7 +123,7 @@ func (r *InfisicalPushSecretReconciler) Reconcile(ctx context.Context, req ctrl.
 	}
 
 	// Check if the resource is already marked for deletion
-	if infisicalPushSecretCR.GetDeletionTimestamp() != nil {
+	if infisicalPushSecretCRD.GetDeletionTimestamp() != nil {
 		return ctrl.Result{
 			Requeue: false,
 		}, nil
@@ -138,14 +138,14 @@ func (r *InfisicalPushSecretReconciler) Reconcile(ctx context.Context, req ctrl.
 		}, nil
 	}
 
-	if infisicalPushSecretCR.Spec.HostAPI == "" {
+	if infisicalPushSecretCRD.Spec.HostAPI == "" {
 		api.API_HOST_URL = infisicalConfig["hostAPI"]
 	} else {
-		api.API_HOST_URL = infisicalPushSecretCR.Spec.HostAPI
+		api.API_HOST_URL = infisicalPushSecretCRD.Spec.HostAPI
 	}
 
-	if infisicalPushSecretCR.Spec.TLS.CaRef.SecretName != "" {
-		api.API_CA_CERTIFICATE, err = r.getInfisicalCaCertificateFromKubeSecret(ctx, infisicalPushSecretCR)
+	if infisicalPushSecretCRD.Spec.TLS.CaRef.SecretName != "" {
+		api.API_CA_CERTIFICATE, err = r.getInfisicalCaCertificateFromKubeSecret(ctx, infisicalPushSecretCRD)
 		if err != nil {
 			logger.Error(err, fmt.Sprintf("unable to fetch CA certificate. Will requeue after [requeueTime=%v]", requeueTime))
 			return ctrl.Result{
@@ -158,8 +158,8 @@ func (r *InfisicalPushSecretReconciler) Reconcile(ctx context.Context, req ctrl.
 		api.API_CA_CERTIFICATE = ""
 	}
 
-	err = r.ReconcileInfisicalPushSecret(ctx, logger, infisicalPushSecretCR)
-	r.SetSuccessfullyReconciledConditions(ctx, &infisicalPushSecretCR, err)
+	err = r.ReconcileInfisicalPushSecret(ctx, logger, infisicalPushSecretCRD)
+	r.SetSuccessfullyReconciledConditions(ctx, &infisicalPushSecretCRD, err)
 
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("unable to reconcile Infisical Push Secret. Will requeue after [requeueTime=%v]", requeueTime))

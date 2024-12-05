@@ -143,7 +143,7 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 	destination := infisicalPushSecret.Spec.Destination
 	existingSecrets, err := infisicalClient.Secrets().List(infisicalSdk.ListSecretsOptions{
 		ProjectID:      destination.ProjectID,
-		Environment:    destination.EnvSlug,
+		Environment:    destination.EnvironmentSlug,
 		SecretPath:     destination.SecretsPath,
 		IncludeImports: false,
 	})
@@ -197,7 +197,7 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 					updatedSecret, err := infisicalClient.Secrets().Update(infisicalSdk.UpdateSecretOptions{
 						SecretKey:      secretKey,
 						ProjectID:      destination.ProjectID,
-						Environment:    destination.EnvSlug,
+						Environment:    destination.EnvironmentSlug,
 						SecretPath:     destination.SecretsPath,
 						NewSecretValue: secretValue,
 					})
@@ -215,7 +215,7 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 					SecretKey:   secretKey,
 					SecretValue: secretValue,
 					ProjectID:   destination.ProjectID,
-					Environment: destination.EnvSlug,
+					Environment: destination.EnvironmentSlug,
 					SecretPath:  destination.SecretsPath,
 				})
 
@@ -245,7 +245,7 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 					deletedSecret, err := infisicalClient.Secrets().Delete(infisicalSdk.DeleteSecretOptions{
 						SecretKey:   existingSecret.SecretKey,
 						ProjectID:   destination.ProjectID,
-						Environment: destination.EnvSlug,
+						Environment: destination.EnvironmentSlug,
 						SecretPath:  destination.SecretsPath,
 					})
 
@@ -259,7 +259,7 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 						SecretKey:   managedSecretKey,
 						SecretValue: existingSecret.SecretValue,
 						ProjectID:   destination.ProjectID,
-						Environment: destination.EnvSlug,
+						Environment: destination.EnvironmentSlug,
 						SecretPath:  destination.SecretsPath,
 					})
 
@@ -288,7 +288,7 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 					deletedSecret, err := infisicalClient.Secrets().Delete(infisicalSdk.DeleteSecretOptions{
 						SecretKey:   managedSecretKey,
 						ProjectID:   destination.ProjectID,
-						Environment: destination.EnvSlug,
+						Environment: destination.EnvironmentSlug,
 						SecretPath:  destination.SecretsPath,
 					})
 
@@ -318,7 +318,7 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 						SecretKey:   currentSecretKey,
 						SecretValue: kubeSecrets[currentSecretKey],
 						ProjectID:   destination.ProjectID,
-						Environment: destination.EnvSlug,
+						Environment: destination.EnvironmentSlug,
 						SecretPath:  destination.SecretsPath,
 					})
 
@@ -336,7 +336,7 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 						SecretKey:      currentSecretKey,
 						NewSecretValue: kubeSecrets[currentSecretKey],
 						ProjectID:      destination.ProjectID,
-						Environment:    destination.EnvSlug,
+						Environment:    destination.EnvironmentSlug,
 						SecretPath:     destination.SecretsPath,
 					})
 
@@ -369,7 +369,7 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 							SecretKey:      secretKey,
 							NewSecretValue: secretValue,
 							ProjectID:      destination.ProjectID,
-							Environment:    destination.EnvSlug,
+							Environment:    destination.EnvironmentSlug,
 							SecretPath:     destination.SecretsPath,
 						})
 
@@ -435,7 +435,7 @@ func (r *InfisicalPushSecretReconciler) DeleteManagedSecrets(ctx context.Context
 	destination := infisicalPushSecret.Spec.Destination
 	existingSecrets, err := infisicalClient.Secrets().List(infisicalSdk.ListSecretsOptions{
 		ProjectID:      destination.ProjectID,
-		Environment:    destination.EnvSlug,
+		Environment:    destination.EnvironmentSlug,
 		SecretPath:     destination.SecretsPath,
 		IncludeImports: false,
 	})
@@ -457,7 +457,7 @@ func (r *InfisicalPushSecretReconciler) DeleteManagedSecrets(ctx context.Context
 			_, err := infisicalClient.Secrets().Delete(infisicalSdk.DeleteSecretOptions{
 				SecretKey:   managedSecretKey,
 				ProjectID:   destination.ProjectID,
-				Environment: destination.EnvSlug,
+				Environment: destination.EnvironmentSlug,
 				SecretPath:  destination.SecretsPath,
 			})
 
