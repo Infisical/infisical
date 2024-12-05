@@ -116,12 +116,13 @@ export const IntegrationDetails = ({ integration }: Props) => {
           <div className={FIELD_CLASSNAME}>{integration.targetService}</div>
         </div>
       )}
-      {(integration.integration === "checkly" || integration.integration === "github") && (
-        <div>
-          <FormLabel label="Secret Suffix" />
-          <div className={FIELD_CLASSNAME}>{integration?.metadata?.secretSuffix || "-"}</div>
-        </div>
-      )}
+      {(integration.integration === "checkly" || integration.integration === "github") &&
+        integration?.metadata?.secretSuffix && (
+          <div>
+            <FormLabel label="Secret Suffix" />
+            <div className={FIELD_CLASSNAME}>{integration.metadata.secretSuffix}</div>
+          </div>
+        )}
       {integration.integration === "github" && integration.metadata?.githubVisibility ? (
         <div className="mt-2 text-xs text-mineshaft-200">
           {/* eslint-disable-next-line no-nested-ternary */}
