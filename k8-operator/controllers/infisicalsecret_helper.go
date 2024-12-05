@@ -227,11 +227,6 @@ func (r *InfisicalSecretReconciler) GetInfisicalServiceAccountCredentialsFromKub
 	return model.ServiceAccountDetails{AccessKey: string(accessKeyFromSecret), PrivateKey: string(privateKeyFromSecret), PublicKey: string(publicKeyFromSecret)}, nil
 }
 
-type TemplateSecret struct {
-	Value      string `json:"value"`
-	SecretPath string `json:"secretPath"`
-}
-
 func (r *InfisicalSecretReconciler) CreateInfisicalManagedKubeSecret(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret, secretsFromAPI []model.SingleEnvironmentVariable, ETag string) error {
 	plainProcessedSecrets := make(map[string][]byte)
 	secretType := infisicalSecret.Spec.ManagedSecretReference.SecretType
@@ -244,26 +239,26 @@ func (r *InfisicalSecretReconciler) CreateInfisicalManagedKubeSecret(ctx context
 	}
 
 	if managedTemplateData != nil {
-		secretKeyValue := make(map[string]TemplateSecret)
+		secretKeyValue := make(map[string]model.SecretTemplateOptions)
 		for _, secret := range secretsFromAPI {
-			secretKeyValue[secret.Key] = TemplateSecret{
+			secretKeyValue[secret.Key] = model.SecretTemplateOptions{
 				Value:      secret.Value,
 				SecretPath: secret.SecretPath,
 			}
 		}
 
-		for tmplKey, userTmpl := range managedTemplateData.Data {
-			tmpl, err := template.New("secret-templates").Parse(userTmpl)
+		for templateKey, userTemplate := range managedTemplateData.Data {
+			tmpl, err := template.New("secret-templates").Parse(userTemplate)
 			if err != nil {
-				return fmt.Errorf("Unable to compile template: %s", tmplKey, err)
+				return fmt.Errorf("Unable to compile template: %s", templateKey, err)
 			}
 
 			buf := bytes.NewBuffer(nil)
 			err = tmpl.Execute(buf, secretKeyValue)
 			if err != nil {
-				return fmt.Errorf("Unable to execute template: %s", tmplKey, err)
+				return fmt.Errorf("Unable to execute template: %s", templateKey, err)
 			}
-			plainProcessedSecrets[tmplKey] = buf.Bytes()
+			plainProcessedSecrets[templateKey] = buf.Bytes()
 		}
 	}
 
@@ -330,26 +325,26 @@ func (r *InfisicalSecretReconciler) UpdateInfisicalManagedKubeSecret(ctx context
 	}
 
 	if managedTemplateData != nil {
-		secretKeyValue := make(map[string]TemplateSecret)
+		secretKeyValue := make(map[string]model.SecretTemplateOptions)
 		for _, secret := range secretsFromAPI {
-			secretKeyValue[secret.Key] = TemplateSecret{
+			secretKeyValue[secret.Key] = model.SecretTemplateOptions{
 				Value:      secret.Value,
 				SecretPath: secret.SecretPath,
 			}
 		}
 
-		for tmplKey, userTmpl := range managedTemplateData.Data {
-			tmpl, err := template.New("secret-templates").Parse(userTmpl)
+		for templateKey, userTemplate := range managedTemplateData.Data {
+			tmpl, err := template.New("secret-templates").Parse(userTemplate)
 			if err != nil {
-				return fmt.Errorf("Unable to compile template: %s", tmplKey, err)
+				return fmt.Errorf("Unable to compile template: %s", templateKey, err)
 			}
 
 			buf := bytes.NewBuffer(nil)
 			err = tmpl.Execute(buf, secretKeyValue)
 			if err != nil {
-				return fmt.Errorf("Unable to execute template: %s", tmplKey, err)
+				return fmt.Errorf("Unable to execute template: %s", templateKey, err)
 			}
-			plainProcessedSecrets[tmplKey] = buf.Bytes()
+			plainProcessedSecrets[templateKey] = buf.Bytes()
 		}
 	}
 

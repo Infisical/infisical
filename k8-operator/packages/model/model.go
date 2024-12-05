@@ -21,5 +21,10 @@ type SingleEnvironmentVariable struct {
 	Value      string `json:"value"`
 	SecretPath string `json:"secretPath"`
 	Type       string `json:"type"`
-	ID         string `json:"_id"`
+	ID         string `json:"id"`
+}
+
+type SecretTemplateOptions struct {
+	Value      string `json:"value"`
+	SecretPath string `json:"secretPath"`
 }
