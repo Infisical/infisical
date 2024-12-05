@@ -18,7 +18,7 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { TCloudIntegration } from "@app/hooks/api/integrations/types";
 import { TIntegration } from "@app/hooks/api/types";
 
-import { IntegrationDetails } from "./IntegrationDetails";
+import { getIntegrationDestination, IntegrationDetails } from "./IntegrationDetails";
 
 type IProps = {
   integration: TIntegration;
@@ -77,16 +77,7 @@ export const IntegrationRow = ({
       <Td>{environment?.name ?? "-"}</Td>
       <Td className="!min-w-[5rem] max-w-0">
         <div className="flex items-center gap-2">
-          <p className="truncate">
-            {(integration.integration === "hashicorp-vault" &&
-              `${integration.app} - path: ${integration.path}`) ||
-              (integration.scope === "github-org" && `${integration.owner}`) ||
-              (["aws-parameter-store", "rundeck"].includes(integration.integration) &&
-                `${integration.path}`) ||
-              (integration.scope?.startsWith("github-") &&
-                `${integration.owner}/${integration.app}`) ||
-              integration.app}
-          </p>
+          <p className="truncate">{getIntegrationDestination(integration)}</p>
           <Tooltip
             position="left"
             className="min-w-[20rem] max-w-lg"

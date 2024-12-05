@@ -36,6 +36,7 @@ import { usePagination, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { useSyncIntegration } from "@app/hooks/api/integrations/queries";
 import { TCloudIntegration, TIntegration } from "@app/hooks/api/integrations/types";
+import { getIntegrationDestination } from "@app/views/IntegrationsPage/components/IntegrationsSection/components/IntegrationDetails";
 
 import { IntegrationRow } from "./IntegrationRow";
 
@@ -120,7 +121,9 @@ export const IntegrationsTable = ({
   const filteredIntegrations = useMemo(
     () =>
       integrations
-        .filter(({ integration, secretPath, envId, isSynced }) => {
+        .filter((integration) => {
+          const { secretPath, envId, isSynced } = integration;
+
           if (!filters.status.includes(IntegrationStatus.Synced) && isSynced) return false;
           if (!filters.status.includes(IntegrationStatus.NotSynced) && isSynced === false)
             return false;
@@ -130,13 +133,19 @@ export const IntegrationsTable = ({
           )
             return false;
 
-          if (!filters.integrations.includes(integration)) return false;
+          if (!filters.integrations.includes(integration.integration)) return false;
 
           if (!filters.environmentIds.includes(envId)) return false;
 
           return (
-            integration.replace("-", " ").toLowerCase().includes(search.trim().toLowerCase()) ||
+            integration.integration
+              .replace("-", " ")
+              .toLowerCase()
+              .includes(search.trim().toLowerCase()) ||
             secretPath.replace("-", " ").toLowerCase().includes(search.trim().toLowerCase()) ||
+            getIntegrationDestination(integration)
+              ?.toLowerCase()
+              .includes(search.trim().toLowerCase()) ||
             environmentMap
               .get(envId)
               ?.name.replace("-", " ")

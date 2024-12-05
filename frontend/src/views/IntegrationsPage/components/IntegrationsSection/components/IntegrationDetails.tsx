@@ -8,6 +8,14 @@ type Props = {
 const FIELD_CLASSNAME =
   "truncate rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200";
 
+export const getIntegrationDestination = (integration: TIntegration) =>
+  (integration.integration === "hashicorp-vault" &&
+    `${integration.app} - path: ${integration.path}`) ||
+  (integration.scope === "github-org" && `${integration.owner}`) ||
+  (["aws-parameter-store", "rundeck"].includes(integration.integration) && `${integration.path}`) ||
+  (integration.scope?.startsWith("github-") && `${integration.owner}/${integration.app}`) ||
+  integration.app;
+
 export const IntegrationDetails = ({ integration }: Props) => {
   return (
     <div className="flex flex-col gap-2 p-2">
@@ -55,16 +63,7 @@ export const IntegrationDetails = ({ integration }: Props) => {
               "App"
             }
           />
-          <div className={FIELD_CLASSNAME}>
-            {(integration.integration === "hashicorp-vault" &&
-              `${integration.app} - path: ${integration.path}`) ||
-              (integration.scope === "github-org" && `${integration.owner}`) ||
-              (["aws-parameter-store", "rundeck"].includes(integration.integration) &&
-                `${integration.path}`) ||
-              (integration.scope?.startsWith("github-") &&
-                `${integration.owner}/${integration.app}`) ||
-              integration.app}
-          </div>
+          <div className={FIELD_CLASSNAME}>{getIntegrationDestination(integration)}</div>
         </div>
       )}
       {(integration.integration === "vercel" ||
