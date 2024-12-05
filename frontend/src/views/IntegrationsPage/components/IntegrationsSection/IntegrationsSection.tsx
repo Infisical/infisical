@@ -38,8 +38,8 @@ export const IntegrationsSection = ({
   const [shouldDeleteSecrets, setShouldDeleteSecrets] = useToggle(false);
 
   return (
-    <div className="mb-8">
-      <div className="mx-4 mb-4 mt-6 flex flex-col items-start justify-between px-2 text-xl">
+    <div className="mx-6 mb-8">
+      <div className="mb-4 mt-6 flex flex-col items-start justify-between px-2 text-xl">
         <h1 className="text-3xl font-semibold">Integrations</h1>
         <p className="text-base text-bunker-300">Manage integrations with third-party services.</p>
       </div>
