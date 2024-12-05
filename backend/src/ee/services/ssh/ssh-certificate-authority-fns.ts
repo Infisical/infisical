@@ -203,7 +203,7 @@ export const validateSshCertificatePrincipals = (
 export const validateSshCertificateTtl = (template: TSshCertificateTemplates, ttl: string | undefined) => {
   if (!ttl) {
     // use default template ttl
-    return ms(template.ttl);
+    return ms(template.ttl) / 1000;
   }
 
   if (ms(ttl) > ms(template.maxTTL)) {
