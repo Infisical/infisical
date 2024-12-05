@@ -180,7 +180,8 @@ const envSchema = z
     HSM_KEY_LABEL: zpStr(z.string().optional()),
     HSM_SLOT: z.coerce.number().optional().default(0),
 
-    USE_PG_QUEUE: zodStrBool.default("false")
+    USE_PG_QUEUE: zodStrBool.default("false"),
+    SHOULD_INIT_PG_QUEUE: zodStrBool.default("false")
   })
   // To ensure that basic encryption is always possible.
   .refine(

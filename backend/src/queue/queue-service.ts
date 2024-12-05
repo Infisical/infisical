@@ -8,6 +8,7 @@ import {
   TScanFullRepoEventPayload,
   TScanPushEventPayload
 } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
+import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import {
   TFailedIntegrationSyncEmailsPayload,
@@ -208,11 +209,15 @@ export const queueServiceFactory = (redisUrl: string, dbConnectionUrl: string) =
   >;
 
   const initialize = async () => {
-    await pgBoss.start();
+    const appCfg = getConfig();
+    if (appCfg.SHOULD_INIT_PG_QUEUE) {
+      logger.info("Initializing pg-queue...");
+      await pgBoss.start();
 
-    pgBoss.on("error", (error) => {
-      logger.error(error, "pg-queue error");
-    });
+      pgBoss.on("error", (error) => {
+        logger.error(error, "pg-queue error");
+      });
+    }
   };
 
   const start = <T extends QueueName>(
