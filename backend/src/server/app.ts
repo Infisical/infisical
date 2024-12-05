@@ -12,6 +12,7 @@ import type { FastifyRateLimitOptions } from "@fastify/rate-limit";
 import ratelimiter from "@fastify/rate-limit";
 import { fastifyRequestContext } from "@fastify/request-context";
 import fastify from "fastify";
+import { Redis } from "ioredis";
 import { Knex } from "knex";
 
 import { HsmModule } from "@app/ee/services/hsm/hsm-types";
@@ -41,10 +42,11 @@ type TMain = {
   queue: TQueueServiceFactory;
   keyStore: TKeyStoreFactory;
   hsmModule: HsmModule;
+  redis: Redis;
 };
 
 // Run the server!
-export const main = async ({ db, hsmModule, auditLogDb, smtp, logger, queue, keyStore }: TMain) => {
+export const main = async ({ db, hsmModule, auditLogDb, smtp, logger, queue, keyStore, redis }: TMain) => {
   const appCfg = getConfig();
 
   const server = fastify({
@@ -60,6 +62,7 @@ export const main = async ({ db, hsmModule, auditLogDb, smtp, logger, queue, key
   server.setValidatorCompiler(validatorCompiler);
   server.setSerializerCompiler(serializerCompiler);
 
+  server.decorate("redis", redis);
   server.addContentTypeParser("application/scim+json", { parseAs: "string" }, (_, body, done) => {
     try {
       const strBody = body instanceof Buffer ? body.toString() : body;

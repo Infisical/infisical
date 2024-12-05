@@ -59,7 +59,7 @@ export default {
       const hsmModule = initializeHsmModule();
       hsmModule.initialize();
 
-      const server = await main({ db, smtp, logger, queue, keyStore, hsmModule: hsmModule.getModule() });
+      const server = await main({ db, smtp, logger, queue, keyStore, hsmModule: hsmModule.getModule(), redis });
 
       // @ts-expect-error type
       globalThis.testServer = server;
