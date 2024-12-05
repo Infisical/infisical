@@ -8,6 +8,8 @@ import {
   TDeleteSshCaDTO,
   TIssueSshCredsDTO,
   TIssueSshCredsResponse,
+  TSignSshKeyDTO,
+  TSignSshKeyResponse,
   TSshCertificateAuthority,
   TUpdateSshCaDTO} from "./types";
 
@@ -57,6 +59,15 @@ export const useDeleteSshCa = () => {
     },
     onSuccess: ({ orgId }) => {
       queryClient.invalidateQueries(organizationKeys.getOrgSshCas({ orgId }));
+    }
+  });
+};
+
+export const useSignSshKey = () => {
+  return useMutation<TSignSshKeyResponse, {}, TSignSshKeyDTO>({
+    mutationFn: async (body) => {
+      const { data } = await apiRequest.post<TSignSshKeyResponse>("/api/v1/ssh/sign", body);
+      return data;
     }
   });
 };

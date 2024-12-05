@@ -13,7 +13,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
-import { useGetSshCaCertTemplates,useIssueSshCreds } from "@app/hooks/api";
+import { useGetSshCaCertTemplates, useIssueSshCreds, useSignSshKey } from "@app/hooks/api";
 import { certKeyAlgorithms } from "@app/hooks/api/certificates/constants";
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import { SshCertType } from "@app/hooks/api/ssh-ca/enums";
@@ -29,6 +29,7 @@ import { SshCertificateContent } from "./SshCertificateContent";
 
 const schema = z.object({
   templateName: z.string(),
+  publicKey: z.string().optional(),
   keyAlgorithm: z.enum([
     CertKeyAlgorithm.RSA_2048,
     CertKeyAlgorithm.RSA_4096,
@@ -50,13 +51,23 @@ type Props = {
 
 type TSshCertificateDetails = {
   serialNumber: string;
-  privateKey: string;
-  publicKey: string;
   signedKey: string;
+  privateKey?: string;
+  publicKey?: string;
 };
 
+enum SshCertificateOperation {
+  SIGN_SSH_KEY = "sign-ssh-key",
+  ISSUE_SSH_CREDS = "issue-ssh-creds"
+}
+
 export const SshCertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
+  const [operation, setOperation] = useState<SshCertificateOperation>(
+    SshCertificateOperation.SIGN_SSH_KEY
+  );
   const [certificateDetails, setCertificateDetails] = useState<TSshCertificateDetails | null>(null);
+
+  const { mutateAsync: signSshKey } = useSignSshKey();
   const { mutateAsync: issueSshCreds } = useIssueSshCreds();
 
   const popUpData = popUp?.sshCertificate?.data as { sshCaId: string; templateName: string };
@@ -87,28 +98,52 @@ export const SshCertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
     templateName,
     keyAlgorithm,
     certType,
+    publicKey: existingPublicKey,
     principals,
     ttl,
     keyId
   }: FormData) => {
     try {
-      const { serialNumber, publicKey, privateKey, signedKey } = await issueSshCreds({
-        templateName,
-        keyAlgorithm,
-        certType,
-        principals: principals.split(",").map((user) => user.trim()),
-        ttl,
-        keyId
-      });
+      switch (operation) {
+        case SshCertificateOperation.SIGN_SSH_KEY: {
+          const { serialNumber, signedKey } = await signSshKey({
+            templateName,
+            publicKey: existingPublicKey,
+            certType,
+            principals: principals.split(",").map((user) => user.trim()),
+            ttl,
+            keyId
+          });
+          setCertificateDetails({
+            serialNumber,
+            signedKey
+          });
+          break;
+        }
+        case SshCertificateOperation.ISSUE_SSH_CREDS: {
+          const { serialNumber, publicKey, privateKey, signedKey } = await issueSshCreds({
+            templateName,
+            keyAlgorithm,
+            certType,
+            principals: principals.split(",").map((user) => user.trim()),
+            ttl,
+            keyId
+          });
+
+          setCertificateDetails({
+            serialNumber,
+            privateKey,
+            publicKey,
+            signedKey
+          });
+          break;
+        }
+        default: {
+          break;
+        }
+      }
 
       reset();
-
-      setCertificateDetails({
-        serialNumber,
-        privateKey,
-        publicKey,
-        signedKey
-      });
 
       createNotification({
         text: "Successfully created SSH certificate",
@@ -162,20 +197,21 @@ export const SshCertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
                 </FormControl>
               )}
             />
-            <Controller
-              control={control}
-              name="principals"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Principal(s)"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  isRequired
-                >
-                  <Input {...field} placeholder="ec2-user" />
-                </FormControl>
-              )}
-            />
+            <FormControl label="Operation">
+              <Select
+                defaultValue="issue-ssh-creds"
+                value={operation}
+                onValueChange={(e) => setOperation(e as SshCertificateOperation)}
+                className="w-full"
+              >
+                <SelectItem value="sign-ssh-key" key="sign-ssh-key">
+                  Sign SSH Key
+                </SelectItem>
+                <SelectItem value="issue-ssh-creds" key="issue-ssh-creds">
+                  Issue SSH Credentials
+                </SelectItem>
+              </Select>
+            </FormControl>
             <Controller
               control={control}
               name="certType"
@@ -198,31 +234,64 @@ export const SshCertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
                 </FormControl>
               )}
             />
+            {operation === SshCertificateOperation.SIGN_SSH_KEY && (
+              <Controller
+                control={control}
+                name="publicKey"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="SSH Public Key"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                    isRequired
+                  >
+                    <Input {...field} placeholder="ssh-rsa AAA ..." />
+                  </FormControl>
+                )}
+              />
+            )}
+            {operation === SshCertificateOperation.ISSUE_SSH_CREDS && (
+              <Controller
+                control={control}
+                name="keyAlgorithm"
+                defaultValue={CertKeyAlgorithm.RSA_2048}
+                render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                  <FormControl
+                    label="Key Algorithm"
+                    errorText={error?.message}
+                    isError={Boolean(error)}
+                  >
+                    <Select
+                      defaultValue={field.value}
+                      {...field}
+                      onValueChange={(e) => onChange(e)}
+                      className="w-full"
+                    >
+                      {certKeyAlgorithms.map(({ label, value }) => (
+                        <SelectItem value={String(value || "")} key={label}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+              />
+            )}
             <Controller
               control={control}
-              name="keyAlgorithm"
-              defaultValue={CertKeyAlgorithm.RSA_2048}
-              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+              name="principals"
+              render={({ field, fieldState: { error } }) => (
                 <FormControl
-                  label="Key Algorithm"
-                  errorText={error?.message}
+                  label="Principal(s)"
                   isError={Boolean(error)}
+                  errorText={error?.message}
+                  isRequired
                 >
-                  <Select
-                    defaultValue={field.value}
-                    {...field}
-                    onValueChange={(e) => onChange(e)}
-                    className="w-full"
-                  >
-                    {certKeyAlgorithms.map(({ label, value }) => (
-                      <SelectItem value={String(value || "")} key={label}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </Select>
+                  <Input {...field} placeholder="ec2-user" />
                 </FormControl>
               )}
             />
+
             <Controller
               control={control}
               name="ttl"

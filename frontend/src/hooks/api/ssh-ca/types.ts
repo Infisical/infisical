@@ -27,6 +27,20 @@ export type TDeleteSshCaDTO = {
   caId: string;
 };
 
+export type TSignSshKeyDTO = {
+  templateName: string;
+  publicKey?: string;
+  certType: SshCertType;
+  principals: string[];
+  ttl?: string;
+  keyId?: string;
+};
+
+export type TSignSshKeyResponse = {
+  serialNumber: string;
+  signedKey: string;
+};
+
 export type TIssueSshCredsDTO = {
   templateName: string;
   keyAlgorithm: CertKeyAlgorithm;

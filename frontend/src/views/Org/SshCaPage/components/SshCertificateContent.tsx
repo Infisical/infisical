@@ -8,8 +8,8 @@ import { useTimedReset } from "@app/hooks";
 type Props = {
   serialNumber: string;
   signedKey: string;
-  privateKey: string;
-  publicKey: string;
+  privateKey?: string;
+  publicKey?: string;
 };
 
 export const SshCertificateContent = ({
@@ -119,7 +119,7 @@ export const SshCertificateContent = ({
                   colorSchema="secondary"
                   className="group relative ml-2"
                   onClick={() => {
-                    downloadTxtFile("user_key", privateKey);
+                    downloadTxtFile("user_key.pem", privateKey);
                   }}
                 >
                   <FontAwesomeIcon icon={faDownload} />
