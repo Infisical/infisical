@@ -13,6 +13,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
 import { useGetCloudIntegrations, useSaveIntegrationAccessToken } from "@app/hooks/api";
+import { createIntegrationMissingEnvVarsNotification } from "@app/views/IntegrationsPage/IntegrationPage.utils";
 
 import { Button, Card, CardTitle, FormControl, TextArea } from "../../../components/v2";
 
@@ -45,6 +46,11 @@ export default function GCPSecretManagerAuthorizeIntegrationPage() {
 
     const state = crypto.randomBytes(16).toString("hex");
     localStorage.setItem("latestCSRFToken", state);
+
+    if (!integrationOption.clientId) {
+      createIntegrationMissingEnvVarsNotification(integrationOption.slug);
+      return;
+    }
 
     const link = `https://accounts.google.com/o/oauth2/auth?scope=https://www.googleapis.com/auth/cloud-platform&response_type=code&access_type=offline&state=${state}&redirect_uri=${window.location.origin}/integrations/gcp-secret-manager/oauth2/callback&client_id=${integrationOption.clientId}`;
     window.location.assign(link);
