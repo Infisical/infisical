@@ -1,4 +1,4 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 import ms from "ms";
 
@@ -62,7 +62,10 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Edit,
+      subject(ProjectPermissionSub.Identity, { identityId })
+    );
     const { permission: targetIdentityPermission } = await permissionService.getProjectPermission(
       ActorType.IDENTITY,
       identityId,
@@ -139,7 +142,10 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Edit,
+      subject(ProjectPermissionSub.Identity, { identityId: identityProjectMembership.identityId })
+    );
     const { permission: targetIdentityPermission } = await permissionService.getProjectPermission(
       ActorType.IDENTITY,
       identityProjectMembership.identityId,
@@ -216,7 +222,10 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Edit,
+      subject(ProjectPermissionSub.Identity, { identityId: identityProjectMembership.identityId })
+    );
     const { permission: identityRolePermission } = await permissionService.getProjectPermission(
       ActorType.IDENTITY,
       identityProjectMembership.identityId,
@@ -258,7 +267,10 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.Identity, { identityId: identityProjectMembership.identityId })
+    );
 
     return {
       ...identityPrivilege,
@@ -289,7 +301,10 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.Identity, { identityId: identityProjectMembership.identityId })
+    );
 
     const identityPrivilege = await identityProjectAdditionalPrivilegeDAL.findOne({
       slug,
@@ -321,7 +336,10 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.Identity, { identityId: identityProjectMembership.identityId })
+    );
 
     const identityPrivileges = await identityProjectAdditionalPrivilegeDAL.find(
       {

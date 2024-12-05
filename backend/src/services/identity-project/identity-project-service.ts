@@ -61,7 +61,12 @@ export const identityProjectServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Create,
+      subject(ProjectPermissionSub.Identity, {
+        identityId
+      })
+    );
 
     const existingIdentity = await identityProjectDAL.findOne({ identityId, projectId });
     if (existingIdentity)
