@@ -93,7 +93,7 @@ export const queryClient = new QueryClient({
                   >
                     <div className="flex flex-col gap-2">
                       {serverResponse.details?.map((el, index) => {
-                        const hasConditions = Object.keys(el.conditions || {}).length;
+                        const hasConditions = Boolean(Object.keys(el.conditions || {}).length);
                         return (
                           <div
                             key={`Forbidden-error-details-${index + 1}`}
