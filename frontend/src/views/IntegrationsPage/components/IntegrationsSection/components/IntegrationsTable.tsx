@@ -36,8 +36,8 @@ import { usePagination, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { useSyncIntegration } from "@app/hooks/api/integrations/queries";
 import { TCloudIntegration, TIntegration } from "@app/hooks/api/integrations/types";
-import { getIntegrationDestination } from "@app/views/IntegrationsPage/components/IntegrationsSection/components/IntegrationDetails";
 
+import { getIntegrationDestination } from "./IntegrationDetails";
 import { IntegrationRow } from "./IntegrationRow";
 
 type Props = {
@@ -53,7 +53,8 @@ enum IntegrationsOrderBy {
   App = "app",
   Status = "status",
   SecretPath = "secretPath",
-  Environment = "environment"
+  Environment = "environment",
+  Destination = "destination"
 }
 
 enum IntegrationStatus {
@@ -144,7 +145,7 @@ export const IntegrationsTable = ({
               .includes(search.trim().toLowerCase()) ||
             secretPath.replace("-", " ").toLowerCase().includes(search.trim().toLowerCase()) ||
             getIntegrationDestination(integration)
-              ?.toLowerCase()
+              .toLowerCase()
               .includes(search.trim().toLowerCase()) ||
             environmentMap
               .get(envId)
@@ -168,6 +169,10 @@ export const IntegrationsTable = ({
                 .localeCompare(
                   (environmentMap.get(integrationTwo.envId)?.name ?? "-").toLowerCase()
                 );
+            case IntegrationsOrderBy.Destination:
+              return getIntegrationDestination(integrationOne)
+                .toLowerCase()
+                .localeCompare(getIntegrationDestination(integrationTwo).toLowerCase());
             case IntegrationsOrderBy.Status:
               if (typeof integrationOne.isSynced !== "boolean") return 1; // Place undefined at the end
               if (typeof integrationTwo.isSynced !== "boolean") return -1;
@@ -365,7 +370,19 @@ export const IntegrationsTable = ({
                   </IconButton>
                 </div>
               </Th>
-              <Th className="w-1/5">Destination</Th>
+              <Th className="w-1/5">
+                <div className="flex items-center">
+                  Destination
+                  <IconButton
+                    variant="plain"
+                    className={getClassName(IntegrationsOrderBy.Destination)}
+                    ariaLabel="sort"
+                    onClick={() => handleSort(IntegrationsOrderBy.Destination)}
+                  >
+                    <FontAwesomeIcon icon={getColSortIcon(IntegrationsOrderBy.Destination)} />
+                  </IconButton>
+                </div>
+              </Th>
               <Th className="w-1/5">
                 <div className="flex items-center">
                   Status

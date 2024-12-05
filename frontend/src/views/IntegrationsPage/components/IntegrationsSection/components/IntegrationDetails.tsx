@@ -14,7 +14,8 @@ export const getIntegrationDestination = (integration: TIntegration) =>
   (integration.scope === "github-org" && `${integration.owner}`) ||
   (["aws-parameter-store", "rundeck"].includes(integration.integration) && `${integration.path}`) ||
   (integration.scope?.startsWith("github-") && `${integration.owner}/${integration.app}`) ||
-  integration.app;
+  integration.app ||
+  "-";
 
 export const IntegrationDetails = ({ integration }: Props) => {
   return (
