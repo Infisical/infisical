@@ -132,6 +132,8 @@ export const IntegrationsTable = ({
 
           if (!filters.integrations.includes(integration)) return false;
 
+          if (!filters.environmentIds.includes(envId)) return false;
+
           return (
             integration.replace("-", " ").toLowerCase().includes(search.trim().toLowerCase()) ||
             secretPath.replace("-", " ").toLowerCase().includes(search.trim().toLowerCase()) ||
@@ -292,7 +294,7 @@ export const IntegrationsTable = ({
                   e.preventDefault();
                   setFilters((prev) => ({
                     ...prev,
-                    integrations: prev.environmentIds.includes(env.id)
+                    environmentIds: prev.environmentIds.includes(env.id)
                       ? prev.environmentIds.filter((i) => i !== env.id)
                       : [...prev.environmentIds, env.id]
                   }));
