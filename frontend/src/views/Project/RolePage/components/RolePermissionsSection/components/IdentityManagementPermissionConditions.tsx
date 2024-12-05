@@ -95,7 +95,7 @@ export const IdentityManagementPermissionConditions = ({ position = 0, isDisable
                       >
                         <SelectItem value={PermissionConditionOperators.$EQ}>Equal</SelectItem>
                         <SelectItem value={PermissionConditionOperators.$NEQ}>Not Equal</SelectItem>
-                        <SelectItem value={PermissionConditionOperators.$IN}>Contains</SelectItem>
+                        <SelectItem value={PermissionConditionOperators.$IN}>In</SelectItem>
                       </Select>
                     </FormControl>
                   )}
