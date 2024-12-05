@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { faCheckCircle } from "@fortawesome/free-regular-svg-icons";
 import {
   faArrowDown,
@@ -115,7 +115,12 @@ export const IntegrationsTable = ({
     orderBy,
     setOrderDirection,
     setOrderBy
-  } = usePagination<IntegrationsOrderBy>(IntegrationsOrderBy.Status, { initPerPage: 20 });
+  } = usePagination<IntegrationsOrderBy>(IntegrationsOrderBy.App, { initPerPage: 20 });
+
+  useEffect(() => {
+    if (integrations?.some((integration) => integration.isSynced === false))
+      setOrderBy(IntegrationsOrderBy.Status);
+  }, []);
 
   const environmentMap = new Map(environments.map((env) => [env.id, env]));
 

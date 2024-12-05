@@ -11,6 +11,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
+import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Badge, IconButton, Td, Tooltip, Tr } from "@app/components/v2";
@@ -56,7 +57,10 @@ export const IntegrationRow = ({
   return (
     <Tr
       onClick={() => router.push(`/integrations/details/${integration.id}`)}
-      className="group h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
+      className={twMerge(
+        "group h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700",
+        isSynced === false && "bg-red/5 hover:bg-red/10"
+      )}
       key={`integration-${id}`}
     >
       <Td>
