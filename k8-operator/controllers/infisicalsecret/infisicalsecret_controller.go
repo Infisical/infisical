@@ -52,10 +52,10 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	logger := r.GetLogger(req)
 
-	var infisicalSecretCR secretsv1alpha1.InfisicalSecret
+	var infisicalSecretCRD secretsv1alpha1.InfisicalSecret
 	requeueTime := time.Minute // seconds
 
-	err := r.Get(ctx, req.NamespacedName, &infisicalSecretCR)
+	err := r.Get(ctx, req.NamespacedName, &infisicalSecretCRD)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return ctrl.Result{
@@ -71,18 +71,18 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	// Remove finalizers if they exist. This is to support previous InfisicalSecret CRD's that have finalizers on them.
 	// In order to delete secrets with finalizers, we first remove the finalizers so we can use the simplified and improved deletion process
-	if !infisicalSecretCR.ObjectMeta.DeletionTimestamp.IsZero() && len(infisicalSecretCR.ObjectMeta.Finalizers) > 0 {
-		infisicalSecretCR.ObjectMeta.Finalizers = []string{}
-		if err := r.Update(ctx, &infisicalSecretCR); err != nil {
-			logger.Error(err, fmt.Sprintf("Error removing finalizers from Infisical Secret %s", infisicalSecretCR.Name))
+	if !infisicalSecretCRD.ObjectMeta.DeletionTimestamp.IsZero() && len(infisicalSecretCRD.ObjectMeta.Finalizers) > 0 {
+		infisicalSecretCRD.ObjectMeta.Finalizers = []string{}
+		if err := r.Update(ctx, &infisicalSecretCRD); err != nil {
+			logger.Error(err, fmt.Sprintf("Error removing finalizers from Infisical Secret %s", infisicalSecretCRD.Name))
 			return ctrl.Result{}, err
 		}
 		// Our finalizers have been removed, so the reconciler can do nothing.
 		return ctrl.Result{}, nil
 	}
 
-	if infisicalSecretCR.Spec.ResyncInterval != 0 {
-		requeueTime = time.Second * time.Duration(infisicalSecretCR.Spec.ResyncInterval)
+	if infisicalSecretCRD.Spec.ResyncInterval != 0 {
+		requeueTime = time.Second * time.Duration(infisicalSecretCRD.Spec.ResyncInterval)
 		logger.Info(fmt.Sprintf("Manual re-sync interval set. Interval: %v", requeueTime))
 
 	} else {
@@ -90,7 +90,7 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	// Check if the resource is already marked for deletion
-	if infisicalSecretCR.GetDeletionTimestamp() != nil {
+	if infisicalSecretCRD.GetDeletionTimestamp() != nil {
 		return ctrl.Result{
 			Requeue: false,
 		}, nil
@@ -105,14 +105,14 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}, nil
 	}
 
-	if infisicalSecretCR.Spec.HostAPI == "" {
+	if infisicalSecretCRD.Spec.HostAPI == "" {
 		api.API_HOST_URL = infisicalConfig["hostAPI"]
 	} else {
-		api.API_HOST_URL = infisicalSecretCR.Spec.HostAPI
+		api.API_HOST_URL = infisicalSecretCRD.Spec.HostAPI
 	}
 
-	if infisicalSecretCR.Spec.TLS.CaRef.SecretName != "" {
-		api.API_CA_CERTIFICATE, err = r.getInfisicalCaCertificateFromKubeSecret(ctx, infisicalSecretCR)
+	if infisicalSecretCRD.Spec.TLS.CaRef.SecretName != "" {
+		api.API_CA_CERTIFICATE, err = r.getInfisicalCaCertificateFromKubeSecret(ctx, infisicalSecretCRD)
 		if err != nil {
 			logger.Error(err, fmt.Sprintf("unable to fetch CA certificate. Will requeue after [requeueTime=%v]", requeueTime))
 			return ctrl.Result{
@@ -125,8 +125,8 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		api.API_CA_CERTIFICATE = ""
 	}
 
-	err = r.ReconcileInfisicalSecret(ctx, logger, infisicalSecretCR)
-	r.SetReadyToSyncSecretsConditions(ctx, &infisicalSecretCR, err)
+	err = r.ReconcileInfisicalSecret(ctx, logger, infisicalSecretCRD)
+	r.SetReadyToSyncSecretsConditions(ctx, &infisicalSecretCRD, err)
 
 	if err != nil {
 
@@ -136,8 +136,8 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}, nil
 	}
 
-	numDeployments, err := r.ReconcileDeploymentsWithManagedSecrets(ctx, logger, infisicalSecretCR)
-	r.SetInfisicalAutoRedeploymentReady(ctx, logger, &infisicalSecretCR, numDeployments, err)
+	numDeployments, err := r.ReconcileDeploymentsWithManagedSecrets(ctx, logger, infisicalSecretCRD)
+	r.SetInfisicalAutoRedeploymentReady(ctx, logger, &infisicalSecretCRD, numDeployments, err)
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("unable to reconcile auto redeployment. Will requeue after [requeueTime=%v]", requeueTime))
 		return ctrl.Result{
