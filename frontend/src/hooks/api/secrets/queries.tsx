@@ -117,11 +117,21 @@ export const useGetProjectSecrets = ({
     queryFn: () => fetchProjectSecrets({ workspaceId, environment, secretPath }),
     onError: (error) => {
       if (axios.isAxiosError(error)) {
-        const serverResponse = error.response?.data as { message: string };
+        const { message, requestId } = error.response?.data as {
+          message: string;
+          requestId: string;
+        };
         createNotification({
           title: "Error fetching secrets",
           type: "error",
-          text: serverResponse.message
+          text: message,
+          copyActions: [
+            {
+              value: requestId,
+              name: "Request ID",
+              label: `Request ID: ${requestId}`
+            }
+          ]
         });
       }
     },
@@ -148,15 +158,24 @@ export const useGetProjectSecretsAllEnv = ({
       enabled: Boolean(workspaceId && environment),
       onError: (error: unknown) => {
         if (axios.isAxiosError(error) && !isErrorHandled) {
-          const serverResponse = error.response?.data as { message: string };
-          if (serverResponse.message !== ERROR_NOT_ALLOWED_READ_SECRETS) {
+          const { message, requestId } = error.response?.data as {
+            message: string;
+            requestId: string;
+          };
+          if (message !== ERROR_NOT_ALLOWED_READ_SECRETS) {
             createNotification({
               title: "Error fetching secrets",
               type: "error",
-              text: serverResponse.message
+              text: message,
+              copyActions: [
+                {
+                  value: requestId,
+                  name: "Request ID",
+                  label: `Request ID: ${requestId}`
+                }
+              ]
             });
           }
-
           setIsErrorHandled.on();
         }
       },
