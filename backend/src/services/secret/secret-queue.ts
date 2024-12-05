@@ -932,8 +932,12 @@ export const secretQueueFactory = ({
             );
 
             const message =
-              (err instanceof AxiosError ? JSON.stringify(err?.response?.data) : (err as Error)?.message) ||
-              "Unknown error occurred.";
+              // eslint-disable-next-line no-nested-ternary
+              (err instanceof AxiosError
+                ? err?.response?.data
+                  ? JSON.stringify(err?.response?.data)
+                  : err?.message
+                : (err as Error)?.message) || "Unknown error occurred.";
 
             await auditLogService.createAuditLog({
               projectId,
