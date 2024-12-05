@@ -1,4 +1,5 @@
 import { Controller, FormProvider, useForm } from "react-hook-form";
+import { subject } from "@casl/ability";
 import {
   faCaretDown,
   faChevronLeft,
@@ -28,7 +29,8 @@ import {
   PopoverContent,
   PopoverTrigger,
   Tag,
-  Tooltip} from "@app/components/v2";
+  Tooltip
+} from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -48,7 +50,8 @@ import {
   isConditionalSubjects,
   PROJECT_PERMISSION_OBJECT,
   projectRoleFormSchema,
-  rolePermission2Form} from "@app/views/Project/RolePage/components/RolePermissionsSection/ProjectRoleModifySection.utils";
+  rolePermission2Form
+} from "@app/views/Project/RolePage/components/RolePermissionsSection/ProjectRoleModifySection.utils";
 import { renderConditionalComponents } from "@app/views/Project/RolePage/components/RolePermissionsSection/RolePermissionsSection";
 
 type Props = {
@@ -95,7 +98,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
   const { permission } = useProjectPermission();
   const isIdentityEditDisabled = permission.cannot(
     ProjectPermissionActions.Edit,
-    ProjectPermissionSub.Identity
+    subject(ProjectPermissionSub.Identity, { identityId })
   );
 
   const form = useForm<TFormSchema>({
@@ -275,13 +278,13 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
                           ].title.toLowerCase()
                         )
                     )
-                    .map((subject) => (
+                    .map((permissionSubject) => (
                       <DropdownMenuItem
-                        key={`permission-create-${subject}`}
+                        key={`permission-create-${permissionSubject}`}
                         className="py-3"
-                        onClick={() => onNewPolicy(subject as ProjectPermissionSub)}
+                        onClick={() => onNewPolicy(permissionSubject as ProjectPermissionSub)}
                       >
-                        {PROJECT_PERMISSION_OBJECT[subject as ProjectPermissionSub].title}
+                        {PROJECT_PERMISSION_OBJECT[permissionSubject as ProjectPermissionSub].title}
                       </DropdownMenuItem>
                     ))}
                 </DropdownMenuContent>
@@ -412,17 +415,19 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
         <div className="p-4">
           <div className="mb-2 text-lg">Policies</div>
           {(isCreate || !isLoading) && <PermissionEmptyState />}
-          {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map((subject) => (
-            <GeneralPermissionPolicies
-              subject={subject}
-              actions={PROJECT_PERMISSION_OBJECT[subject].actions}
-              title={PROJECT_PERMISSION_OBJECT[subject].title}
-              key={`project-permission-${subject}`}
-              isDisabled={isDisabled}
-            >
-              {renderConditionalComponents(subject, isDisabled)}
-            </GeneralPermissionPolicies>
-          ))}
+          {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map(
+            (permissionSubject) => (
+              <GeneralPermissionPolicies
+                subject={permissionSubject}
+                actions={PROJECT_PERMISSION_OBJECT[permissionSubject].actions}
+                title={PROJECT_PERMISSION_OBJECT[permissionSubject].title}
+                key={`project-permission-${permissionSubject}`}
+                isDisabled={isDisabled}
+              >
+                {renderConditionalComponents(permissionSubject, isDisabled)}
+              </GeneralPermissionPolicies>
+            )
+          )}
         </div>
       </FormProvider>
     </form>

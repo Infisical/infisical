@@ -494,7 +494,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
     title: "Machine Identity Management",
     actions: [
       { label: "Read", value: "read" },
-      { label: "Create", value: "create" },
+      { label: "Add", value: "create" },
       { label: "Modify", value: "edit" },
       { label: "Remove", value: "delete" }
     ]
