@@ -75,7 +75,7 @@ func (r *InfisicalPushSecretReconciler) SetFailedToCreateSecretsConditions(ctx c
 			Type:    "secrets.infisical.com/FailedToCreateSecrets",
 			Status:  metav1.ConditionFalse,
 			Reason:  "OK",
-			Message: "No errors, no secrets failed to be created in Infisical",
+			Message: "No errors encountered, no secrets failed to be created in Infisical",
 		})
 	}
 
@@ -99,7 +99,7 @@ func (r *InfisicalPushSecretReconciler) SetFailedToUpdateSecretsConditions(ctx c
 			Type:    "secrets.infisical.com/FailedToUpdateSecrets",
 			Status:  metav1.ConditionFalse,
 			Reason:  "OK",
-			Message: "No errors, no secrets failed to be updated in Infisical",
+			Message: "No errors encountered, no secrets failed to be updated in Infisical",
 		})
 	}
 
@@ -123,7 +123,7 @@ func (r *InfisicalPushSecretReconciler) SetFailedToDeleteSecretsConditions(ctx c
 			Type:    "secrets.infisical.com/FailedToDeleteSecrets",
 			Status:  metav1.ConditionFalse,
 			Reason:  "OK",
-			Message: "No errors, no secrets failed to be deleted",
+			Message: "No errors encountered, no secrets failed to be deleted",
 		})
 	}
 
