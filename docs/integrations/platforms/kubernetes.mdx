@@ -1121,7 +1121,7 @@ After applying the InfisicalPushSecret CRD, you should notice that the secrets y
 
     destination:
       projectId: <project-id>
-      envSlug: <env-slug>
+      environmentSlug: <env-slug>
       secretsPath: <secret-path>
 
     push:
@@ -1247,13 +1247,13 @@ After applying the InfisicalPushSecret CRD, you should notice that the secrets y
 </Accordion>
 
 <Accordion title="destination">
-  The `destination` field is used to specify where you want to create the secrets in Infisical. The required fields are `projectId`, `envSlug`, and `secretsPath`.
+  The `destination` field is used to specify where you want to create the secrets in Infisical. The required fields are `projectId`, `environmentSlug`, and `secretsPath`.
   
   ```yaml
   spec:
     destination:
       projectId: <project-id>
-      envSlug: <env-slug>
+      environmentSlug: <env-slug>
       secretsPath: <secrets-path>
   ```
 
@@ -1261,7 +1261,7 @@ After applying the InfisicalPushSecret CRD, you should notice that the secrets y
     The project ID where you want to create the secrets in Infisical.
   </Accordion>
 
-  <Accordion title="destination.envSlug">
+  <Accordion title="destination.environmentSlug">
     The environment slug where you want to create the secrets in Infisical.
   </Accordion>
 
