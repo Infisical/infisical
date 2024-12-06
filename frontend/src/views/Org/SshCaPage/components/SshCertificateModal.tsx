@@ -17,7 +17,7 @@ import { useOrganization } from "@app/context";
 import { useIssueSshCreds, useListOrgSshCertificateTemplates, useSignSshKey } from "@app/hooks/api";
 import { certKeyAlgorithms } from "@app/hooks/api/certificates/constants";
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
-import { SshCertType } from "@app/hooks/api/ssh-ca/enums";
+import { SshCertType } from "@app/hooks/api/ssh-ca/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { SshCertificateContent } from "./SshCertificateContent";
