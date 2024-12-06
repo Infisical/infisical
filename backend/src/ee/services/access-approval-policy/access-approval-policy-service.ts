@@ -8,7 +8,11 @@ import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { TAccessApprovalRequestDALFactory } from "../access-approval-request/access-approval-request-dal";
+import { TAccessApprovalRequestReviewerDALFactory } from "../access-approval-request/access-approval-request-reviewer-dal";
+import { ApprovalStatus } from "../access-approval-request/access-approval-request-types";
 import { TGroupDALFactory } from "../group/group-dal";
+import { TProjectUserAdditionalPrivilegeDALFactory } from "../project-user-additional-privilege/project-user-additional-privilege-dal";
 import { TAccessApprovalPolicyApproverDALFactory } from "./access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "./access-approval-policy-dal";
 import {
@@ -21,7 +25,7 @@ import {
   TUpdateAccessApprovalPolicy
 } from "./access-approval-policy-types";
 
-type TSecretApprovalPolicyServiceFactoryDep = {
+type TAccessApprovalPolicyServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   accessApprovalPolicyDAL: TAccessApprovalPolicyDALFactory;
@@ -30,6 +34,9 @@ type TSecretApprovalPolicyServiceFactoryDep = {
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find">;
   groupDAL: TGroupDALFactory;
   userDAL: Pick<TUserDALFactory, "find">;
+  accessApprovalRequestDAL: Pick<TAccessApprovalRequestDALFactory, "update" | "find">;
+  additionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "delete">;
+  accessApprovalRequestReviewerDAL: Pick<TAccessApprovalRequestReviewerDALFactory, "update">;
 };
 
 export type TAccessApprovalPolicyServiceFactory = ReturnType<typeof accessApprovalPolicyServiceFactory>;
@@ -41,8 +48,11 @@ export const accessApprovalPolicyServiceFactory = ({
   permissionService,
   projectEnvDAL,
   projectDAL,
-  userDAL
-}: TSecretApprovalPolicyServiceFactoryDep) => {
+  userDAL,
+  accessApprovalRequestDAL,
+  additionalPrivilegeDAL,
+  accessApprovalRequestReviewerDAL
+}: TAccessApprovalPolicyServiceFactoryDep) => {
   const createAccessApprovalPolicy = async ({
     name,
     actor,
@@ -189,7 +199,7 @@ export const accessApprovalPolicyServiceFactory = ({
     );
     // ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
 
-    const accessApprovalPolicies = await accessApprovalPolicyDAL.find({ projectId: project.id, disabled: false });
+    const accessApprovalPolicies = await accessApprovalPolicyDAL.find({ projectId: project.id, deletedAt: null });
     return accessApprovalPolicies;
   };
 
@@ -203,8 +213,7 @@ export const accessApprovalPolicyServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     approvals,
-    enforcementLevel,
-    disabled
+    enforcementLevel
   }: TUpdateAccessApprovalPolicy) => {
     const groupApprovers = approvers
       .filter((approver) => approver.type === ApproverType.Group)
@@ -249,8 +258,7 @@ export const accessApprovalPolicyServiceFactory = ({
           approvals,
           secretPath,
           name,
-          enforcementLevel,
-          disabled
+          enforcementLevel
         },
         tx
       );
@@ -328,7 +336,29 @@ export const accessApprovalPolicyServiceFactory = ({
       ProjectPermissionSub.SecretApproval
     );
 
-    await accessApprovalPolicyDAL.deleteById(policyId);
+    await accessApprovalPolicyDAL.transaction(async (tx) => {
+      await accessApprovalPolicyDAL.softDeleteById(policyId, tx);
+      const allAccessApprovalRequests = await accessApprovalRequestDAL.find({ policyId });
+
+      if (allAccessApprovalRequests.length) {
+        const accessApprovalRequestsIds = allAccessApprovalRequests.map((request) => request.id);
+
+        const privilegeIdsArray = allAccessApprovalRequests
+          .map((request) => request.privilegeId)
+          .filter((id): id is string => id != null);
+
+        if (privilegeIdsArray.length) {
+          await additionalPrivilegeDAL.delete({ $in: { id: privilegeIdsArray } }, tx);
+        }
+
+        await accessApprovalRequestReviewerDAL.update(
+          { $in: { id: accessApprovalRequestsIds }, status: ApprovalStatus.PENDING },
+          { status: ApprovalStatus.REJECTED },
+          tx
+        );
+      }
+    });
+
     return policy;
   };
 
@@ -361,7 +391,7 @@ export const accessApprovalPolicyServiceFactory = ({
     const policies = await accessApprovalPolicyDAL.find({
       envId: environment.id,
       projectId: project.id,
-      disabled: false
+      deletedAt: null
     });
     if (!policies) throw new NotFoundError({ message: `No policies found in environment with slug '${envSlug}'` });
 

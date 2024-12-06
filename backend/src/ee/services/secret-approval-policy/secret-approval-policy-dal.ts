@@ -177,5 +177,11 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...secretApprovalPolicyOrm, findById, find };
+  const softDeleteById = async (policyId: string, tx?: Knex) => {
+    const date = new Date();
+    const softDeletedPolicy = await secretApprovalPolicyOrm.updateById(policyId, { deletedAt: date }, tx);
+    return softDeletedPolicy;
+  };
+
+  return { ...secretApprovalPolicyOrm, findById, find, softDeleteById };
 };

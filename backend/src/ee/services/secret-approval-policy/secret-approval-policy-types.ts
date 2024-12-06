@@ -19,7 +19,6 @@ export type TUpdateSapDTO = {
   approvers: ({ type: ApproverType.Group; id: string } | { type: ApproverType.User; id?: string; name?: string })[];
   name?: string;
   enforcementLevel?: EnforcementLevel;
-  disabled?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteSapDTO = {

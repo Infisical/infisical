@@ -11,6 +11,8 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { ApproverType } from "../access-approval-policy/access-approval-policy-types";
 import { TLicenseServiceFactory } from "../license/license-service";
+import { TSecretApprovalRequestDALFactory } from "../secret-approval-request/secret-approval-request-dal";
+import { RequestState } from "../secret-approval-request/secret-approval-request-types";
 import { TSecretApprovalPolicyApproverDALFactory } from "./secret-approval-policy-approver-dal";
 import { TSecretApprovalPolicyDALFactory } from "./secret-approval-policy-dal";
 import {
@@ -34,6 +36,7 @@ type TSecretApprovalPolicyServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "find">;
   secretApprovalPolicyApproverDAL: TSecretApprovalPolicyApproverDALFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "update">;
 };
 
 export type TSecretApprovalPolicyServiceFactory = ReturnType<typeof secretApprovalPolicyServiceFactory>;
@@ -44,7 +47,8 @@ export const secretApprovalPolicyServiceFactory = ({
   secretApprovalPolicyApproverDAL,
   projectEnvDAL,
   userDAL,
-  licenseService
+  licenseService,
+  secretApprovalRequestDAL
 }: TSecretApprovalPolicyServiceFactoryDep) => {
   const createSecretApprovalPolicy = async ({
     name,
@@ -166,8 +170,7 @@ export const secretApprovalPolicyServiceFactory = ({
     actorAuthMethod,
     approvals,
     secretPolicyId,
-    enforcementLevel,
-    disabled
+    enforcementLevel
   }: TUpdateSapDTO) => {
     const groupApprovers = approvers
       ?.filter((approver) => approver.type === ApproverType.Group)
@@ -212,8 +215,7 @@ export const secretApprovalPolicyServiceFactory = ({
           approvals,
           secretPath,
           name,
-          enforcementLevel,
-          disabled
+          enforcementLevel
         },
         tx
       );
@@ -303,7 +305,14 @@ export const secretApprovalPolicyServiceFactory = ({
       });
     }
 
-    await secretApprovalPolicyDAL.deleteById(secretPolicyId);
+    await secretApprovalPolicyDAL.transaction(async (tx) => {
+      await secretApprovalRequestDAL.update(
+        { policyId: secretPolicyId, status: RequestState.Open },
+        { status: RequestState.Closed },
+        tx
+      );
+      await secretApprovalPolicyDAL.softDeleteById(secretPolicyId, tx);
+    });
     return sapPolicy;
   };
 
@@ -323,7 +332,7 @@ export const secretApprovalPolicyServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
 
-    const sapPolicies = await secretApprovalPolicyDAL.find({ projectId, disabled: false });
+    const sapPolicies = await secretApprovalPolicyDAL.find({ projectId, deletedAt: null });
     return sapPolicies;
   };
 
@@ -336,7 +345,7 @@ export const secretApprovalPolicyServiceFactory = ({
       });
     }
 
-    const policies = await secretApprovalPolicyDAL.find({ envId: env.id, disabled: false });
+    const policies = await secretApprovalPolicyDAL.find({ envId: env.id, deletedAt: null });
     if (!policies.length) return;
     // this will filter policies either without scoped to secret path or the one that matches with secret path
     const policiesFilteredByPath = policies.filter(

@@ -147,8 +147,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           .array()
           .min(1, { message: "At least one approver should be provided" }),
         approvals: z.number().min(1).optional(),
-        enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
-        disabled: z.boolean().optional()
+        enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard)
       }),
       response: {
         200: z.object({
