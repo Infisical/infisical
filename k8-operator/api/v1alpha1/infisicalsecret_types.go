@@ -147,6 +147,20 @@ type MangedKubeSecretConfig struct {
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default:=Orphan
 	CreationPolicy string `json:"creationPolicy"`
+
+	// The template to transform the secret data
+	// +kubebuilder:validation:Optional
+	Template *InfisicalSecretTemplate `json:"template,omitempty"`
+}
+
+type InfisicalSecretTemplate struct {
+	// This injects all retrieved secrets into the top level of your template.
+	// Secrets defined in the template will take precedence over the injected ones.
+	// +kubebuilder:validation:Optional
+	IncludeAllSecrets bool `json:"includeAllSecrets"`
+	// The template key values
+	// +kubebuilder:validation:Optional
+	Data map[string]string `json:"data,omitempty"`
 }
 
 type CaReference struct {
