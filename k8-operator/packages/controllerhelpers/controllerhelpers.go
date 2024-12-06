@@ -1,4 +1,4 @@
-package controllers
+package controllerhelpers
 
 import (
 	"context"
@@ -10,27 +10,30 @@ import (
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	k8Errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	controllerClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const DEPLOYMENT_SECRET_NAME_ANNOTATION_PREFIX = "secrets.infisical.com/managed-secret"
 const AUTO_RELOAD_DEPLOYMENT_ANNOTATION = "secrets.infisical.com/auto-reload" // needs to be set to true for a deployment to start auto redeploying
 
-func (r *InfisicalSecretReconciler) ReconcileDeploymentsWithManagedSecrets(ctx context.Context, logger logr.Logger, infisicalSecret v1alpha1.InfisicalSecret) (int, error) {
+func ReconcileDeploymentsWithManagedSecrets(ctx context.Context, client controllerClient.Client, logger logr.Logger, managedSecret v1alpha1.ManagedKubeSecretConfig) (int, error) {
 	listOfDeployments := &v1.DeploymentList{}
-	err := r.Client.List(ctx, listOfDeployments, &client.ListOptions{Namespace: infisicalSecret.Spec.ManagedSecretReference.SecretNamespace})
+
+	err := client.List(ctx, listOfDeployments, &controllerClient.ListOptions{Namespace: managedSecret.SecretNamespace})
 	if err != nil {
-		return 0, fmt.Errorf("unable to get deployments in the [namespace=%v] [err=%v]", infisicalSecret.Spec.ManagedSecretReference.SecretNamespace, err)
+		return 0, fmt.Errorf("unable to get deployments in the [namespace=%v] [err=%v]", managedSecret.SecretNamespace, err)
 	}
 
 	managedKubeSecretNameAndNamespace := types.NamespacedName{
-		Namespace: infisicalSecret.Spec.ManagedSecretReference.SecretNamespace,
-		Name:      infisicalSecret.Spec.ManagedSecretReference.SecretName,
+		Namespace: managedSecret.SecretNamespace,
+		Name:      managedSecret.SecretName,
 	}
 
 	managedKubeSecret := &corev1.Secret{}
-	err = r.Client.Get(ctx, managedKubeSecretNameAndNamespace, managedKubeSecret)
+	err = client.Get(ctx, managedKubeSecretNameAndNamespace, managedKubeSecret)
 	if err != nil {
 		return 0, fmt.Errorf("unable to fetch Kubernetes secret to update deployment: %v", err)
 	}
@@ -39,12 +42,12 @@ func (r *InfisicalSecretReconciler) ReconcileDeploymentsWithManagedSecrets(ctx c
 	// Iterate over the deployments and check if they use the managed secret
 	for _, deployment := range listOfDeployments.Items {
 		deployment := deployment
-		if deployment.Annotations[AUTO_RELOAD_DEPLOYMENT_ANNOTATION] == "true" && r.IsDeploymentUsingManagedSecret(deployment, infisicalSecret) {
+		if deployment.Annotations[AUTO_RELOAD_DEPLOYMENT_ANNOTATION] == "true" && IsDeploymentUsingManagedSecret(deployment, managedSecret) {
 			// Start a goroutine to reconcile the deployment
 			wg.Add(1)
-			go func(d v1.Deployment, s corev1.Secret) {
+			go func(deployment v1.Deployment, managedSecret corev1.Secret) {
 				defer wg.Done()
-				if err := r.ReconcileDeployment(ctx, logger, d, s); err != nil {
+				if err := ReconcileDeployment(ctx, client, logger, deployment, managedSecret); err != nil {
 					logger.Error(err, fmt.Sprintf("unable to reconcile deployment with [name=%v]. Will try next requeue", deployment.ObjectMeta.Name))
 				}
 			}(deployment, *managedKubeSecret)
@@ -57,8 +60,8 @@ func (r *InfisicalSecretReconciler) ReconcileDeploymentsWithManagedSecrets(ctx c
 }
 
 // Check if the deployment uses managed secrets
-func (r *InfisicalSecretReconciler) IsDeploymentUsingManagedSecret(deployment v1.Deployment, infisicalSecret v1alpha1.InfisicalSecret) bool {
-	managedSecretName := infisicalSecret.Spec.ManagedSecretReference.SecretName
+func IsDeploymentUsingManagedSecret(deployment v1.Deployment, managedSecret v1alpha1.ManagedKubeSecretConfig) bool {
+	managedSecretName := managedSecret.SecretName
 	for _, container := range deployment.Spec.Template.Spec.Containers {
 		for _, envFrom := range container.EnvFrom {
 			if envFrom.SecretRef != nil && envFrom.SecretRef.LocalObjectReference.Name == managedSecretName {
@@ -82,7 +85,7 @@ func (r *InfisicalSecretReconciler) IsDeploymentUsingManagedSecret(deployment v1
 
 // This function ensures that a deployment is in sync with a Kubernetes secret by comparing their versions.
 // If the version of the secret is different from the version annotation on the deployment, the annotation is updated to trigger a restart of the deployment.
-func (r *InfisicalSecretReconciler) ReconcileDeployment(ctx context.Context, logger logr.Logger, deployment v1.Deployment, secret corev1.Secret) error {
+func ReconcileDeployment(ctx context.Context, client controllerClient.Client, logger logr.Logger, deployment v1.Deployment, secret corev1.Secret) error {
 	annotationKey := fmt.Sprintf("%s.%s", DEPLOYMENT_SECRET_NAME_ANNOTATION_PREFIX, secret.Name)
 	annotationValue := secret.Annotations[constants.SECRET_VERSION_ANNOTATION]
 
@@ -101,8 +104,41 @@ func (r *InfisicalSecretReconciler) ReconcileDeployment(ctx context.Context, log
 	deployment.Annotations[annotationKey] = annotationValue
 	deployment.Spec.Template.Annotations[annotationKey] = annotationValue
 
-	if err := r.Client.Update(ctx, &deployment); err != nil {
+	if err := client.Update(ctx, &deployment); err != nil {
 		return fmt.Errorf("failed to update deployment annotation: %v", err)
 	}
 	return nil
+}
+
+func GetInfisicalConfigMap(ctx context.Context, client client.Client) (configMap map[string]string, errToReturn error) {
+	// default key values
+	defaultConfigMapData := make(map[string]string)
+	defaultConfigMapData["hostAPI"] = constants.INFISICAL_DOMAIN
+
+	kubeConfigMap := &corev1.ConfigMap{}
+	err := client.Get(ctx, types.NamespacedName{
+		Namespace: constants.OPERATOR_SETTINGS_CONFIGMAP_NAMESPACE,
+		Name:      constants.OPERATOR_SETTINGS_CONFIGMAP_NAME,
+	}, kubeConfigMap)
+
+	if err != nil {
+		if k8Errors.IsNotFound(err) {
+			kubeConfigMap = nil
+		} else {
+			return nil, fmt.Errorf("GetConfigMapByNamespacedName: unable to fetch config map in [namespacedName=%s] [err=%s]", constants.OPERATOR_SETTINGS_CONFIGMAP_NAMESPACE, err)
+		}
+	}
+
+	if kubeConfigMap == nil {
+		return defaultConfigMapData, nil
+	} else {
+		for key, value := range defaultConfigMapData {
+			_, exists := kubeConfigMap.Data[key]
+			if !exists {
+				kubeConfigMap.Data[key] = value
+			}
+		}
+
+		return kubeConfigMap.Data, nil
+	}
 }

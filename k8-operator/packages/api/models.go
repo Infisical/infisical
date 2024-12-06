@@ -1,6 +1,10 @@
 package api
 
-import "time"
+import (
+	"time"
+
+	"github.com/Infisical/infisical/k8-operator/packages/model"
+)
 
 type GetEncryptedWorkspaceKeyRequest struct {
 	WorkspaceId string `json:"workspaceId"`
@@ -193,4 +197,12 @@ type ServiceAccountKey struct {
 
 type GetServiceAccountKeysResponse struct {
 	ServiceAccountKeys []ServiceAccountKey `json:"serviceAccountKeys"`
+}
+
+type GetProjectByIDRequest struct {
+	ProjectID string
+}
+
+type GetProjectByIDResponse struct {
+	Project model.Project `json:"workspace"`
 }

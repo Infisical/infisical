@@ -63,11 +63,13 @@ var AuthStrategy = struct {
 type SecretCrdType string
 
 var SecretCrd = struct {
-	INFISICAL_SECRET      SecretCrdType
-	INFISICAL_PUSH_SECRET SecretCrdType
+	INFISICAL_SECRET         SecretCrdType
+	INFISICAL_PUSH_SECRET    SecretCrdType
+	INFISICAL_DYNAMIC_SECRET SecretCrdType
 }{
-	INFISICAL_SECRET:      "INFISICAL_SECRET",
-	INFISICAL_PUSH_SECRET: "INFISICAL_PUSH_SECRET",
+	INFISICAL_SECRET:         "INFISICAL_SECRET",
+	INFISICAL_PUSH_SECRET:    "INFISICAL_PUSH_SECRET",
+	INFISICAL_DYNAMIC_SECRET: "INFISICAL_DYNAMIC_SECRET",
 }
 
 type SecretAuthInput struct {
@@ -105,6 +107,18 @@ func HandleUniversalAuth(ctx context.Context, reconcilerClient client.Client, se
 
 		universalAuthSpec = v1alpha1.UniversalAuthDetails{
 			CredentialsRef: infisicalPushSecret.Spec.Authentication.UniversalAuth.CredentialsRef,
+			SecretsScope:   v1alpha1.MachineIdentityScopeInWorkspace{},
+		}
+
+	case SecretCrd.INFISICAL_DYNAMIC_SECRET:
+		infisicalDynamicSecret, ok := secretCrd.Secret.(v1alpha1.InfisicalDynamicSecret)
+
+		if !ok {
+			return AuthenticationDetails{}, errors.New("unable to cast secret to InfisicalDynamicSecret")
+		}
+
+		universalAuthSpec = v1alpha1.UniversalAuthDetails{
+			CredentialsRef: infisicalDynamicSecret.Spec.Authentication.UniversalAuth.CredentialsRef,
 			SecretsScope:   v1alpha1.MachineIdentityScopeInWorkspace{},
 		}
 	}
@@ -160,6 +174,22 @@ func HandleKubernetesAuth(ctx context.Context, reconcilerClient client.Client, s
 			},
 			SecretsScope: v1alpha1.MachineIdentityScopeInWorkspace{},
 		}
+
+	case SecretCrd.INFISICAL_DYNAMIC_SECRET:
+		infisicalDynamicSecret, ok := secretCrd.Secret.(v1alpha1.InfisicalDynamicSecret)
+
+		if !ok {
+			return AuthenticationDetails{}, errors.New("unable to cast secret to InfisicalDynamicSecret")
+		}
+
+		kubernetesAuthSpec = v1alpha1.KubernetesAuthDetails{
+			IdentityID: infisicalDynamicSecret.Spec.Authentication.KubernetesAuth.IdentityID,
+			ServiceAccountRef: v1alpha1.KubernetesServiceAccountRef{
+				Namespace: infisicalDynamicSecret.Spec.Authentication.KubernetesAuth.ServiceAccountRef.Namespace,
+				Name:      infisicalDynamicSecret.Spec.Authentication.KubernetesAuth.ServiceAccountRef.Name,
+			},
+			SecretsScope: v1alpha1.MachineIdentityScopeInWorkspace{},
+		}
 	}
 
 	if kubernetesAuthSpec.IdentityID == "" {
@@ -208,6 +238,18 @@ func HandleAwsIamAuth(ctx context.Context, reconcilerClient client.Client, secre
 			IdentityID:   infisicalPushSecret.Spec.Authentication.AwsIamAuth.IdentityID,
 			SecretsScope: v1alpha1.MachineIdentityScopeInWorkspace{},
 		}
+
+	case SecretCrd.INFISICAL_DYNAMIC_SECRET:
+		infisicalDynamicSecret, ok := secretCrd.Secret.(v1alpha1.InfisicalDynamicSecret)
+
+		if !ok {
+			return AuthenticationDetails{}, errors.New("unable to cast secret to InfisicalDynamicSecret")
+		}
+
+		awsIamAuthSpec = v1alpha1.AWSIamAuthDetails{
+			IdentityID:   infisicalDynamicSecret.Spec.Authentication.AwsIamAuth.IdentityID,
+			SecretsScope: v1alpha1.MachineIdentityScopeInWorkspace{},
+		}
 	}
 
 	if awsIamAuthSpec.IdentityID == "" {
@@ -253,6 +295,19 @@ func HandleAzureAuth(ctx context.Context, reconcilerClient client.Client, secret
 			Resource:     infisicalPushSecret.Spec.Authentication.AzureAuth.Resource,
 			SecretsScope: v1alpha1.MachineIdentityScopeInWorkspace{},
 		}
+
+	case SecretCrd.INFISICAL_DYNAMIC_SECRET:
+		infisicalDynamicSecret, ok := secretCrd.Secret.(v1alpha1.InfisicalDynamicSecret)
+
+		if !ok {
+			return AuthenticationDetails{}, errors.New("unable to cast secret to InfisicalDynamicSecret")
+		}
+
+		azureAuthSpec = v1alpha1.AzureAuthDetails{
+			IdentityID:   infisicalDynamicSecret.Spec.Authentication.AzureAuth.IdentityID,
+			Resource:     infisicalDynamicSecret.Spec.Authentication.AzureAuth.Resource,
+			SecretsScope: v1alpha1.MachineIdentityScopeInWorkspace{},
+		}
 	}
 
 	if azureAuthSpec.IdentityID == "" {
@@ -294,6 +349,18 @@ func HandleGcpIdTokenAuth(ctx context.Context, reconcilerClient client.Client, s
 
 		gcpIdTokenSpec = v1alpha1.GCPIdTokenAuthDetails{
 			IdentityID:   infisicalPushSecret.Spec.Authentication.GcpIdTokenAuth.IdentityID,
+			SecretsScope: v1alpha1.MachineIdentityScopeInWorkspace{},
+		}
+
+	case SecretCrd.INFISICAL_DYNAMIC_SECRET:
+		infisicalDynamicSecret, ok := secretCrd.Secret.(v1alpha1.InfisicalDynamicSecret)
+
+		if !ok {
+			return AuthenticationDetails{}, errors.New("unable to cast secret to InfisicalDynamicSecret")
+		}
+
+		gcpIdTokenSpec = v1alpha1.GCPIdTokenAuthDetails{
+			IdentityID:   infisicalDynamicSecret.Spec.Authentication.GcpIdTokenAuth.IdentityID,
 			SecretsScope: v1alpha1.MachineIdentityScopeInWorkspace{},
 		}
 	}
@@ -338,6 +405,19 @@ func HandleGcpIamAuth(ctx context.Context, reconcilerClient client.Client, secre
 		gcpIamSpec = v1alpha1.GcpIamAuthDetails{
 			IdentityID:                infisicalPushSecret.Spec.Authentication.GcpIamAuth.IdentityID,
 			ServiceAccountKeyFilePath: infisicalPushSecret.Spec.Authentication.GcpIamAuth.ServiceAccountKeyFilePath,
+			SecretsScope:              v1alpha1.MachineIdentityScopeInWorkspace{},
+		}
+
+	case SecretCrd.INFISICAL_DYNAMIC_SECRET:
+		infisicalDynamicSecret, ok := secretCrd.Secret.(v1alpha1.InfisicalDynamicSecret)
+
+		if !ok {
+			return AuthenticationDetails{}, errors.New("unable to cast secret to InfisicalDynamicSecret")
+		}
+
+		gcpIamSpec = v1alpha1.GcpIamAuthDetails{
+			IdentityID:                infisicalDynamicSecret.Spec.Authentication.GcpIamAuth.IdentityID,
+			ServiceAccountKeyFilePath: infisicalDynamicSecret.Spec.Authentication.GcpIamAuth.ServiceAccountKeyFilePath,
 			SecretsScope:              v1alpha1.MachineIdentityScopeInWorkspace{},
 		}
 	}
