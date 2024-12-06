@@ -250,13 +250,13 @@ func (r *InfisicalSecretReconciler) CreateInfisicalManagedKubeSecret(ctx context
 		for templateKey, userTemplate := range managedTemplateData.Data {
 			tmpl, err := template.New("secret-templates").Parse(userTemplate)
 			if err != nil {
-				return fmt.Errorf("Unable to compile template: %s", templateKey, err)
+				return fmt.Errorf("unable to compile template: %s [err=%v]", templateKey, err)
 			}
 
 			buf := bytes.NewBuffer(nil)
 			err = tmpl.Execute(buf, secretKeyValue)
 			if err != nil {
-				return fmt.Errorf("Unable to execute template: %s", templateKey, err)
+				return fmt.Errorf("unable to execute template: %s [err=%v]", templateKey, err)
 			}
 			plainProcessedSecrets[templateKey] = buf.Bytes()
 		}
@@ -336,13 +336,13 @@ func (r *InfisicalSecretReconciler) UpdateInfisicalManagedKubeSecret(ctx context
 		for templateKey, userTemplate := range managedTemplateData.Data {
 			tmpl, err := template.New("secret-templates").Parse(userTemplate)
 			if err != nil {
-				return fmt.Errorf("Unable to compile template: %s", templateKey, err)
+				return fmt.Errorf("unable to compile template: %s [err=%v]", templateKey, err)
 			}
 
 			buf := bytes.NewBuffer(nil)
 			err = tmpl.Execute(buf, secretKeyValue)
 			if err != nil {
-				return fmt.Errorf("Unable to execute template: %s", templateKey, err)
+				return fmt.Errorf("unable to execute template: %s [err=%v]", templateKey, err)
 			}
 			plainProcessedSecrets[templateKey] = buf.Bytes()
 		}
