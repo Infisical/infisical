@@ -51,26 +51,26 @@ export enum ApiErrorTypes {
 
 export type TApiErrors =
   | {
-      requestId: string;
+      reqId: string;
       error: ApiErrorTypes.ValidationError;
       message: ZodIssue[];
       statusCode: 422;
     }
   | {
-      requestId: string;
+      reqId: string;
       error: ApiErrorTypes.UnauthorizedError;
       message: string;
       statusCode: 401;
     }
   | {
-      requestId: string;
+      reqId: string;
       error: ApiErrorTypes.ForbiddenError;
       message: string;
       details: PureAbility["rules"];
       statusCode: 403;
     }
   | {
-      requestId: string;
+      reqId: string;
       statusCode: 400;
       message: string;
       error: ApiErrorTypes.BadRequestError;
