@@ -11,7 +11,8 @@ import {
   Td,
   Th,
   THead,
-  Tr} from "@app/components/v2";
+  Tr
+} from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { useListOrgSshCertificates } from "@app/hooks/api";
 import { sshCertTypeToNameMap } from "@app/hooks/api/ssh-ca/constants";
@@ -28,6 +29,8 @@ export const SshCertificatesTable = () => {
     offset: (page - 1) * perPage,
     limit: perPage
   });
+
+  console.log("SSH Certificates Table data: ", data);
 
   return (
     <TableContainer>

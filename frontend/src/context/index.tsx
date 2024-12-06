@@ -4,7 +4,6 @@ export type { TOrgPermission } from "./OrgPermissionContext";
 export {
   OrgPermissionActions,
   OrgPermissionProvider,
-  OrgPermissionSshCertificateTemplateActions,
   OrgPermissionSubjects,
   useOrgPermission
 } from "./OrgPermissionContext";

@@ -51,11 +51,6 @@ const PROJECT_TEMPLATES_PERMISSIONS = [
   { action: "delete", label: "Remove" }
 ] as const;
 
-const SSH_CERTIFICATES_PERMISSIONS = [
-  { action: "read", label: "View" },
-  { action: "create", label: "Create" }
-] as const;
-
 const getPermissionList = (option: string) => {
   switch (option) {
     case "secret-scanning":
@@ -68,8 +63,6 @@ const getPermissionList = (option: string) => {
       return MEMBERS_PERMISSIONS;
     case OrgPermissionSubjects.ProjectTemplates:
       return PROJECT_TEMPLATES_PERMISSIONS;
-    case OrgPermissionSubjects.SshCertificates:
-      return SSH_CERTIFICATES_PERMISSIONS;
     default:
       return PERMISSIONS;
   }

@@ -53,6 +53,6 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.ProjectTemplates]
   | [OrgPermissionActions, OrgPermissionSubjects.SshCertificateAuthorities]
   | [OrgPermissionActions, OrgPermissionSubjects.SshCertificates]
-  | [OrgPermissionSshCertificateTemplateActions, OrgPermissionSubjects.SshCertificateTemplates];
+  | [OrgPermissionActions, OrgPermissionSubjects.SshCertificateTemplates];
 
 export type TOrgPermission = MongoAbility<OrgPermissionSet>;

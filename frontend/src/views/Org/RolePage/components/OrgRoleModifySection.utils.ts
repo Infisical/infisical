@@ -13,13 +13,6 @@ const generalPermissionSchema = z
   })
   .optional();
 
-const sshCertificateSchema = z
-  .object({
-    read: z.boolean().optional(),
-    create: z.boolean().optional()
-  })
-  .optional();
-
 const adminConsolePermissionSchmea = z
   .object({
     "access-all-projects": z.boolean().optional()
@@ -58,7 +51,7 @@ export const formSchema = z.object({
       [OrgPermissionSubjects.Kms]: generalPermissionSchema,
       [OrgPermissionSubjects.ProjectTemplates]: generalPermissionSchema,
       [OrgPermissionSubjects.SshCertificateAuthorities]: generalPermissionSchema,
-      [OrgPermissionSubjects.SshCertificates]: sshCertificateSchema,
+      [OrgPermissionSubjects.SshCertificates]: generalPermissionSchema,
       [OrgPermissionSubjects.SshCertificateTemplates]: generalPermissionSchema
     })
     .optional()
