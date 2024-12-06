@@ -1,5 +1,16 @@
 import { CertKeyAlgorithm } from "../certificates/enums";
-import { SshCaStatus, SshCertType } from "./enums";
+import { SshCaStatus, SshCertType } from "./constants";
+
+export type TSshCertificate = {
+  id: string;
+  sshCaId: string;
+  sshCertificateTemplateId: string;
+  serialNumber: string;
+  certType: SshCertType;
+  publicKey: string;
+  principals: string[];
+  keyId: string;
+};
 
 export type TSshCertificateAuthority = {
   id: string;

@@ -387,6 +387,14 @@ export const ORGANIZATIONS = {
   },
   LIST_SSH_CAS: {
     organizationId: "The ID of the organization to list SSH CAs for."
+  },
+  LIST_SSH_CERTIFICATES: {
+    organizationId: "The ID of the organization to list SSH certificates for.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th SSH certificate.",
+    limit: "The number of SSH certificates to return."
+  },
+  LIST_SSH_CERTIFICATE_TEMPLATES: {
+    organizationId: "The ID of the organization to list SSH certificate templates for."
   }
 } as const;
 

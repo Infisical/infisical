@@ -317,6 +317,9 @@ import {
   TSshCertificateAuthoritySecrets,
   TSshCertificateAuthoritySecretsInsert,
   TSshCertificateAuthoritySecretsUpdate,
+  TSshCertificates,
+  TSshCertificatesInsert,
+  TSshCertificatesUpdate,
   TSshCertificateTemplates,
   TSshCertificateTemplatesInsert,
   TSshCertificateTemplatesUpdate,
@@ -395,6 +398,11 @@ declare module "knex/types/tables" {
       TSshCertificateTemplates,
       TSshCertificateTemplatesInsert,
       TSshCertificateTemplatesUpdate
+    >;
+    [TableName.SshCertificate]: KnexOriginal.CompositeTableType<
+      TSshCertificates,
+      TSshCertificatesInsert,
+      TSshCertificatesUpdate
     >;
     [TableName.CertificateAuthority]: KnexOriginal.CompositeTableType<
       TCertificateAuthorities,

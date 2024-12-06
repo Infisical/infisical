@@ -7,15 +7,6 @@ export enum OrgPermissionActions {
   Delete = "delete"
 }
 
-export enum OrgPermissionSshCertificateTemplateActions {
-  Read = "read",
-  Create = "create",
-  Edit = "edit",
-  Delete = "delete",
-  SignSshKey = "sign-ssh-key",
-  IssueSshCredentials = "issue-ssh-credentials"
-}
-
 export enum OrgPermissionAdminConsoleAction {
   AccessAllProjects = "access-all-projects"
 }
@@ -37,6 +28,7 @@ export enum OrgPermissionSubjects {
   AdminConsole = "organization-admin-console",
   AuditLogs = "audit-logs",
   ProjectTemplates = "project-templates",
+  SshCertificates = "ssh-certificates",
   SshCertificateAuthorities = "ssh-certificate-authorities",
   SshCertificateTemplates = "ssh-certificate-templates"
 }
@@ -59,7 +51,8 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.ProjectTemplates]
   | [OrgPermissionAdminConsoleAction, OrgPermissionSubjects.AdminConsole]
   | [OrgPermissionActions, OrgPermissionSubjects.SshCertificateAuthorities]
-  | [OrgPermissionSshCertificateTemplateActions, OrgPermissionSubjects.SshCertificateTemplates];
+  | [OrgPermissionActions, OrgPermissionSubjects.SshCertificates]
+  | [OrgPermissionActions, OrgPermissionSubjects.SshCertificateTemplates];
 
 const buildAdminPermission = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
@@ -136,22 +129,18 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.ProjectTemplates);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.ProjectTemplates);
 
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.SshCertificates);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.SshCertificates);
+
   can(OrgPermissionActions.Read, OrgPermissionSubjects.SshCertificateAuthorities);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.SshCertificateAuthorities);
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.SshCertificateAuthorities);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.SshCertificateAuthorities);
 
-  can(
-    [
-      OrgPermissionSshCertificateTemplateActions.Read,
-      OrgPermissionSshCertificateTemplateActions.Create,
-      OrgPermissionSshCertificateTemplateActions.Edit,
-      OrgPermissionSshCertificateTemplateActions.Delete,
-      OrgPermissionSshCertificateTemplateActions.SignSshKey,
-      OrgPermissionSshCertificateTemplateActions.IssueSshCredentials
-    ],
-    OrgPermissionSubjects.SshCertificateTemplates
-  );
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.SshCertificateTemplates);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.SshCertificateTemplates);
+  can(OrgPermissionActions.Edit, OrgPermissionSubjects.SshCertificateTemplates);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.SshCertificateTemplates);
 
   can(OrgPermissionAdminConsoleAction.AccessAllProjects, OrgPermissionSubjects.AdminConsole);
 
@@ -184,9 +173,9 @@ const buildMemberPermission = () => {
   can(OrgPermissionActions.Read, OrgPermissionSubjects.AuditLogs);
 
   can(OrgPermissionActions.Read, OrgPermissionSubjects.SshCertificateAuthorities);
-  can(OrgPermissionSshCertificateTemplateActions.Read, OrgPermissionSubjects.SshCertificateTemplates);
-  can(OrgPermissionSshCertificateTemplateActions.SignSshKey, OrgPermissionSubjects.SshCertificateTemplates);
-  can(OrgPermissionSshCertificateTemplateActions.IssueSshCredentials, OrgPermissionSubjects.SshCertificateTemplates);
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.SshCertificates);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.SshCertificates);
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.SshCertificateTemplates);
 
   return rules;
 };

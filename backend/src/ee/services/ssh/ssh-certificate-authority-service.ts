@@ -1,15 +1,12 @@
 import { ForbiddenError } from "@casl/ability";
 
-import {
-  OrgPermissionActions,
-  OrgPermissionSshCertificateTemplateActions,
-  OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { TSshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-dal";
 import { TSshCertificateAuthoritySecretDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-secret-dal";
+import { TSshCertificateDALFactory } from "@app/ee/services/ssh-certificate/ssh-certificate-dal";
 import { TSshCertificateTemplateDALFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-dal";
-import { NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import {
@@ -38,6 +35,7 @@ type TSshCertificateAuthorityServiceFactoryDep = {
   >;
   sshCertificateAuthoritySecretDAL: Pick<TSshCertificateAuthoritySecretDALFactory, "create" | "findOne">;
   sshCertificateTemplateDAL: Pick<TSshCertificateTemplateDALFactory, "find" | "getByName">;
+  sshCertificateDAL: Pick<TSshCertificateDALFactory, "create">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey" | "getOrgKmsKeyId">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
@@ -48,6 +46,7 @@ export const sshCertificateAuthorityServiceFactory = ({
   sshCertificateAuthorityDAL,
   sshCertificateAuthoritySecretDAL,
   sshCertificateTemplateDAL,
+  sshCertificateDAL,
   kmsService,
   permissionService
 }: TSshCertificateAuthorityServiceFactoryDep) => {
@@ -252,10 +251,13 @@ export const sshCertificateAuthorityServiceFactory = ({
       actorOrgId
     );
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionSshCertificateTemplateActions.IssueSshCredentials,
-      OrgPermissionSubjects.SshCertificateTemplates
-    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.SshCertificates);
+
+    if (sshCertificateTemplate.caStatus === SshCaStatus.DISABLED) {
+      throw new BadRequestError({
+        message: "SSH CA is disabled"
+      });
+    }
 
     // validate if the requested [certType] is allowed under the template configuration
     validateSshCertificateType(sshCertificateTemplate, certType);
@@ -293,6 +295,18 @@ export const sshCertificateAuthorityServiceFactory = ({
       principals,
       ttl,
       certType
+    });
+
+    await sshCertificateDAL.create({
+      sshCaId: sshCertificateTemplate.sshCaId,
+      sshCertificateTemplateId: sshCertificateTemplate.id,
+      serialNumber,
+      certType,
+      publicKey,
+      principals,
+      keyId,
+      notBefore: new Date(),
+      notAfter: new Date(Date.now() + ttl * 1000)
     });
 
     return {
@@ -337,10 +351,13 @@ export const sshCertificateAuthorityServiceFactory = ({
       actorOrgId
     );
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionSshCertificateTemplateActions.SignSshKey,
-      OrgPermissionSubjects.SshCertificateTemplates
-    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.SshCertificates);
+
+    if (sshCertificateTemplate.caStatus === SshCaStatus.DISABLED) {
+      throw new BadRequestError({
+        message: "SSH CA is disabled"
+      });
+    }
 
     // validate if the requested [certType] is allowed under the template configuration
     validateSshCertificateType(sshCertificateTemplate, certType);
@@ -377,6 +394,18 @@ export const sshCertificateAuthorityServiceFactory = ({
       certType
     });
 
+    await sshCertificateDAL.create({
+      sshCaId: sshCertificateTemplate.sshCaId,
+      sshCertificateTemplateId: sshCertificateTemplate.id,
+      serialNumber,
+      certType,
+      publicKey,
+      principals,
+      keyId,
+      notBefore: new Date(),
+      notAfter: new Date(Date.now() + ttl * 1000)
+    });
+
     return { serialNumber, signedPublicKey, certificateTemplate: sshCertificateTemplate, ttl, keyId };
   };
 
@@ -399,7 +428,7 @@ export const sshCertificateAuthorityServiceFactory = ({
     );
 
     ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionSshCertificateTemplateActions.Read,
+      OrgPermissionActions.Read,
       OrgPermissionSubjects.SshCertificateTemplates
     );
 

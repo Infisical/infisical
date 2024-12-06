@@ -3,11 +3,8 @@ import Head from "next/head";
 
 import { SshPage } from "@app/views/Org/SshPage";
 
-// TODO: update meta tags
-
 const Ssh = () => {
   const { t } = useTranslation();
-
   return (
     <>
       <Head>

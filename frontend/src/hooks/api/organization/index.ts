@@ -20,5 +20,7 @@ export {
   useGetOrgTaxIds,
   useGetOrgTrialUrl,
   useListOrgSshCas,
+  useListOrgSshCertificates,
+  useListOrgSshCertificateTemplates,
   useUpdateOrg,
   useUpdateOrgBillingDetails} from "./queries";

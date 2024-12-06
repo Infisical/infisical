@@ -1,10 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import ms from "ms";
 
-import {
-  OrgPermissionSshCertificateTemplateActions,
-  OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
@@ -61,7 +58,7 @@ export const sshCertificateTemplateServiceFactory = ({
     );
 
     ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionSshCertificateTemplateActions.Create,
+      OrgPermissionActions.Create,
       OrgPermissionSubjects.SshCertificateTemplates
     );
 
@@ -124,7 +121,7 @@ export const sshCertificateTemplateServiceFactory = ({
     );
 
     ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionSshCertificateTemplateActions.Edit,
+      OrgPermissionActions.Edit,
       OrgPermissionSubjects.SshCertificateTemplates
     );
 
@@ -183,7 +180,7 @@ export const sshCertificateTemplateServiceFactory = ({
     );
 
     ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionSshCertificateTemplateActions.Delete,
+      OrgPermissionActions.Delete,
       OrgPermissionSubjects.SshCertificateTemplates
     );
 
@@ -209,7 +206,7 @@ export const sshCertificateTemplateServiceFactory = ({
     );
 
     ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionSshCertificateTemplateActions.Read,
+      OrgPermissionActions.Read,
       OrgPermissionSubjects.SshCertificateTemplates
     );
 

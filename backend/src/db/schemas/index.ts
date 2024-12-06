@@ -108,6 +108,7 @@ export * from "./slack-integrations";
 export * from "./ssh-certificate-authorities";
 export * from "./ssh-certificate-authority-secrets";
 export * from "./ssh-certificate-templates";
+export * from "./ssh-certificates";
 export * from "./super-admin";
 export * from "./totp-configs";
 export * from "./trusted-ips";

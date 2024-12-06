@@ -13,7 +13,8 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
-import { useGetSshCaCertTemplates, useIssueSshCreds, useSignSshKey } from "@app/hooks/api";
+import { useOrganization } from "@app/context";
+import { useIssueSshCreds, useListOrgSshCertificateTemplates, useSignSshKey } from "@app/hooks/api";
 import { certKeyAlgorithms } from "@app/hooks/api/certificates/constants";
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import { SshCertType } from "@app/hooks/api/ssh-ca/enums";
@@ -62,6 +63,7 @@ enum SshCertificateOperation {
 }
 
 export const SshCertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
+  const { currentOrg } = useOrganization();
   const [operation, setOperation] = useState<SshCertificateOperation>(
     SshCertificateOperation.SIGN_SSH_KEY
   );
@@ -72,7 +74,9 @@ export const SshCertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const popUpData = popUp?.sshCertificate?.data as { sshCaId: string; templateName: string };
 
-  const { data: templatesData } = useGetSshCaCertTemplates(popUpData?.sshCaId || "");
+  const { data: templatesData } = useListOrgSshCertificateTemplates({
+    orgId: currentOrg?.id || ""
+  });
 
   const {
     control,
@@ -91,6 +95,8 @@ export const SshCertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
   useEffect(() => {
     if (popUpData) {
       setValue("templateName", popUpData.templateName);
+    } else if (templatesData && templatesData.certificateTemplates.length > 0) {
+      setValue("templateName", templatesData.certificateTemplates[0].name);
     }
   }, [popUpData]);
 
@@ -114,6 +120,7 @@ export const SshCertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
             ttl,
             keyId
           });
+
           setCertificateDetails({
             serialNumber,
             signedKey
@@ -186,7 +193,7 @@ export const SshCertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
                     {...field}
                     onValueChange={(e) => onChange(e)}
                     className="w-full"
-                    isDisabled
+                    isDisabled={Boolean(popUpData?.sshCaId)}
                   >
                     {(templatesData?.certificateTemplates || []).map(({ id, name }) => (
                       <SelectItem value={name} key={`ssh-cert-template-${id}`}>

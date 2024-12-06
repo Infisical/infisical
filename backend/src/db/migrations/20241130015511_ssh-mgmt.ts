@@ -34,7 +34,7 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
       t.uuid("sshCaId").notNullable();
       t.foreign("sshCaId").references("id").inTable(TableName.SshCertificateAuthority).onDelete("CASCADE");
-      t.string("name").notNullable(); // note: how do we handle this being unique? across orgs?
+      t.string("name").notNullable();
       t.string("ttl").notNullable();
       t.string("maxTTL").notNullable();
       t.specificType("allowedUsers", "text[]").notNullable();
@@ -45,9 +45,34 @@ export async function up(knex: Knex): Promise<void> {
     });
     await createOnUpdateTrigger(knex, TableName.SshCertificateTemplate);
   }
+
+  if (!(await knex.schema.hasTable(TableName.SshCertificate))) {
+    await knex.schema.createTable(TableName.SshCertificate, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.timestamps(true, true, true);
+      t.uuid("sshCaId").notNullable();
+      t.foreign("sshCaId").references("id").inTable(TableName.SshCertificateAuthority).onDelete("CASCADE");
+      t.uuid("sshCertificateTemplateId");
+      t.foreign("sshCertificateTemplateId")
+        .references("id")
+        .inTable(TableName.SshCertificateTemplate)
+        .onDelete("SET NULL");
+      t.string("serialNumber").notNullable().unique();
+      t.string("certType").notNullable(); // user or host
+      t.text("publicKey").notNullable(); // public key in OpenSSH format
+      t.specificType("principals", "text[]").notNullable();
+      t.string("keyId").notNullable();
+      t.datetime("notBefore").notNullable();
+      t.datetime("notAfter").notNullable();
+    });
+    await createOnUpdateTrigger(knex, TableName.SshCertificateTemplate);
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {
+  await knex.schema.dropTableIfExists(TableName.SshCertificate);
+  await dropOnUpdateTrigger(knex, TableName.SshCertificate);
+
   await knex.schema.dropTableIfExists(TableName.SshCertificateTemplate);
   await dropOnUpdateTrigger(knex, TableName.SshCertificateTemplate);
 

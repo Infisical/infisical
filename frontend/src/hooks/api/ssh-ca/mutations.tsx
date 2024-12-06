@@ -11,7 +11,8 @@ import {
   TSignSshKeyDTO,
   TSignSshKeyResponse,
   TSshCertificateAuthority,
-  TUpdateSshCaDTO} from "./types";
+  TUpdateSshCaDTO
+} from "./types";
 
 export const sshCaKeys = {
   getSshCaById: (caId: string) => [{ caId }, "ssh-ca"]
@@ -64,19 +65,27 @@ export const useDeleteSshCa = () => {
 };
 
 export const useSignSshKey = () => {
+  const queryClient = useQueryClient();
   return useMutation<TSignSshKeyResponse, {}, TSignSshKeyDTO>({
     mutationFn: async (body) => {
       const { data } = await apiRequest.post<TSignSshKeyResponse>("/api/v1/ssh/sign", body);
       return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(organizationKeys.allOrgSshCertificates());
     }
   });
 };
 
 export const useIssueSshCreds = () => {
+  const queryClient = useQueryClient();
   return useMutation<TIssueSshCredsResponse, {}, TIssueSshCredsDTO>({
     mutationFn: async (body) => {
       const { data } = await apiRequest.post<TIssueSshCredsResponse>("/api/v1/ssh/issue", body);
       return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(organizationKeys.allOrgSshCertificates());
     }
   });
 };

@@ -12,6 +12,8 @@ import {
 } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { sanitizedSshCa } from "@app/ee/services/ssh/ssh-certificate-authority-schema";
+import { sanitizedSshCertificate } from "@app/ee/services/ssh-certificate/ssh-certificate-schema";
+import { sanitizedSshCertificateTemplate } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-schema";
 import { AUDIT_LOGS, ORGANIZATIONS } from "@app/lib/api-docs";
 import { getLastMidnightDateISO } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -403,6 +405,73 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       });
 
       return { groups };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:organizationId/ssh-certificates",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        organizationId: z.string().trim().describe(ORGANIZATIONS.LIST_SSH_CAS.organizationId)
+      }),
+      querystring: z.object({
+        offset: z.coerce.number().default(0).describe(ORGANIZATIONS.LIST_SSH_CERTIFICATES.offset),
+        limit: z.coerce.number().default(25).describe(ORGANIZATIONS.LIST_SSH_CERTIFICATES.limit)
+      }),
+      response: {
+        200: z.object({
+          certificates: z.array(sanitizedSshCertificate),
+          totalCount: z.number() // TODO
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { certificates, totalCount } = await server.services.org.listOrgSshCertificates({
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        orgId: req.params.organizationId,
+        offset: req.query.offset,
+        limit: req.query.limit
+      });
+
+      return { certificates, totalCount };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:organizationId/ssh-certificate-templates",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        organizationId: z.string().trim().describe(ORGANIZATIONS.LIST_SSH_CERTIFICATE_TEMPLATES.organizationId)
+      }),
+      response: {
+        200: z.object({
+          certificateTemplates: z.array(sanitizedSshCertificateTemplate)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { certificateTemplates } = await server.services.org.listOrgSshCertificateTemplates({
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        orgId: req.params.organizationId
+      });
+
+      return { certificateTemplates };
     }
   });
 

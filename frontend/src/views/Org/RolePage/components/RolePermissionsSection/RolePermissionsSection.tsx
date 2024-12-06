@@ -15,7 +15,6 @@ import {
 import { OrgPermissionAdminConsoleRow } from "./OrgPermissionAdminConsoleRow";
 import { OrgRoleWorkspaceRow } from "./OrgRoleWorkspaceRow";
 import { RolePermissionRow } from "./RolePermissionRow";
-import { SshCertificateTemplateRow } from "./SshCertificateTemplateRow";
 
 const SIMPLE_PERMISSION_OPTIONS = [
   {
@@ -74,6 +73,14 @@ const SIMPLE_PERMISSION_OPTIONS = [
   {
     title: "SSH Certificate Authorities",
     formName: OrgPermissionSubjects.SshCertificateAuthorities
+  },
+  {
+    title: "SSH Certificates",
+    formName: OrgPermissionSubjects.SshCertificates
+  },
+  {
+    title: "SSH Certificate Templates",
+    formName: OrgPermissionSubjects.SshCertificateTemplates
   }
 ] as const;
 
@@ -169,11 +176,6 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
                   />
                 );
               })}
-              <SshCertificateTemplateRow
-                control={control}
-                setValue={setValue}
-                isEditable={isCustomRole}
-              />
               <OrgRoleWorkspaceRow
                 control={control}
                 setValue={setValue}
