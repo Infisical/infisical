@@ -7,15 +7,6 @@ export enum OrgPermissionActions {
   Delete = "delete"
 }
 
-export enum OrgPermissionSshCertificateTemplateActions {
-  Read = "read",
-  Create = "create",
-  Edit = "edit",
-  Delete = "delete",
-  SignSshKey = "sign-ssh-key",
-  IssueSshCredentials = "issue-ssh-credentials"
-}
-
 export enum OrgPermissionSubjects {
   Workspace = "workspace",
   Role = "role",

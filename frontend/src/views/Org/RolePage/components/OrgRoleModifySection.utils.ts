@@ -20,17 +20,6 @@ const sshCertificateSchema = z
   })
   .optional();
 
-const sshCertificateTemplatePermissionSchmea = z
-  .object({
-    read: z.boolean().optional(),
-    edit: z.boolean().optional(),
-    delete: z.boolean().optional(),
-    create: z.boolean().optional(),
-    "sign-ssh-key": z.boolean().optional(),
-    "issue-ssh-credentials": z.boolean().optional()
-  })
-  .optional();
-
 const adminConsolePermissionSchmea = z
   .object({
     "access-all-projects": z.boolean().optional()
@@ -70,7 +59,7 @@ export const formSchema = z.object({
       [OrgPermissionSubjects.ProjectTemplates]: generalPermissionSchema,
       [OrgPermissionSubjects.SshCertificateAuthorities]: generalPermissionSchema,
       [OrgPermissionSubjects.SshCertificates]: sshCertificateSchema,
-      "ssh-certificate-templates": sshCertificateTemplatePermissionSchmea
+      [OrgPermissionSubjects.SshCertificateTemplates]: generalPermissionSchema
     })
     .optional()
 });
