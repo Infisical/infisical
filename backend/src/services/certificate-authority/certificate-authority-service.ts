@@ -5,7 +5,7 @@ import crypto, { KeyObject } from "crypto";
 import ms from "ms";
 import { z } from "zod";
 
-import { TCertificateAuthorities, TCertificateTemplates } from "@app/db/schemas";
+import { ProjectType, TCertificateAuthorities, TCertificateTemplates } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
@@ -124,13 +124,14 @@ export const certificateAuthorityServiceFactory = ({
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       project.id,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.CertificateManager);
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
@@ -323,13 +324,14 @@ export const certificateAuthorityServiceFactory = ({
     const ca = await certificateAuthorityDAL.findById(caId);
     if (!ca) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       ca.projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.CertificateManager);
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
@@ -348,13 +350,14 @@ export const certificateAuthorityServiceFactory = ({
     const ca = await certificateAuthorityDAL.findById(caId);
     if (!ca) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       ca.projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.CertificateManager);
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
@@ -434,13 +437,14 @@ export const certificateAuthorityServiceFactory = ({
 
     if (!ca.activeCaCertId) throw new BadRequestError({ message: "CA does not have a certificate installed" });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       ca.projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.CertificateManager);
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
@@ -819,13 +823,14 @@ export const certificateAuthorityServiceFactory = ({
     const ca = await certificateAuthorityDAL.findById(caId);
     if (!ca) throw new NotFoundError({ message: "CA not found" });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       ca.projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.CertificateManager);
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
@@ -965,13 +970,14 @@ export const certificateAuthorityServiceFactory = ({
     const ca = await certificateAuthorityDAL.findById(caId);
     if (!ca) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       ca.projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.CertificateManager);
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
@@ -1127,13 +1133,14 @@ export const certificateAuthorityServiceFactory = ({
       throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       ca.projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.CertificateManager);
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Certificates);
 
@@ -1455,13 +1462,14 @@ export const certificateAuthorityServiceFactory = ({
     }
 
     if (!dto.isInternal) {
-      const { permission } = await permissionService.getProjectPermission(
+      const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
         dto.actor,
         dto.actorId,
         ca.projectId,
         dto.actorAuthMethod,
         dto.actorOrgId
       );
+      ForbidOnInvalidProjectType(ProjectType.CertificateManager);
 
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionActions.Create,

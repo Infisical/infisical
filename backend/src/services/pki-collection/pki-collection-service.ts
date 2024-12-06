@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { TPkiCollectionItems } from "@app/db/schemas";
+import { ProjectType, TPkiCollectionItems } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -50,13 +50,14 @@ export const pkiCollectionServiceFactory = ({
     actor,
     actorOrgId
   }: TCreatePkiCollectionDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.CertificateManager);
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
@@ -106,13 +107,14 @@ export const pkiCollectionServiceFactory = ({
     let pkiCollection = await pkiCollectionDAL.findById(collectionId);
     if (!pkiCollection) throw new NotFoundError({ message: `PKI collection with ID '${collectionId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       pkiCollection.projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.CertificateManager);
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.PkiCollections);
     pkiCollection = await pkiCollectionDAL.updateById(collectionId, {
@@ -133,13 +135,14 @@ export const pkiCollectionServiceFactory = ({
     let pkiCollection = await pkiCollectionDAL.findById(collectionId);
     if (!pkiCollection) throw new NotFoundError({ message: `PKI collection with ID '${collectionId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       pkiCollection.projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.CertificateManager);
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
@@ -205,13 +208,14 @@ export const pkiCollectionServiceFactory = ({
     const pkiCollection = await pkiCollectionDAL.findById(collectionId);
     if (!pkiCollection) throw new NotFoundError({ message: `PKI collection with ID '${collectionId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       pkiCollection.projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.CertificateManager);
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
@@ -298,13 +302,14 @@ export const pkiCollectionServiceFactory = ({
 
     if (!pkiCollectionItem) throw new NotFoundError({ message: `PKI collection item with ID '${itemId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       pkiCollection.projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.CertificateManager);
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
