@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
-import { ProjectMembershipRole, ProjectVersion, TProjectEnvironments } from "@app/db/schemas";
+import { ProjectMembershipRole, ProjectType, ProjectVersion, TProjectEnvironments } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -153,7 +153,8 @@ export const projectServiceFactory = ({
     kmsKeyId,
     tx: trx,
     createDefaultEnvs = true,
-    template = InfisicalProjectTemplate.Default
+    template = InfisicalProjectTemplate.Default,
+    type = ProjectType.SecretManager
   }: TCreateProjectDTO) => {
     const organization = await orgDAL.findOne({ id: actorOrgId });
 
@@ -206,6 +207,7 @@ export const projectServiceFactory = ({
       const project = await projectDAL.create(
         {
           name: workspaceName,
+          type,
           description: workspaceDescription,
           orgId: organization.id,
           slug: projectSlug || slugify(`${workspaceName}-${alphaNumericNanoId(4)}`),

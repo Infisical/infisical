@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { TProjectKeys } from "@app/db/schemas";
+import { ProjectType, TProjectKeys } from "@app/db/schemas";
 import { TProjectPermission } from "@app/lib/types";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
@@ -35,6 +35,7 @@ export type TCreateProjectDTO = {
   createDefaultEnvs?: boolean;
   template?: string;
   tx?: Knex;
+  type?: ProjectType;
 };
 
 export type TDeleteProjectBySlugDTO = {

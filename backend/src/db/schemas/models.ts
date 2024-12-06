@@ -200,3 +200,9 @@ export enum IdentityAuthMethod {
   OIDC_AUTH = "oidc-auth",
   JWT_AUTH = "jwt-auth"
 }
+
+export enum ProjectType {
+  SecretManager = "secret-manager",
+  CertificateManager = "cert-manager",
+  KMS = "kms"
+}

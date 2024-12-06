@@ -6,6 +6,7 @@ import handlebars from "handlebars";
 import {
   OrgMembershipRole,
   ProjectMembershipRole,
+  ProjectType,
   ServiceTokenScopes,
   TIdentityProjectMemberships,
   TProjectMemberships
@@ -255,6 +256,13 @@ export const permissionServiceFactory = ({
     return {
       permission,
       membership: userProjectPermission,
+      ForbidOnInvalidProjectType: (productType: ProjectType) => {
+        if (productType !== userProjectPermission.projectType) {
+          throw new BadRequestError({
+            message: `The project is of type ${userProjectPermission.projectType}. Operations of type ${productType} are not allowed.`
+          });
+        }
+      },
       hasRole: (role: string) =>
         userProjectPermission.roles.findIndex(
           ({ role: slug, customRoleSlug }) => role === slug || slug === customRoleSlug
@@ -323,6 +331,13 @@ export const permissionServiceFactory = ({
     return {
       permission,
       membership: identityProjectPermission,
+      ForbidOnInvalidProjectType: (productType: ProjectType) => {
+        if (productType !== identityProjectPermission.projectType) {
+          throw new BadRequestError({
+            message: `The project is of type ${identityProjectPermission.projectType}. Operations of type ${productType} are not allowed.`
+          });
+        }
+      },
       hasRole: (role: string) =>
         identityProjectPermission.roles.findIndex(
           ({ role: slug, customRoleSlug }) => role === slug || slug === customRoleSlug
@@ -361,7 +376,14 @@ export const permissionServiceFactory = ({
     const scopes = ServiceTokenScopes.parse(serviceToken.scopes || []);
     return {
       permission: buildServiceTokenProjectPermission(scopes, serviceToken.permissions),
-      membership: undefined
+      membership: undefined,
+      ForbidOnInvalidProjectType: (productType: ProjectType) => {
+        if (productType !== serviceTokenProject.type) {
+          throw new BadRequestError({
+            message: `The project is of type ${serviceTokenProject.type}. Operations of type ${productType} are not allowed.`
+          });
+        }
+      }
     };
   };
 
@@ -370,6 +392,7 @@ export const permissionServiceFactory = ({
         permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
         membership: undefined;
         hasRole: (arg: string) => boolean;
+        ForbidOnInvalidProjectType: (type: ProjectType) => void;
       } // service token doesn't have both membership and roles
     : {
         permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
@@ -379,6 +402,7 @@ export const permissionServiceFactory = ({
           roles: Array<{ role: string }>;
         };
         hasRole: (role: string) => boolean;
+        ForbidOnInvalidProjectType: (type: ProjectType) => void;
       };
 
   const getProjectPermission = async <T extends ActorType>(

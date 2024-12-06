@@ -24,7 +24,8 @@ export const ProjectsSchema = z.object({
   auditLogsRetentionDays: z.number().nullable().optional(),
   kmsSecretManagerKeyId: z.string().uuid().nullable().optional(),
   kmsSecretManagerEncryptedDataKey: zodBuffer.nullable().optional(),
-  description: z.string().nullable().optional()
+  description: z.string().nullable().optional(),
+  type: z.string().nullable().optional()
 });
 
 export type TProjects = z.infer<typeof ProjectsSchema>;
