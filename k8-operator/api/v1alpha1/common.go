@@ -102,4 +102,8 @@ type ManagedKubeSecretConfig struct {
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default:=Orphan
 	CreationPolicy string `json:"creationPolicy"`
+
+	// The template to transform the secret data
+	// +kubebuilder:validation:Optional
+	Template *InfisicalSecretTemplate `json:"template,omitempty"`
 }
