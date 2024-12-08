@@ -1,10 +1,10 @@
-import { faCheck, faCopy, faPencil } from "@fortawesome/free-solid-svg-icons";
+import { faPencil } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import { IconButton, Tooltip } from "@app/components/v2";
+import { CopyButton } from "@app/components/v2/CopyButton";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
-import { useTimedReset } from "@app/hooks";
 import { useGetGroupById } from "@app/hooks/api/";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -14,10 +14,6 @@ type Props = {
 };
 
 export const GroupDetailsSection = ({ groupId, handlePopUpOpen }: Props) => {
-  const [copyTextId, isCopyingId, setCopyTextId] = useTimedReset<string>({
-    initialState: "Copy to clipboard"
-  });
-
   const { data } = useGetGroupById(groupId);
   return data ? (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
@@ -54,19 +50,7 @@ export const GroupDetailsSection = ({ groupId, handlePopUpOpen }: Props) => {
           <div className="group flex align-top">
             <p className="text-sm text-mineshaft-300">{data.group.id}</p>
             <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-              <Tooltip content={copyTextId}>
-                <IconButton
-                  ariaLabel="copy icon"
-                  variant="plain"
-                  className="group relative ml-2"
-                  onClick={() => {
-                    navigator.clipboard.writeText(data.group.id);
-                    setCopyTextId("Copied");
-                  }}
-                >
-                  <FontAwesomeIcon icon={isCopyingId ? faCheck : faCopy} />
-                </IconButton>
-              </Tooltip>
+              <CopyButton value={data.group.id} name="Group ID" />
             </div>
           </div>
         </div>
@@ -79,19 +63,7 @@ export const GroupDetailsSection = ({ groupId, handlePopUpOpen }: Props) => {
           <div className="group flex align-top">
             <p className="text-sm text-mineshaft-300">{data.group.slug}</p>
             <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-              <Tooltip content={copyTextId}>
-                <IconButton
-                  ariaLabel="copy icon"
-                  variant="plain"
-                  className="group relative ml-2"
-                  onClick={() => {
-                    navigator.clipboard.writeText(data.group.slug);
-                    setCopyTextId("Copied");
-                  }}
-                >
-                  <FontAwesomeIcon icon={isCopyingId ? faCheck : faCopy} />
-                </IconButton>
-              </Tooltip>
+              <CopyButton value={data.group.slug} name="Slug" />
             </div>
           </div>
         </div>
