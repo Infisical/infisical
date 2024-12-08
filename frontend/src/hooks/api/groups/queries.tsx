@@ -2,7 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { TGroup } from "./types";
+
 export const groupKeys = {
+  getGroupById: (groupId: string) => [{ groupId }, "group"] as const,
   allGroupUserMemberships: () => ["group-user-memberships"] as const,
   forGroupUserMemberships: (slug: string) =>
     [...groupKeys.allGroupUserMemberships(), slug] as const,
@@ -10,43 +13,66 @@ export const groupKeys = {
     slug,
     offset,
     limit,
-    search
+    search,
+    filter
   }: {
     slug: string;
     offset: number;
     limit: number;
     search: string;
-  }) => [...groupKeys.forGroupUserMemberships(slug), { offset, limit, search }] as const
+    filter?: EFilterReturnedUsers;
+  }) => [...groupKeys.forGroupUserMemberships(slug), { offset, limit, search, filter }] as const
 };
 
-type TUser = {
+export const useGetGroupById = (groupId: string) => {
+  return useQuery({
+    enabled: Boolean(groupId),
+    queryKey: groupKeys.getGroupById(groupId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TGroup>(`/api/v1/groups/${groupId}`);
+
+      return { group: data };
+    }
+  });
+};
+
+export type TGroupUser = {
   id: string;
   email: string;
   username: string;
   firstName: string;
   lastName: string;
   isPartOfGroup: boolean;
+  joinedGroupAt: Date;
 };
+
+export enum EFilterReturnedUsers {
+  EXISTING_MEMBERS = "existingMembers",
+  NON_MEMBERS = "nonMembers"
+}
 
 export const useListGroupUsers = ({
   id,
   groupSlug,
   offset = 0,
   limit = 10,
-  search
+  search,
+  filter
 }: {
   id: string;
   groupSlug: string;
   offset: number;
   limit: number;
   search: string;
+  filter?: EFilterReturnedUsers;
 }) => {
   return useQuery({
     queryKey: groupKeys.specificGroupUserMemberships({
       slug: groupSlug,
       offset,
       limit,
-      search
+      search,
+      filter
     }),
     enabled: Boolean(groupSlug),
     keepPreviousData: true,
@@ -54,10 +80,11 @@ export const useListGroupUsers = ({
       const params = new URLSearchParams({
         offset: String(offset),
         limit: String(limit),
-        search
+        search,
+        ...(filter && { filter })
       });
 
-      const { data } = await apiRequest.get<{ users: TUser[]; totalCount: number }>(
+      const { data } = await apiRequest.get<{ users: TGroupUser[]; totalCount: number }>(
         `/api/v1/groups/${id}/users`,
         {
           params

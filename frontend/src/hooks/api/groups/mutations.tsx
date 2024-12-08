@@ -56,8 +56,9 @@ export const useUpdateGroup = () => {
 
       return group;
     },
-    onSuccess: ({ orgId }) => {
+    onSuccess: ({ orgId, id: groupId }) => {
       queryClient.invalidateQueries(organizationKeys.getOrgGroups(orgId));
+      queryClient.invalidateQueries(groupKeys.getGroupById(groupId));
     }
   });
 };
@@ -70,8 +71,9 @@ export const useDeleteGroup = () => {
 
       return group;
     },
-    onSuccess: ({ orgId }) => {
+    onSuccess: ({ orgId, id: groupId }) => {
       queryClient.invalidateQueries(organizationKeys.getOrgGroups(orgId));
+      queryClient.invalidateQueries(groupKeys.getGroupById(groupId));
     }
   });
 };

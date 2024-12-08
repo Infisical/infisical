@@ -11,7 +11,7 @@ export type TGroup = {
   name: string;
   slug: string;
   orgId: string;
-  createAt: string;
+  createdAt: string;
   updatedAt: string;
   role: string;
 };
