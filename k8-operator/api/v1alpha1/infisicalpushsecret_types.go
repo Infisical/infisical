@@ -52,7 +52,6 @@ type PushSecretGcpIamAuth struct {
 	ServiceAccountKeyFilePath string `json:"serviceAccountKeyFilePath"`
 }
 
-// Rest of your types should be defined similarly...
 type PushSecretKubernetesAuth struct {
 	// +kubebuilder:validation:Required
 	IdentityID string `json:"identityId"`

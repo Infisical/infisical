@@ -32,7 +32,7 @@ controllerManager:
         - ALL
     image:
       repository: infisical/kubernetes-operator
-      tag: v0.7.5
+      tag: v0.7.6
     resources:
       limits:
         cpu: 500m
