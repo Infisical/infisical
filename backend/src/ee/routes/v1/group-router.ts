@@ -1,8 +1,8 @@
-import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { GroupsSchema, OrgMembershipRole, UsersSchema } from "@app/db/schemas";
 import { GROUPS } from "@app/lib/api-docs";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -14,15 +14,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     schema: {
       body: z.object({
         name: z.string().trim().min(1).max(50).describe(GROUPS.CREATE.name),
-        slug: z
-          .string()
-          .min(5)
-          .max(36)
-          .refine((v) => slugify(v) === v, {
-            message: "Slug must be a valid slug"
-          })
-          .optional()
-          .describe(GROUPS.CREATE.slug),
+        slug: slugSchema({ min: 5, max: 36 }).optional().describe(GROUPS.CREATE.slug),
         role: z.string().trim().min(1).default(OrgMembershipRole.NoAccess).describe(GROUPS.CREATE.role)
       }),
       response: {
@@ -100,14 +92,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       body: z
         .object({
           name: z.string().trim().min(1).describe(GROUPS.UPDATE.name),
-          slug: z
-            .string()
-            .min(5)
-            .max(36)
-            .refine((v) => slugify(v) === v, {
-              message: "Slug must be a valid slug"
-            })
-            .describe(GROUPS.UPDATE.slug),
+          slug: slugSchema({ min: 5, max: 36 }).describe(GROUPS.UPDATE.slug),
           role: z.string().trim().min(1).describe(GROUPS.UPDATE.role)
         })
         .partial(),

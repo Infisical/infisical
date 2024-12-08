@@ -1,5 +1,6 @@
-import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
+
+import { slugSchema } from "@app/lib/schemas";
 
 export type Kms = {
   id: string;
@@ -119,13 +120,7 @@ export const ExternalKmsInputSchema = z.discriminatedUnion("type", [
 ]);
 
 export const AddExternalKmsSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(1)
-    .refine((v) => slugify(v) === v, {
-      message: "Alias must be a valid slug"
-    }),
+  name: slugSchema({ min: 1, field: "Alias" }),
   description: z.string().trim().optional(),
   provider: ExternalKmsInputSchema
 });
