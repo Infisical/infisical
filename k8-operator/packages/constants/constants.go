@@ -13,7 +13,7 @@ const OPERATOR_SETTINGS_CONFIGMAP_NAME = "infisical-config"
 const OPERATOR_SETTINGS_CONFIGMAP_NAMESPACE = "infisical-operator-system"
 const INFISICAL_DOMAIN = "https://app.infisical.com/api"
 
-const INFISICAL_PUSH_SECRET_FINALIZER_NAME = "infisical.secrets.infisical.com/finalizer"
+const INFISICAL_PUSH_SECRET_FINALIZER_NAME = "pushsecret.secrets.infisical.com/finalizer"
 
 type PushSecretReplacePolicy string
 type PushSecretDeletionPolicy string
