@@ -18,15 +18,15 @@ export type TAccessApprovalPolicy = {
   approvers?: Approver[];
 };
 
-export enum ApproverType{
+export enum ApproverType {
   User = "user",
   Group = "group"
 }
 
-export type Approver ={
+export type Approver = {
   id: string;
   type: ApproverType;
-}
+};
 
 export type TAccessApprovalRequest = {
   id: string;
@@ -70,6 +70,7 @@ export type TAccessApprovalRequest = {
     secretPath?: string | null;
     envId: string;
     enforcementLevel: EnforcementLevel;
+    deletedAt: Date | null;
   };
 
   reviewers: {

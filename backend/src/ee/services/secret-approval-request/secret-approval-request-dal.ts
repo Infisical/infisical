@@ -111,7 +111,8 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         tx.ref("secretPath").withSchema(TableName.SecretApprovalPolicy).as("policySecretPath"),
         tx.ref("envId").withSchema(TableName.SecretApprovalPolicy).as("policyEnvId"),
         tx.ref("enforcementLevel").withSchema(TableName.SecretApprovalPolicy).as("policyEnforcementLevel"),
-        tx.ref("approvals").withSchema(TableName.SecretApprovalPolicy).as("policyApprovals")
+        tx.ref("approvals").withSchema(TableName.SecretApprovalPolicy).as("policyApprovals"),
+        tx.ref("deletedAt").withSchema(TableName.SecretApprovalPolicy).as("policyDeletedAt")
       );
 
   const findById = async (id: string, tx?: Knex) => {
@@ -147,7 +148,8 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             approvals: el.policyApprovals,
             secretPath: el.policySecretPath,
             enforcementLevel: el.policyEnforcementLevel,
-            envId: el.policyEnvId
+            envId: el.policyEnvId,
+            deletedAt: el.policyDeletedAt
           }
         }),
         childrenMapper: [
@@ -222,6 +224,11 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
               `${TableName.SecretApprovalRequest}.policyId`,
               `${TableName.SecretApprovalPolicyApprover}.policyId`
             )
+            .join(
+              TableName.SecretApprovalPolicy,
+              `${TableName.SecretApprovalRequest}.policyId`,
+              `${TableName.SecretApprovalPolicy}.id`
+            )
             .where({ projectId })
             .andWhere(
               (bd) =>
@@ -229,6 +236,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
                   .where(`${TableName.SecretApprovalPolicyApprover}.approverUserId`, userId)
                   .orWhere(`${TableName.SecretApprovalRequest}.committerUserId`, userId)
             )
+            .andWhere((bd) => void bd.where(`${TableName.SecretApprovalPolicy}.deletedAt`, null))
             .select("status", `${TableName.SecretApprovalRequest}.id`)
             .groupBy(`${TableName.SecretApprovalRequest}.id`, "status")
             .count("status")

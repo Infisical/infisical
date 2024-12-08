@@ -139,5 +139,10 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...accessApprovalPolicyOrm, find, findById };
+  const softDeleteById = async (policyId: string, tx?: Knex) => {
+    const softDeletedPolicy = await accessApprovalPolicyOrm.updateById(policyId, { deletedAt: new Date() }, tx);
+    return softDeletedPolicy;
+  };
+
+  return { ...accessApprovalPolicyOrm, find, findById, softDeleteById };
 };
