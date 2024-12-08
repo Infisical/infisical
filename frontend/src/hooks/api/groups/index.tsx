@@ -1,9 +1,8 @@
 export {
-    useAddUserToGroup,
-    useCreateGroup,
-    useDeleteGroup,
-    useRemoveUserFromGroup,
-    useUpdateGroup} from "./mutations";
-export {
-    useListGroupUsers
-} from "./queries";
+  useAddUserToGroup,
+  useCreateGroup,
+  useDeleteGroup,
+  useRemoveUserFromGroup,
+  useUpdateGroup
+} from "./mutations";
+export { useGetGroupById, useListGroupUsers } from "./queries";

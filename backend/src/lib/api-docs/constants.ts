@@ -19,7 +19,9 @@ export const GROUPS = {
     offset: "The offset to start from. If you enter 10, it will start from the 10th user.",
     limit: "The number of users to return.",
     username: "The username to search for.",
-    search: "The text string that user email or name will be filtered by."
+    search: "The text string that user email or name will be filtered by.",
+    filterUsers:
+      "Whether to filter the list of returned users. 'existingMembers' will only return existing users in the group, 'nonMembers' will only return users not in the group, undefined will return all users in the organization."
   },
   ADD_USER: {
     id: "The ID of the group to add the user to.",
