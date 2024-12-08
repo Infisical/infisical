@@ -3,10 +3,11 @@ package util
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 )
 
-func ConvertResyncIntervalToDuration(resyncInterval string) (time.Duration, error) {
+func ConvertIntervalToDuration(resyncInterval string) (time.Duration, error) {
 	length := len(resyncInterval)
 	if length < 2 {
 		return 0, fmt.Errorf("invalid format")
@@ -37,4 +38,24 @@ func ConvertResyncIntervalToDuration(resyncInterval string) (time.Duration, erro
 	default:
 		return 0, fmt.Errorf("invalid time unit")
 	}
+}
+
+func ConvertIntervalToTime(resyncInterval string) (time.Time, error) {
+	duration, err := ConvertIntervalToDuration(resyncInterval)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	// Add duration to current time
+	return time.Now().Add(duration), nil
+}
+
+func AppendAPIEndpoint(address string) string {
+	if strings.HasSuffix(address, "/api") {
+		return address
+	}
+	if address[len(address)-1] == '/' {
+		return address + "api"
+	}
+	return address + "/api"
 }
