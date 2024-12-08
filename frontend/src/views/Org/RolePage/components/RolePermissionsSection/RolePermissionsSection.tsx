@@ -69,7 +69,19 @@ const SIMPLE_PERMISSION_OPTIONS = [
     title: "External KMS",
     formName: OrgPermissionSubjects.Kms
   },
-  { title: "Project Templates", formName: OrgPermissionSubjects.ProjectTemplates }
+  { title: "Project Templates", formName: OrgPermissionSubjects.ProjectTemplates },
+  {
+    title: "SSH Certificate Authorities",
+    formName: OrgPermissionSubjects.SshCertificateAuthorities
+  },
+  {
+    title: "SSH Certificates",
+    formName: OrgPermissionSubjects.SshCertificates
+  },
+  {
+    title: "SSH Certificate Templates",
+    formName: OrgPermissionSubjects.SshCertificateTemplates
+  }
 ] as const;
 
 type Props = {

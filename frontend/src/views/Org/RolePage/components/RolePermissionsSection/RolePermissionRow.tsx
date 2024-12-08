@@ -97,7 +97,7 @@ export const RolePermissionRow = ({ isEditable, title, formName, control, setVal
 
   const selectedPermissionCategory = useMemo(() => {
     const actions = Object.keys(rule || {}) as Array<keyof typeof rule>;
-    const totalActions = PERMISSIONS.length;
+    const totalActions = getPermissionList(formName).length;
     const score = actions.map((key) => (rule?.[key] ? 1 : 0)).reduce((a, b) => a + b, 0 as number);
 
     if (isCustom) return Permission.Custom;

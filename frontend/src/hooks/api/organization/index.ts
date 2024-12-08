@@ -19,6 +19,8 @@ export {
   useGetOrgPmtMethods,
   useGetOrgTaxIds,
   useGetOrgTrialUrl,
+  useListOrgSshCas,
+  useListOrgSshCertificates,
+  useListOrgSshCertificateTemplates,
   useUpdateOrg,
-  useUpdateOrgBillingDetails
-} from "./queries";
+  useUpdateOrgBillingDetails} from "./queries";

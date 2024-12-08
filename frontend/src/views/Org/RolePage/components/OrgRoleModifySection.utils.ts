@@ -49,7 +49,10 @@ export const formSchema = z.object({
       identity: generalPermissionSchema,
       "organization-admin-console": adminConsolePermissionSchmea,
       [OrgPermissionSubjects.Kms]: generalPermissionSchema,
-      [OrgPermissionSubjects.ProjectTemplates]: generalPermissionSchema
+      [OrgPermissionSubjects.ProjectTemplates]: generalPermissionSchema,
+      [OrgPermissionSubjects.SshCertificateAuthorities]: generalPermissionSchema,
+      [OrgPermissionSubjects.SshCertificates]: generalPermissionSchema,
+      [OrgPermissionSubjects.SshCertificateTemplates]: generalPermissionSchema
     })
     .optional()
 });
