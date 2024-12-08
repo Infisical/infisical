@@ -207,10 +207,6 @@ func (r *InfisicalDynamicSecretReconciler) CreateDynamicSecretLease(ctx context.
 		return fmt.Errorf("unable to update destination secret [err=%s]", err)
 	}
 
-	if err := r.Client.Status().Update(ctx, infisicalDynamicSecret); err != nil {
-		return fmt.Errorf("unable to update InfisicalDynamicSecret status [err=%s]", err)
-	}
-
 	logger.Info(fmt.Sprintf("New lease successfully created [leaseId=%s]", lease.Id))
 	return nil
 }
@@ -320,9 +316,9 @@ func (r *InfisicalDynamicSecretReconciler) HandleLeaseRevocation(ctx context.Con
 	return nil
 }
 
-func (r *InfisicalDynamicSecretReconciler) ReconcileInfisicalDynamicSecret(ctx context.Context, logger logr.Logger, infisicalDynamicSecret v1alpha1.InfisicalDynamicSecret) (time.Duration, error) {
+func (r *InfisicalDynamicSecretReconciler) ReconcileInfisicalDynamicSecret(ctx context.Context, logger logr.Logger, infisicalDynamicSecret *v1alpha1.InfisicalDynamicSecret) (time.Duration, error) {
 
-	resourceVariables := r.getResourceVariables(infisicalDynamicSecret)
+	resourceVariables := r.getResourceVariables(*infisicalDynamicSecret)
 	infisicalClient := resourceVariables.InfisicalClient
 	cancelCtx := resourceVariables.CancelCtx
 	authDetails := resourceVariables.AuthDetails
@@ -334,14 +330,14 @@ func (r *InfisicalDynamicSecretReconciler) ReconcileInfisicalDynamicSecret(ctx c
 
 	if authDetails.AuthStrategy == "" {
 		logger.Info("No authentication strategy found. Attempting to authenticate")
-		authDetails, err = r.handleAuthentication(ctx, infisicalDynamicSecret, infisicalClient)
-		r.SetAuthenticatedStatus(ctx, logger, &infisicalDynamicSecret, err)
+		authDetails, err = r.handleAuthentication(ctx, *infisicalDynamicSecret, infisicalClient)
+		r.SetAuthenticatedStatus(ctx, logger, infisicalDynamicSecret, err)
 
 		if err != nil {
 			return nextReconcile, fmt.Errorf("unable to authenticate [err=%s]", err)
 		}
 
-		r.updateResourceVariables(infisicalDynamicSecret, util.ResourceVariables{
+		r.updateResourceVariables(*infisicalDynamicSecret, util.ResourceVariables{
 			InfisicalClient: infisicalClient,
 			CancelCtx:       cancelCtx,
 			AuthDetails:     authDetails,
@@ -358,7 +354,7 @@ func (r *InfisicalDynamicSecretReconciler) ReconcileInfisicalDynamicSecret(ctx c
 		if infisicalDynamicSecret.Status.Lease != nil {
 			annotationValue = fmt.Sprintf("%s-%d", infisicalDynamicSecret.Status.Lease.ID, infisicalDynamicSecret.Status.Lease.Version)
 		}
-		r.createInfisicalManagedKubeSecret(ctx, logger, infisicalDynamicSecret, annotationValue)
+		r.createInfisicalManagedKubeSecret(ctx, logger, *infisicalDynamicSecret, annotationValue)
 	}
 
 	if err != nil {
@@ -370,8 +366,8 @@ func (r *InfisicalDynamicSecretReconciler) ReconcileInfisicalDynamicSecret(ctx c
 	}
 
 	if infisicalDynamicSecret.Status.Lease == nil {
-		err := r.CreateDynamicSecretLease(ctx, logger, infisicalClient, &infisicalDynamicSecret, destination)
-		r.SetCreatedLeaseStatus(ctx, logger, &infisicalDynamicSecret, err)
+		err := r.CreateDynamicSecretLease(ctx, logger, infisicalClient, infisicalDynamicSecret, destination)
+		r.SetCreatedLeaseStatus(ctx, logger, infisicalDynamicSecret, err)
 
 		return defaultNextReconcile, err // Short requeue after creation
 	} else {
@@ -381,8 +377,8 @@ func (r *InfisicalDynamicSecretReconciler) ReconcileInfisicalDynamicSecret(ctx c
 		// Calculate from creation to expiration
 		originalLeaseDuration := leaseExpiresAt.Sub(infisicalDynamicSecret.Status.Lease.CreationTimestamp.Time)
 
-		// 30% of the original duration (if the TTL has 30% or less of its time left, renew)
-		renewalThreshold := originalLeaseDuration * 30 / 100
+		// 30% of the original duration (if the TTL has 50% or less of its time left, renew)
+		renewalThreshold := originalLeaseDuration * 50 / 100
 		timeUntilExpiration := time.Until(leaseExpiresAt)
 
 		nextReconcile = timeUntilExpiration / 2
@@ -407,8 +403,8 @@ func (r *InfisicalDynamicSecretReconciler) ReconcileInfisicalDynamicSecret(ctx c
 					timeUntilMaxTTL,
 					maxTTLThreshold))
 
-				err := r.CreateDynamicSecretLease(ctx, logger, infisicalClient, &infisicalDynamicSecret, destination)
-				r.SetCreatedLeaseStatus(ctx, logger, &infisicalDynamicSecret, err)
+				err := r.CreateDynamicSecretLease(ctx, logger, infisicalClient, infisicalDynamicSecret, destination)
+				r.SetCreatedLeaseStatus(ctx, logger, infisicalDynamicSecret, err)
 				return defaultNextReconcile, err // Short requeue after creation
 			}
 		}
@@ -416,8 +412,8 @@ func (r *InfisicalDynamicSecretReconciler) ReconcileInfisicalDynamicSecret(ctx c
 		// Fail-safe: If the lease has expired we create a new dynamic secret directly.
 		if now.After(leaseExpiresAt) {
 			logger.Info("Lease has expired, creating new lease...")
-			err = r.CreateDynamicSecretLease(ctx, logger, infisicalClient, &infisicalDynamicSecret, destination)
-			r.SetCreatedLeaseStatus(ctx, logger, &infisicalDynamicSecret, err)
+			err = r.CreateDynamicSecretLease(ctx, logger, infisicalClient, infisicalDynamicSecret, destination)
+			r.SetCreatedLeaseStatus(ctx, logger, infisicalDynamicSecret, err)
 			return defaultNextReconcile, err // Short requeue after creation
 		}
 
@@ -427,13 +423,13 @@ func (r *InfisicalDynamicSecretReconciler) ReconcileInfisicalDynamicSecret(ctx c
 				timeUntilExpiration,
 				renewalThreshold))
 
-			err = r.RenewDynamicSecretLease(ctx, logger, infisicalClient, &infisicalDynamicSecret, destination)
-			r.SetLeaseRenewalStatus(ctx, logger, &infisicalDynamicSecret, err)
+			err = r.RenewDynamicSecretLease(ctx, logger, infisicalClient, infisicalDynamicSecret, destination)
+			r.SetLeaseRenewalStatus(ctx, logger, infisicalDynamicSecret, err)
 
 			if err == constants.ErrInvalidLease {
 				logger.Info("Failed to renew expired lease, creating new lease...")
-				err = r.CreateDynamicSecretLease(ctx, logger, infisicalClient, &infisicalDynamicSecret, destination)
-				r.SetCreatedLeaseStatus(ctx, logger, &infisicalDynamicSecret, err)
+				err = r.CreateDynamicSecretLease(ctx, logger, infisicalClient, infisicalDynamicSecret, destination)
+				r.SetCreatedLeaseStatus(ctx, logger, infisicalDynamicSecret, err)
 			}
 			return defaultNextReconcile, err // Short requeue after renewal/creation
 
@@ -449,6 +445,10 @@ func (r *InfisicalDynamicSecretReconciler) ReconcileInfisicalDynamicSecret(ctx c
 
 		// Minimum and maximum bounds for the reconcile interval (5 min max, 5 min minimum)
 		nextReconcile = max(5*time.Second, min(nextReconcile, 5*time.Minute))
+	}
+
+	if err := r.Client.Status().Update(ctx, infisicalDynamicSecret); err != nil {
+		return nextReconcile, fmt.Errorf("unable to update InfisicalDynamicSecret status [err=%s]", err)
 	}
 
 	return nextReconcile, nil

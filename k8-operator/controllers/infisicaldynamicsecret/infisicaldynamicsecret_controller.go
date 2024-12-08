@@ -132,7 +132,7 @@ func (r *InfisicalDynamicSecretReconciler) Reconcile(ctx context.Context, req ct
 		api.API_CA_CERTIFICATE = ""
 	}
 
-	nextReconcile, err := r.ReconcileInfisicalDynamicSecret(ctx, logger, infisicalDynamicSecretCRD)
+	nextReconcile, err := r.ReconcileInfisicalDynamicSecret(ctx, logger, &infisicalDynamicSecretCRD)
 	r.SetReconcileStatus(ctx, logger, &infisicalDynamicSecretCRD, err)
 
 	if err == nil && nextReconcile.Seconds() >= 5 {
