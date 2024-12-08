@@ -65,10 +65,10 @@ type InfisicalDynamicSecretSpec struct {
 
 // InfisicalDynamicSecretStatus defines the observed state of InfisicalDynamicSecret.
 type InfisicalDynamicSecretStatus struct {
-	Lease *InfisicalDynamicSecretLease `json:"lease,omitempty"`
+	Conditions []metav1.Condition `json:"conditions"`
 
-	DynamicSecretID string `json:"dynamicSecretId,omitempty"`
-
+	Lease           *InfisicalDynamicSecretLease `json:"lease,omitempty"`
+	DynamicSecretID string                       `json:"dynamicSecretId,omitempty"`
 	// The MaxTTL can be null, if it's null, there's no max TTL and we should never have to renew.
 	MaxTTL string `json:"maxTTL,omitempty"`
 }

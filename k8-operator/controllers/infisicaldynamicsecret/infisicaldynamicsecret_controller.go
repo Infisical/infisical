@@ -30,15 +30,19 @@ type InfisicalDynamicSecretReconciler struct {
 	BaseLogger logr.Logger
 }
 
-// +kubebuilder:rbac:groups=secrets.infisical.com,resources=infisicaldynamicsecrets,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=secrets.infisical.com,resources=infisicaldynamicsecrets/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.infisical.com,resources=infisicaldynamicsecrets/finalizers,verbs=update
-
 var infisicalDynamicSecretsResourceVariablesMap map[string]util.ResourceVariables = make(map[string]util.ResourceVariables)
 
 func (r *InfisicalDynamicSecretReconciler) GetLogger(req ctrl.Request) logr.Logger {
 	return r.BaseLogger.WithValues("infisicaldynamicsecret", req.NamespacedName)
 }
+
+// +kubebuilder:rbac:groups=secrets.infisical.com,resources=infisicaldynamicsecrets,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=secrets.infisical.com,resources=infisicaldynamicsecrets/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.infisical.com,resources=infisicaldynamicsecrets/finalizers,verbs=update
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;delete
+// +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;delete
+// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=list;watch;get;update
+// +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;list;watch
 
 func (r *InfisicalDynamicSecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 
@@ -82,6 +86,7 @@ func (r *InfisicalDynamicSecretReconciler) Reconcile(ctx context.Context, req ct
 			}
 
 			err := r.HandleLeaseRevocation(ctx, logger, infisicalDynamicSecretCRD)
+			r.SetRevokedLeaseStatus(ctx, logger, &infisicalDynamicSecretCRD, err)
 
 			if infisicalDynamicSecretsResourceVariablesMap != nil {
 				if rv, ok := infisicalDynamicSecretsResourceVariablesMap[string(infisicalDynamicSecretCRD.GetUID())]; ok {
@@ -128,7 +133,7 @@ func (r *InfisicalDynamicSecretReconciler) Reconcile(ctx context.Context, req ct
 	}
 
 	nextReconcile, err := r.ReconcileInfisicalDynamicSecret(ctx, logger, infisicalDynamicSecretCRD)
-	// r.SetSuccessfullyReconciledConditions(ctx, &infisicalDynamicSecretCRD, err)
+	r.SetReconcileStatus(ctx, logger, &infisicalDynamicSecretCRD, err)
 
 	if err == nil && nextReconcile.Seconds() >= 5 {
 		requeueTime = nextReconcile
@@ -141,7 +146,8 @@ func (r *InfisicalDynamicSecretReconciler) Reconcile(ctx context.Context, req ct
 		}, nil
 	}
 
-	_, err = controllerhelpers.ReconcileDeploymentsWithManagedSecrets(ctx, r.Client, logger, infisicalDynamicSecretCRD.Spec.ManagedSecretReference)
+	numDeployments, err := controllerhelpers.ReconcileDeploymentsWithManagedSecrets(ctx, r.Client, logger, infisicalDynamicSecretCRD.Spec.ManagedSecretReference)
+	r.SetReconcileAutoRedeploymentStatus(ctx, logger, &infisicalDynamicSecretCRD, numDeployments, err)
 
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("unable to reconcile auto redeployment. Will requeue after [requeueTime=%v]", requeueTime))
