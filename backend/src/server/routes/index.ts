@@ -121,6 +121,8 @@ import { identityAzureAuthDALFactory } from "@app/services/identity-azure-auth/i
 import { identityAzureAuthServiceFactory } from "@app/services/identity-azure-auth/identity-azure-auth-service";
 import { identityGcpAuthDALFactory } from "@app/services/identity-gcp-auth/identity-gcp-auth-dal";
 import { identityGcpAuthServiceFactory } from "@app/services/identity-gcp-auth/identity-gcp-auth-service";
+import { identityJwtAuthDALFactory } from "@app/services/identity-jwt-auth/identity-jwt-auth-dal";
+import { identityJwtAuthServiceFactory } from "@app/services/identity-jwt-auth/identity-jwt-auth-service";
 import { identityKubernetesAuthDALFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-dal";
 import { identityKubernetesAuthServiceFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-service";
 import { identityOidcAuthDALFactory } from "@app/services/identity-oidc-auth/identity-oidc-auth-dal";
@@ -298,6 +300,7 @@ export const registerRoutes = async (
   const identityAwsAuthDAL = identityAwsAuthDALFactory(db);
   const identityGcpAuthDAL = identityGcpAuthDALFactory(db);
   const identityOidcAuthDAL = identityOidcAuthDALFactory(db);
+  const identityJwtAuthDAL = identityJwtAuthDALFactory(db);
   const identityAzureAuthDAL = identityAzureAuthDALFactory(db);
 
   const auditLogDAL = auditLogDALFactory(auditLogDb ?? db);
@@ -1180,6 +1183,15 @@ export const registerRoutes = async (
     orgBotDAL
   });
 
+  const identityJwtAuthService = identityJwtAuthServiceFactory({
+    identityJwtAuthDAL,
+    permissionService,
+    identityAccessTokenDAL,
+    identityOrgMembershipDAL,
+    licenseService,
+    kmsService
+  });
+
   const dynamicSecretProviders = buildDynamicSecretProviders();
   const dynamicSecretQueueService = dynamicSecretLeaseQueueServiceFactory({
     queueService,
@@ -1342,6 +1354,7 @@ export const registerRoutes = async (
     identityAwsAuth: identityAwsAuthService,
     identityAzureAuth: identityAzureAuthService,
     identityOidcAuth: identityOidcAuthService,
+    identityJwtAuth: identityJwtAuthService,
     accessApprovalPolicy: accessApprovalPolicyService,
     accessApprovalRequest: accessApprovalRequestService,
     secretApprovalPolicy: secretApprovalPolicyService,
