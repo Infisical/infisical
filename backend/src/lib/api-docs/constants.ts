@@ -1126,6 +1126,8 @@ export const INTEGRATION = {
       shouldAutoRedeploy: "Used by Render to trigger auto deploy.",
       secretGCPLabel: "The label for GCP secrets.",
       secretAWSTag: "The tags for AWS secrets.",
+      azureUseLabels:
+        "If enabled, each secret will be given a label that represents which Infisical environment they belong to.",
       githubVisibility:
         "Define where the secrets from the Github Integration should be visible. Option 'selected' lets you directly define which repositories to sync secrets to.",
       githubVisibilityRepoIds:
