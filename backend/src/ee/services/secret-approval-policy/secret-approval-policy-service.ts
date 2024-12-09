@@ -11,6 +11,8 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { ApproverType } from "../access-approval-policy/access-approval-policy-types";
 import { TLicenseServiceFactory } from "../license/license-service";
+import { TSecretApprovalRequestDALFactory } from "../secret-approval-request/secret-approval-request-dal";
+import { RequestState } from "../secret-approval-request/secret-approval-request-types";
 import { TSecretApprovalPolicyApproverDALFactory } from "./secret-approval-policy-approver-dal";
 import { TSecretApprovalPolicyDALFactory } from "./secret-approval-policy-dal";
 import {
@@ -34,6 +36,7 @@ type TSecretApprovalPolicyServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "find">;
   secretApprovalPolicyApproverDAL: TSecretApprovalPolicyApproverDALFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "update">;
 };
 
 export type TSecretApprovalPolicyServiceFactory = ReturnType<typeof secretApprovalPolicyServiceFactory>;
@@ -44,7 +47,8 @@ export const secretApprovalPolicyServiceFactory = ({
   secretApprovalPolicyApproverDAL,
   projectEnvDAL,
   userDAL,
-  licenseService
+  licenseService,
+  secretApprovalRequestDAL
 }: TSecretApprovalPolicyServiceFactoryDep) => {
   const createSecretApprovalPolicy = async ({
     name,
@@ -301,8 +305,16 @@ export const secretApprovalPolicyServiceFactory = ({
       });
     }
 
-    await secretApprovalPolicyDAL.deleteById(secretPolicyId);
-    return sapPolicy;
+    const deletedPolicy = await secretApprovalPolicyDAL.transaction(async (tx) => {
+      await secretApprovalRequestDAL.update(
+        { policyId: secretPolicyId, status: RequestState.Open },
+        { status: RequestState.Closed },
+        tx
+      );
+      const updatedPolicy = await secretApprovalPolicyDAL.softDeleteById(secretPolicyId, tx);
+      return updatedPolicy;
+    });
+    return { ...deletedPolicy, projectId: sapPolicy.projectId, environment: sapPolicy.environment };
   };
 
   const getSecretApprovalPolicyByProjectId = async ({
@@ -321,7 +333,7 @@ export const secretApprovalPolicyServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
 
-    const sapPolicies = await secretApprovalPolicyDAL.find({ projectId });
+    const sapPolicies = await secretApprovalPolicyDAL.find({ projectId, deletedAt: null });
     return sapPolicies;
   };
 
@@ -334,7 +346,7 @@ export const secretApprovalPolicyServiceFactory = ({
       });
     }
 
-    const policies = await secretApprovalPolicyDAL.find({ envId: env.id });
+    const policies = await secretApprovalPolicyDAL.find({ envId: env.id, deletedAt: null });
     if (!policies.length) return;
     // this will filter policies either without scoped to secret path or the one that matches with secret path
     const policiesFilteredByPath = policies.filter(

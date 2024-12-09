@@ -232,10 +232,10 @@ export const secretApprovalRequestServiceFactory = ({
         type: KmsDataKey.SecretManager,
         projectId
       });
-      const encrypedSecrets = await secretApprovalRequestSecretDAL.findByRequestIdBridgeSecretV2(
+      const encryptedSecrets = await secretApprovalRequestSecretDAL.findByRequestIdBridgeSecretV2(
         secretApprovalRequest.id
       );
-      secrets = encrypedSecrets.map((el) => ({
+      secrets = encryptedSecrets.map((el) => ({
         ...el,
         secretKey: el.key,
         id: el.id,
@@ -274,8 +274,8 @@ export const secretApprovalRequestServiceFactory = ({
       }));
     } else {
       if (!botKey) throw new NotFoundError({ message: `Project bot key not found`, name: "BotKeyNotFound" }); // CLI depends on this error message. TODO(daniel): Make API check for name BotKeyNotFound instead of message
-      const encrypedSecrets = await secretApprovalRequestSecretDAL.findByRequestId(secretApprovalRequest.id);
-      secrets = encrypedSecrets.map((el) => ({
+      const encryptedSecrets = await secretApprovalRequestSecretDAL.findByRequestId(secretApprovalRequest.id);
+      secrets = encryptedSecrets.map((el) => ({
         ...el,
         ...decryptSecretWithBot(el, botKey),
         secret: el.secret
@@ -323,6 +323,12 @@ export const secretApprovalRequestServiceFactory = ({
     }
 
     const { policy } = secretApprovalRequest;
+    if (policy.deletedAt) {
+      throw new BadRequestError({
+        message: "The policy associated with this secret approval request has been deleted."
+      });
+    }
+
     const { hasRole } = await permissionService.getProjectPermission(
       ActorType.USER,
       actorId,
@@ -383,6 +389,12 @@ export const secretApprovalRequestServiceFactory = ({
     }
 
     const { policy } = secretApprovalRequest;
+    if (policy.deletedAt) {
+      throw new BadRequestError({
+        message: "The policy associated with this secret approval request has been deleted."
+      });
+    }
+
     const { hasRole } = await permissionService.getProjectPermission(
       ActorType.USER,
       actorId,
@@ -433,6 +445,12 @@ export const secretApprovalRequestServiceFactory = ({
     }
 
     const { policy, folderId, projectId } = secretApprovalRequest;
+    if (policy.deletedAt) {
+      throw new BadRequestError({
+        message: "The policy associated with this secret approval request has been deleted."
+      });
+    }
+
     const { hasRole } = await permissionService.getProjectPermission(
       ActorType.USER,
       actorId,
