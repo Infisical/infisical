@@ -314,7 +314,7 @@ export const secretApprovalPolicyServiceFactory = ({
       const updatedPolicy = await secretApprovalPolicyDAL.softDeleteById(secretPolicyId, tx);
       return updatedPolicy;
     });
-    return deletedPolicy;
+    return { ...deletedPolicy, projectId: sapPolicy.projectId, environment: sapPolicy.environment };
   };
 
   const getSecretApprovalPolicyByProjectId = async ({
