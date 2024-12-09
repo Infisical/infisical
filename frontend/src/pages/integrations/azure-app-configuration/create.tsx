@@ -4,7 +4,11 @@ import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
+import {
+  faArrowUpRightFromSquare,
+  faBookOpen,
+  faQuestionCircle
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import queryString from "query-string";
@@ -21,7 +25,9 @@ import {
   FormControl,
   Input,
   Select,
-  SelectItem
+  SelectItem,
+  Switch,
+  Tooltip
 } from "../../../components/v2";
 import { useGetIntegrationAuthById } from "../../../hooks/api/integrationAuth";
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
@@ -39,7 +45,8 @@ const schema = z.object({
   secretPath: z.string().trim().min(1, { message: "Secret path is required" }),
   sourceEnvironment: z.string().trim().min(1, { message: "Source environment is required" }),
   initialSyncBehavior: z.nativeEnum(IntegrationSyncBehavior),
-  secretPrefix: z.string().default("")
+  secretPrefix: z.string().default(""),
+  useLabels: z.boolean().default(false)
 });
 
 type TFormSchema = z.infer<typeof schema>;
@@ -60,6 +67,7 @@ export default function AzureAppConfigurationCreateIntegration() {
   const router = useRouter();
   const {
     control,
+    watch,
     setValue,
     handleSubmit,
     formState: { isSubmitting }
@@ -85,8 +93,11 @@ export default function AzureAppConfigurationCreateIntegration() {
     }
   }, [workspace]);
 
+  const sourceEnv = watch("sourceEnvironment");
+
   const handleIntegrationSubmit = async ({
     secretPath,
+    useLabels,
     sourceEnvironment,
     baseUrl,
     initialSyncBehavior,
@@ -103,7 +114,8 @@ export default function AzureAppConfigurationCreateIntegration() {
         secretPath,
         metadata: {
           initialSyncBehavior,
-          secretPrefix
+          secretPrefix,
+          azureUseLabels: useLabels
         }
       });
 
@@ -155,35 +167,75 @@ export default function AzureAppConfigurationCreateIntegration() {
           </div>
         </CardTitle>
         <div className="px-6">
-          <Controller
-            control={control}
-            name="sourceEnvironment"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Project Environment"
-                errorText={error?.message}
-                isError={Boolean(error)}
-              >
-                <Select
-                  className="w-full border border-mineshaft-500"
-                  dropdownContainerClassName="max-w-full"
-                  value={field.value}
-                  onValueChange={(val) => {
-                    field.onChange(val);
-                  }}
+          <div className="mb-2 -space-y-2">
+            <Controller
+              control={control}
+              name="sourceEnvironment"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Project Environment"
+                  errorText={error?.message}
+                  isError={Boolean(error)}
                 >
-                  {workspace?.environments.map((sourceEnvironment) => (
-                    <SelectItem
-                      value={sourceEnvironment.slug}
-                      key={`source-environment-${sourceEnvironment.slug}`}
+                  <Select
+                    className="w-full border border-mineshaft-500"
+                    dropdownContainerClassName="max-w-full"
+                    value={field.value}
+                    onValueChange={(val) => {
+                      field.onChange(val);
+                    }}
+                  >
+                    {workspace?.environments.map((sourceEnvironment) => (
+                      <SelectItem
+                        value={sourceEnvironment.slug}
+                        key={`source-environment-${sourceEnvironment.slug}`}
+                      >
+                        {sourceEnvironment.name}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+            />
+
+            <Controller
+              control={control}
+              name="useLabels"
+              render={({ field: { onChange, value } }) => (
+                <Switch
+                  id="use-environment-labels"
+                  onCheckedChange={(isChecked) => onChange(isChecked)}
+                  isChecked={value}
+                >
+                  <div className="flex items-center gap-1">
+                    Use Environment Labels
+                    <Tooltip
+                      content={
+                        <div>
+                          <p>
+                            Use the environment slug as the label on the secret keys created in
+                            Azure App Configuration.
+                            <br />
+                            <br />
+                            {sourceEnv && (
+                              <p>
+                                You have selected the{" "}
+                                <span className="font-semibold">{sourceEnv}</span> environment,
+                                therefore the label will be set to{" "}
+                                <span className="font-semibold">{sourceEnv}</span>.
+                              </p>
+                            )}
+                          </p>
+                        </div>
+                      }
                     >
-                      {sourceEnvironment.name}
-                    </SelectItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-          />
+                      <FontAwesomeIcon icon={faQuestionCircle} size="1x" />
+                    </Tooltip>
+                  </div>
+                </Switch>
+              )}
+            />
+          </div>
           <Controller
             control={control}
             name="secretPath"

@@ -299,6 +299,11 @@ const syncSecretsAzureAppConfig = async ({
     value: string;
   }
 
+  // Format: {\"uri\":\"https://SOME-KEY-VAULT.vault.azure.net/secrets/SOME-SECRET-KEY\"}
+  // Also works without the backslash escapes
+  const azureSecretReferenceUriRegex =
+    /^\{(\\"|")uri(\\"|"):(\\"|")https:\/\/[a-zA-Z0-9-]+\.vault\.azure\.net\/secrets\/[a-zA-Z0-9-]+\\?\2\}$/;
+
   const getCompleteAzureAppConfigValues = async (url: string) => {
     let result: AzureAppConfigKeyValue[] = [];
     while (url) {
@@ -405,14 +410,24 @@ const syncSecretsAzureAppConfig = async ({
   }
 
   // create or update secrets on Azure App Config
+
   for await (const key of Object.keys(secrets)) {
     if (!(key in azureAppConfigSecrets) || secrets[key]?.value !== azureAppConfigSecrets[key]) {
       await request.put(
         `${integration.app}/kv/${key}?api-version=2023-11-01`,
         {
-          value: secrets[key]?.value
+          value: secrets[key]?.value,
+          ...(azureSecretReferenceUriRegex.test(secrets[key]?.value || "") && {
+            content_type: "application/vnd.microsoft.appconfig.keyvaultref+json;charset=utf-8"
+          })
         },
         {
+          ...(metadata.azureUseLabels && {
+            params: {
+              label: integration.environment.slug
+            }
+          }),
+
           headers: {
             Authorization: `Bearer ${accessToken}`
           },
@@ -432,6 +447,11 @@ const syncSecretsAzureAppConfig = async ({
         headers: {
           Authorization: `Bearer ${accessToken}`
         },
+        ...(metadata.azureUseLabels && {
+          params: {
+            label: integration.environment.slug
+          }
+        }),
         // we force IPV4 because docker setup fails with ipv6
         httpsAgent: new https.Agent({
           family: 4
