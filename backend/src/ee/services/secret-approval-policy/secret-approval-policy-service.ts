@@ -305,15 +305,16 @@ export const secretApprovalPolicyServiceFactory = ({
       });
     }
 
-    await secretApprovalPolicyDAL.transaction(async (tx) => {
+    const deletedPolicy = await secretApprovalPolicyDAL.transaction(async (tx) => {
       await secretApprovalRequestDAL.update(
         { policyId: secretPolicyId, status: RequestState.Open },
         { status: RequestState.Closed },
         tx
       );
-      await secretApprovalPolicyDAL.softDeleteById(secretPolicyId, tx);
+      const updatedPolicy = await secretApprovalPolicyDAL.softDeleteById(secretPolicyId, tx);
+      return updatedPolicy;
     });
-    return sapPolicy;
+    return deletedPolicy;
   };
 
   const getSecretApprovalPolicyByProjectId = async ({
