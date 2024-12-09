@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { IconButton, Td, Tooltip, Tr } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
-import { TGroupUser } from "@app/hooks/api/groups/queries";
+import { TGroupUser } from "@app/hooks/api/groups/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -20,7 +20,6 @@ export const GroupMembershipRow = ({
     <Tr className="items-center" key={`group-user-${id}`}>
       <Td>
         <p>{`${firstName ?? "-"} ${lastName ?? ""}`}</p>
-        <p>{username}</p>
       </Td>
       <Td>
         <p>{email}</p>
@@ -42,7 +41,7 @@ export const GroupMembershipRow = ({
                   variant="plain"
                   colorSchema="danger"
                 >
-                  <FontAwesomeIcon icon={faUserMinus} size="lg" className="cursor-pointer" />
+                  <FontAwesomeIcon icon={faUserMinus} className="cursor-pointer" />
                 </IconButton>
               </Tooltip>
             );

@@ -153,10 +153,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         limit: z.coerce.number().min(1).max(100).default(10).describe(GROUPS.LIST_USERS.limit),
         username: z.string().trim().optional().describe(GROUPS.LIST_USERS.username),
         search: z.string().trim().optional().describe(GROUPS.LIST_USERS.search),
-        filter: z
-          .enum([EFilterReturnedUsers.EXISTING_MEMBERS, EFilterReturnedUsers.NON_MEMBERS])
-          .optional()
-          .describe(GROUPS.LIST_USERS.filterUsers)
+        filter: z.nativeEnum(EFilterReturnedUsers).optional().describe(GROUPS.LIST_USERS.filterUsers)
       }),
       response: {
         200: z.object({

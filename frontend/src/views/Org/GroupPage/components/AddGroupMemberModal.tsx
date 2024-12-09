@@ -23,7 +23,7 @@ import {
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { useDebounce, useResetPageHelper } from "@app/hooks";
 import { useAddUserToGroup, useListGroupUsers } from "@app/hooks/api";
-import { EFilterReturnedUsers } from "@app/hooks/api/groups/queries";
+import { EFilterReturnedUsers } from "@app/hooks/api/groups/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {

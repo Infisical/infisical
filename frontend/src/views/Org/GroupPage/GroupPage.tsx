@@ -12,6 +12,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Spinner,
   Tooltip,
   UpgradePlanModal
 } from "@app/components/v2";
@@ -33,7 +34,7 @@ export const GroupPage = withPermission(
     const { currentOrg } = useOrganization();
     const orgId = currentOrg?.id || "";
 
-    const { data } = useGetGroupById(groupId);
+    const { data, isLoading } = useGetGroupById(groupId);
 
     const { mutateAsync: deleteMutateAsync } = useDeleteGroup();
 
@@ -63,6 +64,8 @@ export const GroupPage = withPermission(
 
       handlePopUpClose("deleteGroup");
     };
+
+    if (isLoading) return <Spinner size="sm" className="mt-2 ml-2" />;
 
     return (
       <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">

@@ -152,7 +152,7 @@ export const GroupCreateUpdateModal = ({ popUp, handlePopUpClose, handlePopUpTog
             name="role"
             render={({ field: { onChange, value }, fieldState: { error } }) => (
               <FormControl
-                label={`${popUp?.groupCreateUpdate?.data ? "Update" : ""} Role`}
+                label="Role"
                 errorText={error?.message}
                 isError={Boolean(error)}
                 className="mt-4"

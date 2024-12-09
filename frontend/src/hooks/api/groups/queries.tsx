@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { TGroup } from "./types";
+import { EFilterReturnedUsers, TGroup, TGroupUser } from "./types";
 
 export const groupKeys = {
   getGroupById: (groupId: string) => [{ groupId }, "group"] as const,
@@ -35,21 +35,6 @@ export const useGetGroupById = (groupId: string) => {
     }
   });
 };
-
-export type TGroupUser = {
-  id: string;
-  email: string;
-  username: string;
-  firstName: string;
-  lastName: string;
-  isPartOfGroup: boolean;
-  joinedGroupAt: Date;
-};
-
-export enum EFilterReturnedUsers {
-  EXISTING_MEMBERS = "existingMembers",
-  NON_MEMBERS = "nonMembers"
-}
 
 export const useListGroupUsers = ({
   id,

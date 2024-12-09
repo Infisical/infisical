@@ -2,7 +2,7 @@ import { faPencil } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { OrgPermissionCan } from "@app/components/permissions";
-import { IconButton, Tooltip } from "@app/components/v2";
+import { IconButton, Spinner, Tooltip } from "@app/components/v2";
 import { CopyButton } from "@app/components/v2/CopyButton";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { useGetGroupById } from "@app/hooks/api/";
@@ -14,7 +14,10 @@ type Props = {
 };
 
 export const GroupDetailsSection = ({ groupId, handlePopUpOpen }: Props) => {
-  const { data } = useGetGroupById(groupId);
+  const { data, isLoading } = useGetGroupById(groupId);
+
+  if (isLoading) return <Spinner size="sm" className="mt-2 ml-2" />;
+
   return data ? (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
@@ -47,11 +50,9 @@ export const GroupDetailsSection = ({ groupId, handlePopUpOpen }: Props) => {
       <div className="pt-4">
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Group ID</p>
-          <div className="group flex align-top">
+          <div className="group flex items-center gap-2">
             <p className="text-sm text-mineshaft-300">{data.group.id}</p>
-            <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-              <CopyButton value={data.group.id} name="Group ID" />
-            </div>
+            <CopyButton value={data.group.id} name="Group ID" size="xs" variant="plain" />
           </div>
         </div>
         <div className="mb-4">
@@ -60,11 +61,9 @@ export const GroupDetailsSection = ({ groupId, handlePopUpOpen }: Props) => {
         </div>
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Slug</p>
-          <div className="group flex align-top">
+          <div className="group flex items-center gap-2">
             <p className="text-sm text-mineshaft-300">{data.group.slug}</p>
-            <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-              <CopyButton value={data.group.slug} name="Slug" />
-            </div>
+            <CopyButton value={data.group.slug} name="Slug" size="xs" variant="plain" />
           </div>
         </div>
         <div className="mb-4">
@@ -80,6 +79,10 @@ export const GroupDetailsSection = ({ groupId, handlePopUpOpen }: Props) => {
       </div>
     </div>
   ) : (
-    <div />
+    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
+        <p className="text-mineshaft-300">Group data not found</p>
+      </div>
+    </div>
   );
 };

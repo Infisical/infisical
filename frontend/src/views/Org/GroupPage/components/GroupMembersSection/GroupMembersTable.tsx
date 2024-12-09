@@ -27,7 +27,7 @@ import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useListGroupUsers } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { EFilterReturnedUsers } from "@app/hooks/api/groups/queries";
+import { EFilterReturnedUsers } from "@app/hooks/api/groups/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { GroupMembershipRow } from "./GroupMembershipRow";
@@ -117,7 +117,7 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
         <Table>
           <THead>
             <Tr>
-              <Th className="w-1/2">
+              <Th className="w-1/3">
                 <div className="flex items-center">
                   Name
                   <IconButton
