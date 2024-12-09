@@ -349,6 +349,30 @@ export const OIDC_AUTH = {
   }
 } as const;
 
+export const JWT_AUTH = {
+  LOGIN: {
+    identityId: "The ID of the identity to login."
+  },
+  ATTACH: {
+    identityId: "The ID of the identity to attach the configuration onto.",
+    caCert: "The PEM-encoded CA cert for establishing secure communication with the Identity Provider endpoints.",
+    configurationType: "The configuration for validating JWTs. Must be one of: 'jwks', 'static'",
+    jwksUrl:
+      "The URL of the JWKS endpoint. Required if configurationType is 'jwks'. This endpoint must serve JSON Web Key Sets (JWKS) containing the public keys used to verify JWT signatures.",
+    jwksCaCert: "The PEM-encoded CA certificate for validating the TLS connection to the JWKS endpoint.",
+    publicKeys:
+      "A list of PEM-encoded public keys used to verify JWT signatures. Required if configurationType is 'static'. Each key must be in RSA or ECDSA format and properly PEM-encoded with BEGIN/END markers.",
+    boundIssuer: "The unique identifier of the identity provider issuing the JWT.",
+    boundAudiences: "The list of intended recipients.",
+    boundClaims: "The attributes that should be present in the JWT for it to be valid.",
+    boundSubject: "The expected principal that is the subject of the JWT.",
+    accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from.",
+    accessTokenTTL: "The lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The maximum number of times that an access token can be used."
+  }
+} as const;
+
 export const ORGANIZATIONS = {
   LIST_USER_MEMBERSHIPS: {
     organizationId: "The ID of the organization to get memberships from."
