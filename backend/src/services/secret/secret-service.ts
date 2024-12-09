@@ -1354,7 +1354,11 @@ export const secretServiceFactory = ({
     secretReminderNote,
     secretReminderRepeatDays
   }: TCreateSecretRawDTO) => {
-    const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+    const { botKey, shouldUseSecretV2Bridge, project } = await projectBotService.getBotKey(projectId);
+
+    if (project?.autoCapitalization) {
+      secretName = secretName.toUpperCase();
+    }
     const policy =
       actor === ActorType.USER && type === SecretType.Shared
         ? await secretApprovalPolicyService.getSecretApprovalPolicy(projectId, environment, secretPath)
