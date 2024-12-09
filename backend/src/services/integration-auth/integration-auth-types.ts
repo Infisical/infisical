@@ -22,6 +22,11 @@ export type TSaveIntegrationAccessTokenDTO = {
   awsAssumeIamRoleArn?: string;
 } & TProjectPermission;
 
+export type TUpdateIntegrationAuthDTO = Omit<TSaveIntegrationAccessTokenDTO, "projectId" | "integration"> & {
+  integrationAuthId: string;
+  integration?: string;
+};
+
 export type TDeleteIntegrationAuthsDTO = TProjectPermission & {
   integration: string;
   projectId: string;

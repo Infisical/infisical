@@ -83,6 +83,67 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   });
 
   server.route({
+    method: "PATCH",
+    url: "/:integrationAuthId",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Update the integration authentication object required for syncing secrets.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      querystring: z.object({
+        integrationAuthId: z.string().trim().describe(INTEGRATION_AUTH.UPDATE_BY_ID.integrationAuthId)
+      }),
+      body: z.object({
+        integration: z.string().trim().optional().describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.integration),
+        accessId: z.string().trim().optional().describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.accessId),
+        accessToken: z.string().trim().optional().describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.accessToken),
+        awsAssumeIamRoleArn: z
+          .string()
+          .url()
+          .trim()
+          .optional()
+          .describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.awsAssumeIamRoleArn),
+        url: z.string().url().trim().optional().describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.url),
+        namespace: z.string().trim().optional().describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.namespace),
+        refreshToken: z.string().trim().optional().describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.refreshToken)
+      }),
+      response: {
+        200: z.object({
+          integrationAuth: integrationAuthPubSchema
+        })
+      }
+    },
+    handler: async (req) => {
+      const integrationAuth = await server.services.integrationAuth.updateIntegrationAuth({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        integrationAuthId: req.query.integrationAuthId,
+        ...req.body
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: integrationAuth.projectId,
+        event: {
+          type: EventType.AUTHORIZE_INTEGRATION,
+          metadata: {
+            integration: integrationAuth.integration
+          }
+        }
+      });
+      return { integrationAuth };
+    }
+  });
+
+  server.route({
     method: "DELETE",
     url: "/",
     config: {

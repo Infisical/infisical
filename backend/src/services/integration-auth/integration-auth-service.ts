@@ -55,6 +55,7 @@ import {
   TOctopusDeployVariableSet,
   TSaveIntegrationAccessTokenDTO,
   TTeamCityBuildConfig,
+  TUpdateIntegrationAuthDTO,
   TVercelBranches
 } from "./integration-auth-types";
 import { getIntegrationOptions, Integrations, IntegrationUrls } from "./integration-list";
@@ -366,6 +367,149 @@ export const integrationAuthServiceFactory = ({
       }
     }
     return integrationAuthDAL.create(updateDoc);
+  };
+
+  const updateIntegrationAuth = async ({
+    integrationAuthId,
+    refreshToken,
+    actorId,
+    integration: newIntegration,
+    url,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    accessId,
+    namespace,
+    accessToken,
+    awsAssumeIamRoleArn
+  }: TUpdateIntegrationAuthDTO) => {
+    const integrationAuth = await integrationAuthDAL.findById(integrationAuthId);
+    if (!integrationAuth) {
+      throw new NotFoundError({ message: `Integration auth with id ${integrationAuthId} not found.` });
+    }
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Integrations);
+
+    const { projectId } = integrationAuth;
+    const integration = newIntegration || integrationAuth.integration;
+    if (!Object.values(Integrations).includes(integration as Integrations))
+      throw new BadRequestError({ message: "Invalid integration" });
+    const updateDoc: TIntegrationAuthsInsert = {
+      projectId,
+      integration,
+      namespace,
+      url,
+      algorithm: SecretEncryptionAlgo.AES_256_GCM,
+      keyEncoding: SecretKeyEncoding.UTF8,
+      ...(integration === Integrations.GCP_SECRET_MANAGER
+        ? {
+            metadata: {
+              authMethod: "serviceAccount"
+            }
+          }
+        : {})
+    };
+
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(projectId);
+    if (shouldUseSecretV2Bridge) {
+      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+      if (refreshToken) {
+        const tokenDetails = await exchangeRefresh(
+          integration,
+          refreshToken,
+          url,
+          updateDoc.metadata as Record<string, string>
+        );
+        const refreshEncToken = secretManagerEncryptor({
+          plainText: Buffer.from(tokenDetails.refreshToken)
+        }).cipherTextBlob;
+        updateDoc.encryptedRefresh = refreshEncToken;
+
+        const accessEncToken = secretManagerEncryptor({
+          plainText: Buffer.from(tokenDetails.accessToken)
+        }).cipherTextBlob;
+        updateDoc.encryptedAccess = accessEncToken;
+        updateDoc.accessExpiresAt = tokenDetails.accessExpiresAt;
+      }
+
+      if (!refreshToken && (accessId || accessToken || awsAssumeIamRoleArn)) {
+        if (accessToken) {
+          const accessEncToken = secretManagerEncryptor({
+            plainText: Buffer.from(accessToken)
+          }).cipherTextBlob;
+          updateDoc.encryptedAccess = accessEncToken;
+          updateDoc.encryptedAwsAssumeIamRoleArn = null;
+        }
+        if (accessId) {
+          const accessEncToken = secretManagerEncryptor({
+            plainText: Buffer.from(accessId)
+          }).cipherTextBlob;
+          updateDoc.encryptedAccessId = accessEncToken;
+          updateDoc.encryptedAwsAssumeIamRoleArn = null;
+        }
+        if (awsAssumeIamRoleArn) {
+          const awsAssumeIamRoleArnEncrypted = secretManagerEncryptor({
+            plainText: Buffer.from(awsAssumeIamRoleArn)
+          }).cipherTextBlob;
+          updateDoc.encryptedAwsAssumeIamRoleArn = awsAssumeIamRoleArnEncrypted;
+          updateDoc.encryptedAccess = null;
+          updateDoc.encryptedAccessId = null;
+        }
+      }
+    } else {
+      if (!botKey) throw new NotFoundError({ message: `Project bot key for project with ID '${projectId}' not found` });
+      if (refreshToken) {
+        const tokenDetails = await exchangeRefresh(
+          integration,
+          refreshToken,
+          url,
+          updateDoc.metadata as Record<string, string>
+        );
+        const refreshEncToken = encryptSymmetric128BitHexKeyUTF8(tokenDetails.refreshToken, botKey);
+        updateDoc.refreshIV = refreshEncToken.iv;
+        updateDoc.refreshTag = refreshEncToken.tag;
+        updateDoc.refreshCiphertext = refreshEncToken.ciphertext;
+        const accessEncToken = encryptSymmetric128BitHexKeyUTF8(tokenDetails.accessToken, botKey);
+        updateDoc.accessIV = accessEncToken.iv;
+        updateDoc.accessTag = accessEncToken.tag;
+        updateDoc.accessCiphertext = accessEncToken.ciphertext;
+
+        updateDoc.accessExpiresAt = tokenDetails.accessExpiresAt;
+      }
+
+      if (!refreshToken && (accessId || accessToken || awsAssumeIamRoleArn)) {
+        if (accessToken) {
+          const accessEncToken = encryptSymmetric128BitHexKeyUTF8(accessToken, botKey);
+          updateDoc.accessIV = accessEncToken.iv;
+          updateDoc.accessTag = accessEncToken.tag;
+          updateDoc.accessCiphertext = accessEncToken.ciphertext;
+        }
+        if (accessId) {
+          const accessEncToken = encryptSymmetric128BitHexKeyUTF8(accessId, botKey);
+          updateDoc.accessIdIV = accessEncToken.iv;
+          updateDoc.accessIdTag = accessEncToken.tag;
+          updateDoc.accessIdCiphertext = accessEncToken.ciphertext;
+        }
+        if (awsAssumeIamRoleArn) {
+          const awsAssumeIamRoleArnEnc = encryptSymmetric128BitHexKeyUTF8(awsAssumeIamRoleArn, botKey);
+          updateDoc.awsAssumeIamRoleArnCipherText = awsAssumeIamRoleArnEnc.ciphertext;
+          updateDoc.awsAssumeIamRoleArnIV = awsAssumeIamRoleArnEnc.iv;
+          updateDoc.awsAssumeIamRoleArnTag = awsAssumeIamRoleArnEnc.tag;
+        }
+      }
+    }
+
+    return integrationAuthDAL.updateById(integrationAuthId, updateDoc);
   };
 
   // helper function
@@ -1615,6 +1759,7 @@ export const integrationAuthServiceFactory = ({
     getIntegrationAuth,
     oauthExchange,
     saveIntegrationToken,
+    updateIntegrationAuth,
     deleteIntegrationAuthById,
     deleteIntegrationAuths,
     getIntegrationAuthTeams,
