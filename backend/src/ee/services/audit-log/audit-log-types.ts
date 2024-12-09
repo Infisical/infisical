@@ -60,6 +60,7 @@ export enum EventType {
   DELETE_SECRETS = "delete-secrets",
   GET_WORKSPACE_KEY = "get-workspace-key",
   AUTHORIZE_INTEGRATION = "authorize-integration",
+  UPDATE_INTEGRATION_AUTH = "update-integration-auth",
   UNAUTHORIZE_INTEGRATION = "unauthorize-integration",
   CREATE_INTEGRATION = "create-integration",
   DELETE_INTEGRATION = "delete-integration",
@@ -352,6 +353,13 @@ interface GetWorkspaceKeyEvent {
 
 interface AuthorizeIntegrationEvent {
   type: EventType.AUTHORIZE_INTEGRATION;
+  metadata: {
+    integration: string;
+  };
+}
+
+interface UpdateIntegrationAuthEvent {
+  type: EventType.UPDATE_INTEGRATION_AUTH;
   metadata: {
     integration: string;
   };
@@ -1680,6 +1688,7 @@ export type Event =
   | DeleteSecretBatchEvent
   | GetWorkspaceKeyEvent
   | AuthorizeIntegrationEvent
+  | UpdateIntegrationAuthEvent
   | UnauthorizeIntegrationEvent
   | CreateIntegrationEvent
   | DeleteIntegrationEvent

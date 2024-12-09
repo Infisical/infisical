@@ -6,6 +6,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { OctopusDeployScope } from "@app/services/integration-auth/integration-auth-types";
+import { Integrations } from "@app/services/integration-auth/integration-list";
 
 import { integrationAuthPubSchema } from "../sanitizedSchemas";
 
@@ -100,7 +101,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
         integrationAuthId: z.string().trim().describe(INTEGRATION_AUTH.UPDATE_BY_ID.integrationAuthId)
       }),
       body: z.object({
-        integration: z.string().trim().optional().describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.integration),
+        integration: z.nativeEnum(Integrations).optional().describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.integration),
         accessId: z.string().trim().optional().describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.accessId),
         accessToken: z.string().trim().optional().describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.accessToken),
         awsAssumeIamRoleArn: z
@@ -133,7 +134,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
         ...req.auditLogInfo,
         projectId: integrationAuth.projectId,
         event: {
-          type: EventType.AUTHORIZE_INTEGRATION,
+          type: EventType.UPDATE_INTEGRATION_AUTH,
           metadata: {
             integration: integrationAuth.integration
           }

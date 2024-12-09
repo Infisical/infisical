@@ -399,8 +399,7 @@ export const integrationAuthServiceFactory = ({
 
     const { projectId } = integrationAuth;
     const integration = newIntegration || integrationAuth.integration;
-    if (!Object.values(Integrations).includes(integration as Integrations))
-      throw new BadRequestError({ message: "Invalid integration" });
+
     const updateDoc: TIntegrationAuthsInsert = {
       projectId,
       integration,
