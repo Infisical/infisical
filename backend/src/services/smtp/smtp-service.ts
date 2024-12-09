@@ -54,10 +54,10 @@ export const smtpServiceFactory = (cfg: TSmtpConfig) => {
   const isSmtpOn = Boolean(cfg.host);
 
   handlebars.registerHelper("emailFooter", () => {
-    const { isCloud, SITE_URL } = getConfig();
-    const cloudFooterHtml = `<p style="font-size: 12px;">Infisical - a tool for managing secrets in your organization. <a href="${SITE_URL}">Learn more</a></p>`;
-    const selfHostedFooterHtml = `<p style="font-size: 12px;">Email sent via Infisical at <a href="${SITE_URL}">${SITE_URL}</a></p>`;
-    return new handlebars.SafeString(isCloud ? cloudFooterHtml : selfHostedFooterHtml);
+    const { SITE_URL } = getConfig();
+    return new handlebars.SafeString(
+      `<p style="font-size: 12px;">Email sent via Infisical at <a href="${SITE_URL}">${SITE_URL}</a></p>`
+    );
   });
 
   const sendMail = async ({ substitutions, recipients, template, subjectLine }: TSmtpSendMail) => {
