@@ -14,7 +14,12 @@ import {
   SelectItem
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
-import { useIssueSshCreds, useListOrgSshCertificateTemplates, useSignSshKey } from "@app/hooks/api";
+import {
+  SshCertTemplateStatus,
+  useGetSshCertTemplate,
+  useIssueSshCreds,
+  useListOrgSshCertificateTemplates,
+  useSignSshKey} from "@app/hooks/api";
 import { certKeyAlgorithms } from "@app/hooks/api/certificates/constants";
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import { SshCertType } from "@app/hooks/api/ssh-ca/constants";
@@ -22,14 +27,8 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { SshCertificateContent } from "./SshCertificateContent";
 
-/**
- * // NOTE (dangtony98): current UI only supports SSH certificate
- * issuance via /issue endpoint but should extend to also support
- * /sign endpoint as this is already supported in the backend
- */
-
 const schema = z.object({
-  templateName: z.string(),
+  templateId: z.string(),
   publicKey: z.string().optional(),
   keyAlgorithm: z.enum([
     CertKeyAlgorithm.RSA_2048,
@@ -72,7 +71,11 @@ export const SshCertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { mutateAsync: signSshKey } = useSignSshKey();
   const { mutateAsync: issueSshCreds } = useIssueSshCreds();
 
-  const popUpData = popUp?.sshCertificate?.data as { sshCaId: string; templateName: string };
+  const popUpData = popUp?.sshCertificate?.data as {
+    sshCaId: string;
+    templateName: string;
+    templateId: string;
+  };
 
   const { data: templatesData } = useListOrgSshCertificateTemplates({
     orgId: currentOrg?.id || ""
@@ -83,7 +86,8 @@ export const SshCertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
     handleSubmit,
     reset,
     formState: { isSubmitting },
-    setValue
+    setValue,
+    watch
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -92,16 +96,18 @@ export const SshCertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
     }
   });
 
+  const templateId = watch("templateId");
+  const { data: templateData } = useGetSshCertTemplate(templateId);
+
   useEffect(() => {
     if (popUpData) {
-      setValue("templateName", popUpData.templateName);
+      setValue("templateId", popUpData.templateId);
     } else if (templatesData && templatesData.certificateTemplates.length > 0) {
-      setValue("templateName", templatesData.certificateTemplates[0].name);
+      setValue("templateId", templatesData.certificateTemplates[0].id);
     }
   }, [popUpData]);
 
   const onFormSubmit = async ({
-    templateName,
     keyAlgorithm,
     certType,
     publicKey: existingPublicKey,
@@ -110,10 +116,12 @@ export const SshCertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
     keyId
   }: FormData) => {
     try {
+      if (!templateData) return;
+
       switch (operation) {
         case SshCertificateOperation.SIGN_SSH_KEY: {
           const { serialNumber, signedKey } = await signSshKey({
-            templateName,
+            templateName: templateData.name,
             publicKey: existingPublicKey,
             certType,
             principals: principals.split(",").map((user) => user.trim()),
@@ -129,7 +137,7 @@ export const SshCertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
         }
         case SshCertificateOperation.ISSUE_SSH_CREDS: {
           const { serialNumber, publicKey, privateKey, signedKey } = await issueSshCreds({
-            templateName,
+            templateName: templateData.name,
             keyAlgorithm,
             certType,
             principals: principals.split(",").map((user) => user.trim()),
@@ -179,7 +187,7 @@ export const SshCertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
           <form onSubmit={handleSubmit(onFormSubmit)}>
             <Controller
               control={control}
-              name="templateName"
+              name="templateId"
               defaultValue=""
               render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                 <FormControl
@@ -195,11 +203,13 @@ export const SshCertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
                     className="w-full"
                     isDisabled={Boolean(popUpData?.sshCaId)}
                   >
-                    {(templatesData?.certificateTemplates || []).map(({ id, name }) => (
-                      <SelectItem value={name} key={`ssh-cert-template-${id}`}>
-                        {name}
-                      </SelectItem>
-                    ))}
+                    {(templatesData?.certificateTemplates || [])
+                      .filter((template) => template.status === SshCertTemplateStatus.ACTIVE)
+                      .map(({ id, name }) => (
+                        <SelectItem value={id} key={`ssh-cert-template-${id}`}>
+                          {name}
+                        </SelectItem>
+                      ))}
                   </Select>
                 </FormControl>
               )}
@@ -235,8 +245,12 @@ export const SshCertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
                     onValueChange={(e) => onChange(e)}
                     className="w-full"
                   >
-                    <SelectItem value={SshCertType.USER}>User</SelectItem>
-                    <SelectItem value={SshCertType.HOST}>Host</SelectItem>
+                    {templateData && templateData.allowUserCertificates && (
+                      <SelectItem value={SshCertType.USER}>User</SelectItem>
+                    )}
+                    {templateData && templateData.allowHostCertificates && (
+                      <SelectItem value={SshCertType.HOST}>Host</SelectItem>
+                    )}
                   </Select>
                 </FormControl>
               )}
@@ -308,15 +322,17 @@ export const SshCertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
                 </FormControl>
               )}
             />
-            <Controller
-              control={control}
-              name="keyId"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl label="Key ID" isError={Boolean(error)} errorText={error?.message}>
-                  <Input {...field} placeholder="12345678" />
-                </FormControl>
-              )}
-            />
+            {templateData && templateData.allowCustomKeyIds && (
+              <Controller
+                control={control}
+                name="keyId"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl label="Key ID" isError={Boolean(error)} errorText={error?.message}>
+                    <Input {...field} placeholder="12345678" />
+                  </FormControl>
+                )}
+              />
+            )}
             <div className="mt-4 flex items-center">
               <Button
                 className="mr-4"

@@ -1,9 +1,16 @@
-import { faCertificate, faEllipsis, faFileAlt, faTrash } from "@fortawesome/free-solid-svg-icons";
+import {
+  faBan,
+  faCertificate,
+  faEllipsis,
+  faFileAlt,
+  faTrash
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -20,19 +27,28 @@ import {
   Tr
 } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
-import { useGetSshCaCertTemplates } from "@app/hooks/api";
+import { SshCertTemplateStatus,useGetSshCaCertTemplates } from "@app/hooks/api";
+import { caStatusToNameMap, getCaStatusBadgeVariant } from "@app/hooks/api/ca/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
   sshCaId: string;
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<
-      ["sshCertificateTemplate", "sshCertificate", "deleteSshCertificateTemplate", "upgradePlan"]
+      [
+        "sshCertificateTemplate",
+        "sshCertificateTemplateStatus",
+        "sshCertificate",
+        "deleteSshCertificateTemplate",
+        "upgradePlan"
+      ]
     >,
     data?: {
       id?: string;
       name?: string;
       sshCaId?: string;
+      certTemplateId?: string;
+      status?: SshCertTemplateStatus;
       templateName?: string;
     }
   ) => void;
@@ -40,7 +56,6 @@ type Props = {
 
 export const SshCertificateTemplatesTable = ({ handlePopUpOpen, sshCaId }: Props) => {
   const { data, isLoading } = useGetSshCaCertTemplates(sshCaId);
-
   return (
     <div>
       <TableContainer>
@@ -48,6 +63,7 @@ export const SshCertificateTemplatesTable = ({ handlePopUpOpen, sshCaId }: Props
           <THead>
             <Tr>
               <Th>Name</Th>
+              <Th>Status</Th>
               <Th />
             </Tr>
           </THead>
@@ -58,6 +74,11 @@ export const SshCertificateTemplatesTable = ({ handlePopUpOpen, sshCaId }: Props
                 return (
                   <Tr className="h-10" key={`certificate-${certificateTemplate.id}`}>
                     <Td>{certificateTemplate.name}</Td>
+                    <Td>
+                      <Badge variant={getCaStatusBadgeVariant(certificateTemplate.status)}>
+                        {caStatusToNameMap[certificateTemplate.status]}
+                      </Badge>
+                    </Td>
                     <Td className="flex justify-end">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild className="rounded-lg">
@@ -68,6 +89,36 @@ export const SshCertificateTemplatesTable = ({ handlePopUpOpen, sshCaId }: Props
                           </div>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start" className="p-1">
+                          <OrgPermissionCan
+                            I={OrgPermissionActions.Edit}
+                            a={OrgPermissionSubjects.SshCertificateTemplates}
+                          >
+                            {(isAllowed) => (
+                              <DropdownMenuItem
+                                className={twMerge(
+                                  !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                                )}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePopUpOpen("sshCertificateTemplateStatus", {
+                                    certTemplateId: certificateTemplate.id,
+                                    status:
+                                      certificateTemplate.status === SshCertTemplateStatus.ACTIVE
+                                        ? SshCertTemplateStatus.DISABLED
+                                        : SshCertTemplateStatus.ACTIVE
+                                  });
+                                }}
+                                disabled={!isAllowed}
+                                icon={<FontAwesomeIcon icon={faBan} />}
+                              >
+                                {`${
+                                  certificateTemplate.status === SshCertTemplateStatus.ACTIVE
+                                    ? "Disable"
+                                    : "Enable"
+                                } Template`}
+                              </DropdownMenuItem>
+                            )}
+                          </OrgPermissionCan>
                           <OrgPermissionCan
                             I={OrgPermissionActions.Edit}
                             a={OrgPermissionSubjects.SshCertificateTemplates}
@@ -83,7 +134,7 @@ export const SshCertificateTemplatesTable = ({ handlePopUpOpen, sshCaId }: Props
                                 <FontAwesomeIcon icon={faCertificate} size="sm" className="mr-1" />
                               }
                             >
-                              Issue SSH Certificate
+                              Issue Certificate
                             </DropdownMenuItem>
                           </OrgPermissionCan>
                           <OrgPermissionCan

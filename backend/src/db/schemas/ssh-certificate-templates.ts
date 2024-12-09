@@ -12,6 +12,7 @@ export const SshCertificateTemplatesSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   sshCaId: z.string().uuid(),
+  status: z.string(),
   name: z.string(),
   ttl: z.string(),
   maxTTL: z.string(),

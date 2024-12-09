@@ -110,6 +110,30 @@ export const registerSshCaRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "GET",
+    url: "/:sshCaId/public-key",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "Get public key of SSH CA",
+      params: z.object({
+        sshCaId: z.string().trim().describe(SSH_CERTIFICATE_AUTHORITIES.GET_PUBLIC_KEY.sshCaId)
+      }),
+      response: {
+        200: z.string()
+      }
+    },
+    handler: async (req) => {
+      const publicKey = await server.services.sshCertificateAuthority.getSshCaPublicKey({
+        caId: req.params.sshCaId
+      });
+
+      return publicKey;
+    }
+  });
+
+  server.route({
     method: "PATCH",
     url: "/:sshCaId",
     config: {
@@ -123,10 +147,7 @@ export const registerSshCaRouter = async (server: FastifyZodProvider) => {
       }),
       body: z.object({
         friendlyName: z.string().optional().describe(SSH_CERTIFICATE_AUTHORITIES.UPDATE.friendlyName),
-        status: z
-          .enum([SshCaStatus.ACTIVE, SshCaStatus.DISABLED])
-          .optional()
-          .describe(SSH_CERTIFICATE_AUTHORITIES.UPDATE.status)
+        status: z.nativeEnum(SshCaStatus).optional().describe(SSH_CERTIFICATE_AUTHORITIES.UPDATE.status)
       }),
       response: {
         200: z.object({

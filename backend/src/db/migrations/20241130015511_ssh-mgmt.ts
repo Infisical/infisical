@@ -34,6 +34,7 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
       t.uuid("sshCaId").notNullable();
       t.foreign("sshCaId").references("id").inTable(TableName.SshCertificateAuthority).onDelete("CASCADE");
+      t.string("status").notNullable(); // active / disabled
       t.string("name").notNullable();
       t.string("ttl").notNullable();
       t.string("maxTTL").notNullable();
@@ -51,7 +52,7 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);
       t.uuid("sshCaId").notNullable();
-      t.foreign("sshCaId").references("id").inTable(TableName.SshCertificateAuthority).onDelete("CASCADE");
+      t.foreign("sshCaId").references("id").inTable(TableName.SshCertificateAuthority).onDelete("SET NULL");
       t.uuid("sshCertificateTemplateId");
       t.foreign("sshCertificateTemplateId")
         .references("id")
@@ -65,7 +66,7 @@ export async function up(knex: Knex): Promise<void> {
       t.datetime("notBefore").notNullable();
       t.datetime("notAfter").notNullable();
     });
-    await createOnUpdateTrigger(knex, TableName.SshCertificateTemplate);
+    await createOnUpdateTrigger(knex, TableName.SshCertificate);
   }
 }
 

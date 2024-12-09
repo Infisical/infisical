@@ -3,6 +3,7 @@ import { SshCertificateTemplatesSchema } from "@app/db/schemas";
 export const sanitizedSshCertificateTemplate = SshCertificateTemplatesSchema.pick({
   id: true,
   sshCaId: true,
+  status: true,
   name: true,
   ttl: true,
   maxTTL: true,

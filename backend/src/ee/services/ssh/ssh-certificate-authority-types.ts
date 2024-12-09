@@ -20,6 +20,10 @@ export type TGetSshCaDTO = {
   caId: string;
 } & Omit<TOrgPermission, "orgId">;
 
+export type TGetSshCaPublicKeyDTO = {
+  caId: string;
+};
+
 export type TUpdateSshCaDTO = {
   caId: string;
   friendlyName?: string;

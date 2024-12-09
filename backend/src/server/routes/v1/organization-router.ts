@@ -425,7 +425,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           certificates: z.array(sanitizedSshCertificate),
-          totalCount: z.number() // TODO
+          totalCount: z.number()
         })
       }
     },

@@ -1,5 +1,10 @@
 import { TProjectPermission } from "@app/lib/types";
 
+export enum SshCertTemplateStatus {
+  ACTIVE = "active",
+  DISABLED = "disabled"
+}
+
 export type TCreateSshCertTemplateDTO = {
   sshCaId: string;
   name: string;
@@ -14,6 +19,7 @@ export type TCreateSshCertTemplateDTO = {
 
 export type TUpdateSshCertTemplateDTO = {
   id: string;
+  status?: SshCertTemplateStatus;
   name?: string;
   ttl?: string;
   maxTTL?: string;

@@ -6,7 +6,10 @@ import { OrgPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, IconButton } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { useDeleteSshCertTemplate } from "@app/hooks/api";
+import {
+  SshCertTemplateStatus,
+  useDeleteSshCertTemplate,
+  useUpdateSshCertTemplate} from "@app/hooks/api";
 
 import { SshCertificateModal } from "./SshCertificateModal";
 import { SshCertificateTemplateModal } from "./SshCertificateTemplateModal";
@@ -19,12 +22,14 @@ type Props = {
 export const SshCertificateTemplatesSection = ({ caId }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "sshCertificateTemplate",
+    "sshCertificateTemplateStatus",
     "sshCertificate",
     "deleteSshCertificateTemplate",
     "upgradePlan"
   ] as const);
 
   const { mutateAsync: deleteSshCertTemplate } = useDeleteSshCertTemplate();
+  const { mutateAsync: updateSshCertTemplate } = useUpdateSshCertTemplate();
 
   const onRemoveSshCertificateTemplateSubmit = async (id: string) => {
     try {
@@ -42,6 +47,35 @@ export const SshCertificateTemplatesSection = ({ caId }: Props) => {
       console.error(err);
       createNotification({
         text: "Failed to delete SSH certificate template",
+        type: "error"
+      });
+    }
+  };
+
+  const onUpdateSshCaStatus = async ({
+    certTemplateId,
+    status
+  }: {
+    certTemplateId: string;
+    status: SshCertTemplateStatus;
+  }) => {
+    try {
+      await updateSshCertTemplate({ id: certTemplateId, status });
+
+      await createNotification({
+        text: `Successfully ${
+          status === SshCertTemplateStatus.ACTIVE ? "enabled" : "disabled"
+        } SSH certificate template`,
+        type: "success"
+      });
+
+      handlePopUpClose("sshCertificateTemplateStatus");
+    } catch (err) {
+      console.error(err);
+      createNotification({
+        text: `Failed to ${
+          status === SshCertTemplateStatus.ACTIVE ? "enabled" : "disabled"
+        } SSH certificate template`,
         type: "error"
       });
     }
@@ -88,6 +122,37 @@ export const SshCertificateTemplatesSection = ({ caId }: Props) => {
           onRemoveSshCertificateTemplateSubmit(
             (popUp?.deleteSshCertificateTemplate?.data as { id: string })?.id
           )
+        }
+      />
+      <DeleteActionModal
+        isOpen={popUp.sshCertificateTemplateStatus.isOpen}
+        title={`Are you sure want to ${
+          (popUp?.sshCertificateTemplateStatus?.data as { status: string })?.status ===
+          SshCertTemplateStatus.ACTIVE
+            ? "enable"
+            : "disable"
+        } this certificate template?`}
+        subTitle={
+          (popUp?.sshCertificateTemplateStatus?.data as { status: string })?.status ===
+          SshCertTemplateStatus.ACTIVE
+            ? "This action will allow certificate issuance under this template again."
+            : "This action will prevent certificate issuance under this template."
+        }
+        onChange={(isOpen) => handlePopUpToggle("sshCertificateTemplateStatus", isOpen)}
+        deleteKey="confirm"
+        onDeleteApproved={() =>
+          onUpdateSshCaStatus(
+            popUp?.sshCertificateTemplateStatus?.data as {
+              certTemplateId: string;
+              status: SshCertTemplateStatus;
+            }
+          )
+        }
+        buttonText={
+          (popUp?.sshCertificateTemplateStatus?.data as { status: string })?.status ===
+          SshCertTemplateStatus.ACTIVE
+            ? "Enable"
+            : "Disable"
         }
       />
     </div>

@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { sanitizedSshCertificateTemplate } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-schema";
+import { SshCertTemplateStatus } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-types";
 import {
   isValidHostPattern,
   isValidUserPattern
@@ -136,6 +137,7 @@ export const registerSshCertificateTemplateRouter = async (server: FastifyZodPro
     },
     schema: {
       body: z.object({
+        status: z.nativeEnum(SshCertTemplateStatus).optional(),
         name: z
           .string()
           .min(1)
@@ -191,6 +193,7 @@ export const registerSshCertificateTemplateRouter = async (server: FastifyZodPro
         event: {
           type: EventType.UPDATE_SSH_CERTIFICATE_TEMPLATE,
           metadata: {
+            status: certificateTemplate.status as SshCertTemplateStatus,
             certificateTemplateId: certificateTemplate.id,
             sshCaId: certificateTemplate.sshCaId,
             name: certificateTemplate.name,

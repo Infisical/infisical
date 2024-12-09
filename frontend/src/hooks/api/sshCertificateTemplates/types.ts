@@ -1,6 +1,12 @@
+export enum SshCertTemplateStatus {
+  ACTIVE = "active",
+  DISABLED = "disabled"
+}
+
 export type TSshCertificateTemplate = {
   id: string;
   sshCaId: string;
+  status: SshCertTemplateStatus;
   name: string;
   ttl: string;
   maxTTL: string;
@@ -25,6 +31,7 @@ export type TCreateSshCertificateTemplateDTO = {
 
 export type TUpdateSshCertificateTemplateDTO = {
   id: string;
+  status?: SshCertTemplateStatus;
   name?: string;
   ttl?: string;
   maxTTL?: string;

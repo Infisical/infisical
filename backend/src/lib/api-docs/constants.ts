@@ -1154,6 +1154,9 @@ export const SSH_CERTIFICATE_AUTHORITIES = {
   GET: {
     sshCaId: "The ID of the SSH CA to get."
   },
+  GET_PUBLIC_KEY: {
+    sshCaId: "The ID of the SSH CA to get the public key for."
+  },
   UPDATE: {
     sshCaId: "The ID of the SSH CA to update.",
     friendlyName: "A friendly name for the SSH CA to update to.",

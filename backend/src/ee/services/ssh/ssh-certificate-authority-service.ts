@@ -9,6 +9,7 @@ import { TSshCertificateTemplateDALFactory } from "@app/ee/services/ssh-certific
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
+import { SshCertTemplateStatus } from "../ssh-certificate-template/ssh-certificate-template-types";
 import {
   createSshCert,
   createSshKeyPair,
@@ -23,6 +24,7 @@ import {
   TDeleteSshCaDTO,
   TGetSshCaCertificateTemplatesDTO,
   TGetSshCaDTO,
+  TGetSshCaPublicKeyDTO,
   TIssueSshCredsDTO,
   TSignSshKeyDTO,
   TUpdateSshCaDTO
@@ -148,6 +150,30 @@ export const sshCertificateAuthorityServiceFactory = ({
   };
 
   /**
+   * Return public key of SSH CA with id [caId]
+   */
+  const getSshCaPublicKey = async ({ caId }: TGetSshCaPublicKeyDTO) => {
+    const ca = await sshCertificateAuthorityDAL.findById(caId);
+    if (!ca) throw new NotFoundError({ message: `SSH CA with ID '${caId}' not found` });
+
+    const sshCaSecret = await sshCertificateAuthoritySecretDAL.findOne({ sshCaId: ca.id });
+
+    // decrypt secret
+    const orgKmsKeyId = await kmsService.getOrgKmsKeyId(ca.orgId);
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      kmsId: orgKmsKeyId
+    });
+
+    const decryptedCaPrivateKey = await kmsDecryptor({
+      cipherTextBlob: sshCaSecret.encryptedPrivateKey
+    });
+
+    const publicKey = getSshPublicKey(decryptedCaPrivateKey.toString("utf-8"));
+
+    return publicKey;
+  };
+
+  /**
    * Update SSH CA with id [caId]
    * Note: Used to enable/disable CA
    */
@@ -259,6 +285,12 @@ export const sshCertificateAuthorityServiceFactory = ({
       });
     }
 
+    if (sshCertificateTemplate.status === SshCertTemplateStatus.DISABLED) {
+      throw new BadRequestError({
+        message: "SSH certificate template is disabled"
+      });
+    }
+
     // validate if the requested [certType] is allowed under the template configuration
     validateSshCertificateType(sshCertificateTemplate, certType);
 
@@ -359,6 +391,12 @@ export const sshCertificateAuthorityServiceFactory = ({
       });
     }
 
+    if (sshCertificateTemplate.status === SshCertTemplateStatus.DISABLED) {
+      throw new BadRequestError({
+        message: "SSH certificate template is disabled"
+      });
+    }
+
     // validate if the requested [certType] is allowed under the template configuration
     validateSshCertificateType(sshCertificateTemplate, certType);
 
@@ -445,6 +483,7 @@ export const sshCertificateAuthorityServiceFactory = ({
     signSshKey,
     createSshCa,
     getSshCaById,
+    getSshCaPublicKey,
     updateSshCaById,
     deleteSshCaById,
     getSshCaCertificateTemplates

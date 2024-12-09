@@ -8,5 +8,7 @@ export const sanitizedSshCertificate = SshCertificatesSchema.pick({
   certType: true,
   publicKey: true,
   principals: true,
-  keyId: true
+  keyId: true,
+  notBefore: true,
+  notAfter: true
 });

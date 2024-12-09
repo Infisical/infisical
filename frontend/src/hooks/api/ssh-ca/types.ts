@@ -10,6 +10,8 @@ export type TSshCertificate = {
   publicKey: string;
   principals: string[];
   keyId: string;
+  notBefore: string;
+  notAfter: string;
 };
 
 export type TSshCertificateAuthority = {

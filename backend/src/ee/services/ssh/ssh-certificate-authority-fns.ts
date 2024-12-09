@@ -53,7 +53,9 @@ export const createSshKeyPair = (keyAlgorithm: CertKeyAlgorithm, comment: string
       keyBits = "384";
       break;
     default:
-      throw new Error("Failed to produce SSH CA key pair generation command due to unrecognized key algorithm");
+      throw new BadRequestError({
+        message: "Failed to produce SSH CA key pair generation command due to unrecognized key algorithm"
+      });
   }
 
   execSync(`ssh-keygen -t ${keyType} -b ${keyBits} -f ${privateKeyFile} -N '' -C "${comment}"`);
@@ -200,7 +202,7 @@ export const validateSshCertificatePrincipals = (
  * @param ttl - The TTL to validate
  * @returns The TTL (in seconds) to use for issuing the SSH certificate
  */
-export const validateSshCertificateTtl = (template: TSshCertificateTemplates, ttl: string | undefined) => {
+export const validateSshCertificateTtl = (template: TSshCertificateTemplates, ttl?: string) => {
   if (!ttl) {
     // use default template ttl
     return ms(template.ttl) / 1000;
@@ -248,6 +250,8 @@ export const createSshCert = ({ caPrivateKey, userPublicKey, keyId, principals, 
     .join(" ");
 
   const command = `ssh-keygen ${certOptions}`;
+
+  console.log("executing command", command);
 
   // Execute the signing process
   execSync(command);

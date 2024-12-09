@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { faCertificate } from "@fortawesome/free-solid-svg-icons";
+import { format } from "date-fns";
 
 import {
+  Badge,
   EmptyState,
   Pagination,
   Table,
@@ -15,7 +17,8 @@ import {
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { useListOrgSshCertificates } from "@app/hooks/api";
-import { sshCertTypeToNameMap } from "@app/hooks/api/ssh-ca/constants";
+
+import { getSshCertStatusBadgeDetails } from "./SshCertificatesTable.utils";
 
 const PER_PAGE_INIT = 25;
 
@@ -30,27 +33,38 @@ export const SshCertificatesTable = () => {
     limit: perPage
   });
 
-  console.log("SSH Certificates Table data: ", data);
-
   return (
     <TableContainer>
       <Table>
         <THead>
           <Tr>
-            <Th>Serial Number</Th>
-            <Th>Certificate Type</Th>
             <Th>Principals</Th>
+            <Th>Status</Th>
+            <Th>Not Before</Th>
+            <Th>Not After</Th>
           </Tr>
         </THead>
         <TBody>
           {isLoading && <TableSkeleton columns={4} innerKey="org-ssh-certificates" />}
           {!isLoading &&
             data?.certificates?.map((certificate) => {
+              const { variant, label } = getSshCertStatusBadgeDetails(certificate.notAfter);
               return (
                 <Tr className="h-10" key={`certificate-${certificate.id}`}>
-                  <Td>{certificate.serialNumber}</Td>
-                  <Td>{sshCertTypeToNameMap[certificate.certType]}</Td>
                   <Td>{certificate.principals.join(", ")}</Td>
+                  <Td>
+                    <Badge variant={variant}>{label}</Badge>
+                  </Td>
+                  <Td>
+                    {certificate.notBefore
+                      ? format(new Date(certificate.notBefore), "yyyy-MM-dd")
+                      : "-"}
+                  </Td>
+                  <Td>
+                    {certificate.notAfter
+                      ? format(new Date(certificate.notAfter), "yyyy-MM-dd")
+                      : "-"}
+                  </Td>
                 </Tr>
               );
             })}

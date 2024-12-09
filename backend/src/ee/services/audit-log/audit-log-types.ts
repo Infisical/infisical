@@ -3,6 +3,7 @@ import {
   TUpdateProjectTemplateDTO
 } from "@app/ee/services/project-template/project-template-types";
 import { SshCaStatus, SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
+import { SshCertTemplateStatus } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-types";
 import { SymmetricEncryption } from "@app/lib/crypto/cipher";
 import { TProjectPermission } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -1238,6 +1239,7 @@ interface UpdateSshCertificateTemplate {
     certificateTemplateId: string;
     sshCaId: string;
     name: string;
+    status: SshCertTemplateStatus;
     ttl: string;
     maxTTL: string;
     allowedUsers: string[];

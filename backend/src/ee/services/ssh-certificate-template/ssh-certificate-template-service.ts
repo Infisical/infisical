@@ -8,6 +8,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TSshCertificateAuthorityDALFactory } from "../ssh/ssh-certificate-authority-dal";
 import { TSshCertificateTemplateDALFactory } from "./ssh-certificate-template-dal";
 import {
+  SshCertTemplateStatus,
   TCreateSshCertTemplateDTO,
   TDeleteSshCertTemplateDTO,
   TGetSshCertTemplateDTO,
@@ -15,7 +16,10 @@ import {
 } from "./ssh-certificate-template-types";
 
 type TSshCertificateTemplateServiceFactoryDep = {
-  sshCertificateTemplateDAL: TSshCertificateTemplateDALFactory;
+  sshCertificateTemplateDAL: Pick<
+    TSshCertificateTemplateDALFactory,
+    "transaction" | "getByName" | "create" | "updateById" | "deleteById" | "getById"
+  >;
   sshCertificateAuthorityDAL: Pick<TSshCertificateAuthorityDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
@@ -62,36 +66,45 @@ export const sshCertificateTemplateServiceFactory = ({
       OrgPermissionSubjects.SshCertificateTemplates
     );
 
-    const existingTemplate = await sshCertificateTemplateDAL.getByName(name, ca.orgId);
-    if (existingTemplate) {
-      throw new BadRequestError({
-        message: `SSH certificate template with name ${name} already exists`
-      });
-    }
-
     if (ms(ttl) > ms(maxTTL)) {
       throw new BadRequestError({
         message: "TTL cannot be greater than max TTL"
       });
     }
 
-    const certificateTemplate = await sshCertificateTemplateDAL.create({
-      sshCaId,
-      name,
-      ttl,
-      maxTTL,
-      allowUserCertificates,
-      allowHostCertificates,
-      allowedUsers,
-      allowedHosts,
-      allowCustomKeyIds
+    const newCertificateTemplate = await sshCertificateTemplateDAL.transaction(async (tx) => {
+      const existingTemplate = await sshCertificateTemplateDAL.getByName(name, ca.orgId, tx);
+      if (existingTemplate) {
+        throw new BadRequestError({
+          message: `SSH certificate template with name ${name} already exists`
+        });
+      }
+
+      const certificateTemplate = await sshCertificateTemplateDAL.create(
+        {
+          sshCaId,
+          name,
+          ttl,
+          maxTTL,
+          allowUserCertificates,
+          allowHostCertificates,
+          allowedUsers,
+          allowedHosts,
+          allowCustomKeyIds,
+          status: SshCertTemplateStatus.ACTIVE
+        },
+        tx
+      );
+
+      return certificateTemplate;
     });
 
-    return { certificateTemplate, ca };
+    return { certificateTemplate: newCertificateTemplate, ca };
   };
 
   const updateSshCertTemplate = async ({
     id,
+    status,
     name,
     ttl,
     maxTTL,
@@ -125,34 +138,43 @@ export const sshCertificateTemplateServiceFactory = ({
       OrgPermissionSubjects.SshCertificateTemplates
     );
 
-    if (name) {
-      const existingTemplate = await sshCertificateTemplateDAL.getByName(name, actorOrgId);
-      if (existingTemplate && existingTemplate.id !== id) {
+    const updatedCertificateTemplate = await sshCertificateTemplateDAL.transaction(async (tx) => {
+      if (name) {
+        const existingTemplate = await sshCertificateTemplateDAL.getByName(name, actorOrgId, tx);
+        if (existingTemplate && existingTemplate.id !== id) {
+          throw new BadRequestError({
+            message: `SSH certificate template with name ${name} already exists`
+          });
+        }
+      }
+
+      if (ms(ttl || certTemplate.ttl) > ms(maxTTL || certTemplate.maxTTL)) {
         throw new BadRequestError({
-          message: `SSH certificate template with name ${name} already exists`
+          message: "TTL cannot be greater than max TTL"
         });
       }
-    }
 
-    if (ms(ttl || certTemplate.ttl) > ms(maxTTL || certTemplate.maxTTL)) {
-      throw new BadRequestError({
-        message: "TTL cannot be greater than max TTL"
-      });
-    }
+      const certificateTemplate = await sshCertificateTemplateDAL.updateById(
+        id,
+        {
+          status,
+          name,
+          ttl,
+          maxTTL,
+          allowUserCertificates,
+          allowHostCertificates,
+          allowedUsers,
+          allowedHosts,
+          allowCustomKeyIds
+        },
+        tx
+      );
 
-    const certificateTemplate = await sshCertificateTemplateDAL.updateById(id, {
-      name,
-      ttl,
-      maxTTL,
-      allowUserCertificates,
-      allowHostCertificates,
-      allowedUsers,
-      allowedHosts,
-      allowCustomKeyIds
+      return certificateTemplate;
     });
 
     return {
-      certificateTemplate,
+      certificateTemplate: updatedCertificateTemplate,
       orgId: certTemplate.orgId
     };
   };

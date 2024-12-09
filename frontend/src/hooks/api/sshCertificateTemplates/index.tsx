@@ -1,5 +1,7 @@
 export {
   useCreateSshCertTemplate,
   useDeleteSshCertTemplate,
-  useUpdateSshCertTemplate} from "./mutations";
+  useUpdateSshCertTemplate
+} from "./mutations";
 export { useGetSshCertTemplate } from "./queries";
+export * from "./types";
