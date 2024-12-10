@@ -23,10 +23,7 @@ export enum OrgPermissionSubjects {
   Kms = "kms",
   AdminConsole = "organization-admin-console",
   AuditLogs = "audit-logs",
-  ProjectTemplates = "project-templates",
-  SshCertificateAuthorities = "ssh-certificate-authorities",
-  SshCertificateTemplates = "ssh-certificate-templates",
-  SshCertificates = "ssh-certificates"
+  ProjectTemplates = "project-templates"
 }
 
 export enum OrgPermissionAdminConsoleAction {
@@ -50,9 +47,6 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.Kms]
   | [OrgPermissionAdminConsoleAction, OrgPermissionSubjects.AdminConsole]
   | [OrgPermissionActions, OrgPermissionSubjects.AuditLogs]
-  | [OrgPermissionActions, OrgPermissionSubjects.ProjectTemplates]
-  | [OrgPermissionActions, OrgPermissionSubjects.SshCertificateAuthorities]
-  | [OrgPermissionActions, OrgPermissionSubjects.SshCertificates]
-  | [OrgPermissionActions, OrgPermissionSubjects.SshCertificateTemplates];
+  | [OrgPermissionActions, OrgPermissionSubjects.ProjectTemplates];
 
 export type TOrgPermission = MongoAbility<OrgPermissionSet>;

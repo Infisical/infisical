@@ -14,12 +14,12 @@ import {
   SelectItem,
   Switch
 } from "@app/components/v2";
-import { useOrganization } from "@app/context";
+import { useWorkspace } from "@app/context";
 import {
   useCreateSshCertTemplate,
   useGetSshCaById,
   useGetSshCertTemplate,
-  useListOrgSshCas,
+  useListWorkspaceSshCas,
   useUpdateSshCertTemplate
 } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -48,7 +48,7 @@ type Props = {
 };
 
 export const SshCertificateTemplateModal = ({ popUp, handlePopUpToggle, sshCaId }: Props) => {
-  const { currentOrg } = useOrganization();
+  const { currentWorkspace } = useWorkspace();
 
   const { data: ca } = useGetSshCaById(sshCaId);
 
@@ -56,9 +56,7 @@ export const SshCertificateTemplateModal = ({ popUp, handlePopUpToggle, sshCaId 
     (popUp?.sshCertificateTemplate?.data as { id: string })?.id || ""
   );
 
-  const { data: cas } = useListOrgSshCas({
-    orgId: currentOrg?.id ?? ""
-  });
+  const { data: cas } = useListWorkspaceSshCas(currentWorkspace?.id || "");
 
   const { mutateAsync: createSshCertTemplate } = useCreateSshCertTemplate();
   const { mutateAsync: updateSshCertTemplate } = useUpdateSshCertTemplate();

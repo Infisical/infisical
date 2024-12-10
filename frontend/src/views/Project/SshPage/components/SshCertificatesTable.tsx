@@ -15,20 +15,20 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { useOrganization } from "@app/context";
-import { useListOrgSshCertificates } from "@app/hooks/api";
+import { useWorkspace } from "@app/context";
+import { useListWorkspaceSshCertificates } from "@app/hooks/api";
 
 import { getSshCertStatusBadgeDetails } from "./SshCertificatesTable.utils";
 
 const PER_PAGE_INIT = 25;
 
 export const SshCertificatesTable = () => {
-  const { currentOrg } = useOrganization();
+  const { currentWorkspace } = useWorkspace();
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
 
-  const { data, isLoading } = useListOrgSshCertificates({
-    orgId: currentOrg?.id ?? "",
+  const { data, isLoading } = useListWorkspaceSshCertificates({
+    projectId: currentWorkspace?.id || "",
     offset: (page - 1) * perPage,
     limit: perPage
   });

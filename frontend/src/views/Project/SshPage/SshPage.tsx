@@ -1,8 +1,8 @@
 import { motion } from "framer-motion";
 
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
-import { withPermission } from "@app/hoc";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { withProjectPermission } from "@app/hoc";
 
 import { SshCaSection, SshCertificatesSection } from "./components";
 
@@ -11,7 +11,7 @@ enum TabSections {
   SshCertificates = "ssh-certificates"
 }
 
-export const SshPage = withPermission(
+export const SshPage = withProjectPermission(
   () => {
     return (
       <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
@@ -49,5 +49,5 @@ export const SshPage = withPermission(
       </div>
     );
   },
-  { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.SshCertificateAuthorities }
+  { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.SshCertificateAuthorities }
 );

@@ -18,11 +18,11 @@ export const sshCertificateTemplateDALFactory = (db: TDbClient) => {
           `${TableName.SshCertificateAuthority}.id`,
           `${TableName.SshCertificateTemplate}.sshCaId`
         )
-        .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.SshCertificateAuthority}.orgId`)
+        .join(TableName.Project, `${TableName.Project}.id`, `${TableName.SshCertificateAuthority}.projectId`)
         .where(`${TableName.SshCertificateTemplate}.id`, "=", id)
         .select(selectAllTableCols(TableName.SshCertificateTemplate))
         .select(
-          db.ref("orgId").withSchema(TableName.SshCertificateAuthority),
+          db.ref("projectId").withSchema(TableName.SshCertificateAuthority),
           db.ref("friendlyName").as("caName").withSchema(TableName.SshCertificateAuthority),
           db.ref("status").as("caStatus").withSchema(TableName.SshCertificateAuthority)
         )
@@ -34,7 +34,10 @@ export const sshCertificateTemplateDALFactory = (db: TDbClient) => {
     }
   };
 
-  const getByName = async (name: string, orgId: string, tx?: Knex) => {
+  /**
+   * Returns the SSH certificate template named [name] within project with id [projectId]
+   */
+  const getByName = async (name: string, projectId: string, tx?: Knex) => {
     try {
       const certTemplate = await (tx || db.replicaNode())(TableName.SshCertificateTemplate)
         .join(
@@ -42,12 +45,12 @@ export const sshCertificateTemplateDALFactory = (db: TDbClient) => {
           `${TableName.SshCertificateAuthority}.id`,
           `${TableName.SshCertificateTemplate}.sshCaId`
         )
-        .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.SshCertificateAuthority}.orgId`)
+        .join(TableName.Project, `${TableName.Project}.id`, `${TableName.SshCertificateAuthority}.projectId`)
         .where(`${TableName.SshCertificateTemplate}.name`, "=", name)
-        .where(`${TableName.Organization}.id`, "=", orgId)
+        .where(`${TableName.Project}.id`, "=", projectId)
         .select(selectAllTableCols(TableName.SshCertificateTemplate))
         .select(
-          db.ref("orgId").withSchema(TableName.SshCertificateAuthority),
+          db.ref("projectId").withSchema(TableName.SshCertificateAuthority),
           db.ref("friendlyName").as("caName").withSchema(TableName.SshCertificateAuthority),
           db.ref("status").as("caStatus").withSchema(TableName.SshCertificateAuthority)
         )

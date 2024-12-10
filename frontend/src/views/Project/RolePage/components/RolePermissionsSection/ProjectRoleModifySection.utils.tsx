@@ -121,6 +121,11 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.PkiAlerts]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.PkiCollections]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.CertificateTemplates]: GeneralPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.SshCertificateAuthorities]: GeneralPolicyActionSchema.array().default(
+        []
+      ),
+      [ProjectPermissionSub.SshCertificates]: GeneralPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.SshCertificateTemplates]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SecretApproval]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SecretRollback]: SecretRollbackPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Project]: WorkspacePolicyActionSchema.array().default([]),
@@ -203,6 +208,9 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.PkiAlerts,
         ProjectPermissionSub.PkiCollections,
         ProjectPermissionSub.CertificateTemplates,
+        ProjectPermissionSub.SshCertificateAuthorities,
+        ProjectPermissionSub.SshCertificates,
+        ProjectPermissionSub.SshCertificateTemplates,
         ProjectPermissionSub.SecretApproval,
         ProjectPermissionSub.Tags,
         ProjectPermissionSub.SecretRotation,
@@ -582,6 +590,33 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.CertificateTemplates]: {
     title: "Certificate Templates",
+    actions: [
+      { label: "Read", value: "read" },
+      { label: "Create", value: "create" },
+      { label: "Modify", value: "edit" },
+      { label: "Remove", value: "delete" }
+    ]
+  },
+  [ProjectPermissionSub.SshCertificateAuthorities]: {
+    title: "SSH Certificate Authorities",
+    actions: [
+      { label: "Read", value: "read" },
+      { label: "Create", value: "create" },
+      { label: "Modify", value: "edit" },
+      { label: "Remove", value: "delete" }
+    ]
+  },
+  [ProjectPermissionSub.SshCertificates]: {
+    title: "SSH Certificates",
+    actions: [
+      { label: "Read", value: "read" },
+      { label: "Create", value: "create" },
+      { label: "Modify", value: "edit" },
+      { label: "Remove", value: "delete" }
+    ]
+  },
+  [ProjectPermissionSub.SshCertificateTemplates]: {
+    title: "SSH Certificate Templates",
     actions: [
       { label: "Read", value: "read" },
       { label: "Create", value: "create" },

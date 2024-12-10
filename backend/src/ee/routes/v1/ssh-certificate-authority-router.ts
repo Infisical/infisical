@@ -21,6 +21,7 @@ export const registerSshCaRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "Create SSH CA",
       body: z.object({
+        projectId: z.string().describe(SSH_CERTIFICATE_AUTHORITIES.CREATE.projectId),
         friendlyName: z.string().describe(SSH_CERTIFICATE_AUTHORITIES.CREATE.friendlyName),
         keyAlgorithm: z
           .nativeEnum(CertKeyAlgorithm)
@@ -46,7 +47,7 @@ export const registerSshCaRouter = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: ca.orgId,
+        projectId: ca.projectId,
         event: {
           type: EventType.CREATE_SSH_CA,
           metadata: {
@@ -93,7 +94,7 @@ export const registerSshCaRouter = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: ca.orgId,
+        projectId: ca.projectId,
         event: {
           type: EventType.GET_SSH_CA,
           metadata: {
@@ -169,7 +170,7 @@ export const registerSshCaRouter = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: ca.orgId,
+        projectId: ca.projectId,
         event: {
           type: EventType.UPDATE_SSH_CA,
           metadata: {
@@ -215,7 +216,7 @@ export const registerSshCaRouter = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: ca.orgId,
+        projectId: ca.projectId,
         event: {
           type: EventType.DELETE_SSH_CA,
           metadata: {
@@ -260,7 +261,7 @@ export const registerSshCaRouter = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: ca.orgId,
+        projectId: ca.projectId,
         event: {
           type: EventType.GET_SSH_CA_CERTIFICATE_TEMPLATES,
           metadata: {

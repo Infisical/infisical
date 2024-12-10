@@ -3,7 +3,7 @@ import { faBan, faCertificate, faEllipsis, faTrash } from "@fortawesome/free-sol
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
-import { OrgPermissionCan } from "@app/components/permissions";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
   DropdownMenu,
@@ -21,8 +21,8 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
-import { SshCaStatus , useListOrgSshCas } from "@app/hooks/api";
+import { ProjectPermissionActions, ProjectPermissionSub,useWorkspace  } from "@app/context";
+import { SshCaStatus, useListWorkspaceSshCas } from "@app/hooks/api";
 import { caStatusToNameMap, getCaStatusBadgeVariant } from "@app/hooks/api/ca/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -35,10 +35,8 @@ type Props = {
 
 export const SshCaTable = ({ handlePopUpOpen }: Props) => {
   const router = useRouter();
-  const { currentOrg } = useOrganization();
-  const { data, isLoading } = useListOrgSshCas({
-    orgId: currentOrg?.id ?? ""
-  });
+  const { currentWorkspace } = useWorkspace();
+  const { data, isLoading } = useListWorkspaceSshCas(currentWorkspace?.id || "");
 
   return (
     <div>
@@ -61,7 +59,7 @@ export const SshCaTable = ({ handlePopUpOpen }: Props) => {
                   <Tr
                     className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                     key={`ca-${ca.id}`}
-                    onClick={() => router.push(`/org/${currentOrg?.id}/ssh/ca/${ca.id}`)}
+                    onClick={() => router.push(`/project/${currentWorkspace?.id}/ssh/ca/${ca.id}`)}
                   >
                     <Td>{ca.friendlyName}</Td>
                     <Td>
@@ -81,9 +79,9 @@ export const SshCaTable = ({ handlePopUpOpen }: Props) => {
                         <DropdownMenuContent align="start" className="p-1">
                           {(ca.status === SshCaStatus.ACTIVE ||
                             ca.status === SshCaStatus.DISABLED) && (
-                            <OrgPermissionCan
-                              I={OrgPermissionActions.Edit}
-                              a={OrgPermissionSubjects.SshCertificateAuthorities}
+                            <ProjectPermissionCan
+                              I={ProjectPermissionActions.Edit}
+                              a={ProjectPermissionSub.SshCertificateAuthorities}
                             >
                               {(isAllowed) => (
                                 <DropdownMenuItem
@@ -109,11 +107,11 @@ export const SshCaTable = ({ handlePopUpOpen }: Props) => {
                                   } SSH CA`}
                                 </DropdownMenuItem>
                               )}
-                            </OrgPermissionCan>
+                            </ProjectPermissionCan>
                           )}
-                          <OrgPermissionCan
-                            I={OrgPermissionActions.Delete}
-                            a={OrgPermissionSubjects.SshCertificateAuthorities}
+                          <ProjectPermissionCan
+                            I={ProjectPermissionActions.Delete}
+                            a={ProjectPermissionSub.SshCertificateAuthorities}
                           >
                             {(isAllowed) => (
                               <DropdownMenuItem
@@ -132,7 +130,7 @@ export const SshCaTable = ({ handlePopUpOpen }: Props) => {
                                 Delete SSH CA
                               </DropdownMenuItem>
                             )}
-                          </OrgPermissionCan>
+                          </ProjectPermissionCan>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </Td>

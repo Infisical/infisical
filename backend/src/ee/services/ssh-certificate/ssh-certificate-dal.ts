@@ -8,7 +8,7 @@ export type TSshCertificateDALFactory = ReturnType<typeof sshCertificateDALFacto
 export const sshCertificateDALFactory = (db: TDbClient) => {
   const sshCertificateOrm = ormify(db, TableName.SshCertificate);
 
-  const countSshCertificatesInOrg = async (orgId: string) => {
+  const countSshCertificatesInProject = async (projectId: string) => {
     try {
       interface CountResult {
         count: string;
@@ -21,18 +21,18 @@ export const sshCertificateDALFactory = (db: TDbClient) => {
           `${TableName.SshCertificate}.sshCaId`,
           `${TableName.SshCertificateAuthority}.id`
         )
-        .join(TableName.Organization, `${TableName.SshCertificateAuthority}.orgId`, `${TableName.Organization}.id`)
-        .where(`${TableName.Organization}.id`, orgId);
+        .join(TableName.Project, `${TableName.SshCertificateAuthority}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Project}.id`, projectId);
 
       const count = await query.count("*").first();
 
       return parseInt((count as unknown as CountResult).count || "0", 10);
     } catch (error) {
-      throw new DatabaseError({ error, name: "Count all SSH certificates in organization" });
+      throw new DatabaseError({ error, name: "Count all SSH certificates in project" });
     }
   };
   return {
     ...sshCertificateOrm,
-    countSshCertificatesInOrg
+    countSshCertificatesInProject
   };
 };

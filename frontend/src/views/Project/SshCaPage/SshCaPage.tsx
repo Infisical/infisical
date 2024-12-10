@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { OrgPermissionCan } from "@app/components/permissions";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
   DeleteActionModal,
@@ -15,17 +15,18 @@ import {
   DropdownMenuTrigger,
   Tooltip
 } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
-import { withPermission } from "@app/hoc";
+import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { withProjectPermission } from "@app/hoc";
 import { useDeleteSshCa, useGetSshCaById } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { SshCaModal } from "../SshPage/components/SshCaModal";
 import { SshCaDetailsSection, SshCertificateTemplatesSection } from "./components";
 
-export const SshCaPage = withPermission(
+export const SshCaPage = withProjectPermission(
   () => {
-    const { currentOrg } = useOrganization();
+    const { currentWorkspace } = useWorkspace();
+    const projectId = currentWorkspace?.id || "";
     const router = useRouter();
     const caId = router.query.caId as string;
     const { data } = useGetSshCaById(caId);
@@ -39,7 +40,7 @@ export const SshCaPage = withPermission(
 
     const onRemoveCaSubmit = async (caIdToDelete: string) => {
       try {
-        if (!currentOrg?.id) return;
+        if (!projectId) return;
 
         await deleteSshCa({ caId: caIdToDelete });
 
@@ -49,7 +50,7 @@ export const SshCaPage = withPermission(
         });
 
         handlePopUpClose("deleteSshCa");
-        router.push(`/org/${currentOrg.id}/ssh`);
+        router.push(`/project/${projectId}/ssh`);
       } catch (err) {
         console.error(err);
         createNotification({
@@ -67,7 +68,7 @@ export const SshCaPage = withPermission(
               variant="link"
               type="submit"
               leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
-              onClick={() => router.push(`/org/${currentOrg?.id}/ssh`)}
+              onClick={() => router.push(`/project/${projectId}/ssh`)}
               className="mb-4"
             >
               SSH Certificate Authorities
@@ -83,9 +84,9 @@ export const SshCaPage = withPermission(
                   </div>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="p-1">
-                  <OrgPermissionCan
-                    I={OrgPermissionActions.Delete}
-                    a={OrgPermissionSubjects.SshCertificateAuthorities}
+                  <ProjectPermissionCan
+                    I={ProjectPermissionActions.Delete}
+                    a={ProjectPermissionSub.SshCertificateAuthorities}
                   >
                     {(isAllowed) => (
                       <DropdownMenuItem
@@ -104,7 +105,7 @@ export const SshCaPage = withPermission(
                         Delete SSH CA
                       </DropdownMenuItem>
                     )}
-                  </OrgPermissionCan>
+                  </ProjectPermissionCan>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -131,5 +132,5 @@ export const SshCaPage = withPermission(
       </div>
     );
   },
-  { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.SshCertificateAuthorities }
+  { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.SshCertificateAuthorities }
 );

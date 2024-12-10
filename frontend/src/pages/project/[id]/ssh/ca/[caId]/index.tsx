@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import Head from "next/head";
 
-import { SshCaPage } from "@app/views/Org/SshCaPage";
+import { SshCaPage } from "@app/views/Project/SshCaPage";
 
 export default function SshCa() {
   return (

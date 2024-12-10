@@ -4,8 +4,6 @@ import { apiRequest } from "@app/config/request";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 
 import { TGroupOrgMembership } from "../groups/types";
-import { TSshCertificate,TSshCertificateAuthority } from "../ssh-ca/types";
-import { TSshCertificateTemplate } from "../sshCertificateTemplates/types";
 import { IntegrationAuth } from "../types";
 import {
   BillingDetails,
@@ -43,12 +41,7 @@ export const organizationKeys = {
   }: TListOrgIdentitiesDTO) =>
     [...organizationKeys.getOrgIdentityMemberships(orgId), params] as const,
   getOrgGroups: (orgId: string) => [{ orgId }, "organization-groups"] as const,
-  getOrgIntegrationAuths: (orgId: string) => [{ orgId }, "integration-auths"] as const,
-  getOrgSshCas: ({ orgId }: { orgId: string }) => [{ orgId }, "org-ssh-cas"] as const,
-  allOrgSshCertificates: () => ["org-ssh-certificates"] as const,
-  specificOrgSshCertificates: ({ offset, limit }: { offset: number; limit: number }) =>
-    [...organizationKeys.allOrgSshCertificates(), { offset, limit }] as const,
-  getOrgSshCertificateTemplates: () => ["org-ssh-certificate-templates"] as const
+  getOrgIntegrationAuths: (orgId: string) => [{ orgId }, "integration-auths"] as const
 };
 
 export const fetchOrganizations = async () => {
@@ -500,65 +493,5 @@ export const useGetOrgIntegrationAuths = <TData = IntegrationAuth[],>(
     },
     enabled: Boolean(organizationId),
     select
-  });
-};
-
-export const useListOrgSshCas = ({ orgId }: { orgId: string }) => {
-  return useQuery({
-    queryKey: organizationKeys.getOrgSshCas({ orgId }),
-    queryFn: async () => {
-      const {
-        data: { cas }
-      } = await apiRequest.get<{ cas: Omit<TSshCertificateAuthority, "publicKey">[] }>(
-        `/api/v1/organization/${orgId}/ssh-cas`
-      );
-      return cas;
-    },
-    enabled: Boolean(orgId)
-  });
-};
-
-export const useListOrgSshCertificates = ({
-  orgId,
-  offset,
-  limit
-}: {
-  orgId: string;
-  offset: number;
-  limit: number;
-}) => {
-  return useQuery({
-    queryKey: organizationKeys.specificOrgSshCertificates({
-      offset,
-      limit
-    }),
-    queryFn: async () => {
-      const params = new URLSearchParams({
-        offset: String(offset),
-        limit: String(limit)
-      });
-
-      const { data } = await apiRequest.get<{
-        certificates: TSshCertificate[];
-        totalCount: number;
-      }>(`/api/v1/organization/${orgId}/ssh-certificates`, {
-        params
-      });
-      return data;
-    },
-    enabled: Boolean(orgId)
-  });
-};
-
-export const useListOrgSshCertificateTemplates = ({ orgId }: { orgId: string }) => {
-  return useQuery({
-    queryKey: organizationKeys.getOrgSshCertificateTemplates(),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<{ certificateTemplates: TSshCertificateTemplate[] }>(
-        `/api/v1/organization/${orgId}/ssh-certificate-templates`
-      );
-      return data;
-    },
-    enabled: Boolean(orgId)
   });
 };

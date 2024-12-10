@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { organizationKeys } from "../organization/queries";
+import { workspaceKeys } from "../workspace/query-keys";
 import {
   TCreateSshCaDTO,
   TDeleteSshCaDTO,
@@ -27,8 +27,8 @@ export const useCreateSshCa = () => {
       } = await apiRequest.post<{ ca: TSshCertificateAuthority }>("/api/v1/ssh/ca/", body);
       return ca;
     },
-    onSuccess: ({ orgId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgSshCas({ orgId }));
+    onSuccess: ({ projectId }) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceSshCas(projectId));
     }
   });
 };
@@ -42,8 +42,8 @@ export const useUpdateSshCa = () => {
       } = await apiRequest.patch<{ ca: TSshCertificateAuthority }>(`/api/v1/ssh/ca/${caId}`, body);
       return ca;
     },
-    onSuccess: ({ orgId }, { caId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgSshCas({ orgId }));
+    onSuccess: ({ projectId }, { caId }) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceSshCas(projectId));
       queryClient.invalidateQueries(sshCaKeys.getSshCaById(caId));
     }
   });
@@ -58,8 +58,8 @@ export const useDeleteSshCa = () => {
       } = await apiRequest.delete<{ ca: TSshCertificateAuthority }>(`/api/v1/ssh/ca/${caId}`);
       return ca;
     },
-    onSuccess: ({ orgId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgSshCas({ orgId }));
+    onSuccess: ({ projectId }) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceSshCas(projectId));
     }
   });
 };
@@ -71,8 +71,8 @@ export const useSignSshKey = () => {
       const { data } = await apiRequest.post<TSignSshKeyResponse>("/api/v1/ssh/sign", body);
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries(organizationKeys.allOrgSshCertificates());
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries(workspaceKeys.allWorkspaceSshCertificates(projectId));
     }
   });
 };
@@ -84,8 +84,8 @@ export const useIssueSshCreds = () => {
       const { data } = await apiRequest.post<TIssueSshCredsResponse>("/api/v1/ssh/issue", body);
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries(organizationKeys.allOrgSshCertificates());
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries(workspaceKeys.allWorkspaceSshCertificates(projectId));
     }
   });
 };

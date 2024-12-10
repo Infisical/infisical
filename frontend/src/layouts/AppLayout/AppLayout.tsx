@@ -424,6 +424,16 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           </MenuItem>
                         </a>
                       </Link>
+                      <Link href={`/project/${currentWorkspace?.id}/ssh`} passHref>
+                        <a>
+                          <MenuItem
+                            isSelected={router.asPath === `/project/${currentWorkspace?.id}/ssh`}
+                            icon="system-outline-90-lock-closed"
+                          >
+                            SSH
+                          </MenuItem>
+                        </a>
+                      </Link>
                       <Link href={`/project/${currentWorkspace?.id}/members`} passHref>
                         <a>
                           <MenuItem
@@ -510,16 +520,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
                             icon="system-outline-96-groups"
                           >
                             Access Control
-                          </MenuItem>
-                        </a>
-                      </Link>
-                      <Link href={`/org/${currentOrg?.id}/ssh`} passHref>
-                        <a>
-                          <MenuItem
-                            isSelected={router.asPath === `/org/${currentOrg?.id}/ssh`}
-                            icon="system-outline-90-lock-closed"
-                          >
-                            SSH
                           </MenuItem>
                         </a>
                       </Link>

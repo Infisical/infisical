@@ -13,6 +13,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
+import { useWorkspace } from "@app/context";
 import { useCreateSshCa, useGetSshCaById, useUpdateSshCa } from "@app/hooks/api";
 import { certKeyAlgorithms } from "@app/hooks/api/certificates/constants";
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
@@ -38,6 +39,8 @@ const schema = z
 export type FormData = z.infer<typeof schema>;
 
 export const SshCaModal = ({ popUp, handlePopUpToggle }: Props) => {
+  const { currentWorkspace } = useWorkspace();
+  const projectId = currentWorkspace?.id || "";
   const { data: ca } = useGetSshCaById((popUp?.sshCa?.data as { caId: string })?.caId || "");
 
   const { mutateAsync: createMutateAsync } = useCreateSshCa();
@@ -72,6 +75,8 @@ export const SshCaModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const onFormSubmit = async ({ friendlyName, keyAlgorithm }: FormData) => {
     try {
+      if (!projectId) return;
+
       if (ca) {
         await updateMutateAsync({
           caId: ca.id,
@@ -79,6 +84,7 @@ export const SshCaModal = ({ popUp, handlePopUpToggle }: Props) => {
         });
       } else {
         await createMutateAsync({
+          projectId,
           friendlyName,
           keyAlgorithm
         });

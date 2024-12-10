@@ -8,7 +8,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
-import { OrgPermissionCan } from "@app/components/permissions";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
   DropdownMenu,
@@ -26,8 +26,8 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
-import { SshCertTemplateStatus,useGetSshCaCertTemplates } from "@app/hooks/api";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { SshCertTemplateStatus, useGetSshCaCertTemplates } from "@app/hooks/api";
 import { caStatusToNameMap, getCaStatusBadgeVariant } from "@app/hooks/api/ca/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -89,9 +89,9 @@ export const SshCertificateTemplatesTable = ({ handlePopUpOpen, sshCaId }: Props
                           </div>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start" className="p-1">
-                          <OrgPermissionCan
-                            I={OrgPermissionActions.Edit}
-                            a={OrgPermissionSubjects.SshCertificateTemplates}
+                          <ProjectPermissionCan
+                            I={ProjectPermissionActions.Edit}
+                            a={ProjectPermissionSub.SshCertificateTemplates}
                           >
                             {(isAllowed) => (
                               <DropdownMenuItem
@@ -118,10 +118,10 @@ export const SshCertificateTemplatesTable = ({ handlePopUpOpen, sshCaId }: Props
                                 } Template`}
                               </DropdownMenuItem>
                             )}
-                          </OrgPermissionCan>
-                          <OrgPermissionCan
-                            I={OrgPermissionActions.Edit}
-                            a={OrgPermissionSubjects.SshCertificateTemplates}
+                          </ProjectPermissionCan>
+                          <ProjectPermissionCan
+                            I={ProjectPermissionActions.Edit}
+                            a={ProjectPermissionSub.SshCertificateTemplates}
                           >
                             <DropdownMenuItem
                               onClick={() => {
@@ -136,10 +136,10 @@ export const SshCertificateTemplatesTable = ({ handlePopUpOpen, sshCaId }: Props
                             >
                               Issue Certificate
                             </DropdownMenuItem>
-                          </OrgPermissionCan>
-                          <OrgPermissionCan
-                            I={OrgPermissionActions.Edit}
-                            a={OrgPermissionSubjects.SshCertificateTemplates}
+                          </ProjectPermissionCan>
+                          <ProjectPermissionCan
+                            I={ProjectPermissionActions.Edit}
+                            a={ProjectPermissionSub.SshCertificateTemplates}
                           >
                             <DropdownMenuItem
                               onClick={() =>
@@ -151,10 +151,10 @@ export const SshCertificateTemplatesTable = ({ handlePopUpOpen, sshCaId }: Props
                             >
                               Edit Template
                             </DropdownMenuItem>
-                          </OrgPermissionCan>
-                          <OrgPermissionCan
-                            I={OrgPermissionActions.Delete}
-                            a={OrgPermissionSubjects.SshCertificateTemplates}
+                          </ProjectPermissionCan>
+                          <ProjectPermissionCan
+                            I={ProjectPermissionActions.Delete}
+                            a={ProjectPermissionSub.SshCertificateTemplates}
                           >
                             {(isAllowed) => (
                               <DropdownMenuItem
@@ -173,7 +173,7 @@ export const SshCertificateTemplatesTable = ({ handlePopUpOpen, sshCaId }: Props
                                 Delete Template
                               </DropdownMenuItem>
                             )}
-                          </OrgPermissionCan>
+                          </ProjectPermissionCan>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </Td>

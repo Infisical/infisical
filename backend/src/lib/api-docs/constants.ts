@@ -384,17 +384,6 @@ export const ORGANIZATIONS = {
   },
   LIST_GROUPS: {
     organizationId: "The ID of the organization to list groups for."
-  },
-  LIST_SSH_CAS: {
-    organizationId: "The ID of the organization to list SSH CAs for."
-  },
-  LIST_SSH_CERTIFICATES: {
-    organizationId: "The ID of the organization to list SSH certificates for.",
-    offset: "The offset to start from. If you enter 10, it will start from the 10th SSH certificate.",
-    limit: "The number of SSH certificates to return."
-  },
-  LIST_SSH_CERTIFICATE_TEMPLATES: {
-    organizationId: "The ID of the organization to list SSH certificate templates for."
   }
 } as const;
 
@@ -455,7 +444,15 @@ export const PROJECTS = {
     workspaceId: "The ID of the project to list integration auths for."
   },
   LIST_SSH_CAS: {
-    slug: "The slug of the project to list SSH CAs for."
+    projectId: "The ID of the project to list SSH CAs for."
+  },
+  LIST_SSH_CERTIFICATES: {
+    projectId: "The ID of the project to list SSH certificates for.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th SSH certificate.",
+    limit: "The number of SSH certificates to return."
+  },
+  LIST_SSH_CERTIFICATE_TEMPLATES: {
+    projectId: "The ID of the project to list SSH certificate templates for."
   },
   LIST_CAS: {
     slug: "The slug of the project to list CAs for.",
@@ -1148,6 +1145,7 @@ export const AUDIT_LOG_STREAMS = {
 
 export const SSH_CERTIFICATE_AUTHORITIES = {
   CREATE: {
+    projectId: "The ID of the project to create the SSH CA in.",
     friendlyName: "A friendly name for the SSH CA.",
     keyAlgorithm: "The type of public key algorithm and size, in bits, of the key pair for the SSH CA."
   },
@@ -1169,6 +1167,7 @@ export const SSH_CERTIFICATE_AUTHORITIES = {
     sshCaId: "The ID of the SSH CA to get the certificate templates for."
   },
   SIGN_SSH_KEY: {
+    projectId: "The ID of the project to sign the SSH public key for.",
     templateName: "The name of the SSH certificate template to sign the SSH public key with.",
     publicKey: "The SSH public key to sign.",
     certType: "The type of certificate to issue. This can be one of user or host.",
@@ -1179,6 +1178,7 @@ export const SSH_CERTIFICATE_AUTHORITIES = {
     signedKey: "The SSH certificate or signed SSH public key."
   },
   ISSUE_SSH_CREDENTIALS: {
+    projectId: "The ID of the project to issue the SSH credentials for.",
     templateName: "The name of the SSH certificate template to issue the SSH credentials with.",
     keyAlgorithm: "The type of public key algorithm and size, in bits, of the key pair for the SSH CA.",
     certType: "The type of certificate to issue. This can be one of user or host.",

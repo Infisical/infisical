@@ -8,8 +8,8 @@ export async function up(knex: Knex): Promise<void> {
     await knex.schema.createTable(TableName.SshCertificateAuthority, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);
-      t.uuid("orgId").notNullable();
-      t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
+      t.string("projectId").notNullable();
+      t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
       t.string("status").notNullable(); // active / disabled
       t.string("friendlyName").notNullable();
       t.string("keyAlgorithm").notNullable();
@@ -60,7 +60,6 @@ export async function up(knex: Knex): Promise<void> {
         .onDelete("SET NULL");
       t.string("serialNumber").notNullable().unique();
       t.string("certType").notNullable(); // user or host
-      t.text("publicKey").notNullable(); // public key in OpenSSH format
       t.specificType("principals", "text[]").notNullable();
       t.string("keyId").notNullable();
       t.datetime("notBefore").notNullable();
@@ -68,9 +67,24 @@ export async function up(knex: Knex): Promise<void> {
     });
     await createOnUpdateTrigger(knex, TableName.SshCertificate);
   }
+
+  if (!(await knex.schema.hasTable(TableName.SshCertificateBody))) {
+    await knex.schema.createTable(TableName.SshCertificateBody, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.timestamps(true, true, true);
+      t.uuid("sshCertId").notNullable().unique();
+      t.foreign("sshCertId").references("id").inTable(TableName.SshCertificate).onDelete("CASCADE");
+      t.binary("encryptedCertificate").notNullable();
+    });
+
+    await createOnUpdateTrigger(knex, TableName.SshCertificateBody);
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {
+  await knex.schema.dropTableIfExists(TableName.SshCertificateBody);
+  await dropOnUpdateTrigger(knex, TableName.SshCertificateBody);
+
   await knex.schema.dropTableIfExists(TableName.SshCertificate);
   await dropOnUpdateTrigger(knex, TableName.SshCertificate);
 

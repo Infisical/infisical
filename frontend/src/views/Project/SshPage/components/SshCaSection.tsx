@@ -2,9 +2,9 @@ import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
-import { OrgPermissionCan } from "@app/components/permissions";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { SshCaStatus, useDeleteSshCa, useUpdateSshCa } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -64,9 +64,9 @@ export const SshCaSection = () => {
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex justify-between">
         <p className="text-xl font-semibold text-mineshaft-100">Certificate Authorities</p>
-        <OrgPermissionCan
-          I={OrgPermissionActions.Create}
-          a={OrgPermissionSubjects.SshCertificateAuthorities}
+        <ProjectPermissionCan
+          I={ProjectPermissionActions.Create}
+          a={ProjectPermissionSub.SshCertificateAuthorities}
         >
           {(isAllowed) => (
             <Button
@@ -79,7 +79,7 @@ export const SshCaSection = () => {
               Create SSH CA
             </Button>
           )}
-        </OrgPermissionCan>
+        </ProjectPermissionCan>
       </div>
       <SshCaTable handlePopUpOpen={handlePopUpOpen} />
       <SshCaModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />

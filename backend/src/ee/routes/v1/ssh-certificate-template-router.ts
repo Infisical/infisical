@@ -41,7 +41,7 @@ export const registerSshCertificateTemplateRouter = async (server: FastifyZodPro
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: certificateTemplate.orgId,
+        projectId: certificateTemplate.projectId,
         event: {
           type: EventType.GET_SSH_CERTIFICATE_TEMPLATE,
           metadata: {
@@ -107,7 +107,7 @@ export const registerSshCertificateTemplateRouter = async (server: FastifyZodPro
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: ca.orgId,
+        projectId: ca.projectId,
         event: {
           type: EventType.CREATE_SSH_CERTIFICATE_TEMPLATE,
           metadata: {
@@ -178,7 +178,7 @@ export const registerSshCertificateTemplateRouter = async (server: FastifyZodPro
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { certificateTemplate, orgId } = await server.services.sshCertificateTemplate.updateSshCertTemplate({
+      const { certificateTemplate, projectId } = await server.services.sshCertificateTemplate.updateSshCertTemplate({
         ...req.body,
         id: req.params.certificateTemplateId,
         actor: req.permission.type,
@@ -189,7 +189,7 @@ export const registerSshCertificateTemplateRouter = async (server: FastifyZodPro
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId,
+        projectId,
         event: {
           type: EventType.UPDATE_SSH_CERTIFICATE_TEMPLATE,
           metadata: {
@@ -238,7 +238,7 @@ export const registerSshCertificateTemplateRouter = async (server: FastifyZodPro
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: certificateTemplate.orgId,
+        projectId: certificateTemplate.projectId,
         event: {
           type: EventType.DELETE_SSH_CERTIFICATE_TEMPLATE,
           metadata: {

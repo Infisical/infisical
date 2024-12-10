@@ -107,6 +107,7 @@ export * from "./service-tokens";
 export * from "./slack-integrations";
 export * from "./ssh-certificate-authorities";
 export * from "./ssh-certificate-authority-secrets";
+export * from "./ssh-certificate-bodies";
 export * from "./ssh-certificate-templates";
 export * from "./ssh-certificates";
 export * from "./super-admin";

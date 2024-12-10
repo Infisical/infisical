@@ -1,8 +1,8 @@
 import { ForbiddenError } from "@casl/ability";
 import ms from "ms";
 
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TSshCertificateAuthorityDALFactory } from "../ssh/ssh-certificate-authority-dal";
@@ -21,7 +21,7 @@ type TSshCertificateTemplateServiceFactoryDep = {
     "transaction" | "getByName" | "create" | "updateById" | "deleteById" | "getById"
   >;
   sshCertificateAuthorityDAL: Pick<TSshCertificateAuthorityDALFactory, "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
 export type TSshCertificateTemplateServiceFactory = ReturnType<typeof sshCertificateTemplateServiceFactory>;
@@ -53,17 +53,17 @@ export const sshCertificateTemplateServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
-      ca.orgId,
+      ca.projectId,
       actorAuthMethod,
       actorOrgId
     );
 
     ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Create,
-      OrgPermissionSubjects.SshCertificateTemplates
+      ProjectPermissionActions.Create,
+      ProjectPermissionSub.SshCertificateTemplates
     );
 
     if (ms(ttl) > ms(maxTTL)) {
@@ -73,7 +73,7 @@ export const sshCertificateTemplateServiceFactory = ({
     }
 
     const newCertificateTemplate = await sshCertificateTemplateDAL.transaction(async (tx) => {
-      const existingTemplate = await sshCertificateTemplateDAL.getByName(name, ca.orgId, tx);
+      const existingTemplate = await sshCertificateTemplateDAL.getByName(name, ca.projectId, tx);
       if (existingTemplate) {
         throw new BadRequestError({
           message: `SSH certificate template with name ${name} already exists`
@@ -125,22 +125,22 @@ export const sshCertificateTemplateServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
-      certTemplate.orgId,
+      certTemplate.projectId,
       actorAuthMethod,
       actorOrgId
     );
 
     ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Edit,
-      OrgPermissionSubjects.SshCertificateTemplates
+      ProjectPermissionActions.Edit,
+      ProjectPermissionSub.SshCertificateTemplates
     );
 
     const updatedCertificateTemplate = await sshCertificateTemplateDAL.transaction(async (tx) => {
       if (name) {
-        const existingTemplate = await sshCertificateTemplateDAL.getByName(name, actorOrgId, tx);
+        const existingTemplate = await sshCertificateTemplateDAL.getByName(name, certTemplate.projectId, tx);
         if (existingTemplate && existingTemplate.id !== id) {
           throw new BadRequestError({
             message: `SSH certificate template with name ${name} already exists`
@@ -175,7 +175,7 @@ export const sshCertificateTemplateServiceFactory = ({
 
     return {
       certificateTemplate: updatedCertificateTemplate,
-      orgId: certTemplate.orgId
+      projectId: certTemplate.projectId
     };
   };
 
@@ -193,17 +193,17 @@ export const sshCertificateTemplateServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
-      certificateTemplate.orgId,
+      certificateTemplate.projectId,
       actorAuthMethod,
       actorOrgId
     );
 
     ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Delete,
-      OrgPermissionSubjects.SshCertificateTemplates
+      ProjectPermissionActions.Delete,
+      ProjectPermissionSub.SshCertificateTemplates
     );
 
     await sshCertificateTemplateDAL.deleteById(certificateTemplate.id);
@@ -219,17 +219,17 @@ export const sshCertificateTemplateServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
-      certTemplate.orgId,
+      certTemplate.projectId,
       actorAuthMethod,
       actorOrgId
     );
 
     ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Read,
-      OrgPermissionSubjects.SshCertificateTemplates
+      ProjectPermissionActions.Read,
+      ProjectPermissionSub.SshCertificateTemplates
     );
 
     return certTemplate;

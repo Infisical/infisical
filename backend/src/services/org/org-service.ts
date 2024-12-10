@@ -24,9 +24,6 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
-import { TSshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-dal";
-import { TSshCertificateDALFactory } from "@app/ee/services/ssh-certificate/ssh-certificate-dal";
-import { TSshCertificateTemplateDALFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-dal";
 import { getConfig } from "@app/lib/config/env";
 import { generateAsymmetricKeyPair } from "@app/lib/crypto";
 import { generateSymmetricKey, infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
@@ -65,9 +62,6 @@ import {
   TGetOrgGroupsDTO,
   TGetOrgMembershipDTO,
   TInviteUserToOrgDTO,
-  TListOrgSshCasDTO,
-  TListOrgSshCertificatesDTO,
-  TListOrgSshCertificateTemplatesDTO,
   TListProjectMembershipsByOrgMembershipIdDTO,
   TUpdateOrgDTO,
   TUpdateOrgMembershipDTO,
@@ -104,9 +98,6 @@ type TOrgServiceFactoryDep = {
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne" | "updateById">;
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "insertMany" | "create">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
-  sshCertificateAuthorityDAL: Pick<TSshCertificateAuthorityDALFactory, "find">;
-  sshCertificateDAL: Pick<TSshCertificateDALFactory, "find" | "countSshCertificatesInOrg">;
-  sshCertificateTemplateDAL: Pick<TSshCertificateTemplateDALFactory, "find">;
 };
 
 export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
@@ -134,9 +125,6 @@ export const orgServiceFactory = ({
   projectBotDAL,
   projectUserMembershipRoleDAL,
   identityMetadataDAL,
-  sshCertificateAuthorityDAL,
-  sshCertificateDAL,
-  sshCertificateTemplateDAL,
   projectBotService
 }: TOrgServiceFactoryDep) => {
   /*
@@ -1139,91 +1127,6 @@ export const orgServiceFactory = ({
     return incidentContact;
   };
 
-  /**
-   * Return list of SSH CAs for organization
-   */
-  const listOrgSshCas = async ({ actorId, actorOrgId, actorAuthMethod, actor, orgId }: TListOrgSshCasDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Read,
-      OrgPermissionSubjects.SshCertificateAuthorities
-    );
-
-    const cas = await sshCertificateAuthorityDAL.find(
-      {
-        orgId
-      },
-      { sort: [["updatedAt", "desc"]] }
-    );
-
-    return cas;
-  };
-
-  /**
-   * Return list of SSH certificates for organization
-   */
-  const listOrgSshCertificates = async ({
-    limit = 25,
-    offset = 0,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    actor,
-    orgId
-  }: TListOrgSshCertificatesDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
-
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.SshCertificates);
-
-    const cas = await sshCertificateAuthorityDAL.find({
-      orgId
-    });
-
-    const certificates = await sshCertificateDAL.find(
-      {
-        $in: {
-          sshCaId: cas.map((ca) => ca.id)
-        }
-      },
-      { offset, limit, sort: [["updatedAt", "desc"]] }
-    );
-
-    const count = await sshCertificateDAL.countSshCertificatesInOrg(orgId);
-
-    return { certificates, totalCount: count };
-  };
-
-  /**
-   * Return list of SSH certificate templates for organization
-   */
-  const listOrgSshCertificateTemplates = async ({
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    actor,
-    orgId
-  }: TListOrgSshCertificateTemplatesDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Read,
-      OrgPermissionSubjects.SshCertificateTemplates
-    );
-
-    const cas = await sshCertificateAuthorityDAL.find({
-      orgId
-    });
-
-    const certificateTemplates = await sshCertificateTemplateDAL.find({
-      $in: {
-        sshCaId: cas.map((ca) => ca.id)
-      }
-    });
-
-    return { certificateTemplates };
-  };
-
   return {
     findOrganizationById,
     findAllOrgMembers,
@@ -1245,9 +1148,6 @@ export const orgServiceFactory = ({
     deleteIncidentContact,
     getOrgGroups,
     listProjectMembershipsByOrgMembershipId,
-    findOrgBySlug,
-    listOrgSshCas,
-    listOrgSshCertificates,
-    listOrgSshCertificateTemplates
+    findOrgBySlug
   };
 };

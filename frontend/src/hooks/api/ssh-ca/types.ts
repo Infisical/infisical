@@ -7,7 +7,6 @@ export type TSshCertificate = {
   sshCertificateTemplateId: string;
   serialNumber: string;
   certType: SshCertType;
-  publicKey: string;
   principals: string[];
   keyId: string;
   notBefore: string;
@@ -16,7 +15,7 @@ export type TSshCertificate = {
 
 export type TSshCertificateAuthority = {
   id: string;
-  orgId: string;
+  projectId: string;
   status: SshCaStatus;
   friendlyName: string;
   keyAlgorithm: CertKeyAlgorithm;
@@ -26,6 +25,7 @@ export type TSshCertificateAuthority = {
 };
 
 export type TCreateSshCaDTO = {
+  projectId: string;
   friendlyName?: string;
   keyAlgorithm: CertKeyAlgorithm;
 };
@@ -41,6 +41,7 @@ export type TDeleteSshCaDTO = {
 };
 
 export type TSignSshKeyDTO = {
+  projectId: string;
   templateName: string;
   publicKey?: string;
   certType: SshCertType;
@@ -55,6 +56,7 @@ export type TSignSshKeyResponse = {
 };
 
 export type TIssueSshCredsDTO = {
+  projectId: string;
   templateName: string;
   keyAlgorithm: CertKeyAlgorithm;
   certType: SshCertType;

@@ -1,9 +1,9 @@
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { OrgPermissionCan } from "@app/components/permissions";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { SshCertificateModal } from "../../SshCaPage/components/SshCertificateModal";
@@ -15,7 +15,10 @@ export const SshCertificatesSection = () => {
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex justify-between">
         <p className="text-xl font-semibold text-mineshaft-100">Certificates</p>
-        <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.SshCertificates}>
+        <ProjectPermissionCan
+          I={ProjectPermissionActions.Create}
+          a={ProjectPermissionSub.SshCertificates}
+        >
           {(isAllowed) => (
             <Button
               colorSchema="primary"
@@ -27,7 +30,7 @@ export const SshCertificatesSection = () => {
               Request
             </Button>
           )}
-        </OrgPermissionCan>
+        </ProjectPermissionCan>
       </div>
       <SshCertificatesTable />
       <SshCertificateModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />

@@ -1,10 +1,10 @@
-import { faCheck, faCopy, faDownload,faPencil } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faCopy, faDownload, faPencil } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import FileSaver from "file-saver";
 
-import { OrgPermissionCan } from "@app/components/permissions";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import { IconButton, Tooltip } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useTimedReset } from "@app/hooks";
 import { useGetSshCaById } from "@app/hooks/api";
 import { caStatusToNameMap } from "@app/hooks/api/ca/constants";
@@ -35,9 +35,9 @@ export const SshCaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
         <h3 className="text-lg font-semibold text-mineshaft-100">SSH CA Details</h3>
-        <OrgPermissionCan
-          I={OrgPermissionActions.Edit}
-          a={OrgPermissionSubjects.SshCertificateAuthorities}
+        <ProjectPermissionCan
+          I={ProjectPermissionActions.Edit}
+          a={ProjectPermissionSub.SshCertificateAuthorities}
         >
           {(isAllowed) => {
             return (
@@ -59,7 +59,7 @@ export const SshCaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
               </Tooltip>
             );
           }}
-        </OrgPermissionCan>
+        </ProjectPermissionCan>
       </div>
       <div className="pt-4">
         <div className="mb-4">

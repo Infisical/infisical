@@ -2,14 +2,15 @@ import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
-import { OrgPermissionCan } from "@app/components/permissions";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, IconButton } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
   SshCertTemplateStatus,
   useDeleteSshCertTemplate,
-  useUpdateSshCertTemplate} from "@app/hooks/api";
+  useUpdateSshCertTemplate
+} from "@app/hooks/api";
 
 import { SshCertificateModal } from "./SshCertificateModal";
 import { SshCertificateTemplateModal } from "./SshCertificateTemplateModal";
@@ -85,9 +86,9 @@ export const SshCertificateTemplatesSection = ({ caId }: Props) => {
     <div className="h-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
         <h3 className="text-lg font-semibold text-mineshaft-100">Certificate Templates</h3>
-        <OrgPermissionCan
-          I={OrgPermissionActions.Create}
-          a={OrgPermissionSubjects.SshCertificateTemplates}
+        <ProjectPermissionCan
+          I={ProjectPermissionActions.Create}
+          a={ProjectPermissionSub.SshCertificateTemplates}
         >
           {(isAllowed) => (
             <IconButton
@@ -100,7 +101,7 @@ export const SshCertificateTemplatesSection = ({ caId }: Props) => {
               <FontAwesomeIcon icon={faPlus} />
             </IconButton>
           )}
-        </OrgPermissionCan>
+        </ProjectPermissionCan>
       </div>
       <div className="py-4">
         <SshCertificateTemplatesTable handlePopUpOpen={handlePopUpOpen} sshCaId={caId} />

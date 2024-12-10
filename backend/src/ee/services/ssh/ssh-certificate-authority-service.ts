@@ -1,13 +1,15 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-dal";
 import { TSshCertificateAuthoritySecretDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-secret-dal";
+import { TSshCertificateBodyDALFactory } from "@app/ee/services/ssh-certificate/ssh-certificate-body-dal";
 import { TSshCertificateDALFactory } from "@app/ee/services/ssh-certificate/ssh-certificate-dal";
 import { TSshCertificateTemplateDALFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-dal";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { SshCertTemplateStatus } from "../ssh-certificate-template/ssh-certificate-template-types";
 import {
@@ -37,18 +39,25 @@ type TSshCertificateAuthorityServiceFactoryDep = {
   >;
   sshCertificateAuthoritySecretDAL: Pick<TSshCertificateAuthoritySecretDALFactory, "create" | "findOne">;
   sshCertificateTemplateDAL: Pick<TSshCertificateTemplateDALFactory, "find" | "getByName">;
-  sshCertificateDAL: Pick<TSshCertificateDALFactory, "create">;
-  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey" | "getOrgKmsKeyId">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  sshCertificateDAL: Pick<TSshCertificateDALFactory, "create" | "transaction">;
+  sshCertificateBodyDAL: Pick<TSshCertificateBodyDALFactory, "create">;
+  kmsService: Pick<
+    TKmsServiceFactory,
+    "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey" | "getOrgKmsKeyId" | "createCipherPairWithDataKey"
+  >;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
 export type TSshCertificateAuthorityServiceFactory = ReturnType<typeof sshCertificateAuthorityServiceFactory>;
+
+// TODO: secretManagerEncryptor -> sshEncryptor (cc akhil)
 
 export const sshCertificateAuthorityServiceFactory = ({
   sshCertificateAuthorityDAL,
   sshCertificateAuthoritySecretDAL,
   sshCertificateTemplateDAL,
   sshCertificateDAL,
+  sshCertificateBodyDAL,
   kmsService,
   permissionService
 }: TSshCertificateAuthorityServiceFactoryDep) => {
@@ -56,6 +65,7 @@ export const sshCertificateAuthorityServiceFactory = ({
    * Generates a new SSH CA
    */
   const createSshCa = async ({
+    projectId,
     friendlyName,
     keyAlgorithm,
     actorId,
@@ -63,23 +73,23 @@ export const sshCertificateAuthorityServiceFactory = ({
     actor,
     actorOrgId
   }: TCreateSshCaDTO) => {
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
-      actorOrgId,
+      projectId,
       actorAuthMethod,
       actorOrgId
     );
 
     ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Create,
-      OrgPermissionSubjects.SshCertificateAuthorities
+      ProjectPermissionActions.Create,
+      ProjectPermissionSub.SshCertificateAuthorities
     );
 
     const newCa = await sshCertificateAuthorityDAL.transaction(async (tx) => {
       const ca = await sshCertificateAuthorityDAL.create(
         {
-          orgId: actorOrgId,
+          projectId,
           friendlyName,
           status: SshCaStatus.ACTIVE,
           keyAlgorithm
@@ -89,19 +99,16 @@ export const sshCertificateAuthorityServiceFactory = ({
 
       const { publicKey, privateKey } = createSshKeyPair(keyAlgorithm, ca.friendlyName);
 
-      const orgKmsKeyId = await kmsService.getOrgKmsKeyId(actorOrgId);
-      const kmsEncryptor = await kmsService.encryptWithKmsKey({
-        kmsId: orgKmsKeyId
-      });
-
-      const { cipherTextBlob: encryptedPrivateKey } = await kmsEncryptor({
-        plainText: Buffer.from(privateKey, "utf8")
+      // TODO: update to sshEncryptor
+      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
       });
 
       await sshCertificateAuthoritySecretDAL.create(
         {
           sshCaId: ca.id,
-          encryptedPrivateKey
+          encryptedPrivateKey: secretManagerEncryptor({ plainText: Buffer.from(privateKey, "utf8") }).cipherTextBlob
         },
         tx
       );
@@ -119,28 +126,28 @@ export const sshCertificateAuthorityServiceFactory = ({
     const ca = await sshCertificateAuthorityDAL.findById(caId);
     if (!ca) throw new NotFoundError({ message: `SSH CA with ID '${caId}' not found` });
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
-      ca.orgId,
+      ca.projectId,
       actorAuthMethod,
       actorOrgId
     );
 
     ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Read,
-      OrgPermissionSubjects.SshCertificateAuthorities
+      ProjectPermissionActions.Read,
+      ProjectPermissionSub.SshCertificateAuthorities
     );
 
     const sshCaSecret = await sshCertificateAuthoritySecretDAL.findOne({ sshCaId: ca.id });
 
-    // decrypt secret
-    const orgKmsKeyId = await kmsService.getOrgKmsKeyId(actorOrgId);
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
-      kmsId: orgKmsKeyId
+    // TODO: update to sshDecryptor
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: ca.projectId
     });
 
-    const decryptedCaPrivateKey = await kmsDecryptor({
+    const decryptedCaPrivateKey = secretManagerDecryptor({
       cipherTextBlob: sshCaSecret.encryptedPrivateKey
     });
 
@@ -158,13 +165,13 @@ export const sshCertificateAuthorityServiceFactory = ({
 
     const sshCaSecret = await sshCertificateAuthoritySecretDAL.findOne({ sshCaId: ca.id });
 
-    // decrypt secret
-    const orgKmsKeyId = await kmsService.getOrgKmsKeyId(ca.orgId);
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
-      kmsId: orgKmsKeyId
+    // TODO: update to sshDecryptor
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: ca.projectId
     });
 
-    const decryptedCaPrivateKey = await kmsDecryptor({
+    const decryptedCaPrivateKey = secretManagerDecryptor({
       cipherTextBlob: sshCaSecret.encryptedPrivateKey
     });
 
@@ -189,30 +196,30 @@ export const sshCertificateAuthorityServiceFactory = ({
     const ca = await sshCertificateAuthorityDAL.findById(caId);
     if (!ca) throw new NotFoundError({ message: `SSH CA with ID '${caId}' not found` });
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
-      ca.orgId,
+      ca.projectId,
       actorAuthMethod,
       actorOrgId
     );
 
     ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Edit,
-      OrgPermissionSubjects.SshCertificateAuthorities
+      ProjectPermissionActions.Edit,
+      ProjectPermissionSub.SshCertificateAuthorities
     );
 
     const updatedCa = await sshCertificateAuthorityDAL.updateById(caId, { friendlyName, status });
 
     const sshCaSecret = await sshCertificateAuthoritySecretDAL.findOne({ sshCaId: ca.id });
 
-    // decrypt secret
-    const orgKmsKeyId = await kmsService.getOrgKmsKeyId(actorOrgId);
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
-      kmsId: orgKmsKeyId
+    // TODO: update to sshDecryptor
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: ca.projectId
     });
 
-    const decryptedCaPrivateKey = await kmsDecryptor({
+    const decryptedCaPrivateKey = secretManagerDecryptor({
       cipherTextBlob: sshCaSecret.encryptedPrivateKey
     });
 
@@ -228,17 +235,17 @@ export const sshCertificateAuthorityServiceFactory = ({
     const ca = await sshCertificateAuthorityDAL.findById(caId);
     if (!ca) throw new NotFoundError({ message: `SSH CA with ID '${caId}' not found` });
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
-      ca.orgId,
+      ca.projectId,
       actorAuthMethod,
       actorOrgId
     );
 
     ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Delete,
-      OrgPermissionSubjects.SshCertificateAuthorities
+      ProjectPermissionActions.Delete,
+      ProjectPermissionSub.SshCertificateAuthorities
     );
 
     const deletedCa = await sshCertificateAuthorityDAL.deleteById(caId);
@@ -251,6 +258,7 @@ export const sshCertificateAuthorityServiceFactory = ({
    * SSH public key is signed using CA behind SSH certificate with name [templateName].
    */
   const issueSshCreds = async ({
+    projectId,
     templateName,
     keyAlgorithm,
     certType,
@@ -262,22 +270,25 @@ export const sshCertificateAuthorityServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TIssueSshCredsDTO) => {
-    const sshCertificateTemplate = await sshCertificateTemplateDAL.getByName(templateName, actorOrgId);
+    const sshCertificateTemplate = await sshCertificateTemplateDAL.getByName(templateName, projectId);
     if (!sshCertificateTemplate) {
       throw new NotFoundError({
         message: "No SSH certificate template found with specified name"
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
-      actorOrgId,
+      sshCertificateTemplate.projectId,
       actorAuthMethod,
       actorOrgId
     );
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.SshCertificates);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Create,
+      ProjectPermissionSub.SshCertificates
+    );
 
     if (sshCertificateTemplate.caStatus === SshCaStatus.DISABLED) {
       throw new BadRequestError({
@@ -307,13 +318,13 @@ export const sshCertificateAuthorityServiceFactory = ({
 
     const sshCaSecret = await sshCertificateAuthoritySecretDAL.findOne({ sshCaId: sshCertificateTemplate.sshCaId });
 
-    // decrypt secret
-    const orgKmsKeyId = await kmsService.getOrgKmsKeyId(actorOrgId);
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
-      kmsId: orgKmsKeyId
+    // TODO: update to sshDecryptor
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
     });
 
-    const decryptedCaPrivateKey = await kmsDecryptor({
+    const decryptedCaPrivateKey = secretManagerDecryptor({
       cipherTextBlob: sshCaSecret.encryptedPrivateKey
     });
 
@@ -329,16 +340,38 @@ export const sshCertificateAuthorityServiceFactory = ({
       certType
     });
 
-    await sshCertificateDAL.create({
-      sshCaId: sshCertificateTemplate.sshCaId,
-      sshCertificateTemplateId: sshCertificateTemplate.id,
-      serialNumber,
-      certType,
-      publicKey,
-      principals,
-      keyId,
-      notBefore: new Date(),
-      notAfter: new Date(Date.now() + ttl * 1000)
+    // TODO: update to sshEncryptor
+    const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: sshCertificateTemplate.projectId
+    });
+
+    const encryptedCertificate = secretManagerEncryptor({
+      plainText: Buffer.from(signedPublicKey, "utf8")
+    }).cipherTextBlob;
+
+    await sshCertificateDAL.transaction(async (tx) => {
+      const cert = await sshCertificateDAL.create(
+        {
+          sshCaId: sshCertificateTemplate.sshCaId,
+          sshCertificateTemplateId: sshCertificateTemplate.id,
+          serialNumber,
+          certType,
+          principals,
+          keyId,
+          notBefore: new Date(),
+          notAfter: new Date(Date.now() + ttl * 1000)
+        },
+        tx
+      );
+
+      await sshCertificateBodyDAL.create(
+        {
+          sshCertId: cert.id,
+          encryptedCertificate
+        },
+        tx
+      );
     });
 
     return {
@@ -357,6 +390,7 @@ export const sshCertificateAuthorityServiceFactory = ({
    * using CA behind SSH certificate template with name [templateName]
    */
   const signSshKey = async ({
+    projectId,
     templateName,
     publicKey,
     certType,
@@ -368,22 +402,25 @@ export const sshCertificateAuthorityServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TSignSshKeyDTO) => {
-    const sshCertificateTemplate = await sshCertificateTemplateDAL.getByName(templateName, actorOrgId);
+    const sshCertificateTemplate = await sshCertificateTemplateDAL.getByName(templateName, projectId);
     if (!sshCertificateTemplate) {
       throw new NotFoundError({
         message: "No SSH certificate template found with specified name"
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
-      actorOrgId,
+      sshCertificateTemplate.projectId,
       actorAuthMethod,
       actorOrgId
     );
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.SshCertificates);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Create,
+      ProjectPermissionSub.SshCertificates
+    );
 
     if (sshCertificateTemplate.caStatus === SshCaStatus.DISABLED) {
       throw new BadRequestError({
@@ -413,13 +450,13 @@ export const sshCertificateAuthorityServiceFactory = ({
 
     const sshCaSecret = await sshCertificateAuthoritySecretDAL.findOne({ sshCaId: sshCertificateTemplate.sshCaId });
 
-    // decrypt secret
-    const orgKmsKeyId = await kmsService.getOrgKmsKeyId(actorOrgId);
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
-      kmsId: orgKmsKeyId
+    // TODO: update to sshDecryptor
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
     });
 
-    const decryptedCaPrivateKey = await kmsDecryptor({
+    const decryptedCaPrivateKey = secretManagerDecryptor({
       cipherTextBlob: sshCaSecret.encryptedPrivateKey
     });
 
@@ -432,16 +469,38 @@ export const sshCertificateAuthorityServiceFactory = ({
       certType
     });
 
-    await sshCertificateDAL.create({
-      sshCaId: sshCertificateTemplate.sshCaId,
-      sshCertificateTemplateId: sshCertificateTemplate.id,
-      serialNumber,
-      certType,
-      publicKey,
-      principals,
-      keyId,
-      notBefore: new Date(),
-      notAfter: new Date(Date.now() + ttl * 1000)
+    // TODO: update to sshEncryptor
+    const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: sshCertificateTemplate.projectId
+    });
+
+    const encryptedCertificate = secretManagerEncryptor({
+      plainText: Buffer.from(signedPublicKey, "utf8")
+    }).cipherTextBlob;
+
+    await sshCertificateDAL.transaction(async (tx) => {
+      const cert = await sshCertificateDAL.create(
+        {
+          sshCaId: sshCertificateTemplate.sshCaId,
+          sshCertificateTemplateId: sshCertificateTemplate.id,
+          serialNumber,
+          certType,
+          principals,
+          keyId,
+          notBefore: new Date(),
+          notAfter: new Date(Date.now() + ttl * 1000)
+        },
+        tx
+      );
+
+      await sshCertificateBodyDAL.create(
+        {
+          sshCertId: cert.id,
+          encryptedCertificate
+        },
+        tx
+      );
     });
 
     return { serialNumber, signedPublicKey, certificateTemplate: sshCertificateTemplate, ttl, keyId };
@@ -457,17 +516,17 @@ export const sshCertificateAuthorityServiceFactory = ({
     const ca = await sshCertificateAuthorityDAL.findById(caId);
     if (!ca) throw new NotFoundError({ message: `SSH CA with ID '${caId}' not found` });
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
-      actorOrgId,
+      ca.projectId,
       actorAuthMethod,
       actorOrgId
     );
 
     ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Read,
-      OrgPermissionSubjects.SshCertificateTemplates
+      ProjectPermissionActions.Read,
+      ProjectPermissionSub.SshCertificateTemplates
     );
 
     const certificateTemplates = await sshCertificateTemplateDAL.find({ sshCaId: caId });

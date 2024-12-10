@@ -78,6 +78,7 @@ import { snapshotSecretV2DALFactory } from "@app/ee/services/secret-snapshot/sna
 import { sshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-dal";
 import { sshCertificateAuthoritySecretDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-secret-dal";
 import { sshCertificateAuthorityServiceFactory } from "@app/ee/services/ssh/ssh-certificate-authority-service";
+import { sshCertificateBodyDALFactory } from "@app/ee/services/ssh-certificate/ssh-certificate-body-dal";
 import { sshCertificateDALFactory } from "@app/ee/services/ssh-certificate/ssh-certificate-dal";
 import { sshCertificateTemplateDALFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-dal";
 import { sshCertificateTemplateServiceFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-service";
@@ -349,6 +350,7 @@ export const registerRoutes = async (
   const dynamicSecretLeaseDAL = dynamicSecretLeaseDALFactory(db);
 
   const sshCertificateDAL = sshCertificateDALFactory(db);
+  const sshCertificateBodyDAL = sshCertificateBodyDALFactory(db);
   const sshCertificateAuthorityDAL = sshCertificateAuthorityDALFactory(db);
   const sshCertificateAuthoritySecretDAL = sshCertificateAuthoritySecretDALFactory(db);
   const sshCertificateTemplateDAL = sshCertificateTemplateDALFactory(db);
@@ -565,10 +567,7 @@ export const registerRoutes = async (
     groupDAL,
     orgBotDAL,
     oidcConfigDAL,
-    projectBotService,
-    sshCertificateAuthorityDAL,
-    sshCertificateDAL,
-    sshCertificateTemplateDAL
+    projectBotService
   });
   const signupService = authSignupServiceFactory({
     tokenService,
@@ -721,6 +720,7 @@ export const registerRoutes = async (
     sshCertificateAuthoritySecretDAL,
     sshCertificateTemplateDAL,
     sshCertificateDAL,
+    sshCertificateBodyDAL,
     kmsService,
     permissionService
   });
@@ -817,6 +817,9 @@ export const registerRoutes = async (
     certificateDAL,
     pkiAlertDAL,
     pkiCollectionDAL,
+    sshCertificateAuthorityDAL,
+    sshCertificateDAL,
+    sshCertificateTemplateDAL,
     projectUserMembershipRoleDAL,
     identityProjectMembershipRoleDAL,
     keyStore,

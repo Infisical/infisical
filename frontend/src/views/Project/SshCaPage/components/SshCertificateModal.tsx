@@ -13,13 +13,14 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
-import { useOrganization } from "@app/context";
+import { useWorkspace } from "@app/context";
 import {
   SshCertTemplateStatus,
   useGetSshCertTemplate,
   useIssueSshCreds,
-  useListOrgSshCertificateTemplates,
-  useSignSshKey} from "@app/hooks/api";
+  useListWorkspaceSshCertificateTemplates,
+  useSignSshKey
+} from "@app/hooks/api";
 import { certKeyAlgorithms } from "@app/hooks/api/certificates/constants";
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import { SshCertType } from "@app/hooks/api/ssh-ca/constants";
@@ -62,7 +63,8 @@ enum SshCertificateOperation {
 }
 
 export const SshCertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
-  const { currentOrg } = useOrganization();
+  const { currentWorkspace } = useWorkspace();
+  const projectId = currentWorkspace?.id || "";
   const [operation, setOperation] = useState<SshCertificateOperation>(
     SshCertificateOperation.SIGN_SSH_KEY
   );
@@ -77,9 +79,7 @@ export const SshCertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
     templateId: string;
   };
 
-  const { data: templatesData } = useListOrgSshCertificateTemplates({
-    orgId: currentOrg?.id || ""
-  });
+  const { data: templatesData } = useListWorkspaceSshCertificateTemplates(projectId);
 
   const {
     control,
@@ -117,10 +117,12 @@ export const SshCertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
   }: FormData) => {
     try {
       if (!templateData) return;
+      if (!projectId) return;
 
       switch (operation) {
         case SshCertificateOperation.SIGN_SSH_KEY: {
           const { serialNumber, signedKey } = await signSshKey({
+            projectId: currentWorkspace?.id || "",
             templateName: templateData.name,
             publicKey: existingPublicKey,
             certType,
@@ -137,6 +139,7 @@ export const SshCertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
         }
         case SshCertificateOperation.ISSUE_SSH_CREDS: {
           const { serialNumber, publicKey, privateKey, signedKey } = await issueSshCreds({
+            projectId,
             templateName: templateData.name,
             keyAlgorithm,
             certType,

@@ -11,7 +11,7 @@ export const SshCertificateAuthoritiesSchema = z.object({
   id: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  orgId: z.string().uuid(),
+  projectId: z.string(),
   status: z.string(),
   friendlyName: z.string(),
   keyAlgorithm: z.string()

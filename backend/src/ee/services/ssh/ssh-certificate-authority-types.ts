@@ -1,4 +1,4 @@
-import { TOrgPermission } from "@app/lib/types";
+import { TProjectPermission } from "@app/lib/types";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
 export enum SshCaStatus {
@@ -14,11 +14,11 @@ export enum SshCertType {
 export type TCreateSshCaDTO = {
   friendlyName: string;
   keyAlgorithm: CertKeyAlgorithm;
-} & Omit<TOrgPermission, "orgId">;
+} & TProjectPermission;
 
 export type TGetSshCaDTO = {
   caId: string;
-} & Omit<TOrgPermission, "orgId">;
+} & Omit<TProjectPermission, "projectId">;
 
 export type TGetSshCaPublicKeyDTO = {
   caId: string;
@@ -28,11 +28,11 @@ export type TUpdateSshCaDTO = {
   caId: string;
   friendlyName?: string;
   status?: SshCaStatus;
-} & Omit<TOrgPermission, "orgId">;
+} & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteSshCaDTO = {
   caId: string;
-} & Omit<TOrgPermission, "orgId">;
+} & Omit<TProjectPermission, "projectId">;
 
 export type TIssueSshCredsDTO = {
   templateName: string;
@@ -41,7 +41,7 @@ export type TIssueSshCredsDTO = {
   principals: string[];
   ttl?: string;
   keyId?: string;
-} & Omit<TOrgPermission, "orgId">;
+} & TProjectPermission;
 
 export type TSignSshKeyDTO = {
   templateName: string;
@@ -50,11 +50,11 @@ export type TSignSshKeyDTO = {
   principals: string[];
   ttl?: string;
   keyId?: string;
-} & Omit<TOrgPermission, "orgId">;
+} & TProjectPermission;
 
 export type TGetSshCaCertificateTemplatesDTO = {
   caId: string;
-} & Omit<TOrgPermission, "orgId">;
+} & Omit<TProjectPermission, "projectId">;
 
 export type TCreateSshCertDTO = {
   caPrivateKey: string;

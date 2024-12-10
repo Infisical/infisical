@@ -15,7 +15,6 @@ export const SshCertificatesSchema = z.object({
   sshCertificateTemplateId: z.string().uuid().nullable().optional(),
   serialNumber: z.string(),
   certType: z.string(),
-  publicKey: z.string(),
   principals: z.string().array(),
   keyId: z.string(),
   notBefore: z.date(),
