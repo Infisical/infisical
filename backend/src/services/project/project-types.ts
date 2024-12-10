@@ -130,6 +130,13 @@ export type TGetProjectKmsKey = TProjectPermission;
 
 export type TListProjectCertificateTemplatesDTO = TProjectPermission;
 
+export type TListProjectSshCasDTO = TProjectPermission;
+export type TListProjectSshCertificateTemplatesDTO = TProjectPermission;
+export type TListProjectSshCertificatesDTO = {
+  offset: number;
+  limit: number;
+} & TProjectPermission;
+
 export type TGetProjectSlackConfig = TProjectPermission;
 
 export type TUpdateProjectSlackConfig = {

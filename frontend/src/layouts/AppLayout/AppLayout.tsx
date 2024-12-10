@@ -424,6 +424,16 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           </MenuItem>
                         </a>
                       </Link>
+                      <Link href={`/project/${currentWorkspace?.id}/ssh`} passHref>
+                        <a>
+                          <MenuItem
+                            isSelected={router.asPath === `/project/${currentWorkspace?.id}/ssh`}
+                            icon="system-outline-90-lock-closed"
+                          >
+                            SSH
+                          </MenuItem>
+                        </a>
+                      </Link>
                       <Link href={`/project/${currentWorkspace?.id}/members`} passHref>
                         <a>
                           <MenuItem
