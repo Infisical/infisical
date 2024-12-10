@@ -47,9 +47,8 @@ type Props = {
       id?: string;
       name?: string;
       sshCaId?: string;
-      certTemplateId?: string;
       status?: SshCertTemplateStatus;
-      templateName?: string;
+      templateId?: string;
     }
   ) => void;
 };
@@ -101,7 +100,7 @@ export const SshCertificateTemplatesTable = ({ handlePopUpOpen, sshCaId }: Props
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handlePopUpOpen("sshCertificateTemplateStatus", {
-                                    certTemplateId: certificateTemplate.id,
+                                    templateId: certificateTemplate.id,
                                     status:
                                       certificateTemplate.status === SshCertTemplateStatus.ACTIVE
                                         ? SshCertTemplateStatus.DISABLED
@@ -127,7 +126,7 @@ export const SshCertificateTemplatesTable = ({ handlePopUpOpen, sshCaId }: Props
                               onClick={() => {
                                 handlePopUpOpen("sshCertificate", {
                                   sshCaId,
-                                  templateName: certificateTemplate.name
+                                  templateId: certificateTemplate.id
                                 });
                               }}
                               icon={

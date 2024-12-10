@@ -75,7 +75,6 @@ export const SshCertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const popUpData = popUp?.sshCertificate?.data as {
     sshCaId: string;
-    templateName: string;
     templateId: string;
   };
 

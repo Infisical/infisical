@@ -905,7 +905,7 @@ export const projectServiceFactory = ({
   };
 
   /**
-   * Return list of SSH certificates for organization
+   * Return list of SSH certificates for project
    */
   const listProjectSshCertificates = async ({
     limit = 25,
@@ -945,7 +945,7 @@ export const projectServiceFactory = ({
   };
 
   /**
-   * Return list of SSH certificate templates for organization
+   * Return list of SSH certificate templates for project
    */
   const listProjectSshCertificateTemplates = async ({
     actorId,

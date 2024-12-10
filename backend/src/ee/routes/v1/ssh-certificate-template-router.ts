@@ -61,36 +61,41 @@ export const registerSshCertificateTemplateRouter = async (server: FastifyZodPro
       rateLimit: writeLimit
     },
     schema: {
-      body: z.object({
-        sshCaId: z.string().describe(SSH_CERTIFICATE_TEMPLATES.CREATE.sshCaId),
-        name: z
-          .string()
-          .min(1)
-          .max(36)
-          .refine((v) => slugify(v) === v, {
-            message: "Name must be a valid slug"
-          })
-          .describe(SSH_CERTIFICATE_TEMPLATES.CREATE.name),
-        ttl: z
-          .string()
-          .refine((val) => ms(val) > 0, "TTL must be a positive number")
-          .default("1h")
-          .describe(SSH_CERTIFICATE_TEMPLATES.CREATE.ttl),
-        maxTTL: z
-          .string()
-          .refine((val) => ms(val) > 0, "Max TTL must be a positive number")
-          .default("30d")
-          .describe(SSH_CERTIFICATE_TEMPLATES.CREATE.maxTTL),
-        allowedUsers: z
-          .array(z.string().refine(isValidUserPattern, "Invalid user pattern"))
-          .describe(SSH_CERTIFICATE_TEMPLATES.CREATE.allowedUsers),
-        allowedHosts: z
-          .array(z.string().refine(isValidHostPattern, "Invalid host pattern"))
-          .describe(SSH_CERTIFICATE_TEMPLATES.CREATE.allowedHosts),
-        allowUserCertificates: z.boolean().describe(SSH_CERTIFICATE_TEMPLATES.CREATE.allowUserCertificates),
-        allowHostCertificates: z.boolean().describe(SSH_CERTIFICATE_TEMPLATES.CREATE.allowHostCertificates),
-        allowCustomKeyIds: z.boolean().describe(SSH_CERTIFICATE_TEMPLATES.CREATE.allowCustomKeyIds)
-      }),
+      body: z
+        .object({
+          sshCaId: z.string().describe(SSH_CERTIFICATE_TEMPLATES.CREATE.sshCaId),
+          name: z
+            .string()
+            .min(1)
+            .max(36)
+            .refine((v) => slugify(v) === v, {
+              message: "Name must be a valid slug"
+            })
+            .describe(SSH_CERTIFICATE_TEMPLATES.CREATE.name),
+          ttl: z
+            .string()
+            .refine((val) => ms(val) > 0, "TTL must be a positive number")
+            .default("1h")
+            .describe(SSH_CERTIFICATE_TEMPLATES.CREATE.ttl),
+          maxTTL: z
+            .string()
+            .refine((val) => ms(val) > 0, "Max TTL must be a positive number")
+            .default("30d")
+            .describe(SSH_CERTIFICATE_TEMPLATES.CREATE.maxTTL),
+          allowedUsers: z
+            .array(z.string().refine(isValidUserPattern, "Invalid user pattern"))
+            .describe(SSH_CERTIFICATE_TEMPLATES.CREATE.allowedUsers),
+          allowedHosts: z
+            .array(z.string().refine(isValidHostPattern, "Invalid host pattern"))
+            .describe(SSH_CERTIFICATE_TEMPLATES.CREATE.allowedHosts),
+          allowUserCertificates: z.boolean().describe(SSH_CERTIFICATE_TEMPLATES.CREATE.allowUserCertificates),
+          allowHostCertificates: z.boolean().describe(SSH_CERTIFICATE_TEMPLATES.CREATE.allowHostCertificates),
+          allowCustomKeyIds: z.boolean().describe(SSH_CERTIFICATE_TEMPLATES.CREATE.allowCustomKeyIds)
+        })
+        .refine((data) => ms(data.maxTTL) > ms(data.ttl), {
+          message: "Max TLL must be greater than TTL",
+          path: ["maxTTL"]
+        }),
       response: {
         200: sanitizedSshCertificateTemplate
       }

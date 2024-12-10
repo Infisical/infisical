@@ -54,14 +54,14 @@ export const SshCertificateTemplatesSection = ({ caId }: Props) => {
   };
 
   const onUpdateSshCaStatus = async ({
-    certTemplateId,
+    templateId,
     status
   }: {
-    certTemplateId: string;
+    templateId: string;
     status: SshCertTemplateStatus;
   }) => {
     try {
-      await updateSshCertTemplate({ id: certTemplateId, status });
+      await updateSshCertTemplate({ id: templateId, status });
 
       await createNotification({
         text: `Successfully ${
@@ -144,7 +144,7 @@ export const SshCertificateTemplatesSection = ({ caId }: Props) => {
         onDeleteApproved={() =>
           onUpdateSshCaStatus(
             popUp?.sshCertificateTemplateStatus?.data as {
-              certTemplateId: string;
+              templateId: string;
               status: SshCertTemplateStatus;
             }
           )
