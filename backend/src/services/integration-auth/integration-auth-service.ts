@@ -25,6 +25,7 @@ import {
   TBitbucketEnvironment,
   TBitbucketWorkspace,
   TChecklyGroups,
+  TCircleCIOrganization,
   TDeleteIntegrationAuthByIdDTO,
   TDeleteIntegrationAuthsDTO,
   TDuplicateGithubIntegrationAuthDTO,
@@ -36,6 +37,7 @@ import {
   TIntegrationAuthBitbucketEnvironmentsDTO,
   TIntegrationAuthBitbucketWorkspaceDTO,
   TIntegrationAuthChecklyGroupsDTO,
+  TIntegrationAuthCircleCIOrganizationDTO,
   TIntegrationAuthGithubEnvsDTO,
   TIntegrationAuthGithubOrgsDTO,
   TIntegrationAuthHerokuPipelinesDTO,
@@ -1570,6 +1572,40 @@ export const integrationAuthServiceFactory = ({
     return [];
   };
 
+  const getCircleCIOrganizations = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    id
+  }: TIntegrationAuthCircleCIOrganizationDTO) => {
+    const integrationAuth = await integrationAuthDAL.findById(id);
+    if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
+
+    const { data }: { data: TCircleCIOrganization[] } = await request.get(
+      `${IntegrationUrls.CIRCLECI_CONTEXT_API_URL}/v2/me/collaborations`,
+      {
+        headers: {
+          "Circle-Token": `${accessToken}`,
+          "Accept-Encoding": "application/json"
+        }
+      }
+    );
+
+    return data;
+  };
+
   const deleteIntegrationAuths = async ({
     projectId,
     integration,
@@ -1782,6 +1818,7 @@ export const integrationAuthServiceFactory = ({
     getTeamcityBuildConfigs,
     getBitbucketWorkspaces,
     getBitbucketEnvironments,
+    getCircleCIOrganizations,
     getIntegrationAccessToken,
     duplicateIntegrationAuth,
     getOctopusDeploySpaces,

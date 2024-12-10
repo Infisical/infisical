@@ -8,6 +8,7 @@ import {
   BitBucketEnvironment,
   BitBucketWorkspace,
   ChecklyGroup,
+  CircleCIOrganization,
   Environment,
   HerokuPipelineCoupling,
   IntegrationAuth,
@@ -128,7 +129,9 @@ const integrationAuthKeys = {
     integrationAuthId,
     ...params
   }: TGetIntegrationAuthOctopusDeployScopeValuesDTO) =>
-    [{ integrationAuthId }, "getIntegrationAuthOctopusDeployScopeValues", params] as const
+    [{ integrationAuthId }, "getIntegrationAuthOctopusDeployScopeValues", params] as const,
+  getIntegrationAuthCircleCIOrganizations: (integrationAuthId: string) =>
+    [{ integrationAuthId }, "getIntegrationAuthCircleCIOrganizations"] as const
 };
 
 const fetchIntegrationAuthById = async (integrationAuthId: string) => {
@@ -510,6 +513,15 @@ const fetchIntegrationAuthOctopusDeployScopeValues = async ({
   return data;
 };
 
+const fetchIntegrationAuthCircleCIOrganizations = async (integrationAuthId: string) => {
+  const {
+    data: { organizations }
+  } = await apiRequest.get<{
+    organizations: CircleCIOrganization[];
+  }>(`/api/v1/integration-auth/${integrationAuthId}/circleci/organizations`);
+  return organizations;
+};
+
 export const useGetIntegrationAuthById = (integrationAuthId: string) => {
   return useQuery({
     queryKey: integrationAuthKeys.getIntegrationAuthById(integrationAuthId),
@@ -881,6 +893,13 @@ export const useGetIntegrationAuthTeamCityBuildConfigs = ({
         appId
       }),
     enabled: true
+  });
+};
+
+export const useGetIntegrationAuthCircleCIOrganizations = (integrationAuthId: string) => {
+  return useQuery({
+    queryKey: integrationAuthKeys.getIntegrationAuthCircleCIOrganizations(integrationAuthId),
+    queryFn: () => fetchIntegrationAuthCircleCIOrganizations(integrationAuthId)
   });
 };
 

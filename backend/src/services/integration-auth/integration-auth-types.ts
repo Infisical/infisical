@@ -128,6 +128,10 @@ export type TGetIntegrationAuthTeamCityBuildConfigDTO = {
   appId: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TIntegrationAuthCircleCIOrganizationDTO = {
+  id: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TVercelBranches = {
   ref: string;
   lastCommit: string;
@@ -187,6 +191,14 @@ export type TTeamCityBuildConfig = {
   projectId: string;
   href: string;
   webUrl: string;
+};
+
+export type TCircleCIOrganization = {
+  id: string;
+  vcsType: string;
+  name: string;
+  avatarUrl: string;
+  slug: string;
 };
 
 export type TIntegrationsWithEnvironment = TIntegrations & {
