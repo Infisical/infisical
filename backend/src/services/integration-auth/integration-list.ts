@@ -221,18 +221,18 @@ export const getIntegrationOptions = async () => {
       docsLink: ""
     },
     {
-      name: "Circle CI",
+      name: "CircleCI",
       slug: "circleci",
-      image: "Circle CI.png",
+      image: "CircleCI.png",
       isAvailable: true,
       type: "pat",
       clientId: "",
       docsLink: ""
     },
     {
-      name: "Circle CI Contexts",
+      name: "CircleCI Contexts",
       slug: "circleci-context",
-      image: "Circle CI.png",
+      image: "CircleCI.png",
       isAvailable: true,
       type: "pat",
       clientId: "",

@@ -123,7 +123,7 @@ export default function CircleCIContextCreateIntegrationPage() {
           <div className="flex w-full flex-row items-center justify-between">
             <div className="flex flex-row items-center gap-1.5">
               <Image
-                src="/images/integrations/Circle CI.png"
+                src="/images/integrations/CircleCI.png"
                 height={30}
                 width={30}
                 alt="CircleCI logo"
@@ -138,7 +138,7 @@ export default function CircleCIContextCreateIntegrationPage() {
               rel="noopener noreferrer"
               passHref
             >
-              <div className="ml-2 mb-1 flex cursor-default cursor-pointer flex-row items-center gap-0.5 rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+              <div className="ml-2 mb-1 flex cursor-pointer flex-row items-center gap-0.5 rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 Docs
                 <FontAwesomeIcon

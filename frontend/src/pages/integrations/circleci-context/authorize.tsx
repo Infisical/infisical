@@ -55,7 +55,7 @@ export default function CircleCIContextCreateIntegrationPage() {
           <div className="flex flex-row items-center">
             <div className="flex items-center pb-0.5">
               <Image
-                src="/images/integrations/Circle CI.png"
+                src="/images/integrations/CircleCI.png"
                 height={30}
                 width={30}
                 alt="CircleCI logo"
