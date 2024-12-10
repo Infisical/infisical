@@ -39,6 +39,7 @@ export type TListGroupUsersDTO = {
   limit: number;
   username?: string;
   search?: string;
+  filter?: EFilterReturnedUsers;
 } & TGenericPermission;
 
 export type TAddUserToGroupDTO = {
@@ -101,3 +102,8 @@ export type TConvertPendingGroupAdditionsToGroupMemberships = {
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   tx?: Knex;
 };
+
+export enum EFilterReturnedUsers {
+  EXISTING_MEMBERS = "existingMembers",
+  NON_MEMBERS = "nonMembers"
+}

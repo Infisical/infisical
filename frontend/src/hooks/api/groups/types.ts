@@ -11,7 +11,7 @@ export type TGroup = {
   name: string;
   slug: string;
   orgId: string;
-  createAt: string;
+  createdAt: string;
   updatedAt: string;
   role: string;
 };
@@ -41,3 +41,18 @@ export type TGroupWithProjectMemberships = {
   slug: string;
   orgId: string;
 };
+
+export type TGroupUser = {
+  id: string;
+  email: string;
+  username: string;
+  firstName: string;
+  lastName: string;
+  isPartOfGroup: boolean;
+  joinedGroupAt: Date;
+};
+
+export enum EFilterReturnedUsers {
+  EXISTING_MEMBERS = "existingMembers",
+  NON_MEMBERS = "nonMembers"
+}

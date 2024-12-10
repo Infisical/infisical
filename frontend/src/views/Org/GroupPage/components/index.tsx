@@ -1,0 +1,1 @@
+export { GroupDetailsSection } from "./GroupDetailsSection";

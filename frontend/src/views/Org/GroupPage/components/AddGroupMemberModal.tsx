@@ -22,21 +22,22 @@ import {
 } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { useDebounce, useResetPageHelper } from "@app/hooks";
-import { useAddUserToGroup, useListGroupUsers, useRemoveUserFromGroup } from "@app/hooks/api";
+import { useAddUserToGroup, useListGroupUsers } from "@app/hooks/api";
+import { EFilterReturnedUsers } from "@app/hooks/api/groups/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
-  popUp: UsePopUpState<["groupMembers"]>;
-  handlePopUpToggle: (popUpName: keyof UsePopUpState<["groupMembers"]>, state?: boolean) => void;
+  popUp: UsePopUpState<["addGroupMembers"]>;
+  handlePopUpToggle: (popUpName: keyof UsePopUpState<["addGroupMembers"]>, state?: boolean) => void;
 };
 
-export const OrgGroupMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
+export const AddGroupMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
   const [searchMemberFilter, setSearchMemberFilter] = useState("");
   const [debouncedSearch] = useDebounce(searchMemberFilter);
 
-  const popUpData = popUp?.groupMembers?.data as {
+  const popUpData = popUp?.addGroupMembers?.data as {
     groupId: string;
     slug: string;
   };
@@ -47,7 +48,8 @@ export const OrgGroupMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
     groupSlug: popUpData?.slug,
     offset,
     limit: perPage,
-    search: debouncedSearch
+    search: debouncedSearch,
+    filter: EFilterReturnedUsers.NON_MEMBERS
   });
 
   const { totalCount = 0 } = data ?? {};
@@ -58,36 +60,31 @@ export const OrgGroupMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
     setPage
   });
 
-  const { mutateAsync: assignMutateAsync } = useAddUserToGroup();
-  const { mutateAsync: unassignMutateAsync } = useRemoveUserFromGroup();
+  const { mutateAsync: addUserToGroupMutateAsync } = useAddUserToGroup();
 
-  const handleAssignment = async (username: string, assign: boolean) => {
+  const handleAddMember = async (username: string) => {
     try {
-      if (!popUpData?.slug) return;
-
-      if (assign) {
-        await assignMutateAsync({
-          groupId: popUpData.groupId,
-          username,
-          slug: popUpData.slug
+      if (!popUpData?.slug) {
+        createNotification({
+          text: "Some data is missing, please refresh the page and try again",
+          type: "error"
         });
-      } else {
-        await unassignMutateAsync({
-          groupId: popUpData.groupId,
-          username,
-          slug: popUpData.slug
-        });
+        return;
       }
 
+      await addUserToGroupMutateAsync({
+        groupId: popUpData.groupId,
+        username,
+        slug: popUpData.slug
+      });
+
       createNotification({
-        text: `Successfully ${assign ? "assigned" : "removed"} user ${
-          assign ? "to" : "from"
-        } group`,
+        text: "Successfully assigned user to the group",
         type: "success"
       });
     } catch (err) {
       createNotification({
-        text: `Failed to ${assign ? "assign" : "remove"} user ${assign ? "to" : "from"} group`,
+        text: "Failed to assign user to the group",
         type: "error"
       });
     }
@@ -95,12 +92,12 @@ export const OrgGroupMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   return (
     <Modal
-      isOpen={popUp?.groupMembers?.isOpen}
+      isOpen={popUp?.addGroupMembers?.isOpen}
       onOpenChange={(isOpen) => {
-        handlePopUpToggle("groupMembers", isOpen);
+        handlePopUpToggle("addGroupMembers", isOpen);
       }}
     >
-      <ModalContent title="Manage Group Members">
+      <ModalContent title="Add Group Members">
         <Input
           value={searchMemberFilter}
           onChange={(e) => setSearchMemberFilter(e.target.value)}
@@ -118,7 +115,7 @@ export const OrgGroupMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
             <TBody>
               {isLoading && <TableSkeleton columns={2} innerKey="group-users" />}
               {!isLoading &&
-                data?.users?.map(({ id, firstName, lastName, username, isPartOfGroup }) => {
+                data?.users?.map(({ id, firstName, lastName, username }) => {
                   return (
                     <Tr className="items-center" key={`group-user-${id}`}>
                       <Td>
@@ -138,9 +135,9 @@ export const OrgGroupMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
                                 colorSchema="primary"
                                 variant="outline_bg"
                                 type="submit"
-                                onClick={() => handleAssignment(username, !isPartOfGroup)}
+                                onClick={() => handleAddMember(username)}
                               >
-                                {isPartOfGroup ? "Unassign" : "Assign"}
+                                Assign
                               </Button>
                             );
                           }}
@@ -162,7 +159,9 @@ export const OrgGroupMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
           )}
           {!isLoading && !data?.users?.length && (
             <EmptyState
-              title={debouncedSearch ? "No users match search" : "No users found"}
+              title={
+                debouncedSearch ? "No users match search" : "All users are already in the group"
+              }
               icon={faUsers}
             />
           )}
