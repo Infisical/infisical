@@ -23,12 +23,17 @@ import {
   useDeleteIdentityTokenAuth,
   useDeleteIdentityUniversalAuth
 } from "@app/hooks/api";
-import { IdentityAuthMethod, identityAuthToNameMap } from "@app/hooks/api/identities";
+import {
+  IdentityAuthMethod,
+  identityAuthToNameMap,
+  useDeleteIdentityJwtAuth
+} from "@app/hooks/api/identities";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { IdentityAwsAuthForm } from "./IdentityAwsAuthForm";
 import { IdentityAzureAuthForm } from "./IdentityAzureAuthForm";
 import { IdentityGcpAuthForm } from "./IdentityGcpAuthForm";
+import { IdentityJwtAuthForm } from "./IdentityJwtAuthForm";
 import { IdentityKubernetesAuthForm } from "./IdentityKubernetesAuthForm";
 import { IdentityOidcAuthForm } from "./IdentityOidcAuthForm";
 import { IdentityTokenAuthForm } from "./IdentityTokenAuthForm";
@@ -68,7 +73,11 @@ const identityAuthMethods = [
   { label: "GCP Auth", value: IdentityAuthMethod.GCP_AUTH },
   { label: "AWS Auth", value: IdentityAuthMethod.AWS_AUTH },
   { label: "Azure Auth", value: IdentityAuthMethod.AZURE_AUTH },
-  { label: "OIDC Auth", value: IdentityAuthMethod.OIDC_AUTH }
+  { label: "OIDC Auth", value: IdentityAuthMethod.OIDC_AUTH },
+  {
+    label: "JWT Auth",
+    value: IdentityAuthMethod.JWT_AUTH
+  }
 ];
 
 const schema = yup
@@ -100,6 +109,7 @@ export const IdentityAuthMethodModalContent = ({
   const { mutateAsync: revokeAwsAuth } = useDeleteIdentityAwsAuth();
   const { mutateAsync: revokeAzureAuth } = useDeleteIdentityAzureAuth();
   const { mutateAsync: revokeOidcAuth } = useDeleteIdentityOidcAuth();
+  const { mutateAsync: revokeJwtAuth } = useDeleteIdentityJwtAuth();
 
   const { control, watch } = useForm<FormData>({
     resolver: yupResolver(schema),
@@ -211,6 +221,17 @@ export const IdentityAuthMethodModalContent = ({
       revokeMethod: revokeAwsAuth,
       render: () => (
         <IdentityAwsAuthForm
+          identityAuthMethodData={identityAuthMethodData}
+          handlePopUpOpen={handlePopUpOpen}
+          handlePopUpToggle={handlePopUpToggle}
+        />
+      )
+    },
+
+    [IdentityAuthMethod.JWT_AUTH]: {
+      revokeMethod: revokeJwtAuth,
+      render: () => (
+        <IdentityJwtAuthForm
           identityAuthMethodData={identityAuthMethodData}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
