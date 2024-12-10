@@ -2344,6 +2344,89 @@ const syncSecretsCircleCI = async ({
 };
 
 /**
+ * Sync/push [secrets] to CircleCI Context
+ */
+const syncSecretsCircleCIContext = async ({
+  integration,
+  secrets,
+  accessToken
+}: {
+  integration: TIntegrations;
+  secrets: Record<string, { value: string; comment?: string }>;
+  accessToken: string;
+}) => {
+  // sync secrets to CircleCI
+  await Promise.all(
+    Object.keys(secrets).map(async (key) =>
+      request.put(
+        `${IntegrationUrls.CIRCLECI_API_URL}/v2/context/${integration.appId}/environment-variable/${key}`,
+        {
+          value: secrets[key].value
+        },
+        {
+          headers: {
+            "Circle-Token": accessToken,
+            "Content-Type": "application/json"
+          }
+        }
+      )
+    )
+  );
+
+  // get secrets from CircleCI
+  const getSecretsRes = async () => {
+    type EnvVars = {
+      variable: string;
+      created_at: string;
+      updated_at: string;
+      context_id: string;
+    };
+
+    type ResponseSchema = {
+      items: EnvVars[];
+      next_page_token: string | null;
+    };
+
+    let nextPageToken: string | null | undefined;
+    const envVars: EnvVars[] = [];
+
+    while (nextPageToken !== null) {
+      const res = await request.get<ResponseSchema>(
+        `${IntegrationUrls.CIRCLECI_API_URL}/v2/context/${integration.appId}/environment-variable`,
+        {
+          headers: {
+            "Circle-Token": accessToken,
+            "Accept-Encoding": "application/json"
+          }
+        }
+      );
+
+      envVars.push(...res.data.items);
+      nextPageToken = res.data.next_page_token;
+    }
+
+    return envVars;
+  };
+
+  // delete secrets from CircleCI
+  await Promise.all(
+    (await getSecretsRes()).map(async (sec) => {
+      if (!(sec.variable in secrets)) {
+        return request.delete(
+          `${IntegrationUrls.CIRCLECI_API_URL}/v2/context/${integration.appId}/environment-variable/${sec.variable}`,
+          {
+            headers: {
+              "Circle-Token": accessToken,
+              "Content-Type": "application/json"
+            }
+          }
+        );
+      }
+    })
+  );
+};
+
+/**
  * Sync/push [secrets] to Databricks project
  */
 const syncSecretsDatabricks = async ({
@@ -4428,6 +4511,13 @@ export const syncIntegrationSecrets = async ({
       break;
     case Integrations.CIRCLECI:
       await syncSecretsCircleCI({
+        integration,
+        secrets,
+        accessToken
+      });
+      break;
+    case Integrations.CIRCLECI_CONTEXT:
+      await syncSecretsCircleCIContext({
         integration,
         secrets,
         accessToken

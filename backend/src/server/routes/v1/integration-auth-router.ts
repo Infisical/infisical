@@ -1123,4 +1123,38 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
       return { spaces };
     }
   });
+
+  server.route({
+    method: "GET",
+    url: "/:integrationAuthId/circleci/organizations",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      params: z.object({
+        integrationAuthId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          organizations: z
+            .object({
+              name: z.string(),
+              slug: z.string()
+            })
+            .array()
+        })
+      }
+    },
+    handler: async (req) => {
+      const organizations = await server.services.integrationAuth.getCircleCIOrganizations({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        id: req.params.integrationAuthId
+      });
+      return { organizations };
+    }
+  });
 };

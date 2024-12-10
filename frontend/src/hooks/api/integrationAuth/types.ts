@@ -105,6 +105,11 @@ export enum OctopusDeployScope {
   // tenant, variable set
 }
 
+export type CircleCIOrganization = {
+  name: string;
+  slug: string;
+};
+
 export type TGetIntegrationAuthOctopusDeployScopeValuesDTO = {
   integrationAuthId: string;
   spaceId: string;

@@ -120,6 +120,9 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
       case "circleci":
         link = `${window.location.origin}/integrations/circleci/authorize`;
         break;
+      case "circleci-context":
+        link = `${window.location.origin}/integrations/circleci-context/authorize`;
+        break;
       case "databricks":
         link = `${window.location.origin}/integrations/databricks/authorize`;
         break;

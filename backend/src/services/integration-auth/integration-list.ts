@@ -15,6 +15,7 @@ export enum Integrations {
   FLYIO = "flyio",
   LARAVELFORGE = "laravel-forge",
   CIRCLECI = "circleci",
+  CIRCLECI_CONTEXT = "circleci-context",
   DATABRICKS = "databricks",
   TRAVISCI = "travisci",
   TEAMCITY = "teamcity",
@@ -76,6 +77,8 @@ export enum IntegrationUrls {
   RAILWAY_API_URL = "https://backboard.railway.app/graphql/v2",
   FLYIO_API_URL = "https://api.fly.io/graphql",
   CIRCLECI_API_URL = "https://circleci.com/api",
+  // eslint-disable-next-line
+  CIRCLECI_CONTEXT_API_URL = "https://circleci.com/api",
   DATABRICKS_API_URL = "https:/xxxx.com/api",
   TRAVISCI_API_URL = "https://api.travis-ci.com",
   SUPABASE_API_URL = "https://api.supabase.com",
@@ -220,6 +223,15 @@ export const getIntegrationOptions = async () => {
     {
       name: "Circle CI",
       slug: "circleci",
+      image: "Circle CI.png",
+      isAvailable: true,
+      type: "pat",
+      clientId: "",
+      docsLink: ""
+    },
+    {
+      name: "Circle CI Contexts",
+      slug: "circleci-context",
       image: "Circle CI.png",
       isAvailable: true,
       type: "pat",
