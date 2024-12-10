@@ -46,6 +46,7 @@ export const CreateSecretForm = ({
     control,
     reset,
     setValue,
+    watch,
     formState: { errors, isSubmitting }
   } = useForm<TFormSchema>({ resolver: zodResolver(typeSchema) });
   const { closePopUp } = usePopUpAction();
@@ -58,6 +59,9 @@ export const CreateSecretForm = ({
   const { data: projectTags, isLoading: isTagsLoading } = useGetWsTags(
     canReadTags ? workspaceId : ""
   );
+
+  const secretValue = watch("value");
+  const secretKey = watch("key");
 
   const slugSchema = z.string().trim().toLowerCase().min(1);
   const createNewTag = async (slug: string) => {
@@ -108,13 +112,20 @@ export const CreateSecretForm = ({
   };
 
   const handlePaste = (e: ClipboardEvent<HTMLInputElement>) => {
-    e.preventDefault();
     const delimitters = [":", "="];
     const pastedContent = e.clipboardData.getData("text");
     const { key, value } = getKeyValue(pastedContent, delimitters);
 
-    setValue("key", key);
-    setValue("value", value);
+    if (!secretKey) {
+      setValue("key", key);
+    }
+    if (!secretValue) {
+      setValue("value", value);
+    }
+
+    if (!secretKey) {
+      e.preventDefault();
+    }
   };
 
   return (

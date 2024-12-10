@@ -46,6 +46,7 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
     control,
     reset,
     setValue,
+    watch,
     formState: { isSubmitting, errors }
   } = useForm<TFormSchema>({ resolver: zodResolver(typeSchema) });
 
@@ -60,6 +61,9 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
   const { data: projectTags, isLoading: isTagsLoading } = useGetWsTags(
     canReadTags ? workspaceId : ""
   );
+
+  const secretValue = watch("value");
+  const secretKey = watch("key");
 
   const handleFormSubmit = async ({ key, value, environments: selectedEnv, tags }: TFormSchema) => {
     const promises = selectedEnv.map(async (env) => {
@@ -152,13 +156,20 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
   };
 
   const handlePaste = (e: ClipboardEvent<HTMLInputElement>) => {
-    e.preventDefault();
     const delimitters = [":", "="];
     const pastedContent = e.clipboardData.getData("text");
     const { key, value } = getKeyValue(pastedContent, delimitters);
 
-    setValue("key", key);
-    setValue("value", value);
+    if (!secretKey) {
+      setValue("key", key);
+    }
+    if (!secretValue) {
+      setValue("value", value);
+    }
+
+    if (!secretKey) {
+      e.preventDefault();
+    }
   };
 
   const createWsTag = useCreateWsTag();
