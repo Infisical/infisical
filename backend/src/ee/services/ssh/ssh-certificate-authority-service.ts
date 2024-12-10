@@ -97,7 +97,7 @@ export const sshCertificateAuthorityServiceFactory = ({
         tx
       );
 
-      const { publicKey, privateKey } = createSshKeyPair(keyAlgorithm, ca.friendlyName);
+      const { publicKey, privateKey } = await createSshKeyPair(keyAlgorithm, ca.friendlyName);
 
       // TODO: update to sshEncryptor
       const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
@@ -151,7 +151,7 @@ export const sshCertificateAuthorityServiceFactory = ({
       cipherTextBlob: sshCaSecret.encryptedPrivateKey
     });
 
-    const publicKey = getSshPublicKey(decryptedCaPrivateKey.toString("utf-8"));
+    const publicKey = await getSshPublicKey(decryptedCaPrivateKey.toString("utf-8"));
 
     return { ...ca, publicKey };
   };
@@ -175,7 +175,7 @@ export const sshCertificateAuthorityServiceFactory = ({
       cipherTextBlob: sshCaSecret.encryptedPrivateKey
     });
 
-    const publicKey = getSshPublicKey(decryptedCaPrivateKey.toString("utf-8"));
+    const publicKey = await getSshPublicKey(decryptedCaPrivateKey.toString("utf-8"));
 
     return publicKey;
   };
@@ -223,7 +223,7 @@ export const sshCertificateAuthorityServiceFactory = ({
       cipherTextBlob: sshCaSecret.encryptedPrivateKey
     });
 
-    const publicKey = getSshPublicKey(decryptedCaPrivateKey.toString("utf-8"));
+    const publicKey = await getSshPublicKey(decryptedCaPrivateKey.toString("utf-8"));
 
     return { ...updatedCa, publicKey };
   };
@@ -329,9 +329,9 @@ export const sshCertificateAuthorityServiceFactory = ({
     });
 
     // create user key pair
-    const { publicKey, privateKey } = createSshKeyPair(keyAlgorithm, "Client Key");
+    const { publicKey, privateKey } = await createSshKeyPair(keyAlgorithm, "Client Key");
 
-    const { serialNumber, signedPublicKey } = createSshCert({
+    const { serialNumber, signedPublicKey } = await createSshCert({
       caPrivateKey: decryptedCaPrivateKey.toString("utf8"),
       userPublicKey: publicKey,
       keyId,
@@ -460,7 +460,7 @@ export const sshCertificateAuthorityServiceFactory = ({
       cipherTextBlob: sshCaSecret.encryptedPrivateKey
     });
 
-    const { serialNumber, signedPublicKey } = createSshCert({
+    const { serialNumber, signedPublicKey } = await createSshCert({
       caPrivateKey: decryptedCaPrivateKey.toString("utf8"),
       userPublicKey: publicKey,
       keyId,
