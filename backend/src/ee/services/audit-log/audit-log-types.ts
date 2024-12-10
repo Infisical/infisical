@@ -94,6 +94,10 @@ export enum EventType {
   UPDATE_IDENTITY_OIDC_AUTH = "update-identity-oidc-auth",
   GET_IDENTITY_OIDC_AUTH = "get-identity-oidc-auth",
   REVOKE_IDENTITY_OIDC_AUTH = "revoke-identity-oidc-auth",
+  ADD_IDENTITY_JWT_AUTH = "add-identity-jwt-auth",
+  UPDATE_IDENTITY_JWT_AUTH = "update-identity-jwt-auth",
+  GET_IDENTITY_JWT_AUTH = "get-identity-jwt-auth",
+  REVOKE_IDENTITY_JWT_AUTH = "revoke-identity-jwt-auth",
   CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "create-identity-universal-auth-client-secret",
   REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "revoke-identity-universal-auth-client-secret",
   GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS = "get-identity-universal-auth-client-secret",
@@ -890,6 +894,58 @@ interface UpdateIdentityOidcAuthEvent {
 
 interface GetIdentityOidcAuthEvent {
   type: EventType.GET_IDENTITY_OIDC_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface AddIdentityJwtAuthEvent {
+  type: EventType.ADD_IDENTITY_JWT_AUTH;
+  metadata: {
+    identityId: string;
+    configurationType: string;
+    jwksUrl?: string;
+    jwksCaCert: string;
+    publicKeys: string[];
+    boundIssuer: string;
+    boundAudiences: string;
+    boundClaims: Record<string, string>;
+    boundSubject: string;
+    accessTokenTTL: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
+    accessTokenTrustedIps: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface UpdateIdentityJwtAuthEvent {
+  type: EventType.UPDATE_IDENTITY_JWT_AUTH;
+  metadata: {
+    identityId: string;
+    configurationType?: string;
+    jwksUrl?: string;
+    jwksCaCert?: string;
+    publicKeys?: string[];
+    boundIssuer?: string;
+    boundAudiences?: string;
+    boundClaims?: Record<string, string>;
+    boundSubject?: string;
+    accessTokenTTL?: number;
+    accessTokenMaxTTL?: number;
+    accessTokenNumUsesLimit?: number;
+    accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface DeleteIdentityJwtAuthEvent {
+  type: EventType.REVOKE_IDENTITY_JWT_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface GetIdentityJwtAuthEvent {
+  type: EventType.GET_IDENTITY_JWT_AUTH;
   metadata: {
     identityId: string;
   };
@@ -1733,6 +1789,10 @@ export type Event =
   | DeleteIdentityOidcAuthEvent
   | UpdateIdentityOidcAuthEvent
   | GetIdentityOidcAuthEvent
+  | AddIdentityJwtAuthEvent
+  | UpdateIdentityJwtAuthEvent
+  | GetIdentityJwtAuthEvent
+  | DeleteIdentityJwtAuthEvent
   | CreateEnvironmentEvent
   | GetEnvironmentEvent
   | UpdateEnvironmentEvent

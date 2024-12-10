@@ -1,10 +1,12 @@
 import { z } from "zod";
 
 import { IdentityJwtAuthsSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { JWT_AUTH } from "@app/lib/api-docs";
-import { writeLimit } from "@app/server/config/rateLimiter";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { JwtConfigurationType } from "@app/services/identity-jwt-auth/identity-jwt-auth-types";
 import {
   validateJwtAuthAudiencesField,
@@ -16,7 +18,7 @@ const IdentityJwtAuthResponseSchema = IdentityJwtAuthsSchema.omit({
   encryptedPublicKeys: true
 }).extend({
   jwksCaCert: z.string(),
-  publicKeys: z.string()
+  publicKeys: z.string().array()
 });
 
 export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) => {
@@ -37,43 +39,246 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
       params: z.object({
         identityId: z.string().trim().describe(JWT_AUTH.ATTACH.identityId)
       }),
-      body: z.object({
-        configurationType: z.nativeEnum(JwtConfigurationType).describe(JWT_AUTH.ATTACH.configurationType),
-        jwksUrl: z.string().describe(JWT_AUTH.ATTACH.jwksUrl),
-        jwksCaCert: z.string().describe(JWT_AUTH.ATTACH.jwksCaCert),
-        publicKeys: z.string().array().describe(JWT_AUTH.ATTACH.publicKeys),
-        boundIssuer: z.string().min(1).describe(JWT_AUTH.ATTACH.boundIssuer),
-        boundAudiences: validateJwtAuthAudiencesField.describe(JWT_AUTH.ATTACH.boundAudiences),
-        boundClaims: validateJwtBoundClaimsField.describe(JWT_AUTH.ATTACH.boundClaims),
-        boundSubject: z.string().optional().default("").describe(JWT_AUTH.ATTACH.boundSubject),
-        accessTokenTrustedIps: z
-          .object({
-            ipAddress: z.string().trim()
-          })
-          .array()
-          .min(1)
-          .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
-          .describe(JWT_AUTH.ATTACH.accessTokenTrustedIps),
-        accessTokenTTL: z
-          .number()
-          .int()
-          .min(1)
-          .max(315360000)
-          .refine((value) => value !== 0, {
-            message: "accessTokenTTL must have a non zero number"
-          })
-          .default(2592000)
-          .describe(JWT_AUTH.ATTACH.accessTokenTTL),
-        accessTokenMaxTTL: z
-          .number()
-          .int()
-          .max(315360000)
-          .refine((value) => value !== 0, {
-            message: "accessTokenMaxTTL must have a non zero number"
-          })
-          .default(2592000)
-          .describe(JWT_AUTH.ATTACH.accessTokenMaxTTL),
-        accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(JWT_AUTH.ATTACH.accessTokenNumUsesLimit)
+      body: z
+        .object({
+          configurationType: z.nativeEnum(JwtConfigurationType).describe(JWT_AUTH.ATTACH.configurationType),
+          jwksUrl: z.string().trim().default("").describe(JWT_AUTH.ATTACH.jwksUrl),
+          jwksCaCert: z.string().trim().default("").describe(JWT_AUTH.ATTACH.jwksCaCert),
+          publicKeys: z.string().min(1).array().describe(JWT_AUTH.ATTACH.publicKeys),
+          boundIssuer: z.string().trim().default("").describe(JWT_AUTH.ATTACH.boundIssuer),
+          boundAudiences: validateJwtAuthAudiencesField.describe(JWT_AUTH.ATTACH.boundAudiences),
+          boundClaims: validateJwtBoundClaimsField.describe(JWT_AUTH.ATTACH.boundClaims),
+          boundSubject: z.string().trim().default("").describe(JWT_AUTH.ATTACH.boundSubject),
+          accessTokenTrustedIps: z
+            .object({
+              ipAddress: z.string().trim()
+            })
+            .array()
+            .min(1)
+            .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
+            .describe(JWT_AUTH.ATTACH.accessTokenTrustedIps),
+          accessTokenTTL: z
+            .number()
+            .int()
+            .min(1)
+            .max(315360000)
+            .refine((value) => value !== 0, {
+              message: "accessTokenTTL must have a non zero number"
+            })
+            .default(2592000)
+            .describe(JWT_AUTH.ATTACH.accessTokenTTL),
+          accessTokenMaxTTL: z
+            .number()
+            .int()
+            .max(315360000)
+            .refine((value) => value !== 0, {
+              message: "accessTokenMaxTTL must have a non zero number"
+            })
+            .default(2592000)
+            .describe(JWT_AUTH.ATTACH.accessTokenMaxTTL),
+          accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(JWT_AUTH.ATTACH.accessTokenNumUsesLimit)
+        })
+        .superRefine((data, ctx) => {
+          if (data.configurationType === JwtConfigurationType.JWKS) {
+            if (!data.jwksUrl) {
+              ctx.addIssue({
+                path: ["jwksUrl"],
+                message: "JWKS url is required",
+                code: z.ZodIssueCode.custom
+              });
+            }
+          } else if (data.configurationType === JwtConfigurationType.STATIC) {
+            if (data.publicKeys.length === 0) {
+              ctx.addIssue({
+                path: ["publicKeys"],
+                message: "public key is required",
+                code: z.ZodIssueCode.custom
+              });
+            }
+          }
+        }),
+
+      response: {
+        200: z.object({
+          identityJwtAuth: IdentityJwtAuthResponseSchema
+        })
+      }
+    },
+    handler: async (req) => {
+      const identityJwtAuth = await server.services.identityJwtAuth.attachJwtAuth({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.body,
+        identityId: req.params.identityId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: identityJwtAuth.orgId,
+        event: {
+          type: EventType.ADD_IDENTITY_JWT_AUTH,
+          metadata: {
+            identityId: identityJwtAuth.identityId,
+            configurationType: identityJwtAuth.configurationType,
+            jwksUrl: identityJwtAuth.jwksUrl,
+            jwksCaCert: identityJwtAuth.jwksCaCert,
+            publicKeys: identityJwtAuth.publicKeys,
+            boundIssuer: identityJwtAuth.boundIssuer,
+            boundAudiences: identityJwtAuth.boundAudiences,
+            boundClaims: identityJwtAuth.boundClaims as Record<string, string>,
+            boundSubject: identityJwtAuth.boundSubject,
+            accessTokenTTL: identityJwtAuth.accessTokenTTL,
+            accessTokenMaxTTL: identityJwtAuth.accessTokenMaxTTL,
+            accessTokenTrustedIps: identityJwtAuth.accessTokenTrustedIps as TIdentityTrustedIp[],
+            accessTokenNumUsesLimit: identityJwtAuth.accessTokenNumUsesLimit
+          }
+        }
+      });
+
+      return {
+        identityJwtAuth
+      };
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/jwt-auth/identities/:identityId",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Update JWT Auth configuration on identity",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        identityId: z.string().trim().describe(JWT_AUTH.UPDATE.identityId)
+      }),
+      body: z
+        .object({
+          configurationType: z.nativeEnum(JwtConfigurationType).describe(JWT_AUTH.UPDATE.configurationType),
+          jwksUrl: z.string().trim().describe(JWT_AUTH.UPDATE.jwksUrl),
+          jwksCaCert: z.string().trim().describe(JWT_AUTH.UPDATE.jwksCaCert),
+          publicKeys: z.string().array().describe(JWT_AUTH.UPDATE.publicKeys),
+          boundIssuer: z.string().trim().describe(JWT_AUTH.UPDATE.boundIssuer),
+          boundAudiences: validateJwtAuthAudiencesField.describe(JWT_AUTH.UPDATE.boundAudiences),
+          boundClaims: validateJwtBoundClaimsField.describe(JWT_AUTH.UPDATE.boundClaims),
+          boundSubject: z.string().trim().describe(JWT_AUTH.UPDATE.boundSubject),
+          accessTokenTrustedIps: z
+            .object({
+              ipAddress: z.string().trim()
+            })
+            .array()
+            .min(1)
+            .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
+            .describe(JWT_AUTH.UPDATE.accessTokenTrustedIps),
+          accessTokenTTL: z
+            .number()
+            .int()
+            .min(1)
+            .max(315360000)
+            .refine((value) => value !== 0, {
+              message: "accessTokenTTL must have a non zero number"
+            })
+            .default(2592000)
+            .describe(JWT_AUTH.UPDATE.accessTokenTTL),
+          accessTokenMaxTTL: z
+            .number()
+            .int()
+            .max(315360000)
+            .refine((value) => value !== 0, {
+              message: "accessTokenMaxTTL must have a non zero number"
+            })
+            .default(2592000)
+            .describe(JWT_AUTH.UPDATE.accessTokenMaxTTL),
+
+          accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(JWT_AUTH.UPDATE.accessTokenNumUsesLimit)
+        })
+        .partial()
+        .superRefine((data, ctx) => {
+          if (data.configurationType === JwtConfigurationType.JWKS) {
+            if (!data.jwksUrl) {
+              ctx.addIssue({
+                path: ["jwksUrl"],
+                message: "JWKS url is required",
+                code: z.ZodIssueCode.custom
+              });
+            }
+          } else if (data.configurationType === JwtConfigurationType.STATIC) {
+            if (data.publicKeys?.length === 0) {
+              ctx.addIssue({
+                path: ["publicKeys"],
+                message: "public key is required",
+                code: z.ZodIssueCode.custom
+              });
+            }
+          }
+        }),
+      response: {
+        200: z.object({
+          identityJwtAuth: IdentityJwtAuthResponseSchema
+        })
+      }
+    },
+    handler: async (req) => {
+      const identityJwtAuth = await server.services.identityJwtAuth.updateJwtAuth({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        ...req.body,
+        identityId: req.params.identityId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: identityJwtAuth.orgId,
+        event: {
+          type: EventType.UPDATE_IDENTITY_JWT_AUTH,
+          metadata: {
+            identityId: identityJwtAuth.identityId,
+            configurationType: identityJwtAuth.configurationType,
+            jwksUrl: identityJwtAuth.jwksUrl,
+            jwksCaCert: identityJwtAuth.jwksCaCert,
+            publicKeys: identityJwtAuth.publicKeys,
+            boundIssuer: identityJwtAuth.boundIssuer,
+            boundAudiences: identityJwtAuth.boundAudiences,
+            boundClaims: identityJwtAuth.boundClaims as Record<string, string>,
+            boundSubject: identityJwtAuth.boundSubject,
+            accessTokenTTL: identityJwtAuth.accessTokenTTL,
+            accessTokenMaxTTL: identityJwtAuth.accessTokenMaxTTL,
+            accessTokenTrustedIps: identityJwtAuth.accessTokenTrustedIps as TIdentityTrustedIp[],
+            accessTokenNumUsesLimit: identityJwtAuth.accessTokenNumUsesLimit
+          }
+        }
+      });
+
+      return { identityJwtAuth };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/jwt-auth/identities/:identityId",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Retrieve JWT Auth configuration on identity",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        identityId: z.string().describe(JWT_AUTH.RETRIEVE.identityId)
       }),
       response: {
         200: z.object({
@@ -81,6 +286,77 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
         })
       }
     },
-    handler: async (req) => {}
+    handler: async (req) => {
+      const identityJwtAuth = await server.services.identityJwtAuth.getJwtAuth({
+        identityId: req.params.identityId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: identityJwtAuth.orgId,
+        event: {
+          type: EventType.GET_IDENTITY_JWT_AUTH,
+          metadata: {
+            identityId: identityJwtAuth.identityId
+          }
+        }
+      });
+
+      return { identityJwtAuth };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/jwt-auth/identities/:identityId",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Delete JWT Auth configuration on identity",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        identityId: z.string().describe(JWT_AUTH.REVOKE.identityId)
+      }),
+      response: {
+        200: z.object({
+          identityJwtAuth: IdentityJwtAuthResponseSchema.omit({
+            publicKeys: true,
+            jwksCaCert: true
+          })
+        })
+      }
+    },
+    handler: async (req) => {
+      const identityJwtAuth = await server.services.identityJwtAuth.revokeJwtAuth({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        identityId: req.params.identityId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: identityJwtAuth.orgId,
+        event: {
+          type: EventType.REVOKE_IDENTITY_JWT_AUTH,
+          metadata: {
+            identityId: identityJwtAuth.identityId
+          }
+        }
+      });
+
+      return { identityJwtAuth };
+    }
   });
 };

@@ -14,13 +14,13 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("identityId").notNullable().unique();
       t.foreign("identityId").references("id").inTable(TableName.Identity).onDelete("CASCADE");
       t.string("configurationType").notNullable();
-      t.string("jwksUrl");
-      t.binary("encryptedJwksCaCert");
-      t.binary("encryptedPublicKeys");
-      t.string("boundIssuer");
-      t.string("boundAudiences");
-      t.jsonb("boundClaims");
-      t.string("boundSubject");
+      t.string("jwksUrl").notNullable();
+      t.binary("encryptedJwksCaCert").notNullable();
+      t.binary("encryptedPublicKeys").notNullable();
+      t.string("boundIssuer").notNullable();
+      t.string("boundAudiences").notNullable();
+      t.jsonb("boundClaims").notNullable();
+      t.string("boundSubject").notNullable();
       t.timestamps(true, true, true);
     });
 
