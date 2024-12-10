@@ -7,7 +7,8 @@ WORKDIR /app
 RUN apk --update add \
         python3 \
         make \
-        g++
+        g++ \
+        openssh
 
 # install dependencies for TDS driver (required for SAP ASE dynamic secrets)
 RUN apk add --no-cache \

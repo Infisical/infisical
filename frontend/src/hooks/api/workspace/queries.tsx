@@ -15,6 +15,8 @@ import { TIntegration } from "../integrations/types";
 import { TPkiAlert } from "../pkiAlerts/types";
 import { TPkiCollection } from "../pkiCollections/types";
 import { EncryptedSecret } from "../secrets/types";
+import { TSshCertificate, TSshCertificateAuthority } from "../ssh-ca/types";
+import { TSshCertificateTemplate } from "../sshCertificateTemplates/types";
 import { userKeys } from "../users/query-keys";
 import { TWorkspaceUser } from "../users/types";
 import { ProjectSlackConfig } from "../workflowIntegrations/types";
@@ -710,6 +712,67 @@ export const useListWorkspaceCertificateTemplates = ({ workspaceId }: { workspac
       return { certificateTemplates };
     },
     enabled: Boolean(workspaceId)
+  });
+};
+
+export const useListWorkspaceSshCertificates = ({
+  offset,
+  limit,
+  projectId
+}: {
+  offset: number;
+  limit: number;
+  projectId: string;
+}) => {
+  return useQuery({
+    queryKey: workspaceKeys.specificWorkspaceSshCertificates({
+      offset,
+      limit,
+      projectId
+    }),
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        offset: String(offset),
+        limit: String(limit)
+      });
+
+      const { data } = await apiRequest.get<{
+        certificates: TSshCertificate[];
+        totalCount: number;
+      }>(`/api/v2/workspace/${projectId}/ssh-certificates`, {
+        params
+      });
+      return data;
+    },
+    enabled: Boolean(projectId)
+  });
+};
+
+export const useListWorkspaceSshCas = (projectId: string) => {
+  return useQuery({
+    queryKey: workspaceKeys.getWorkspaceSshCas(projectId),
+    queryFn: async () => {
+      const {
+        data: { cas }
+      } = await apiRequest.get<{ cas: Omit<TSshCertificateAuthority, "publicKey">[] }>(
+        `/api/v2/workspace/${projectId}/ssh-cas`
+      );
+      return cas;
+    },
+    enabled: Boolean(projectId)
+  });
+};
+
+export const useListWorkspaceSshCertificateTemplates = (projectId: string) => {
+  return useQuery({
+    queryKey: workspaceKeys.getWorkspaceSshCertificateTemplates(projectId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ certificateTemplates: TSshCertificateTemplate[] }>(
+        `/api/v2/workspace/${projectId}/ssh-certificate-templates`
+      );
+      return data;
+    },
+    enabled: Boolean(projectId)
   });
 };
 
