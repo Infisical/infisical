@@ -118,7 +118,7 @@ export default function CircleCIContextCreateIntegrationPage() {
       <Card className="max-w-lg rounded-md p-8 pt-4">
         <CardTitle
           className="w-full px-0 text-left text-xl"
-          subTitle="Choose which environment or folder in Infisical you want to sync to CircleCI environment variables."
+          subTitle="Choose which environment or folder in Infisical you want to sync to CircleCI Context Variables."
         >
           <div className="flex w-full flex-row items-center justify-between">
             <div className="flex flex-row items-center gap-1.5">
@@ -212,7 +212,11 @@ export default function CircleCIContextCreateIntegrationPage() {
           control={control}
           name="targetContext"
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl errorText={error?.message} isError={Boolean(error)} label="Bitbucket Repo">
+            <FormControl
+              errorText={error?.message}
+              isError={Boolean(error)}
+              label="CircleCI Context"
+            >
               <FilterableSelect
                 value={value}
                 getOptionValue={(option) => option.appId!}

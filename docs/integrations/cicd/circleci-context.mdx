@@ -1,0 +1,33 @@
+---
+title: "CircleCI Context"
+description: "How to sync secrets from Infisical to CircleCI Contexts"
+---
+
+Prerequisites:
+
+- Set up and add envars to [Infisical Cloud](https://app.infisical.com)
+
+<Steps>
+  <Step title="CircleCI API Token">
+    Obtain an API token in User Settings > Personal API Tokens
+
+    ![integrations circleci token](../../images/integrations/circleci-context/integrations-circleci-token.png)
+
+    Navigate to your project's integrations tab in Infisical.
+
+    ![integrations](../../images/integrations/circleci-context/integrations-page.png)
+    <Tip>If you already have other integrations setup, click "Add Integration" on the top right corner to add the CircleCi Context integration.</Tip>
+
+    Press on the CircleCI Contexts tile and input your CircleCI API token to grant Infisical access to your CircleCI account.
+
+    ![integrations circleci authorization](../../images/integrations/circleci-context/integrations-circleci-context-auth.png)
+
+  </Step>
+  <Step title="Start integration">
+    Select which Infisical environment secrets you want to sync to which CircleCI Context and press create integration to start syncing secrets to CircleCI.
+
+    ![create integration circleci](../../images/integrations/circleci-context/integrations-circleci-context-create.png)
+    ![integrations circleci](../../images/integrations/circleci-context/integrations-circleci-context-list.png)
+
+  </Step>
+</Steps>
