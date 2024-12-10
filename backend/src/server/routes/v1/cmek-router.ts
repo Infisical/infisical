@@ -1,4 +1,3 @@
-import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { InternalKmsSchema, KmsKeysSchema } from "@app/db/schemas";
@@ -8,19 +7,12 @@ import { getBase64SizeInBytes, isBase64 } from "@app/lib/base64";
 import { SymmetricEncryption } from "@app/lib/crypto/cipher";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CmekOrderBy } from "@app/services/cmek/cmek-types";
 
-const keyNameSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .max(32)
-  .toLowerCase()
-  .refine((v) => slugify(v) === v, {
-    message: "Name must be slug friendly"
-  });
+const keyNameSchema = slugSchema({ min: 1, max: 32, field: "Name" });
 const keyDescriptionSchema = z.string().trim().max(500).optional();
 
 const base64Schema = z.string().superRefine((val, ctx) => {

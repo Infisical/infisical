@@ -54,7 +54,7 @@ export const Pagination = ({
       )}
     >
       {startAdornment}
-      <div className="ml-auto mr-6 flex items-center space-x-2">
+      <div className={twMerge("mr-4 flex items-center space-x-2", startAdornment && "ml-auto")}>
         <div className="text-xs">
           {(page - 1) * perPage + 1} - {Math.min((page - 1) * perPage + perPage, count)} of {count}
         </div>

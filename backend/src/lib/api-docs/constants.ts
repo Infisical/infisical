@@ -19,7 +19,9 @@ export const GROUPS = {
     offset: "The offset to start from. If you enter 10, it will start from the 10th user.",
     limit: "The number of users to return.",
     username: "The username to search for.",
-    search: "The text string that user email or name will be filtered by."
+    search: "The text string that user email or name will be filtered by.",
+    filterUsers:
+      "Whether to filter the list of returned users. 'existingMembers' will only return existing users in the group, 'nonMembers' will only return users not in the group, undefined will return all users in the organization."
   },
   ADD_USER: {
     id: "The ID of the group to add the user to.",
@@ -1043,6 +1045,9 @@ export const INTEGRATION_AUTH = {
   DELETE_BY_ID: {
     integrationAuthId: "The ID of integration authentication object to delete."
   },
+  UPDATE_BY_ID: {
+    integrationAuthId: "The ID of integration authentication object to update."
+  },
   CREATE_ACCESS_TOKEN: {
     workspaceId: "The ID of the project to create the integration auth for.",
     integration: "The slug of integration for the auth object.",
@@ -1099,11 +1104,13 @@ export const INTEGRATION = {
   },
   UPDATE: {
     integrationId: "The ID of the integration object.",
+    region: "AWS region to sync secrets to.",
     app: "The name of the external integration providers app entity that you want to sync secrets with. Used in Netlify, GitHub, Vercel integrations.",
     appId:
       "The ID of the external integration providers app entity that you want to sync secrets with. Used in Netlify, GitHub, Vercel integrations.",
     isActive: "Whether the integration should be active or disabled.",
     secretPath: "The path of the secrets to sync secrets from.",
+    path: "Path to save the synced secrets. Used by Gitlab, AWS Parameter Store, Vault.",
     owner: "External integration providers service entity owner. Used in Github.",
     targetEnvironment:
       "The target environment of the integration provider. Used in cloudflare pages, TeamCity, Gitlab integrations.",

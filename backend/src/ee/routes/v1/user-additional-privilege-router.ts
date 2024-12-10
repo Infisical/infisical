@@ -7,6 +7,7 @@ import { ProjectUserAdditionalPrivilegeTemporaryMode } from "@app/ee/services/pr
 import { PROJECT_USER_ADDITIONAL_PRIVILEGE } from "@app/lib/api-docs";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedUserProjectAdditionalPrivilegeSchema } from "@app/server/routes/santizedSchemas/user-additional-privilege";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -21,17 +22,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
     schema: {
       body: z.object({
         projectMembershipId: z.string().min(1).describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.projectMembershipId),
-        slug: z
-          .string()
-          .min(1)
-          .max(60)
-          .trim()
-          .refine((v) => v.toLowerCase() === v, "Slug must be lowercase")
-          .refine((v) => slugify(v) === v, {
-            message: "Slug must be a valid slug"
-          })
-          .optional()
-          .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.slug),
+        slug: slugSchema({ min: 1, max: 60 }).optional().describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.slug),
         permissions: ProjectPermissionV2Schema.array().describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.permissions),
         type: z.discriminatedUnion("isTemporary", [
           z.object({
@@ -87,15 +78,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
       }),
       body: z
         .object({
-          slug: z
-            .string()
-            .max(60)
-            .trim()
-            .refine((v) => v.toLowerCase() === v, "Slug must be lowercase")
-            .refine((v) => slugify(v) === v, {
-              message: "Slug must be a valid slug"
-            })
-            .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.UPDATE.slug),
+          slug: slugSchema({ min: 1, max: 60 }).describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.UPDATE.slug),
           permissions: ProjectPermissionV2Schema.array()
             .optional()
             .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.UPDATE.permissions),

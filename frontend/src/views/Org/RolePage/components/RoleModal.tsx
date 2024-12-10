@@ -9,12 +9,13 @@ import { Button, FormControl, Input, Modal, ModalContent } from "@app/components
 import { useOrganization } from "@app/context";
 import { useCreateOrgRole, useGetOrgRole, useUpdateOrgRole } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { slugSchema } from "@app/lib/schemas";
 
 const schema = z
   .object({
     name: z.string(),
     description: z.string(),
-    slug: z.string()
+    slug: slugSchema({ min: 1 })
   })
   .required();
 

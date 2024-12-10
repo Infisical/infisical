@@ -407,13 +407,14 @@ export const registerRoutes = async (
     permissionService
   });
 
-  const auditLogQueue = auditLogQueueServiceFactory({
+  const auditLogQueue = await auditLogQueueServiceFactory({
     auditLogDAL,
     queueService,
     projectDAL,
     licenseService,
     auditLogStreamDAL
   });
+
   const auditLogService = auditLogServiceFactory({ auditLogDAL, permissionService, auditLogQueue });
   const auditLogStreamService = auditLogStreamServiceFactory({
     licenseService,
@@ -426,7 +427,8 @@ export const registerRoutes = async (
     permissionService,
     secretApprovalPolicyDAL,
     licenseService,
-    userDAL
+    userDAL,
+    secretApprovalRequestDAL
   });
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, orgMembershipDAL });
 
@@ -1025,7 +1027,10 @@ export const registerRoutes = async (
     projectEnvDAL,
     projectMembershipDAL,
     projectDAL,
-    userDAL
+    userDAL,
+    accessApprovalRequestDAL,
+    additionalPrivilegeDAL: projectUserAdditionalPrivilegeDAL,
+    accessApprovalRequestReviewerDAL
   });
 
   const accessApprovalRequestService = accessApprovalRequestServiceFactory({

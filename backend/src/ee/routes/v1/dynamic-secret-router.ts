@@ -1,4 +1,3 @@
-import slugify from "@sindresorhus/slugify";
 import ms from "ms";
 import { z } from "zod";
 
@@ -8,6 +7,7 @@ import { DYNAMIC_SECRETS } from "@app/lib/api-docs";
 import { daysToMillisecond } from "@app/lib/dates";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedDynamicSecretSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -48,15 +48,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
           .nullable(),
         path: z.string().describe(DYNAMIC_SECRETS.CREATE.path).trim().default("/").transform(removeTrailingSlash),
         environmentSlug: z.string().describe(DYNAMIC_SECRETS.CREATE.environmentSlug).min(1),
-        name: z
-          .string()
-          .describe(DYNAMIC_SECRETS.CREATE.name)
-          .min(1)
-          .toLowerCase()
-          .max(64)
-          .refine((v) => slugify(v) === v, {
-            message: "Slug must be a valid"
-          })
+        name: slugSchema({ min: 1, max: 64, field: "Name" }).describe(DYNAMIC_SECRETS.CREATE.name)
       }),
       response: {
         200: z.object({

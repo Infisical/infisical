@@ -1,6 +1,5 @@
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -17,16 +16,10 @@ import {
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { EncryptionAlgorithm, TCmek, useCreateCmek, useUpdateCmek } from "@app/hooks/api/cmeks";
+import { slugSchema } from "@app/lib/schemas";
 
 const formSchema = z.object({
-  name: z
-    .string()
-    .min(1)
-    .toLowerCase()
-    .max(32)
-    .refine((v) => slugify(v) === v, {
-      message: "Name must be in slug format"
-    }),
+  name: slugSchema({ min: 1, max: 32, field: "Name" }),
   description: z.string().max(500).optional(),
   encryptionAlgorithm: z.nativeEnum(EncryptionAlgorithm)
 });

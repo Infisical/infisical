@@ -105,9 +105,14 @@ export const projectRoleFormSchema = z.object({
       })
         .array()
         .default([]),
+      [ProjectPermissionSub.Identity]: GeneralPolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([]),
       [ProjectPermissionSub.Member]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Groups]: GeneralPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.Identity]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Role]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Integrations]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Webhooks]: GeneralPolicyActionSchema.array().default([]),
@@ -144,7 +149,8 @@ type TConditionalFields =
   | ProjectPermissionSub.Secrets
   | ProjectPermissionSub.SecretFolders
   | ProjectPermissionSub.SecretImports
-  | ProjectPermissionSub.DynamicSecrets;
+  | ProjectPermissionSub.DynamicSecrets
+  | ProjectPermissionSub.Identity;
 
 export const isConditionalSubjects = (
   subject: ProjectPermissionSub
@@ -152,7 +158,8 @@ export const isConditionalSubjects = (
   subject === (ProjectPermissionSub.Secrets as const) ||
   subject === ProjectPermissionSub.DynamicSecrets ||
   subject === ProjectPermissionSub.SecretImports ||
-  subject === ProjectPermissionSub.SecretFolders;
+  subject === ProjectPermissionSub.SecretFolders ||
+  subject === ProjectPermissionSub.Identity;
 
 const convertCaslConditionToFormOperator = (caslConditions: TPermissionCondition) => {
   const formConditions: z.infer<typeof ConditionSchema> = [];
@@ -491,17 +498,17 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Remove members", value: "delete" }
     ]
   },
-  [ProjectPermissionSub.Groups]: {
-    title: "Group Management",
+  [ProjectPermissionSub.Identity]: {
+    title: "Machine Identity Management",
     actions: [
       { label: "Read", value: "read" },
-      { label: "Create", value: "create" },
+      { label: "Add", value: "create" },
       { label: "Modify", value: "edit" },
       { label: "Remove", value: "delete" }
     ]
   },
-  [ProjectPermissionSub.Identity]: {
-    title: "Machine Identity Management",
+  [ProjectPermissionSub.Groups]: {
+    title: "Group Management",
     actions: [
       { label: "Read", value: "read" },
       { label: "Create", value: "create" },
@@ -535,7 +542,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
     ]
   },
   [ProjectPermissionSub.Environments]: {
-    title: "Environments",
+    title: "Environment Management",
     actions: [
       { label: "Read", value: "read" },
       { label: "Create", value: "create" },

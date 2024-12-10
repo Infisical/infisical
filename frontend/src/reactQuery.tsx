@@ -32,13 +32,8 @@ export const queryClient = new QueryClient({
             {
               title: "Validation Error",
               type: "error",
-              text: (
-                <div>
-                  <p>Please check the input and try again.</p>
-                  <p className="mt-2 text-xs">Request ID: {serverResponse.requestId}</p>
-                </div>
-              ),
-              children: (
+              text: "Please check the input and try again.",
+              callToAction: (
                 <Modal>
                   <ModalTrigger>
                     <Button variant="outline_bg" size="xs">
@@ -66,7 +61,14 @@ export const queryClient = new QueryClient({
                     </TableContainer>
                   </ModalContent>
                 </Modal>
-              )
+              ),
+              copyActions: [
+                {
+                  value: serverResponse.reqId,
+                  name: "Request ID",
+                  label: `Request ID: ${serverResponse.reqId}`
+                }
+              ]
             },
             { closeOnClick: false }
           );
@@ -77,9 +79,8 @@ export const queryClient = new QueryClient({
             {
               title: "Forbidden Access",
               type: "error",
-
-              text: `${serverResponse.message} [requestId=${serverResponse.requestId}]`,
-              children: serverResponse?.details?.length ? (
+              text: `${serverResponse.message}.`,
+              callToAction: serverResponse?.details?.length ? (
                 <Modal>
                   <ModalTrigger>
                     <Button variant="outline_bg" size="xs">
@@ -92,7 +93,7 @@ export const queryClient = new QueryClient({
                   >
                     <div className="flex flex-col gap-2">
                       {serverResponse.details?.map((el, index) => {
-                        const hasConditions = Object.keys(el.conditions || {}).length;
+                        const hasConditions = Boolean(Object.keys(el.conditions || {}).length);
                         return (
                           <div
                             key={`Forbidden-error-details-${index + 1}`}
@@ -165,7 +166,14 @@ export const queryClient = new QueryClient({
                     </div>
                   </ModalContent>
                 </Modal>
-              ) : undefined
+              ) : undefined,
+              copyActions: [
+                {
+                  value: serverResponse.reqId,
+                  name: "Request ID",
+                  label: `Request ID: ${serverResponse.reqId}`
+                }
+              ]
             },
             { closeOnClick: false }
           );
@@ -174,7 +182,14 @@ export const queryClient = new QueryClient({
         createNotification({
           title: "Bad Request",
           type: "error",
-          text: `${serverResponse.message} [requestId=${serverResponse.requestId}]`
+          text: `${serverResponse.message}.`,
+          copyActions: [
+            {
+              value: serverResponse.reqId,
+              name: "Request ID",
+              label: `Request ID: ${serverResponse.reqId}`
+            }
+          ]
         });
       }
     }

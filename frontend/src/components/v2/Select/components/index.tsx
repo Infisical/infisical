@@ -36,10 +36,12 @@ export const MultiValueRemove = (props: MultiValueRemoveProps) => {
 export const Option = <T,>({ isSelected, children, ...props }: OptionProps<T>) => {
   return (
     <components.Option isSelected={isSelected} {...props}>
-      {children}
-      {isSelected && (
-        <FontAwesomeIcon className="ml-2 text-primary" icon={faCheckCircle} size="sm" />
-      )}
+      <div className="flex flex-row items-center justify-between">
+        <p className="truncate">{children}</p>
+        {isSelected && (
+          <FontAwesomeIcon className="ml-2 text-primary" icon={faCheckCircle} size="sm" />
+        )}
+      </div>
     </components.Option>
   );
 };

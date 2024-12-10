@@ -8,7 +8,7 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { DynamicSecretMongoAtlasSchema, TDynamicProviderFns } from "./models";
 
 const generatePassword = (size = 48) => {
-  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*$#";
+  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*";
   return customAlphabet(charset, 48)(size);
 };
 

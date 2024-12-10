@@ -85,6 +85,10 @@ export type SecretImportSubjectFields = {
   secretPath: string;
 };
 
+export type IdentityManagementSubjectFields = {
+  identityId: string;
+};
+
 export type ProjectPermissionSet =
   | [
       ProjectPermissionActions,
@@ -124,7 +128,10 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.ServiceTokens]
   | [ProjectPermissionActions, ProjectPermissionSub.SecretApproval]
   | [ProjectPermissionActions, ProjectPermissionSub.SecretRotation]
-  | [ProjectPermissionActions, ProjectPermissionSub.Identity]
+  | [
+      ProjectPermissionActions,
+      ProjectPermissionSub.Identity | (ForcedSubject<ProjectPermissionSub.Identity> & IdentityManagementSubjectFields)
+    ]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateAuthorities]
   | [ProjectPermissionActions, ProjectPermissionSub.Certificates]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateTemplates]
@@ -219,6 +226,21 @@ const SecretConditionV2Schema = z
   })
   .partial();
 
+const IdentityManagementConditionSchema = z
+  .object({
+    identityId: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+        })
+        .partial()
+    ])
+  })
+  .partial();
+
 const GeneralPermissionSchema = [
   z.object({
     subject: z.literal(ProjectPermissionSub.SecretApproval).describe("The entity this permission pertains to."),
@@ -264,12 +286,6 @@ const GeneralPermissionSchema = [
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.Webhooks).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
-      "Describe what action an entity can take."
-    )
-  }),
-  z.object({
-    subject: z.literal(ProjectPermissionSub.Identity).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     )
@@ -401,6 +417,12 @@ export const ProjectPermissionV1Schema = z.discriminatedUnion("subject", [
       "Describe what action an entity can take."
     )
   }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.Identity).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
   ...GeneralPermissionSchema
 ]);
 
@@ -442,6 +464,16 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
       "Describe what action an entity can take."
     ),
     conditions: SecretConditionV1Schema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.Identity).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    ),
+    conditions: IdentityManagementConditionSchema.describe(
       "When specified, only matching conditions will be allowed to access given resource."
     ).optional()
   }),
@@ -736,26 +768,26 @@ export const buildServiceTokenProjectPermission = (
     [ProjectPermissionSub.Secrets, ProjectPermissionSub.SecretImports, ProjectPermissionSub.SecretFolders].forEach(
       (subject) => {
         if (canWrite) {
-          // TODO: @Akhi
-          // @ts-expect-error type
           can(ProjectPermissionActions.Edit, subject, {
+            // TODO: @Akhi
+            // @ts-expect-error type
             secretPath: { $glob: secretPath },
             environment
           });
-          // @ts-expect-error type
           can(ProjectPermissionActions.Create, subject, {
+            // @ts-expect-error type
             secretPath: { $glob: secretPath },
             environment
           });
-          // @ts-expect-error type
           can(ProjectPermissionActions.Delete, subject, {
+            // @ts-expect-error type
             secretPath: { $glob: secretPath },
             environment
           });
         }
         if (canRead) {
-          // @ts-expect-error type
           can(ProjectPermissionActions.Read, subject, {
+            // @ts-expect-error type
             secretPath: { $glob: secretPath },
             environment
           });

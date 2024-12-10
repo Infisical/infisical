@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { faAws } from "@fortawesome/free-brands-svg-icons";
+import { faAws, faGoogle } from "@fortawesome/free-brands-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -7,6 +7,7 @@ import { Modal, ModalContent } from "@app/components/v2";
 import { ExternalKmsProvider } from "@app/hooks/api/kms/types";
 
 import { AwsKmsForm } from "./AwsKmsForm";
+import { GcpKmsForm } from "./GcpKmsForm";
 
 type Props = {
   isOpen?: boolean;
@@ -21,8 +22,13 @@ enum WizardSteps {
 const EXTERNAL_KMS_LIST = [
   {
     icon: faAws,
-    provider: ExternalKmsProvider.AWS,
+    provider: ExternalKmsProvider.Aws,
     title: "AWS KMS"
+  },
+  {
+    icon: faGoogle,
+    provider: ExternalKmsProvider.Gcp,
+    title: "GCP KMS"
   }
 ];
 
@@ -42,6 +48,7 @@ export const AddExternalKmsForm = ({ isOpen, onToggle }: Props) => {
         title="Add a Key Management System"
         subTitle="Configure an external key management system (KMS)"
         className="my-4"
+        bodyClassName="overflow-visible"
       >
         <AnimatePresence exitBeforeEnter>
           {wizardStep === WizardSteps.SelectProvider && (
@@ -79,7 +86,7 @@ export const AddExternalKmsForm = ({ isOpen, onToggle }: Props) => {
             </motion.div>
           )}
           {wizardStep === WizardSteps.ProviderInputs &&
-            selectedProvider === ExternalKmsProvider.AWS && (
+            selectedProvider === ExternalKmsProvider.Aws && (
               <motion.div
                 key="kms-aws"
                 transition={{ duration: 0.1 }}
@@ -88,6 +95,18 @@ export const AddExternalKmsForm = ({ isOpen, onToggle }: Props) => {
                 exit={{ opacity: 0, translateX: -30 }}
               >
                 <AwsKmsForm onCancel={() => onToggle(false)} onCompleted={() => onToggle(false)} />
+              </motion.div>
+            )}
+          {wizardStep === WizardSteps.ProviderInputs &&
+            selectedProvider === ExternalKmsProvider.Gcp && (
+              <motion.div
+                key="kms-gcp"
+                transition={{ duration: 0.1 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: -30 }}
+              >
+                <GcpKmsForm onCancel={() => onToggle(false)} onCompleted={() => onToggle(false)} />
               </motion.div>
             )}
         </AnimatePresence>

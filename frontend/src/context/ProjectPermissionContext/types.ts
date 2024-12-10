@@ -33,6 +33,10 @@ export enum PermissionConditionOperators {
   $GLOB = "$glob"
 }
 
+export type IdentityManagementSubjectFields = {
+  identityId: string;
+};
+
 export const formatedConditionsOperatorNames: { [K in PermissionConditionOperators]: string } = {
   [PermissionConditionOperators.$EQ]: "equal to",
   [PermissionConditionOperators.$IN]: "contains",
@@ -154,7 +158,13 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.ServiceTokens]
   | [ProjectPermissionActions, ProjectPermissionSub.SecretApproval]
   | [ProjectPermissionActions, ProjectPermissionSub.SecretRotation]
-  | [ProjectPermissionActions, ProjectPermissionSub.Identity]
+  | [
+      ProjectPermissionActions,
+      (
+        | ProjectPermissionSub.Identity
+        | (ForcedSubject<ProjectPermissionSub.Identity> & IdentityManagementSubjectFields)
+      )
+    ]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateAuthorities]
   | [ProjectPermissionActions, ProjectPermissionSub.Certificates]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateTemplates]

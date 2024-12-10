@@ -1,5 +1,6 @@
 import crypto from "crypto";
 
+import { createNotification } from "@app/components/notifications";
 import { TCloudIntegration, UserWsKeyPair } from "@app/hooks/api/types";
 
 import {
@@ -30,6 +31,28 @@ export const generateBotKey = (botPublicKey: string, latestKey: UserWsKeyPair) =
   return { encryptedKey: ciphertext, nonce };
 };
 
+export const createIntegrationMissingEnvVarsNotification = (
+  slug: string,
+  type: "cloud" | "cicd" = "cloud",
+  hashtag?: string
+) =>
+  createNotification({
+    type: "error",
+    text: (
+      <a
+        href={`https://infisical.com/docs/integrations/${type}/${slug}${
+          hashtag ? `#${hashtag}` : ""
+        }`}
+        target="_blank"
+        rel="noreferrer"
+        className="underline"
+      >
+        Click here to view docs
+      </a>
+    ),
+    title: "Missing Environment Variables"
+  });
+
 export const redirectForProviderAuth = (integrationOption: TCloudIntegration) => {
   try {
     // generate CSRF token for OAuth2 code-token exchange integrations
@@ -42,9 +65,17 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
         link = `${window.location.origin}/integrations/gcp-secret-manager/authorize`;
         break;
       case "azure-key-vault":
+        if (!integrationOption.clientId) {
+          createIntegrationMissingEnvVarsNotification(integrationOption.slug);
+          return;
+        }
         link = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${window.location.origin}/integrations/azure-key-vault/oauth2/callback&response_mode=query&scope=https://vault.azure.net/.default openid offline_access&state=${state}`;
         break;
       case "azure-app-configuration":
+        if (!integrationOption.clientId) {
+          createIntegrationMissingEnvVarsNotification(integrationOption.slug);
+          return;
+        }
         link = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${window.location.origin}/integrations/azure-app-configuration/oauth2/callback&response_mode=query&scope=https://azconfig.io/.default openid offline_access&state=${state}`;
         break;
       case "aws-parameter-store":
@@ -54,12 +85,24 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
         link = `${window.location.origin}/integrations/aws-secret-manager/authorize`;
         break;
       case "heroku":
+        if (!integrationOption.clientId) {
+          createIntegrationMissingEnvVarsNotification(integrationOption.slug);
+          return;
+        }
         link = `https://id.heroku.com/oauth/authorize?client_id=${integrationOption.clientId}&response_type=code&scope=write-protected&state=${state}`;
         break;
       case "vercel":
+        if (!integrationOption.clientSlug) {
+          createIntegrationMissingEnvVarsNotification(integrationOption.slug);
+          return;
+        }
         link = `https://vercel.com/integrations/${integrationOption.clientSlug}/new?state=${state}`;
         break;
       case "netlify":
+        if (!integrationOption.clientId) {
+          createIntegrationMissingEnvVarsNotification(integrationOption.slug);
+          return;
+        }
         link = `https://app.netlify.com/authorize?client_id=${integrationOption.clientId}&response_type=code&state=${state}&redirect_uri=${window.location.origin}/integrations/netlify/oauth2/callback`;
         break;
       case "github":
@@ -111,6 +154,10 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
         link = `${window.location.origin}/integrations/cloudflare-workers/authorize`;
         break;
       case "bitbucket":
+        if (!integrationOption.clientId) {
+          createIntegrationMissingEnvVarsNotification(integrationOption.slug, "cicd");
+          return;
+        }
         link = `https://bitbucket.org/site/oauth2/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${window.location.origin}/integrations/bitbucket/oauth2/callback&state=${state}`;
         break;
       case "codefresh":

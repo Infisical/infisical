@@ -876,7 +876,7 @@ const OrganizationPage = () => {
           <Pagination
             className={
               projectsViewMode === ProjectsViewMode.GRID
-                ? "col-span-full border-transparent bg-transparent"
+                ? "col-span-full !justify-start border-transparent bg-transparent pl-2"
                 : "rounded-b-md border border-mineshaft-600"
             }
             perPage={perPage}

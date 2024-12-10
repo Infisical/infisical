@@ -177,11 +177,21 @@ export const useGetProjectSecretsOverview = (
       }),
     onError: (error) => {
       if (axios.isAxiosError(error)) {
-        const serverResponse = error.response?.data as { message: string };
+        const { message, requestId } = error.response?.data as {
+          message: string;
+          requestId: string;
+        };
         createNotification({
           title: "Error fetching secret details",
           type: "error",
-          text: serverResponse.message
+          text: message,
+          copyActions: [
+            {
+              value: requestId,
+              name: "Request ID",
+              label: `Request ID: ${requestId}`
+            }
+          ]
         });
       }
     },
@@ -270,11 +280,21 @@ export const useGetProjectSecretsDetails = (
       }),
     onError: (error) => {
       if (axios.isAxiosError(error)) {
-        const serverResponse = error.response?.data as { message: string };
+        const { message, requestId } = error.response?.data as {
+          message: string;
+          requestId: string;
+        };
         createNotification({
           title: "Error fetching secret details",
           type: "error",
-          text: serverResponse.message
+          text: message,
+          copyActions: [
+            {
+              value: requestId,
+              name: "Request ID",
+              label: `Request ID: ${requestId}`
+            }
+          ]
         });
       }
     },
@@ -355,11 +375,21 @@ export const useGetProjectSecretsQuickSearch = (
       }),
     onError: (error) => {
       if (axios.isAxiosError(error)) {
-        const serverResponse = error.response?.data as { message: string };
+        const { message, requestId } = error.response?.data as {
+          message: string;
+          requestId: string;
+        };
         createNotification({
           title: "Error fetching secrets deep search",
           type: "error",
-          text: serverResponse.message
+          text: message,
+          copyActions: [
+            {
+              value: requestId,
+              name: "Request ID",
+              label: `Request ID: ${requestId}`
+            }
+          ]
         });
       }
     },

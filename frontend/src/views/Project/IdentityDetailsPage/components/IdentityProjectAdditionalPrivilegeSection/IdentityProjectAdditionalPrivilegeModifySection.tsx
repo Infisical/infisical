@@ -1,4 +1,5 @@
 import { Controller, FormProvider, useForm } from "react-hook-form";
+import { subject } from "@casl/ability";
 import {
   faCaretDown,
   faChevronLeft,
@@ -17,12 +18,13 @@ import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   FormControl,
   FormLabel,
   Input,
-  Modal,
-  ModalContent,
-  ModalTrigger,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -35,7 +37,6 @@ import {
   useProjectPermission,
   useWorkspace
 } from "@app/context";
-import { usePopUp } from "@app/hooks";
 import {
   useCreateIdentityProjectAdditionalPrivilege,
   useGetIdentityProjectPrivilegeDetails,
@@ -43,10 +44,10 @@ import {
 } from "@app/hooks/api";
 import { IdentityProjectAdditionalPrivilegeTemporaryMode } from "@app/hooks/api/identityProjectAdditionalPrivilege/types";
 import { GeneralPermissionPolicies } from "@app/views/Project/RolePage/components/RolePermissionsSection/components/GeneralPermissionPolicies";
-import { NewPermissionRule } from "@app/views/Project/RolePage/components/RolePermissionsSection/components/NewPermissionRule";
 import { PermissionEmptyState } from "@app/views/Project/RolePage/components/RolePermissionsSection/PermissionEmptyState";
 import {
   formRolePermission2API,
+  isConditionalSubjects,
   PROJECT_PERMISSION_OBJECT,
   projectRoleFormSchema,
   rolePermission2Form
@@ -88,7 +89,6 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
 }: Props) => {
   const isCreate = !privilegeId;
   const { currentWorkspace } = useWorkspace();
-  const { popUp, handlePopUpToggle } = usePopUp(["createPolicy"] as const);
   const projectId = currentWorkspace?.id || "";
   const { data: privilegeDetails, isLoading } = useGetIdentityProjectPrivilegeDetails({
     identityId,
@@ -98,7 +98,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
   const { permission } = useProjectPermission();
   const isIdentityEditDisabled = permission.cannot(
     ProjectPermissionActions.Edit,
-    ProjectPermissionSub.Identity
+    subject(ProjectPermissionSub.Identity, { identityId })
   );
 
   const form = useForm<TFormSchema>({
@@ -194,6 +194,30 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
     }
   }
 
+  const onNewPolicy = (selectedSubject: ProjectPermissionSub) => {
+    const rootPolicyValue = form.getValues(`permissions.${selectedSubject}`);
+    if (rootPolicyValue && isConditionalSubjects(selectedSubject)) {
+      form.setValue(
+        `permissions.${selectedSubject}`,
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore-error akhilmhdh: this is because of ts collision with both
+        [...rootPolicyValue, ...[]],
+        { shouldDirty: true, shouldTouch: true }
+      );
+    } else {
+      form.setValue(
+        `permissions.${selectedSubject}`,
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore-error akhilmhdh: this is because of ts collision with both
+        [{}],
+        {
+          shouldDirty: true,
+          shouldTouch: true
+        }
+      );
+    }
+  };
+
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
@@ -232,24 +256,39 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
               >
                 Save
               </Button>
-              <Modal
-                isOpen={popUp.createPolicy.isOpen}
-                onOpenChange={(isOpen) => handlePopUpToggle("createPolicy", isOpen)}
-              >
-                <ModalTrigger asChild>
+              <DropdownMenu>
+                <DropdownMenuTrigger>
                   <Button
+                    isDisabled={isDisabled}
                     className="h-10 rounded-l-none"
                     variant="outline_bg"
                     leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                    isDisabled={isDisabled}
                   >
-                    New Policy
+                    New policy
                   </Button>
-                </ModalTrigger>
-                <ModalContent title="New Policy" subTitle="Policies grant additional permissions.">
-                  <NewPermissionRule onClose={() => handlePopUpToggle("createPolicy")} />
-                </ModalContent>
-              </Modal>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="thin-scrollbar max-h-96" align="end">
+                  {Object.keys(PROJECT_PERMISSION_OBJECT)
+                    .sort((a, b) =>
+                      PROJECT_PERMISSION_OBJECT[a as keyof typeof PROJECT_PERMISSION_OBJECT].title
+                        .toLowerCase()
+                        .localeCompare(
+                          PROJECT_PERMISSION_OBJECT[
+                            b as keyof typeof PROJECT_PERMISSION_OBJECT
+                          ].title.toLowerCase()
+                        )
+                    )
+                    .map((permissionSubject) => (
+                      <DropdownMenuItem
+                        key={`permission-create-${permissionSubject}`}
+                        className="py-3"
+                        onClick={() => onNewPolicy(permissionSubject as ProjectPermissionSub)}
+                      >
+                        {PROJECT_PERMISSION_OBJECT[permissionSubject as ProjectPermissionSub].title}
+                      </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
@@ -376,17 +415,19 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
         <div className="p-4">
           <div className="mb-2 text-lg">Policies</div>
           {(isCreate || !isLoading) && <PermissionEmptyState />}
-          {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map((subject) => (
-            <GeneralPermissionPolicies
-              subject={subject}
-              actions={PROJECT_PERMISSION_OBJECT[subject].actions}
-              title={PROJECT_PERMISSION_OBJECT[subject].title}
-              key={`project-permission-${subject}`}
-              isDisabled={isDisabled}
-            >
-              {renderConditionalComponents(subject, isDisabled)}
-            </GeneralPermissionPolicies>
-          ))}
+          {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map(
+            (permissionSubject) => (
+              <GeneralPermissionPolicies
+                subject={permissionSubject}
+                actions={PROJECT_PERMISSION_OBJECT[permissionSubject].actions}
+                title={PROJECT_PERMISSION_OBJECT[permissionSubject].title}
+                key={`project-permission-${permissionSubject}`}
+                isDisabled={isDisabled}
+              >
+                {renderConditionalComponents(permissionSubject, isDisabled)}
+              </GeneralPermissionPolicies>
+            )
+          )}
         </div>
       </FormProvider>
     </form>

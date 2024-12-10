@@ -10,7 +10,7 @@ import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretRedisDBSchema, TDynamicProviderFns } from "./models";
 
 const generatePassword = () => {
-  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*$#";
+  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*";
   return customAlphabet(charset, 64)();
 };
 

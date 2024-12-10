@@ -9,7 +9,7 @@ const MSFT_GRAPH_API_URL = "https://graph.microsoft.com/v1.0/";
 const MSFT_LOGIN_URL = "https://login.microsoftonline.com";
 
 const generatePassword = () => {
-  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*$#";
+  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*";
   return customAlphabet(charset, 64)();
 };
 
@@ -122,7 +122,7 @@ export const AzureEntraIDProvider = (): TDynamicProviderFns & {
     return users;
   };
 
-  const renew = async (inputs: unknown, entityId: string) => {
+  const renew = async (_inputs: unknown, entityId: string) => {
     // No renewal necessary
     return { entityId };
   };
