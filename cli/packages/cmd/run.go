@@ -136,6 +136,11 @@ var runCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
+		prefix, err := cmd.Flags().GetString("prefix")
+		if err != nil {
+			util.HandleError(err, "Unable to parse prefix flag")
+		}
+
 		request := models.GetAllSecretsParameters{
 			Environment:            environmentName,
 			WorkspaceId:            projectId,
@@ -149,6 +154,17 @@ var runCmd = &cobra.Command{
 		injectableEnvironment, err := fetchAndFormatSecretsForShell(request, projectConfigDir, secretOverriding, token)
 		if err != nil {
 			util.HandleError(err, "Could not fetch secrets", "If you are using a service token to fetch secrets, please ensure it is valid")
+		}
+
+		if prefix != "" {
+			for _, variable := range injectableEnvironment.Variables {
+				parts := strings.SplitN(variable, "=", 2)
+				if len(parts) == 2 {
+					prefixedKey := prefix + parts[0]
+					prefixedVariable := prefixedKey + "=" + parts[1]
+					injectableEnvironment.Variables = append(injectableEnvironment.Variables, prefixedVariable)
+				}
+			}
 		}
 
 		log.Debug().Msgf("injecting the following environment variables into shell: %v", injectableEnvironment.Variables)
@@ -222,6 +238,7 @@ func init() {
 	runCmd.Flags().StringP("tags", "t", "", "filter secrets by tag slugs ")
 	runCmd.Flags().String("path", "/", "get secrets within a folder path")
 	runCmd.Flags().String("project-config-dir", "", "explicitly set the directory where the .infisical.json resides")
+	runCmd.Flags().String("prefix", "", "add a prefix to all injected environment variable names")
 }
 
 // Will execute a single command and pass in the given secrets into the process
