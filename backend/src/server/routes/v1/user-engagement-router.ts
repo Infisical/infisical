@@ -21,7 +21,7 @@ export const registerUserEngagementRouter = async (server: FastifyZodProvider) =
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      return server.services.userEngagement.createUserWish(req.permission.id, req.body.text);
+      return server.services.userEngagement.createUserWish(req.permission.id, req.permission.orgId, req.body.text);
     }
   });
 };
