@@ -977,16 +977,35 @@ const getAppsDigitalOceanAppPlatform = async ({ accessToken }: { accessToken: st
     scope: string;
   }
 
-  const res = (
-    await request.get<{ apps: DigitalOceanApp[] }>(`${IntegrationUrls.DIGITAL_OCEAN_API_URL}/v2/apps`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Accept-Encoding": "application/json"
-      }
-    })
-  ).data;
+  const fetchApps = async (page: number) => {
+    return (
+      await request.get<{ apps: DigitalOceanApp[] }>(
+        `${IntegrationUrls.DIGITAL_OCEAN_API_URL}/v2/apps?per_page=200?page=${page}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json"
+          }
+        }
+      )
+    ).data;
+  };
 
-  return (res.apps ?? []).map((a) => ({
+  let page = 1;
+  let lastPage = false;
+  const res = [];
+
+  while (!lastPage) {
+    const data = await fetchApps(page);
+    res.push(data.apps);
+    page++;
+
+    if (!data.links.pages.next) {
+      lastPage = true;
+    }
+  }
+
+  return (res ?? []).map((a) => ({
     name: a.spec.name,
     appId: a.id
   }));
