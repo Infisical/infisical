@@ -1,20 +1,33 @@
 import { ForbiddenError } from "@casl/ability";
+import https from "https";
+import jwt, { JsonWebTokenError } from "jsonwebtoken";
+import { JwksClient } from "jwks-rsa";
 
 import { IdentityAuthMethod, TIdentityJwtAuthsUpdate } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { getConfig } from "@app/lib/config/env";
+import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 
-import { ActorType } from "../auth/auth-type";
+import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
+import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TIdentityJwtAuthDALFactory } from "./identity-jwt-auth-dal";
-import { TAttachJwtAuthDTO, TGetJwtAuthDTO, TRevokeJwtAuthDTO, TUpdateJwtAuthDTO } from "./identity-jwt-auth-types";
+import { doesFieldValueMatchJwtPolicy } from "./identity-jwt-auth-fns";
+import {
+  JwtConfigurationType,
+  TAttachJwtAuthDTO,
+  TGetJwtAuthDTO,
+  TLoginJwtAuthDTO,
+  TRevokeJwtAuthDTO,
+  TUpdateJwtAuthDTO
+} from "./identity-jwt-auth-types";
 
 type TIdentityJwtAuthServiceFactoryDep = {
   identityJwtAuthDAL: TIdentityJwtAuthDALFactory;
@@ -35,6 +48,162 @@ export const identityJwtAuthServiceFactory = ({
   identityAccessTokenDAL,
   kmsService
 }: TIdentityJwtAuthServiceFactoryDep) => {
+  const login = async ({ identityId, jwt: jwtValue }: TLoginJwtAuthDTO) => {
+    const identityJwtAuth = await identityJwtAuthDAL.findOne({ identityId });
+    if (!identityJwtAuth) {
+      throw new NotFoundError({ message: "JWT auth method not found for identity, did you configure JWT auth?" });
+    }
+
+    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({
+      identityId: identityJwtAuth.identityId
+    });
+    if (!identityMembershipOrg) {
+      throw new NotFoundError({
+        message: `Identity organization membership for identity with ID '${identityJwtAuth.identityId}' not found`
+      });
+    }
+
+    const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: identityMembershipOrg.orgId
+    });
+
+    const decodedToken = jwt.decode(jwtValue, { complete: true });
+    if (!decodedToken) {
+      throw new UnauthorizedError({
+        message: "Invalid JWT"
+      });
+    }
+
+    let tokenData: Record<string, string> = {};
+
+    if (identityJwtAuth.configurationType === JwtConfigurationType.JWKS) {
+      const decryptedJwksCaCert = orgDataKeyDecryptor({
+        cipherTextBlob: identityJwtAuth.encryptedJwksCaCert
+      }).toString();
+      const requestAgent = new https.Agent({ ca: decryptedJwksCaCert, rejectUnauthorized: !!decryptedJwksCaCert });
+      const client = new JwksClient({
+        jwksUri: identityJwtAuth.jwksUrl,
+        requestAgent
+      });
+
+      const { kid } = decodedToken.header;
+      const jwtSigningKey = await client.getSigningKey(kid);
+
+      try {
+        tokenData = jwt.verify(jwtValue, jwtSigningKey.getPublicKey()) as Record<string, string>;
+      } catch (error) {
+        if (error instanceof jwt.JsonWebTokenError) {
+          throw new UnauthorizedError({
+            message: `Access denied: ${error.message}`
+          });
+        }
+
+        throw error;
+      }
+    } else {
+      const decryptedPublicKeys = orgDataKeyDecryptor({ cipherTextBlob: identityJwtAuth.encryptedPublicKeys })
+        .toString()
+        .split(",");
+
+      const errors: string[] = [];
+      let isMatchAnyKey = false;
+      for (const publicKey of decryptedPublicKeys) {
+        try {
+          tokenData = jwt.verify(jwtValue, publicKey) as Record<string, string>;
+          isMatchAnyKey = true;
+        } catch (error) {
+          if (error instanceof JsonWebTokenError) {
+            errors.push(error.message);
+          }
+        }
+      }
+
+      if (!isMatchAnyKey) {
+        throw new UnauthorizedError({
+          message: `Access denied: JWT verification failed with all keys. Errors - ${errors.join("; ")}`
+        });
+      }
+    }
+
+    if (identityJwtAuth.boundIssuer) {
+      if (!doesFieldValueMatchJwtPolicy(tokenData.iss, identityJwtAuth.boundIssuer)) {
+        throw new ForbiddenRequestError({
+          message: "Access denied: issuer mismatch."
+        });
+      }
+    }
+
+    if (identityJwtAuth.boundSubject) {
+      if (!doesFieldValueMatchJwtPolicy(tokenData.sub, identityJwtAuth.boundSubject)) {
+        throw new ForbiddenRequestError({
+          message: "Access denied: subject not allowed."
+        });
+      }
+    }
+
+    if (identityJwtAuth.boundAudiences) {
+      if (
+        !identityJwtAuth.boundAudiences
+          .split(", ")
+          .some((policyValue) => doesFieldValueMatchJwtPolicy(tokenData.aud, policyValue))
+      ) {
+        throw new UnauthorizedError({
+          message: "Access denied: audience not allowed."
+        });
+      }
+    }
+
+    if (identityJwtAuth.boundClaims) {
+      Object.keys(identityJwtAuth.boundClaims).forEach((claimKey) => {
+        const claimValue = (identityJwtAuth.boundClaims as Record<string, string>)[claimKey];
+        // handle both single and multi-valued claims
+        if (
+          !claimValue.split(", ").some((claimEntry) => doesFieldValueMatchJwtPolicy(tokenData[claimKey], claimEntry))
+        ) {
+          throw new UnauthorizedError({
+            message: "Access denied: claim mismatch."
+          });
+        }
+      });
+    }
+
+    const identityAccessToken = await identityJwtAuthDAL.transaction(async (tx) => {
+      const newToken = await identityAccessTokenDAL.create(
+        {
+          identityId: identityJwtAuth.identityId,
+          isAccessTokenRevoked: false,
+          accessTokenTTL: identityJwtAuth.accessTokenTTL,
+          accessTokenMaxTTL: identityJwtAuth.accessTokenMaxTTL,
+          accessTokenNumUses: 0,
+          accessTokenNumUsesLimit: identityJwtAuth.accessTokenNumUsesLimit,
+          authMethod: IdentityAuthMethod.JWT_AUTH
+        },
+        tx
+      );
+
+      return newToken;
+    });
+
+    const appCfg = getConfig();
+    const accessToken = jwt.sign(
+      {
+        identityId: identityJwtAuth.identityId,
+        identityAccessTokenId: identityAccessToken.id,
+        authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
+      } as TIdentityAccessTokenJwtPayload,
+      appCfg.AUTH_SECRET,
+      {
+        expiresIn:
+          Number(identityAccessToken.accessTokenMaxTTL) === 0
+            ? undefined
+            : Number(identityAccessToken.accessTokenMaxTTL)
+      }
+    );
+
+    return { accessToken, identityJwtAuth, identityAccessToken, identityMembershipOrg };
+  };
+
   const attachJwtAuth = async ({
     identityId,
     configurationType,
@@ -337,6 +506,7 @@ export const identityJwtAuthServiceFactory = ({
   };
 
   return {
+    login,
     attachJwtAuth,
     updateJwtAuth,
     getJwtAuth,

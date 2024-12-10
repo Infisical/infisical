@@ -44,3 +44,8 @@ export type TGetJwtAuthDTO = {
 export type TRevokeJwtAuthDTO = {
   identityId: string;
 } & Omit<TProjectPermission, "projectId">;
+
+export type TLoginJwtAuthDTO = {
+  identityId: string;
+  jwt: string;
+};

@@ -94,6 +94,7 @@ export enum EventType {
   UPDATE_IDENTITY_OIDC_AUTH = "update-identity-oidc-auth",
   GET_IDENTITY_OIDC_AUTH = "get-identity-oidc-auth",
   REVOKE_IDENTITY_OIDC_AUTH = "revoke-identity-oidc-auth",
+  LOGIN_IDENTITY_JWT_AUTH = "login-identity-jwt-auth",
   ADD_IDENTITY_JWT_AUTH = "add-identity-jwt-auth",
   UPDATE_IDENTITY_JWT_AUTH = "update-identity-jwt-auth",
   GET_IDENTITY_JWT_AUTH = "get-identity-jwt-auth",
@@ -896,6 +897,15 @@ interface GetIdentityOidcAuthEvent {
   type: EventType.GET_IDENTITY_OIDC_AUTH;
   metadata: {
     identityId: string;
+  };
+}
+
+interface LoginIdentityJwtAuthEvent {
+  type: EventType.LOGIN_IDENTITY_JWT_AUTH;
+  metadata: {
+    identityId: string;
+    identityJwtAuthId: string;
+    identityAccessTokenId: string;
   };
 }
 
@@ -1789,6 +1799,7 @@ export type Event =
   | DeleteIdentityOidcAuthEvent
   | UpdateIdentityOidcAuthEvent
   | GetIdentityOidcAuthEvent
+  | LoginIdentityJwtAuthEvent
   | AddIdentityJwtAuthEvent
   | UpdateIdentityJwtAuthEvent
   | GetIdentityJwtAuthEvent

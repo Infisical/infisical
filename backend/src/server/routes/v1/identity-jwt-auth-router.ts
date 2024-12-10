@@ -24,6 +24,55 @@ const IdentityJwtAuthResponseSchema = IdentityJwtAuthsSchema.omit({
 export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
+    url: "/jwt-auth/login",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "Login with JWT Auth",
+      body: z.object({
+        identityId: z.string().trim().describe(JWT_AUTH.LOGIN.identityId),
+        jwt: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          accessToken: z.string(),
+          expiresIn: z.coerce.number(),
+          accessTokenMaxTTL: z.coerce.number(),
+          tokenType: z.literal("Bearer")
+        })
+      }
+    },
+    handler: async (req) => {
+      const { identityJwtAuth, accessToken, identityAccessToken, identityMembershipOrg } =
+        await server.services.identityJwtAuth.login({
+          identityId: req.body.identityId,
+          jwt: req.body.jwt
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: identityMembershipOrg?.orgId,
+        event: {
+          type: EventType.LOGIN_IDENTITY_JWT_AUTH,
+          metadata: {
+            identityId: identityJwtAuth.identityId,
+            identityAccessTokenId: identityAccessToken.id,
+            identityJwtAuthId: identityJwtAuth.id
+          }
+        }
+      });
+      return {
+        accessToken,
+        tokenType: "Bearer" as const,
+        expiresIn: identityJwtAuth.accessTokenTTL,
+        accessTokenMaxTTL: identityJwtAuth.accessTokenMaxTTL
+      };
+    }
+  });
+
+  server.route({
+    method: "POST",
     url: "/jwt-auth/identities/:identityId",
     config: {
       rateLimit: writeLimit
