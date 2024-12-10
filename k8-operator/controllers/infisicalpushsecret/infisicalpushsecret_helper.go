@@ -148,15 +148,6 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 		IncludeImports: false,
 	})
 
-	existingSecretsContainsKey := func(key string) bool {
-		for _, secret := range existingSecrets {
-			if secret.SecretKey == key {
-				return true
-			}
-		}
-		return false
-	}
-
 	getExistingSecretByKey := func(key string) *infisicalSdk.Secret {
 		for _, secret := range existingSecrets {
 			if secret.SecretKey == key {
@@ -173,6 +164,15 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 			}
 		}
 		return nil
+	}
+
+	updateExistingSecretByKey := func(key string, newSecretValue string) {
+		for i := range existingSecrets {
+			if existingSecrets[i].SecretKey == key {
+				existingSecrets[i].SecretValue = newSecretValue
+				break
+			}
+		}
 	}
 
 	if err != nil {
@@ -192,7 +192,8 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 		infisicalPushSecret.Status.ManagedSecrets = make(map[string]string) // (string[id], string[key] )
 
 		for secretKey, secretValue := range kubeSecrets {
-			if existingSecretsContainsKey(secretKey) {
+			if exists := getExistingSecretByKey(secretKey); exists != nil {
+
 				if updatePolicy == string(constants.PUSH_SECRET_REPLACE_POLICY_ENABLED) {
 					updatedSecret, err := infisicalClient.Secrets().Update(infisicalSdk.UpdateSecretOptions{
 						SecretKey:      secretKey,
@@ -306,7 +307,7 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 		// We need to check if any new secrets have been added in the kube secret
 		for currentSecretKey := range kubeSecrets {
 
-			if !existingSecretsContainsKey(currentSecretKey) {
+			if exists := getExistingSecretByKey(currentSecretKey); exists == nil {
 
 				// Some secrets has been added, verify that the secret that has been added is not already managed by the operator
 				if _, ok := infisicalPushSecret.Status.ManagedSecrets[currentSecretKey]; !ok {
@@ -332,21 +333,29 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 				}
 			} else {
 				if updatePolicy == string(constants.PUSH_SECRET_REPLACE_POLICY_ENABLED) {
-					updatedSecret, err := infisicalClient.Secrets().Update(infisicalSdk.UpdateSecretOptions{
-						SecretKey:      currentSecretKey,
-						NewSecretValue: kubeSecrets[currentSecretKey],
-						ProjectID:      destination.ProjectID,
-						Environment:    destination.EnvironmentSlug,
-						SecretPath:     destination.SecretsPath,
-					})
 
-					if err != nil {
-						secretsFailedToUpdate = append(secretsFailedToUpdate, currentSecretKey)
-						logger.Info(fmt.Sprintf("unable to update secret [key=%s] [err=%s]", currentSecretKey, err))
-						continue
+					existingSecret := getExistingSecretByKey(currentSecretKey)
+
+					if existingSecret != nil && existingSecret.SecretValue != kubeSecrets[currentSecretKey] {
+						logger.Info(fmt.Sprintf("Secret with key [key=%s] has changed value. Updating secret in Infisical", currentSecretKey))
+
+						updatedSecret, err := infisicalClient.Secrets().Update(infisicalSdk.UpdateSecretOptions{
+							SecretKey:      currentSecretKey,
+							NewSecretValue: kubeSecrets[currentSecretKey],
+							ProjectID:      destination.ProjectID,
+							Environment:    destination.EnvironmentSlug,
+							SecretPath:     destination.SecretsPath,
+						})
+
+						if err != nil {
+							secretsFailedToUpdate = append(secretsFailedToUpdate, currentSecretKey)
+							logger.Info(fmt.Sprintf("unable to update secret [key=%s] [err=%s]", currentSecretKey, err))
+							continue
+						}
+
+						updateExistingSecretByKey(currentSecretKey, kubeSecrets[currentSecretKey])
+						infisicalPushSecret.Status.ManagedSecrets[updatedSecret.ID] = currentSecretKey
 					}
-
-					infisicalPushSecret.Status.ManagedSecrets[updatedSecret.ID] = currentSecretKey
 				}
 			}
 		}

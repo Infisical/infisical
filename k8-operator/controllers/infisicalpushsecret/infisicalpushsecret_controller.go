@@ -22,7 +22,7 @@ import (
 	secretsv1alpha1 "github.com/Infisical/infisical/k8-operator/api/v1alpha1"
 	"github.com/Infisical/infisical/k8-operator/packages/api"
 	"github.com/Infisical/infisical/k8-operator/packages/constants"
-	controllerhelpers "github.com/Infisical/infisical/k8-operator/packages/controllerutil"
+	controllerhelpers "github.com/Infisical/infisical/k8-operator/packages/controllerhelpers"
 	"github.com/Infisical/infisical/k8-operator/packages/util"
 	"github.com/go-logr/logr"
 )
@@ -105,7 +105,7 @@ func (r *InfisicalPushSecretReconciler) Reconcile(ctx context.Context, req ctrl.
 
 	if infisicalPushSecretCRD.Spec.ResyncInterval != "" {
 
-		duration, err := util.ConvertResyncIntervalToDuration(infisicalPushSecretCRD.Spec.ResyncInterval)
+		duration, err := util.ConvertIntervalToDuration(infisicalPushSecretCRD.Spec.ResyncInterval)
 
 		if err != nil {
 			logger.Error(err, fmt.Sprintf("unable to convert resync interval to duration. Will requeue after [requeueTime=%v]", requeueTime))
@@ -141,7 +141,7 @@ func (r *InfisicalPushSecretReconciler) Reconcile(ctx context.Context, req ctrl.
 	if infisicalPushSecretCRD.Spec.HostAPI == "" {
 		api.API_HOST_URL = infisicalConfig["hostAPI"]
 	} else {
-		api.API_HOST_URL = infisicalPushSecretCRD.Spec.HostAPI
+		api.API_HOST_URL = util.AppendAPIEndpoint(infisicalPushSecretCRD.Spec.HostAPI)
 	}
 
 	if infisicalPushSecretCRD.Spec.TLS.CaRef.SecretName != "" {
