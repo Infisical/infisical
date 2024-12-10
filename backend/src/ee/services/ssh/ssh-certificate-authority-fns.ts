@@ -32,7 +32,7 @@ export const createSshCertSerialNumber = () => {
  * @param comment - The comment to use for the SSH key pair
  * @returns The public and private keys for the SSH key pair
  */
-export const createSshKeyPair = async (keyAlgorithm: CertKeyAlgorithm, comment: string) => {
+export const createSshKeyPair = async (keyAlgorithm: CertKeyAlgorithm) => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ssh-key-"));
   const privateKeyFile = path.join(tempDir, "id_key");
   const publicKeyFile = `${privateKeyFile}.pub`;
@@ -67,7 +67,7 @@ export const createSshKeyPair = async (keyAlgorithm: CertKeyAlgorithm, comment: 
     // Generate the SSH key pair
     // The "-N ''" sets an empty passphrase
     // The keys are created in the temporary directory
-    await execFileAsync("ssh-keygen", ["-t", keyType, "-b", keyBits, "-f", privateKeyFile, "-N", "", "-C", comment]);
+    await execFileAsync("ssh-keygen", ["-t", keyType, "-b", keyBits, "-f", privateKeyFile, "-N", ""]);
 
     // Read the generated keys
     const publicKey = await fs.readFile(publicKeyFile, "utf8");
@@ -126,6 +126,61 @@ export const validateSshCertificatePrincipals = (
   template: TSshCertificateTemplates,
   principals: string[]
 ) => {
+  /**
+   * Validate and sanitize a principal string
+   * @param principal - the principal to validate and sanitize
+   * @returns the sanitized principal
+   */
+  const validatePrincipal = (principal: string) => {
+    const sanitized = principal.trim();
+
+    // basic checks for empty or control characters
+    if (sanitized.length === 0) {
+      throw new BadRequestError({
+        message: "Principal cannot be an empty string."
+      });
+    }
+
+    if (/\r|\n|\t|\0/.test(sanitized)) {
+      throw new BadRequestError({
+        message: `Principal '${sanitized}' contains invalid whitespace or control characters.`
+      });
+    }
+
+    // disallow whitespace anywhere
+    if (/\s/.test(sanitized)) {
+      throw new BadRequestError({
+        message: `Principal '${sanitized}' cannot contain whitespace.`
+      });
+    }
+
+    // restrict allowed characters to letters, digits, dot, underscore, and hyphen
+    if (!/^[A-Za-z0-9._-]+$/.test(sanitized)) {
+      throw new BadRequestError({
+        message: `Principal '${sanitized}' contains invalid characters. Allowed: alphanumeric, '.', '_', '-'.`
+      });
+    }
+
+    // disallow leading hyphen to avoid potential argument-like inputs
+    if (sanitized.startsWith("-")) {
+      throw new BadRequestError({
+        message: `Principal '${sanitized}' cannot start with a hyphen.`
+      });
+    }
+
+    // length restriction (adjust as needed)
+    if (sanitized.length > 64) {
+      throw new BadRequestError({
+        message: `Principal '${sanitized}' is too long.`
+      });
+    }
+
+    return sanitized;
+  };
+
+  // Sanitize and validate all principals using the helper
+  const sanitizedPrincipals = principals.map(validatePrincipal);
+
   switch (certType) {
     case SshCertType.USER: {
       if (template.allowedUsers.length === 0) {
@@ -136,7 +191,7 @@ export const validateSshCertificatePrincipals = (
 
       const allowsAllUsers = template.allowedUsers.includes("*") ?? false;
 
-      principals.forEach((principal) => {
+      sanitizedPrincipals.forEach((principal) => {
         if (principal === "*") {
           throw new BadRequestError({
             message: `Principal '*' is not allowed for user certificates.`
@@ -164,7 +219,7 @@ export const validateSshCertificatePrincipals = (
 
       const allowsAllHosts = template.allowedHosts.includes("*") ?? false;
 
-      principals.forEach((principal) => {
+      sanitizedPrincipals.forEach((principal) => {
         if (principal.includes("*")) {
           throw new BadRequestError({
             message: `Principal '${principal}' with wildcards is not allowed for host certificates.`
@@ -209,7 +264,7 @@ export const validateSshCertificatePrincipals = (
 export const validateSshCertificateTtl = (template: TSshCertificateTemplates, ttl?: string) => {
   if (!ttl) {
     // use default template ttl
-    return ms(template.ttl) / 1000;
+    return Math.ceil(ms(template.ttl) / 1000);
   }
 
   if (ms(ttl) > ms(template.maxTTL)) {
@@ -218,20 +273,82 @@ export const validateSshCertificateTtl = (template: TSshCertificateTemplates, tt
     });
   }
 
-  return ms(ttl) / 1000;
+  return Math.ceil(ms(ttl) / 1000);
+};
+
+/**
+ * Validate the requested SSH certificate key ID to ensure
+ * that it only contains alphanumeric characters with no spaces.
+ * @param keyId - The key ID to validate
+ */
+export const validateSshCertificateKeyId = (keyId: string) => {
+  const regex = /^[A-Za-z0-9-]+$/;
+  if (!regex.test(keyId)) {
+    throw new BadRequestError({
+      message:
+        "Failed to validate Key ID because it can only contain alphanumeric characters and hyphens, with no spaces."
+    });
+  }
+
+  if (keyId.length > 50) {
+    throw new BadRequestError({
+      message: "keyId can only be up to 50 characters long."
+    });
+  }
+};
+
+/**
+ * Validate the format of the SSH public key
+ * @param publicKey - the public key to validate
+ */
+const validateSshPublicKey = async (publicKey: string) => {
+  const validPrefixes = ["ssh-rsa", "ssh-ed25519", "ecdsa-sha2-nistp256", "ecdsa-sha2-nistp384"];
+  const startsWithValidPrefix = validPrefixes.some((prefix) => publicKey.startsWith(`${prefix} `));
+  if (!startsWithValidPrefix) {
+    throw new BadRequestError({ message: "Failed to validate SSH public key format: unsupported key type." });
+  }
+
+  // write the key to a temp file and run `ssh-keygen -l -f`
+  // check to see if OpenSSH can read/interpret the public key
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ssh-pubkey-"));
+  const pubKeyFile = path.join(tempDir, "key.pub");
+
+  try {
+    await fs.writeFile(pubKeyFile, publicKey, { mode: 0o600 });
+    await execFileAsync("ssh-keygen", ["-l", "-f", pubKeyFile]);
+  } catch (error) {
+    throw new BadRequestError({
+      message: "Failed to validate SSH public key format: could not be parsed."
+    });
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+  }
 };
 
 /**
  * Create an SSH certificate for a user or host.
  */
 export const createSshCert = async ({
+  template,
   caPrivateKey,
-  userPublicKey,
+  clientPublicKey,
   keyId,
   principals,
-  ttl,
+  requestedTtl,
   certType
 }: TCreateSshCertDTO) => {
+  // validate if the requested [certType] is allowed under the template configuration
+  validateSshCertificateType(template, certType);
+
+  // validate if the requested [principals] are valid for the given [certType] under the template configuration
+  validateSshCertificatePrincipals(certType, template, principals);
+
+  // validate if the requested TTL is valid under the template configuration
+  const ttl = validateSshCertificateTtl(template, requestedTtl);
+
+  validateSshCertificateKeyId(keyId);
+  await validateSshPublicKey(clientPublicKey);
+
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ssh-cert-"));
 
   const publicKeyFile = path.join(tempDir, "user_key.pub");
@@ -259,7 +376,7 @@ export const createSshCert = async ({
 
   try {
     // Write public and private keys to the temp directory
-    await fs.writeFile(publicKeyFile, userPublicKey, { mode: 0o600 });
+    await fs.writeFile(publicKeyFile, clientPublicKey, { mode: 0o600 });
     await fs.writeFile(privateKeyFile, caPrivateKey, { mode: 0o600 });
 
     // Execute the signing process
@@ -268,7 +385,7 @@ export const createSshCert = async ({
     // Read the signed public key from the generated cert file
     const signedPublicKey = await fs.readFile(signedPublicKeyFile, "utf8");
 
-    return { serialNumber, signedPublicKey };
+    return { serialNumber, signedPublicKey, ttl };
   } finally {
     // Cleanup the temporary directory and all its contents
     await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});

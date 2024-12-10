@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import ms from "ms";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -39,7 +40,11 @@ const schema = z.object({
   ]),
   certType: z.nativeEnum(SshCertType),
   principals: z.string(),
-  ttl: z.string().optional(),
+  ttl: z
+    .string()
+    .trim()
+    .refine((val) => ms(val) > 0, "TTL must be a valid time string such as 2 days, 1d, 2h 1y, ...")
+    .optional(),
   keyId: z.string().optional()
 });
 

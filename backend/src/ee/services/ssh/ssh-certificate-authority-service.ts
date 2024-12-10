@@ -12,14 +12,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { SshCertTemplateStatus } from "../ssh-certificate-template/ssh-certificate-template-types";
-import {
-  createSshCert,
-  createSshKeyPair,
-  getSshPublicKey,
-  validateSshCertificatePrincipals,
-  validateSshCertificateTtl,
-  validateSshCertificateType
-} from "./ssh-certificate-authority-fns";
+import { createSshCert, createSshKeyPair, getSshPublicKey } from "./ssh-certificate-authority-fns";
 import {
   SshCaStatus,
   TCreateSshCaDTO,
@@ -97,7 +90,7 @@ export const sshCertificateAuthorityServiceFactory = ({
         tx
       );
 
-      const { publicKey, privateKey } = await createSshKeyPair(keyAlgorithm, ca.friendlyName);
+      const { publicKey, privateKey } = await createSshKeyPair(keyAlgorithm);
 
       // TODO: update to sshEncryptor
       const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
@@ -302,15 +295,6 @@ export const sshCertificateAuthorityServiceFactory = ({
       });
     }
 
-    // validate if the requested [certType] is allowed under the template configuration
-    validateSshCertificateType(sshCertificateTemplate, certType);
-
-    // validate if the requested [principals] are valid for the given [certType] under the template configuration
-    validateSshCertificatePrincipals(certType, sshCertificateTemplate, principals);
-
-    // validate if the requested TTL is valid under the template configuration
-    const ttl = validateSshCertificateTtl(sshCertificateTemplate, requestedTtl);
-
     // set [keyId] depending on if [allowCustomKeyIds] is true or false
     const keyId = sshCertificateTemplate.allowCustomKeyIds
       ? requestedKeyId ?? `${actor}-${actorId}`
@@ -329,14 +313,15 @@ export const sshCertificateAuthorityServiceFactory = ({
     });
 
     // create user key pair
-    const { publicKey, privateKey } = await createSshKeyPair(keyAlgorithm, "Client Key");
+    const { publicKey, privateKey } = await createSshKeyPair(keyAlgorithm);
 
-    const { serialNumber, signedPublicKey } = await createSshCert({
+    const { serialNumber, signedPublicKey, ttl } = await createSshCert({
+      template: sshCertificateTemplate,
       caPrivateKey: decryptedCaPrivateKey.toString("utf8"),
-      userPublicKey: publicKey,
+      clientPublicKey: publicKey,
       keyId,
       principals,
-      ttl,
+      requestedTtl,
       certType
     });
 
@@ -434,15 +419,6 @@ export const sshCertificateAuthorityServiceFactory = ({
       });
     }
 
-    // validate if the requested [certType] is allowed under the template configuration
-    validateSshCertificateType(sshCertificateTemplate, certType);
-
-    // validate if the requested [principals] are valid for the given [certType] under the template configuration
-    validateSshCertificatePrincipals(certType, sshCertificateTemplate, principals);
-
-    // validate if the requested TTL is valid under the template configuration
-    const ttl = validateSshCertificateTtl(sshCertificateTemplate, requestedTtl);
-
     // set [keyId] depending on if [allowCustomKeyIds] is true or false
     const keyId = sshCertificateTemplate.allowCustomKeyIds
       ? requestedKeyId ?? `${actor}-${actorId}`
@@ -460,12 +436,13 @@ export const sshCertificateAuthorityServiceFactory = ({
       cipherTextBlob: sshCaSecret.encryptedPrivateKey
     });
 
-    const { serialNumber, signedPublicKey } = await createSshCert({
+    const { serialNumber, signedPublicKey, ttl } = await createSshCert({
+      template: sshCertificateTemplate,
       caPrivateKey: decryptedCaPrivateKey.toString("utf8"),
-      userPublicKey: publicKey,
+      clientPublicKey: publicKey,
       keyId,
       principals,
-      ttl,
+      requestedTtl,
       certType
     });
 

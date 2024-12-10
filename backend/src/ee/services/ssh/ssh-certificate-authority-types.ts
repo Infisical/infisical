@@ -1,3 +1,4 @@
+import { TSshCertificateTemplates } from "@app/db/schemas";
 import { TProjectPermission } from "@app/lib/types";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
@@ -57,10 +58,11 @@ export type TGetSshCaCertificateTemplatesDTO = {
 } & Omit<TProjectPermission, "projectId">;
 
 export type TCreateSshCertDTO = {
+  template: TSshCertificateTemplates;
   caPrivateKey: string;
-  userPublicKey: string;
+  clientPublicKey: string;
   keyId: string;
   principals: string[];
-  ttl: number;
+  requestedTtl?: string;
   certType: SshCertType;
 };

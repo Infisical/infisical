@@ -36,7 +36,7 @@ export const registerSshRouter = async (server: FastifyZodProvider) => {
           .refine((val) => ms(val) > 0, "TTL must be a positive number")
           .optional()
           .describe(SSH_CERTIFICATE_AUTHORITIES.SIGN_SSH_KEY.ttl),
-        keyId: z.string().trim().optional().describe(SSH_CERTIFICATE_AUTHORITIES.SIGN_SSH_KEY.keyId)
+        keyId: z.string().trim().max(50).optional().describe(SSH_CERTIFICATE_AUTHORITIES.SIGN_SSH_KEY.keyId)
       }),
       response: {
         200: z.object({
@@ -106,7 +106,7 @@ export const registerSshRouter = async (server: FastifyZodProvider) => {
           .refine((val) => ms(val) > 0, "TTL must be a positive number")
           .optional()
           .describe(SSH_CERTIFICATE_AUTHORITIES.ISSUE_SSH_CREDENTIALS.ttl),
-        keyId: z.string().trim().optional()
+        keyId: z.string().trim().max(50).optional().describe(SSH_CERTIFICATE_AUTHORITIES.ISSUE_SSH_CREDENTIALS.keyId)
       }),
       response: {
         200: z.object({
