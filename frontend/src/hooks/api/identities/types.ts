@@ -1,6 +1,6 @@
 import { TOrgRole } from "../roles/types";
 import { ProjectUserMembershipTemporaryMode, Workspace } from "../workspace/types";
-import { IdentityAuthMethod } from "./enums";
+import { IdentityAuthMethod, IdentityJwtConfigurationType } from "./enums";
 
 export type IdentityTrustedIp = {
   id: string;
@@ -442,6 +442,65 @@ export type UpdateIdentityTokenAuthDTO = {
 };
 
 export type DeleteIdentityTokenAuthDTO = {
+  organizationId: string;
+  identityId: string;
+};
+
+export type IdentityJwtAuth = {
+  identityId: string;
+  configurationType: IdentityJwtConfigurationType;
+  jwksUrl: string;
+  jwksCaCert: string;
+  publicKeys: string[];
+  boundIssuer: string;
+  boundAudiences: string;
+  boundClaims: Record<string, string>;
+  boundSubject: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: IdentityTrustedIp[];
+};
+
+export type AddIdentityJwtAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  configurationType: string;
+  jwksUrl?: string;
+  jwksCaCert: string;
+  publicKeys?: string[];
+  boundIssuer: string;
+  boundAudiences: string;
+  boundClaims: Record<string, string>;
+  boundSubject: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: {
+    ipAddress: string;
+  }[];
+};
+
+export type UpdateIdentityJwtAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  configurationType?: string;
+  jwksUrl?: string;
+  jwksCaCert?: string;
+  publicKeys?: string[];
+  boundIssuer?: string;
+  boundAudiences?: string;
+  boundClaims?: Record<string, string>;
+  boundSubject?: string;
+  accessTokenTTL?: number;
+  accessTokenMaxTTL?: number;
+  accessTokenNumUsesLimit?: number;
+  accessTokenTrustedIps?: {
+    ipAddress: string;
+  }[];
+};
+
+export type DeleteIdentityJwtAuthDTO = {
   organizationId: string;
   identityId: string;
 };
