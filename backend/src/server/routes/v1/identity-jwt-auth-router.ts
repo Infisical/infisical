@@ -21,6 +21,92 @@ const IdentityJwtAuthResponseSchema = IdentityJwtAuthsSchema.omit({
   publicKeys: z.string().array()
 });
 
+const CreateBaseSchema = z.object({
+  boundIssuer: z.string().trim().default("").describe(JWT_AUTH.ATTACH.boundIssuer),
+  boundAudiences: validateJwtAuthAudiencesField.describe(JWT_AUTH.ATTACH.boundAudiences),
+  boundClaims: validateJwtBoundClaimsField.describe(JWT_AUTH.ATTACH.boundClaims),
+  boundSubject: z.string().trim().default("").describe(JWT_AUTH.ATTACH.boundSubject),
+  accessTokenTrustedIps: z
+    .object({
+      ipAddress: z.string().trim()
+    })
+    .array()
+    .min(1)
+    .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
+    .describe(JWT_AUTH.ATTACH.accessTokenTrustedIps),
+  accessTokenTTL: z
+    .number()
+    .int()
+    .min(1)
+    .max(315360000)
+    .refine((value) => value !== 0, {
+      message: "accessTokenTTL must have a non zero number"
+    })
+    .default(2592000)
+    .describe(JWT_AUTH.ATTACH.accessTokenTTL),
+  accessTokenMaxTTL: z
+    .number()
+    .int()
+    .max(315360000)
+    .refine((value) => value !== 0, {
+      message: "accessTokenMaxTTL must have a non zero number"
+    })
+    .default(2592000)
+    .describe(JWT_AUTH.ATTACH.accessTokenMaxTTL),
+  accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(JWT_AUTH.ATTACH.accessTokenNumUsesLimit)
+});
+
+const UpdateBaseSchema = z
+  .object({
+    boundIssuer: z.string().trim().default("").describe(JWT_AUTH.UPDATE.boundIssuer),
+    boundAudiences: validateJwtAuthAudiencesField.describe(JWT_AUTH.UPDATE.boundAudiences),
+    boundClaims: validateJwtBoundClaimsField.describe(JWT_AUTH.UPDATE.boundClaims),
+    boundSubject: z.string().trim().default("").describe(JWT_AUTH.UPDATE.boundSubject),
+    accessTokenTrustedIps: z
+      .object({
+        ipAddress: z.string().trim()
+      })
+      .array()
+      .min(1)
+      .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
+      .describe(JWT_AUTH.UPDATE.accessTokenTrustedIps),
+    accessTokenTTL: z
+      .number()
+      .int()
+      .min(1)
+      .max(315360000)
+      .refine((value) => value !== 0, {
+        message: "accessTokenTTL must have a non zero number"
+      })
+      .default(2592000)
+      .describe(JWT_AUTH.UPDATE.accessTokenTTL),
+    accessTokenMaxTTL: z
+      .number()
+      .int()
+      .max(315360000)
+      .refine((value) => value !== 0, {
+        message: "accessTokenMaxTTL must have a non zero number"
+      })
+      .default(2592000)
+      .describe(JWT_AUTH.UPDATE.accessTokenMaxTTL),
+    accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(JWT_AUTH.UPDATE.accessTokenNumUsesLimit)
+  })
+  .partial();
+
+const JwksConfigurationSchema = z.object({
+  configurationType: z.literal(JwtConfigurationType.JWKS),
+  jwksUrl: z.string().trim().url(),
+  jwksCaCert: z.string().trim().default(""),
+  publicKeys: z.string().array().optional().default([])
+});
+
+const StaticConfigurationSchema = z.object({
+  configurationType: z.literal(JwtConfigurationType.STATIC),
+  jwksUrl: z.string().trim().optional().default(""),
+  jwksCaCert: z.string().trim().optional().default(""),
+  publicKeys: z.string().min(1).array().min(1)
+});
+
 export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
@@ -88,65 +174,10 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
       params: z.object({
         identityId: z.string().trim().describe(JWT_AUTH.ATTACH.identityId)
       }),
-      body: z
-        .object({
-          configurationType: z.nativeEnum(JwtConfigurationType).describe(JWT_AUTH.ATTACH.configurationType),
-          jwksUrl: z.string().trim().default("").describe(JWT_AUTH.ATTACH.jwksUrl),
-          jwksCaCert: z.string().trim().default("").describe(JWT_AUTH.ATTACH.jwksCaCert),
-          publicKeys: z.string().min(1).array().describe(JWT_AUTH.ATTACH.publicKeys),
-          boundIssuer: z.string().trim().default("").describe(JWT_AUTH.ATTACH.boundIssuer),
-          boundAudiences: validateJwtAuthAudiencesField.describe(JWT_AUTH.ATTACH.boundAudiences),
-          boundClaims: validateJwtBoundClaimsField.describe(JWT_AUTH.ATTACH.boundClaims),
-          boundSubject: z.string().trim().default("").describe(JWT_AUTH.ATTACH.boundSubject),
-          accessTokenTrustedIps: z
-            .object({
-              ipAddress: z.string().trim()
-            })
-            .array()
-            .min(1)
-            .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
-            .describe(JWT_AUTH.ATTACH.accessTokenTrustedIps),
-          accessTokenTTL: z
-            .number()
-            .int()
-            .min(1)
-            .max(315360000)
-            .refine((value) => value !== 0, {
-              message: "accessTokenTTL must have a non zero number"
-            })
-            .default(2592000)
-            .describe(JWT_AUTH.ATTACH.accessTokenTTL),
-          accessTokenMaxTTL: z
-            .number()
-            .int()
-            .max(315360000)
-            .refine((value) => value !== 0, {
-              message: "accessTokenMaxTTL must have a non zero number"
-            })
-            .default(2592000)
-            .describe(JWT_AUTH.ATTACH.accessTokenMaxTTL),
-          accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(JWT_AUTH.ATTACH.accessTokenNumUsesLimit)
-        })
-        .superRefine((data, ctx) => {
-          if (data.configurationType === JwtConfigurationType.JWKS) {
-            if (!data.jwksUrl) {
-              ctx.addIssue({
-                path: ["jwksUrl"],
-                message: "JWKS url is required",
-                code: z.ZodIssueCode.custom
-              });
-            }
-          } else if (data.configurationType === JwtConfigurationType.STATIC) {
-            if (data.publicKeys.length === 0) {
-              ctx.addIssue({
-                path: ["publicKeys"],
-                message: "public key is required",
-                code: z.ZodIssueCode.custom
-              });
-            }
-          }
-        }),
-
+      body: z.discriminatedUnion("configurationType", [
+        JwksConfigurationSchema.merge(CreateBaseSchema),
+        StaticConfigurationSchema.merge(CreateBaseSchema)
+      ]),
       response: {
         200: z.object({
           identityJwtAuth: IdentityJwtAuthResponseSchema
@@ -209,66 +240,10 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
       params: z.object({
         identityId: z.string().trim().describe(JWT_AUTH.UPDATE.identityId)
       }),
-      body: z
-        .object({
-          configurationType: z.nativeEnum(JwtConfigurationType).describe(JWT_AUTH.UPDATE.configurationType),
-          jwksUrl: z.string().trim().describe(JWT_AUTH.UPDATE.jwksUrl),
-          jwksCaCert: z.string().trim().describe(JWT_AUTH.UPDATE.jwksCaCert),
-          publicKeys: z.string().array().describe(JWT_AUTH.UPDATE.publicKeys),
-          boundIssuer: z.string().trim().describe(JWT_AUTH.UPDATE.boundIssuer),
-          boundAudiences: validateJwtAuthAudiencesField.describe(JWT_AUTH.UPDATE.boundAudiences),
-          boundClaims: validateJwtBoundClaimsField.describe(JWT_AUTH.UPDATE.boundClaims),
-          boundSubject: z.string().trim().describe(JWT_AUTH.UPDATE.boundSubject),
-          accessTokenTrustedIps: z
-            .object({
-              ipAddress: z.string().trim()
-            })
-            .array()
-            .min(1)
-            .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
-            .describe(JWT_AUTH.UPDATE.accessTokenTrustedIps),
-          accessTokenTTL: z
-            .number()
-            .int()
-            .min(1)
-            .max(315360000)
-            .refine((value) => value !== 0, {
-              message: "accessTokenTTL must have a non zero number"
-            })
-            .default(2592000)
-            .describe(JWT_AUTH.UPDATE.accessTokenTTL),
-          accessTokenMaxTTL: z
-            .number()
-            .int()
-            .max(315360000)
-            .refine((value) => value !== 0, {
-              message: "accessTokenMaxTTL must have a non zero number"
-            })
-            .default(2592000)
-            .describe(JWT_AUTH.UPDATE.accessTokenMaxTTL),
-
-          accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(JWT_AUTH.UPDATE.accessTokenNumUsesLimit)
-        })
-        .partial()
-        .superRefine((data, ctx) => {
-          if (data.configurationType === JwtConfigurationType.JWKS) {
-            if (!data.jwksUrl) {
-              ctx.addIssue({
-                path: ["jwksUrl"],
-                message: "JWKS url is required",
-                code: z.ZodIssueCode.custom
-              });
-            }
-          } else if (data.configurationType === JwtConfigurationType.STATIC) {
-            if (data.publicKeys?.length === 0) {
-              ctx.addIssue({
-                path: ["publicKeys"],
-                message: "public key is required",
-                code: z.ZodIssueCode.custom
-              });
-            }
-          }
-        }),
+      body: z.discriminatedUnion("configurationType", [
+        JwksConfigurationSchema.merge(UpdateBaseSchema),
+        StaticConfigurationSchema.merge(UpdateBaseSchema)
+      ]),
       response: {
         200: z.object({
           identityJwtAuth: IdentityJwtAuthResponseSchema
