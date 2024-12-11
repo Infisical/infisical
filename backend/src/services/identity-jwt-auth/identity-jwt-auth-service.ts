@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 import https from "https";
-import jwt, { JsonWebTokenError } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 import { JwksClient } from "jwks-rsa";
 
 import { IdentityAuthMethod, TIdentityJwtAuthsUpdate } from "@app/db/schemas";
@@ -113,7 +113,7 @@ export const identityJwtAuthServiceFactory = ({
           tokenData = jwt.verify(jwtValue, publicKey) as Record<string, string>;
           isMatchAnyKey = true;
         } catch (error) {
-          if (error instanceof JsonWebTokenError) {
+          if (error instanceof jwt.JsonWebTokenError) {
             errors.push(error.message);
           }
         }
