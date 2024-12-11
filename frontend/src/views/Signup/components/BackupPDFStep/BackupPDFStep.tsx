@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import issueBackupKey from "@app/components/utilities/cryptography/issueBackupKey";
 import { Button } from "@app/components/v2";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 interface DownloadBackupPDFStepProps {
   email: string;
@@ -49,7 +50,7 @@ export const BackupPDFStep = ({ email, password, name }: DownloadBackupPDFStepPr
                   setBackupKeyIssued: () => {}
                 });
 
-                router.push(`/org/${localStorage.getItem("orgData.id")}/overview`);
+                router.push(`/org/${localStorage.getItem("orgData.id")}/${ProjectType.SecretManager}/overview`);
               }}
               size="sm"
               isFullWidth

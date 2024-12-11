@@ -103,7 +103,7 @@ export const useGetUpgradeProjectStatus = ({
   });
 };
 
-const fetchUserWorkspaces = async (includeRoles?: boolean, type?: ProjectType) => {
+const fetchUserWorkspaces = async (includeRoles?: boolean, type?: ProjectType | "all") => {
   const { data } = await apiRequest.get<{ workspaces: Workspace[] }>("/api/v1/workspace", {
     params: {
       includeRoles,
@@ -143,10 +143,10 @@ export const useGetWorkspaceById = (
 
 export const useGetUserWorkspaces = ({
   includeRoles,
-  type
+  type = "all"
 }: {
   includeRoles?: boolean;
-  type?: ProjectType;
+  type?: ProjectType | "all";
 } = {}) =>
   useQuery(workspaceKeys.getAllUserWorkspace(type || ""), () =>
     fetchUserWorkspaces(includeRoles, type)

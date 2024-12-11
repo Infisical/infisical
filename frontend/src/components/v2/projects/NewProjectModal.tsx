@@ -148,7 +148,7 @@ const NewProjectForm = ({ onOpenChange, projectType }: NewProjectFormProps) => {
       createNotification({ text: "Project created", type: "success" });
       reset();
       onOpenChange(false);
-      router.push(`/project/${newProjectId}/${projectType}/overview`);
+      router.push(`/${projectType}/${newProjectId}/${projectType}/overview`);
     } catch (err) {
       console.error(err);
       createNotification({ text: "Failed to create project", type: "error" });

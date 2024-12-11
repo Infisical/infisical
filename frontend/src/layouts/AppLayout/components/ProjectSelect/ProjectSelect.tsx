@@ -16,6 +16,7 @@ import {
   useSubscription,
   useWorkspace
 } from "@app/context";
+import { getWorkspaceHomePage } from "@app/helpers/workspace";
 import { usePopUp } from "@app/hooks";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
@@ -190,7 +191,7 @@ export const ProjectSelect = () => {
           // todo(akhi): this is not using react query because react query in overview is throwing error when envs are not exact same count
           // to reproduce change this back to router.push and switch between two projects with different env count
           // look into this on dashboard revamp
-          window.location.assign(`/project/${project.id}/secrets/overview`);
+          window.location.assign(getWorkspaceHomePage(project));
         }}
         options={options}
         components={{

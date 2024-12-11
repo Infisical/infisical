@@ -48,7 +48,7 @@ export const IdentityDetailsPage = withProjectPermission(
           type: "success"
         });
         handlePopUpClose("deleteIdentity");
-        router.push(`/project/${workspaceId}/members?selectedTab=identities`);
+        router.push(`/${currentWorkspace?.type}/${workspaceId}/members?selectedTab=identities`);
       } catch (err) {
         console.error(err);
         const error = err as any;
@@ -77,7 +77,7 @@ export const IdentityDetailsPage = withProjectPermission(
             type="submit"
             leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
             onClick={() => {
-              router.push(`/project/${workspaceId}/members?selectedTab=identities`);
+              router.push(`/${currentWorkspace?.type}/${workspaceId}/members?selectedTab=identities`);
             }}
             className="mb-4"
           >

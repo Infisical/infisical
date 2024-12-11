@@ -5,7 +5,7 @@
 /* eslint-disable no-var */
 /* eslint-disable func-names */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -38,13 +38,7 @@ import {
 } from "@app/components/v2";
 import { useOrganization, useSubscription, useUser, useWorkspace } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
-import {
-  useGetAccessRequestsCount,
-  useGetOrgTrialUrl,
-  useGetSecretApprovalRequestCount,
-  useLogoutUser,
-  useSelectOrganization
-} from "@app/hooks/api";
+import { useGetOrgTrialUrl, useLogoutUser, useSelectOrganization } from "@app/hooks/api";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 import { InsecureConnectionBanner } from "@app/layouts/AppLayout/components/InsecureConnectionBanner";
@@ -53,6 +47,7 @@ import { navigateUserToOrg } from "@app/views/Login/Login.utils";
 import { Mfa } from "@app/views/Login/Mfa";
 import { CreateOrgModal } from "@app/views/Org/components";
 
+import { ProjectSidebarItem } from "./components/ProjectSidebarItems";
 import { WishForm } from "./components/WishForm/WishForm";
 
 interface LayoutProps {
@@ -87,7 +82,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
   const { mutateAsync } = useGetOrgTrialUrl();
 
-  const { workspaces, currentWorkspace } = useWorkspace();
+  const { currentWorkspace } = useWorkspace();
   const { orgs, currentOrg } = useOrganization();
 
   const [shouldShowMfa, toggleShowMfa] = useToggle(false);
@@ -96,15 +91,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
   const { user } = useUser();
   const { subscription } = useSubscription();
-  const workspaceId = currentWorkspace?.id || "";
-  const projectSlug = currentWorkspace?.slug || "";
-
-  const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({ workspaceId });
-  const { data: accessApprovalRequestCount } = useGetAccessRequestsCount({ projectSlug });
-
-  const pendingRequestsCount = useMemo(() => {
-    return (secretApprovalReqCount?.open || 0) + (accessApprovalRequestCount?.pendingCount || 0);
-  }, [secretApprovalReqCount, accessApprovalRequestCount]);
 
   const infisicalPlatformVersion = process.env.NEXT_PUBLIC_INFISICAL_PLATFORM_VERSION;
 
@@ -152,41 +138,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
       if (tempLocalStorage("orgData.id") === "" && orgs?.[0]?.id) {
         localStorage.setItem("orgData.id", orgs?.[0]?.id);
       }
-
-      if (
-        currentOrg &&
-        ((workspaces?.length === 0 && router.asPath.includes("project")) ||
-          router.asPath.includes("/project/undefined") ||
-          (!orgs?.map((org) => org.id)?.includes(router.query.id as string) &&
-            !router.asPath.includes("project") &&
-            !router.asPath.includes("personal") &&
-            !router.asPath.includes("secret-scanning") &&
-            !router.asPath.includes("integration")))
-      ) {
-        router.push(`/org/${currentOrg?.id}/secret-manager/overview`);
-      }
-      // else if (!router.asPath.includes("org") && !router.asPath.includes("project") && !router.asPath.includes("integrations") && !router.asPath.includes("personal-settings")) {
-
-      //   const pathSegments = router.asPath.split("/").filter((segment) => segment.length > 0);
-
-      //   let intendedWorkspaceId;
-      //   if (pathSegments.length >= 2 && pathSegments[0] === "dashboard") {
-      //     [, intendedWorkspaceId] = pathSegments;
-      //   } else if (pathSegments.length >= 3 && pathSegments[0] === "settings") {
-      //     [, , intendedWorkspaceId] = pathSegments;
-      //   } else {
-      //     const lastPathSegments = router.asPath.split("/").pop();
-      //     if (lastPathSegments !== undefined) {
-      //       [intendedWorkspaceId] = lastPathSegments.split("?");
-      //     }
-      //   }
-
-      //   if (!intendedWorkspaceId) return;
-
-      //   if (!["callback", "create", "authorize"].includes(intendedWorkspaceId)) {
-      //     localStorage.setItem("projectData.id", intendedWorkspaceId);
-      //   }
-      // }
     };
     putUserInOrg();
   }, [router.query.id]);
@@ -214,8 +165,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
               <div>
                 {!router.asPath.includes("personal") && (
                   <div className="flex h-12 cursor-default items-center px-3 pt-6">
-                    {(router.asPath.includes("project") ||
-                      router.asPath.includes("integrations")) && (
+                    {(currentWorkspace || router.asPath.includes("integrations")) && (
                       <Link href={`/org/${currentOrg?.id}/${currentWorkspace?.type}/overview`}>
                         <div className="pl-1 pr-2 text-mineshaft-400 duration-200 hover:text-mineshaft-100">
                           <FontAwesomeIcon icon={faArrowLeft} />
@@ -387,111 +337,8 @@ export const AppLayout = ({ children }: LayoutProps) => {
                     </Link>
                   ))}
                 <div className={`px-1 ${!router.asPath.includes("personal") ? "block" : "hidden"}`}>
-                  {(router.asPath.includes("project") || router.asPath.includes("integrations")) &&
-                  currentWorkspace ? (
-                    <Menu>
-                      <Link href={`/project/${currentWorkspace?.id}/secrets/overview`} passHref>
-                        <a>
-                          <MenuItem
-                            isSelected={router.asPath.includes(
-                              `/project/${currentWorkspace?.id}/secrets`
-                            )}
-                            icon="system-outline-90-lock-closed"
-                          >
-                            {t("nav.menu.secrets")}
-                          </MenuItem>
-                        </a>
-                      </Link>
-                      <Link href={`/project/${currentWorkspace?.id}/certificates`} passHref>
-                        <a>
-                          <MenuItem
-                            isSelected={
-                              router.asPath === `/project/${currentWorkspace?.id}/certificates`
-                            }
-                            icon="system-outline-90-lock-closed"
-                          >
-                            Internal PKI
-                          </MenuItem>
-                        </a>
-                      </Link>
-                      <Link href={`/project/${currentWorkspace?.id}/kms`} passHref>
-                        <a>
-                          <MenuItem
-                            isSelected={router.asPath === `/project/${currentWorkspace?.id}/kms`}
-                            icon="system-outline-90-lock-closed"
-                          >
-                            Key Management
-                          </MenuItem>
-                        </a>
-                      </Link>
-                      <Link href={`/project/${currentWorkspace?.id}/members`} passHref>
-                        <a>
-                          <MenuItem
-                            isSelected={
-                              router.asPath === `/project/${currentWorkspace?.id}/members`
-                            }
-                            icon="system-outline-96-groups"
-                          >
-                            Access Control
-                          </MenuItem>
-                        </a>
-                      </Link>
-                      <Link href={`/integrations/${currentWorkspace?.id}`} passHref>
-                        <a>
-                          <MenuItem
-                            isSelected={router.asPath.includes("/integrations")}
-                            icon="system-outline-82-extension"
-                          >
-                            {t("nav.menu.integrations")}
-                          </MenuItem>
-                        </a>
-                      </Link>
-                      <Link href={`/project/${currentWorkspace?.id}/secret-rotation`} passHref>
-                        <a className="relative">
-                          <MenuItem
-                            isSelected={
-                              router.asPath === `/project/${currentWorkspace?.id}/secret-rotation`
-                            }
-                            icon="rotation"
-                          >
-                            Secret Rotation
-                          </MenuItem>
-                        </a>
-                      </Link>
-                      <Link href={`/project/${currentWorkspace?.id}/approval`} passHref>
-                        <a className="relative">
-                          <MenuItem
-                            isSelected={
-                              router.asPath === `/project/${currentWorkspace?.id}/approval`
-                            }
-                            icon="system-outline-189-domain-verification"
-                          >
-                            Approvals
-                            {Boolean(
-                              secretApprovalReqCount?.open ||
-                                accessApprovalRequestCount?.pendingCount
-                            ) && (
-                              <span className="ml-2 rounded border border-primary-400 bg-primary-600 py-0.5 px-1 text-xs font-semibold text-black">
-                                {pendingRequestsCount}
-                              </span>
-                            )}
-                          </MenuItem>
-                        </a>
-                      </Link>
-                      <Link href={`/project/${currentWorkspace?.id}/settings`} passHref>
-                        <a>
-                          <MenuItem
-                            isSelected={
-                              router.asPath === `/project/${currentWorkspace?.id}/settings`
-                            }
-                            icon="system-outline-109-slider-toggle-settings"
-                          >
-                            {t("nav.menu.project-settings")}
-                          </MenuItem>
-                        </a>
-                      </Link>
-                    </Menu>
-                  ) : (
+                  <ProjectSidebarItem />
+                  {router.pathname.startsWith("/org") && (
                     <Menu className="mt-4">
                       <Link href={`/org/${currentOrg?.id}/secret-manager/overview`} passHref>
                         <a>

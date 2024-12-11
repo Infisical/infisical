@@ -51,6 +51,7 @@ import {
   useSubscription,
   useUser
 } from "@app/context";
+import { getWorkspaceHomePage } from "@app/helpers/workspace";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useGetUserWorkspaces, useRegisterUserAction } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -59,8 +60,8 @@ import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { Workspace } from "@app/hooks/api/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
-import { usePopUp } from "@app/hooks/usePopUp";
 import { ProjectType } from "@app/hooks/api/workspace/types";
+import { usePopUp } from "@app/hooks/usePopUp";
 
 const features = [
   {
@@ -603,7 +604,7 @@ export const ProductOverview = ({ type }: Props) => {
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
     <div
       onClick={() => {
-        router.push(`/project/${workspace.id}/secrets/overview`);
+        router.push(getWorkspaceHomePage(workspace));
         localStorage.setItem("projectData.id", workspace.id);
       }}
       key={workspace.id}
@@ -667,7 +668,7 @@ export const ProductOverview = ({ type }: Props) => {
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
     <div
       onClick={() => {
-        router.push(`/project/${workspace.id}/secrets/overview`);
+        router.push(getWorkspaceHomePage(workspace));
         localStorage.setItem("projectData.id", workspace.id);
       }}
       key={workspace.id}
@@ -1047,7 +1048,6 @@ export const ProductOverview = ({ type }: Props) => {
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="You have exceeded the number of projects allowed on the free plan."
       />
-      {/* <DeleteUserDialog isOpen={isDeleteOpen} closeModal={closeDeleteModal} submitModal={deleteMembership} userIdToBeDeleted={userIdToBeDeleted}/> */}
     </div>
   );
 };

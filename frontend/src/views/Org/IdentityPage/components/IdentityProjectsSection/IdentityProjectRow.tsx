@@ -33,7 +33,7 @@ export const IdentityProjectRow = ({
   membership: { id, createdAt, identity, project, roles },
   handlePopUpOpen
 }: Props) => {
-  const { workspaces } = useWorkspace();
+  const { workspaces,currentWorkspace } = useWorkspace();
   const router = useRouter();
 
   const isAccessible = useMemo(() => {
@@ -52,7 +52,7 @@ export const IdentityProjectRow = ({
       key={`identity-project-membership-${id}`}
       onClick={() => {
         if (isAccessible) {
-          router.push(`/project/${project.id}/members?selectedTab=${TabSections.Identities}`);
+          router.push(`/${currentWorkspace?.type}/${project.id}/members?selectedTab=${TabSections.Identities}`);
           return;
         }
 

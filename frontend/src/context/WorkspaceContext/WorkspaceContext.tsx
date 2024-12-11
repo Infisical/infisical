@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 
 import { createNotification } from "@app/components/notifications";
 import { useGetUserWorkspaces } from "@app/hooks/api";
-import { Workspace } from "@app/hooks/api/workspace/types";
+import { ProjectType, Workspace } from "@app/hooks/api/workspace/types";
 
 type TWorkspaceContext = {
   workspaces: Workspace[];
@@ -35,7 +35,7 @@ export const WorkspaceProvider = ({ children }: Props): JSX.Element => {
   const shouldTriggerNoProjectAccess =
     !value.isLoading &&
     !value.currentWorkspace &&
-    router.pathname.startsWith("/project") &&
+    Object.values(ProjectType).some((el) => router.pathname.startsWith(`/${el}`)) &&
     workspaceId;
 
   // handle redirects for project-specific routes

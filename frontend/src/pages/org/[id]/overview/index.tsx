@@ -1,6 +1,7 @@
-import { useOrganization } from "@app/context";
-import { useRouter } from "next/router";
 import { useEffect } from "react";
+import { useRouter } from "next/router";
+
+import { useOrganization } from "@app/context";
 
 // #TODO: Update all the workspaceIds
 const OrganizationPage = () => {

@@ -7,6 +7,7 @@ import z from "zod";
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
 import { useCreateOrg, useSelectOrganization } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 const schema = z
   .object({
@@ -57,8 +58,8 @@ export const CreateOrgModal: FC<CreateOrgModalProps> = ({ isOpen, onClose }) => 
         type: "success"
       });
 
-      if (router.isReady) router.push(`/org/${organization.id}/overview`);
-      else window.location.href = `/org/${organization.id}/overview`;
+      if (router.isReady) router.push(`/org/${organization.id}/${ProjectType.SecretManager}/overview`);
+      else window.location.href = `/org/${organization.id}/${ProjectType.SecretManager}/overview`;
 
       localStorage.setItem("orgData.id", organization.id);
 

@@ -197,7 +197,7 @@ export const orgServiceFactory = ({
 
   const findAllWorkspaces = async ({ actor, actorId, orgId, type }: TFindAllWorkspacesDTO) => {
     if (actor === ActorType.USER) {
-      const workspaces = await projectDAL.findAllProjects(actorId, orgId, type);
+      const workspaces = await projectDAL.findAllProjects(actorId, orgId, type || "all");
       return workspaces;
     }
 

@@ -431,7 +431,13 @@ export const projectServiceFactory = ({
     return deletedProject;
   };
 
-  const getProjects = async ({ actorId, includeRoles, actorAuthMethod, actorOrgId, type }: TListProjectsDTO) => {
+  const getProjects = async ({
+    actorId,
+    includeRoles,
+    actorAuthMethod,
+    actorOrgId,
+    type = ProjectType.SecretManager
+  }: TListProjectsDTO) => {
     const workspaces = await projectDAL.findAllProjects(actorId, actorOrgId, type);
 
     if (includeRoles) {

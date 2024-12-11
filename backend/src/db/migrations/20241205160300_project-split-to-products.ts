@@ -1,11 +1,12 @@
+import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 import { v4 as uuidV4 } from "uuid";
-import slugify from "@sindresorhus/slugify";
 
-import { ProjectType, TableName } from "../schemas";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
-/* eslint-disable no-await-in-loop,no-param-reassign,@typescript-eslint/ban-ts-comment */
+import { ProjectType, TableName } from "../schemas";
+
+/* eslint-disable no-await-in-loop,@typescript-eslint/ban-ts-comment */
 const newProject = async (knex: Knex, projectId: string, projectType: ProjectType) => {
   const newProjectId = uuidV4();
   const project = await knex(TableName.Project).where("id", projectId).first();
@@ -24,10 +25,12 @@ const newProject = async (knex: Knex, projectId: string, projectType: ProjectTyp
       projectCustomRoles.map((el) => {
         const id = uuidV4();
         customRoleMapping[el.id] = id;
-        el.id = id;
-        el.projectId = newProjectId;
-        el.permissions = el.permissions ? JSON.stringify(el.permissions) : el.permissions;
-        return el;
+        return {
+          ...el,
+          id,
+          projectId: newProjectId,
+          permissions: el.permissions ? JSON.stringify(el.permissions) : el.permissions
+        };
       })
     );
   }
@@ -38,9 +41,7 @@ const newProject = async (knex: Knex, projectId: string, projectType: ProjectTyp
       groupMemberships.map((el) => {
         const id = uuidV4();
         groupMembershipMapping[el.id] = id;
-        el.id = id;
-        el.projectId = newProjectId;
-        return el;
+        return { ...el, id, projectId: newProjectId };
       })
     );
   }
@@ -53,10 +54,9 @@ const newProject = async (knex: Knex, projectId: string, projectType: ProjectTyp
     await knex(TableName.GroupProjectMembershipRole).insert(
       groupMembershipRoles.map((el) => {
         const id = uuidV4();
-        el.id = id;
-        el.projectMembershipId = groupMembershipMapping[el.id];
-        el.customRoleId = el.customRoleId ? customRoleMapping[el.customRoleId] : el.customRoleId;
-        return el;
+        const projectMembershipId = groupMembershipMapping[el.id];
+        const customRoleId = el.customRoleId ? customRoleMapping[el.customRoleId] : el.customRoleId;
+        return { ...el, id, projectMembershipId, customRoleId };
       })
     );
   }
@@ -68,9 +68,7 @@ const newProject = async (knex: Knex, projectId: string, projectType: ProjectTyp
       identities.map((el) => {
         const id = uuidV4();
         identityProjectMembershipMapping[el.id] = id;
-        el.id = id;
-        el.projectId = newProjectId;
-        return el;
+        return { ...el, id, projectId: newProjectId };
       })
     );
   }
@@ -83,10 +81,9 @@ const newProject = async (knex: Knex, projectId: string, projectType: ProjectTyp
     await knex(TableName.IdentityProjectMembershipRole).insert(
       identitiesRoles.map((el) => {
         const id = uuidV4();
-        el.id = id;
-        el.projectMembershipId = identityProjectMembershipMapping[el.projectMembershipId];
-        el.customRoleId = el.customRoleId ? customRoleMapping[el.customRoleId] : el.customRoleId;
-        return el;
+        const projectMembershipId = identityProjectMembershipMapping[el.projectMembershipId];
+        const customRoleId = el.customRoleId ? customRoleMapping[el.customRoleId] : el.customRoleId;
+        return { ...el, id, projectMembershipId, customRoleId };
       })
     );
   }
@@ -98,9 +95,7 @@ const newProject = async (knex: Knex, projectId: string, projectType: ProjectTyp
       projectUserMembers.map((el) => {
         const id = uuidV4();
         projectMembershipMapping[el.id] = id;
-        el.id = id;
-        el.projectId = newProjectId;
-        return el;
+        return { ...el, id, projectId: newProjectId };
       })
     );
   }
@@ -112,10 +107,9 @@ const newProject = async (knex: Knex, projectId: string, projectType: ProjectTyp
     await knex(TableName.ProjectUserMembershipRole).insert(
       membershipRoles.map((el) => {
         const id = uuidV4();
-        el.id = id;
-        el.projectMembershipId = projectMembershipMapping[el.projectMembershipId];
-        el.customRoleId = el.customRoleId ? customRoleMapping[el.customRoleId] : el.customRoleId;
-        return el;
+        const projectMembershipId = projectMembershipMapping[el.projectMembershipId];
+        const customRoleId = el.customRoleId ? customRoleMapping[el.customRoleId] : el.customRoleId;
+        return { ...el, id, projectMembershipId, customRoleId };
       })
     );
   }
@@ -125,10 +119,8 @@ const newProject = async (knex: Knex, projectId: string, projectType: ProjectTyp
     await knex(TableName.KmsKey).insert(
       kmsKeys.map((el) => {
         const id = uuidV4();
-        el.id = id;
-        el.projectId = newProjectId;
-        el.slug = slugify(alphaNumericNanoId(8).toLowerCase());
-        return el;
+        const slug = slugify(alphaNumericNanoId(8).toLowerCase());
+        return { ...el, id, slug, projectId: newProjectId };
       })
     );
   }
@@ -143,9 +135,7 @@ const newProject = async (knex: Knex, projectId: string, projectType: ProjectTyp
     await knex(TableName.ProjectKeys).insert(
       projectKeys.map((el) => {
         const id = uuidV4();
-        el.id = id;
-        el.projectId = newProjectId;
-        return el;
+        return { ...el, id, projectId: newProjectId };
       })
     );
   }
@@ -154,16 +144,14 @@ const newProject = async (knex: Knex, projectId: string, projectType: ProjectTyp
   if (serviceTokens.length) {
     await knex(TableName.ServiceToken).insert(
       serviceTokens.map((el) => {
-        el.id = uuidV4();
-        el.projectId = projectId;
-        el.scopes = el.scopes ? JSON.stringify(el.scopes) : el.scopes;
-        return el;
+        const id = uuidV4();
+        const scopes = el.scopes ? JSON.stringify(el.scopes) : el.scopes;
+        return { ...el, id, scopes, projectId: newProjectId };
       })
     );
   }
   return newProjectId;
 };
-/* eslint-enable */
 
 const BATCH_SIZE = 500;
 export async function up(knex: Knex): Promise<void> {

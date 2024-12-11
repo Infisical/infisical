@@ -19,7 +19,7 @@ export type TProjectDALFactory = ReturnType<typeof projectDALFactory>;
 export const projectDALFactory = (db: TDbClient) => {
   const projectOrm = ormify(db, TableName.Project);
 
-  const findAllProjects = async (userId: string, orgId: string, projectType?: ProjectType | null) => {
+  const findAllProjects = async (userId: string, orgId: string, projectType: ProjectType | "all") => {
     try {
       const workspaces = await db
         .replicaNode()(TableName.ProjectMembership)
@@ -27,7 +27,7 @@ export const projectDALFactory = (db: TDbClient) => {
         .join(TableName.Project, `${TableName.ProjectMembership}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
         .andWhere((qb) => {
-          if (projectType) {
+          if (projectType !== "all") {
             void qb.where(`${TableName.Project}.type`, projectType);
           }
         })
@@ -130,7 +130,11 @@ export const projectDALFactory = (db: TDbClient) => {
         .replicaNode()(TableName.IdentityProjectMembership)
         .where({ identityId })
         .join(TableName.Project, `${TableName.IdentityProjectMembership}.projectId`, `${TableName.Project}.id`)
-        .where(`${TableName.Project}.type`, projectType)
+        .andWhere((qb) => {
+          if (projectType) {
+            void qb.where(`${TableName.Project}.type`, projectType);
+          }
+        })
         .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .select(
           selectAllTableCols(TableName.Project),

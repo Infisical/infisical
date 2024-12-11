@@ -16,6 +16,7 @@ import { useServerConfig } from "@app/context";
 import { useVerifySignupEmailVerificationCode } from "@app/hooks/api";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 /**
  * @returns the signup page
@@ -47,7 +48,7 @@ export default function SignUp() {
     const tryAuth = async () => {
       try {
         const userOrgs = await fetchOrganizations();
-        router.push(`/org/${userOrgs[0].id}/overview`);
+        router.push(`/org/${userOrgs[0].id}/${ProjectType.SecretManager}/overview`);
       } catch (error) {
         console.log("Error - Not logged in yet");
       }
@@ -90,7 +91,7 @@ export default function SignUp() {
 
       if (!serverDetails?.emailConfigured && step === 5) {
         const userOrgs = await fetchOrganizations();
-        router.push(`/org/${userOrgs[0].id}/overview`);
+        router.push(`/org/${userOrgs[0].id}/${ProjectType.SecretManager}/overview`);
       }
     })();
   }, [step]);

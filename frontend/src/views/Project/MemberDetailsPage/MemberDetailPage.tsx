@@ -58,7 +58,7 @@ export const MemberDetailsPage = withProjectPermission(
           text: "Successfully removed user from project",
           type: "success"
         });
-        router.push(`/project/${currentWorkspace?.id}/members`);
+        router.push(`/${currentWorkspace.type}/${currentWorkspace?.id}/members`);
       } catch (error) {
         console.error(error);
         createNotification({
@@ -85,7 +85,7 @@ export const MemberDetailsPage = withProjectPermission(
             type="submit"
             leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
             onClick={() => {
-              router.push(`/project/${workspaceId}/members`);
+              router.push(`/${currentWorkspace?.type}/${workspaceId}/members`);
             }}
             className="mb-4"
           >
