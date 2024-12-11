@@ -15,7 +15,6 @@ export const getKeyValue = (pastedContent: string, delimiters: string[]) => {
     }
   });
 
-  // Check if there's any content after the delimiter
   const hasValueAfterDelimiter = pastedContent.length > firstDelimiterIndex + foundDelimiter.length;
 
   if (firstDelimiterIndex === -1 || !hasValueAfterDelimiter) {
