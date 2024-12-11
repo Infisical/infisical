@@ -1,4 +1,4 @@
-import { ClipboardEvent } from "react";
+import { ClipboardEvent, useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import { faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
@@ -62,7 +62,7 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
     canReadTags ? workspaceId : ""
   );
 
-  const secretValue = watch("value");
+  const secretKeyInputRef = useRef<HTMLInputElement>(null);
   const secretKey = watch("key");
 
   const handleFormSubmit = async ({ key, value, environments: selectedEnv, tags }: TFormSchema) => {
@@ -160,13 +160,15 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
     const pastedContent = e.clipboardData.getData("text");
     const { key, value } = getKeyValue(pastedContent, delimitters);
 
-    if (!secretKey) {
+    const isWholeKeyHighlighted =
+      secretKeyInputRef.current &&
+      secretKeyInputRef.current.selectionStart === 0 &&
+      secretKeyInputRef.current.selectionEnd === secretKeyInputRef.current.value.length;
+
+    if (!secretKey || isWholeKeyHighlighted) {
       setValue("key", key);
-    }
-    if (!secretValue) {
       setValue("value", value);
     }
-
     if (!secretKey) {
       e.preventDefault();
     }
@@ -201,6 +203,7 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
       >
         <Input
           {...register("key")}
+          ref={secretKeyInputRef}
           placeholder="Type your secret name"
           onPaste={handlePaste}
           autoCapitalization={currentWorkspace?.autoCapitalization}

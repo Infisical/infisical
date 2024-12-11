@@ -1,4 +1,4 @@
-import { ClipboardEvent } from "react";
+import { ClipboardEvent, useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -60,7 +60,7 @@ export const CreateSecretForm = ({
     canReadTags ? workspaceId : ""
   );
 
-  const secretValue = watch("value");
+  const secretKeyInputRef = useRef<HTMLInputElement>(null);
   const secretKey = watch("key");
 
   const slugSchema = z.string().trim().toLowerCase().min(1);
@@ -116,13 +116,15 @@ export const CreateSecretForm = ({
     const pastedContent = e.clipboardData.getData("text");
     const { key, value } = getKeyValue(pastedContent, delimitters);
 
-    if (!secretKey) {
+    const isWholeKeyHighlighted =
+      secretKeyInputRef.current &&
+      secretKeyInputRef.current.selectionStart === 0 &&
+      secretKeyInputRef.current.selectionEnd === secretKeyInputRef.current.value.length;
+
+    if (!secretKey || isWholeKeyHighlighted) {
       setValue("key", key);
-    }
-    if (!secretValue) {
       setValue("value", value);
     }
-
     if (!secretKey) {
       e.preventDefault();
     }
@@ -138,6 +140,7 @@ export const CreateSecretForm = ({
       >
         <Input
           {...register("key")}
+          ref={secretKeyInputRef}
           placeholder="Type your secret name"
           onPaste={handlePaste}
           autoCapitalization={autoCapitalize}
