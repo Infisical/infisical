@@ -206,11 +206,8 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
           {...secretKeyRegisterRest}
           ref={(e) => {
             setSecretKeyHookRef(e);
-            // Can't directly set secretKeyInputRef.current = e, because of read-only property definitions
-            Object.defineProperty(secretKeyInputRef, "current", {
-              value: e,
-              writable: true
-            });
+            // @ts-expect-error this is for multiple ref single component
+            secretKeyInputRef.current = e;
           }}
           placeholder="Type your secret name"
           onPaste={handlePaste}
