@@ -359,13 +359,31 @@ export const IdentityJwtAuthForm = ({
                     label={`Public Key ${index + 1}`}
                     errorText={error?.message}
                     isError={Boolean(error)}
+                    icon={
+                      <Tooltip
+                        className="text-center"
+                        content={<span>This field only accepts PEM-formatted public keys</span>}
+                      >
+                        <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
+                      </Tooltip>
+                    }
                   >
                     <TextArea {...field} placeholder="-----BEGIN PUBLIC KEY----- ..." />
                   </FormControl>
                 )}
               />
               <IconButton
-                onClick={() => removePublicKeyFields(index)}
+                onClick={() => {
+                  if (publicKeyFields.length === 1) {
+                    createNotification({
+                      type: "error",
+                      text: "A public key is required for static configurations"
+                    });
+                    return;
+                  }
+
+                  removePublicKeyFields(index);
+                }}
                 size="lg"
                 colorSchema="danger"
                 variant="plain"

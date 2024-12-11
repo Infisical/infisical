@@ -127,29 +127,47 @@ export const identityJwtAuthServiceFactory = ({
     }
 
     if (identityJwtAuth.boundIssuer) {
+      if (!tokenData.iss) {
+        throw new UnauthorizedError({
+          message: "Access denied: token has no issuer field"
+        });
+      }
+
       if (!doesFieldValueMatchJwtPolicy(tokenData.iss, identityJwtAuth.boundIssuer)) {
         throw new ForbiddenRequestError({
-          message: "Access denied: issuer mismatch."
+          message: "Access denied: issuer mismatch"
         });
       }
     }
 
     if (identityJwtAuth.boundSubject) {
+      if (!tokenData.sub) {
+        throw new UnauthorizedError({
+          message: "Access denied: token has no subject field"
+        });
+      }
+
       if (!doesFieldValueMatchJwtPolicy(tokenData.sub, identityJwtAuth.boundSubject)) {
         throw new ForbiddenRequestError({
-          message: "Access denied: subject not allowed."
+          message: "Access denied: subject not allowed"
         });
       }
     }
 
     if (identityJwtAuth.boundAudiences) {
+      if (!tokenData.aud) {
+        throw new UnauthorizedError({
+          message: "Access denied: token has no audience field"
+        });
+      }
+
       if (
         !identityJwtAuth.boundAudiences
           .split(", ")
           .some((policyValue) => doesFieldValueMatchJwtPolicy(tokenData.aud, policyValue))
       ) {
         throw new UnauthorizedError({
-          message: "Access denied: audience not allowed."
+          message: "Access denied: token audience not allowed"
         });
       }
     }
@@ -157,12 +175,19 @@ export const identityJwtAuthServiceFactory = ({
     if (identityJwtAuth.boundClaims) {
       Object.keys(identityJwtAuth.boundClaims).forEach((claimKey) => {
         const claimValue = (identityJwtAuth.boundClaims as Record<string, string>)[claimKey];
+
+        if (!tokenData[claimKey]) {
+          throw new UnauthorizedError({
+            message: `Access denied: token has no ${claimKey} field`
+          });
+        }
+
         // handle both single and multi-valued claims
         if (
           !claimValue.split(", ").some((claimEntry) => doesFieldValueMatchJwtPolicy(tokenData[claimKey], claimEntry))
         ) {
           throw new UnauthorizedError({
-            message: "Access denied: claim mismatch."
+            message: `Access denied: claim mismatch for field ${claimKey}`
           });
         }
       });
@@ -389,7 +414,7 @@ export const identityJwtAuthServiceFactory = ({
         orgId: actorOrgId
       });
 
-    if (jwksCaCert) {
+    if (jwksCaCert !== undefined) {
       const { cipherTextBlob: encryptedJwksCaCert } = orgDataKeyEncryptor({
         plainText: Buffer.from(jwksCaCert)
       });
