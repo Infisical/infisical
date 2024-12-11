@@ -85,7 +85,7 @@ func (r *InfisicalDynamicSecretReconciler) Reconcile(ctx context.Context, req ct
 				return ctrl.Result{}, err
 			}
 
-			err := r.HandleLeaseRevocation(ctx, logger, infisicalDynamicSecretCRD)
+			err := r.HandleLeaseRevocation(ctx, logger, &infisicalDynamicSecretCRD)
 
 			if infisicalDynamicSecretsResourceVariablesMap != nil {
 				if rv, ok := infisicalDynamicSecretsResourceVariablesMap[string(infisicalDynamicSecretCRD.GetUID())]; ok {

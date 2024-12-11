@@ -261,17 +261,17 @@ func (r *InfisicalDynamicSecretReconciler) HandleLeaseRevocation(ctx context.Con
 		return nil
 	}
 
-	resourceVariables := r.getResourceVariables(infisicalDynamicSecret)
+	resourceVariables := r.getResourceVariables(*infisicalDynamicSecret)
 	infisicalClient := resourceVariables.InfisicalClient
 
 	logger.Info("Authenticating for lease revocation")
-	authDetails, err := r.handleAuthentication(ctx, infisicalDynamicSecret, infisicalClient)
+	authDetails, err := r.handleAuthentication(ctx, *infisicalDynamicSecret, infisicalClient)
 
 	if err != nil {
 		return fmt.Errorf("unable to authenticate for lease revocation [err=%s]", err)
 	}
 
-	r.updateResourceVariables(infisicalDynamicSecret, util.ResourceVariables{
+	r.updateResourceVariables(*infisicalDynamicSecret, util.ResourceVariables{
 		InfisicalClient: infisicalClient,
 		CancelCtx:       resourceVariables.CancelCtx,
 		AuthDetails:     authDetails,
