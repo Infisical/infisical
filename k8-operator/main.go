@@ -16,7 +16,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	secretsv1alpha1 "github.com/Infisical/infisical/k8-operator/api/v1alpha1"
-	"github.com/Infisical/infisical/k8-operator/controllers"
+	infisicalPushSecretController "github.com/Infisical/infisical/k8-operator/controllers/infisicalpushsecret"
+	infisicalSecretController "github.com/Infisical/infisical/k8-operator/controllers/infisicalsecret"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -73,13 +74,24 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controllers.InfisicalSecretReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+	if err = (&infisicalSecretController.InfisicalSecretReconciler{
+		Client:     mgr.GetClient(),
+		Scheme:     mgr.GetScheme(),
+		BaseLogger: ctrl.Log,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "InfisicalSecret")
 		os.Exit(1)
 	}
+
+	if err = (&infisicalPushSecretController.InfisicalPushSecretReconciler{
+		Client:     mgr.GetClient(),
+		Scheme:     mgr.GetScheme(),
+		BaseLogger: ctrl.Log,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "InfisicalPushSecret")
+		os.Exit(1)
+	}
+
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
