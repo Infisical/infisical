@@ -35,7 +35,7 @@ export const IntegrationMetadataSchema = z.object({
     .optional()
     .describe(INTEGRATION.CREATE.metadata.secretAWSTag),
 
-  azureUseLabels: z.boolean().optional().describe(INTEGRATION.CREATE.metadata.azureUseLabels),
+  azureLabel: z.string().optional().describe(INTEGRATION.CREATE.metadata.azureLabel),
 
   githubVisibility: z
     .union([z.literal("selected"), z.literal("private"), z.literal("all")])

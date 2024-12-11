@@ -14,6 +14,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import queryString from "query-string";
 import { z } from "zod";
 
+import { createNotification } from "@app/components/notifications";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { useCreateIntegration } from "@app/hooks/api";
 import { IntegrationSyncBehavior } from "@app/hooks/api/integrations/types";
@@ -46,7 +47,8 @@ const schema = z.object({
   sourceEnvironment: z.string().trim().min(1, { message: "Source environment is required" }),
   initialSyncBehavior: z.nativeEnum(IntegrationSyncBehavior),
   secretPrefix: z.string().default(""),
-  useLabels: z.boolean().default(false)
+  useLabels: z.boolean().default(false),
+  azureLabel: z.string().min(1).optional()
 });
 
 type TFormSchema = z.infer<typeof schema>;
@@ -93,7 +95,7 @@ export default function AzureAppConfigurationCreateIntegration() {
     }
   }, [workspace]);
 
-  const sourceEnv = watch("sourceEnvironment");
+  const shouldUseLabels = watch("useLabels");
 
   const handleIntegrationSubmit = async ({
     secretPath,
@@ -101,10 +103,19 @@ export default function AzureAppConfigurationCreateIntegration() {
     sourceEnvironment,
     baseUrl,
     initialSyncBehavior,
-    secretPrefix
+    secretPrefix,
+    azureLabel
   }: TFormSchema) => {
     try {
       if (!integrationAuth?.id) return;
+
+      if (useLabels && !azureLabel) {
+        createNotification({
+          type: "error",
+          text: "Label must be provided when 'Use Labels' is enabled"
+        });
+        return;
+      }
 
       await mutateAsync({
         integrationAuthId: integrationAuth?.id,
@@ -115,7 +126,7 @@ export default function AzureAppConfigurationCreateIntegration() {
         metadata: {
           initialSyncBehavior,
           secretPrefix,
-          azureUseLabels: useLabels
+          ...(useLabels && { azureLabel })
         }
       });
 
@@ -167,7 +178,7 @@ export default function AzureAppConfigurationCreateIntegration() {
           </div>
         </CardTitle>
         <div className="px-6">
-          <div className="mb-2 -space-y-2">
+          <div className="">
             <Controller
               control={control}
               name="sourceEnvironment"
@@ -198,43 +209,43 @@ export default function AzureAppConfigurationCreateIntegration() {
               )}
             />
 
-            <Controller
-              control={control}
-              name="useLabels"
-              render={({ field: { onChange, value } }) => (
-                <Switch
-                  id="use-environment-labels"
-                  onCheckedChange={(isChecked) => onChange(isChecked)}
-                  isChecked={value}
-                >
-                  <div className="flex items-center gap-1">
-                    Use Environment Labels
-                    <Tooltip
-                      content={
-                        <div>
-                          <p>
-                            Use the environment slug as the label on the secret keys created in
-                            Azure App Configuration.
-                            <br />
-                            <br />
-                            {sourceEnv && (
-                              <p>
-                                You have selected the{" "}
-                                <span className="font-semibold">{sourceEnv}</span> environment,
-                                therefore the label will be set to{" "}
-                                <span className="font-semibold">{sourceEnv}</span>.
-                              </p>
-                            )}
-                          </p>
-                        </div>
-                      }
+            <div className="flex w-full flex-col gap-1">
+              <Controller
+                control={control}
+                name="useLabels"
+                render={({ field: { onChange, value } }) => (
+                  <Switch
+                    id="use-environment-labels"
+                    onCheckedChange={(isChecked) => onChange(isChecked)}
+                    isChecked={value}
+                  >
+                    <div className="flex w-full items-center gap-1">
+                      Use Labels
+                      <Tooltip content="Assign a label to each key-value pair that gets synced to your Azure App Configuration.">
+                        <FontAwesomeIcon icon={faQuestionCircle} size="1x" />
+                      </Tooltip>
+                    </div>
+                  </Switch>
+                )}
+              />
+
+              {shouldUseLabels && (
+                <Controller
+                  control={control}
+                  name="azureLabel"
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      className=""
+                      // label="Label"
+                      errorText={error?.message}
+                      isError={Boolean(error)}
                     >
-                      <FontAwesomeIcon icon={faQuestionCircle} size="1x" />
-                    </Tooltip>
-                  </div>
-                </Switch>
+                      <Input {...field} placeholder="pre-prod" />
+                    </FormControl>
+                  )}
+                />
               )}
-            />
+            </div>
           </div>
           <Controller
             control={control}

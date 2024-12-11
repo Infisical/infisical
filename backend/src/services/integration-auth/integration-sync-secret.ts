@@ -422,9 +422,9 @@ const syncSecretsAzureAppConfig = async ({
           })
         },
         {
-          ...(metadata.azureUseLabels && {
+          ...(metadata.azureLabel && {
             params: {
-              label: integration.environment.slug
+              label: metadata.azureLabel
             }
           }),
 
@@ -447,9 +447,9 @@ const syncSecretsAzureAppConfig = async ({
         headers: {
           Authorization: `Bearer ${accessToken}`
         },
-        ...(metadata.azureUseLabels && {
+        ...(metadata.azureLabel && {
           params: {
-            label: integration.environment.slug
+            label: metadata.azureLabel
           }
         }),
         // we force IPV4 because docker setup fails with ipv6
