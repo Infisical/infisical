@@ -166,8 +166,7 @@ const envSchema = z
     OTEL_COLLECTOR_BASIC_AUTH_PASSWORD: zpStr(z.string().optional()),
     OTEL_EXPORT_TYPE: z.enum(["prometheus", "otlp"]).optional(),
 
-    PLAIN_API_KEY: zpStr(z.string().optional()),
-    PLAIN_WISH_LABEL_IDS: zpStr(z.string().optional()),
+    PYLON_API_KEY: zpStr(z.string().optional()),
     DISABLE_AUDIT_LOG_GENERATION: zodStrBool.default("false"),
     SSL_CLIENT_CERTIFICATE_HEADER_KEY: zpStr(z.string().optional()).default("x-ssl-client-cert"),
     WORKFLOW_SLACK_CLIENT_ID: zpStr(z.string().optional()),

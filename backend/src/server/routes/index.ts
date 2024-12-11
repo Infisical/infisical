@@ -1242,7 +1242,8 @@ export const registerRoutes = async (
   });
 
   const userEngagementService = userEngagementServiceFactory({
-    userDAL
+    userDAL,
+    orgDAL
   });
 
   const slackService = slackServiceFactory({
