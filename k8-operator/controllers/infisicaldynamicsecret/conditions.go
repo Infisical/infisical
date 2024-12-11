@@ -118,33 +118,6 @@ func (r *InfisicalDynamicSecretReconciler) SetCreatedLeaseStatus(ctx context.Con
 	}
 }
 
-func (r *InfisicalDynamicSecretReconciler) SetRevokedLeaseStatus(ctx context.Context, logger logr.Logger, infisicalDynamicSecret *v1alpha1.InfisicalDynamicSecret, errorToConditionOn error) {
-	if infisicalDynamicSecret.Status.Conditions == nil {
-		infisicalDynamicSecret.Status.Conditions = []metav1.Condition{}
-	}
-
-	if errorToConditionOn == nil {
-		meta.SetStatusCondition(&infisicalDynamicSecret.Status.Conditions, metav1.Condition{
-			Type:    "secrets.infisical.com/LeaseRevoked",
-			Status:  metav1.ConditionTrue,
-			Reason:  "OK",
-			Message: "Infisical has successfully revoked the lease",
-		})
-	} else {
-		meta.SetStatusCondition(&infisicalDynamicSecret.Status.Conditions, metav1.Condition{
-			Type:    "secrets.infisical.com/LeaseRevoked",
-			Status:  metav1.ConditionFalse,
-			Reason:  "Error",
-			Message: fmt.Sprintf("Failed to revoke the lease because: %v", errorToConditionOn),
-		})
-	}
-
-	err := r.Client.Status().Update(ctx, infisicalDynamicSecret)
-	if err != nil {
-		logger.Error(err, "Could not set condition for LeaseRevoked")
-	}
-}
-
 func (r *InfisicalDynamicSecretReconciler) SetReconcileStatus(ctx context.Context, logger logr.Logger, infisicalDynamicSecret *v1alpha1.InfisicalDynamicSecret, errorToConditionOn error) {
 	if infisicalDynamicSecret.Status.Conditions == nil {
 		infisicalDynamicSecret.Status.Conditions = []metav1.Condition{}

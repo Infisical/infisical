@@ -256,7 +256,7 @@ func (r *InfisicalDynamicSecretReconciler) updateResourceVariables(infisicalDyna
 	infisicalDynamicSecretsResourceVariablesMap[string(infisicalDynamicSecret.UID)] = resourceVariables
 }
 
-func (r *InfisicalDynamicSecretReconciler) HandleLeaseRevocation(ctx context.Context, logger logr.Logger, infisicalDynamicSecret v1alpha1.InfisicalDynamicSecret) error {
+func (r *InfisicalDynamicSecretReconciler) HandleLeaseRevocation(ctx context.Context, logger logr.Logger, infisicalDynamicSecret *v1alpha1.InfisicalDynamicSecret) error {
 	if infisicalDynamicSecret.Spec.LeaseRevocationPolicy != string(constants.DYNAMIC_SECRET_LEASE_REVOCATION_POLICY_ENABLED) {
 		return nil
 	}
@@ -266,7 +266,6 @@ func (r *InfisicalDynamicSecretReconciler) HandleLeaseRevocation(ctx context.Con
 
 	logger.Info("Authenticating for lease revocation")
 	authDetails, err := r.handleAuthentication(ctx, infisicalDynamicSecret, infisicalClient)
-	r.SetAuthenticatedStatus(ctx, logger, &infisicalDynamicSecret, err)
 
 	if err != nil {
 		return fmt.Errorf("unable to authenticate for lease revocation [err=%s]", err)
@@ -349,20 +348,28 @@ func (r *InfisicalDynamicSecretReconciler) ReconcileInfisicalDynamicSecret(ctx c
 		Namespace: infisicalDynamicSecret.Spec.ManagedSecretReference.SecretNamespace,
 	})
 
-	if err != nil && !k8Errors.IsNotFound(err) {
-		annotationValue := ""
-		if infisicalDynamicSecret.Status.Lease != nil {
-			annotationValue = fmt.Sprintf("%s-%d", infisicalDynamicSecret.Status.Lease.ID, infisicalDynamicSecret.Status.Lease.Version)
-		}
-		r.createInfisicalManagedKubeSecret(ctx, logger, *infisicalDynamicSecret, annotationValue)
-	}
-
 	if err != nil {
 		if k8Errors.IsNotFound(err) {
-			return nextReconcile, fmt.Errorf("destination secret not found")
-		}
 
-		return nextReconcile, fmt.Errorf("unable to fetch destination secret")
+			annotationValue := ""
+			if infisicalDynamicSecret.Status.Lease != nil {
+				annotationValue = fmt.Sprintf("%s-%d", infisicalDynamicSecret.Status.Lease.ID, infisicalDynamicSecret.Status.Lease.Version)
+			}
+
+			r.createInfisicalManagedKubeSecret(ctx, logger, *infisicalDynamicSecret, annotationValue)
+
+			destination, err = util.GetKubeSecretByNamespacedName(ctx, r.Client, types.NamespacedName{
+				Name:      infisicalDynamicSecret.Spec.ManagedSecretReference.SecretName,
+				Namespace: infisicalDynamicSecret.Spec.ManagedSecretReference.SecretNamespace,
+			})
+
+			if err != nil {
+				return nextReconcile, fmt.Errorf("unable to fetch destination secret after creation [err=%s]", err)
+			}
+
+		} else {
+			return nextReconcile, fmt.Errorf("unable to fetch destination secret")
+		}
 	}
 
 	if infisicalDynamicSecret.Status.Lease == nil {
