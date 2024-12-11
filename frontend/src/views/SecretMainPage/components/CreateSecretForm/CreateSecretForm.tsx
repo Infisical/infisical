@@ -61,6 +61,8 @@ export const CreateSecretForm = ({
   );
 
   const secretKeyInputRef = useRef<HTMLInputElement>(null);
+  const { ref: setSecretKeyHookRef, ...secretKeyRegisterRest } = register("key");
+
   const secretKey = watch("key");
 
   const slugSchema = z.string().trim().toLowerCase().min(1);
@@ -122,11 +124,10 @@ export const CreateSecretForm = ({
       secretKeyInputRef.current.selectionEnd === secretKeyInputRef.current.value.length;
 
     if (!secretKey || isWholeKeyHighlighted) {
+      e.preventDefault();
+
       setValue("key", key);
       setValue("value", value);
-    }
-    if (!secretKey) {
-      e.preventDefault();
     }
   };
 
@@ -139,8 +140,15 @@ export const CreateSecretForm = ({
         errorText={errors?.key?.message}
       >
         <Input
-          {...register("key")}
-          ref={secretKeyInputRef}
+          {...secretKeyRegisterRest}
+          ref={(e) => {
+            setSecretKeyHookRef(e);
+            // Can't directly set secretKeyInputRef.current = e, because of read-only property definitions
+            Object.defineProperty(secretKeyInputRef, "current", {
+              value: e,
+              writable: true
+            });
+          }}
           placeholder="Type your secret name"
           onPaste={handlePaste}
           autoCapitalization={autoCapitalize}
