@@ -1,7 +1,14 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { ProjectsSchema, ProjectUpgradeStatus, ProjectVersion, TableName, TProjectsUpdate } from "@app/db/schemas";
+import {
+  ProjectsSchema,
+  ProjectType,
+  ProjectUpgradeStatus,
+  ProjectVersion,
+  TableName,
+  TProjectsUpdate
+} from "@app/db/schemas";
 import { BadRequestError, DatabaseError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
@@ -12,12 +19,18 @@ export type TProjectDALFactory = ReturnType<typeof projectDALFactory>;
 export const projectDALFactory = (db: TDbClient) => {
   const projectOrm = ormify(db, TableName.Project);
 
-  const findAllProjects = async (userId: string) => {
+  const findAllProjects = async (userId: string, orgId: string, projectType?: ProjectType | null) => {
     try {
       const workspaces = await db
         .replicaNode()(TableName.ProjectMembership)
         .where({ userId })
         .join(TableName.Project, `${TableName.ProjectMembership}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .andWhere((qb) => {
+          if (projectType) {
+            void qb.where(`${TableName.Project}.type`, projectType);
+          }
+        })
         .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .select(
           selectAllTableCols(TableName.Project),
@@ -31,14 +44,17 @@ export const projectDALFactory = (db: TDbClient) => {
           { column: `${TableName.Environment}.position`, order: "asc" }
         ]);
 
-      const groups: string[] = await db(TableName.UserGroupMembership)
-        .where({ userId })
-        .select(selectAllTableCols(TableName.UserGroupMembership))
-        .pluck("groupId");
+      const groups = db(TableName.UserGroupMembership).where({ userId }).select("groupId");
 
       const groupWorkspaces = await db(TableName.GroupProjectMembership)
         .whereIn("groupId", groups)
         .join(TableName.Project, `${TableName.GroupProjectMembership}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .andWhere((qb) => {
+          if (projectType) {
+            void qb.where(`${TableName.Project}.type`, projectType);
+          }
+        })
         .whereNotIn(
           `${TableName.Project}.id`,
           workspaces.map(({ id }) => id)
@@ -108,12 +124,13 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findAllProjectsByIdentity = async (identityId: string) => {
+  const findAllProjectsByIdentity = async (identityId: string, projectType?: ProjectType) => {
     try {
       const workspaces = await db
         .replicaNode()(TableName.IdentityProjectMembership)
         .where({ identityId })
         .join(TableName.Project, `${TableName.IdentityProjectMembership}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Project}.type`, projectType)
         .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .select(
           selectAllTableCols(TableName.Project),

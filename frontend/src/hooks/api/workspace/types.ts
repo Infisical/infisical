@@ -8,6 +8,12 @@ export enum ProjectVersion {
   V3 = 3
 }
 
+export enum ProjectType {
+  SecretManager = "secret-manager",
+  CertificateManager = "cert-manager",
+  Cmek = "cmek"
+}
+
 export enum ProjectUserMembershipTemporaryMode {
   Relative = "relative"
 }
@@ -16,6 +22,7 @@ export type Workspace = {
   __v: number;
   id: string;
   name: string;
+  type: ProjectType;
   description?: string;
   orgId: string;
   version: ProjectVersion;
@@ -59,6 +66,7 @@ export type CreateWorkspaceDTO = {
   projectDescription?: string;
   kmsKeyId?: string;
   template?: string;
+  type: ProjectType;
 };
 
 export type UpdateProjectDTO = {

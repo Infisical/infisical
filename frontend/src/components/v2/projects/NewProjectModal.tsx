@@ -41,6 +41,7 @@ import {
 } from "@app/hooks/api";
 import { INTERNAL_KMS_KEY_ID } from "@app/hooks/api/kms/types";
 import { InfisicalProjectTemplate, useListProjectTemplates } from "@app/hooks/api/projectTemplates";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 const formSchema = z.object({
   name: z.string().trim().min(1, "Required").max(64, "Too long, maximum length is 64 characters"),
@@ -59,11 +60,12 @@ type TAddProjectFormData = z.infer<typeof formSchema>;
 interface NewProjectModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  projectType: ProjectType;
 }
 
-type NewProjectFormProps = Pick<NewProjectModalProps, "onOpenChange">;
+type NewProjectFormProps = Pick<NewProjectModalProps, "onOpenChange" | "projectType">;
 
-const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
+const NewProjectForm = ({ onOpenChange, projectType }: NewProjectFormProps) => {
   const router = useRouter();
   const { currentOrg } = useOrganization();
   const { permission } = useOrgPermission();
@@ -124,7 +126,8 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
         projectName: name,
         projectDescription: description,
         kmsKeyId: kmsKeyId !== INTERNAL_KMS_KEY_ID ? kmsKeyId : undefined,
-        template
+        template,
+        type: projectType
       });
 
       if (addMembers) {
@@ -145,7 +148,7 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
       createNotification({ text: "Project created", type: "success" });
       reset();
       onOpenChange(false);
-      router.push(`/project/${newProjectId}/secrets/overview`);
+      router.push(`/project/${newProjectId}/${projectType}/overview`);
     } catch (err) {
       console.error(err);
       createNotification({ text: "Failed to create project", type: "error" });
@@ -316,14 +319,18 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
   );
 };
 
-export const NewProjectModal: FC<NewProjectModalProps> = ({ isOpen, onOpenChange }) => {
+export const NewProjectModal: FC<NewProjectModalProps> = ({
+  isOpen,
+  onOpenChange,
+  projectType
+}) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
         title="Create a new project"
         subTitle="This project will contain your secrets and configurations."
       >
-        <NewProjectForm onOpenChange={onOpenChange} />
+        <NewProjectForm onOpenChange={onOpenChange} projectType={projectType} />
       </ModalContent>
     </Modal>
   );

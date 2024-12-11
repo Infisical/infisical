@@ -163,7 +163,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
             !router.asPath.includes("secret-scanning") &&
             !router.asPath.includes("integration")))
       ) {
-        router.push(`/org/${currentOrg?.id}/overview`);
+        router.push(`/org/${currentOrg?.id}/secret-manager/overview`);
       }
       // else if (!router.asPath.includes("org") && !router.asPath.includes("project") && !router.asPath.includes("integrations") && !router.asPath.includes("personal-settings")) {
 
@@ -216,7 +216,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                   <div className="flex h-12 cursor-default items-center px-3 pt-6">
                     {(router.asPath.includes("project") ||
                       router.asPath.includes("integrations")) && (
-                      <Link href={`/org/${currentOrg?.id}/overview`}>
+                      <Link href={`/org/${currentOrg?.id}/${currentWorkspace?.type}/overview`}>
                         <div className="pl-1 pr-2 text-mineshaft-400 duration-200 hover:text-mineshaft-100">
                           <FontAwesomeIcon icon={faArrowLeft} />
                         </div>
@@ -379,7 +379,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                   (!router.asPath.includes("personal") && currentWorkspace ? (
                     <ProjectSelect />
                   ) : (
-                    <Link href={`/org/${currentOrg?.id}/overview`}>
+                    <Link href={`/org/${currentOrg?.id}/${currentWorkspace?.type}/overview`}>
                       <div className="my-6 flex cursor-default items-center justify-center pr-2 text-sm text-mineshaft-300 hover:text-mineshaft-100">
                         <FontAwesomeIcon icon={faArrowLeft} className="pr-3" />
                         Back to organization
@@ -493,13 +493,33 @@ export const AppLayout = ({ children }: LayoutProps) => {
                     </Menu>
                   ) : (
                     <Menu className="mt-4">
-                      <Link href={`/org/${currentOrg?.id}/overview`} passHref>
+                      <Link href={`/org/${currentOrg?.id}/secret-manager/overview`} passHref>
                         <a>
                           <MenuItem
-                            isSelected={router.asPath.includes("/overview")}
+                            isSelected={router.asPath.includes("/secret-manager/overview")}
                             icon="system-outline-165-view-carousel"
                           >
-                            Overview
+                            Secret Manager
+                          </MenuItem>
+                        </a>
+                      </Link>
+                      <Link href={`/org/${currentOrg?.id}/cert-manager/overview`} passHref>
+                        <a>
+                          <MenuItem
+                            isSelected={router.asPath.includes("/cert-manager/overview")}
+                            icon="system-outline-165-view-carousel"
+                          >
+                            Cert Manager
+                          </MenuItem>
+                        </a>
+                      </Link>
+                      <Link href={`/org/${currentOrg?.id}/cmek/overview`} passHref>
+                        <a>
+                          <MenuItem
+                            isSelected={router.asPath.includes("/cmek/overview")}
+                            icon="system-outline-165-view-carousel"
+                          >
+                            Cmek
                           </MenuItem>
                         </a>
                       </Link>

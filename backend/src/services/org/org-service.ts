@@ -15,7 +15,6 @@ import {
   TProjectUserMembershipRolesInsert,
   TUsers
 } from "@app/db/schemas";
-import { TProjects } from "@app/db/schemas/projects";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
@@ -196,26 +195,18 @@ export const orgServiceFactory = ({
     return org;
   };
 
-  const findAllWorkspaces = async ({ actor, actorId, orgId }: TFindAllWorkspacesDTO) => {
-    const organizationWorkspaceIds = new Set((await projectDAL.find({ orgId })).map((workspace) => workspace.id));
-
-    let workspaces: (TProjects & { organization: string } & {
-      environments: {
-        id: string;
-        slug: string;
-        name: string;
-      }[];
-    })[];
-
+  const findAllWorkspaces = async ({ actor, actorId, orgId, type }: TFindAllWorkspacesDTO) => {
     if (actor === ActorType.USER) {
-      workspaces = await projectDAL.findAllProjects(actorId);
-    } else if (actor === ActorType.IDENTITY) {
-      workspaces = await projectDAL.findAllProjectsByIdentity(actorId);
-    } else {
-      throw new BadRequestError({ message: "Invalid actor type" });
+      const workspaces = await projectDAL.findAllProjects(actorId, orgId, type);
+      return workspaces;
     }
 
-    return workspaces.filter((workspace) => organizationWorkspaceIds.has(workspace.id));
+    if (actor === ActorType.IDENTITY) {
+      const workspaces = await projectDAL.findAllProjectsByIdentity(actorId, type);
+      return workspaces;
+    }
+
+    throw new BadRequestError({ message: "Invalid actor type" });
   };
 
   const addGhostUser = async (orgId: string, tx?: Knex) => {

@@ -5,6 +5,7 @@ import {
   OrgMembershipsSchema,
   ProjectMembershipsSchema,
   ProjectsSchema,
+  ProjectType,
   UserEncryptionKeysSchema,
   UsersSchema
 } from "@app/db/schemas";
@@ -76,7 +77,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        organizationId: z.string().trim().describe(ORGANIZATIONS.GET_PROJECTS.organizationId)
+        organizationId: z.string().trim().describe(ORGANIZATIONS.GET_PROJECTS.organizationId),
+        type: z.nativeEnum(ProjectType).optional().describe(ORGANIZATIONS.GET_PROJECTS.type)
       }),
       response: {
         200: z.object({

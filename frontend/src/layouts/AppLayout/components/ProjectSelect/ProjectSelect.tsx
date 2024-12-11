@@ -19,7 +19,7 @@ import {
 import { usePopUp } from "@app/hooks";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
-import { Workspace } from "@app/hooks/api/workspace/types";
+import { ProjectType, Workspace } from "@app/hooks/api/workspace/types";
 
 type TWorkspaceWithFaveProp = Workspace & { isFavorite: boolean };
 
@@ -138,6 +138,7 @@ export const ProjectSelect = () => {
 
   const { options, value } = useMemo(() => {
     const projectOptions = workspaces
+      .filter((el) => el.type === currentWorkspace?.type)
       .map((w): Workspace & { isFavorite: boolean } => ({
         ...w,
         isFavorite: Boolean(projectFavorites?.includes(w.id))
@@ -206,6 +207,7 @@ export const ProjectSelect = () => {
       <NewProjectModal
         isOpen={popUp.addNewWs.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addNewWs", isOpen)}
+        projectType={currentWorkspace?.type || ProjectType.SecretManager}
       />
     </div>
   );

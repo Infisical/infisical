@@ -157,7 +157,6 @@ export const projectServiceFactory = ({
     type = ProjectType.SecretManager
   }: TCreateProjectDTO) => {
     const organization = await orgDAL.findOne({ id: actorOrgId });
-
     const { permission, membership: orgMembership } = await permissionService.getOrgPermission(
       actor,
       actorId,
@@ -432,8 +431,8 @@ export const projectServiceFactory = ({
     return deletedProject;
   };
 
-  const getProjects = async ({ actorId, includeRoles, actorAuthMethod, actorOrgId }: TListProjectsDTO) => {
-    const workspaces = await projectDAL.findAllProjects(actorId);
+  const getProjects = async ({ actorId, includeRoles, actorAuthMethod, actorOrgId, type }: TListProjectsDTO) => {
+    const workspaces = await projectDAL.findAllProjects(actorId, actorOrgId, type);
 
     if (includeRoles) {
       const { permission } = await permissionService.getUserOrgPermission(actorId, actorOrgId, actorAuthMethod);

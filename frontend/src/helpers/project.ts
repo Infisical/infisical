@@ -1,5 +1,6 @@
 import { apiRequest } from "@app/config/request";
 import { createWorkspace } from "@app/hooks/api/workspace/queries";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 const secretsToBeAdded = [
   {
@@ -41,7 +42,8 @@ const initProjectHelper = async ({ projectName }: { projectName: string }) => {
   const {
     data: { project }
   } = await createWorkspace({
-    projectName
+    projectName,
+    type: ProjectType.SecretManager
   });
 
   try {
