@@ -4,11 +4,7 @@ import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import {
-  faArrowUpRightFromSquare,
-  faBookOpen,
-  faQuestionCircle
-} from "@fortawesome/free-solid-svg-icons";
+import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import queryString from "query-string";
@@ -24,11 +20,11 @@ import {
   Card,
   CardTitle,
   FormControl,
+  FormLabel,
   Input,
   Select,
   SelectItem,
-  Switch,
-  Tooltip
+  Switch
 } from "../../../components/v2";
 import { useGetIntegrationAuthById } from "../../../hooks/api/integrationAuth";
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
@@ -209,7 +205,7 @@ export default function AzureAppConfigurationCreateIntegration() {
               )}
             />
 
-            <div className="flex w-full flex-col gap-1">
+            <div className="mb-2 flex w-full flex-col gap-1">
               <Controller
                 control={control}
                 name="useLabels"
@@ -219,12 +215,7 @@ export default function AzureAppConfigurationCreateIntegration() {
                     onCheckedChange={(isChecked) => onChange(isChecked)}
                     isChecked={value}
                   >
-                    <div className="flex w-full items-center gap-1">
-                      Use Labels
-                      <Tooltip content="Assign a label to each key-value pair that gets synced to your Azure App Configuration.">
-                        <FontAwesomeIcon icon={faQuestionCircle} size="1x" />
-                      </Tooltip>
-                    </div>
+                    <FormLabel label="Use Labels" />
                   </Switch>
                 )}
               />
