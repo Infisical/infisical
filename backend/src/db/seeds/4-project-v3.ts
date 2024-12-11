@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { ProjectMembershipRole, ProjectVersion, TableName } from "../schemas";
+import { ProjectMembershipRole, ProjectType, ProjectVersion, TableName } from "../schemas";
 import { seedData1 } from "../seed-data";
 
 export const DEFAULT_PROJECT_ENVS = [
@@ -16,6 +16,7 @@ export async function seed(knex: Knex): Promise<void> {
       orgId: seedData1.organization.id,
       slug: seedData1.projectV3.slug,
       version: ProjectVersion.V3,
+      type: ProjectType.SecretManager,
       // eslint-disable-next-line
       // @ts-ignore
       id: seedData1.projectV3.id
