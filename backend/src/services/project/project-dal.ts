@@ -336,6 +336,22 @@ export const projectDALFactory = (db: TDbClient) => {
     };
   };
 
+  const getProjectFromSplitId = async (projectId: string, projectType: ProjectType) => {
+    try {
+      const project = await db(TableName.ProjectSplitBackfillIds)
+        .where({
+          sourceProjectId: projectId,
+          destinationProjectType: projectType
+        })
+        .join(TableName.Project, `${TableName.Project}.id`, `${TableName.ProjectSplitBackfillIds}.destinationProjectId`)
+        .select(selectAllTableCols(TableName.Project))
+        .first();
+      return project;
+    } catch (error) {
+      throw new DatabaseError({ error, name: `Failed to find split project with id ${projectId}` });
+    }
+  };
+
   return {
     ...projectOrm,
     findAllProjects,
@@ -346,6 +362,7 @@ export const projectDALFactory = (db: TDbClient) => {
     findProjectByFilter,
     findProjectBySlug,
     findProjectWithOrg,
-    checkProjectUpgradeStatus
+    checkProjectUpgradeStatus,
+    getProjectFromSplitId
   };
 };

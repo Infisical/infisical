@@ -15,16 +15,25 @@ import {
 import { TKmsKeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
+import { TProjectDALFactory } from "../project/project-dal";
+
 type TCmekServiceFactoryDep = {
   kmsService: TKmsServiceFactory;
   kmsDAL: TKmsKeyDALFactory;
   permissionService: TPermissionServiceFactory;
+  projectDAL: Pick<TProjectDALFactory, "getProjectFromSplitId">;
 };
 
 export type TCmekServiceFactory = ReturnType<typeof cmekServiceFactory>;
 
-export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TCmekServiceFactoryDep) => {
-  const createCmek = async ({ projectId, ...dto }: TCreateCmekDTO, actor: OrgServiceActor) => {
+export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, projectDAL }: TCmekServiceFactoryDep) => {
+  const createCmek = async ({ projectId: preSplitProjectId, ...dto }: TCreateCmekDTO, actor: OrgServiceActor) => {
+    let projectId = preSplitProjectId;
+    const cmekProjectFromSplit = await projectDAL.getProjectFromSplitId(projectId, ProjectType.Cmek);
+    if (cmekProjectFromSplit) {
+      projectId = cmekProjectFromSplit.id;
+    }
+
     const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor.type,
       actor.id,
@@ -90,7 +99,16 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
     return cmek;
   };
 
-  const listCmeksByProjectId = async ({ projectId, ...filters }: TListCmeksByProjectIdDTO, actor: OrgServiceActor) => {
+  const listCmeksByProjectId = async (
+    { projectId: preSplitProjectId, ...filters }: TListCmeksByProjectIdDTO,
+    actor: OrgServiceActor
+  ) => {
+    let projectId = preSplitProjectId;
+    const cmekProjectFromSplit = await projectDAL.getProjectFromSplitId(preSplitProjectId, ProjectType.Cmek);
+    if (cmekProjectFromSplit) {
+      projectId = cmekProjectFromSplit.id;
+    }
+
     const { permission } = await permissionService.getProjectPermission(
       actor.type,
       actor.id,

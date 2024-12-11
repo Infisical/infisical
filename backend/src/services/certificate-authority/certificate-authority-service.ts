@@ -77,7 +77,10 @@ type TCertificateAuthorityServiceFactoryDep = {
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "findById">;
   pkiCollectionItemDAL: Pick<TPkiCollectionItemDALFactory, "create">;
-  projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
+  projectDAL: Pick<
+    TProjectDALFactory,
+    "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction" | "getProjectFromSplitId"
+  >;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
@@ -123,11 +126,20 @@ export const certificateAuthorityServiceFactory = ({
   }: TCreateCaDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
+    let projectId = project.id;
+
+    const certManagerProjectFromSplit = await projectDAL.getProjectFromSplitId(
+      projectId,
+      ProjectType.CertificateManager
+    );
+    if (certManagerProjectFromSplit) {
+      projectId = certManagerProjectFromSplit.id;
+    }
 
     const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
-      project.id,
+      projectId,
       actorAuthMethod,
       actorOrgId
     );
@@ -162,7 +174,7 @@ export const certificateAuthorityServiceFactory = ({
 
       const ca = await certificateAuthorityDAL.create(
         {
-          projectId: project.id,
+          projectId,
           type,
           organization,
           ou,
@@ -186,7 +198,7 @@ export const certificateAuthorityServiceFactory = ({
       );
 
       const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-        projectId: project.id,
+        projectId,
         projectDAL,
         kmsService
       });

@@ -688,11 +688,19 @@ export const projectServiceFactory = ({
     actor
   }: TListProjectCasDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
+    let projectId = project.id;
+    const certManagerProjectFromSplit = await projectDAL.getProjectFromSplitId(
+      projectId,
+      ProjectType.CertificateManager
+    );
+    if (certManagerProjectFromSplit) {
+      projectId = certManagerProjectFromSplit.id;
+    }
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
-      project.id,
+      projectId,
       actorAuthMethod,
       actorOrgId
     );
@@ -704,7 +712,7 @@ export const projectServiceFactory = ({
 
     const cas = await certificateAuthorityDAL.find(
       {
-        projectId: project.id,
+        projectId,
         ...(status && { status }),
         ...(friendlyName && { friendlyName }),
         ...(commonName && { commonName })
@@ -730,18 +738,26 @@ export const projectServiceFactory = ({
     actor
   }: TListProjectCertsDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
+    let projectId = project.id;
+    const certManagerProjectFromSplit = await projectDAL.getProjectFromSplitId(
+      projectId,
+      ProjectType.CertificateManager
+    );
+    if (certManagerProjectFromSplit) {
+      projectId = certManagerProjectFromSplit.id;
+    }
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
-      project.id,
+      projectId,
       actorAuthMethod,
       actorOrgId
     );
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
 
-    const cas = await certificateAuthorityDAL.find({ projectId: project.id });
+    const cas = await certificateAuthorityDAL.find({ projectId });
 
     const certificates = await certificateDAL.find(
       {
@@ -755,7 +771,7 @@ export const projectServiceFactory = ({
     );
 
     const count = await certificateDAL.countCertificatesInProject({
-      projectId: project.id,
+      projectId,
       friendlyName,
       commonName
     });
@@ -770,12 +786,21 @@ export const projectServiceFactory = ({
    * Return list of (PKI) alerts configured for project
    */
   const listProjectAlerts = async ({
-    projectId,
+    projectId: preSplitProjectId,
     actor,
     actorId,
     actorAuthMethod,
     actorOrgId
   }: TListProjectAlertsDTO) => {
+    let projectId = preSplitProjectId;
+    const certManagerProjectFromSplit = await projectDAL.getProjectFromSplitId(
+      projectId,
+      ProjectType.CertificateManager
+    );
+    if (certManagerProjectFromSplit) {
+      projectId = certManagerProjectFromSplit.id;
+    }
+
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
@@ -797,12 +822,20 @@ export const projectServiceFactory = ({
    * Return list of PKI collections for project
    */
   const listProjectPkiCollections = async ({
-    projectId,
+    projectId: preSplitProjectId,
     actor,
     actorId,
     actorAuthMethod,
     actorOrgId
   }: TListProjectAlertsDTO) => {
+    let projectId = preSplitProjectId;
+    const certManagerProjectFromSplit = await projectDAL.getProjectFromSplitId(
+      projectId,
+      ProjectType.CertificateManager
+    );
+    if (certManagerProjectFromSplit) {
+      projectId = certManagerProjectFromSplit.id;
+    }
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
@@ -824,12 +857,21 @@ export const projectServiceFactory = ({
    * Return list of certificate templates for project
    */
   const listProjectCertificateTemplates = async ({
-    projectId,
+    projectId: preSplitProjectId,
     actorId,
     actorOrgId,
     actorAuthMethod,
     actor
   }: TListProjectCertificateTemplatesDTO) => {
+    let projectId = preSplitProjectId;
+    const certManagerProjectFromSplit = await projectDAL.getProjectFromSplitId(
+      projectId,
+      ProjectType.CertificateManager
+    );
+    if (certManagerProjectFromSplit) {
+      projectId = certManagerProjectFromSplit.id;
+    }
+
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
