@@ -77,11 +77,16 @@ export const selectOrganization = async (data: {
 export const useSelectOrganization = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (details: { organizationId: string; userAgent?: UserAgentType }) => {
+    mutationFn: async (details: {
+      organizationId: string;
+      userAgent?: UserAgentType;
+      forceSetCredentials?: boolean;
+    }) => {
       const data = await selectOrganization(details);
 
       // If a custom user agent is set, then this session is meant for another consuming application, not the web application.
-      if (!details.userAgent && !data.isMfaEnabled) {
+      if ((!details.userAgent && !data.isMfaEnabled) || details.forceSetCredentials) {
+        localStorage.setItem("orgData.id", details.organizationId);
         SecurityClient.setToken(data.token);
         SecurityClient.setProviderAuthToken("");
       }

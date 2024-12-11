@@ -54,10 +54,11 @@ export const tokenDALFactory = (db: TDbClient) => {
   const insertTokenSession = async (
     userId: string,
     ip: string,
-    userAgent: string
+    userAgent: string,
+    tx?: Knex
   ): Promise<TAuthTokenSessions | undefined> => {
     try {
-      const [session] = await db(TableName.AuthTokenSession)
+      const [session] = await (tx || db)(TableName.AuthTokenSession)
         .insert({
           userId,
           ip,
