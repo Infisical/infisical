@@ -13,7 +13,7 @@ export const navigateUserToOrg = async (router: NextRouter, organizationId?: str
 
   if (organizationId) {
     localStorage.setItem("orgData.id", organizationId);
-    router.push(`/org/${organizationId}/overview`);
+    router.push(`/org/${organizationId}/${ProjectType.SecretManager}/overview`);
     return;
   }
 

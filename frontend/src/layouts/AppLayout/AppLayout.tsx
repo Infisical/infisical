@@ -41,6 +41,7 @@ import { usePopUp, useToggle } from "@app/hooks";
 import { useGetOrgTrialUrl, useLogoutUser, useSelectOrganization } from "@app/hooks/api";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 import { InsecureConnectionBanner } from "@app/layouts/AppLayout/components/InsecureConnectionBanner";
 import { ProjectSelect } from "@app/layouts/AppLayout/components/ProjectSelect";
 import { navigateUserToOrg } from "@app/views/Login/Login.utils";
@@ -340,30 +341,40 @@ export const AppLayout = ({ children }: LayoutProps) => {
                   <ProjectSidebarItem />
                   {router.pathname.startsWith("/org") && (
                     <Menu className="mt-4">
-                      <Link href={`/org/${currentOrg?.id}/secret-manager/overview`} passHref>
+                      <Link
+                        href={`/org/${currentOrg?.id}/${ProjectType.SecretManager}/overview`}
+                        passHref
+                      >
                         <a>
                           <MenuItem
-                            isSelected={router.asPath.includes("/secret-manager/overview")}
+                            isSelected={router.asPath.includes(
+                              `/${ProjectType.SecretManager}/overview`
+                            )}
                             icon="system-outline-165-view-carousel"
                           >
                             Secret Manager
                           </MenuItem>
                         </a>
                       </Link>
-                      <Link href={`/org/${currentOrg?.id}/cert-manager/overview`} passHref>
+                      <Link
+                        href={`/org/${currentOrg?.id}/${ProjectType.CertificateManager}/overview`}
+                        passHref
+                      >
                         <a>
                           <MenuItem
-                            isSelected={router.asPath.includes("/cert-manager/overview")}
+                            isSelected={router.asPath.includes(
+                              `/${ProjectType.CertificateManager}/overview`
+                            )}
                             icon="system-outline-165-view-carousel"
                           >
                             Cert Manager
                           </MenuItem>
                         </a>
                       </Link>
-                      <Link href={`/org/${currentOrg?.id}/cmek/overview`} passHref>
+                      <Link href={`/org/${currentOrg?.id}/${ProjectType.Cmek}/overview`} passHref>
                         <a>
                           <MenuItem
-                            isSelected={router.asPath.includes("/cmek/overview")}
+                            isSelected={router.asPath.includes(`/${ProjectType.Cmek}/overview`)}
                             icon="system-outline-165-view-carousel"
                           >
                             Cmek

@@ -32,6 +32,7 @@ import {
   useSubscription,
   useUser
 } from "@app/context";
+import { getWorkspaceHomePage } from "@app/helpers/workspace";
 import {
   fetchOrgUsers,
   useAddUserToWsNonE2EE,
@@ -120,7 +121,7 @@ const NewProjectForm = ({ onOpenChange, projectType }: NewProjectFormProps) => {
     try {
       const {
         data: {
-          project: { id: newProjectId }
+          project
         }
       } = await createWs.mutateAsync({
         projectName: name,
@@ -129,6 +130,7 @@ const NewProjectForm = ({ onOpenChange, projectType }: NewProjectFormProps) => {
         template,
         type: projectType
       });
+      const { id: newProjectId } = project
 
       if (addMembers) {
         const orgUsers = await fetchOrgUsers(currentOrg.id);
@@ -148,7 +150,7 @@ const NewProjectForm = ({ onOpenChange, projectType }: NewProjectFormProps) => {
       createNotification({ text: "Project created", type: "success" });
       reset();
       onOpenChange(false);
-      router.push(`/${projectType}/${newProjectId}/${projectType}/overview`);
+      router.push(getWorkspaceHomePage(project));
     } catch (err) {
       console.error(err);
       createNotification({ text: "Failed to create project", type: "error" });
