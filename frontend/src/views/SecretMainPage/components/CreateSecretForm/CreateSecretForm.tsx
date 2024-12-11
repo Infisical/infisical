@@ -127,7 +127,9 @@ export const CreateSecretForm = ({
       e.preventDefault();
 
       setValue("key", key);
-      setValue("value", value);
+      if (value) {
+        setValue("value", value);
+      }
     }
   };
 

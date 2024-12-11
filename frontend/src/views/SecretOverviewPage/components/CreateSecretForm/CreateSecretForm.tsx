@@ -171,7 +171,9 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
       e.preventDefault();
 
       setValue("key", key);
-      setValue("value", value);
+      if (value) {
+        setValue("value", value);
+      }
     }
   };
 
