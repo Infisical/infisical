@@ -97,7 +97,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
           bearerAuth: []
         }
       ],
-      querystring: z.object({
+      params: z.object({
         integrationAuthId: z.string().trim().describe(INTEGRATION_AUTH.UPDATE_BY_ID.integrationAuthId)
       }),
       body: z.object({
@@ -126,7 +126,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        integrationAuthId: req.query.integrationAuthId,
+        integrationAuthId: req.params.integrationAuthId,
         ...req.body
       });
 
