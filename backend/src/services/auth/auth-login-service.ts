@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { Knex } from "knex";
 
 import { TUsers, UserDeviceSchema } from "@app/db/schemas";
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
@@ -50,13 +51,13 @@ export const authLoginServiceFactory = ({
    * Not exported. This is to update user device list
    * If new device is found. Will be saved and a mail will be send
    */
-  const updateUserDeviceSession = async (user: TUsers, ip: string, userAgent: string) => {
+  const updateUserDeviceSession = async (user: TUsers, ip: string, userAgent: string, tx?: Knex) => {
     const devices = await UserDeviceSchema.parseAsync(user.devices || []);
     const isDeviceSeen = devices.some((device) => device.ip === ip && device.userAgent === userAgent);
 
     if (!isDeviceSeen) {
       const newDeviceList = devices.concat([{ ip, userAgent }]);
-      await userDAL.updateById(user.id, { devices: JSON.stringify(newDeviceList) });
+      await userDAL.updateById(user.id, { devices: JSON.stringify(newDeviceList) }, tx);
       if (user.email) {
         await smtpService.sendMail({
           template: SmtpTemplates.NewDeviceJoin,
@@ -97,30 +98,36 @@ export const authLoginServiceFactory = ({
    * Check user device and send mail if new device
    * generate the auth and refresh token. fn shared by mfa verification and login verification with mfa disabled
    */
-  const generateUserTokens = async ({
-    user,
-    ip,
-    userAgent,
-    organizationId,
-    authMethod,
-    isMfaVerified,
-    mfaMethod
-  }: {
-    user: TUsers;
-    ip: string;
-    userAgent: string;
-    organizationId?: string;
-    authMethod: AuthMethod;
-    isMfaVerified?: boolean;
-    mfaMethod?: MfaMethod;
-  }) => {
-    const cfg = getConfig();
-    await updateUserDeviceSession(user, ip, userAgent);
-    const tokenSession = await tokenService.getUserTokenSession({
-      userAgent,
+  const generateUserTokens = async (
+    {
+      user,
       ip,
-      userId: user.id
-    });
+      userAgent,
+      organizationId,
+      authMethod,
+      isMfaVerified,
+      mfaMethod
+    }: {
+      user: TUsers;
+      ip: string;
+      userAgent: string;
+      organizationId?: string;
+      authMethod: AuthMethod;
+      isMfaVerified?: boolean;
+      mfaMethod?: MfaMethod;
+    },
+    tx?: Knex
+  ) => {
+    const cfg = getConfig();
+    await updateUserDeviceSession(user, ip, userAgent, tx);
+    const tokenSession = await tokenService.getUserTokenSession(
+      {
+        userAgent,
+        ip,
+        userId: user.id
+      },
+      tx
+    );
     if (!tokenSession) throw new Error("Failed to create token");
 
     const accessToken = jwt.sign(

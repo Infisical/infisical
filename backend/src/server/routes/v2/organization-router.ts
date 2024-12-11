@@ -9,6 +9,7 @@ import {
   UsersSchema
 } from "@app/db/schemas";
 import { ORGANIZATIONS } from "@app/lib/api-docs";
+import { getConfig } from "@app/lib/config/env";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
@@ -358,21 +359,35 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          organization: OrganizationsSchema
+          organization: OrganizationsSchema,
+          accessToken: z.string()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
-    handler: async (req) => {
+    handler: async (req, res) => {
       if (req.auth.actor !== ActorType.USER) return;
 
-      const organization = await server.services.org.deleteOrganizationById(
-        req.permission.id,
-        req.params.organizationId,
-        req.permission.authMethod,
-        req.permission.orgId
-      );
-      return { organization };
+      const cfg = getConfig();
+
+      const { organization, tokens } = await server.services.org.deleteOrganizationById({
+        userId: req.permission.id,
+        orgId: req.params.organizationId,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        authorizationHeader: req.headers.authorization,
+        userAgentHeader: req.headers["user-agent"],
+        ipAddress: req.realIp
+      });
+
+      void res.setCookie("jid", tokens.refreshToken, {
+        httpOnly: true,
+        path: "/",
+        sameSite: "strict",
+        secure: cfg.HTTPS_ENABLED
+      });
+
+      return { organization, accessToken: tokens.accessToken };
     }
   });
 };

@@ -19,9 +19,11 @@ import {
   decryptSymmetric128BitHexKeyUTF8,
   encryptSymmetric128BitHexKeyUTF8
 } from "@app/lib/crypto";
+import { daysToMillisecond, secondsToMillis } from "@app/lib/dates";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
+import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import {
   fnSecretBulkInsert as fnSecretV2BridgeBulkInsert,
   fnSecretBulkUpdate as fnSecretV2BridgeBulkUpdate,
@@ -31,8 +33,10 @@ import {
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { KmsDataKey } from "../kms/kms-types";
 import { getBotKeyFnFactory } from "../project-bot/project-bot-fns";
+import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretDALFactory } from "./secret-dal";
 import {
   TCreateManySecretsRawFn,
@@ -1137,4 +1141,50 @@ export const decryptSecretWithBot = (
     secretValue,
     secretComment
   };
+};
+
+type TFnDeleteProjectSecretReminders = {
+  secretDAL: Pick<TSecretDALFactory, "find">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find">;
+  queueService: Pick<TQueueServiceFactory, "stopRepeatableJob">;
+  projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId">;
+};
+
+export const fnDeleteProjectSecretReminders = async (
+  projectId: string,
+  { secretDAL, secretV2BridgeDAL, queueService, projectBotService, folderDAL }: TFnDeleteProjectSecretReminders
+) => {
+  const projectFolders = await folderDAL.findByProjectId(projectId);
+  const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId, false);
+
+  const projectSecrets = shouldUseSecretV2Bridge
+    ? await secretV2BridgeDAL.find({
+        $in: { folderId: projectFolders.map((folder) => folder.id) },
+        $notNull: ["reminderRepeatDays"]
+      })
+    : await secretDAL.find({
+        $in: { folderId: projectFolders.map((folder) => folder.id) },
+        $notNull: ["secretReminderRepeatDays"]
+      });
+
+  const appCfg = getConfig();
+  for await (const secret of projectSecrets) {
+    const repeatDays = shouldUseSecretV2Bridge
+      ? (secret as { reminderRepeatDays: number }).reminderRepeatDays
+      : (secret as { secretReminderRepeatDays: number }).secretReminderRepeatDays;
+
+    // We're using the queue service directly to get around conflicting imports.
+    if (repeatDays) {
+      await queueService.stopRepeatableJob(
+        QueueName.SecretReminder,
+        QueueJobs.SecretReminder,
+        {
+          // on prod it this will be in days, in development this will be second
+          every: appCfg.NODE_ENV === "development" ? secondsToMillis(repeatDays) : daysToMillisecond(repeatDays)
+        },
+        `reminder-${secret.id}`
+      );
+    }
+  }
 };

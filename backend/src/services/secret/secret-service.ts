@@ -484,8 +484,8 @@ export const secretServiceFactory = ({
       secretDAL
     });
 
-    const deletedSecret = await secretDAL.transaction(async (tx) =>
-      fnSecretBulkDelete({
+    const deletedSecret = await secretDAL.transaction(async (tx) => {
+      const secrets = await fnSecretBulkDelete({
         projectId,
         folderId,
         actorId,
@@ -498,8 +498,19 @@ export const secretServiceFactory = ({
           }
         ],
         tx
-      })
-    );
+      });
+
+      for await (const secret of secrets) {
+        if (secret.secretReminderRepeatDays !== null && secret.secretReminderRepeatDays !== undefined) {
+          await secretQueueService.removeSecretReminder({
+            repeatDays: secret.secretReminderRepeatDays,
+            secretId: secret.id
+          });
+        }
+      }
+
+      return secrets;
+    });
 
     if (inputSecret.type === SecretType.Shared) {
       await snapshotService.performSnapshot(folderId);
@@ -960,8 +971,8 @@ export const secretServiceFactory = ({
       secretDAL
     });
 
-    const secretsDeleted = await secretDAL.transaction(async (tx) =>
-      fnSecretBulkDelete({
+    const secretsDeleted = await secretDAL.transaction(async (tx) => {
+      const secrets = await fnSecretBulkDelete({
         secretDAL,
         secretQueueService,
         inputSecrets: inputSecrets.map(({ type, secretName }) => ({
@@ -972,8 +983,19 @@ export const secretServiceFactory = ({
         folderId,
         actorId,
         tx
-      })
-    );
+      });
+
+      for await (const secret of secrets) {
+        if (secret.secretReminderRepeatDays !== null && secret.secretReminderRepeatDays !== undefined) {
+          await secretQueueService.removeSecretReminder({
+            repeatDays: secret.secretReminderRepeatDays,
+            secretId: secret.id
+          });
+        }
+      }
+
+      return secrets;
+    });
 
     await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({

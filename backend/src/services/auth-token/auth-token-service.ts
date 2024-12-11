@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 
 import bcrypt from "bcrypt";
+import { Knex } from "knex";
 
 import { TAuthTokens, TAuthTokenSessions } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
@@ -123,14 +124,13 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgMembershipDAL }: TAu
     return deletedToken?.[0];
   };
 
-  const getUserTokenSession = async ({
-    userId,
-    ip,
-    userAgent
-  }: TIssueAuthTokenDTO): Promise<TAuthTokenSessions | undefined> => {
+  const getUserTokenSession = async (
+    { userId, ip, userAgent }: TIssueAuthTokenDTO,
+    tx?: Knex
+  ): Promise<TAuthTokenSessions | undefined> => {
     let session = await tokenDAL.findOneTokenSession({ userId, ip, userAgent });
     if (!session) {
-      session = await tokenDAL.insertTokenSession(userId, ip, userAgent);
+      session = await tokenDAL.insertTokenSession(userId, ip, userAgent, tx);
     }
     return session;
   };

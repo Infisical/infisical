@@ -14,6 +14,7 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { groupBy } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TProjectPermission } from "@app/lib/types";
+import { TQueueServiceFactory } from "@app/queue";
 
 import { ActorType } from "../auth/auth-type";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
@@ -28,13 +29,17 @@ import { TOrgServiceFactory } from "../org/org-service";
 import { TPkiAlertDALFactory } from "../pki-alert/pki-alert-dal";
 import { TPkiCollectionDALFactory } from "../pki-collection/pki-collection-dal";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
+import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
 import { TProjectRoleDALFactory } from "../project-role/project-role-dal";
 import { getPredefinedRoles } from "../project-role/project-role-fns";
+import { TSecretDALFactory } from "../secret/secret-dal";
+import { fnDeleteProjectSecretReminders } from "../secret/secret-fns";
 import { ROOT_FOLDER_NAME, TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TProjectSlackConfigDALFactory } from "../slack/project-slack-config-dal";
 import { TSlackIntegrationDALFactory } from "../slack/slack-integration-dal";
 import { TUserDALFactory } from "../user/user-dal";
@@ -74,7 +79,10 @@ type TProjectServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
   projectQueue: TProjectQueueFactory;
   userDAL: TUserDALFactory;
-  folderDAL: TSecretFolderDALFactory;
+  projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
+  folderDAL: Pick<TSecretFolderDALFactory, "insertMany" | "findByProjectId">;
+  secretDAL: Pick<TSecretDALFactory, "find">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "insertMany" | "find">;
   identityOrgMembershipDAL: TIdentityOrgDALFactory;
   identityProjectDAL: TIdentityProjectDALFactory;
@@ -92,6 +100,8 @@ type TProjectServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  queueService: Pick<TQueueServiceFactory, "stopRepeatableJob">;
+
   orgDAL: Pick<TOrgDALFactory, "findOne">;
   keyStore: Pick<TKeyStoreFactory, "deleteItem">;
   projectBotDAL: Pick<TProjectBotDALFactory, "create">;
@@ -112,9 +122,13 @@ export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
 
 export const projectServiceFactory = ({
   projectDAL,
+  secretDAL,
+  secretV2BridgeDAL,
   projectQueue,
   projectKeyDAL,
   permissionService,
+  queueService,
+  projectBotService,
   orgDAL,
   userDAL,
   folderDAL,
@@ -422,6 +436,14 @@ export const projectServiceFactory = ({
       if (projectGhostUser) {
         await userDAL.deleteById(projectGhostUser.id, tx);
       }
+
+      await fnDeleteProjectSecretReminders(project.id, {
+        secretDAL,
+        secretV2BridgeDAL,
+        queueService,
+        projectBotService,
+        folderDAL
+      });
 
       return delProject;
     });

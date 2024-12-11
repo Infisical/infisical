@@ -32,11 +32,13 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedErro
 import { groupBy } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { isDisposableEmail } from "@app/lib/validator";
+import { TQueueServiceFactory } from "@app/queue";
 import { getDefaultOrgMembershipRoleForUpdateOrg } from "@app/services/org/org-role-fns";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
-import { ActorAuthMethod, ActorType, AuthMethod, AuthTokenType } from "../auth/auth-type";
+import { TAuthLoginFactory } from "../auth/auth-login-service";
+import { ActorAuthMethod, ActorType, AuthMethod, AuthModeJwtTokenPayload, AuthTokenType } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
@@ -48,6 +50,10 @@ import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
 import { TProjectRoleDALFactory } from "../project-role/project-role-dal";
+import { TSecretDALFactory } from "../secret/secret-dal";
+import { fnDeleteProjectSecretReminders } from "../secret/secret-fns";
+import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TIncidentContactsDALFactory } from "./incident-contacts-dal";
@@ -70,6 +76,9 @@ import {
 
 type TOrgServiceFactoryDep = {
   userAliasDAL: Pick<TUserAliasDALFactory, "delete">;
+  secretDAL: Pick<TSecretDALFactory, "find">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId">;
   orgDAL: TOrgDALFactory;
   orgBotDAL: TOrgBotDALFactory;
   orgRoleDAL: TOrgRoleDALFactory;
@@ -98,6 +107,8 @@ type TOrgServiceFactoryDep = {
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne" | "updateById">;
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "insertMany" | "create">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
+  queueService: Pick<TQueueServiceFactory, "stopRepeatableJob">;
+  loginService: Pick<TAuthLoginFactory, "generateUserTokens">;
 };
 
 export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
@@ -105,6 +116,9 @@ export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
 export const orgServiceFactory = ({
   userAliasDAL,
   orgDAL,
+  secretDAL,
+  secretV2BridgeDAL,
+  folderDAL,
   userDAL,
   groupDAL,
   orgRoleDAL,
@@ -125,7 +139,9 @@ export const orgServiceFactory = ({
   projectBotDAL,
   projectUserMembershipRoleDAL,
   identityMetadataDAL,
-  projectBotService
+  projectBotService,
+  queueService,
+  loginService
 }: TOrgServiceFactoryDep) => {
   /*
    * Get organization details by the organization id
@@ -428,24 +444,88 @@ export const orgServiceFactory = ({
   /*
    * Delete organization by id
    * */
-  const deleteOrganizationById = async (
-    userId: string,
-    orgId: string,
-    actorAuthMethod: ActorAuthMethod,
-    actorOrgId: string | undefined
-  ) => {
+  const deleteOrganizationById = async ({
+    userId,
+    authorizationHeader,
+    userAgentHeader,
+    ipAddress,
+    orgId,
+    actorAuthMethod,
+    actorOrgId
+  }: {
+    userId: string;
+    authorizationHeader?: string;
+    userAgentHeader?: string;
+    ipAddress: string;
+    orgId: string;
+    actorAuthMethod: ActorAuthMethod;
+    actorOrgId: string | undefined;
+  }) => {
     const { membership } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
-    if ((membership.role as OrgMembershipRole) !== OrgMembershipRole.Admin)
+    if ((membership.role as OrgMembershipRole) !== OrgMembershipRole.Admin) {
       throw new ForbiddenRequestError({
         name: "DeleteOrganizationById",
         message: "Insufficient privileges"
       });
-
-    const organization = await orgDAL.deleteById(orgId);
-    if (organization.customerId) {
-      await licenseService.removeOrgCustomer(organization.customerId);
     }
-    return organization;
+
+    if (!authorizationHeader) {
+      throw new UnauthorizedError({ name: "Authorization header not set on request." });
+    }
+
+    if (!userAgentHeader) {
+      throw new BadRequestError({ name: "User agent not set on request." });
+    }
+
+    const cfg = getConfig();
+    const authToken = authorizationHeader.replace("Bearer ", "");
+
+    const decodedToken = jwt.verify(authToken, cfg.AUTH_SECRET) as AuthModeJwtTokenPayload;
+    if (!decodedToken.authMethod) throw new UnauthorizedError({ name: "Auth method not found on existing token" });
+
+    const response = await orgDAL.transaction(async (tx) => {
+      const projects = await projectDAL.find({ orgId }, { tx });
+
+      for await (const project of projects) {
+        await fnDeleteProjectSecretReminders(project.id, {
+          secretDAL,
+          secretV2BridgeDAL,
+          queueService,
+          projectBotService,
+          folderDAL
+        });
+      }
+
+      const deletedOrg = await orgDAL.deleteById(orgId, tx);
+
+      if (deletedOrg.customerId) {
+        await licenseService.removeOrgCustomer(deletedOrg.customerId);
+      }
+
+      // Generate new tokens without the organization ID present
+      const user = await userDAL.findById(userId, tx);
+      const { access: accessToken, refresh: refreshToken } = await loginService.generateUserTokens(
+        {
+          user,
+          authMethod: decodedToken.authMethod,
+          ip: ipAddress,
+          userAgent: userAgentHeader,
+          isMfaVerified: decodedToken.isMfaVerified,
+          mfaMethod: decodedToken.mfaMethod
+        },
+        tx
+      );
+
+      return {
+        organization: deletedOrg,
+        tokens: {
+          accessToken,
+          refreshToken
+        }
+      };
+    });
+
+    return response;
   };
   /*
    * Org membership management

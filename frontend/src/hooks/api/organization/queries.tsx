@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient, UseQueryOptions } from "@tanstack/react-query";
 
+import SecurityClient from "@app/components/utilities/SecurityClient";
 import { apiRequest } from "@app/config/request";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 
@@ -67,7 +68,7 @@ export const useCreateOrg = (options: { invalidate: boolean } = { invalidate: tr
     mutationFn: async ({ name }: { name: string }) => {
       const {
         data: { organization }
-      } = await apiRequest.post("/api/v2/organizations", {
+      } = await apiRequest.post<{ organization: { id: string } }>("/api/v2/organizations", {
         name
       });
 
@@ -437,10 +438,13 @@ export const useDeleteOrgById = () => {
   return useMutation({
     mutationFn: async ({ organizationId }: { organizationId: string }) => {
       const {
-        data: { organization }
-      } = await apiRequest.delete<{ organization: Organization }>(
+        data: { organization, accessToken }
+      } = await apiRequest.delete<{ organization: Organization; accessToken: string }>(
         `/api/v2/organizations/${organizationId}`
       );
+      SecurityClient.setToken(accessToken);
+      localStorage.removeItem("orgData.id");
+
       return organization;
     },
     onSuccess(_, dto) {
