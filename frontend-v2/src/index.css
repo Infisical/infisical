@@ -1,68 +1,193 @@
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/700.css";
+
+@tailwind base;
+@tailwind components;
+
+html {
+  @apply overflow-hidden;
+}
+
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --toastify-color-dark: theme(colors.mineshaft.700);
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+.Toastify__toast {
+  @apply rounded-md;
 }
 
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+.Toastify__toast-body {
+  @apply items-start;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+.Toastify__toast-icon {
+  @apply w-4 pt-1;
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+.rdp-day,
+.rdp-nav_button {
+  @apply rounded-md hover:text-mineshaft-500;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+.rdp-button:hover:not([disabled]):not(.rdp-day_selected),
+.rdp-nav_button:hover {
+  @apply bg-primary;
+}
+
+.rdp-day_today {
+  @apply bg-primary/50 text-mineshaft-500 hover:bg-primary-600;
+}
+
+@tailwind utilities;
+
+@layer utilities {
+  .flex-0 {
+    flex: 0;
   }
-  a:hover {
-    color: #747bff;
+  .flex-2 {
+    flex-grow: 2;
   }
-  button {
-    background-color: #f9f9f9;
+
+  .flex-3 {
+    flex-grow: 3;
   }
+
+  .min-table-row {
+    width: 1%;
+    white-space: nowrap;
+  }
+
+  .w-inherit {
+    width: inherit;
+  }
+
+  .h-inherit {
+    height: inherit;
+  }
+}
+
+@layer components {
+  .secret-table {
+    @apply w-full bg-mineshaft-800 text-left text-bunker-300;
+  }
+
+  /* padding except for comment column */
+  .secret-table th {
+    @apply py-2 px-4 font-medium;
+  }
+
+  .secret-table td {
+    @apply py-1 px-1 pr-2 text-sm;
+  }
+
+  .secret-table th:not(:last-child),
+  .secret-table td:not(:last-child) {
+    @apply border-r border-mineshaft-600;
+  }
+
+  .secret-table tr {
+    @apply border-b border-mineshaft-600;
+  }
+
+  .breadcrumb::after,
+  .breadcrumb::before {
+    content: "";
+    height: 60%;
+    width: 100%;
+    z-index: -1;
+    display: block;
+    position: absolute;
+    @apply bg-mineshaft-800;
+  }
+
+  .breadcrumb:hover::before {
+    @apply bg-mineshaft-600;
+  }
+
+  .breadcrumb:hover::after {
+    @apply bg-mineshaft-600;
+  }
+
+  .breadcrumb::after {
+    left: 4px;
+    bottom: -2.5px;
+    transform: skew(-30deg);
+  }
+
+  .breadcrumb::before {
+    left: 4px;
+    top: -2.5px;
+    transform: skew(30deg);
+  }
+
+  .thin-scrollbar::-webkit-scrollbar {
+    width: 0.25rem;
+    background-color: transparent;
+  }
+
+  .thin-scrollbar::-webkit-scrollbar-thumb {
+    background-color: gray;
+  }
+
+  .thin-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: gray transparent;
+  }
+
+  #nprogress .bar {
+    @apply bg-primary-400;
+  }
+}
+.tags-conic-bg {
+  background: conic-gradient(
+    rgb(235, 87, 87),
+    rgb(242, 201, 76),
+    rgb(76, 183, 130),
+    rgb(78, 167, 252),
+    rgb(250, 96, 122)
+  );
+}
+
+.tree-line::before {
+  content: "";
+  position: absolute;
+  left: -16px;
+  top: 1px;
+  bottom: 0;
+  width: 1px;
+  height: 50%;
+  background-color: #cbd5e0;
+}
+
+.tree-line::after {
+  content: "";
+  position: absolute;
+  left: -16px;
+  top: 50%;
+  width: 12px;
+  height: 1px;
+  background-color: #cbd5e0;
+}
+
+.show-tags {
+  transform: translateY(10px);
+  transition: all 0.2s;
+  opacity: 1;
+}
+.hide-tags {
+  transform: translateY(-20px);
+  transition: all 0.2s;
+  opacity: 0;
+}
+
+.show-hex-input {
+  transform: translateY(-33px);
+  transition: all 0.2s;
+  opacity: 1;
+}
+.hide-hex-input {
+  transform: translateY(20px);
+  transition: all 0.2s;
+  opacity: 0;
 }
