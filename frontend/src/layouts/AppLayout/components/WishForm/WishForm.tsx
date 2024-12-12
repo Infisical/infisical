@@ -65,7 +65,7 @@ export const WishForm = () => {
       <PopoverTrigger asChild>
         <div className="text-md mb-3 w-full pl-5 duration-200 hover:text-mineshaft-200">
           <FontAwesomeIcon icon={faRocketchat} className="mr-2" />
-          Make a wish
+          Request a feature
         </div>
       </PopoverTrigger>
       <PopoverContent
