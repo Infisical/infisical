@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -28,6 +29,7 @@ type InfisicalDynamicSecretReconciler struct {
 	Scheme *runtime.Scheme
 
 	BaseLogger logr.Logger
+	Random     *rand.Rand
 }
 
 var infisicalDynamicSecretsResourceVariablesMap map[string]util.ResourceVariables = make(map[string]util.ResourceVariables)

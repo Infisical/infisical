@@ -217,10 +217,6 @@ github.com/hashicorp/golang-lru v0.5.1/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ
 github.com/ianlancetaylor/demangle v0.0.0-20181102032728-5e5cf60278f6/go.mod h1:aSSvb/t6k1mPoxDqO4vJh6VOCGPwU4O0C2/Eqndh1Sc=
 github.com/imdario/mergo v0.3.12 h1:b6R2BslTbIEToALKP7LxUvijTsNI9TAe80pLWN2g/HU=
 github.com/imdario/mergo v0.3.12/go.mod h1:jmQim1M+e3UYxmgPu/WyfjB3N3VflVyUjjjwH0dnCYA=
-github.com/infisical/go-sdk v0.4.1 h1:ZeLyc2+2TeIaw9odjxR3ipQqYzVSMOnd8/RaqyUNvBg=
-github.com/infisical/go-sdk v0.4.1/go.mod h1:6fWzAwTPIoKU49mQ2Oxu+aFnJu9n7k2JcNrZjzhHM2M=
-github.com/infisical/go-sdk v0.4.3 h1:O5ZJ2eCBAZDE9PIAfBPq9Utb2CgQKrhmj9R0oFTRu4U=
-github.com/infisical/go-sdk v0.4.3/go.mod h1:6fWzAwTPIoKU49mQ2Oxu+aFnJu9n7k2JcNrZjzhHM2M=
 github.com/infisical/go-sdk v0.4.4 h1:Z4CBzxfhiY6ikjRimOEeyEEnb3QT/BKw3OzNFH7Pe+U=
 github.com/infisical/go-sdk v0.4.4/go.mod h1:6fWzAwTPIoKU49mQ2Oxu+aFnJu9n7k2JcNrZjzhHM2M=
 github.com/jessevdk/go-flags v1.4.0/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=

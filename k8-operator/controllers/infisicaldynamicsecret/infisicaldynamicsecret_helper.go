@@ -384,8 +384,9 @@ func (r *InfisicalDynamicSecretReconciler) ReconcileInfisicalDynamicSecret(ctx c
 		// Calculate from creation to expiration
 		originalLeaseDuration := leaseExpiresAt.Sub(infisicalDynamicSecret.Status.Lease.CreationTimestamp.Time)
 
-		// 30% of the original duration (if the TTL has 50% or less of its time left, renew)
-		renewalThreshold := originalLeaseDuration * 50 / 100
+		// Generate a random percentage between 20% and 30%
+		jitterPercentage := 20 + r.Random.Intn(11) // Random int from 0 to 10, then add 20
+		renewalThreshold := originalLeaseDuration * time.Duration(jitterPercentage) / 100
 		timeUntilExpiration := time.Until(leaseExpiresAt)
 
 		nextReconcile = timeUntilExpiration / 2
@@ -424,7 +425,7 @@ func (r *InfisicalDynamicSecretReconciler) ReconcileInfisicalDynamicSecret(ctx c
 			return defaultNextReconcile, err // Short requeue after creation
 		}
 
-		if timeUntilExpiration < renewalThreshold {
+		if timeUntilExpiration < renewalThreshold || timeUntilExpiration < 30*time.Second {
 			logger.Info(fmt.Sprintf("Lease renewal needed [leaseId=%s] [timeUntilExpiration=%v] [threshold=%v]",
 				infisicalDynamicSecret.Status.Lease.ID,
 				timeUntilExpiration,
