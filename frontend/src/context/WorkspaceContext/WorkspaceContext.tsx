@@ -41,7 +41,6 @@ export const WorkspaceProvider = ({ children }: Props): JSX.Element => {
   // handle redirects for project-specific routes
   useEffect(() => {
     if (shouldTriggerNoProjectAccess) {
-      console.log(value, workspaceId);
       createNotification({
         text: "You are not a member of this project.",
         type: "info"
