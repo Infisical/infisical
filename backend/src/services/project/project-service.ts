@@ -747,13 +747,14 @@ export const projectServiceFactory = ({
       projectId = certManagerProjectFromSplit.id;
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.CertificateManager);
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
 
@@ -801,13 +802,14 @@ export const projectServiceFactory = ({
       projectId = certManagerProjectFromSplit.id;
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.CertificateManager);
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PkiAlerts);
 
@@ -836,13 +838,14 @@ export const projectServiceFactory = ({
     if (certManagerProjectFromSplit) {
       projectId = certManagerProjectFromSplit.id;
     }
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.CertificateManager);
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PkiCollections);
 
@@ -872,13 +875,14 @@ export const projectServiceFactory = ({
       projectId = certManagerProjectFromSplit.id;
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.CertificateManager);
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
