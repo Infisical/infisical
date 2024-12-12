@@ -8,6 +8,7 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal, EmptyState, Spinner } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { getProjectTitle } from "@app/helpers/project";
 import { withProjectPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import {
@@ -77,11 +78,14 @@ export const IdentityDetailsPage = withProjectPermission(
             type="submit"
             leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
             onClick={() => {
-              router.push(`/${currentWorkspace?.type}/${workspaceId}/members?selectedTab=identities`);
+              router.push(
+                `/${currentWorkspace?.type}/${workspaceId}/members?selectedTab=identities`
+              );
             }}
             className="mb-4"
           >
-            Project Access Control
+            {currentWorkspace?.type ? getProjectTitle(currentWorkspace?.type) : "Project"} Access
+            Access Control
           </Button>
         </div>
         {identityMembershipDetails ? (

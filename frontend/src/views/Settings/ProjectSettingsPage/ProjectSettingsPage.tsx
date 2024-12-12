@@ -23,7 +23,11 @@ export const ProjectSettingsPage = () => {
         currentWorkspace?.type !== ProjectType.SecretManager
     },
     { name: "Workflow Integrations", key: "tab-workflow-integrations" },
-    { name: "Webhooks", key: "tab-project-webhooks" }
+    {
+      name: "Webhooks",
+      key: "tab-project-webhooks",
+      isHidden: currentWorkspace?.type !== ProjectType.SecretManager
+    }
   ];
 
   return (
@@ -64,9 +68,11 @@ export const ProjectSettingsPage = () => {
             <Tab.Panel>
               <WorkflowIntegrationTab />
             </Tab.Panel>
-            <Tab.Panel>
-              <WebhooksTab />
-            </Tab.Panel>
+            {currentWorkspace?.type === ProjectType.SecretManager && (
+              <Tab.Panel>
+                <WebhooksTab />
+              </Tab.Panel>
+            )}
           </Tab.Panels>
         </Tab.Group>
       </div>

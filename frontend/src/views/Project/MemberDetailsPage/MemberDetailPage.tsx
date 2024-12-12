@@ -18,6 +18,7 @@ import {
   useOrganization,
   useWorkspace
 } from "@app/context";
+import { getProjectTitle } from "@app/helpers/project";
 import { withProjectPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import { useDeleteUserFromWorkspace, useGetWorkspaceUserDetails } from "@app/hooks/api";
@@ -89,7 +90,8 @@ export const MemberDetailsPage = withProjectPermission(
             }}
             className="mb-4"
           >
-            Project Access Control
+            {currentWorkspace?.type ? getProjectTitle(currentWorkspace?.type) : "Project"} Access
+            Control
           </Button>
         </div>
         {membershipDetails ? (

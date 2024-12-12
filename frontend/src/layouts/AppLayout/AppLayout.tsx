@@ -352,7 +352,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                             )}
                             icon="system-outline-165-view-carousel"
                           >
-                            Secret Manager
+                            Secret Management
                           </MenuItem>
                         </a>
                       </Link>
@@ -367,17 +367,17 @@ export const AppLayout = ({ children }: LayoutProps) => {
                             )}
                             icon="system-outline-165-view-carousel"
                           >
-                            Cert Manager
+                            Cert Management
                           </MenuItem>
                         </a>
                       </Link>
-                      <Link href={`/org/${currentOrg?.id}/${ProjectType.Cmek}/overview`} passHref>
+                      <Link href={`/org/${currentOrg?.id}/${ProjectType.KMS}/overview`} passHref>
                         <a>
                           <MenuItem
-                            isSelected={router.asPath.includes(`/${ProjectType.Cmek}/overview`)}
+                            isSelected={router.asPath.includes(`/${ProjectType.KMS}/overview`)}
                             icon="system-outline-165-view-carousel"
                           >
-                            Cmek
+                            Key Management
                           </MenuItem>
                         </a>
                       </Link>

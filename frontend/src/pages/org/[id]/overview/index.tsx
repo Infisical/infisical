@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/router";
 
 import { useOrganization } from "@app/context";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 // #TODO: Update all the workspaceIds
 const OrganizationPage = () => {
@@ -9,7 +10,7 @@ const OrganizationPage = () => {
   const { currentOrg } = useOrganization();
   useEffect(() => {
     if (router.isReady && currentOrg?.id) {
-      router.push(`/org/${currentOrg?.id}/secret-manager/overview`);
+      router.push(`/org/${currentOrg?.id}/${ProjectType.SecretManager}/overview`);
     }
   }, [router.isReady, currentOrg?.id]);
 

@@ -29,7 +29,7 @@ export type TCmekServiceFactory = ReturnType<typeof cmekServiceFactory>;
 export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, projectDAL }: TCmekServiceFactoryDep) => {
   const createCmek = async ({ projectId: preSplitProjectId, ...dto }: TCreateCmekDTO, actor: OrgServiceActor) => {
     let projectId = preSplitProjectId;
-    const cmekProjectFromSplit = await projectDAL.getProjectFromSplitId(projectId, ProjectType.Cmek);
+    const cmekProjectFromSplit = await projectDAL.getProjectFromSplitId(projectId, ProjectType.KMS);
     if (cmekProjectFromSplit) {
       projectId = cmekProjectFromSplit.id;
     }
@@ -41,7 +41,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
       actor.authMethod,
       actor.orgId
     );
-    ForbidOnInvalidProjectType(ProjectType.Cmek);
+    ForbidOnInvalidProjectType(ProjectType.KMS);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Create, ProjectPermissionSub.Cmek);
 
     const cmek = await kmsService.generateKmsKey({
@@ -67,7 +67,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
       actor.authMethod,
       actor.orgId
     );
-    ForbidOnInvalidProjectType(ProjectType.Cmek);
+    ForbidOnInvalidProjectType(ProjectType.KMS);
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Edit, ProjectPermissionSub.Cmek);
 
@@ -90,7 +90,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
       actor.authMethod,
       actor.orgId
     );
-    ForbidOnInvalidProjectType(ProjectType.Cmek);
+    ForbidOnInvalidProjectType(ProjectType.KMS);
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Delete, ProjectPermissionSub.Cmek);
 
@@ -104,7 +104,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
     actor: OrgServiceActor
   ) => {
     let projectId = preSplitProjectId;
-    const cmekProjectFromSplit = await projectDAL.getProjectFromSplitId(preSplitProjectId, ProjectType.Cmek);
+    const cmekProjectFromSplit = await projectDAL.getProjectFromSplitId(preSplitProjectId, ProjectType.KMS);
     if (cmekProjectFromSplit) {
       projectId = cmekProjectFromSplit.id;
     }
@@ -141,7 +141,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
       actor.orgId
     );
 
-    ForbidOnInvalidProjectType(ProjectType.Cmek);
+    ForbidOnInvalidProjectType(ProjectType.KMS);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Encrypt, ProjectPermissionSub.Cmek);
 
     const encrypt = await kmsService.encryptWithKmsKey({ kmsId: keyId });
@@ -167,7 +167,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
       actor.authMethod,
       actor.orgId
     );
-    ForbidOnInvalidProjectType(ProjectType.Cmek);
+    ForbidOnInvalidProjectType(ProjectType.KMS);
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Decrypt, ProjectPermissionSub.Cmek);
 

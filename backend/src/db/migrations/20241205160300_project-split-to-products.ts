@@ -202,7 +202,7 @@ export async function up(knex: Knex): Promise<void> {
       .select("projectId");
     for (const { projectId } of projectsWithCmek) {
       if (projectId) {
-        const newProjectId = await newProject(knex, projectId, ProjectType.Cmek);
+        const newProjectId = await newProject(knex, projectId, ProjectType.KMS);
         await knex(TableName.KmsKey)
           .where({
             isReserved: false,
@@ -211,14 +211,13 @@ export async function up(knex: Knex): Promise<void> {
           .update({ projectId: newProjectId });
         await knex(TableName.ProjectSplitBackfillIds).insert({
           sourceProjectId: projectId,
-          destinationProjectType: ProjectType.Cmek,
+          destinationProjectType: ProjectType.KMS,
           destinationProjectId: newProjectId
         });
       }
     }
 
     /* eslint-enable */
-
     await knex.schema.alterTable(TableName.Project, (t) => {
       t.string("type").notNullable().alter();
     });

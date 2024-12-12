@@ -3,8 +3,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { getProjectTitle } from "@app/helpers/project";
 import { withProjectPermission } from "@app/hoc";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { isTabSection, TabSections } from "../Types";
 import {
@@ -18,6 +20,7 @@ import {
 export const MembersPage = withProjectPermission(
   () => {
     const router = useRouter();
+    const { currentWorkspace } = useWorkspace();
     const { query } = router;
     const selectedTab = query.selectedTab as string;
     const [activeTab, setActiveTab] = useState<TabSections>(TabSections.Member);
@@ -38,7 +41,10 @@ export const MembersPage = withProjectPermission(
     return (
       <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
         <div className="mx-auto mb-6 w-full max-w-7xl py-6 px-6">
-          <p className="mr-4 mb-4 text-3xl font-semibold text-white">Project Access Control</p>
+          <p className="mr-4 mb-4 text-3xl font-semibold text-white">
+            {currentWorkspace?.type ? getProjectTitle(currentWorkspace?.type) : "Project"} Access
+            Access Control
+          </p>
           <Tabs value={activeTab} onValueChange={updateSelectedTab}>
             <TabList>
               <Tab value={TabSections.Member}>Users</Tab>
@@ -60,9 +66,11 @@ export const MembersPage = withProjectPermission(
             <TabPanel value={TabSections.Identities}>
               <IdentityTab />
             </TabPanel>
-            <TabPanel value={TabSections.ServiceTokens}>
-              <ServiceTokenTab />
-            </TabPanel>
+            {currentWorkspace?.type === ProjectType.SecretManager && (
+              <TabPanel value={TabSections.ServiceTokens}>
+                <ServiceTokenTab />
+              </TabPanel>
+            )}
             <TabPanel value={TabSections.Roles}>
               <ProjectRoleListTab />
             </TabPanel>

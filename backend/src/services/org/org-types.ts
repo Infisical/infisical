@@ -1,7 +1,7 @@
+import { ProjectType } from "@app/db/schemas";
 import { TOrgPermission } from "@app/lib/types";
 
 import { ActorAuthMethod, ActorType, MfaMethod } from "../auth/auth-type";
-import { ProjectType } from "@app/db/schemas";
 
 export type TUpdateOrgMembershipDTO = {
   userId: string;

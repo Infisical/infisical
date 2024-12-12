@@ -205,5 +205,5 @@ export enum IdentityAuthMethod {
 export enum ProjectType {
   SecretManager = "secret-manager",
   CertificateManager = "cert-manager",
-  Cmek = "cmek"
+  KMS = "kms"
 }

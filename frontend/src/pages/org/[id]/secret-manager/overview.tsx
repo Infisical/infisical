@@ -38,7 +38,7 @@ import {
   useOrganization,
   useSubscription
 } from "@app/context";
-import { getWorkspaceHomePage } from "@app/helpers/workspace";
+import { getProjectHomePage } from "@app/helpers/project";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useGetUserWorkspaces } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -60,9 +60,17 @@ enum ProjectOrderBy {
 }
 
 const formatTitle = (type: ProjectType) => {
-  if (type === ProjectType.SecretManager) return "Secret Managers";
-  if (type === ProjectType.CertificateManager) return "Cert Managers";
-  return "Cmek";
+  if (type === ProjectType.SecretManager) return "Secret Management";
+  if (type === ProjectType.CertificateManager) return "Cert Management";
+  return "Key Management";
+};
+
+const formatDescription = (type: ProjectType) => {
+  if (type === ProjectType.SecretManager)
+    return "Securely store, manage, and rotate various application secrets, such as database credentials, API keys, etc.";
+  if (type === ProjectType.CertificateManager)
+    return "Manage your PKI infrastructure and issue digital certificates for services, applications, and devices.";
+  return "Centralize the management of keys for cryptographic operations, such as encryption and decryption.";
 };
 
 type Props = {
@@ -182,7 +190,7 @@ export const ProductOverview = ({ type }: Props) => {
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
     <div
       onClick={() => {
-        router.push(getWorkspaceHomePage(workspace));
+        router.push(getProjectHomePage(workspace));
         localStorage.setItem("projectData.id", workspace.id);
       }}
       key={workspace.id}
@@ -246,7 +254,7 @@ export const ProductOverview = ({ type }: Props) => {
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
     <div
       onClick={() => {
-        router.push(getWorkspaceHomePage(workspace));
+        router.push(getProjectHomePage(workspace));
         localStorage.setItem("projectData.id", workspace.id);
       }}
       key={workspace.id}
@@ -382,9 +390,12 @@ export const ProductOverview = ({ type }: Props) => {
           </div>
         </div>
       )}
-      <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl">
+      <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0">
         <div className="flex w-full justify-between">
-          <p className="mr-4 font-semibold text-white">{formatTitle(type)}</p>
+          <p className="mr-4 text-3xl font-semibold  text-white">{formatTitle(type)}</p>
+        </div>
+        <div>
+          <p className="mr-4 mt-2 text-gray-400">{formatDescription(type)}</p>
         </div>
         <div className="mt-6 flex w-full flex-row">
           <Input

@@ -31,7 +31,7 @@ export const ProjectSidebarItem = () => {
 
   const isSecretManager = currentWorkspace?.type === ProjectType.SecretManager;
   const isCertManager = currentWorkspace?.type === ProjectType.CertificateManager;
-  const isCmek = currentWorkspace?.type === ProjectType.Cmek;
+  const isCmek = currentWorkspace?.type === ProjectType.KMS;
 
   return (
     <Menu>
@@ -71,10 +71,10 @@ export const ProjectSidebarItem = () => {
         </Link>
       )}
       {isCmek && (
-        <Link href={`/${ProjectType.Cmek}/${currentWorkspace?.id}/kms`} passHref>
+        <Link href={`/${ProjectType.KMS}/${currentWorkspace?.id}/kms`} passHref>
           <a>
             <MenuItem
-              isSelected={router.asPath === `/${ProjectType.Cmek}/${currentWorkspace?.id}/kms`}
+              isSelected={router.asPath === `/${ProjectType.KMS}/${currentWorkspace?.id}/kms`}
               icon="system-outline-90-lock-closed"
             >
               Key Management
