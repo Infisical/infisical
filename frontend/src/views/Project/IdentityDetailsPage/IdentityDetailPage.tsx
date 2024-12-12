@@ -84,8 +84,8 @@ export const IdentityDetailsPage = withProjectPermission(
             }}
             className="mb-4"
           >
-            {currentWorkspace?.type ? getProjectTitle(currentWorkspace?.type) : "Project"}
-            Access Control
+            {currentWorkspace?.type ? getProjectTitle(currentWorkspace?.type) : "Project"} Access
+            Control
           </Button>
         </div>
         {identityMembershipDetails ? (
