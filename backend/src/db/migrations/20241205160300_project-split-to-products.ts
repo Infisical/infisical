@@ -54,7 +54,7 @@ const newProject = async (knex: Knex, projectId: string, projectType: ProjectTyp
     await knex(TableName.GroupProjectMembershipRole).insert(
       groupMembershipRoles.map((el) => {
         const id = uuidV4();
-        const projectMembershipId = groupMembershipMapping[el.id];
+        const projectMembershipId = groupMembershipMapping[el.projectMembershipId];
         const customRoleId = el.customRoleId ? customRoleMapping[el.customRoleId] : el.customRoleId;
         return { ...el, id, projectMembershipId, customRoleId };
       })
@@ -124,6 +124,7 @@ const newProject = async (knex: Knex, projectId: string, projectType: ProjectTyp
       })
     );
   }
+
   const projectBot = await knex(TableName.ProjectBot).where("projectId", projectId).first();
   if (projectBot) {
     const newProjectBot = { ...projectBot, id: uuidV4(), projectId: newProjectId };
@@ -140,16 +141,6 @@ const newProject = async (knex: Knex, projectId: string, projectType: ProjectTyp
     );
   }
 
-  const serviceTokens = await knex(TableName.ServiceToken).where("projectId", projectId);
-  if (serviceTokens.length) {
-    await knex(TableName.ServiceToken).insert(
-      serviceTokens.map((el) => {
-        const id = uuidV4();
-        const scopes = el.scopes ? JSON.stringify(el.scopes) : el.scopes;
-        return { ...el, id, scopes, projectId: newProjectId };
-      })
-    );
-  }
   return newProjectId;
 };
 
