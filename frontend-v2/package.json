@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@fontsource/inter": "^5.1.0",
+    "@tanstack/react-router": "^1.87.9",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tailwind-merge": "^2.5.5"
@@ -23,6 +24,9 @@
     "@kesills/eslint-config-airbnb-typescript": "^20.0.0",
     "@stylistic/eslint-plugin": "^2.12.1",
     "@tailwindcss/typography": "^0.5.15",
+    "@tanstack/eslint-plugin-router": "^1.87.6",
+    "@tanstack/router-devtools": "^1.87.9",
+    "@tanstack/router-plugin": "^1.87.11",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react-swc": "^3.5.0",
