@@ -8,6 +8,7 @@ import tseslint from "typescript-eslint";
 import { FlatCompat } from "@eslint/eslintrc";
 import stylisticPlugin from "@stylistic/eslint-plugin";
 import importPlugin from "eslint-plugin-import";
+import pluginRouter from "@tanstack/eslint-plugin-router";
 
 const compat = new FlatCompat({
   baseDirectory: import.meta.dirname
@@ -17,6 +18,7 @@ export default tseslint.config(
   { ignores: ["dist"] },
   {
     extends: [
+      ...pluginRouter.configs["flat/recommended"],
       js.configs.recommended,
       tseslint.configs.recommended,
       ...compat.extends("airbnb"),
@@ -59,6 +61,12 @@ export default tseslint.config(
       // TODO: This rule will be switched ON after complete revamp of frontend
       "@typescript-eslint/no-explicit-any": "off",
       "jsx-a11y/control-has-associated-label": "off",
+      "import/no-extraneous-dependencies": [
+        "error",
+        {
+          devDependencies: true
+        }
+      ],
       "no-console": "off",
       "arrow-body-style": "off",
       "no-underscore-dangle": [
