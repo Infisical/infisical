@@ -48,7 +48,7 @@ export const UserProjectRow = ({
       key={`user-project-membership-${id}`}
       onClick={() => {
         if (isAccessible) {
-          router.push(`/project/${project.id}/members?selectedTab=${TabSections.Member}`);
+          router.push(`/${project.type}/${project.id}/members?selectedTab=${TabSections.Member}`);
           return;
         }
 

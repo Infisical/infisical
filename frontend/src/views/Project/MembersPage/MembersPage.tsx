@@ -54,7 +54,9 @@ export const MembersPage = withProjectPermission(
                   <p>Machine Identities</p>
                 </div>
               </Tab>
-              <Tab value={TabSections.ServiceTokens}>Service Tokens</Tab>
+              {currentWorkspace?.type === ProjectType.SecretManager && (
+                <Tab value={TabSections.ServiceTokens}>Service Tokens</Tab>
+              )}
               <Tab value={TabSections.Roles}>Project Roles</Tab>
             </TabList>
             <TabPanel value={TabSections.Member}>
