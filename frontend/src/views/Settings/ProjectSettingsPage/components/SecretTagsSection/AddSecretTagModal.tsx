@@ -1,6 +1,5 @@
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -8,11 +7,10 @@ import { Button, FormControl, Input, Modal, ModalClose, ModalContent } from "@ap
 import { useWorkspace } from "@app/context";
 import { useCreateWsTag } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { slugSchema } from "@app/lib/schemas";
 
 const schema = z.object({
-  slug: z.string().refine((v) => slugify(v) === v, {
-    message: "Invalid slug. Slug can only contain alphanumeric characters and hyphens."
-  })
+  slug: slugSchema({ min: 1, field: "Tag Slug" })
 });
 
 export type FormData = z.infer<typeof schema>;

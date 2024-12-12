@@ -14,15 +14,6 @@
   <a href="https://infisical.com/careers">Hiring (Remote/SF)</a>
 </h4>
 
-<p align="center">
-  <a href="https://infisical.com/docs/self-hosting/deployment-options/aws-ec2">
-    <img src=".github/images/deploy-to-aws.png" width="137" />
-  </a>
-  <a href="https://infisical.com/docs/self-hosting/deployment-options/digital-ocean-marketplace" alt="Deploy to DigitalOcean">
-     <img width="200" alt="Deploy to DO" src="https://www.deploytodo.com/do-btn-blue.svg"/>
-  </a>
-</p>
-
 <h4 align="center">
   <a href="https://github.com/Infisical/infisical/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="Infisical is released under the MIT license." />
@@ -75,7 +66,7 @@ We're on a mission to make security tooling more accessible to everyone, not jus
 
 ### Key Management (KMS):
 
-- **[Cryptograhic Keys](https://infisical.com/docs/documentation/platform/kms)**: Centrally manage keys across projects through a user-friendly interface or via the API.
+- **[Cryptographic Keys](https://infisical.com/docs/documentation/platform/kms)**: Centrally manage keys across projects through a user-friendly interface or via the API.
 - **[Encrypt and Decrypt Data](https://infisical.com/docs/documentation/platform/kms#guide-to-encrypting-data)**: Use symmetric keys to encrypt and decrypt data.
 
 ### General Platform:

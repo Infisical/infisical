@@ -1,4 +1,5 @@
 import { useRouter } from "next/router";
+import { subject } from "@casl/ability";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
@@ -94,7 +95,9 @@ export const IdentityDetailsPage = withProjectPermission(
                   <div>
                     <ProjectPermissionCan
                       I={ProjectPermissionActions.Delete}
-                      a={ProjectPermissionSub.Identity}
+                      a={subject(ProjectPermissionSub.Identity, {
+                        identityId: identityMembershipDetails?.identity?.id
+                      })}
                       renderTooltip
                       allowedLabel="Remove from project"
                     >

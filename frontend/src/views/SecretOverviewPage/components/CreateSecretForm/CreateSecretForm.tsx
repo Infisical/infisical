@@ -1,4 +1,4 @@
-import { ClipboardEvent } from "react";
+import { ClipboardEvent, useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import { faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
@@ -46,6 +46,7 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
     control,
     reset,
     setValue,
+    watch,
     formState: { isSubmitting, errors }
   } = useForm<TFormSchema>({ resolver: zodResolver(typeSchema) });
 
@@ -60,6 +61,11 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
   const { data: projectTags, isLoading: isTagsLoading } = useGetWsTags(
     canReadTags ? workspaceId : ""
   );
+
+  const secretKeyInputRef = useRef<HTMLInputElement>(null);
+  const { ref: setSecretKeyHookRef, ...secretKeyRegisterRest } = register("key");
+
+  const secretKey = watch("key");
 
   const handleFormSubmit = async ({ key, value, environments: selectedEnv, tags }: TFormSchema) => {
     const promises = selectedEnv.map(async (env) => {
@@ -152,13 +158,23 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
   };
 
   const handlePaste = (e: ClipboardEvent<HTMLInputElement>) => {
-    e.preventDefault();
     const delimitters = [":", "="];
     const pastedContent = e.clipboardData.getData("text");
     const { key, value } = getKeyValue(pastedContent, delimitters);
 
-    setValue("key", key);
-    setValue("value", value);
+    const isWholeKeyHighlighted =
+      secretKeyInputRef.current &&
+      secretKeyInputRef.current.selectionStart === 0 &&
+      secretKeyInputRef.current.selectionEnd === secretKeyInputRef.current.value.length;
+
+    if (!secretKey || isWholeKeyHighlighted) {
+      e.preventDefault();
+
+      setValue("key", key);
+      if (value) {
+        setValue("value", value);
+      }
+    }
   };
 
   const createWsTag = useCreateWsTag();
@@ -189,7 +205,12 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
         errorText={errors?.key?.message}
       >
         <Input
-          {...register("key")}
+          {...secretKeyRegisterRest}
+          ref={(e) => {
+            setSecretKeyHookRef(e);
+            // @ts-expect-error this is for multiple ref single component
+            secretKeyInputRef.current = e;
+          }}
           placeholder="Type your secret name"
           onPaste={handlePaste}
           autoCapitalization={currentWorkspace?.autoCapitalization}

@@ -8,6 +8,7 @@ import {
   TScanFullRepoEventPayload,
   TScanPushEventPayload
 } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
+import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import {
   TFailedIntegrationSyncEmailsPayload,
@@ -186,7 +187,10 @@ export type TQueueJobTypes = {
 };
 
 export type TQueueServiceFactory = ReturnType<typeof queueServiceFactory>;
-export const queueServiceFactory = (redisUrl: string, dbConnectionUrl: string) => {
+export const queueServiceFactory = (
+  redisUrl: string,
+  { dbConnectionUrl, dbRootCert }: { dbConnectionUrl: string; dbRootCert?: string }
+) => {
   const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
   const queueContainer = {} as Record<
     QueueName,
@@ -197,7 +201,13 @@ export const queueServiceFactory = (redisUrl: string, dbConnectionUrl: string) =
     connectionString: dbConnectionUrl,
     archiveCompletedAfterSeconds: 60,
     archiveFailedAfterSeconds: 1000, // we want to keep failed jobs for a longer time so that it can be retried
-    deleteAfterSeconds: 30
+    deleteAfterSeconds: 30,
+    ssl: dbRootCert
+      ? {
+          rejectUnauthorized: true,
+          ca: Buffer.from(dbRootCert, "base64").toString("ascii")
+        }
+      : false
   });
 
   const queueContainerPg = {} as Record<QueueJobs, boolean>;
@@ -208,11 +218,15 @@ export const queueServiceFactory = (redisUrl: string, dbConnectionUrl: string) =
   >;
 
   const initialize = async () => {
-    await pgBoss.start();
+    const appCfg = getConfig();
+    if (appCfg.SHOULD_INIT_PG_QUEUE) {
+      logger.info("Initializing pg-queue...");
+      await pgBoss.start();
 
-    pgBoss.on("error", (error) => {
-      logger.error(error, "pg-queue error");
-    });
+      pgBoss.on("error", (error) => {
+        logger.error(error, "pg-queue error");
+      });
+    }
   };
 
   const start = <T extends QueueName>(

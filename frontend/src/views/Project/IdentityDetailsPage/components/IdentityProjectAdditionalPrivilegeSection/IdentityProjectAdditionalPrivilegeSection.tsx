@@ -1,3 +1,4 @@
+import { subject } from "@casl/ability";
 import { faEllipsisV, faFolder, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format, formatDistance } from "date-fns";
@@ -83,7 +84,9 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
               privilegeId={(popUp?.modifyPrivilege?.data as { id: string })?.id}
               isDisabled={permission.cannot(
                 ProjectPermissionActions.Edit,
-                ProjectPermissionSub.Identity
+                subject(ProjectPermissionSub.Identity, {
+                  identityId
+                })
               )}
             />
           </motion.div>
@@ -103,7 +106,9 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
 
               <ProjectPermissionCan
                 I={ProjectPermissionActions.Edit}
-                a={ProjectPermissionSub.Identity}
+                a={subject(ProjectPermissionSub.Identity, {
+                  identityId
+                })}
                 renderTooltip
                 allowedLabel="Add Privilege"
               >
@@ -192,7 +197,9 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                               <div className="flex space-x-2 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
                                 <ProjectPermissionCan
                                   I={ProjectPermissionActions.Edit}
-                                  a={ProjectPermissionSub.Identity}
+                                  a={subject(ProjectPermissionSub.Identity, {
+                                    identityId
+                                  })}
                                   renderTooltip
                                   allowedLabel="Remove Role"
                                 >

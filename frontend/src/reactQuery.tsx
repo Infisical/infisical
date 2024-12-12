@@ -64,9 +64,9 @@ export const queryClient = new QueryClient({
               ),
               copyActions: [
                 {
-                  value: serverResponse.requestId,
+                  value: serverResponse.reqId,
                   name: "Request ID",
-                  label: `Request ID: ${serverResponse.requestId}`
+                  label: `Request ID: ${serverResponse.reqId}`
                 }
               ]
             },
@@ -93,7 +93,7 @@ export const queryClient = new QueryClient({
                   >
                     <div className="flex flex-col gap-2">
                       {serverResponse.details?.map((el, index) => {
-                        const hasConditions = Object.keys(el.conditions || {}).length;
+                        const hasConditions = Boolean(Object.keys(el.conditions || {}).length);
                         return (
                           <div
                             key={`Forbidden-error-details-${index + 1}`}
@@ -169,9 +169,9 @@ export const queryClient = new QueryClient({
               ) : undefined,
               copyActions: [
                 {
-                  value: serverResponse.requestId,
+                  value: serverResponse.reqId,
                   name: "Request ID",
-                  label: `Request ID: ${serverResponse.requestId}`
+                  label: `Request ID: ${serverResponse.reqId}`
                 }
               ]
             },
@@ -185,9 +185,9 @@ export const queryClient = new QueryClient({
           text: `${serverResponse.message}.`,
           copyActions: [
             {
-              value: serverResponse.requestId,
+              value: serverResponse.reqId,
               name: "Request ID",
-              label: `Request ID: ${serverResponse.requestId}`
+              label: `Request ID: ${serverResponse.reqId}`
             }
           ]
         });

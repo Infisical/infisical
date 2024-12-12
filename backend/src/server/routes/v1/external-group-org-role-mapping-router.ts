@@ -1,9 +1,9 @@
-import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { ExternalGroupOrgRoleMappingsSchema } from "@app/db/schemas/external-group-org-role-mappings";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -48,13 +48,7 @@ export const registerExternalGroupOrgRoleMappingRouter = async (server: FastifyZ
         mappings: z
           .object({
             groupName: z.string().trim().min(1),
-            roleSlug: z
-              .string()
-              .min(1)
-              .toLowerCase()
-              .refine((v) => slugify(v) === v, {
-                message: "Role must be a valid slug"
-              })
+            roleSlug: slugSchema({ max: 64 })
           })
           .array()
       }),

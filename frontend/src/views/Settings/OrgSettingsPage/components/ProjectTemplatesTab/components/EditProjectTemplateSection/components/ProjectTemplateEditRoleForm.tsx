@@ -31,7 +31,7 @@ type Props = {
 };
 
 const formSchema = z.object({
-  slug: slugSchema,
+  slug: slugSchema(),
   name: z.string().trim().min(1),
   permissions: projectRoleFormSchema.shape.permissions
 });

@@ -5,14 +5,19 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { Alert, Button, Modal, ModalContent, ModalTrigger } from "@app/components/v2";
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "@app/components/v2";
 import { ProjectPermissionSub, useWorkspace } from "@app/context";
-import { usePopUp } from "@app/hooks";
 import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
 
 import { GeneralPermissionConditions } from "./components/GeneralPermissionConditions";
 import { GeneralPermissionPolicies } from "./components/GeneralPermissionPolicies";
-import { NewPermissionRule } from "./components/NewPermissionRule";
+import { IdentityManagementPermissionConditions } from "./components/IdentityManagementPermissionConditions";
 import { SecretPermissionConditions } from "./components/SecretPermissionConditions";
 import { PermissionEmptyState } from "./PermissionEmptyState";
 import {
@@ -37,6 +42,10 @@ export const renderConditionalComponents = (
     return <SecretPermissionConditions isDisabled={isDisabled} />;
 
   if (isConditionalSubjects(subject)) {
+    if (subject === ProjectPermissionSub.Identity) {
+      return <IdentityManagementPermissionConditions isDisabled={isDisabled} />;
+    }
+
     return <GeneralPermissionConditions isDisabled={isDisabled} type={subject} />;
   }
 
@@ -45,7 +54,6 @@ export const renderConditionalComponents = (
 
 export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
   const { currentWorkspace } = useWorkspace();
-  const { popUp, handlePopUpToggle } = usePopUp(["createPolicy"] as const);
   const projectId = currentWorkspace?.id || "";
   const { data: role, isLoading } = useGetProjectRoleBySlug(
     currentWorkspace?.id ?? "",
@@ -83,6 +91,30 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
 
   const isCustomRole = !["admin", "member", "viewer", "no-access"].includes(role?.slug ?? "");
 
+  const onNewPolicy = (selectedSubject: ProjectPermissionSub) => {
+    const rootPolicyValue = form.getValues(`permissions.${selectedSubject}`);
+    if (rootPolicyValue && isConditionalSubjects(selectedSubject)) {
+      form.setValue(
+        `permissions.${selectedSubject}`,
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore-error akhilmhdh: this is because of ts collision with both
+        [...rootPolicyValue, ...[]],
+        { shouldDirty: true, shouldTouch: true }
+      );
+    } else {
+      form.setValue(
+        `permissions.${selectedSubject}`,
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore-error akhilmhdh: this is because of ts collision with both
+        [{}],
+        {
+          shouldDirty: true,
+          shouldTouch: true
+        }
+      );
+    }
+  };
+
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
@@ -116,11 +148,8 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                   >
                     Save
                   </Button>
-                  <Modal
-                    isOpen={popUp.createPolicy.isOpen}
-                    onOpenChange={(isOpen) => handlePopUpToggle("createPolicy", isOpen)}
-                  >
-                    <ModalTrigger asChild disabled={isDisabled}>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger>
                       <Button
                         isDisabled={isDisabled}
                         className="h-10 rounded-l-none"
@@ -129,23 +158,36 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                       >
                         New policy
                       </Button>
-                    </ModalTrigger>
-                    <ModalContent
-                      title="New Policy"
-                      subTitle="Policies grant additional permissions."
-                    >
-                      <NewPermissionRule onClose={() => handlePopUpToggle("createPolicy")} />
-                    </ModalContent>
-                  </Modal>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="thin-scrollbar max-h-96" align="end">
+                      {Object.keys(PROJECT_PERMISSION_OBJECT)
+                        .sort((a, b) =>
+                          PROJECT_PERMISSION_OBJECT[
+                            a as keyof typeof PROJECT_PERMISSION_OBJECT
+                          ].title
+                            .toLowerCase()
+                            .localeCompare(
+                              PROJECT_PERMISSION_OBJECT[
+                                b as keyof typeof PROJECT_PERMISSION_OBJECT
+                              ].title.toLowerCase()
+                            )
+                        )
+                        .map((subject) => (
+                          <DropdownMenuItem
+                            key={`permission-create-${subject}`}
+                            className="py-3"
+                            onClick={() => onNewPolicy(subject as ProjectPermissionSub)}
+                          >
+                            {PROJECT_PERMISSION_OBJECT[subject as ProjectPermissionSub].title}
+                          </DropdownMenuItem>
+                        ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </>
             )}
           </div>
         </div>
-        <Alert
-          title="Infisical's permissions are now more granular. You can set separate permissions for folders, dynamic secrets, and imports. No changes required for existing APIs and clients."
-          className="mt-4 border-primary/50 bg-primary/10"
-        />
         <div className="py-4">
           {!isLoading && <PermissionEmptyState />}
           {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map((subject) => (

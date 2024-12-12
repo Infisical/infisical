@@ -1,6 +1,7 @@
 import "./lib/telemetry/instrumentation";
 
 import dotenv from "dotenv";
+import { Redis } from "ioredis";
 import path from "path";
 
 import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
@@ -56,15 +57,20 @@ const run = async () => {
 
   const smtp = smtpServiceFactory(formatSmtpConfig());
 
-  const queue = queueServiceFactory(appCfg.REDIS_URL, appCfg.DB_CONNECTION_URI);
+  const queue = queueServiceFactory(appCfg.REDIS_URL, {
+    dbConnectionUrl: appCfg.DB_CONNECTION_URI,
+    dbRootCert: appCfg.DB_ROOT_CERT
+  });
+
   await queue.initialize();
 
   const keyStore = keyStoreFactory(appCfg.REDIS_URL);
+  const redis = new Redis(appCfg.REDIS_URL);
 
   const hsmModule = initializeHsmModule();
   hsmModule.initialize();
 
-  const server = await main({ db, auditLogDb, hsmModule: hsmModule.getModule(), smtp, logger, queue, keyStore });
+  const server = await main({ db, auditLogDb, hsmModule: hsmModule.getModule(), smtp, logger, queue, keyStore, redis });
   const bootstrap = await bootstrapCheck({ db });
 
   // eslint-disable-next-line

@@ -130,12 +130,14 @@ export const AccessApprovalRequest = ({
     if (statusFilter === "open")
       return requests?.filter(
         (request) =>
+          !request.policy.deletedAt &&
           !request.isApproved &&
           !request.reviewers.some((reviewer) => reviewer.status === ApprovalStatus.REJECTED)
       );
     if (statusFilter === "close")
       return requests?.filter(
         (request) =>
+          request.policy.deletedAt ||
           request.isApproved ||
           request.reviewers.some((reviewer) => reviewer.status === ApprovalStatus.REJECTED)
       );
@@ -144,8 +146,6 @@ export const AccessApprovalRequest = ({
   }, [requests, statusFilter, requestedByFilter, envFilter]);
 
   const generateRequestDetails = (request: TAccessApprovalRequest) => {
-    console.log(request);
-
     const isReviewedByUser = request.reviewers.findIndex(({ member }) => member === user.id) !== -1;
     const isRejectedByAnyone = request.reviewers.some(
       ({ status }) => status === ApprovalStatus.REJECTED

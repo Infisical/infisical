@@ -53,13 +53,13 @@ export default {
         extension: "ts"
       });
       const smtp = mockSmtpServer();
-      const queue = queueServiceFactory(cfg.REDIS_URL, cfg.DB_CONNECTION_URI);
+      const queue = queueServiceFactory(cfg.REDIS_URL, { dbConnectionUrl: cfg.DB_CONNECTION_URI });
       const keyStore = keyStoreFactory(cfg.REDIS_URL);
 
       const hsmModule = initializeHsmModule();
       hsmModule.initialize();
 
-      const server = await main({ db, smtp, logger, queue, keyStore, hsmModule: hsmModule.getModule() });
+      const server = await main({ db, smtp, logger, queue, keyStore, hsmModule: hsmModule.getModule(), redis });
 
       // @ts-expect-error type
       globalThis.testServer = server;

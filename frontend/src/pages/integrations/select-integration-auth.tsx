@@ -13,6 +13,7 @@ import {
   useGetOrgIntegrationAuths
 } from "@app/hooks/api";
 import { IntegrationAuth } from "@app/hooks/api/types";
+import { createIntegrationMissingEnvVarsNotification } from "@app/views/IntegrationsPage/IntegrationPage.utils";
 
 export default function SelectIntegrationAuthPage() {
   const router = useRouter();
@@ -86,6 +87,11 @@ export default function SelectIntegrationAuthPage() {
     localStorage.setItem("latestCSRFToken", state);
 
     if (integrationSlug === "github") {
+      if (!currentIntegration?.clientSlug) {
+        createIntegrationMissingEnvVarsNotification("githubactions", "cicd");
+        return;
+      }
+
       // for now we only handle Github apps
       window.location.assign(
         `https://github.com/apps/${currentIntegration?.clientSlug}/installations/new?state=${state}`

@@ -17,8 +17,14 @@ type RequestUpdateUpdateDetails struct {
 }
 
 type SingleEnvironmentVariable struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
-	Type  string `json:"type"`
-	ID    string `json:"_id"`
+	Key        string `json:"key"`
+	Value      string `json:"value"`
+	SecretPath string `json:"secretPath"`
+	Type       string `json:"type"`
+	ID         string `json:"id"`
+}
+
+type SecretTemplateOptions struct {
+	Value      string `json:"value"`
+	SecretPath string `json:"secretPath"`
 }
