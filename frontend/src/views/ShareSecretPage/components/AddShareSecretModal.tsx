@@ -20,7 +20,7 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
     >
       <ModalContent
         title="Share a Secret"
-        subTitle="Securely share one off secrets with your team"
+        subTitle="Securely share one off secrets with your team."
       >
         <ShareSecretForm
           isPublic={false}
