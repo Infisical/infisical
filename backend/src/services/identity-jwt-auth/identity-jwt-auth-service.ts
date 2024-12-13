@@ -75,7 +75,7 @@ export const identityJwtAuthServiceFactory = ({
       });
     }
 
-    let tokenData: Record<string, string | boolean> = {};
+    let tokenData: Record<string, string | boolean | number> = {};
 
     if (identityJwtAuth.configurationType === JwtConfigurationType.JWKS) {
       const decryptedJwksCaCert = orgDataKeyDecryptor({
