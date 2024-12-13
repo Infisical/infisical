@@ -171,7 +171,8 @@ export const identityAccessTokenServiceFactory = ({
       [IdentityAuthMethod.AZURE_AUTH]: identityAccessToken.trustedIpsAzureAuth,
       [IdentityAuthMethod.KUBERNETES_AUTH]: identityAccessToken.trustedIpsKubernetesAuth,
       [IdentityAuthMethod.OIDC_AUTH]: identityAccessToken.trustedIpsOidcAuth,
-      [IdentityAuthMethod.TOKEN_AUTH]: identityAccessToken.trustedIpsAccessTokenAuth
+      [IdentityAuthMethod.TOKEN_AUTH]: identityAccessToken.trustedIpsAccessTokenAuth,
+      [IdentityAuthMethod.JWT_AUTH]: identityAccessToken.trustedIpsAccessJwtAuth
     };
 
     const trustedIps = trustedIpsMap[identityAccessToken.authMethod as IdentityAuthMethod];

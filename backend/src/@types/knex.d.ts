@@ -98,6 +98,9 @@ import {
   TIdentityGcpAuths,
   TIdentityGcpAuthsInsert,
   TIdentityGcpAuthsUpdate,
+  TIdentityJwtAuths,
+  TIdentityJwtAuthsInsert,
+  TIdentityJwtAuthsUpdate,
   TIdentityKubernetesAuths,
   TIdentityKubernetesAuthsInsert,
   TIdentityKubernetesAuthsUpdate,
@@ -589,6 +592,11 @@ declare module "knex/types/tables" {
       TIdentityOidcAuths,
       TIdentityOidcAuthsInsert,
       TIdentityOidcAuthsUpdate
+    >;
+    [TableName.IdentityJwtAuth]: KnexOriginal.CompositeTableType<
+      TIdentityJwtAuths,
+      TIdentityJwtAuthsInsert,
+      TIdentityJwtAuthsUpdate
     >;
     [TableName.IdentityUaClientSecret]: KnexOriginal.CompositeTableType<
       TIdentityUaClientSecrets,
