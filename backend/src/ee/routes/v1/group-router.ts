@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { GroupsSchema, OrgMembershipRole, UsersSchema } from "@app/db/schemas";
+import { EFilterReturnedUsers } from "@app/ee/services/group/group-types";
 import { GROUPS } from "@app/lib/api-docs";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -151,7 +152,8 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         offset: z.coerce.number().min(0).max(100).default(0).describe(GROUPS.LIST_USERS.offset),
         limit: z.coerce.number().min(1).max(100).default(10).describe(GROUPS.LIST_USERS.limit),
         username: z.string().trim().optional().describe(GROUPS.LIST_USERS.username),
-        search: z.string().trim().optional().describe(GROUPS.LIST_USERS.search)
+        search: z.string().trim().optional().describe(GROUPS.LIST_USERS.search),
+        filter: z.nativeEnum(EFilterReturnedUsers).optional().describe(GROUPS.LIST_USERS.filterUsers)
       }),
       response: {
         200: z.object({
@@ -164,7 +166,8 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
           })
             .merge(
               z.object({
-                isPartOfGroup: z.boolean()
+                isPartOfGroup: z.boolean(),
+                joinedGroupAt: z.date().nullable()
               })
             )
             .array(),

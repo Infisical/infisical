@@ -49,6 +49,8 @@ export type TUpdateIntegrationDTO = {
   appId?: string;
   isActive?: boolean;
   secretPath?: string;
+  region?: string;
+  path?: string;
   targetEnvironment?: string;
   owner?: string;
   environment?: string;

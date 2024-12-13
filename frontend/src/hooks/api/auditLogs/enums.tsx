@@ -23,6 +23,7 @@ export enum EventType {
   DELETE_SECRET = "delete-secret",
   GET_WORKSPACE_KEY = "get-workspace-key",
   AUTHORIZE_INTEGRATION = "authorize-integration",
+  UPDATE_INTEGRATION_AUTH = "update-integration-auth",
   UNAUTHORIZE_INTEGRATION = "unauthorize-integration",
   CREATE_INTEGRATION = "create-integration",
   DELETE_INTEGRATION = "delete-integration",

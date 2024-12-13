@@ -37,7 +37,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
         )
         .leftJoin(TableName.IdentityOidcAuth, `${TableName.Identity}.id`, `${TableName.IdentityOidcAuth}.identityId`)
         .leftJoin(TableName.IdentityTokenAuth, `${TableName.Identity}.id`, `${TableName.IdentityTokenAuth}.identityId`)
-
+        .leftJoin(TableName.IdentityJwtAuth, `${TableName.Identity}.id`, `${TableName.IdentityJwtAuth}.identityId`)
         .select(selectAllTableCols(TableName.IdentityAccessToken))
         .select(
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityUniversalAuth).as("accessTokenTrustedIpsUa"),
@@ -47,6 +47,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityKubernetesAuth).as("accessTokenTrustedIpsK8s"),
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityOidcAuth).as("accessTokenTrustedIpsOidc"),
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityTokenAuth).as("accessTokenTrustedIpsToken"),
+          db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityJwtAuth).as("accessTokenTrustedIpsJwt"),
           db.ref("name").withSchema(TableName.Identity)
         )
         .first();
@@ -61,7 +62,8 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
         trustedIpsAzureAuth: doc.accessTokenTrustedIpsAzure,
         trustedIpsKubernetesAuth: doc.accessTokenTrustedIpsK8s,
         trustedIpsOidcAuth: doc.accessTokenTrustedIpsOidc,
-        trustedIpsAccessTokenAuth: doc.accessTokenTrustedIpsToken
+        trustedIpsAccessTokenAuth: doc.accessTokenTrustedIpsToken,
+        trustedIpsAccessJwtAuth: doc.accessTokenTrustedIpsJwt
       };
     } catch (error) {
       throw new DatabaseError({ error, name: "IdAccessTokenFindOne" });

@@ -19,7 +19,9 @@ export const GROUPS = {
     offset: "The offset to start from. If you enter 10, it will start from the 10th user.",
     limit: "The number of users to return.",
     username: "The username to search for.",
-    search: "The text string that user email or name will be filtered by."
+    search: "The text string that user email or name will be filtered by.",
+    filterUsers:
+      "Whether to filter the list of returned users. 'existingMembers' will only return existing users in the group, 'nonMembers' will only return users not in the group, undefined will return all users in the organization."
   },
   ADD_USER: {
     id: "The ID of the group to add the user to.",
@@ -333,6 +335,52 @@ export const OIDC_AUTH = {
     oidcDiscoveryUrl: "The new URL used to retrieve the OpenID Connect configuration from the identity provider.",
     caCert: "The new PEM-encoded CA cert for establishing secure communication with the Identity Provider endpoints.",
     boundIssuer: "The new unique identifier of the identity provider issuing the JWT.",
+    boundAudiences: "The new list of intended recipients.",
+    boundClaims: "The new attributes that should be present in the JWT for it to be valid.",
+    boundSubject: "The new expected principal that is the subject of the JWT.",
+    accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from.",
+    accessTokenTTL: "The new lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used."
+  },
+  RETRIEVE: {
+    identityId: "The ID of the identity to retrieve the auth method for."
+  },
+  REVOKE: {
+    identityId: "The ID of the identity to revoke the auth method for."
+  }
+} as const;
+
+export const JWT_AUTH = {
+  LOGIN: {
+    identityId: "The ID of the identity to login."
+  },
+  ATTACH: {
+    identityId: "The ID of the identity to attach the configuration onto.",
+    configurationType: "The configuration for validating JWTs. Must be one of: 'jwks', 'static'",
+    jwksUrl:
+      "The URL of the JWKS endpoint. Required if configurationType is 'jwks'. This endpoint must serve JSON Web Key Sets (JWKS) containing the public keys used to verify JWT signatures.",
+    jwksCaCert: "The PEM-encoded CA certificate for validating the TLS connection to the JWKS endpoint.",
+    publicKeys:
+      "A list of PEM-encoded public keys used to verify JWT signatures. Required if configurationType is 'static'. Each key must be in RSA or ECDSA format and properly PEM-encoded with BEGIN/END markers.",
+    boundIssuer: "The unique identifier of the JWT provider.",
+    boundAudiences: "The list of intended recipients.",
+    boundClaims: "The attributes that should be present in the JWT for it to be valid.",
+    boundSubject: "The expected principal that is the subject of the JWT.",
+    accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from.",
+    accessTokenTTL: "The lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The maximum number of times that an access token can be used."
+  },
+  UPDATE: {
+    identityId: "The ID of the identity to update the auth method for.",
+    configurationType: "The new configuration for validating JWTs. Must be one of: 'jwks', 'static'",
+    jwksUrl:
+      "The new URL of the JWKS endpoint. This endpoint must serve JSON Web Key Sets (JWKS) containing the public keys used to verify JWT signatures.",
+    jwksCaCert: "The new PEM-encoded CA certificate for validating the TLS connection to the JWKS endpoint.",
+    publicKeys:
+      "A new list of PEM-encoded public keys used to verify JWT signatures. Each key must be in RSA or ECDSA format and properly PEM-encoded with BEGIN/END markers.",
+    boundIssuer: "The new unique identifier of the JWT provider.",
     boundAudiences: "The new list of intended recipients.",
     boundClaims: "The new attributes that should be present in the JWT for it to be valid.",
     boundSubject: "The new expected principal that is the subject of the JWT.",
@@ -1032,6 +1080,9 @@ export const INTEGRATION_AUTH = {
   DELETE_BY_ID: {
     integrationAuthId: "The ID of integration authentication object to delete."
   },
+  UPDATE_BY_ID: {
+    integrationAuthId: "The ID of integration authentication object to update."
+  },
   CREATE_ACCESS_TOKEN: {
     workspaceId: "The ID of the project to create the integration auth for.",
     integration: "The slug of integration for the auth object.",
@@ -1088,11 +1139,13 @@ export const INTEGRATION = {
   },
   UPDATE: {
     integrationId: "The ID of the integration object.",
+    region: "AWS region to sync secrets to.",
     app: "The name of the external integration providers app entity that you want to sync secrets with. Used in Netlify, GitHub, Vercel integrations.",
     appId:
       "The ID of the external integration providers app entity that you want to sync secrets with. Used in Netlify, GitHub, Vercel integrations.",
     isActive: "Whether the integration should be active or disabled.",
     secretPath: "The path of the secrets to sync secrets from.",
+    path: "Path to save the synced secrets. Used by Gitlab, AWS Parameter Store, Vault.",
     owner: "External integration providers service entity owner. Used in Github.",
     targetEnvironment:
       "The target environment of the integration provider. Used in cloudflare pages, TeamCity, Gitlab integrations.",

@@ -7,7 +7,8 @@ export const buildAuthMethods = ({
   kubernetesId,
   oidcId,
   azureId,
-  tokenId
+  tokenId,
+  jwtId
 }: {
   uaId?: string;
   gcpId?: string;
@@ -16,6 +17,7 @@ export const buildAuthMethods = ({
   oidcId?: string;
   azureId?: string;
   tokenId?: string;
+  jwtId?: string;
 }) => {
   return [
     ...[uaId ? IdentityAuthMethod.UNIVERSAL_AUTH : null],
@@ -24,6 +26,7 @@ export const buildAuthMethods = ({
     ...[kubernetesId ? IdentityAuthMethod.KUBERNETES_AUTH : null],
     ...[oidcId ? IdentityAuthMethod.OIDC_AUTH : null],
     ...[azureId ? IdentityAuthMethod.AZURE_AUTH : null],
-    ...[tokenId ? IdentityAuthMethod.TOKEN_AUTH : null]
+    ...[tokenId ? IdentityAuthMethod.TOKEN_AUTH : null],
+    ...[jwtId ? IdentityAuthMethod.JWT_AUTH : null]
   ].filter((authMethod) => authMethod) as IdentityAuthMethod[];
 };

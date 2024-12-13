@@ -151,7 +151,9 @@ export const integrationServiceFactory = ({
     isActive,
     environment,
     secretPath,
-    metadata
+    region,
+    metadata,
+    path
   }: TUpdateIntegrationDTO) => {
     const integration = await integrationDAL.findById(id);
     if (!integration) throw new NotFoundError({ message: `Integration with ID '${id}' not found` });
@@ -192,7 +194,9 @@ export const integrationServiceFactory = ({
       appId,
       targetEnvironment,
       owner,
+      region,
       secretPath,
+      path,
       metadata: {
         ...(integration.metadata as object),
         ...metadata

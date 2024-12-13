@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useRouter } from "next/router";
 import {
   faArrowDown,
   faArrowUp,
@@ -61,6 +62,7 @@ enum GroupsOrderBy {
 }
 
 export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
+  const router = useRouter();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { isLoading, data: groups = [] } = useGetOrganizationGroups(orgId);
@@ -223,7 +225,11 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                 .slice(offset, perPage * page)
                 .map(({ id, name, slug, role, customRole }) => {
                   return (
-                    <Tr className="h-10" key={`org-group-${id}`}>
+                    <Tr
+                      onClick={() => router.push(`/org/${orgId}/groups/${id}`)}
+                      className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
+                      key={`org-group-${id}`}
+                    >
                       <Td>{name}</Td>
                       <Td>{slug}</Td>
                       <Td>
@@ -277,30 +283,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                             </DropdownMenuItem>
                             <OrgPermissionCan
                               I={OrgPermissionActions.Edit}
-                              a={OrgPermissionSubjects.Identity}
-                            >
-                              {(isAllowed) => (
-                                <DropdownMenuItem
-                                  className={twMerge(
-                                    !isAllowed &&
-                                      "pointer-events-none cursor-not-allowed opacity-50"
-                                  )}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handlePopUpOpen("groupMembers", {
-                                      groupId: id,
-                                      slug
-                                    });
-                                  }}
-                                  disabled={!isAllowed}
-                                >
-                                  Manage Users
-                                </DropdownMenuItem>
-                              )}
-                            </OrgPermissionCan>
-                            <OrgPermissionCan
-                              I={OrgPermissionActions.Edit}
-                              a={OrgPermissionSubjects.Identity}
+                              a={OrgPermissionSubjects.Groups}
                             >
                               {(isAllowed) => (
                                 <DropdownMenuItem
@@ -321,6 +304,23 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                                   disabled={!isAllowed}
                                 >
                                   Edit Group
+                                </DropdownMenuItem>
+                              )}
+                            </OrgPermissionCan>
+                            <OrgPermissionCan
+                              I={OrgPermissionActions.Edit}
+                              a={OrgPermissionSubjects.Groups}
+                            >
+                              {(isAllowed) => (
+                                <DropdownMenuItem
+                                  className={twMerge(
+                                    !isAllowed &&
+                                      "pointer-events-none cursor-not-allowed opacity-50"
+                                  )}
+                                  onClick={() => router.push(`/org/${orgId}/groups/${id}`)}
+                                  disabled={!isAllowed}
+                                >
+                                  Manage Members
                                 </DropdownMenuItem>
                               )}
                             </OrgPermissionCan>
