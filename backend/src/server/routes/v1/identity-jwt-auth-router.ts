@@ -94,17 +94,17 @@ const UpdateBaseSchema = z
   .partial();
 
 const JwksConfigurationSchema = z.object({
-  configurationType: z.literal(JwtConfigurationType.JWKS),
-  jwksUrl: z.string().trim().url(),
-  jwksCaCert: z.string().trim().default(""),
-  publicKeys: z.string().array().optional().default([])
+  configurationType: z.literal(JwtConfigurationType.JWKS).describe(JWT_AUTH.ATTACH.configurationType),
+  jwksUrl: z.string().trim().url().describe(JWT_AUTH.ATTACH.jwksUrl),
+  jwksCaCert: z.string().trim().default("").describe(JWT_AUTH.ATTACH.jwksCaCert),
+  publicKeys: z.string().array().optional().default([]).describe(JWT_AUTH.ATTACH.publicKeys)
 });
 
 const StaticConfigurationSchema = z.object({
-  configurationType: z.literal(JwtConfigurationType.STATIC),
-  jwksUrl: z.string().trim().optional().default(""),
-  jwksCaCert: z.string().trim().optional().default(""),
-  publicKeys: z.string().min(1).array().min(1)
+  configurationType: z.literal(JwtConfigurationType.STATIC).describe(JWT_AUTH.ATTACH.configurationType),
+  jwksUrl: z.string().trim().optional().default("").describe(JWT_AUTH.ATTACH.jwksUrl),
+  jwksCaCert: z.string().trim().optional().default("").describe(JWT_AUTH.ATTACH.jwksCaCert),
+  publicKeys: z.string().min(1).array().min(1).describe(JWT_AUTH.ATTACH.publicKeys)
 });
 
 export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) => {

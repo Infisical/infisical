@@ -99,6 +99,7 @@ import {
   TIdentityGcpAuthsInsert,
   TIdentityGcpAuthsUpdate,
   TIdentityJwtAuths,
+  TIdentityJwtAuthsInsert,
   TIdentityJwtAuthsUpdate,
   TIdentityKubernetesAuths,
   TIdentityKubernetesAuthsInsert,

@@ -75,7 +75,7 @@ export const identityJwtAuthServiceFactory = ({
       });
     }
 
-    let tokenData: Record<string, string> = {};
+    let tokenData: Record<string, string | boolean> = {};
 
     if (identityJwtAuth.configurationType === JwtConfigurationType.JWKS) {
       const decryptedJwksCaCert = orgDataKeyDecryptor({
@@ -127,13 +127,7 @@ export const identityJwtAuthServiceFactory = ({
     }
 
     if (identityJwtAuth.boundIssuer) {
-      if (!tokenData.iss) {
-        throw new UnauthorizedError({
-          message: "Access denied: token has no issuer field"
-        });
-      }
-
-      if (!doesFieldValueMatchJwtPolicy(tokenData.iss, identityJwtAuth.boundIssuer)) {
+      if (tokenData.iss !== identityJwtAuth.boundIssuer) {
         throw new ForbiddenRequestError({
           message: "Access denied: issuer mismatch"
         });

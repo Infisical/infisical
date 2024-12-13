@@ -584,6 +584,16 @@
           ]
         },
         {
+          "group": "JWT Auth",
+          "pages": [
+            "api-reference/endpoints/jwt-auth/login",
+            "api-reference/endpoints/jwt-auth/attach",
+            "api-reference/endpoints/jwt-auth/retrieve",
+            "api-reference/endpoints/jwt-auth/update",
+            "api-reference/endpoints/jwt-auth/revoke"
+          ]
+        },
+        {
           "group": "Groups",
           "pages": [
             "api-reference/endpoints/groups/create",
