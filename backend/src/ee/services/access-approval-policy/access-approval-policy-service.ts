@@ -1,5 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
+import { ProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -86,13 +87,15 @@ export const accessApprovalPolicyServiceFactory = ({
     if (!groupApprovers && approvals > userApprovers.length + userApproverNames.length)
       throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       project.id,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       ProjectPermissionSub.SecretApproval
@@ -190,14 +193,7 @@ export const accessApprovalPolicyServiceFactory = ({
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     // Anyone in the project should be able to get the policies.
-    /* const { permission } = */ await permissionService.getProjectPermission(
-      actor,
-      actorId,
-      project.id,
-      actorAuthMethod,
-      actorOrgId
-    );
-    // ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
+    await permissionService.getProjectPermission(actor, actorId, project.id, actorAuthMethod, actorOrgId);
 
     const accessApprovalPolicies = await accessApprovalPolicyDAL.find({ projectId: project.id, deletedAt: null });
     return accessApprovalPolicies;
@@ -241,13 +237,14 @@ export const accessApprovalPolicyServiceFactory = ({
     if (!accessApprovalPolicy) {
       throw new NotFoundError({ message: `Secret approval policy with ID '${policyId}' not found` });
     }
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       accessApprovalPolicy.projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
 
@@ -324,13 +321,14 @@ export const accessApprovalPolicyServiceFactory = ({
     const policy = await accessApprovalPolicyDAL.findById(policyId);
     if (!policy) throw new NotFoundError({ message: `Secret approval policy with ID '${policyId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       policy.projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
       ProjectPermissionSub.SecretApproval

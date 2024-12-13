@@ -244,10 +244,10 @@ export const IdentityTab = withProjectPermission(
                         tabIndex={0}
                         onKeyDown={(evt) => {
                           if (evt.key === "Enter") {
-                            router.push(`/project/${workspaceId}/identities/${id}`);
+                            router.push(`/${currentWorkspace?.type}/${workspaceId}/identities/${id}`);
                           }
                         }}
-                        onClick={() => router.push(`/project/${workspaceId}/identities/${id}`)}
+                        onClick={() => router.push(`/${currentWorkspace?.type}/${workspaceId}/identities/${id}`)}
                       >
                         <Td>{name}</Td>
 

@@ -18,6 +18,7 @@ import {
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
 import { useDeleteCa, useGetCaById } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { CaModal } from "@app/views/Project/CertificatesPage/components/CaTab/components/CaModal";
 
@@ -60,7 +61,7 @@ export const CaPage = withProjectPermission(
         });
 
         handlePopUpClose("deleteCa");
-        router.push(`/project/${projectId}/certificates`);
+        router.push(`/${ProjectType.CertificateManager}/${projectId}/certificates`);
       } catch (err) {
         console.error(err);
         createNotification({
@@ -78,7 +79,7 @@ export const CaPage = withProjectPermission(
               variant="link"
               type="submit"
               leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
-              onClick={() => router.push(`/project/${projectId}/certificates`)}
+              onClick={() => router.push(`/${ProjectType.CertificateManager}/${projectId}/certificates`)}
               className="mb-4"
             >
               Certificate Authorities

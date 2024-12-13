@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Tab } from "@headlessui/react";
 
 import { useWorkspace } from "@app/context";
-import { ProjectVersion } from "@app/hooks/api/workspace/types";
+import { ProjectType, ProjectVersion } from "@app/hooks/api/workspace/types";
 
 import { EncryptionTab } from "./components/EncryptionTab";
 import { ProjectGeneralTab } from "./components/ProjectGeneralTab";
@@ -18,10 +18,20 @@ export const ProjectSettingsPage = () => {
     {
       name: "Encryption",
       key: "tab-project-encryption",
-      isHidden: currentWorkspace?.version !== ProjectVersion.V3
+      isHidden:
+        currentWorkspace?.version !== ProjectVersion.V3 ||
+        currentWorkspace?.type !== ProjectType.SecretManager
     },
-    { name: "Workflow Integrations", key: "tab-workflow-integrations" },
-    { name: "Webhooks", key: "tab-project-webhooks" }
+    {
+      name: "Workflow Integrations",
+      key: "tab-workflow-integrations",
+      isHidden: currentWorkspace?.type !== ProjectType.SecretManager
+    },
+    {
+      name: "Webhooks",
+      key: "tab-project-webhooks",
+      isHidden: currentWorkspace?.type !== ProjectType.SecretManager
+    }
   ];
 
   return (
@@ -53,17 +63,23 @@ export const ProjectSettingsPage = () => {
             <Tab.Panel>
               <ProjectGeneralTab />
             </Tab.Panel>
-            {currentWorkspace?.version === ProjectVersion.V3 && (
+            {currentWorkspace?.version === ProjectVersion.V3 &&
+              currentWorkspace?.type === ProjectType.SecretManager && (
+                <Tab.Panel>
+                  <EncryptionTab />
+                </Tab.Panel>
+              )}
+
+            {currentWorkspace?.type === ProjectType.SecretManager && (
               <Tab.Panel>
-                <EncryptionTab />
+                <WorkflowIntegrationTab />
               </Tab.Panel>
             )}
-            <Tab.Panel>
-              <WorkflowIntegrationTab />
-            </Tab.Panel>
-            <Tab.Panel>
-              <WebhooksTab />
-            </Tab.Panel>
+            {currentWorkspace?.type === ProjectType.SecretManager && (
+              <Tab.Panel>
+                <WebhooksTab />
+              </Tab.Panel>
+            )}
           </Tab.Panels>
         </Tab.Group>
       </div>

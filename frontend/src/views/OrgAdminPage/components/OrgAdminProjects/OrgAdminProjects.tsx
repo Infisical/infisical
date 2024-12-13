@@ -52,16 +52,13 @@ export const OrgAdminProjects = withPermission(
     const projectCount = data?.count || 0;
     const isEmpty = !isProjectsLoading && projects.length === 0;
 
-    const handleAccessProject = async (projectId: string) => {
+    const handleAccessProject = async (type:string,projectId: string) => {
       try {
         await orgAdminAccessProject.mutateAsync({
           projectId
         });
         await router.push({
-          pathname: "/project/[projectId]/secrets/overview",
-          query: {
-            projectId
-          }
+          pathname: `/${type}/${projectId}/secrets/overview`,
         });
       } catch {
         createNotification({
@@ -103,7 +100,7 @@ export const OrgAdminProjects = withPermission(
                 <TBody>
                   {isProjectsLoading && <TableSkeleton columns={4} innerKey="projects" />}
                   {!isProjectsLoading &&
-                    projects?.map(({ name, slug, createdAt, id }) => (
+                    projects?.map(({ name, slug, createdAt,type, id }) => (
                       <Tr key={`project-${id}`} className="group w-full">
                         <Td>{name}</Td>
                         <Td>{slug}</Td>
@@ -124,7 +121,7 @@ export const OrgAdminProjects = withPermission(
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     e.preventDefault();
-                                    handleAccessProject(id);
+                                    handleAccessProject(type,id);
                                   }}
                                   icon={<FontAwesomeIcon icon={faSignIn} />}
                                   disabled={

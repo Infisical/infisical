@@ -202,6 +202,9 @@ import {
   TProjectSlackConfigs,
   TProjectSlackConfigsInsert,
   TProjectSlackConfigsUpdate,
+  TProjectSplitBackfillIds,
+  TProjectSplitBackfillIdsInsert,
+  TProjectSplitBackfillIdsUpdate,
   TProjectsUpdate,
   TProjectTemplates,
   TProjectTemplatesInsert,
@@ -838,5 +841,10 @@ declare module "knex/types/tables" {
       TProjectTemplatesUpdate
     >;
     [TableName.TotpConfig]: KnexOriginal.CompositeTableType<TTotpConfigs, TTotpConfigsInsert, TTotpConfigsUpdate>;
+    [TableName.ProjectSplitBackfillIds]: KnexOriginal.CompositeTableType<
+      TProjectSplitBackfillIds,
+      TProjectSplitBackfillIdsInsert,
+      TProjectSplitBackfillIdsUpdate
+    >;
   }
 }

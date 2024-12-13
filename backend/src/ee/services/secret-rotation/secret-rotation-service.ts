@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import Ajv from "ajv";
 
-import { ProjectVersion, TableName } from "@app/db/schemas";
+import { ProjectType, ProjectVersion, TableName } from "@app/db/schemas";
 import { decryptSymmetric128BitHexKeyUTF8, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
@@ -53,13 +53,14 @@ export const secretRotationServiceFactory = ({
     actorAuthMethod,
     projectId
   }: TProjectPermission) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRotation);
 
     return {
@@ -81,13 +82,14 @@ export const secretRotationServiceFactory = ({
     secretPath,
     environment
   }: TCreateSecretRotationDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       ProjectPermissionSub.SecretRotation
@@ -234,13 +236,14 @@ export const secretRotationServiceFactory = ({
         message: "Failed to add secret rotation due to plan restriction. Upgrade plan to add secret rotation."
       });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       doc.projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretRotation);
     await secretRotationQueue.removeFromQueue(doc.id, doc.interval);
     await secretRotationQueue.addToQueue(doc.id, doc.interval);
@@ -251,13 +254,14 @@ export const secretRotationServiceFactory = ({
     const doc = await secretRotationDAL.findById(rotationId);
     if (!doc) throw new NotFoundError({ message: `Rotation with ID '${rotationId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       doc.projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
       ProjectPermissionSub.SecretRotation

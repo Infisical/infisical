@@ -106,6 +106,7 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
                 </div>
               </Th>
 
+              <Th>Type</Th>
               <Th>Role</Th>
               <Th>Added On</Th>
               <Th className="w-5" />

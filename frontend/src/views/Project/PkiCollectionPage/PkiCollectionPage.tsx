@@ -19,6 +19,7 @@ import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@a
 import { withProjectPermission } from "@app/hoc";
 import { useDeletePkiCollection, useGetPkiCollectionById } from "@app/hooks/api";
 import { PkiItemType } from "@app/hooks/api/pkiCollections/constants";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { PkiCollectionModal } from "../CertificatesPage/components/PkiAlertsTab/components/PkiCollectionModal";
@@ -53,7 +54,7 @@ export const PkiCollectionPage = withProjectPermission(
           type: "success"
         });
         handlePopUpClose("deletePkiCollection");
-        router.push(`/project/${projectId}/certificates`);
+        router.push(`/${ProjectType.CertificateManager}/${projectId}/certificates`);
       } catch (err) {
         console.error(err);
       }
@@ -68,7 +69,7 @@ export const PkiCollectionPage = withProjectPermission(
               type="submit"
               leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
               onClick={() => {
-                router.push(`/project/${projectId}/certificates`);
+                router.push(`/${ProjectType.CertificateManager}/${projectId}/certificates`);
               }}
               className="mb-4"
             >

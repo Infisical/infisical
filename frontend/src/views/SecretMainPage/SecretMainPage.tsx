@@ -35,6 +35,7 @@ import {
 import { useGetProjectSecretsDetails } from "@app/hooks/api/dashboard";
 import { DashboardSecretsOrderBy } from "@app/hooks/api/dashboard/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 import { DynamicSecretListView } from "@app/views/SecretMainPage/components/DynamicSecretListView";
 import { FolderListView } from "@app/views/SecretMainPage/components/FolderListView";
 import { SecretImportListView } from "@app/views/SecretMainPage/components/SecretImportListView";
@@ -142,7 +143,7 @@ const SecretMainPageContent = () => {
       !currentWorkspace?.environments.find((env) => env.slug === environment) &&
       router.isReady
     ) {
-      router.push(`/project/${workspaceId}/secrets/overview`);
+      router.push(`/${ProjectType.SecretManager}/${workspaceId}/secrets/overview`);
       createNotification({
         text: "No environment found with given slug",
         type: "error"

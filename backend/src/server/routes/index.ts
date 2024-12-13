@@ -757,7 +757,8 @@ export const registerRoutes = async (
     pkiAlertDAL,
     pkiCollectionDAL,
     permissionService,
-    smtpService
+    smtpService,
+    projectDAL
   });
 
   const pkiCollectionService = pkiCollectionServiceFactory({
@@ -765,7 +766,8 @@ export const registerRoutes = async (
     pkiCollectionItemDAL,
     certificateAuthorityDAL,
     certificateDAL,
-    permissionService
+    permissionService,
+    projectDAL
   });
 
   const projectTemplateService = projectTemplateServiceFactory({
@@ -1273,7 +1275,8 @@ export const registerRoutes = async (
   const cmekService = cmekServiceFactory({
     kmsDAL,
     kmsService,
-    permissionService
+    permissionService,
+    projectDAL
   });
 
   const externalMigrationQueue = externalMigrationQueueFactory({

@@ -428,7 +428,8 @@ export const ORGANIZATIONS = {
     search: "The text string that identity membership names will be filtered by."
   },
   GET_PROJECTS: {
-    organizationId: "The ID of the organization to get projects from."
+    organizationId: "The ID of the organization to get projects from.",
+    type: "The type of project to filter by."
   },
   LIST_GROUPS: {
     organizationId: "The ID of the organization to list groups for."

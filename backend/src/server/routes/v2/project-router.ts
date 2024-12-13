@@ -5,7 +5,8 @@ import {
   CertificatesSchema,
   PkiAlertsSchema,
   PkiCollectionsSchema,
-  ProjectKeysSchema
+  ProjectKeysSchema,
+  ProjectType
 } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { InfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-types";
@@ -159,7 +160,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         template: slugSchema({ field: "Template Name", max: 64 })
           .optional()
           .default(InfisicalProjectTemplate.Default)
-          .describe(PROJECTS.CREATE.template)
+          .describe(PROJECTS.CREATE.template),
+        type: z.nativeEnum(ProjectType).default(ProjectType.SecretManager)
       }),
       response: {
         200: z.object({
@@ -178,7 +180,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         workspaceDescription: req.body.projectDescription,
         slug: req.body.slug,
         kmsKeyId: req.body.kmsKeyId,
-        template: req.body.template
+        template: req.body.template,
+        type: req.body.type
       });
 
       await server.services.telemetry.sendPostHogEvents({

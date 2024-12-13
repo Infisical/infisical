@@ -2,6 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 
 import {
   ProjectMembershipRole,
+  ProjectType,
   SecretEncryptionAlgo,
   SecretKeyEncoding,
   SecretType,
@@ -875,13 +876,14 @@ export const secretApprovalRequestServiceFactory = ({
   }: TGenerateSecretApprovalRequestDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })
@@ -1155,14 +1157,14 @@ export const secretApprovalRequestServiceFactory = ({
     if (actor === ActorType.SERVICE || actor === ActorType.Machine)
       throw new BadRequestError({ message: "Cannot use service token or machine token over protected branches" });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
-
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
       throw new NotFoundError({
