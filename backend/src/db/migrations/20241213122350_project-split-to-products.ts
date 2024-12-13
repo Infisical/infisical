@@ -226,13 +226,62 @@ export async function up(knex: Knex): Promise<void> {
 
 export async function down(knex: Knex): Promise<void> {
   const hasTypeColumn = await knex.schema.hasColumn(TableName.Project, "type");
-  if (hasTypeColumn) {
+  const hasSplitMappingTable = await knex.schema.hasTable(TableName.ProjectSplitBackfillIds);
+
+  if (hasTypeColumn && hasSplitMappingTable) {
+    const splitProjectMappings = await knex(TableName.ProjectSplitBackfillIds).where({});
+    const certMapping = splitProjectMappings.filter(
+      (el) => el.destinationProjectType === ProjectType.CertificateManager
+    );
+    /* eslint-disable no-await-in-loop */
+    for (const project of certMapping) {
+      await knex(TableName.CertificateAuthority)
+        .where("projectId", project.destinationProjectId)
+        .update({ projectId: project.sourceProjectId });
+      await knex(TableName.PkiAlert)
+        .where("projectId", project.destinationProjectId)
+        .update({ projectId: project.sourceProjectId });
+      await knex(TableName.PkiCollection)
+        .where("projectId", project.destinationProjectId)
+        .update({ projectId: project.sourceProjectId });
+    }
+
+    /* eslint-enable */
+    const kmsMapping = splitProjectMappings.filter((el) => el.destinationProjectType === ProjectType.KMS);
+    /* eslint-disable no-await-in-loop */
+    for (const project of kmsMapping) {
+      await knex(TableName.KmsKey)
+        .where({
+          isReserved: false,
+          projectId: project.destinationProjectId
+        })
+        .update({ projectId: project.sourceProjectId });
+    }
+    /* eslint-enable */
+    await knex(TableName.ProjectMembership)
+      .whereIn(
+        "projectId",
+        splitProjectMappings.map((el) => el.destinationProjectId)
+      )
+      .delete();
+    await knex(TableName.ProjectRoles)
+      .whereIn(
+        "projectId",
+        splitProjectMappings.map((el) => el.destinationProjectId)
+      )
+      .delete();
+    await knex(TableName.Project)
+      .whereIn(
+        "id",
+        splitProjectMappings.map((el) => el.destinationProjectId)
+      )
+      .delete();
+
     await knex.schema.alterTable(TableName.Project, (t) => {
       t.dropColumn("type");
     });
   }
 
-  const hasSplitMappingTable = await knex.schema.hasTable(TableName.ProjectSplitBackfillIds);
   if (hasSplitMappingTable) {
     await knex.schema.dropTableIfExists(TableName.ProjectSplitBackfillIds);
   }
