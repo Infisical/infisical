@@ -21,7 +21,8 @@ const newProject = async (knex: Knex, projectId: string, projectType: ProjectTyp
   const customRoleMapping: Record<string, string> = {};
   const projectCustomRoles = await knex(TableName.ProjectRoles).where("projectId", projectId);
   if (projectCustomRoles.length) {
-    await knex(TableName.ProjectRoles).insert(
+    await knex.batchInsert(
+      TableName.ProjectRoles,
       projectCustomRoles.map((el) => {
         const id = uuidV4();
         customRoleMapping[el.id] = id;
@@ -37,7 +38,8 @@ const newProject = async (knex: Knex, projectId: string, projectType: ProjectTyp
   const groupMembershipMapping: Record<string, string> = {};
   const groupMemberships = await knex(TableName.GroupProjectMembership).where("projectId", projectId);
   if (groupMemberships.length) {
-    await knex(TableName.GroupProjectMembership).insert(
+    await knex.batchInsert(
+      TableName.GroupProjectMembership,
       groupMemberships.map((el) => {
         const id = uuidV4();
         groupMembershipMapping[el.id] = id;
@@ -51,7 +53,8 @@ const newProject = async (knex: Knex, projectId: string, projectType: ProjectTyp
     groupMemberships.map((el) => el.id)
   );
   if (groupMembershipRoles.length) {
-    await knex(TableName.GroupProjectMembershipRole).insert(
+    await knex.batchInsert(
+      TableName.GroupProjectMembershipRole,
       groupMembershipRoles.map((el) => {
         const id = uuidV4();
         const projectMembershipId = groupMembershipMapping[el.projectMembershipId];
@@ -64,7 +67,8 @@ const newProject = async (knex: Knex, projectId: string, projectType: ProjectTyp
   const identityProjectMembershipMapping: Record<string, string> = {};
   const identities = await knex(TableName.IdentityProjectMembership).where("projectId", projectId);
   if (identities.length) {
-    await knex(TableName.IdentityProjectMembership).insert(
+    await knex.batchInsert(
+      TableName.IdentityProjectMembership,
       identities.map((el) => {
         const id = uuidV4();
         identityProjectMembershipMapping[el.id] = id;
@@ -78,7 +82,8 @@ const newProject = async (knex: Knex, projectId: string, projectType: ProjectTyp
     identities.map((el) => el.id)
   );
   if (identitiesRoles.length) {
-    await knex(TableName.IdentityProjectMembershipRole).insert(
+    await knex.batchInsert(
+      TableName.IdentityProjectMembershipRole,
       identitiesRoles.map((el) => {
         const id = uuidV4();
         const projectMembershipId = identityProjectMembershipMapping[el.projectMembershipId];
@@ -91,7 +96,8 @@ const newProject = async (knex: Knex, projectId: string, projectType: ProjectTyp
   const projectMembershipMapping: Record<string, string> = {};
   const projectUserMembers = await knex(TableName.ProjectMembership).where("projectId", projectId);
   if (projectUserMembers.length) {
-    await knex(TableName.ProjectMembership).insert(
+    await knex.batchInsert(
+      TableName.ProjectMembership,
       projectUserMembers.map((el) => {
         const id = uuidV4();
         projectMembershipMapping[el.id] = id;
@@ -104,7 +110,8 @@ const newProject = async (knex: Knex, projectId: string, projectType: ProjectTyp
     projectUserMembers.map((el) => el.id)
   );
   if (membershipRoles.length) {
-    await knex(TableName.ProjectUserMembershipRole).insert(
+    await knex.batchInsert(
+      TableName.ProjectUserMembershipRole,
       membershipRoles.map((el) => {
         const id = uuidV4();
         const projectMembershipId = projectMembershipMapping[el.projectMembershipId];
@@ -116,7 +123,8 @@ const newProject = async (knex: Knex, projectId: string, projectType: ProjectTyp
 
   const kmsKeys = await knex(TableName.KmsKey).where("projectId", projectId).andWhere("isReserved", true);
   if (kmsKeys.length) {
-    await knex(TableName.KmsKey).insert(
+    await knex.batchInsert(
+      TableName.KmsKey,
       kmsKeys.map((el) => {
         const id = uuidV4();
         const slug = slugify(alphaNumericNanoId(8).toLowerCase());
@@ -133,7 +141,8 @@ const newProject = async (knex: Knex, projectId: string, projectType: ProjectTyp
 
   const projectKeys = await knex(TableName.ProjectKeys).where("projectId", projectId);
   if (projectKeys.length) {
-    await knex(TableName.ProjectKeys).insert(
+    await knex.batchInsert(
+      TableName.ProjectKeys,
       projectKeys.map((el) => {
         const id = uuidV4();
         return { ...el, id, projectId: newProjectId };
