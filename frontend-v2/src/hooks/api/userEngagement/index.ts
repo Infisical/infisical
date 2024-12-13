@@ -1,0 +1,1 @@
+export { useCreateUserWish } from "./mutations";
