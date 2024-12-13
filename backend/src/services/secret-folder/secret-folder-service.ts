@@ -19,6 +19,7 @@ import {
   TGetFolderDTO,
   TGetFoldersDeepByEnvsDTO,
   TUpdateFolderDTO,
+  TUpdateFolderPathDTO,
   TUpdateManyFoldersDTO
 } from "./secret-folder-types";
 import { TSecretFolderVersionDALFactory } from "./secret-folder-version-dal";
@@ -329,6 +330,145 @@ export const secretFolderServiceFactory = ({
     return { folder: newFolder, old: folder };
   };
 
+  const moveFolder = async ({
+    folderId,
+    newPath: secretPath,
+    projectId,
+    actor,
+    actorAuthMethod,
+    actorId,
+    actorOrgId
+  }: TUpdateFolderPathDTO) => {
+    const [folder] = await folderDAL.findSecretPathByFolderIds(projectId, [folderId]);
+
+    if (!folder) {
+      throw new NotFoundError({ message: `Folder with ID '${folderId}' not found` });
+    }
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    // Has permission for source folder
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Edit,
+      subject(ProjectPermissionSub.SecretFolders, { environment: folder.environmentSlug, secretPath: folder.path })
+    );
+
+    // Has permission for destination folder
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Edit,
+      subject(ProjectPermissionSub.SecretFolders, { environment: folder.environmentSlug, secretPath })
+    );
+
+    if (!folder.parentId) {
+      throw new BadRequestError({ message: `Cannot move root folder` });
+    }
+
+    const parentFolder = await folderDAL.findById(folder.parentId);
+
+    if (!parentFolder) {
+      throw new NotFoundError({ message: `Parent folder with ID '${folder.parentId}' not found` });
+    }
+
+    if (secretPath !== "/") {
+      const newPathSegments = secretPath.split("/").filter(Boolean);
+
+      if (newPathSegments.length === 0) {
+        throw new BadRequestError({ message: `Invalid new path '${secretPath}'` });
+      }
+    }
+
+    if (secretPath === folder.path) {
+      return folder;
+    }
+
+    const existingFolder = await folderDAL.findBySecretPath(
+      projectId,
+      folder.environmentSlug,
+      `${secretPath}/${folder.name}`
+    );
+
+    if (existingFolder) {
+      throw new BadRequestError({
+        message: `Folder with name '${existingFolder.name}' already exists in the new path '${secretPath}'`
+      });
+    }
+
+    const movedFolder = await folderDAL.transaction(async (tx) => {
+      const newParentFolder = await folderDAL.findClosestFolder(projectId, folder.environmentSlug, secretPath, tx);
+
+      if (!newParentFolder) {
+        throw new NotFoundError({ message: `Parent folder with path '${secretPath}' not found` });
+      }
+
+      let parentFolderId = newParentFolder.id;
+
+      // create any missing intermediate folders in the new path
+      if (newParentFolder.path !== secretPath) {
+        const missingSegments = secretPath.substring(newParentFolder.path.length).split("/").filter(Boolean);
+        if (missingSegments.length) {
+          const newFolders: Array<TSecretFoldersInsert & { id: string }> = missingSegments.map((segment) => {
+            const newFolder = {
+              name: segment,
+              parentId: parentFolderId,
+              id: uuidv4(),
+              envId: folder.envId,
+              version: 1
+            };
+            parentFolderId = newFolder.id;
+            return newFolder;
+          });
+
+          parentFolderId = newFolders.at(-1)?.id as string;
+          const docs = await folderDAL.insertMany(newFolders, tx);
+          await folderVersionDAL.insertMany(
+            docs.map((doc) => ({
+              name: doc.name,
+              envId: doc.envId,
+              version: doc.version,
+              folderId: doc.id
+            })),
+            tx
+          );
+        }
+      }
+
+      if (parentFolderId === folder.id) {
+        throw new BadRequestError({ message: `Cannot move folder into itself` });
+      }
+
+      // update the folder's parent id to point to the new location
+      const [updatedFolder] = await folderDAL.update(
+        { id: folder.id },
+        {
+          parentId: parentFolderId,
+          version: (folder.version || 0) + 1
+        },
+        tx
+      );
+
+      // create a new version record
+      await folderVersionDAL.create(
+        {
+          name: updatedFolder.name,
+          envId: updatedFolder.envId,
+          version: updatedFolder.version,
+          folderId: updatedFolder.id
+        },
+        tx
+      );
+
+      return updatedFolder;
+    });
+
+    await snapshotService.performSnapshot(movedFolder.id);
+    return movedFolder;
+  };
+
   const deleteFolder = async ({
     projectId,
     actor,
@@ -540,6 +680,7 @@ export const secretFolderServiceFactory = ({
     createFolder,
     updateFolder,
     updateManyFolders,
+    moveFolder,
     deleteFolder,
     getFolders,
     getFolderById,
