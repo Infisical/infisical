@@ -65,7 +65,7 @@ export const ProjectSidebarItem = () => {
               }
               icon="system-outline-90-lock-closed"
             >
-              Internal PKI
+              Overview
             </MenuItem>
           </a>
         </Link>
@@ -77,7 +77,7 @@ export const ProjectSidebarItem = () => {
               isSelected={router.asPath === `/${ProjectType.KMS}/${currentWorkspace?.id}/kms`}
               icon="system-outline-90-lock-closed"
             >
-              Key Management
+              Overview
             </MenuItem>
           </a>
         </Link>

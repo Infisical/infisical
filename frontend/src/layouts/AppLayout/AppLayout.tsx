@@ -365,7 +365,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                             isSelected={router.asPath.includes(
                               `/${ProjectType.CertificateManager}/overview`
                             )}
-                            icon="system-outline-165-view-carousel"
+                            icon="note"
                           >
                             Cert Management
                           </MenuItem>
@@ -375,7 +375,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         <a>
                           <MenuItem
                             isSelected={router.asPath.includes(`/${ProjectType.KMS}/overview`)}
-                            icon="system-outline-165-view-carousel"
+                            icon="unlock"
                           >
                             Key Management
                           </MenuItem>

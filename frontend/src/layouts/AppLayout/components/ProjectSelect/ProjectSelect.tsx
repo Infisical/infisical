@@ -16,7 +16,7 @@ import {
   useSubscription,
   useWorkspace
 } from "@app/context";
-import { getProjectHomePage } from "@app/helpers/project";
+import { getProjectHomePage, getProjectTitle } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
@@ -166,7 +166,9 @@ export const ProjectSelect = () => {
 
   return (
     <div className="mt-5 mb-4 w-full p-3">
-      <p className="ml-1.5 mb-1 text-xs font-semibold uppercase text-gray-400">Project</p>
+      <p className="ml-1.5 mb-1 text-xs font-semibold uppercase text-gray-400">
+        {currentWorkspace?.type ? getProjectTitle(currentWorkspace?.type) : "Project"}
+      </p>
       <FilterableSelect
         className="text-sm"
         value={value}
