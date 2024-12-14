@@ -186,6 +186,8 @@ import { secretImportDALFactory } from "@app/services/secret-import/secret-impor
 import { secretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
 import { secretSharingDALFactory } from "@app/services/secret-sharing/secret-sharing-dal";
 import { secretSharingServiceFactory } from "@app/services/secret-sharing/secret-sharing-service";
+import { userSecretsDALFactory } from "@app/services/user-secrets/user-secrets-dal";
+import { userSecretsServiceFactory } from "@app/services/user-secrets/user-secrets-service";
 import { secretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { secretTagServiceFactory } from "@app/services/secret-tag/secret-tag-service";
 import { secretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
@@ -341,6 +343,7 @@ export const registerRoutes = async (
   const userGroupMembershipDAL = userGroupMembershipDALFactory(db);
   const secretScanningDAL = secretScanningDALFactory(db);
   const secretSharingDAL = secretSharingDALFactory(db);
+  const userSecretsDAL = userSecretsDALFactory(db);
   const licenseDAL = licenseDALFactory(db);
   const dynamicSecretDAL = dynamicSecretDALFactory(db);
   const dynamicSecretLeaseDAL = dynamicSecretLeaseDALFactory(db);
@@ -992,6 +995,12 @@ export const registerRoutes = async (
     kmsService
   });
 
+  const userSecretsService = userSecretsServiceFactory({
+    permissionService,
+    userSecretsDAL,
+    kmsService
+  });
+
   const accessApprovalPolicyService = accessApprovalPolicyServiceFactory({
     accessApprovalPolicyDAL,
     accessApprovalPolicyApproverDAL,
@@ -1392,6 +1401,7 @@ export const registerRoutes = async (
     identityProjectAdditionalPrivilege: identityProjectAdditionalPrivilegeService,
     identityProjectAdditionalPrivilegeV2: identityProjectAdditionalPrivilegeV2Service,
     secretSharing: secretSharingService,
+    userSecrets: userSecretsService,
     userEngagement: userEngagementService,
     externalKms: externalKmsService,
     hsm: hsmService,

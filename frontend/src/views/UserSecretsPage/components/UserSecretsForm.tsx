@@ -3,13 +3,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { Button, FormControl, Input } from "@app/components/v2";
-/**
+import { useCreateUserSecret } from "@app/hooks/api/userSecrets";
 import { createNotification } from "@app/components/notifications";
-import { useCreateSharedSecret } from "@app/hooks/api";
-**/
 
-
-// TODO: update schema
 const schema = z.object({
   // Secure Note
   title: z.string().optional(),
@@ -18,6 +14,11 @@ const schema = z.object({
   // Web Login
   username: z.string().optional(),
   password: z.string().optional(),
+
+  // Credit Card
+  cardNumber: z.string().optional(),
+  expiryDate: z.string().optional(),
+  cvv: z.string().optional(),
 });
 
 export type FormData = z.infer<typeof schema>;
@@ -27,13 +28,12 @@ type Props = {
 };
 
 export const UserSecretsForm = ({ value }: Props) => {
-  // TODO: create API hook 
-  // const createUserSecret = useCreateSharedSecret();
+  const createUserSecret = useCreateUserSecret();
 
   const {
     control,
-    // reset,
-    // handleSubmit,
+    reset,
+    handleSubmit,
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -42,52 +42,42 @@ export const UserSecretsForm = ({ value }: Props) => {
     }
   });
 
-  /**
   const onFormSubmit = async ({
-    name,
+    title,
+    content,
+    username,
     password,
-    secret,
-    expiresIn,
-    viewLimit,
-    accessType
+    cardNumber,
+    expiryDate,
+    cvv
   }: FormData) => {
     try {
-      const expiresAt = new Date(new Date().getTime() + Number(expiresIn));
-
-      const { id } = await createUserSecret.mutateAsync({
-        name,
+      await createUserSecret.mutateAsync({
+        title,
+        content,
+        username,
         password,
-        secretValue: secret,
-        expiresAt,
-        expiresAfterViews: viewLimit === "-1" ? undefined : Number(viewLimit),
-        accessType
+        cardNumber,
+        expiryDate,
+        cvv
       });
 
-      const link = `${window.location.origin}/shared/secret/${id}`;
-
-      setSecretLink(link);
       reset();
-
-      navigator.clipboard.writeText(link);
-      setCopyTextSecret("secret");
-
       createNotification({
-        text: "Shared secret link copied to clipboard.",
+        text: "Successfully created user secret.",
         type: "success"
       });
     } catch (error) {
       console.error(error);
       createNotification({
-        text: "Failed to create a shared secret.",
+        text: "Failed to create a user secret.",
         type: "error"
       });
     }
   };
-  **/
 
   return (
-    // TODO: handleSubmit(onFormSubmit)
-    <form onSubmit={() => {}}>
+    <form onSubmit={handleSubmit(onFormSubmit)}>
       {/* Secure Note */}
       <Controller
         control={control}
@@ -150,6 +140,50 @@ export const UserSecretsForm = ({ value }: Props) => {
             isOptional
           >
             <Input {...field} placeholder="Password" type="password" />
+          </FormControl>
+        )}
+      />
+
+      {/* Credit Card */} 
+      <Controller
+        control={control}
+        name="cardNumber"
+        render={({ field, fieldState: { error } }) => (
+          <FormControl
+            label="Card Number"
+            isError={Boolean(error)}
+            errorText={error?.message}
+            isOptional
+          >
+            <Input {...field} placeholder="Card number" type="text" />
+          </FormControl>
+        )}
+      />
+      <Controller
+        control={control}
+        name="expiryDate"
+        render={({ field, fieldState: { error } }) => (
+          <FormControl
+            label="Expiry Date"
+            isError={Boolean(error)}
+            errorText={error?.message}
+            isOptional
+          >
+            <Input {...field} placeholder="Expiry Date" type="text" />
+          </FormControl>
+        )}
+      />
+      <Controller
+        control={control}
+        name="cvv"
+        render={({ field, fieldState: { error } }) => (
+          <FormControl
+            label="CVV"
+            isError={Boolean(error)}
+            errorText={error?.message}
+            isOptional
+          >
+            <Input {...field} placeholder="CVV" type="text" />
           </FormControl>
         )}
       />
