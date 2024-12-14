@@ -2,16 +2,16 @@ import { MutationCache, QueryClient } from "@tanstack/react-query";
 import axios from "axios";
 
 import { createNotification } from "@app/components/notifications";
-
 // akhilmhdh: doing individual imports to avoid cyclic import error
-import { Button } from "./components/v2/Button";
-import { Modal, ModalContent, ModalTrigger } from "./components/v2/Modal";
-import { Table, TableContainer, TBody, Td, Th, THead, Tr } from "./components/v2/Table";
+import { Button } from "@app/components/v2/Button";
+import { Modal, ModalContent, ModalTrigger } from "@app/components/v2/Modal";
+import { Table, TableContainer, TBody, Td, Th, THead, Tr } from "@app/components/v2/Table";
 import {
   formatedConditionsOperatorNames,
   PermissionConditionOperators
-} from "./context/ProjectPermissionContext/types";
-import { ApiErrorTypes, TApiErrors } from "./hooks/api/types";
+} from "@app/context/ProjectPermissionContext/types";
+
+import { ApiErrorTypes, TApiErrors } from "./types";
 
 // this is saved in react-query cache
 export const SIGNUP_TEMP_TOKEN_CACHE_KEY = ["infisical__signup-temp-token"];

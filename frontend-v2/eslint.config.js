@@ -49,7 +49,7 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
+      "react-refresh/only-export-components": "off",
       "@typescript-eslint/no-empty-function": "off",
       quotes: ["error", "double", { avoidEscape: true }],
       "comma-dangle": ["error", "only-multiline"],

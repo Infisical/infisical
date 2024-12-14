@@ -71,7 +71,7 @@ export const MenuItem = <T extends ElementType = "button">({
                 lottieRef={iconRef}
                 style={{ width: 22, height: 22 }}
                 // eslint-disable-next-line import/no-dynamic-require
-                animationData={require(`../../../../public/lotties/${icon}.json`)}
+                // animationData={require(`../../../../public/lotties/${icon}.json`)}
                 loop={false}
                 autoplay={false}
                 className="my-auto ml-[0.1rem] mr-3"
@@ -121,7 +121,7 @@ export const SubMenuItem = <T extends ElementType = "button">({
               lottieRef={iconRef}
               style={{ width: 16, height: 16 }}
               // eslint-disable-next-line import/no-dynamic-require
-              animationData={require(`../../../../public/lotties/${icon}.json`)}
+              // animationData={require(`../../../../public/lotties/${icon}.json`)}
               loop={false}
               autoplay={false}
               className="my-auto ml-[0.1rem] mr-3"
