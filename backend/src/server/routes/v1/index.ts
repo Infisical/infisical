@@ -33,6 +33,7 @@ import { registerProjectRouter } from "./project-router";
 import { registerSecretFolderRouter } from "./secret-folder-router";
 import { registerSecretImportRouter } from "./secret-import-router";
 import { registerSecretSharingRouter } from "./secret-sharing-router";
+import { registerUserSecretsRouter } from "./user-secrets-router";
 import { registerSecretTagRouter } from "./secret-tag-router";
 import { registerSlackRouter } from "./slack-router";
 import { registerSsoRouter } from "./sso-router";
@@ -106,6 +107,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerWebhookRouter, { prefix: "/webhooks" });
   await server.register(registerIdentityRouter, { prefix: "/identities" });
   await server.register(registerSecretSharingRouter, { prefix: "/secret-sharing" });
+  await server.register(registerUserSecretsRouter, { prefix: "/user-secrets" });
   await server.register(registerUserEngagementRouter, { prefix: "/user-engagement" });
   await server.register(registerDashboardRouter, { prefix: "/dashboard" });
   await server.register(registerCmekRouter, { prefix: "/kms" });

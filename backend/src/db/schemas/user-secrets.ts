@@ -5,17 +5,19 @@
 
 import { z } from "zod";
 
+import { zodBuffer } from "@app/lib/zod";
+
 import { TImmutableDBKeys } from "./models";
 
 export const UserSecretsSchema = z.object({
   id: z.string().uuid(),
-  encryptedTitle: z.string().nullable().optional(),
-  encryptedContent: z.string().nullable().optional(),
-  encryptedUsername: z.string().nullable().optional(),
-  encryptedPassword: z.string().nullable().optional(),
-  encryptedCardNumber: z.string().nullable().optional(),
-  encryptedExpiryDate: z.string().nullable().optional(),
-  encryptedCVV: z.string().nullable().optional(),
+  encryptedTitle: zodBuffer.nullable().optional(),
+  encryptedContent: zodBuffer.nullable().optional(),
+  encryptedUsername: zodBuffer.nullable().optional(),
+  encryptedPassword: zodBuffer.nullable().optional(),
+  encryptedCardNumber: zodBuffer.nullable().optional(),
+  encryptedExpiryDate: zodBuffer.nullable().optional(),
+  encryptedCVV: zodBuffer.nullable().optional(),
   userId: z.string().uuid(),
   orgId: z.string().uuid()
 });

@@ -77,6 +77,7 @@ import { TSecretFolderServiceFactory } from "@app/services/secret-folder/secret-
 import { TSecretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
 import { TSecretReplicationServiceFactory } from "@app/services/secret-replication/secret-replication-service";
 import { TSecretSharingServiceFactory } from "@app/services/secret-sharing/secret-sharing-service";
+import { TUserSecretsServiceFactory } from "@app/services/user-secrets/user-secrets-service";
 import { TSecretTagServiceFactory } from "@app/services/secret-tag/secret-tag-service";
 import { TServiceTokenServiceFactory } from "@app/services/service-token/service-token-service";
 import { TSlackServiceFactory } from "@app/services/slack/slack-service";
@@ -192,6 +193,7 @@ declare module "fastify" {
       identityProjectAdditionalPrivilege: TIdentityProjectAdditionalPrivilegeServiceFactory;
       identityProjectAdditionalPrivilegeV2: TIdentityProjectAdditionalPrivilegeV2ServiceFactory;
       secretSharing: TSecretSharingServiceFactory;
+      userSecrets: TUserSecretsServiceFactory;
       rateLimit: TRateLimitServiceFactory;
       userEngagement: TUserEngagementServiceFactory;
       externalKms: TExternalKmsServiceFactory;
