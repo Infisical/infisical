@@ -24,3 +24,7 @@ export type TCreateUserSecretRequest = {
   expiryDate?: string;
   cvv?: string;
 };
+
+export type TDeleteUserSecretRequest = {
+  userSecretId: string;
+}

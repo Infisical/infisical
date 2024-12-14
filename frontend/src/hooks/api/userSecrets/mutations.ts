@@ -4,7 +4,9 @@ import { apiRequest } from "@app/config/request";
 
 import {
   TCreatedUserSecret,
-  TCreateUserSecretRequest
+  TCreateUserSecretRequest,
+  TDeleteUserSecretRequest,
+  TUserSecret
 } from "./types";
 import { userSecretsKeys } from "./queries";
 
@@ -15,6 +17,19 @@ export const useCreateUserSecret = () => {
       const { data } = await apiRequest.post<TCreatedUserSecret>(
         "/api/v1/user-secrets",
         inputData
+      );
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries(userSecretsKeys.allUserSecrets())
+  });
+};
+
+export const useDeleteUserSecret = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TUserSecret, { message: string }, { userSecretId: string }>({
+    mutationFn: async ({ userSecretId }: TDeleteUserSecretRequest) => {
+      const { data } = await apiRequest.delete<TUserSecret>(
+        `/api/v1/user-secrets/${userSecretId}`
       );
       return data;
     },

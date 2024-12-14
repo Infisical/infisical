@@ -2,44 +2,39 @@ import Head from "next/head";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-// import { createNotification } from "@app/components/notifications";
-import { 
-  Button, 
-  // DeleteActionModal 
-} from "@app/components/v2";
+import { createNotification } from "@app/components/notifications";
+import { Button, DeleteActionModal } from "@app/components/v2";
 import { usePopUp } from "@app/hooks";
 
-// import { useDeleteSharedSecret } from "@app/hooks/api/secretSharing";
-// import { ShareSecretsTable } from "./ShareSecretsTable";
 import { AddUserSecretsModal } from "./AddUserSecretModal";
 import { UserSecretsTable } from "./UserSecretsTable";
+import { useDeleteUserSecret } from "@app/hooks/api/userSecrets";
 
-// type DeleteModalData = { name: string; id: string };
+type DeleteModalData = { id: string };
 
 export const UserSecretsSection = () => {
-  // const deleteSharedSecret = useDeleteSharedSecret();
+  const deleteUserSecret = useDeleteUserSecret();
   const { 
     popUp, 
     handlePopUpToggle, 
-    // handlePopUpClose, 
+    handlePopUpClose, 
     handlePopUpOpen 
   } = usePopUp([
     "createUserSecrets",
     "deleteUserSecretsConfirmation"
   ] as const);
 
-  /**
   const onDeleteApproved = async () => {
     try {
-      deleteSharedSecret.mutateAsync({
-        sharedSecretId: (popUp?.deleteSharedSecretConfirmation?.data as DeleteModalData)?.id
+      deleteUserSecret.mutateAsync({
+        userSecretId: (popUp?.deleteUserSecretsConfirmation?.data as DeleteModalData)?.id
       });
       createNotification({
         text: "Successfully deleted shared secret",
         type: "success"
       });
 
-      handlePopUpClose("deleteSharedSecretConfirmation");
+      handlePopUpClose("deleteUserSecretsConfirmation");
     } catch (err) {
       console.error(err);
       createNotification({
@@ -48,7 +43,6 @@ export const UserSecretsSection = () => {
       });
     }
   };
-  **/
 
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
@@ -71,18 +65,14 @@ export const UserSecretsSection = () => {
       </div>
       <UserSecretsTable handlePopUpOpen={handlePopUpOpen} />
       <AddUserSecretsModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      {/**
       <DeleteActionModal
-        isOpen={popUp.deleteSharedSecretConfirmation.isOpen}
-        title={`Delete ${
-          (popUp?.deleteSharedSecretConfirmation?.data as DeleteModalData)?.name || " "
-        } shared secret?`}
-        onChange={(isOpen) => handlePopUpToggle("deleteSharedSecretConfirmation", isOpen)}
-        deleteKey={(popUp?.deleteSharedSecretConfirmation?.data as DeleteModalData)?.name}
-        onClose={() => handlePopUpClose("deleteSharedSecretConfirmation")}
+        isOpen={popUp.deleteUserSecretsConfirmation.isOpen}
+        title="Delete user secret?"
+        onChange={(isOpen) => handlePopUpToggle("deleteUserSecretsConfirmation", isOpen)}
+        deleteKey={(popUp?.deleteUserSecretsConfirmation?.data as DeleteModalData)?.id}
+        onClose={() => handlePopUpClose("deleteUserSecretsConfirmation")}
         onDeleteApproved={onDeleteApproved}
       />
-      **/}
     </div>
   );
 };

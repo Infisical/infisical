@@ -1,9 +1,10 @@
 import { z } from "zod";
 
-import { DecryptedUserSecretSchema } from "@app/db/schemas";
+import { DecryptedUserSecretSchema, UserSecretsSchema } from "@app/db/schemas";
 import {
   publicEndpointLimit,
   readLimit,
+  writeLimit,
 } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -74,4 +75,35 @@ export const registerUserSecretsRouter = async (server: FastifyZodProvider) => {
       return { id: userSecret.id };
     }
   });
+
+  server.route({
+    method: "DELETE",
+    url: "/:userSecretId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        userSecretId: z.string()
+      }),
+      response: {
+        200: UserSecretsSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { userSecretId } = req.params;
+      const deletedUserSecret = await req.server.services.userSecrets.deleteUserSecretById({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        orgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        userSecretId
+      });
+
+      return { ...deletedUserSecret };
+    }
+  });
+
 };

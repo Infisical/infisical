@@ -3,7 +3,8 @@ import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TUserSecretsDALFactory } from "./user-secrets-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { TDecryptedUserSecrets } from "@app/db/schemas";
+import { TDecryptedUserSecret } from "@app/db/schemas";
+import { z } from "zod";
 
 type TUserSecretsServiceFactoryDep = {
   userSecretsDAL: TUserSecretsDALFactory;
@@ -11,22 +12,7 @@ type TUserSecretsServiceFactoryDep = {
   kmsService: TKmsServiceFactory;
 };
 
-type TCreateUserSecretDTO = {
-  actor: ActorType;
-  actorId: string;
-  orgId: string;
-  actorAuthMethod: ActorAuthMethod;
-  actorOrgId: string;
-  title?: string;
-  content?: string;
-  username?: string;
-  password?: string;
-  cardNumber?: string;
-  expiryDate?: string;
-  cvv?: string;
-};
-
-type TGetUserSecretsDTO = {
+type TUserSecretPermission = {
   actor: ActorType;
   actorId: string;
   orgId: string;
@@ -34,7 +20,23 @@ type TGetUserSecretsDTO = {
   actorOrgId: string;
 }
 
+type TCreateUserSecretDTO = {
+  title?: string;
+  content?: string;
+  username?: string;
+  password?: string;
+  cardNumber?: string;
+  expiryDate?: string;
+  cvv?: string;
+} & TUserSecretPermission;
+
+type TDeleteUserSecretDTO = {
+  userSecretId: string;
+} & TUserSecretPermission;
+
 export type TUserSecretsServiceFactory = ReturnType<typeof userSecretsServiceFactory>;
+
+const isUuidV4 = (uuid: string) => z.string().uuid().safeParse(uuid).success;
 
 export const userSecretsServiceFactory = ({ 
   userSecretsDAL,
@@ -92,7 +94,7 @@ export const userSecretsServiceFactory = ({
     orgId,
     actorOrgId,
     actorAuthMethod
-  }: TGetUserSecretsDTO) => {
+  }: TUserSecretPermission) => {
     if (!actorOrgId) throw new ForbiddenRequestError();
 
     const { permission } = await permissionService.getOrgPermission(
@@ -163,8 +165,31 @@ export const userSecretsServiceFactory = ({
     return { secrets: decryptedSecrets }
   }
 
+  const deleteUserSecretById = async ({ 
+    actor,
+    actorId,
+    orgId,
+    actorOrgId,
+    actorAuthMethod,
+    userSecretId
+  }: TDeleteUserSecretDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    if (!permission) throw new ForbiddenRequestError({ name: "User does not belong to the specified organization" });
+
+    const userSecret = isUuidV4(userSecretId) && await userSecretsDAL.findById(userSecretId);
+
+    if (userSecret.orgId && userSecret.orgId !== orgId) {
+      throw new ForbiddenRequestError({ message: "User does not have permission to delete shared secret" });
+    }
+
+    const deletedUserSecret = await userSecretsDAL.deleteById(userSecretId);
+
+    return deletedUserSecret;
+  };
+
   return {
     createUserSecrets,
-    getUserSecrets
+    getUserSecrets,
+    deleteUserSecretById
   };
 };
