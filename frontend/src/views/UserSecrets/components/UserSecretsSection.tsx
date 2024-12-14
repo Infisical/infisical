@@ -5,10 +5,11 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Button } from "@app/components/v2";
 import { usePopUp } from "@app/hooks";
 
-import { UserSecretsTable } from "./UserSecretsTable";
+import { AddLoginCredentialsModal } from "./AddLoginCredentialsModal";
+import { LoginCredentialsTable } from "./LoginCredentialsTable";
 
 export const UserSecretsSection = () => {
-    const { handlePopUpOpen } = usePopUp(["createUserSecrets"] as const);
+    const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["createUserLoginCredentials"] as const);
     return (
         <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
             <Head>
@@ -17,18 +18,19 @@ export const UserSecretsSection = () => {
                 <meta property="og:image" content="/images/message.png" />
             </Head> 
             <div className="mb-4 flex justify-between">
-                <p className="text-xl font-semibold text-mineshaft-100">User Secrets</p>
+                <p className="text-xl font-semibold text-mineshaft-100">Login Credentials</p>
                 <Button
                     colorSchema="primary"
                     leftIcon={<FontAwesomeIcon icon={faPlus} />}
                     onClick={() => {
-                        handlePopUpOpen("createUserSecrets");
+                        handlePopUpOpen("createUserLoginCredentials");
                     }}
                 >
                     Create Secret
                 </Button>
             </div> 
-            <UserSecretsTable/>
+            <LoginCredentialsTable/>
+            <AddLoginCredentialsModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         </div>
     )
 }
