@@ -9,7 +9,7 @@ import { createNotification } from "@app/components/notifications";
 const schema = z.object({
   // Secure Note
   title: z.string().optional(),
-  content: z.string().min(1).optional(),
+  content: z.string().optional(),
 
   // Web Login
   username: z.string().optional(),
@@ -108,7 +108,6 @@ export const UserSecretsForm = ({ value }: Props) => {
               placeholder="Enter sensitive data to share via an encrypted link..."
               {...field}
               className="h-40 min-h-[70px] w-full rounded-md border border-mineshaft-600 bg-mineshaft-900 py-1.5 px-2 text-bunker-300 outline-none transition-all placeholder:text-mineshaft-400 hover:border-primary-400/30 focus:border-primary-400/50 group-hover:mr-2"
-              disabled={value !== undefined}
             />
           </FormControl>
         )}

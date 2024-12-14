@@ -1,4 +1,4 @@
-import { faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faPen, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { IconButton, Td, Tr } from "@app/components/v2";
@@ -12,7 +12,7 @@ export const UserSecretsRow = ({
 }: {
   row: TUserSecret;
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["deleteUserSecretsConfirmation"]>,
+    popUpName: keyof UsePopUpState<["deleteUserSecretsConfirmation", "updateUserSecrets"]>,
     {
       name,
       id
@@ -36,6 +36,21 @@ export const UserSecretsRow = ({
         <Td>{row.cardNumber ? `${row.cardNumber}` : "-"}</Td>
         <Td>{row.expiryDate ? `${row.expiryDate}` : "-"}</Td>
         <Td>{row.cvv ? `${row.cvv}` : "-"}</Td>
+        <Td>
+          <IconButton
+            onClick={(e) => {
+              e.stopPropagation();
+              handlePopUpOpen("updateUserSecrets", {
+                name: "update",
+                id: row.id
+              });
+            }}
+            variant="plain"
+            ariaLabel="update"
+          >
+            <FontAwesomeIcon icon={faPen} />
+          </IconButton>
+        </Td>
         <Td>
           <IconButton
             onClick={(e) => {

@@ -9,6 +9,7 @@ import { usePopUp } from "@app/hooks";
 import { AddUserSecretsModal } from "./AddUserSecretModal";
 import { UserSecretsTable } from "./UserSecretsTable";
 import { useDeleteUserSecret } from "@app/hooks/api/userSecrets";
+import { UpdateUserSecretsModal } from "./UpdateUserSecretModal";
 
 type DeleteModalData = { id: string };
 
@@ -21,6 +22,7 @@ export const UserSecretsSection = () => {
     handlePopUpOpen 
   } = usePopUp([
     "createUserSecrets",
+    "updateUserSecrets",
     "deleteUserSecretsConfirmation"
   ] as const);
 
@@ -65,6 +67,7 @@ export const UserSecretsSection = () => {
       </div>
       <UserSecretsTable handlePopUpOpen={handlePopUpOpen} />
       <AddUserSecretsModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <UpdateUserSecretsModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deleteUserSecretsConfirmation.isOpen}
         title="Delete user secret?"

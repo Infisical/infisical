@@ -27,15 +27,15 @@ export const useCreateUserSecret = () => {
 
 export const useUpdateUserSecret = () => {
   const queryClient = useQueryClient();
-  return useMutation<TUserSecret, { message: string }, { userSecretId: string }>({
+
+  return useMutation<{}, {}, TUpdateUserSecretRequest>({
     mutationFn: async (inputData: TUpdateUserSecretRequest) => {
-      const { data } = await apiRequest.patch<TUserSecret>(
-        `/api/v1/user-secrets/${inputData.userSecretId}`,
-        inputData
-      );
+      const { data } = await apiRequest.patch(`/api/v1/user-secrets/${inputData.userSecretId}`, inputData);
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries(userSecretsKeys.allUserSecrets())
+    onSuccess: () => {
+      queryClient.invalidateQueries(userSecretsKeys.allUserSecrets());
+    }
   });
 };
 

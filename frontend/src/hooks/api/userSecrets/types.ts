@@ -2,13 +2,13 @@ export type TUserSecret = {
   id: string;
   userId: string;
   orgId: string;
-  title: string | null;
-  content: string | null;
-  username: string | null;
-  password: string | null;
-  cardNumber: string | null;
-  expiryDate: string | null;
-  cvv: string | null;
+  title?: string;
+  content?: string;
+  username?: string;
+  password?: string;
+  cardNumber?: string;
+  expiryDate?: string;
+  cvv?: string;
 };
 
 export type TCreatedUserSecret = {
