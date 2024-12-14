@@ -28,3 +28,5 @@ export type TCreateUserSecretRequest = {
 export type TDeleteUserSecretRequest = {
   userSecretId: string;
 }
+
+export type TUpdateUserSecretRequest = TCreateUserSecretRequest & TDeleteUserSecretRequest;
