@@ -1,6 +1,6 @@
 import { MfaMethod } from "../auth/types";
 import { UserWsKeyPair } from "../keys/types";
-import { ProjectUserMembershipTemporaryMode } from "../workspace/types";
+import { ProjectType, ProjectUserMembershipTemporaryMode } from "../workspace/types";
 
 export enum AuthMethod {
   EMAIL = "email",
@@ -95,6 +95,7 @@ export type TWorkspaceUser = {
   project: {
     id: string;
     name: string;
+    type: ProjectType;
   };
   inviteEmail: string;
   organization: string;

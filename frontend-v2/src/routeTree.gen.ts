@@ -12,7 +12,9 @@
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as IndexImport } from './routes/index'
+import { Route as SignupIndexImport } from './routes/signup/index'
 import { Route as LoginIndexImport } from './routes/login/index'
+import { Route as SignupSsoIndexImport } from './routes/signup/sso/index'
 import { Route as LoginSsoIndexImport } from './routes/login/sso/index'
 import { Route as LoginSelectOrganizationIndexImport } from './routes/login/select-organization/index'
 import { Route as LoginLdapIndexImport } from './routes/login/ldap/index'
@@ -27,9 +29,21 @@ const IndexRoute = IndexImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
+const SignupIndexRoute = SignupIndexImport.update({
+  id: '/signup/',
+  path: '/signup/',
+  getParentRoute: () => rootRoute,
+} as any)
+
 const LoginIndexRoute = LoginIndexImport.update({
   id: '/login/',
   path: '/login/',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const SignupSsoIndexRoute = SignupSsoIndexImport.update({
+  id: '/signup/sso/',
+  path: '/signup/sso/',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -82,6 +96,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginIndexImport
       parentRoute: typeof rootRoute
     }
+    '/signup/': {
+      id: '/signup/'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupIndexImport
+      parentRoute: typeof rootRoute
+    }
     '/login/provider/error': {
       id: '/login/provider/error'
       path: '/login/provider/error'
@@ -117,6 +138,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginSsoIndexImport
       parentRoute: typeof rootRoute
     }
+    '/signup/sso/': {
+      id: '/signup/sso/'
+      path: '/signup/sso'
+      fullPath: '/signup/sso'
+      preLoaderRoute: typeof SignupSsoIndexImport
+      parentRoute: typeof rootRoute
+    }
   }
 }
 
@@ -125,32 +153,38 @@ declare module '@tanstack/react-router' {
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginIndexRoute
+  '/signup': typeof SignupIndexRoute
   '/login/provider/error': typeof LoginProviderErrorRoute
   '/login/provider/success': typeof LoginProviderSuccessRoute
   '/login/ldap': typeof LoginLdapIndexRoute
   '/login/select-organization': typeof LoginSelectOrganizationIndexRoute
   '/login/sso': typeof LoginSsoIndexRoute
+  '/signup/sso': typeof SignupSsoIndexRoute
 }
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginIndexRoute
+  '/signup': typeof SignupIndexRoute
   '/login/provider/error': typeof LoginProviderErrorRoute
   '/login/provider/success': typeof LoginProviderSuccessRoute
   '/login/ldap': typeof LoginLdapIndexRoute
   '/login/select-organization': typeof LoginSelectOrganizationIndexRoute
   '/login/sso': typeof LoginSsoIndexRoute
+  '/signup/sso': typeof SignupSsoIndexRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/login/': typeof LoginIndexRoute
+  '/signup/': typeof SignupIndexRoute
   '/login/provider/error': typeof LoginProviderErrorRoute
   '/login/provider/success': typeof LoginProviderSuccessRoute
   '/login/ldap/': typeof LoginLdapIndexRoute
   '/login/select-organization/': typeof LoginSelectOrganizationIndexRoute
   '/login/sso/': typeof LoginSsoIndexRoute
+  '/signup/sso/': typeof SignupSsoIndexRoute
 }
 
 export interface FileRouteTypes {
@@ -158,50 +192,60 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/signup'
     | '/login/provider/error'
     | '/login/provider/success'
     | '/login/ldap'
     | '/login/select-organization'
     | '/login/sso'
+    | '/signup/sso'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
+    | '/signup'
     | '/login/provider/error'
     | '/login/provider/success'
     | '/login/ldap'
     | '/login/select-organization'
     | '/login/sso'
+    | '/signup/sso'
   id:
     | '__root__'
     | '/'
     | '/login/'
+    | '/signup/'
     | '/login/provider/error'
     | '/login/provider/success'
     | '/login/ldap/'
     | '/login/select-organization/'
     | '/login/sso/'
+    | '/signup/sso/'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginIndexRoute: typeof LoginIndexRoute
+  SignupIndexRoute: typeof SignupIndexRoute
   LoginProviderErrorRoute: typeof LoginProviderErrorRoute
   LoginProviderSuccessRoute: typeof LoginProviderSuccessRoute
   LoginLdapIndexRoute: typeof LoginLdapIndexRoute
   LoginSelectOrganizationIndexRoute: typeof LoginSelectOrganizationIndexRoute
   LoginSsoIndexRoute: typeof LoginSsoIndexRoute
+  SignupSsoIndexRoute: typeof SignupSsoIndexRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginIndexRoute: LoginIndexRoute,
+  SignupIndexRoute: SignupIndexRoute,
   LoginProviderErrorRoute: LoginProviderErrorRoute,
   LoginProviderSuccessRoute: LoginProviderSuccessRoute,
   LoginLdapIndexRoute: LoginLdapIndexRoute,
   LoginSelectOrganizationIndexRoute: LoginSelectOrganizationIndexRoute,
   LoginSsoIndexRoute: LoginSsoIndexRoute,
+  SignupSsoIndexRoute: SignupSsoIndexRoute,
 }
 
 export const routeTree = rootRoute
@@ -216,11 +260,13 @@ export const routeTree = rootRoute
       "children": [
         "/",
         "/login/",
+        "/signup/",
         "/login/provider/error",
         "/login/provider/success",
         "/login/ldap/",
         "/login/select-organization/",
-        "/login/sso/"
+        "/login/sso/",
+        "/signup/sso/"
       ]
     },
     "/": {
@@ -228,6 +274,9 @@ export const routeTree = rootRoute
     },
     "/login/": {
       "filePath": "login/index.tsx"
+    },
+    "/signup/": {
+      "filePath": "signup/index.tsx"
     },
     "/login/provider/error": {
       "filePath": "login/provider/error.tsx"
@@ -243,6 +292,9 @@ export const routeTree = rootRoute
     },
     "/login/sso/": {
       "filePath": "login/sso/index.tsx"
+    },
+    "/signup/sso/": {
+      "filePath": "signup/sso/index.tsx"
     }
   }
 }
