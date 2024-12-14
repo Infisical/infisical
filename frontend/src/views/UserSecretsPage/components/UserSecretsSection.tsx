@@ -12,6 +12,7 @@ import { usePopUp } from "@app/hooks";
 // import { useDeleteSharedSecret } from "@app/hooks/api/secretSharing";
 // import { ShareSecretsTable } from "./ShareSecretsTable";
 import { AddUserSecretsModal } from "./AddUserSecretModal";
+import { UserSecretsTable } from "./UserSecretsTable";
 
 // type DeleteModalData = { name: string; id: string };
 
@@ -24,7 +25,7 @@ export const UserSecretsSection = () => {
     handlePopUpOpen 
   } = usePopUp([
     "createUserSecrets",
-    // "deleteSharedSecretConfirmation"
+    "deleteUserSecretsConfirmation"
   ] as const);
 
   /**
@@ -68,6 +69,7 @@ export const UserSecretsSection = () => {
           Create Secret
         </Button>
       </div>
+      <UserSecretsTable handlePopUpOpen={handlePopUpOpen} />
       <AddUserSecretsModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       {/**
       <DeleteActionModal

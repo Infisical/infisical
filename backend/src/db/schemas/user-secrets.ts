@@ -22,6 +22,20 @@ export const UserSecretsSchema = z.object({
   orgId: z.string().uuid()
 });
 
+export const DecryptedUserSecretSchema = z.object({
+  id: z.string().uuid(),
+  userId: z.string().uuid(),
+  orgId: z.string().uuid(),
+  title: z.string().nullable().optional(),
+  content: z.string().nullable().optional(),
+  username: z.string().nullable().optional(),
+  password: z.string().nullable().optional(),
+  cardNumber: z.string().nullable().optional(),
+  expiryDate: z.string().nullable().optional(),
+  cvv: z.string().nullable().optional(),
+});
+
 export type TUserSecrets = z.infer<typeof UserSecretsSchema>;
+export type TDecryptedUserSecret = z.infer<typeof DecryptedUserSecretSchema>;
 export type TUserSecretsInsert = Omit<z.input<typeof UserSecretsSchema>, TImmutableDBKeys>;
 export type TUserSecretsUpdate = Partial<Omit<z.input<typeof UserSecretsSchema>, TImmutableDBKeys>>;

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { UserSecretsSchema } from "@app/db/schemas";
+import { DecryptedUserSecretSchema } from "@app/db/schemas";
 import {
   publicEndpointLimit,
   readLimit,
@@ -18,7 +18,7 @@ export const registerUserSecretsRouter = async (server: FastifyZodProvider) => {
     schema: {
       response: {
         200: z.object({
-          secrets: z.array(UserSecretsSchema),
+          secrets: z.array(DecryptedUserSecretSchema),
         })
       }
     },

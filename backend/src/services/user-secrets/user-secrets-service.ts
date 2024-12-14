@@ -1,9 +1,9 @@
-import crypto, { randomUUID } from "node:crypto";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TUserSecretsDALFactory } from "./user-secrets-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { TDecryptedUserSecrets } from "@app/db/schemas";
 
 type TUserSecretsServiceFactoryDep = {
   userSecretsDAL: TUserSecretsDALFactory;
@@ -111,7 +111,56 @@ export const userSecretsServiceFactory = ({
       },
     );
 
-    return { secrets }
+    let decryptedSecrets: TDecryptedUserSecret[] = [];
+    for (const secret of secrets) {
+      let decrypted: TDecryptedUserSecret = { id: secret.id, userId: secret.userId, orgId: secret.orgId };
+      if (secret.encryptedTitle) {
+        let decryptedSecretValue: Buffer | undefined;
+        const decryptWithRoot = kmsService.decryptWithRootKey();
+        decryptedSecretValue = decryptWithRoot(secret.encryptedTitle);
+        decrypted.title = Buffer.from(decryptedSecretValue).toString() 
+      }
+      if (secret.encryptedContent) {
+        let decryptedSecretValue: Buffer | undefined;
+        const decryptWithRoot = kmsService.decryptWithRootKey();
+        decryptedSecretValue = decryptWithRoot(secret.encryptedContent);
+        decrypted.content = Buffer.from(decryptedSecretValue).toString() 
+      }
+      if (secret.encryptedUsername) {
+        let decryptedSecretValue: Buffer | undefined;
+        const decryptWithRoot = kmsService.decryptWithRootKey();
+        decryptedSecretValue = decryptWithRoot(secret.encryptedUsername);
+        decrypted.username = Buffer.from(decryptedSecretValue).toString() 
+      }
+      if (secret.encryptedPassword) {
+        let decryptedSecretValue: Buffer | undefined;
+        const decryptWithRoot = kmsService.decryptWithRootKey();
+        decryptedSecretValue = decryptWithRoot(secret.encryptedPassword);
+        decrypted.password = Buffer.from(decryptedSecretValue).toString() 
+      }
+      if (secret.encryptedCardNumber) {
+        let decryptedSecretValue: Buffer | undefined;
+        const decryptWithRoot = kmsService.decryptWithRootKey();
+        decryptedSecretValue = decryptWithRoot(secret.encryptedCardNumber);
+        decrypted.cardNumber = Buffer.from(decryptedSecretValue).toString() 
+      }
+      if (secret.encryptedExpiryDate) {
+        let decryptedSecretValue: Buffer | undefined;
+        const decryptWithRoot = kmsService.decryptWithRootKey();
+        decryptedSecretValue = decryptWithRoot(secret.encryptedExpiryDate);
+        decrypted.expiryDate = Buffer.from(decryptedSecretValue).toString() 
+      }
+      if (secret.encryptedCVV) {
+        let decryptedSecretValue: Buffer | undefined;
+        const decryptWithRoot = kmsService.decryptWithRootKey();
+        decryptedSecretValue = decryptWithRoot(secret.encryptedCVV);
+        decrypted.cvv = Buffer.from(decryptedSecretValue).toString() 
+      }
+
+      decryptedSecrets.push(decrypted);
+    }
+
+    return { secrets: decryptedSecrets }
   }
 
   return {
