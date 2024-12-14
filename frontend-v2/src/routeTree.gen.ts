@@ -12,12 +12,55 @@
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as IndexImport } from './routes/index'
+import { Route as LoginIndexImport } from './routes/login/index'
+import { Route as LoginSsoIndexImport } from './routes/login/sso/index'
+import { Route as LoginSelectOrganizationIndexImport } from './routes/login/select-organization/index'
+import { Route as LoginLdapIndexImport } from './routes/login/ldap/index'
+import { Route as LoginProviderSuccessImport } from './routes/login/provider/success'
+import { Route as LoginProviderErrorImport } from './routes/login/provider/error'
 
 // Create/Update Routes
 
 const IndexRoute = IndexImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const LoginIndexRoute = LoginIndexImport.update({
+  id: '/login/',
+  path: '/login/',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const LoginSsoIndexRoute = LoginSsoIndexImport.update({
+  id: '/login/sso/',
+  path: '/login/sso/',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const LoginSelectOrganizationIndexRoute =
+  LoginSelectOrganizationIndexImport.update({
+    id: '/login/select-organization/',
+    path: '/login/select-organization/',
+    getParentRoute: () => rootRoute,
+  } as any)
+
+const LoginLdapIndexRoute = LoginLdapIndexImport.update({
+  id: '/login/ldap/',
+  path: '/login/ldap/',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const LoginProviderSuccessRoute = LoginProviderSuccessImport.update({
+  id: '/login/provider/success',
+  path: '/login/provider/success',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const LoginProviderErrorRoute = LoginProviderErrorImport.update({
+  id: '/login/provider/error',
+  path: '/login/provider/error',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -32,6 +75,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexImport
       parentRoute: typeof rootRoute
     }
+    '/login/': {
+      id: '/login/'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginIndexImport
+      parentRoute: typeof rootRoute
+    }
+    '/login/provider/error': {
+      id: '/login/provider/error'
+      path: '/login/provider/error'
+      fullPath: '/login/provider/error'
+      preLoaderRoute: typeof LoginProviderErrorImport
+      parentRoute: typeof rootRoute
+    }
+    '/login/provider/success': {
+      id: '/login/provider/success'
+      path: '/login/provider/success'
+      fullPath: '/login/provider/success'
+      preLoaderRoute: typeof LoginProviderSuccessImport
+      parentRoute: typeof rootRoute
+    }
+    '/login/ldap/': {
+      id: '/login/ldap/'
+      path: '/login/ldap'
+      fullPath: '/login/ldap'
+      preLoaderRoute: typeof LoginLdapIndexImport
+      parentRoute: typeof rootRoute
+    }
+    '/login/select-organization/': {
+      id: '/login/select-organization/'
+      path: '/login/select-organization'
+      fullPath: '/login/select-organization'
+      preLoaderRoute: typeof LoginSelectOrganizationIndexImport
+      parentRoute: typeof rootRoute
+    }
+    '/login/sso/': {
+      id: '/login/sso/'
+      path: '/login/sso'
+      fullPath: '/login/sso'
+      preLoaderRoute: typeof LoginSsoIndexImport
+      parentRoute: typeof rootRoute
+    }
   }
 }
 
@@ -39,32 +124,84 @@ declare module '@tanstack/react-router' {
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginIndexRoute
+  '/login/provider/error': typeof LoginProviderErrorRoute
+  '/login/provider/success': typeof LoginProviderSuccessRoute
+  '/login/ldap': typeof LoginLdapIndexRoute
+  '/login/select-organization': typeof LoginSelectOrganizationIndexRoute
+  '/login/sso': typeof LoginSsoIndexRoute
 }
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginIndexRoute
+  '/login/provider/error': typeof LoginProviderErrorRoute
+  '/login/provider/success': typeof LoginProviderSuccessRoute
+  '/login/ldap': typeof LoginLdapIndexRoute
+  '/login/select-organization': typeof LoginSelectOrganizationIndexRoute
+  '/login/sso': typeof LoginSsoIndexRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
+  '/login/': typeof LoginIndexRoute
+  '/login/provider/error': typeof LoginProviderErrorRoute
+  '/login/provider/success': typeof LoginProviderSuccessRoute
+  '/login/ldap/': typeof LoginLdapIndexRoute
+  '/login/select-organization/': typeof LoginSelectOrganizationIndexRoute
+  '/login/sso/': typeof LoginSsoIndexRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/login/provider/error'
+    | '/login/provider/success'
+    | '/login/ldap'
+    | '/login/select-organization'
+    | '/login/sso'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/login'
+    | '/login/provider/error'
+    | '/login/provider/success'
+    | '/login/ldap'
+    | '/login/select-organization'
+    | '/login/sso'
+  id:
+    | '__root__'
+    | '/'
+    | '/login/'
+    | '/login/provider/error'
+    | '/login/provider/success'
+    | '/login/ldap/'
+    | '/login/select-organization/'
+    | '/login/sso/'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LoginIndexRoute: typeof LoginIndexRoute
+  LoginProviderErrorRoute: typeof LoginProviderErrorRoute
+  LoginProviderSuccessRoute: typeof LoginProviderSuccessRoute
+  LoginLdapIndexRoute: typeof LoginLdapIndexRoute
+  LoginSelectOrganizationIndexRoute: typeof LoginSelectOrganizationIndexRoute
+  LoginSsoIndexRoute: typeof LoginSsoIndexRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LoginIndexRoute: LoginIndexRoute,
+  LoginProviderErrorRoute: LoginProviderErrorRoute,
+  LoginProviderSuccessRoute: LoginProviderSuccessRoute,
+  LoginLdapIndexRoute: LoginLdapIndexRoute,
+  LoginSelectOrganizationIndexRoute: LoginSelectOrganizationIndexRoute,
+  LoginSsoIndexRoute: LoginSsoIndexRoute,
 }
 
 export const routeTree = rootRoute
@@ -77,11 +214,35 @@ export const routeTree = rootRoute
     "__root__": {
       "filePath": "__root.tsx",
       "children": [
-        "/"
+        "/",
+        "/login/",
+        "/login/provider/error",
+        "/login/provider/success",
+        "/login/ldap/",
+        "/login/select-organization/",
+        "/login/sso/"
       ]
     },
     "/": {
       "filePath": "index.tsx"
+    },
+    "/login/": {
+      "filePath": "login/index.tsx"
+    },
+    "/login/provider/error": {
+      "filePath": "login/provider/error.tsx"
+    },
+    "/login/provider/success": {
+      "filePath": "login/provider/success.tsx"
+    },
+    "/login/ldap/": {
+      "filePath": "login/ldap/index.tsx"
+    },
+    "/login/select-organization/": {
+      "filePath": "login/select-organization/index.tsx"
+    },
+    "/login/sso/": {
+      "filePath": "login/sso/index.tsx"
     }
   }
 }

@@ -1,4 +1,9 @@
-import { getAuthToken, setAuthToken, setMfaTempToken, setSignupTempToken } from "@app/reactQuery";
+import {
+  getAuthToken,
+  setAuthToken,
+  setMfaTempToken,
+  setSignupTempToken
+} from "@app/hooks/api/reactQuery";
 
 export const PROVIDER_AUTH_TOKEN_KEY = "infisical__provider-auth-token";
 
