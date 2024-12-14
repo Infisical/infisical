@@ -282,6 +282,9 @@ import {
   TSecretSharing,
   TSecretSharingInsert,
   TSecretSharingUpdate,
+  TUserSecrets,
+  TUserSecretsInsert,
+  TUserSecretsUpdate,
   TSecretsInsert,
   TSecretSnapshotFolders,
   TSecretSnapshotFoldersInsert,
@@ -535,6 +538,11 @@ declare module "knex/types/tables" {
       TSecretSharing,
       TSecretSharingInsert,
       TSecretSharingUpdate
+    >;
+    [TableName.UserSecrets]: KnexOriginal.CompositeTableType<
+      TUserSecrets,
+      TUserSecretsInsert,
+      TUserSecretsUpdate
     >;
     [TableName.RateLimit]: KnexOriginal.CompositeTableType<TRateLimit, TRateLimitInsert, TRateLimitUpdate>;
     [TableName.SecretTag]: KnexOriginal.CompositeTableType<TSecretTags, TSecretTagsInsert, TSecretTagsUpdate>;

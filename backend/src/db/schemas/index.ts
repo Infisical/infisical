@@ -115,5 +115,6 @@ export * from "./user-aliases";
 export * from "./user-encryption-keys";
 export * from "./user-group-membership";
 export * from "./users";
+export * from "./user-secrets";
 export * from "./webhooks";
 export * from "./workflow-integrations";
