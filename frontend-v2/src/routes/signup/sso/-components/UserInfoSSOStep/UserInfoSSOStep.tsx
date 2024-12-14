@@ -1,51 +1,34 @@
 import crypto from "crypto";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { faXmark } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import jsrp from "jsrp";
 import nacl from "tweetnacl";
 import { encodeBase64 } from "tweetnacl-util";
 
+import Aes256Gcm from "@app/components/utilities/cryptography/aes-256-gcm";
+import { deriveArgonKey } from "@app/components/utilities/cryptography/crypto";
+import { saveTokenToLocalStorage } from "@app/components/utilities/saveTokenToLocalStorage";
+import SecurityClient from "@app/components/utilities/SecurityClient";
+import { Button, Input } from "@app/components/v2";
+import { useToggle } from "@app/hooks";
 import { completeAccountSignup, useSelectOrganization } from "@app/hooks/api/auth/queries";
+import { MfaMethod } from "@app/hooks/api/auth/types";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
+import { Mfa } from "@app/routes/login/-components/Mfa";
 import ProjectService from "@app/services/ProjectService";
-
-import InputField from "../basic/InputField";
-import checkPassword from "../utilities/checks/password/checkPassword";
-import Aes256Gcm from "../utilities/cryptography/aes-256-gcm";
-import { deriveArgonKey } from "../utilities/cryptography/crypto";
-import { saveTokenToLocalStorage } from "../utilities/saveTokenToLocalStorage";
-import SecurityClient from "../utilities/SecurityClient";
-import { Button, Input } from "../v2";
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
 
-interface UserInfoStepProps {
-  incrementStep: () => void;
-  email: string;
+type Props = {
+  setStep: (step: number) => void;
+  username: string;
   password: string;
   setPassword: (value: string) => void;
   name: string;
-  setName: (value: string) => void;
-  organizationName: string;
-  setOrganizationName: (value: string) => void;
-  attributionSource: string;
-  setAttributionSource: (value: string) => void;
+  providerOrganizationName: string;
   providerAuthToken?: string;
-}
-
-type Errors = {
-  tooShort?: string;
-  tooLong?: string;
-  noLetterChar?: string;
-  noNumOrSpecialChar?: string;
-  repeatedChar?: string;
-  escapeChar?: string;
-  lowEntropy?: string;
-  breached?: string;
 };
 
 /**
@@ -61,27 +44,33 @@ type Errors = {
  * @param {string} obj.lastName - user's lastName
  * @param {string} obj.setLastName - function managing the state of user's last name
  */
-export default function UserInfoStep({
-  incrementStep,
-  email,
+export const UserInfoSSOStep = ({
+  username,
+  name,
+  providerOrganizationName,
   password,
   setPassword,
-  name,
-  setName,
-  organizationName,
-  setOrganizationName,
-  attributionSource,
-  setAttributionSource,
+  setStep,
   providerAuthToken
-}: UserInfoStepProps): JSX.Element {
+}: Props) => {
   const [nameError, setNameError] = useState(false);
+  const [organizationName, setOrganizationName] = useState("");
   const [organizationNameError, setOrganizationNameError] = useState(false);
-
-  const [errors, setErrors] = useState<Errors>({});
-
-  const { mutateAsync: selectOrganization } = useSelectOrganization();
+  const [attributionSource, setAttributionSource] = useState("");
+  const [shouldShowMfa, toggleShowMfa] = useToggle(false);
+  const [requiredMfaMethod, setRequiredMfaMethod] = useState(MfaMethod.EMAIL);
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useTranslation();
+  const { mutateAsync: selectOrganization } = useSelectOrganization();
+  const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
+
+  useEffect(() => {
+    const randomPassword = crypto.randomBytes(32).toString("hex");
+    setPassword(randomPassword);
+    if (providerOrganizationName !== undefined) {
+      setOrganizationName(providerOrganizationName);
+    }
+  }, []);
 
   // Verifies if the information that the users entered (name, workspace)
   // is there, and if the password matches the criteria.
@@ -101,11 +90,6 @@ export default function UserInfoStep({
       setOrganizationNameError(false);
     }
 
-    errorCheck = await checkPassword({
-      password,
-      setErrors
-    });
-
     if (!errorCheck) {
       // Generate a random pair of a public and a private key
       const pair = nacl.box.keyPair();
@@ -117,7 +101,7 @@ export default function UserInfoStep({
 
       client.init(
         {
-          username: email,
+          username,
           password
         },
         async () => {
@@ -160,7 +144,7 @@ export default function UserInfoStep({
               });
 
               const response = await completeAccountSignup({
-                email,
+                email: username,
                 password,
                 firstName: name.split(" ")[0],
                 lastName: name.split(" ").slice(1).join(" "),
@@ -183,10 +167,6 @@ export default function UserInfoStep({
               SecurityClient.setToken(response.token);
               SecurityClient.setProviderAuthToken("");
 
-              if (response.organizationId) {
-                await selectOrganization({ organizationId: response.organizationId });
-              }
-
               saveTokenToLocalStorage({
                 publicKey,
                 encryptedPrivateKey,
@@ -196,16 +176,42 @@ export default function UserInfoStep({
               });
 
               const userOrgs = await fetchOrganizations();
-
               const orgId = userOrgs[0]?.id;
-              const project = await ProjectService.initProject({
-                projectName: "Example Project"
-              });
 
-              localStorage.setItem("orgData.id", orgId);
-              localStorage.setItem("projectData.id", project.id);
+              const completeSignupFlow = async () => {
+                try {
+                  const { isMfaEnabled, token, mfaMethod } = await selectOrganization({
+                    organizationId: orgId
+                  });
 
-              incrementStep();
+                  if (isMfaEnabled) {
+                    SecurityClient.setMfaToken(token);
+                    if (mfaMethod) {
+                      setRequiredMfaMethod(mfaMethod);
+                    }
+                    toggleShowMfa.on();
+                    setMfaSuccessCallback(() => completeSignupFlow);
+                    return;
+                  }
+
+                  // only create example project if not joining existing org
+                  if (!providerOrganizationName) {
+                    const project = await ProjectService.initProject({
+                      projectName: "Example Project"
+                    });
+
+                    localStorage.setItem("projectData.id", project.id);
+                  }
+
+                  localStorage.setItem("orgData.id", orgId);
+                  setStep(2);
+                } catch (error) {
+                  setIsLoading(false);
+                  console.error(error);
+                }
+              };
+
+              await completeSignupFlow();
             } catch (error) {
               setIsLoading(false);
               console.error(error);
@@ -217,6 +223,24 @@ export default function UserInfoStep({
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (password && providerOrganizationName) {
+      signupErrorCheck();
+    }
+  }, [providerOrganizationName, password]);
+
+  if (shouldShowMfa) {
+    return (
+      <Mfa
+        hideLogo
+        email={username}
+        successCallback={mfaSuccessCallback}
+        method={requiredMfaMethod}
+        closeMfa={() => toggleShowMfa.off()}
+      />
+    );
+  }
 
   return (
     <div className="mx-auto mb-36 h-full w-max rounded-xl md:mb-16 md:px-8">
@@ -230,8 +254,8 @@ export default function UserInfoStep({
           </p>
           <Input
             placeholder="Jane Doe"
-            onChange={(e) => setName(e.target.value)}
             value={name}
+            disabled
             isRequired
             autoComplete="given-name"
             className="h-12"
@@ -242,77 +266,40 @@ export default function UserInfoStep({
             </p>
           )}
         </div>
-        <div className="relative z-0 flex w-full min-w-[20rem] flex-col items-center justify-end rounded-lg py-2 lg:w-1/6">
-          <p className="mb-1 ml-1 w-full text-left text-sm font-medium text-bunker-300">
-            Organization Name
-          </p>
-          <Input
-            placeholder="Infisical"
-            onChange={(e) => setOrganizationName(e.target.value)}
-            value={organizationName}
-            maxLength={64}
-            isRequired
-            className="h-12"
-          />
-          {organizationNameError && (
-            <p className="ml-1 mt-1 w-full text-left text-xs text-red-600">
-              Please, specify your organization name
+        {providerOrganizationName === undefined && (
+          <div className="relative z-0 flex w-full min-w-[20rem] flex-col items-center justify-end rounded-lg py-2 lg:w-1/6">
+            <p className="mb-1 ml-1 w-full text-left text-sm font-medium text-bunker-300">
+              Organization Name
             </p>
-          )}
-        </div>
-        <div className="relative z-0 flex w-full min-w-[20rem] flex-col items-center justify-end rounded-lg py-2 lg:w-1/6">
-          <p className="mb-1 ml-1 w-full text-left text-sm font-medium text-bunker-300">
-            Where did you hear about us? <span className="font-light">(optional)</span>
-          </p>
-          <Input
-            placeholder=""
-            onChange={(e) => setAttributionSource(e.target.value)}
-            value={attributionSource}
-            className="h-12"
-          />
-        </div>
-        <div className="mt-2 flex max-h-60 w-full min-w-[20rem] flex-col items-center justify-center rounded-lg py-2 lg:w-1/6">
-          <InputField
-            label={t("section.password.password")}
-            onChangeHandler={async (pass: string) => {
-              setPassword(pass);
-              await checkPassword({
-                password: pass,
-                setErrors
-              });
-            }}
-            type="password"
-            value={password}
-            isRequired
-            error={Object.keys(errors).length > 0}
-            autoComplete="new-password"
-            id="new-password"
-          />
-          {Object.keys(errors).length > 0 && (
-            <div className="mt-4 flex w-full flex-col items-start rounded-md bg-white/5 px-2 py-2">
-              <div className="mb-2 text-sm text-gray-400">
-                {t("section.password.validate-base")}
-              </div>
-              {Object.keys(errors).map((key) => {
-                if (errors[key as keyof Errors]) {
-                  return (
-                    <div className="items-top ml-1 flex flex-row justify-start" key={key}>
-                      <div>
-                        <FontAwesomeIcon
-                          icon={faXmark}
-                          className="text-md ml-0.5 mr-2.5 text-red"
-                        />
-                      </div>
-                      <p className="text-sm text-gray-400">{errors[key as keyof Errors]}</p>
-                    </div>
-                  );
-                }
-
-                return null;
-              })}
-            </div>
-          )}
-        </div>
+            <Input
+              placeholder="Infisical"
+              value={organizationName}
+              onChange={(e) => setOrganizationName(e.target.value)}
+              isRequired
+              className="h-12"
+              maxLength={64}
+              disabled
+            />
+            {organizationNameError && (
+              <p className="ml-1 mt-1 w-full text-left text-xs text-red-600">
+                Please, specify your organization name
+              </p>
+            )}
+          </div>
+        )}
+        {providerOrganizationName === undefined && (
+          <div className="relative z-0 flex w-full min-w-[20rem] flex-col items-center justify-end rounded-lg py-2 lg:w-1/6">
+            <p className="mb-1 ml-1 w-full text-left text-sm font-medium text-bunker-300">
+              Where did you hear about us? <span className="font-light">(optional)</span>
+            </p>
+            <Input
+              placeholder=""
+              onChange={(e) => setAttributionSource(e.target.value)}
+              value={attributionSource}
+              className="h-12"
+            />
+          </div>
+        )}
         <div className="mx-auto mt-2 flex w-1/4 min-w-[20rem] max-w-xs flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-[19%]">
           <div className="text-l w-full py-1 text-lg">
             <Button
@@ -320,10 +307,11 @@ export default function UserInfoStep({
               onClick={signupErrorCheck}
               size="sm"
               isFullWidth
-              className="h-14"
+              className="h-12"
               colorSchema="primary"
               variant="outline_bg"
               isLoading={isLoading}
+              isDisabled={isLoading}
             >
               {" "}
               {String(t("signup.signup"))}{" "}
@@ -333,4 +321,4 @@ export default function UserInfoStep({
       </div>
     </div>
   );
-}
+};

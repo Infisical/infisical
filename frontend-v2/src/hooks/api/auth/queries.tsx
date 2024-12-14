@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { apiRequest } from "@app/config/request";
-import { setAuthToken } from "@app/hooks/api/reactQuery";
+import { setAuthToken } from "../reactQuery";
 
 import { organizationKeys } from "../organization/queries";
 import { workspaceKeys } from "../workspace";
@@ -148,7 +148,7 @@ export const useCompleteAccountSignup = () => {
 };
 
 export const useSendMfaToken = () => {
-  return useMutation<object, object, SendMfaTokenDTO>({
+  return useMutation<{}, {}, SendMfaTokenDTO>({
     mutationFn: async ({ email }) => {
       const { data } = await apiRequest.post("/api/v2/auth/mfa/send", { email });
       return data;
@@ -175,7 +175,7 @@ export const verifyMfaToken = async ({
 };
 
 export const useVerifyMfaToken = () => {
-  return useMutation<VerifyMfaTokenRes, object, VerifyMfaTokenDTO>({
+  return useMutation<VerifyMfaTokenRes, {}, VerifyMfaTokenDTO>({
     mutationFn: async ({ email, mfaCode, mfaMethod }) => {
       return verifyMfaToken({
         email,

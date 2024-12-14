@@ -3,11 +3,11 @@ import { AxiosError } from "axios";
 
 import { apiRequest } from "@app/config/request";
 import { SessionStorageKeys } from "@app/const";
-import { setAuthToken } from "@app/hooks/api/reactQuery";
 
 import { APIKeyDataV2 } from "../apiKeys/types";
 import { MfaMethod } from "../auth/types";
 import { TGroupWithProjectMemberships } from "../groups/types";
+import { setAuthToken } from "../reactQuery";
 import { workspaceKeys } from "../workspace";
 import { userKeys } from "./query-keys";
 import {
@@ -80,7 +80,7 @@ export const fetchUserProjectFavorites = async (orgId: string) => {
 export const useRenameUser = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<object, object, RenameUserDTO>({
+  return useMutation<{}, {}, RenameUserDTO>({
     mutationFn: ({ newName }) =>
       apiRequest.patch("/api/v2/users/me/name", {
         firstName: newName?.split(" ")[0],
@@ -152,7 +152,7 @@ export const useAddUsersToOrg = () => {
     };
   };
 
-  return useMutation<Response, object, AddUserToOrgDTO>({
+  return useMutation<Response, {}, AddUserToOrgDTO>({
     mutationFn: (dto) => {
       return apiRequest.post("/api/v1/invite-org/signup", dto);
     },
@@ -207,7 +207,7 @@ export const useGetOrgMembershipProjectMemberships = (
 export const useDeleteOrgMembership = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<object, object, DeletOrgMembershipDTO>({
+  return useMutation<{}, {}, DeletOrgMembershipDTO>({
     mutationFn: ({ membershipId, orgId }) => {
       return apiRequest.delete(`/api/v2/organizations/${orgId}/memberships/${membershipId}`);
     },
@@ -220,7 +220,7 @@ export const useDeleteOrgMembership = () => {
 export const useDeactivateOrgMembership = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<object, object, DeletOrgMembershipDTO>({
+  return useMutation<{}, {}, DeletOrgMembershipDTO>({
     mutationFn: ({ membershipId, orgId }) => {
       return apiRequest.post(
         `/api/v2/organizations/${orgId}/memberships/${membershipId}/deactivate`
@@ -236,7 +236,7 @@ export const useDeactivateOrgMembership = () => {
 export const useUpdateOrgMembership = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<object, object, UpdateOrgMembershipDTO>({
+  return useMutation<{}, {}, UpdateOrgMembershipDTO>({
     mutationFn: ({ organizationId, membershipId, role, isActive, metadata }) => {
       return apiRequest.patch(
         `/api/v2/organizations/${organizationId}/memberships/${membershipId}`,
@@ -261,7 +261,7 @@ export const useUpdateOrgMembership = () => {
 
 export const useRegisterUserAction = () => {
   const queryClient = useQueryClient();
-  return useMutation<object, object, string>({
+  return useMutation<{}, {}, string>({
     mutationFn: (action) => apiRequest.post("/api/v1/user-action", { action }),
     onSuccess: () => {
       queryClient.invalidateQueries(userKeys.userAction);
