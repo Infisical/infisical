@@ -77,6 +77,48 @@ export const registerUserSecretsRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "PATCH",
+    url: "/:userSecretId",
+    config: {
+      rateLimit: publicEndpointLimit
+    },
+    schema: {
+      params: z.object({
+        userSecretId: z.string()
+      }),
+      body: z.object({
+        title: z.string().optional(),
+        content: z.string().optional(),
+        username: z.string().optional(),
+        password: z.string().optional(),
+        cardNumber: z.string().optional(),
+        expiryDate: z.string().optional(),
+        cvv: z.string().optional()
+      }),
+      response: {
+        200: z.object({
+          id: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { userSecretId } = req.params;
+      const userSecret = await req.server.services.userSecrets.updateUserSecretById({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        orgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        userSecretId,
+        ...req.body
+      });
+
+      return { id: userSecret.id };
+    }
+  });
+
+  server.route({
     method: "DELETE",
     url: "/:userSecretId",
     config: {
