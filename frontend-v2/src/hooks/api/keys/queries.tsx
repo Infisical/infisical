@@ -31,7 +31,7 @@ export const uploadWsKey = async ({ workspaceId, userId, encryptedKey, nonce }: 
 };
 
 export const useUploadWsKey = () =>
-  useMutation<{}, {}, UploadWsKeyDTO>({
+  useMutation<object, object, UploadWsKeyDTO>({
     mutationFn: async ({ encryptedKey, nonce, userId, workspaceId }) => {
       return uploadWsKey({
         workspaceId,

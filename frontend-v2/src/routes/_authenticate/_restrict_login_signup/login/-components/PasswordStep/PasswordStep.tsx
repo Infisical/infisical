@@ -6,6 +6,7 @@ import axios from "axios";
 import { addSeconds, formatISO } from "date-fns";
 import { jwtDecode } from "jwt-decode";
 
+import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
 import attemptCliLogin from "@app/components/utilities/attemptCliLogin";
 import attemptLogin from "@app/components/utilities/attemptLogin";
@@ -20,7 +21,6 @@ import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { fetchMyPrivateKey } from "@app/hooks/api/users/queries";
 
 import { navigateUserToOrg, useNavigateToSelectOrganization } from "../Login.utils";
-import { Mfa } from "@app/components/auth/Mfa";
 
 type Props = {
   providerAuthToken: string;

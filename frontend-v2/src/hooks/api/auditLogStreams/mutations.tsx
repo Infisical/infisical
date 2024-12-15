@@ -13,7 +13,7 @@ import {
 export const useCreateAuditLogStream = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{ auditLogStream: TAuditLogStream }, {}, TCreateAuditLogStreamDTO>({
+  return useMutation<{ auditLogStream: TAuditLogStream }, object, TCreateAuditLogStreamDTO>({
     mutationFn: async (dto) => {
       const { data } = await apiRequest.post<{ auditLogStream: TAuditLogStream }>(
         "/api/v1/audit-log-streams",
@@ -30,7 +30,7 @@ export const useCreateAuditLogStream = () => {
 export const useUpdateAuditLogStream = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{ auditLogStream: TAuditLogStream }, {}, TUpdateAuditLogStreamDTO>({
+  return useMutation<{ auditLogStream: TAuditLogStream }, object, TUpdateAuditLogStreamDTO>({
     mutationFn: async (dto) => {
       const { data } = await apiRequest.patch<{ auditLogStream: TAuditLogStream }>(
         `/api/v1/audit-log-streams/${dto.id}`,
@@ -47,7 +47,7 @@ export const useUpdateAuditLogStream = () => {
 export const useDeleteAuditLogStream = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{ auditLogStream: TAuditLogStream }, {}, TDeleteAuditLogStreamDTO>({
+  return useMutation<{ auditLogStream: TAuditLogStream }, object, TDeleteAuditLogStreamDTO>({
     mutationFn: async (dto) => {
       const { data } = await apiRequest.delete<{ auditLogStream: TAuditLogStream }>(
         `/api/v1/audit-log-streams/${dto.id}`

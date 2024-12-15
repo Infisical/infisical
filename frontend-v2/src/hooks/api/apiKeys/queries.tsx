@@ -13,7 +13,7 @@ import {
 
 export const useCreateAPIKeyV2 = () => {
   const queryClient = useQueryClient();
-  return useMutation<CreateServiceTokenDataV3Res, {}, CreateAPIKeyDataV2DTO>({
+  return useMutation<CreateServiceTokenDataV3Res, object, CreateAPIKeyDataV2DTO>({
     mutationFn: async ({ name }) => {
       const { data } = await apiRequest.post("/api/v3/api-key", {
         name
@@ -29,7 +29,7 @@ export const useCreateAPIKeyV2 = () => {
 
 export const useUpdateAPIKeyV2 = () => {
   const queryClient = useQueryClient();
-  return useMutation<APIKeyDataV2, {}, UpdateAPIKeyDataV2DTO>({
+  return useMutation<APIKeyDataV2, object, UpdateAPIKeyDataV2DTO>({
     mutationFn: async ({ apiKeyDataId, name }) => {
       const {
         data: { apiKeyData }
@@ -46,7 +46,7 @@ export const useUpdateAPIKeyV2 = () => {
 
 export const useDeleteAPIKeyV2 = () => {
   const queryClient = useQueryClient();
-  return useMutation<APIKeyDataV2, {}, DeleteAPIKeyDataV2DTO>({
+  return useMutation<APIKeyDataV2, object, DeleteAPIKeyDataV2DTO>({
     mutationFn: async ({ apiKeyDataId }) => {
       const {
         data: { apiKeyData }

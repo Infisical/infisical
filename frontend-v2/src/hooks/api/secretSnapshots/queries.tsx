@@ -142,7 +142,7 @@ export const useGetWsSnapshotCount = ({
 export const usePerformSecretRollback = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TSecretRollbackDTO>({
+  return useMutation<object, object, TSecretRollbackDTO>({
     mutationFn: async ({ snapshotId }) => {
       const { data } = await apiRequest.post(`/api/v1/secret-snapshot/${snapshotId}/rollback`);
       return data;

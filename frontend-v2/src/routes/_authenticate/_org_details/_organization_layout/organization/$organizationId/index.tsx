@@ -1,15 +1,11 @@
-import {
-  createFileRoute,
-  useRouteContext,
-  useRouter,
-} from '@tanstack/react-router'
+import { createFileRoute, useRouteContext, useRouter } from "@tanstack/react-router";
 
 function RouteComponent() {
   const user = useRouteContext({
-    from: '/_authenticate',
-    select: (el) => el.user,
-  })
-  const router = useRouter()
+    from: "/_authenticate",
+    select: (el) => el.user
+  });
+  const router = useRouter();
 
   return (
     <div>
@@ -19,20 +15,20 @@ function RouteComponent() {
         onClick={() => {
           router.invalidate({
             filter: (d) => {
-              console.log(d)
-              return true
-            },
-          })
+              console.log(d);
+              return true;
+            }
+          });
         }}
       >
         Click
       </button>
     </div>
-  )
+  );
 }
 
 export const Route = createFileRoute(
-  '/_authenticate/_org_details/_organization_layout/organization/$organizationId/',
+  "/_authenticate/_org_details/_organization_layout/organization/$organizationId/"
 )({
-  component: RouteComponent,
-})
+  component: RouteComponent
+});

@@ -15,7 +15,7 @@ import {
 export const useCreateAccessApprovalPolicy = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TCreateAccessPolicyDTO>({
+  return useMutation<object, object, TCreateAccessPolicyDTO>({
     mutationFn: async ({
       environment,
       projectSlug,
@@ -45,7 +45,7 @@ export const useCreateAccessApprovalPolicy = () => {
 export const useUpdateAccessApprovalPolicy = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TUpdateAccessPolicyDTO>({
+  return useMutation<object, object, TUpdateAccessPolicyDTO>({
     mutationFn: async ({ id, approvers, approvals, name, secretPath, enforcementLevel }) => {
       const { data } = await apiRequest.patch(`/api/v1/access-approvals/policies/${id}`, {
         approvals,
@@ -65,7 +65,7 @@ export const useUpdateAccessApprovalPolicy = () => {
 export const useDeleteAccessApprovalPolicy = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TDeleteSecretPolicyDTO>({
+  return useMutation<object, object, TDeleteSecretPolicyDTO>({
     mutationFn: async ({ id }) => {
       const { data } = await apiRequest.delete(`/api/v1/access-approvals/policies/${id}`);
       return data;
@@ -78,7 +78,7 @@ export const useDeleteAccessApprovalPolicy = () => {
 
 export const useCreateAccessRequest = () => {
   const queryClient = useQueryClient();
-  return useMutation<{}, {}, TCreateAccessRequestDTO>({
+  return useMutation<object, object, TCreateAccessRequestDTO>({
     mutationFn: async ({ projectSlug, ...request }) => {
       const { data } = await apiRequest.post<TAccessApproval>(
         "/api/v1/access-approvals/requests",
@@ -104,8 +104,8 @@ export const useCreateAccessRequest = () => {
 export const useReviewAccessRequest = () => {
   const queryClient = useQueryClient();
   return useMutation<
-    {},
-    {},
+    object,
+    object,
     {
       requestId: string;
       status: "approved" | "rejected";

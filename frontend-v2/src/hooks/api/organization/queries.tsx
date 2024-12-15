@@ -100,7 +100,7 @@ export const useCreateOrg = (options: { invalidate: boolean } = { invalidate: tr
 
 export const useUpdateOrg = () => {
   const queryClient = useQueryClient();
-  return useMutation<{}, {}, UpdateOrgDTO>({
+  return useMutation<object, object, UpdateOrgDTO>({
     mutationFn: ({
       name,
       authEnforced,

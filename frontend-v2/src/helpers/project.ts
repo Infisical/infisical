@@ -1,5 +1,6 @@
 import { apiRequest } from "@app/config/request";
 import { createWorkspace } from "@app/hooks/api/workspace/queries";
+import { ProjectType, Workspace } from "@app/hooks/api/workspace/types";
 
 const secretsToBeAdded = [
   {
@@ -36,12 +37,13 @@ const secretsToBeAdded = [
  * Create and initialize a new project in organization with id [organizationId]
  * Note: current user should be a member of the organization
  */
-const initProjectHelper = async ({ projectName }: { projectName: string }) => {
+export const initProjectHelper = async ({ projectName }: { projectName: string }) => {
   // create new project
   const {
     data: { project }
   } = await createWorkspace({
-    projectName
+    projectName,
+    type: ProjectType.SecretManager
   });
 
   try {
@@ -59,4 +61,22 @@ const initProjectHelper = async ({ projectName }: { projectName: string }) => {
   return project;
 };
 
-export { initProjectHelper };
+export const getProjectHomePage = (workspace: Workspace) => {
+  if (workspace.type === ProjectType.SecretManager) {
+    return `/${workspace.type}/${workspace.id}/secrets/overview`;
+  }
+  if (workspace.type === ProjectType.CertificateManager) {
+    return `/${workspace.type}/${workspace.id}/certificates`;
+  }
+
+  return `/${workspace.type}/${workspace.id}/kms`;
+};
+
+export const getProjectTitle = (type: ProjectType) => {
+  const titleConvert = {
+    [ProjectType.SecretManager]: "Secret Management",
+    [ProjectType.KMS]: "Key Management",
+    [ProjectType.CertificateManager]: "Cert Management"
+  };
+  return titleConvert[type];
+};

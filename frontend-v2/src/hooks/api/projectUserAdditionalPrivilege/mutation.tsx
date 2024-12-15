@@ -13,7 +13,7 @@ import {
 export const useCreateProjectUserAdditionalPrivilege = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{ privilege: TProjectUserPrivilege }, {}, TCreateProjectUserPrivilegeDTO>({
+  return useMutation<{ privilege: TProjectUserPrivilege }, object, TCreateProjectUserPrivilegeDTO>({
     mutationFn: async (dto) => {
       const { data } = await apiRequest.post("/api/v1/user-project-additional-privilege", dto);
       return data.privilege;
@@ -27,7 +27,7 @@ export const useCreateProjectUserAdditionalPrivilege = () => {
 export const useUpdateProjectUserAdditionalPrivilege = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{ privilege: TProjectUserPrivilege }, {}, TUpdateProjectUserPrivlegeDTO>({
+  return useMutation<{ privilege: TProjectUserPrivilege }, object, TUpdateProjectUserPrivlegeDTO>({
     mutationFn: async (dto) => {
       const { data } = await apiRequest.patch(
         `/api/v1/user-project-additional-privilege/${dto.privilegeId}`,
@@ -44,7 +44,7 @@ export const useUpdateProjectUserAdditionalPrivilege = () => {
 export const useDeleteProjectUserAdditionalPrivilege = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{ privilege: TProjectUserPrivilege }, {}, TDeleteProjectUserPrivilegeDTO>({
+  return useMutation<{ privilege: TProjectUserPrivilege }, object, TDeleteProjectUserPrivilegeDTO>({
     mutationFn: async (dto) => {
       const { data } = await apiRequest.delete(
         `/api/v1/user-project-additional-privilege/${dto.privilegeId}`

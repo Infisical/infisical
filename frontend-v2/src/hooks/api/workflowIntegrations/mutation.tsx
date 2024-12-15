@@ -13,7 +13,7 @@ import {
 export const useUpdateSlackIntegration = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TUpdateSlackIntegrationDTO>({
+  return useMutation<object, object, TUpdateSlackIntegrationDTO>({
     mutationFn: async (dto) => {
       const { data } = await apiRequest.patch(`/api/v1/workflow-integrations/slack/${dto.id}`, dto);
 
@@ -29,7 +29,7 @@ export const useUpdateSlackIntegration = () => {
 export const useDeleteSlackIntegration = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TDeleteSlackIntegrationDTO>({
+  return useMutation<object, object, TDeleteSlackIntegrationDTO>({
     mutationFn: async (dto) => {
       const { data } = await apiRequest.delete(`/api/v1/workflow-integrations/slack/${dto.id}`);
 

@@ -8,6 +8,7 @@ import axios from "axios";
 import { addSeconds, formatISO } from "date-fns";
 import { jwtDecode } from "jwt-decode";
 
+import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
 import { IsCliLoginSuccessful } from "@app/components/utilities/attemptCliLogin";
 import SecurityClient from "@app/components/utilities/SecurityClient";
@@ -26,7 +27,6 @@ import { Organization } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 
 import { navigateUserToOrg } from "../-components/Login.utils";
-import { Mfa } from "../-components/Mfa";
 
 const LoadingScreen = () => {
   return (

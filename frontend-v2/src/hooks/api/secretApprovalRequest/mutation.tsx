@@ -12,7 +12,7 @@ import {
 export const useUpdateSecretApprovalReviewStatus = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TUpdateSecretApprovalReviewStatusDTO>({
+  return useMutation<object, object, TUpdateSecretApprovalReviewStatusDTO>({
     mutationFn: async ({ id, status }) => {
       const { data } = await apiRequest.post(`/api/v1/secret-approval-requests/${id}/review`, {
         status
@@ -28,7 +28,7 @@ export const useUpdateSecretApprovalReviewStatus = () => {
 export const useUpdateSecretApprovalRequestStatus = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TUpdateSecretApprovalRequestStatusDTO>({
+  return useMutation<object, object, TUpdateSecretApprovalRequestStatusDTO>({
     mutationFn: async ({ id, status }) => {
       const { data } = await apiRequest.post(`/api/v1/secret-approval-requests/${id}/status`, {
         status
@@ -45,7 +45,7 @@ export const useUpdateSecretApprovalRequestStatus = () => {
 export const usePerformSecretApprovalRequestMerge = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TPerformSecretApprovalRequestMerge>({
+  return useMutation<object, object, TPerformSecretApprovalRequestMerge>({
     mutationFn: async ({ id, bypassReason }) => {
       const { data } = await apiRequest.post(`/api/v1/secret-approval-requests/${id}/merge`, {
         bypassReason

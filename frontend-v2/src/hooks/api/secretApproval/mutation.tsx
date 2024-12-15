@@ -8,7 +8,7 @@ import { TCreateSecretPolicyDTO, TDeleteSecretPolicyDTO, TUpdateSecretPolicyDTO 
 export const useCreateSecretApprovalPolicy = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TCreateSecretPolicyDTO>({
+  return useMutation<object, object, TCreateSecretPolicyDTO>({
     mutationFn: async ({
       environment,
       workspaceId,
@@ -38,7 +38,7 @@ export const useCreateSecretApprovalPolicy = () => {
 export const useUpdateSecretApprovalPolicy = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TUpdateSecretPolicyDTO>({
+  return useMutation<object, object, TUpdateSecretPolicyDTO>({
     mutationFn: async ({ id, approvers, approvals, secretPath, name, enforcementLevel }) => {
       const { data } = await apiRequest.patch(`/api/v1/secret-approvals/${id}`, {
         approvals,
@@ -58,7 +58,7 @@ export const useUpdateSecretApprovalPolicy = () => {
 export const useDeleteSecretApprovalPolicy = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TDeleteSecretPolicyDTO>({
+  return useMutation<object, object, TDeleteSecretPolicyDTO>({
     mutationFn: async ({ id }) => {
       const { data } = await apiRequest.delete(`/api/v1/secret-approvals/${id}`);
       return data;

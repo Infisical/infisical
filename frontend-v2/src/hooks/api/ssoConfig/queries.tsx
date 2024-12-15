@@ -17,7 +17,7 @@ export const useGetSSOConfig = (organizationId: string) => {
         );
 
         return data;
-      } catch (err) {
+      } catch {
         return null;
       }
     },

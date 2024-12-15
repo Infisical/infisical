@@ -13,7 +13,7 @@ import { AddUserToWsDTOE2EE, AddUserToWsDTONonE2EE } from "./types";
 export const useAddUserToWsE2EE = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, AddUserToWsDTOE2EE>({
+  return useMutation<object, object, AddUserToWsDTOE2EE>({
     mutationFn: async ({ workspaceId, members, decryptKey, userPrivateKey }) => {
       // assymmetrically decrypt symmetric key with local private key
       const key = decryptAssymmetric({
@@ -50,7 +50,7 @@ export const useAddUserToWsE2EE = () => {
 export const useAddUserToWsNonE2EE = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, AddUserToWsDTONonE2EE>({
+  return useMutation<object, object, AddUserToWsDTONonE2EE>({
     mutationFn: async ({ projectId, usernames, roleSlugs }) => {
       const { data } = await apiRequest.post(`/api/v2/workspace/${projectId}/memberships`, {
         usernames,

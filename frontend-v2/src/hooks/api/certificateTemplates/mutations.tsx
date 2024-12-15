@@ -16,7 +16,7 @@ import {
 
 export const useCreateCertTemplate = () => {
   const queryClient = useQueryClient();
-  return useMutation<TCertificateTemplate, {}, TCreateCertificateTemplateDTO>({
+  return useMutation<TCertificateTemplate, object, TCreateCertificateTemplateDTO>({
     mutationFn: async (data) => {
       const { data: certificateTemplate } = await apiRequest.post<TCertificateTemplate>(
         "/api/v1/pki/certificate-templates",
@@ -33,7 +33,7 @@ export const useCreateCertTemplate = () => {
 
 export const useUpdateCertTemplate = () => {
   const queryClient = useQueryClient();
-  return useMutation<TCertificateTemplate, {}, TUpdateCertificateTemplateDTO>({
+  return useMutation<TCertificateTemplate, object, TUpdateCertificateTemplateDTO>({
     mutationFn: async (data) => {
       const { data: certificateTemplate } = await apiRequest.patch<TCertificateTemplate>(
         `/api/v1/pki/certificate-templates/${data.id}`,
@@ -52,7 +52,7 @@ export const useUpdateCertTemplate = () => {
 
 export const useDeleteCertTemplate = () => {
   const queryClient = useQueryClient();
-  return useMutation<TCertificateTemplate, {}, TDeleteCertificateTemplateDTO>({
+  return useMutation<TCertificateTemplate, object, TDeleteCertificateTemplateDTO>({
     mutationFn: async (data) => {
       const { data: certificateTemplate } = await apiRequest.delete<TCertificateTemplate>(
         `/api/v1/pki/certificate-templates/${data.id}`
@@ -69,7 +69,7 @@ export const useDeleteCertTemplate = () => {
 
 export const useCreateEstConfig = () => {
   const queryClient = useQueryClient();
-  return useMutation<{}, {}, TCreateEstConfigDTO>({
+  return useMutation<object, object, TCreateEstConfigDTO>({
     mutationFn: async (body) => {
       const { data } = await apiRequest.post(
         `/api/v1/pki/certificate-templates/${body.certificateTemplateId}/est-config`,
@@ -85,7 +85,7 @@ export const useCreateEstConfig = () => {
 
 export const useUpdateEstConfig = () => {
   const queryClient = useQueryClient();
-  return useMutation<{}, {}, TUpdateEstConfigDTO>({
+  return useMutation<object, object, TUpdateEstConfigDTO>({
     mutationFn: async (body) => {
       const { data } = await apiRequest.patch(
         `/api/v1/pki/certificate-templates/${body.certificateTemplateId}/est-config`,

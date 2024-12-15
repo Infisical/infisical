@@ -1,10 +1,10 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
-import { authKeys, fetchAuthToken } from "@app/hooks/api/auth/queries";
 import { userKeys } from "@app/hooks/api";
-import { fetchUserDetails } from "@app/hooks/api/users/queries";
+import { authKeys, fetchAuthToken } from "@app/hooks/api/auth/queries";
 import { setAuthToken } from "@app/hooks/api/reactQuery";
+import { fetchUserDetails } from "@app/hooks/api/users/queries";
 
 export const Route = createFileRoute("/_authenticate")({
   beforeLoad: async ({ context, location }) => {
