@@ -63,7 +63,8 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
     schema: {
       response: {
         200: z.object({
-          token: z.string()
+          token: z.string(),
+          organizationId: z.string().optional()
         })
       }
     },
@@ -115,7 +116,7 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
         { expiresIn: appCfg.JWT_AUTH_LIFETIME }
       );
 
-      return { token };
+      return { token, organizationId: decodedToken.organizationId };
     }
   });
 };
