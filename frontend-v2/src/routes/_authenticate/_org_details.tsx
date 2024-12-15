@@ -1,6 +1,7 @@
+import { createFileRoute } from "@tanstack/react-router";
+
 import { fetchOrganizationById, organizationKeys } from "@app/hooks/api/organization/queries";
 import { fetchOrgSubscription, subscriptionQueryKeys } from "@app/hooks/api/subscriptions/queries";
-import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_authenticate/_org_details")({
   beforeLoad: async ({ context }) => {

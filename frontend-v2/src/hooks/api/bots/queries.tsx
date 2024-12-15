@@ -23,7 +23,7 @@ export const useGetWorkspaceBot = (workspaceId: string) =>
 export const useUpdateBotActiveStatus = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TSetBotActiveStatusDto>({
+  return useMutation<object, object, TSetBotActiveStatusDto>({
     mutationFn: ({ botId, isActive, botKey }) => {
       return apiRequest.patch(`/api/v1/bot/${botId}/active`, {
         isActive,

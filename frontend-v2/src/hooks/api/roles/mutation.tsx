@@ -18,7 +18,7 @@ import {
 export const useCreateProjectRole = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<TProjectRole, {}, TCreateProjectRoleDTO>({
+  return useMutation<TProjectRole, object, TCreateProjectRoleDTO>({
     mutationFn: async ({ projectId, ...dto }: TCreateProjectRoleDTO) => {
       const {
         data: { role }
@@ -34,7 +34,7 @@ export const useCreateProjectRole = () => {
 export const useUpdateProjectRole = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<TProjectRole, {}, TUpdateProjectRoleDTO>({
+  return useMutation<TProjectRole, object, TUpdateProjectRoleDTO>({
     mutationFn: async ({ id, projectId, ...dto }: TUpdateProjectRoleDTO) => {
       const {
         data: { role }
@@ -52,7 +52,7 @@ export const useUpdateProjectRole = () => {
 
 export const useDeleteProjectRole = () => {
   const queryClient = useQueryClient();
-  return useMutation<TProjectRole, {}, TDeleteProjectRoleDTO>({
+  return useMutation<TProjectRole, object, TDeleteProjectRoleDTO>({
     mutationFn: async ({ projectId, id }: TDeleteProjectRoleDTO) => {
       const {
         data: { role }
@@ -68,7 +68,7 @@ export const useDeleteProjectRole = () => {
 export const useCreateOrgRole = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<TOrgRole, {}, TCreateOrgRoleDTO>({
+  return useMutation<TOrgRole, object, TCreateOrgRoleDTO>({
     mutationFn: async ({ orgId, permissions, ...dto }: TCreateOrgRoleDTO) => {
       const {
         data: { role }
@@ -88,7 +88,7 @@ export const useCreateOrgRole = () => {
 export const useUpdateOrgRole = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<TOrgRole, {}, TUpdateOrgRoleDTO>({
+  return useMutation<TOrgRole, object, TUpdateOrgRoleDTO>({
     mutationFn: async ({ id, orgId, permissions, ...dto }: TUpdateOrgRoleDTO) => {
       const {
         data: { role }
@@ -109,7 +109,7 @@ export const useUpdateOrgRole = () => {
 export const useDeleteOrgRole = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<TOrgRole, {}, TDeleteOrgRoleDTO>({
+  return useMutation<TOrgRole, object, TDeleteOrgRoleDTO>({
     mutationFn: async ({ orgId, id }: TDeleteOrgRoleDTO) => {
       const {
         data: { role }

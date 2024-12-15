@@ -7,7 +7,7 @@ import { TCertificate, TDeleteCertDTO, TRevokeCertDTO } from "./types";
 
 export const useDeleteCert = () => {
   const queryClient = useQueryClient();
-  return useMutation<TCertificate, {}, TDeleteCertDTO>({
+  return useMutation<TCertificate, object, TDeleteCertDTO>({
     mutationFn: async ({ serialNumber }) => {
       const {
         data: { certificate }
@@ -24,7 +24,7 @@ export const useDeleteCert = () => {
 
 export const useRevokeCert = () => {
   const queryClient = useQueryClient();
-  return useMutation<TCertificate, {}, TRevokeCertDTO>({
+  return useMutation<TCertificate, object, TRevokeCertDTO>({
     mutationFn: async ({ serialNumber, revocationReason }) => {
       const {
         data: { certificate }

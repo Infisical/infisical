@@ -7,7 +7,7 @@ import { CreateScimTokenDTO, CreateScimTokenRes, DeleteScimTokenDTO } from "./ty
 
 export const useCreateScimToken = () => {
   const queryClient = useQueryClient();
-  return useMutation<CreateScimTokenRes, {}, CreateScimTokenDTO>({
+  return useMutation<CreateScimTokenRes, object, CreateScimTokenDTO>({
     mutationFn: async ({ organizationId, description, ttlDays }) => {
       const { data } = await apiRequest.post("/api/v1/scim/scim-tokens", {
         organizationId,
@@ -25,7 +25,7 @@ export const useCreateScimToken = () => {
 
 export const useDeleteScimToken = () => {
   const queryClient = useQueryClient();
-  return useMutation<CreateScimTokenRes, {}, DeleteScimTokenDTO>({
+  return useMutation<CreateScimTokenRes, object, DeleteScimTokenDTO>({
     mutationFn: async ({ scimTokenId }) => {
       const { data } = await apiRequest.delete(`/api/v1/scim/scim-tokens/${scimTokenId}`);
       return data;

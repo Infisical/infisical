@@ -1,3 +1,5 @@
+// @ts-expect-error to avoid wasm dependencies
+// eslint-disable-next-line
 import argon2 from "argon2-browser/dist/argon2-bundled.min.js";
 import nacl from "tweetnacl";
 import { decodeBase64, decodeUTF8, encodeBase64, encodeUTF8 } from "tweetnacl-util";
@@ -148,7 +150,7 @@ const decryptAssymmetric = ({
     decodeBase64(privateKey)
   );
 
-  return encodeUTF8(plaintext);
+  return encodeUTF8(plaintext!);
 };
 
 type EncryptSymmetricProps = {

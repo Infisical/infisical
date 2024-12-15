@@ -143,7 +143,7 @@ const fetchSecretApprovalRequestList = async ({
 export const useGetSecretApprovalRequests = ({
   workspaceId,
   environment,
-  options = {},
+  options = object,
   status,
   limit = 20,
   committer

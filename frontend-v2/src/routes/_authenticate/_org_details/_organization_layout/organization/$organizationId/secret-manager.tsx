@@ -1,11 +1,11 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from "@tanstack/react-router";
 
 function SecretManagerOverviewPage() {
-  return <div>Hello "/organization/secret-manager"!</div>
+  return <div>Hello "/organization/secret-manager"!</div>;
 }
 
 export const Route = createFileRoute(
-  '/_authenticate/_org_details/_organization_layout/organization/$organizationId/secret-manager',
+  "/_authenticate/_org_details/_organization_layout/organization/$organizationId/secret-manager"
 )({
-  component: SecretManagerOverviewPage,
-})
+  component: SecretManagerOverviewPage
+});

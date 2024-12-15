@@ -148,7 +148,7 @@ export const useCompleteAccountSignup = () => {
 };
 
 export const useSendMfaToken = () => {
-  return useMutation<{}, {}, SendMfaTokenDTO>({
+  return useMutation<object, object, SendMfaTokenDTO>({
     mutationFn: async ({ email }) => {
       const { data } = await apiRequest.post("/api/v2/auth/mfa/send", { email });
       return data;
@@ -175,7 +175,7 @@ export const verifyMfaToken = async ({
 };
 
 export const useVerifyMfaToken = () => {
-  return useMutation<VerifyMfaTokenRes, {}, VerifyMfaTokenDTO>({
+  return useMutation<VerifyMfaTokenRes, object, VerifyMfaTokenDTO>({
     mutationFn: async ({ email, mfaCode, mfaMethod }) => {
       return verifyMfaToken({
         email,

@@ -21,7 +21,7 @@ import {
 
 export const useCreateCa = () => {
   const queryClient = useQueryClient();
-  return useMutation<TCertificateAuthority, {}, TCreateCaDTO>({
+  return useMutation<TCertificateAuthority, object, TCreateCaDTO>({
     mutationFn: async (body) => {
       const {
         data: { ca }
@@ -36,7 +36,7 @@ export const useCreateCa = () => {
 
 export const useUpdateCa = () => {
   const queryClient = useQueryClient();
-  return useMutation<TCertificateAuthority, {}, TUpdateCaDTO>({
+  return useMutation<TCertificateAuthority, object, TUpdateCaDTO>({
     mutationFn: async ({ caId, projectSlug, ...body }) => {
       const {
         data: { ca }
@@ -52,7 +52,7 @@ export const useUpdateCa = () => {
 
 export const useDeleteCa = () => {
   const queryClient = useQueryClient();
-  return useMutation<TCertificateAuthority, {}, TDeleteCaDTO>({
+  return useMutation<TCertificateAuthority, object, TDeleteCaDTO>({
     mutationFn: async ({ caId }) => {
       const {
         data: { ca }
@@ -67,7 +67,7 @@ export const useDeleteCa = () => {
 
 export const useSignIntermediate = () => {
   // TODO: consider renaming
-  return useMutation<TSignIntermediateResponse, {}, TSignIntermediateDTO>({
+  return useMutation<TSignIntermediateResponse, object, TSignIntermediateDTO>({
     mutationFn: async (body) => {
       const { data } = await apiRequest.post<TSignIntermediateResponse>(
         `/api/v1/pki/ca/${body.caId}/sign-intermediate`,
@@ -80,7 +80,7 @@ export const useSignIntermediate = () => {
 
 export const useImportCaCertificate = () => {
   const queryClient = useQueryClient();
-  return useMutation<TImportCaCertificateResponse, {}, TImportCaCertificateDTO>({
+  return useMutation<TImportCaCertificateResponse, object, TImportCaCertificateDTO>({
     mutationFn: async ({ caId, ...body }) => {
       const { data } = await apiRequest.post<TImportCaCertificateResponse>(
         `/api/v1/pki/ca/${caId}/import-certificate`,
@@ -99,7 +99,7 @@ export const useImportCaCertificate = () => {
 // consider rename to issue certificate
 export const useCreateCertificate = () => {
   const queryClient = useQueryClient();
-  return useMutation<TCreateCertificateResponse, {}, TCreateCertificateDTO>({
+  return useMutation<TCreateCertificateResponse, object, TCreateCertificateDTO>({
     mutationFn: async (body) => {
       const { data } = await apiRequest.post<TCreateCertificateResponse>(
         "/api/v1/pki/certificates/issue-certificate",
@@ -115,7 +115,7 @@ export const useCreateCertificate = () => {
 
 export const useRenewCa = () => {
   const queryClient = useQueryClient();
-  return useMutation<TRenewCaResponse, {}, TRenewCaDTO>({
+  return useMutation<TRenewCaResponse, object, TRenewCaDTO>({
     mutationFn: async (body) => {
       const { data } = await apiRequest.post<TRenewCaResponse>(
         `/api/v1/pki/ca/${body.caId}/renew`,

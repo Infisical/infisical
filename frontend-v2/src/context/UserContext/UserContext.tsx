@@ -1,8 +1,8 @@
 import { createContext, ReactNode, useContext, useMemo } from "react";
+import { useRouteContext } from "@tanstack/react-router";
 
 import { useGetUser } from "@app/hooks/api";
 import { User, UserEnc } from "@app/hooks/api/types";
-import { useRouteContext } from "@tanstack/react-router";
 
 type TUserContext = {
   user: User & UserEnc;

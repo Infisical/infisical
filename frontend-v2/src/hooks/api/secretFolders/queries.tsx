@@ -116,7 +116,7 @@ export const useGetFoldersByEnv = ({
 export const useCreateFolder = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TCreateFolderDTO>({
+  return useMutation<object, object, TCreateFolderDTO>({
     mutationFn: async (dto) => {
       const { data } = await apiRequest.post("/api/v1/folders", {
         ...dto,
@@ -147,7 +147,7 @@ export const useCreateFolder = () => {
 export const useUpdateFolder = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TUpdateFolderDTO>({
+  return useMutation<object, object, TUpdateFolderDTO>({
     mutationFn: async ({ path = "/", folderId, name, environment, projectId }) => {
       const { data } = await apiRequest.patch(`/api/v1/folders/${folderId}`, {
         name,
@@ -180,7 +180,7 @@ export const useUpdateFolder = () => {
 export const useDeleteFolder = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TDeleteFolderDTO>({
+  return useMutation<object, object, TDeleteFolderDTO>({
     mutationFn: async ({ path = "/", folderId, environment, projectId }) => {
       const { data } = await apiRequest.delete(`/api/v1/folders/${folderId}`, {
         data: {
@@ -214,7 +214,7 @@ export const useDeleteFolder = () => {
 export const useUpdateFolderBatch = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TUpdateFolderBatchDTO>({
+  return useMutation<object, object, TUpdateFolderBatchDTO>({
     mutationFn: async ({ projectSlug, folders }) => {
       const { data } = await apiRequest.patch("/api/v1/folders/batch", {
         projectSlug,

@@ -19,10 +19,10 @@ import {
 export const useCreateSecretV3 = ({
   options
 }: {
-  options?: Omit<MutationOptions<{}, {}, TCreateSecretsV3DTO>, "mutationFn">;
+  options?: Omit<MutationOptions<object, object, TCreateSecretsV3DTO>, "mutationFn">;
 } = {}) => {
   const queryClient = useQueryClient();
-  return useMutation<{}, {}, TCreateSecretsV3DTO>({
+  return useMutation<object, object, TCreateSecretsV3DTO>({
     mutationFn: async ({
       secretPath = "/",
       type,
@@ -68,10 +68,10 @@ export const useCreateSecretV3 = ({
 export const useUpdateSecretV3 = ({
   options
 }: {
-  options?: Omit<MutationOptions<{}, {}, TUpdateSecretsV3DTO>, "mutationFn">;
+  options?: Omit<MutationOptions<object, object, TUpdateSecretsV3DTO>, "mutationFn">;
 } = {}) => {
   const queryClient = useQueryClient();
-  return useMutation<{}, {}, TUpdateSecretsV3DTO>({
+  return useMutation<object, object, TUpdateSecretsV3DTO>({
     mutationFn: async ({
       secretPath = "/",
       type,
@@ -123,11 +123,11 @@ export const useUpdateSecretV3 = ({
 export const useDeleteSecretV3 = ({
   options
 }: {
-  options?: Omit<MutationOptions<{}, {}, TDeleteSecretsV3DTO>, "mutationFn">;
+  options?: Omit<MutationOptions<object, object, TDeleteSecretsV3DTO>, "mutationFn">;
 } = {}) => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TDeleteSecretsV3DTO>({
+  return useMutation<object, object, TDeleteSecretsV3DTO>({
     mutationFn: async ({
       secretPath = "/",
       type,
@@ -169,11 +169,11 @@ export const useDeleteSecretV3 = ({
 export const useCreateSecretBatch = ({
   options
 }: {
-  options?: Omit<MutationOptions<{}, {}, TCreateSecretBatchDTO>, "mutationFn">;
+  options?: Omit<MutationOptions<object, object, TCreateSecretBatchDTO>, "mutationFn">;
 } = {}) => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TCreateSecretBatchDTO>({
+  return useMutation<object, object, TCreateSecretBatchDTO>({
     mutationFn: async ({ secretPath = "/", workspaceId, environment, secrets }) => {
       const { data } = await apiRequest.post("/api/v3/secrets/batch/raw", {
         workspaceId,
@@ -205,11 +205,11 @@ export const useCreateSecretBatch = ({
 export const useUpdateSecretBatch = ({
   options
 }: {
-  options?: Omit<MutationOptions<{}, {}, TUpdateSecretBatchDTO>, "mutationFn">;
+  options?: Omit<MutationOptions<object, object, TUpdateSecretBatchDTO>, "mutationFn">;
 } = {}) => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TUpdateSecretBatchDTO>({
+  return useMutation<object, object, TUpdateSecretBatchDTO>({
     mutationFn: async ({ secretPath = "/", workspaceId, environment, secrets }) => {
       const { data } = await apiRequest.patch("/api/v3/secrets/batch/raw", {
         workspaceId,
@@ -241,11 +241,11 @@ export const useUpdateSecretBatch = ({
 export const useDeleteSecretBatch = ({
   options
 }: {
-  options?: Omit<MutationOptions<{}, {}, TDeleteSecretBatchDTO>, "mutationFn">;
+  options?: Omit<MutationOptions<object, object, TDeleteSecretBatchDTO>, "mutationFn">;
 } = {}) => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TDeleteSecretBatchDTO>({
+  return useMutation<object, object, TDeleteSecretBatchDTO>({
     mutationFn: async ({ secretPath = "/", workspaceId, environment, secrets }) => {
       const { data } = await apiRequest.delete("/api/v3/secrets/batch/raw", {
         data: {
@@ -279,7 +279,7 @@ export const useDeleteSecretBatch = ({
 export const useMoveSecrets = ({
   options
 }: {
-  options?: Omit<MutationOptions<{}, {}, TMoveSecretsDTO>, "mutationFn">;
+  options?: Omit<MutationOptions<object, object, TMoveSecretsDTO>, "mutationFn">;
 } = {}) => {
   const queryClient = useQueryClient();
 
@@ -288,7 +288,7 @@ export const useMoveSecrets = ({
       isSourceUpdated: boolean;
       isDestinationUpdated: boolean;
     },
-    {},
+    object,
     TMoveSecretsDTO
   >({
     mutationFn: async ({
@@ -355,7 +355,7 @@ export const createSecret = async (dto: TCreateSecretsV3DTO) => {
 };
 
 export const useBackfillSecretReference = () =>
-  useMutation<{ message: string }, {}, { projectId: string }>({
+  useMutation<{ message: string }, object, { projectId: string }>({
     mutationFn: async ({ projectId }) => {
       const { data } = await apiRequest.post("/api/v3/secrets/backfill-secret-references", {
         projectId

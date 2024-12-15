@@ -76,7 +76,7 @@ export const fetchWorkspaceSecrets = async (workspaceId: string) => {
 export const useUpgradeProject = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, { projectId: string; privateKey: string }>({
+  return useMutation<object, object, { projectId: string; privateKey: string }>({
     mutationFn: ({ projectId, privateKey }) => {
       return apiRequest.post(`/api/v2/workspace/${projectId}/upgrade`, {
         userPrivateKey: privateKey
@@ -171,7 +171,7 @@ export const useGetUserWorkspaceMemberships = (orgId: string) =>
 export const useNameWorkspaceSecrets = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, NameWorkspaceSecretsDTO>({
+  return useMutation<object, object, NameWorkspaceSecretsDTO>({
     mutationFn: async ({ workspaceId, secretsToUpdate }) =>
       apiRequest.post(`/api/v3/workspaces/${workspaceId}/secrets/names`, {
         secretsToUpdate
@@ -225,7 +225,7 @@ export const createWorkspace = (
 export const useCreateWorkspace = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{ data: { project: Workspace } }, {}, CreateWorkspaceDTO>({
+  return useMutation<{ data: { project: Workspace } }, object, CreateWorkspaceDTO>({
     mutationFn: async ({ projectName, projectDescription, kmsKeyId, template, type }) =>
       createWorkspace({
         projectName,
@@ -243,7 +243,7 @@ export const useCreateWorkspace = () => {
 export const useUpdateProject = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<Workspace, {}, UpdateProjectDTO>({
+  return useMutation<Workspace, object, UpdateProjectDTO>({
     mutationFn: async ({ projectID, newProjectName, newProjectDescription }) => {
       const { data } = await apiRequest.patch<{ workspace: Workspace }>(
         `/api/v1/workspace/${projectID}`,
@@ -263,7 +263,7 @@ export const useUpdateProject = () => {
 export const useToggleAutoCapitalization = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<Workspace, {}, ToggleAutoCapitalizationDTO>({
+  return useMutation<Workspace, object, ToggleAutoCapitalizationDTO>({
     mutationFn: async ({ workspaceID, state }) => {
       const { data } = await apiRequest.post<{ workspace: Workspace }>(
         `/api/v1/workspace/${workspaceID}/auto-capitalization`,
@@ -282,7 +282,7 @@ export const useToggleAutoCapitalization = () => {
 export const useUpdateWorkspaceVersionLimit = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<Workspace, {}, UpdatePitVersionLimitDTO>({
+  return useMutation<Workspace, object, UpdatePitVersionLimitDTO>({
     mutationFn: async ({ projectSlug, pitVersionLimit }) => {
       const { data } = await apiRequest.put(`/api/v1/workspace/${projectSlug}/version-limit`, {
         pitVersionLimit
@@ -298,7 +298,7 @@ export const useUpdateWorkspaceVersionLimit = () => {
 export const useUpdateWorkspaceAuditLogsRetention = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<Workspace, {}, UpdateAuditLogsRetentionDTO>({
+  return useMutation<Workspace, object, UpdateAuditLogsRetentionDTO>({
     mutationFn: async ({ projectSlug, auditLogsRetentionDays }) => {
       const { data } = await apiRequest.put(
         `/api/v1/workspace/${projectSlug}/audit-logs-retention`,
@@ -317,7 +317,7 @@ export const useUpdateWorkspaceAuditLogsRetention = () => {
 export const useDeleteWorkspace = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<Workspace, {}, DeleteWorkspaceDTO>({
+  return useMutation<Workspace, object, DeleteWorkspaceDTO>({
     mutationFn: async ({ workspaceID }) => {
       const { data } = await apiRequest.delete(`/api/v1/workspace/${workspaceID}`);
       return data.workspace;
@@ -332,7 +332,7 @@ export const useDeleteWorkspace = () => {
 export const useCreateWsEnvironment = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, CreateEnvironmentDTO>({
+  return useMutation<object, object, CreateEnvironmentDTO>({
     mutationFn: ({ workspaceId, name, slug }) => {
       return apiRequest.post(`/api/v1/workspace/${workspaceId}/environments`, {
         name,
@@ -348,7 +348,7 @@ export const useCreateWsEnvironment = () => {
 export const useUpdateWsEnvironment = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, UpdateEnvironmentDTO>({
+  return useMutation<object, object, UpdateEnvironmentDTO>({
     mutationFn: ({ workspaceId, id, name, slug, position }) => {
       return apiRequest.patch(`/api/v1/workspace/${workspaceId}/environments/${id}`, {
         name,
@@ -365,7 +365,7 @@ export const useUpdateWsEnvironment = () => {
 export const useDeleteWsEnvironment = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, DeleteEnvironmentDTO>({
+  return useMutation<object, object, DeleteEnvironmentDTO>({
     mutationFn: ({ id, workspaceId }) => {
       return apiRequest.delete(`/api/v1/workspace/${workspaceId}/environments/${id}`);
     },

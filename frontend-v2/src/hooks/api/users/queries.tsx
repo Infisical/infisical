@@ -80,7 +80,7 @@ export const fetchUserProjectFavorites = async (orgId: string) => {
 export const useRenameUser = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, RenameUserDTO>({
+  return useMutation<object, object, RenameUserDTO>({
     mutationFn: ({ newName }) =>
       apiRequest.patch("/api/v2/users/me/name", {
         firstName: newName?.split(" ")[0],
@@ -152,7 +152,7 @@ export const useAddUsersToOrg = () => {
     };
   };
 
-  return useMutation<Response, {}, AddUserToOrgDTO>({
+  return useMutation<Response, object, AddUserToOrgDTO>({
     mutationFn: (dto) => {
       return apiRequest.post("/api/v1/invite-org/signup", dto);
     },
@@ -207,7 +207,7 @@ export const useGetOrgMembershipProjectMemberships = (
 export const useDeleteOrgMembership = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, DeletOrgMembershipDTO>({
+  return useMutation<object, object, DeletOrgMembershipDTO>({
     mutationFn: ({ membershipId, orgId }) => {
       return apiRequest.delete(`/api/v2/organizations/${orgId}/memberships/${membershipId}`);
     },
@@ -220,7 +220,7 @@ export const useDeleteOrgMembership = () => {
 export const useDeactivateOrgMembership = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, DeletOrgMembershipDTO>({
+  return useMutation<object, object, DeletOrgMembershipDTO>({
     mutationFn: ({ membershipId, orgId }) => {
       return apiRequest.post(
         `/api/v2/organizations/${orgId}/memberships/${membershipId}/deactivate`
@@ -236,7 +236,7 @@ export const useDeactivateOrgMembership = () => {
 export const useUpdateOrgMembership = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, UpdateOrgMembershipDTO>({
+  return useMutation<object, object, UpdateOrgMembershipDTO>({
     mutationFn: ({ organizationId, membershipId, role, isActive, metadata }) => {
       return apiRequest.patch(
         `/api/v2/organizations/${organizationId}/memberships/${membershipId}`,
@@ -261,7 +261,7 @@ export const useUpdateOrgMembership = () => {
 
 export const useRegisterUserAction = () => {
   const queryClient = useQueryClient();
-  return useMutation<{}, {}, string>({
+  return useMutation<object, object, string>({
     mutationFn: (action) => apiRequest.post("/api/v1/user-action", { action }),
     onSuccess: () => {
       queryClient.invalidateQueries(userKeys.userAction);

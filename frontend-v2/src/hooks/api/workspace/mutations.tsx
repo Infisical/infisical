@@ -78,7 +78,7 @@ export const useDeleteGroupFromWorkspace = () => {
 
 export const useLeaveProject = () => {
   const queryClient = useQueryClient();
-  return useMutation<{}, {}, { workspaceId: string }>({
+  return useMutation<object, object, { workspaceId: string }>({
     mutationFn: ({ workspaceId }) => {
       return apiRequest.delete(`/api/v1/workspace/${workspaceId}/leave`);
     },
@@ -90,7 +90,7 @@ export const useLeaveProject = () => {
 
 export const useMigrateProjectToV3 = () => {
   const queryClient = useQueryClient();
-  return useMutation<{}, {}, { workspaceId: string }>({
+  return useMutation<object, object, { workspaceId: string }>({
     mutationFn: ({ workspaceId }) => {
       return apiRequest.post(`/api/v1/workspace/${workspaceId}/migrate-v3`);
     },

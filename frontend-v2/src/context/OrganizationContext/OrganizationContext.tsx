@@ -1,8 +1,8 @@
 import { createContext, ReactNode, useContext, useMemo } from "react";
+import { useRouteContext } from "@tanstack/react-router";
 
 import { useGetOrganizations } from "@app/hooks/api";
 import { Organization } from "@app/hooks/api/types";
-import { useRouteContext } from "@tanstack/react-router";
 
 type TOrgContext = {
   orgs?: Organization[];

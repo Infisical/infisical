@@ -14,7 +14,7 @@ import {
 export const useCreateDynamicSecret = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TCreateDynamicSecretDTO>({
+  return useMutation<object, object, TCreateDynamicSecretDTO>({
     mutationFn: async (dto) => {
       const { data } = await apiRequest.post<{ dynamicSecret: TDynamicSecret }>(
         "/api/v1/dynamic-secrets",
@@ -33,7 +33,7 @@ export const useCreateDynamicSecret = () => {
 export const useUpdateDynamicSecret = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TUpdateDynamicSecretDTO>({
+  return useMutation<object, object, TUpdateDynamicSecretDTO>({
     mutationFn: async (dto) => {
       const { data } = await apiRequest.patch<{ dynamicSecret: TDynamicSecret }>(
         `/api/v1/dynamic-secrets/${dto.name}`,
@@ -52,7 +52,7 @@ export const useUpdateDynamicSecret = () => {
 export const useDeleteDynamicSecret = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TDeleteDynamicSecretDTO>({
+  return useMutation<object, object, TDeleteDynamicSecretDTO>({
     mutationFn: async (dto) => {
       const { data } = await apiRequest.delete<{ dynamicSecret: TDynamicSecret }>(
         `/api/v1/dynamic-secrets/${dto.name}`,

@@ -8,7 +8,7 @@ import { TCreatePkiAlertDTO, TDeletePkiAlertDTO, TPkiAlert, TUpdatePkiAlertDTO }
 
 export const useCreatePkiAlert = () => {
   const queryClient = useQueryClient();
-  return useMutation<TPkiAlert, {}, TCreatePkiAlertDTO>({
+  return useMutation<TPkiAlert, object, TCreatePkiAlertDTO>({
     mutationFn: async (body) => {
       const { data: alert } = await apiRequest.post<TPkiAlert>("/api/v1/pki/alerts", body);
       return alert;
@@ -21,7 +21,7 @@ export const useCreatePkiAlert = () => {
 
 export const useUpdatePkiAlert = () => {
   const queryClient = useQueryClient();
-  return useMutation<TPkiAlert, {}, TUpdatePkiAlertDTO>({
+  return useMutation<TPkiAlert, object, TUpdatePkiAlertDTO>({
     mutationFn: async ({ alertId, ...body }) => {
       const { data: alert } = await apiRequest.patch<TPkiAlert>(
         `/api/v1/pki/alerts/${alertId}`,
@@ -38,7 +38,7 @@ export const useUpdatePkiAlert = () => {
 
 export const useDeletePkiAlert = () => {
   const queryClient = useQueryClient();
-  return useMutation<TPkiAlert, {}, TDeletePkiAlertDTO>({
+  return useMutation<TPkiAlert, object, TDeletePkiAlertDTO>({
     mutationFn: async ({ alertId }) => {
       const { data: alert } = await apiRequest.delete<TPkiAlert>(`/api/v1/pki/alerts/${alertId}`);
       return alert;

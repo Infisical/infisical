@@ -966,7 +966,7 @@ export const useSaveIntegrationAccessToken = () => {
 export const useDeleteIntegrationAuths = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, { integration: string; workspaceId: string }>({
+  return useMutation<object, object, { integration: string; workspaceId: string }>({
     mutationFn: ({ integration, workspaceId }) =>
       apiRequest.delete(
         `/api/v1/integration-auth?${new URLSearchParams({
@@ -985,7 +985,7 @@ export const useDeleteIntegrationAuth = () => {
   // not used
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, { id: string; workspaceId: string }>({
+  return useMutation<object, object, { id: string; workspaceId: string }>({
     mutationFn: ({ id }) => apiRequest.delete(`/api/v1/integration-auth/${id}`),
     onSuccess: (_, { workspaceId }) => {
       queryClient.invalidateQueries(workspaceKeys.getWorkspaceAuthorization(workspaceId));

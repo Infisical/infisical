@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 
-type TPersisntentStateReturn<T extends unknown> = [T, (val: T) => void];
+type TPersisntentStateReturn<T> = [T, (val: T) => void];
 
-export const usePersistentState = <T extends unknown>(
+export const usePersistentState = <T>(
   initialValue: T,
   persistenceKey: string
 ): TPersisntentStateReturn<T> => {

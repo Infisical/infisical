@@ -15,7 +15,7 @@ export const useCreateDynamicSecretLease = () => {
 
   return useMutation<
     { lease: TDynamicSecretLease; data: unknown },
-    {},
+    object,
     TCreateDynamicSecretLeaseDTO
   >({
     mutationFn: async (dto) => {
@@ -36,7 +36,7 @@ export const useCreateDynamicSecretLease = () => {
 export const useRenewDynamicSecretLease = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TRenewDynamicSecretLeaseDTO>({
+  return useMutation<object, object, TRenewDynamicSecretLeaseDTO>({
     mutationFn: async (dto) => {
       const { data } = await apiRequest.post<{ lease: TDynamicSecretLease }>(
         `/api/v1/dynamic-secrets/leases/${dto.leaseId}/renew`,
@@ -55,7 +55,7 @@ export const useRenewDynamicSecretLease = () => {
 export const useRevokeDynamicSecretLease = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TRevokeDynamicSecretLeaseDTO>({
+  return useMutation<object, object, TRevokeDynamicSecretLeaseDTO>({
     mutationFn: async (dto) => {
       const { data } = await apiRequest.delete<{ lease: TDynamicSecretLease }>(
         `/api/v1/dynamic-secrets/leases/${dto.leaseId}`,

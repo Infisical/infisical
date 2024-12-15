@@ -18,7 +18,7 @@ export const useCreateAdminUser = () => {
 
   return useMutation<
     { user: User; token: string; organization: { id: string } },
-    {},
+    object,
     TCreateAdminUserDTO
   >({
     mutationFn: async (opt) => {
@@ -36,7 +36,7 @@ export const useUpdateServerConfig = () => {
 
   return useMutation<
     TServerConfig,
-    {},
+    object,
     Partial<TServerConfig & { slackClientId: string; slackClientSecret: string }>
   >({
     mutationFn: async (opt) => {
@@ -72,7 +72,7 @@ export const useAdminDeleteUser = () => {
 
 export const useUpdateAdminSlackConfig = () => {
   const queryClient = useQueryClient();
-  return useMutation<AdminSlackConfig, {}, TUpdateAdminSlackConfigDTO>({
+  return useMutation<AdminSlackConfig, object, TUpdateAdminSlackConfigDTO>({
     mutationFn: async (dto) => {
       const { data } = await apiRequest.put<AdminSlackConfig>(
         "/api/v1/admin/integrations/slack/config",

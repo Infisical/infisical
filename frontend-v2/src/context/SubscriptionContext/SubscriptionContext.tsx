@@ -1,10 +1,10 @@
 import { createContext, ReactNode, useContext, useMemo } from "react";
+import { useRouteContext } from "@tanstack/react-router";
 
 import { useGetOrgSubscription } from "@app/hooks/api";
 import { SubscriptionPlan } from "@app/hooks/api/types";
 
 import { useOrganization } from "../OrganizationContext";
-import { useRouteContext } from "@tanstack/react-router";
 
 type TSubscriptionContext = {
   subscription?: SubscriptionPlan;

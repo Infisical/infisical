@@ -12,7 +12,7 @@ import {
 export const useCreateSecretRotation = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TCreateSecretRotationDTO>({
+  return useMutation<object, object, TCreateSecretRotationDTO>({
     mutationFn: async (dto) => {
       const { data } = await apiRequest.post("/api/v1/secret-rotations", dto);
       return data;
@@ -26,7 +26,7 @@ export const useCreateSecretRotation = () => {
 export const useDeleteSecretRotation = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TDeleteSecretRotationDTO>({
+  return useMutation<object, object, TDeleteSecretRotationDTO>({
     mutationFn: async (dto) => {
       const { data } = await apiRequest.delete(`/api/v1/secret-rotations/${dto.id}`);
       return data;
@@ -40,7 +40,7 @@ export const useDeleteSecretRotation = () => {
 export const useRestartSecretRotation = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TRestartSecretRotationDTO>({
+  return useMutation<object, object, TRestartSecretRotationDTO>({
     mutationFn: async (dto) => {
       const { data } = await apiRequest.post("/api/v1/secret-rotations/restart", { id: dto.id });
       return data;
