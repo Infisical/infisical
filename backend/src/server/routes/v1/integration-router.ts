@@ -141,7 +141,9 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         targetEnvironment: z.string().trim().optional().describe(INTEGRATION.UPDATE.targetEnvironment),
         owner: z.string().trim().optional().describe(INTEGRATION.UPDATE.owner),
         environment: z.string().trim().optional().describe(INTEGRATION.UPDATE.environment),
-        metadata: IntegrationMetadataSchema.optional()
+        path: z.string().trim().optional().describe(INTEGRATION.UPDATE.path),
+        metadata: IntegrationMetadataSchema.optional(),
+        region: z.string().trim().optional().describe(INTEGRATION.UPDATE.region)
       }),
       response: {
         200: z.object({

@@ -71,7 +71,9 @@ export const AddOrgMemberModal = ({
   const { data: organizationRoles } = useGetOrgRoles(currentOrg?.id ?? "");
   const { data: serverDetails } = useFetchServerStatus();
   const { mutateAsync: addUsersMutateAsync } = useAddUsersToOrg();
-  const { data: projects, isLoading: isProjectsLoading } = useGetUserWorkspaces(true);
+  const { data: projects, isLoading: isProjectsLoading } = useGetUserWorkspaces({
+    includeRoles: true
+  });
 
   const {
     control,

@@ -32,7 +32,7 @@ const formSchema = z.object({
   environments: z
     .object({
       name: z.string().trim().min(1),
-      slug: slugSchema
+      slug: slugSchema({ min: 1, max: 32 })
     })
     .array()
 });

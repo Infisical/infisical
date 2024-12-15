@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import ms from "ms";
 
-import { SecretKeyEncoding } from "@app/db/schemas";
+import { ProjectType, SecretKeyEncoding } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
@@ -67,13 +67,14 @@ export const dynamicSecretLeaseServiceFactory = ({
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     const projectId = project.id;
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionDynamicSecretActions.Lease,
       subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
@@ -146,13 +147,14 @@ export const dynamicSecretLeaseServiceFactory = ({
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     const projectId = project.id;
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionDynamicSecretActions.Lease,
       subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
@@ -225,13 +227,14 @@ export const dynamicSecretLeaseServiceFactory = ({
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     const projectId = project.id;
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionDynamicSecretActions.Lease,
       subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })

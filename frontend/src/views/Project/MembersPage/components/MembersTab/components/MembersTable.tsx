@@ -212,10 +212,10 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                     tabIndex={0}
                     onKeyDown={(evt) => {
                       if (evt.key === "Enter") {
-                        router.push(`/project/${workspaceId}/members/${membershipId}`);
+                        router.push(`/${currentWorkspace?.type}/${workspaceId}/members/${membershipId}`);
                       }
                     }}
-                    onClick={() => router.push(`/project/${workspaceId}/members/${membershipId}`)}
+                    onClick={() => router.push(`/${currentWorkspace?.type}/${workspaceId}/members/${membershipId}`)}
                   >
                     <Td>{name}</Td>
                     <Td>{email}</Td>

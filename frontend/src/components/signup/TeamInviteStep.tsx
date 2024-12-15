@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 
 import { useAddUsersToOrg } from "@app/hooks/api";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { Button, EmailServiceSetupModal } from "../v2";
@@ -22,7 +23,7 @@ export default function TeamInviteStep(): JSX.Element {
 
   // Redirect user to the getting started page
   const redirectToHome = async () => {
-    router.push(`/org/${localStorage.getItem("orgData.id")}/overview`);
+    router.push(`/org/${localStorage.getItem("orgData.id")}/${ProjectType.SecretManager}/overview`);
   };
 
   const inviteUsers = async ({ emails: inviteEmails }: { emails: string }) => {

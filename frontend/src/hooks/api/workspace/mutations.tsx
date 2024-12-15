@@ -4,7 +4,7 @@ import { apiRequest } from "@app/config/request";
 
 import { userKeys } from "../users/query-keys";
 import { workspaceKeys } from "./query-keys";
-import { TUpdateWorkspaceGroupRoleDTO } from "./types";
+import { ProjectType, TUpdateWorkspaceGroupRoleDTO } from "./types";
 
 export const useAddGroupToWorkspace = () => {
   const queryClient = useQueryClient();
@@ -83,7 +83,7 @@ export const useLeaveProject = () => {
       return apiRequest.delete(`/api/v1/workspace/${workspaceId}/leave`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
+      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace());
     }
   });
 };
@@ -95,7 +95,7 @@ export const useMigrateProjectToV3 = () => {
       return apiRequest.post(`/api/v1/workspace/${workspaceId}/migrate-v3`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
+      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace(ProjectType.SecretManager));
     }
   });
 };

@@ -4,7 +4,7 @@ import { faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
-import { IconButton, Td, Tooltip, Tr } from "@app/components/v2";
+import { IconButton, Tag, Td, Tooltip, Tr } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { TWorkspaceUser } from "@app/hooks/api/types";
@@ -48,7 +48,7 @@ export const UserProjectRow = ({
       key={`user-project-membership-${id}`}
       onClick={() => {
         if (isAccessible) {
-          router.push(`/project/${project.id}/members?selectedTab=${TabSections.Member}`);
+          router.push(`/${project.type}/${project.id}/members?selectedTab=${TabSections.Member}`);
           return;
         }
 
@@ -59,6 +59,9 @@ export const UserProjectRow = ({
       }}
     >
       <Td className="max-w-0 truncate">{project.name}</Td>
+      <Td>
+        <Tag size="xs">{project.type}</Tag>
+      </Td>
       <Td>{`${formatRoleName(roles[0].role, roles[0].customRoleName)}${
         roles.length > 1 ? ` (+${roles.length - 1})` : ""
       }`}</Td>

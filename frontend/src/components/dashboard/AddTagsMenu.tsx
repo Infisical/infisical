@@ -5,6 +5,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Menu, Transition } from "@headlessui/react";
 import { Tag } from "public/data/frequentInterfaces";
 
+import { ProjectType } from "@app/hooks/api/workspace/types";
+
 /**
  * This is the menu that is used to add more tags to a secret
  * @param {object} obj
@@ -75,7 +77,7 @@ const AddTagsMenu = ({
           <button
             type="button"
             className="w-full rounded-sm bg-mineshaft-800 px-2 py-0.5 text-left text-bunker-200 duration-200 hover:bg-primary hover:text-black"
-            onClick={() => router.push(`/project/${String(router.query.id)}/settings`)}
+            onClick={() => router.push(`/${ProjectType.SecretManager}/${String(router.query.id)}/settings`)}
           >
             <FontAwesomeIcon icon={faPlus} className="mr-2 text-xs" />
             Add more tags

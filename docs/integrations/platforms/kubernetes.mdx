@@ -41,6 +41,30 @@ The operator can be install via [Helm](https://helm.sh) or [kubectl](https://git
     helm install --generate-name infisical-helm-charts/secrets-operator --version=0.1.4 --set controllerManager.manager.image.tag=v0.2.0
     ```
 
+    **Namespace-scoped Installation**
+
+    The operator can be configured to watch and manage secrets in a specific namespace instead of having cluster-wide access.
+
+    ```bash
+    helm install operator infisical-helm-charts/secrets-operator \
+      --namespace your-namespace \
+      --set scopedNamespace=your-namespace \
+      --set scopedRBAC=true
+    ```
+
+    When scoped to a namespace, the operator will:
+
+    - Only watch InfisicalSecrets in the specified namespace
+    - Only create/update Kubernetes secrets in that namespace
+    - Only access deployments in that namespace
+
+    The default configuration gives cluster-wide access:
+
+    ```yaml
+    scopedNamespace: "" # Empty for cluster-wide access
+    scopedRBAC: false # Cluster-wide permissions
+    ```
+
    </Tab>
 	 <Tab title="Kubectl">
    For production deployments, it is highly recommended to set the version of the Kubernetes operator manually instead of pointing to the latest version.

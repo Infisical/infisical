@@ -60,6 +60,7 @@ export enum EventType {
   DELETE_SECRETS = "delete-secrets",
   GET_WORKSPACE_KEY = "get-workspace-key",
   AUTHORIZE_INTEGRATION = "authorize-integration",
+  UPDATE_INTEGRATION_AUTH = "update-integration-auth",
   UNAUTHORIZE_INTEGRATION = "unauthorize-integration",
   CREATE_INTEGRATION = "create-integration",
   DELETE_INTEGRATION = "delete-integration",
@@ -94,6 +95,11 @@ export enum EventType {
   UPDATE_IDENTITY_OIDC_AUTH = "update-identity-oidc-auth",
   GET_IDENTITY_OIDC_AUTH = "get-identity-oidc-auth",
   REVOKE_IDENTITY_OIDC_AUTH = "revoke-identity-oidc-auth",
+  LOGIN_IDENTITY_JWT_AUTH = "login-identity-jwt-auth",
+  ADD_IDENTITY_JWT_AUTH = "add-identity-jwt-auth",
+  UPDATE_IDENTITY_JWT_AUTH = "update-identity-jwt-auth",
+  GET_IDENTITY_JWT_AUTH = "get-identity-jwt-auth",
+  REVOKE_IDENTITY_JWT_AUTH = "revoke-identity-jwt-auth",
   CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "create-identity-universal-auth-client-secret",
   REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "revoke-identity-universal-auth-client-secret",
   GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS = "get-identity-universal-auth-client-secret",
@@ -352,6 +358,13 @@ interface GetWorkspaceKeyEvent {
 
 interface AuthorizeIntegrationEvent {
   type: EventType.AUTHORIZE_INTEGRATION;
+  metadata: {
+    integration: string;
+  };
+}
+
+interface UpdateIntegrationAuthEvent {
+  type: EventType.UPDATE_INTEGRATION_AUTH;
   metadata: {
     integration: string;
   };
@@ -890,6 +903,67 @@ interface UpdateIdentityOidcAuthEvent {
 
 interface GetIdentityOidcAuthEvent {
   type: EventType.GET_IDENTITY_OIDC_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface LoginIdentityJwtAuthEvent {
+  type: EventType.LOGIN_IDENTITY_JWT_AUTH;
+  metadata: {
+    identityId: string;
+    identityJwtAuthId: string;
+    identityAccessTokenId: string;
+  };
+}
+
+interface AddIdentityJwtAuthEvent {
+  type: EventType.ADD_IDENTITY_JWT_AUTH;
+  metadata: {
+    identityId: string;
+    configurationType: string;
+    jwksUrl?: string;
+    jwksCaCert: string;
+    publicKeys: string[];
+    boundIssuer: string;
+    boundAudiences: string;
+    boundClaims: Record<string, string>;
+    boundSubject: string;
+    accessTokenTTL: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
+    accessTokenTrustedIps: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface UpdateIdentityJwtAuthEvent {
+  type: EventType.UPDATE_IDENTITY_JWT_AUTH;
+  metadata: {
+    identityId: string;
+    configurationType?: string;
+    jwksUrl?: string;
+    jwksCaCert?: string;
+    publicKeys?: string[];
+    boundIssuer?: string;
+    boundAudiences?: string;
+    boundClaims?: Record<string, string>;
+    boundSubject?: string;
+    accessTokenTTL?: number;
+    accessTokenMaxTTL?: number;
+    accessTokenNumUsesLimit?: number;
+    accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface DeleteIdentityJwtAuthEvent {
+  type: EventType.REVOKE_IDENTITY_JWT_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface GetIdentityJwtAuthEvent {
+  type: EventType.GET_IDENTITY_JWT_AUTH;
   metadata: {
     identityId: string;
   };
@@ -1680,6 +1754,7 @@ export type Event =
   | DeleteSecretBatchEvent
   | GetWorkspaceKeyEvent
   | AuthorizeIntegrationEvent
+  | UpdateIntegrationAuthEvent
   | UnauthorizeIntegrationEvent
   | CreateIntegrationEvent
   | DeleteIntegrationEvent
@@ -1733,6 +1808,11 @@ export type Event =
   | DeleteIdentityOidcAuthEvent
   | UpdateIdentityOidcAuthEvent
   | GetIdentityOidcAuthEvent
+  | LoginIdentityJwtAuthEvent
+  | AddIdentityJwtAuthEvent
+  | UpdateIdentityJwtAuthEvent
+  | GetIdentityJwtAuthEvent
+  | DeleteIdentityJwtAuthEvent
   | CreateEnvironmentEvent
   | GetEnvironmentEvent
   | UpdateEnvironmentEvent

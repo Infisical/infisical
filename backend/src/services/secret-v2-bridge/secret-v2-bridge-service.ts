@@ -1,7 +1,7 @@
 import { ForbiddenError, PureAbility, subject } from "@casl/ability";
 import { z } from "zod";
 
-import { ProjectMembershipRole, SecretsV2Schema, SecretType, TableName } from "@app/db/schemas";
+import { ProjectMembershipRole, ProjectType, SecretsV2Schema, SecretType, TableName } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
@@ -188,13 +188,14 @@ export const secretV2BridgeServiceFactory = ({
     secretPath,
     ...inputSecret
   }: TCreateSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
@@ -310,13 +311,14 @@ export const secretV2BridgeServiceFactory = ({
     secretPath,
     ...inputSecret
   }: TUpdateSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
 
     if (inputSecret.newSecretName === "") {
       throw new BadRequestError({ message: "New secret name cannot be empty" });
@@ -494,13 +496,14 @@ export const secretV2BridgeServiceFactory = ({
     secretPath,
     ...inputSecret
   }: TDeleteSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
@@ -1088,13 +1091,14 @@ export const secretV2BridgeServiceFactory = ({
     projectId,
     secrets: inputSecrets
   }: TCreateManySecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
@@ -1228,13 +1232,14 @@ export const secretV2BridgeServiceFactory = ({
     secretPath,
     secrets: inputSecrets
   }: TUpdateManySecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
@@ -1434,13 +1439,14 @@ export const secretV2BridgeServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TDeleteManySecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
@@ -1576,13 +1582,14 @@ export const secretV2BridgeServiceFactory = ({
     actorOrgId,
     actorAuthMethod
   }: TBackFillSecretReferencesDTO) => {
-    const { hasRole } = await permissionService.getProjectPermission(
+    const { hasRole, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
 
     if (!hasRole(ProjectMembershipRole.Admin))
       throw new ForbiddenRequestError({ message: "Only admins are allowed to take this action" });
@@ -1623,13 +1630,14 @@ export const secretV2BridgeServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TMoveSecretsDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
 
     const sourceFolder = await folderDAL.findBySecretPath(projectId, sourceEnvironment, sourceSecretPath);
     if (!sourceFolder) {

@@ -5,5 +5,11 @@ export enum IdentityAuthMethod {
   GCP_AUTH = "gcp-auth",
   AWS_AUTH = "aws-auth",
   AZURE_AUTH = "azure-auth",
-  OIDC_AUTH = "oidc-auth"
+  OIDC_AUTH = "oidc-auth",
+  JWT_AUTH = "jwt-auth"
+}
+
+export enum IdentityJwtConfigurationType {
+  JWKS = "jwks",
+  STATIC = "static"
 }

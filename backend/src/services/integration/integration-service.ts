@@ -1,5 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
+import { ProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { NotFoundError } from "@app/lib/errors";
@@ -80,13 +81,14 @@ export const integrationServiceFactory = ({
     if (!integrationAuth)
       throw new NotFoundError({ message: `Integration auth with ID '${integrationAuthId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       integrationAuth.projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -151,18 +153,21 @@ export const integrationServiceFactory = ({
     isActive,
     environment,
     secretPath,
-    metadata
+    region,
+    metadata,
+    path
   }: TUpdateIntegrationDTO) => {
     const integration = await integrationDAL.findById(id);
     if (!integration) throw new NotFoundError({ message: `Integration with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       integration.projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Integrations);
 
     const newEnvironment = environment || integration.environment.slug;
@@ -192,7 +197,9 @@ export const integrationServiceFactory = ({
       appId,
       targetEnvironment,
       owner,
+      region,
       secretPath,
+      path,
       metadata: {
         ...(integration.metadata as object),
         ...metadata
@@ -289,13 +296,14 @@ export const integrationServiceFactory = ({
     const integration = await integrationDAL.findById(id);
     if (!integration) throw new NotFoundError({ message: `Integration with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       integration.projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Integrations);
 
     const integrationAuth = await integrationAuthDAL.findById(integration.integrationAuthId);

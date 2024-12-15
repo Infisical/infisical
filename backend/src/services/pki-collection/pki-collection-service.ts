@@ -1,12 +1,13 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { TPkiCollectionItems } from "@app/db/schemas";
+import { ProjectType, TPkiCollectionItems } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 
+import { TProjectDALFactory } from "../project/project-dal";
 import { TPkiCollectionDALFactory } from "./pki-collection-dal";
 import { transformPkiCollectionItem } from "./pki-collection-fns";
 import { TPkiCollectionItemDALFactory } from "./pki-collection-item-dal";
@@ -30,6 +31,7 @@ type TPkiCollectionServiceFactoryDep = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "find" | "findOne">;
   certificateDAL: Pick<TCertificateDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectDAL: Pick<TProjectDALFactory, "getProjectFromSplitId">;
 };
 
 export type TPkiCollectionServiceFactory = ReturnType<typeof pkiCollectionServiceFactory>;
@@ -39,24 +41,35 @@ export const pkiCollectionServiceFactory = ({
   pkiCollectionItemDAL,
   certificateAuthorityDAL,
   certificateDAL,
-  permissionService
+  permissionService,
+  projectDAL
 }: TPkiCollectionServiceFactoryDep) => {
   const createPkiCollection = async ({
     name,
     description,
-    projectId,
+    projectId: preSplitProjectId,
     actorId,
     actorAuthMethod,
     actor,
     actorOrgId
   }: TCreatePkiCollectionDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    let projectId = preSplitProjectId;
+    const certManagerProjectFromSplit = await projectDAL.getProjectFromSplitId(
+      projectId,
+      ProjectType.CertificateManager
+    );
+    if (certManagerProjectFromSplit) {
+      projectId = certManagerProjectFromSplit.id;
+    }
+
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.CertificateManager);
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
@@ -106,13 +119,14 @@ export const pkiCollectionServiceFactory = ({
     let pkiCollection = await pkiCollectionDAL.findById(collectionId);
     if (!pkiCollection) throw new NotFoundError({ message: `PKI collection with ID '${collectionId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       pkiCollection.projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.CertificateManager);
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.PkiCollections);
     pkiCollection = await pkiCollectionDAL.updateById(collectionId, {
@@ -133,13 +147,14 @@ export const pkiCollectionServiceFactory = ({
     let pkiCollection = await pkiCollectionDAL.findById(collectionId);
     if (!pkiCollection) throw new NotFoundError({ message: `PKI collection with ID '${collectionId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       pkiCollection.projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.CertificateManager);
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
@@ -205,13 +220,14 @@ export const pkiCollectionServiceFactory = ({
     const pkiCollection = await pkiCollectionDAL.findById(collectionId);
     if (!pkiCollection) throw new NotFoundError({ message: `PKI collection with ID '${collectionId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       pkiCollection.projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.CertificateManager);
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
@@ -298,13 +314,14 @@ export const pkiCollectionServiceFactory = ({
 
     if (!pkiCollectionItem) throw new NotFoundError({ message: `PKI collection item with ID '${itemId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       pkiCollection.projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.CertificateManager);
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,

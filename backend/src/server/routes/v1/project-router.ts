@@ -5,6 +5,7 @@ import {
   ProjectMembershipsSchema,
   ProjectRolesSchema,
   ProjectSlackConfigsSchema,
+  ProjectType,
   UserEncryptionKeysSchema,
   UsersSchema
 } from "@app/db/schemas";
@@ -135,7 +136,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         includeRoles: z
           .enum(["true", "false"])
           .default("false")
-          .transform((value) => value === "true")
+          .transform((value) => value === "true"),
+        type: z.enum([ProjectType.SecretManager, ProjectType.KMS, ProjectType.CertificateManager, "all"]).optional()
       }),
       response: {
         200: z.object({
@@ -154,7 +156,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type,
-        actorOrgId: req.permission.orgId
+        actorOrgId: req.permission.orgId,
+        type: req.query.type
       });
       return { workspaces };
     }

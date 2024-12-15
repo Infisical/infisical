@@ -4,6 +4,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 
 import {
   ProjectMembershipRole,
+  ProjectType,
   ProjectUpgradeStatus,
   SecretEncryptionAlgo,
   SecretKeyEncoding,
@@ -186,13 +187,15 @@ export const secretServiceFactory = ({
     projectId,
     ...inputSecret
   }: TCreateSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -301,13 +304,15 @@ export const secretServiceFactory = ({
     projectId,
     ...inputSecret
   }: TUpdateSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -443,13 +448,15 @@ export const secretServiceFactory = ({
     projectId,
     ...inputSecret
   }: TDeleteSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -732,13 +739,14 @@ export const secretServiceFactory = ({
     projectId,
     secrets: inputSecrets
   }: TCreateBulkSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -817,13 +825,15 @@ export const secretServiceFactory = ({
     projectId,
     secrets: inputSecrets
   }: TUpdateBulkSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -923,13 +933,14 @@ export const secretServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TDeleteBulkSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })

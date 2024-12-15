@@ -1,6 +1,5 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -18,17 +17,10 @@ import {
   useCreateProjectTemplate,
   useUpdateProjectTemplate
 } from "@app/hooks/api/projectTemplates";
+import { slugSchema } from "@app/lib/schemas";
 
 const formSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(1)
-    .max(32)
-    .toLowerCase()
-    .refine((v) => slugify(v) === v, {
-      message: "Name must be in slug format"
-    }),
+  name: slugSchema({ min: 1, max: 32, field: "Name" }),
   description: z.string().max(500).optional()
 });
 
