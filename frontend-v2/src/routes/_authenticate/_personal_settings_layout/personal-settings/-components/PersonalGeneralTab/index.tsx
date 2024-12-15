@@ -1,0 +1,1 @@
+export { PersonalGeneralTab } from "./PersonalGeneralTab";

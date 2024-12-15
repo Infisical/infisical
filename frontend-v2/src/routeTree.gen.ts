@@ -11,24 +11,37 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
+import { Route as RestrictloginsignupImport } from './routes/_restrict_login_signup'
 import { Route as AuthenticateImport } from './routes/_authenticate'
 import { Route as IndexImport } from './routes/index'
-import { Route as AuthenticateRestrictloginsignupImport } from './routes/_authenticate/_restrict_login_signup'
+import { Route as RestrictloginsignupVerifyEmailImport } from './routes/_restrict_login_signup/verify-email'
+import { Route as RestrictloginsignupSignupinviteImport } from './routes/_restrict_login_signup/signupinvite'
+import { Route as RestrictloginsignupRequestnewinviteImport } from './routes/_restrict_login_signup/requestnewinvite'
+import { Route as RestrictloginsignupPasswordResetImport } from './routes/_restrict_login_signup/password-reset'
+import { Route as RestrictloginsignupEmailNotVerifiedImport } from './routes/_restrict_login_signup/email-not-verified'
+import { Route as AuthenticateCliRedirectImport } from './routes/_authenticate/cli-redirect'
+import { Route as AuthenticatePersonalsettingslayoutImport } from './routes/_authenticate/_personal_settings_layout'
 import { Route as AuthenticateOrgdetailsImport } from './routes/_authenticate/_org_details'
+import { Route as RestrictloginsignupSignupIndexImport } from './routes/_restrict_login_signup/signup/index'
+import { Route as RestrictloginsignupLoginIndexImport } from './routes/_restrict_login_signup/login/index'
 import { Route as AuthenticateOrgdetailsOrganizationlayoutImport } from './routes/_authenticate/_org_details/_organization_layout'
-import { Route as AuthenticateRestrictloginsignupSignupIndexImport } from './routes/_authenticate/_restrict_login_signup/signup/index'
-import { Route as AuthenticateRestrictloginsignupLoginIndexImport } from './routes/_authenticate/_restrict_login_signup/login/index'
-import { Route as AuthenticateRestrictloginsignupSignupSsoIndexImport } from './routes/_authenticate/_restrict_login_signup/signup/sso/index'
-import { Route as AuthenticateRestrictloginsignupLoginSsoIndexImport } from './routes/_authenticate/_restrict_login_signup/login/sso/index'
-import { Route as AuthenticateRestrictloginsignupLoginSelectOrganizationIndexImport } from './routes/_authenticate/_restrict_login_signup/login/select-organization/index'
-import { Route as AuthenticateRestrictloginsignupLoginLdapIndexImport } from './routes/_authenticate/_restrict_login_signup/login/ldap/index'
+import { Route as RestrictloginsignupSignupSsoIndexImport } from './routes/_restrict_login_signup/signup/sso/index'
+import { Route as RestrictloginsignupLoginSsoIndexImport } from './routes/_restrict_login_signup/login/sso/index'
+import { Route as RestrictloginsignupLoginSelectOrganizationIndexImport } from './routes/_restrict_login_signup/login/select-organization/index'
+import { Route as RestrictloginsignupLoginLdapIndexImport } from './routes/_restrict_login_signup/login/ldap/index'
+import { Route as AuthenticatePersonalsettingslayoutPersonalSettingsIndexImport } from './routes/_authenticate/_personal_settings_layout/personal-settings/index'
+import { Route as RestrictloginsignupLoginProviderSuccessImport } from './routes/_restrict_login_signup/login/provider/success'
+import { Route as RestrictloginsignupLoginProviderErrorImport } from './routes/_restrict_login_signup/login/provider/error'
 import { Route as AuthenticateOrgdetailsOrganizationlayoutOrganizationIndexImport } from './routes/_authenticate/_org_details/_organization_layout/organization/index'
-import { Route as AuthenticateRestrictloginsignupLoginProviderSuccessImport } from './routes/_authenticate/_restrict_login_signup/login/provider/success'
-import { Route as AuthenticateRestrictloginsignupLoginProviderErrorImport } from './routes/_authenticate/_restrict_login_signup/login/provider/error'
 import { Route as AuthenticateOrgdetailsOrganizationlayoutOrganizationOrganizationIdIndexImport } from './routes/_authenticate/_org_details/_organization_layout/organization/$organizationId/index'
 import { Route as AuthenticateOrgdetailsOrganizationlayoutOrganizationOrganizationIdSecretManagerImport } from './routes/_authenticate/_org_details/_organization_layout/organization/$organizationId/secret-manager'
 
 // Create/Update Routes
+
+const RestrictloginsignupRoute = RestrictloginsignupImport.update({
+  id: '/_restrict_login_signup',
+  getParentRoute: () => rootRoute,
+} as any)
 
 const AuthenticateRoute = AuthenticateImport.update({
   id: '/_authenticate',
@@ -41,9 +54,50 @@ const IndexRoute = IndexImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
-const AuthenticateRestrictloginsignupRoute =
-  AuthenticateRestrictloginsignupImport.update({
-    id: '/_restrict_login_signup',
+const RestrictloginsignupVerifyEmailRoute =
+  RestrictloginsignupVerifyEmailImport.update({
+    id: '/verify-email',
+    path: '/verify-email',
+    getParentRoute: () => RestrictloginsignupRoute,
+  } as any)
+
+const RestrictloginsignupSignupinviteRoute =
+  RestrictloginsignupSignupinviteImport.update({
+    id: '/signupinvite',
+    path: '/signupinvite',
+    getParentRoute: () => RestrictloginsignupRoute,
+  } as any)
+
+const RestrictloginsignupRequestnewinviteRoute =
+  RestrictloginsignupRequestnewinviteImport.update({
+    id: '/requestnewinvite',
+    path: '/requestnewinvite',
+    getParentRoute: () => RestrictloginsignupRoute,
+  } as any)
+
+const RestrictloginsignupPasswordResetRoute =
+  RestrictloginsignupPasswordResetImport.update({
+    id: '/password-reset',
+    path: '/password-reset',
+    getParentRoute: () => RestrictloginsignupRoute,
+  } as any)
+
+const RestrictloginsignupEmailNotVerifiedRoute =
+  RestrictloginsignupEmailNotVerifiedImport.update({
+    id: '/email-not-verified',
+    path: '/email-not-verified',
+    getParentRoute: () => RestrictloginsignupRoute,
+  } as any)
+
+const AuthenticateCliRedirectRoute = AuthenticateCliRedirectImport.update({
+  id: '/cli-redirect',
+  path: '/cli-redirect',
+  getParentRoute: () => AuthenticateRoute,
+} as any)
+
+const AuthenticatePersonalsettingslayoutRoute =
+  AuthenticatePersonalsettingslayoutImport.update({
+    id: '/_personal_settings_layout',
     getParentRoute: () => AuthenticateRoute,
   } as any)
 
@@ -52,52 +106,73 @@ const AuthenticateOrgdetailsRoute = AuthenticateOrgdetailsImport.update({
   getParentRoute: () => AuthenticateRoute,
 } as any)
 
+const RestrictloginsignupSignupIndexRoute =
+  RestrictloginsignupSignupIndexImport.update({
+    id: '/signup/',
+    path: '/signup/',
+    getParentRoute: () => RestrictloginsignupRoute,
+  } as any)
+
+const RestrictloginsignupLoginIndexRoute =
+  RestrictloginsignupLoginIndexImport.update({
+    id: '/login/',
+    path: '/login/',
+    getParentRoute: () => RestrictloginsignupRoute,
+  } as any)
+
 const AuthenticateOrgdetailsOrganizationlayoutRoute =
   AuthenticateOrgdetailsOrganizationlayoutImport.update({
     id: '/_organization_layout',
     getParentRoute: () => AuthenticateOrgdetailsRoute,
   } as any)
 
-const AuthenticateRestrictloginsignupSignupIndexRoute =
-  AuthenticateRestrictloginsignupSignupIndexImport.update({
-    id: '/signup/',
-    path: '/signup/',
-    getParentRoute: () => AuthenticateRestrictloginsignupRoute,
-  } as any)
-
-const AuthenticateRestrictloginsignupLoginIndexRoute =
-  AuthenticateRestrictloginsignupLoginIndexImport.update({
-    id: '/login/',
-    path: '/login/',
-    getParentRoute: () => AuthenticateRestrictloginsignupRoute,
-  } as any)
-
-const AuthenticateRestrictloginsignupSignupSsoIndexRoute =
-  AuthenticateRestrictloginsignupSignupSsoIndexImport.update({
+const RestrictloginsignupSignupSsoIndexRoute =
+  RestrictloginsignupSignupSsoIndexImport.update({
     id: '/signup/sso/',
     path: '/signup/sso/',
-    getParentRoute: () => AuthenticateRestrictloginsignupRoute,
+    getParentRoute: () => RestrictloginsignupRoute,
   } as any)
 
-const AuthenticateRestrictloginsignupLoginSsoIndexRoute =
-  AuthenticateRestrictloginsignupLoginSsoIndexImport.update({
+const RestrictloginsignupLoginSsoIndexRoute =
+  RestrictloginsignupLoginSsoIndexImport.update({
     id: '/login/sso/',
     path: '/login/sso/',
-    getParentRoute: () => AuthenticateRestrictloginsignupRoute,
+    getParentRoute: () => RestrictloginsignupRoute,
   } as any)
 
-const AuthenticateRestrictloginsignupLoginSelectOrganizationIndexRoute =
-  AuthenticateRestrictloginsignupLoginSelectOrganizationIndexImport.update({
+const RestrictloginsignupLoginSelectOrganizationIndexRoute =
+  RestrictloginsignupLoginSelectOrganizationIndexImport.update({
     id: '/login/select-organization/',
     path: '/login/select-organization/',
-    getParentRoute: () => AuthenticateRestrictloginsignupRoute,
+    getParentRoute: () => RestrictloginsignupRoute,
   } as any)
 
-const AuthenticateRestrictloginsignupLoginLdapIndexRoute =
-  AuthenticateRestrictloginsignupLoginLdapIndexImport.update({
+const RestrictloginsignupLoginLdapIndexRoute =
+  RestrictloginsignupLoginLdapIndexImport.update({
     id: '/login/ldap/',
     path: '/login/ldap/',
-    getParentRoute: () => AuthenticateRestrictloginsignupRoute,
+    getParentRoute: () => RestrictloginsignupRoute,
+  } as any)
+
+const AuthenticatePersonalsettingslayoutPersonalSettingsIndexRoute =
+  AuthenticatePersonalsettingslayoutPersonalSettingsIndexImport.update({
+    id: '/personal-settings/',
+    path: '/personal-settings/',
+    getParentRoute: () => AuthenticatePersonalsettingslayoutRoute,
+  } as any)
+
+const RestrictloginsignupLoginProviderSuccessRoute =
+  RestrictloginsignupLoginProviderSuccessImport.update({
+    id: '/login/provider/success',
+    path: '/login/provider/success',
+    getParentRoute: () => RestrictloginsignupRoute,
+  } as any)
+
+const RestrictloginsignupLoginProviderErrorRoute =
+  RestrictloginsignupLoginProviderErrorImport.update({
+    id: '/login/provider/error',
+    path: '/login/provider/error',
+    getParentRoute: () => RestrictloginsignupRoute,
   } as any)
 
 const AuthenticateOrgdetailsOrganizationlayoutOrganizationIndexRoute =
@@ -105,20 +180,6 @@ const AuthenticateOrgdetailsOrganizationlayoutOrganizationIndexRoute =
     id: '/organization/',
     path: '/organization/',
     getParentRoute: () => AuthenticateOrgdetailsOrganizationlayoutRoute,
-  } as any)
-
-const AuthenticateRestrictloginsignupLoginProviderSuccessRoute =
-  AuthenticateRestrictloginsignupLoginProviderSuccessImport.update({
-    id: '/login/provider/success',
-    path: '/login/provider/success',
-    getParentRoute: () => AuthenticateRestrictloginsignupRoute,
-  } as any)
-
-const AuthenticateRestrictloginsignupLoginProviderErrorRoute =
-  AuthenticateRestrictloginsignupLoginProviderErrorImport.update({
-    id: '/login/provider/error',
-    path: '/login/provider/error',
-    getParentRoute: () => AuthenticateRestrictloginsignupRoute,
   } as any)
 
 const AuthenticateOrgdetailsOrganizationlayoutOrganizationOrganizationIdIndexRoute =
@@ -157,6 +218,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticateImport
       parentRoute: typeof rootRoute
     }
+    '/_restrict_login_signup': {
+      id: '/_restrict_login_signup'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof RestrictloginsignupImport
+      parentRoute: typeof rootRoute
+    }
     '/_authenticate/_org_details': {
       id: '/_authenticate/_org_details'
       path: ''
@@ -164,12 +232,54 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticateOrgdetailsImport
       parentRoute: typeof AuthenticateImport
     }
-    '/_authenticate/_restrict_login_signup': {
-      id: '/_authenticate/_restrict_login_signup'
+    '/_authenticate/_personal_settings_layout': {
+      id: '/_authenticate/_personal_settings_layout'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof AuthenticateRestrictloginsignupImport
+      preLoaderRoute: typeof AuthenticatePersonalsettingslayoutImport
       parentRoute: typeof AuthenticateImport
+    }
+    '/_authenticate/cli-redirect': {
+      id: '/_authenticate/cli-redirect'
+      path: '/cli-redirect'
+      fullPath: '/cli-redirect'
+      preLoaderRoute: typeof AuthenticateCliRedirectImport
+      parentRoute: typeof AuthenticateImport
+    }
+    '/_restrict_login_signup/email-not-verified': {
+      id: '/_restrict_login_signup/email-not-verified'
+      path: '/email-not-verified'
+      fullPath: '/email-not-verified'
+      preLoaderRoute: typeof RestrictloginsignupEmailNotVerifiedImport
+      parentRoute: typeof RestrictloginsignupImport
+    }
+    '/_restrict_login_signup/password-reset': {
+      id: '/_restrict_login_signup/password-reset'
+      path: '/password-reset'
+      fullPath: '/password-reset'
+      preLoaderRoute: typeof RestrictloginsignupPasswordResetImport
+      parentRoute: typeof RestrictloginsignupImport
+    }
+    '/_restrict_login_signup/requestnewinvite': {
+      id: '/_restrict_login_signup/requestnewinvite'
+      path: '/requestnewinvite'
+      fullPath: '/requestnewinvite'
+      preLoaderRoute: typeof RestrictloginsignupRequestnewinviteImport
+      parentRoute: typeof RestrictloginsignupImport
+    }
+    '/_restrict_login_signup/signupinvite': {
+      id: '/_restrict_login_signup/signupinvite'
+      path: '/signupinvite'
+      fullPath: '/signupinvite'
+      preLoaderRoute: typeof RestrictloginsignupSignupinviteImport
+      parentRoute: typeof RestrictloginsignupImport
+    }
+    '/_restrict_login_signup/verify-email': {
+      id: '/_restrict_login_signup/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof RestrictloginsignupVerifyEmailImport
+      parentRoute: typeof RestrictloginsignupImport
     }
     '/_authenticate/_org_details/_organization_layout': {
       id: '/_authenticate/_org_details/_organization_layout'
@@ -178,33 +288,68 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticateOrgdetailsOrganizationlayoutImport
       parentRoute: typeof AuthenticateOrgdetailsImport
     }
-    '/_authenticate/_restrict_login_signup/login/': {
-      id: '/_authenticate/_restrict_login_signup/login/'
+    '/_restrict_login_signup/login/': {
+      id: '/_restrict_login_signup/login/'
       path: '/login'
       fullPath: '/login'
-      preLoaderRoute: typeof AuthenticateRestrictloginsignupLoginIndexImport
-      parentRoute: typeof AuthenticateRestrictloginsignupImport
+      preLoaderRoute: typeof RestrictloginsignupLoginIndexImport
+      parentRoute: typeof RestrictloginsignupImport
     }
-    '/_authenticate/_restrict_login_signup/signup/': {
-      id: '/_authenticate/_restrict_login_signup/signup/'
+    '/_restrict_login_signup/signup/': {
+      id: '/_restrict_login_signup/signup/'
       path: '/signup'
       fullPath: '/signup'
-      preLoaderRoute: typeof AuthenticateRestrictloginsignupSignupIndexImport
-      parentRoute: typeof AuthenticateRestrictloginsignupImport
+      preLoaderRoute: typeof RestrictloginsignupSignupIndexImport
+      parentRoute: typeof RestrictloginsignupImport
     }
-    '/_authenticate/_restrict_login_signup/login/provider/error': {
-      id: '/_authenticate/_restrict_login_signup/login/provider/error'
+    '/_restrict_login_signup/login/provider/error': {
+      id: '/_restrict_login_signup/login/provider/error'
       path: '/login/provider/error'
       fullPath: '/login/provider/error'
-      preLoaderRoute: typeof AuthenticateRestrictloginsignupLoginProviderErrorImport
-      parentRoute: typeof AuthenticateRestrictloginsignupImport
+      preLoaderRoute: typeof RestrictloginsignupLoginProviderErrorImport
+      parentRoute: typeof RestrictloginsignupImport
     }
-    '/_authenticate/_restrict_login_signup/login/provider/success': {
-      id: '/_authenticate/_restrict_login_signup/login/provider/success'
+    '/_restrict_login_signup/login/provider/success': {
+      id: '/_restrict_login_signup/login/provider/success'
       path: '/login/provider/success'
       fullPath: '/login/provider/success'
-      preLoaderRoute: typeof AuthenticateRestrictloginsignupLoginProviderSuccessImport
-      parentRoute: typeof AuthenticateRestrictloginsignupImport
+      preLoaderRoute: typeof RestrictloginsignupLoginProviderSuccessImport
+      parentRoute: typeof RestrictloginsignupImport
+    }
+    '/_authenticate/_personal_settings_layout/personal-settings/': {
+      id: '/_authenticate/_personal_settings_layout/personal-settings/'
+      path: '/personal-settings'
+      fullPath: '/personal-settings'
+      preLoaderRoute: typeof AuthenticatePersonalsettingslayoutPersonalSettingsIndexImport
+      parentRoute: typeof AuthenticatePersonalsettingslayoutImport
+    }
+    '/_restrict_login_signup/login/ldap/': {
+      id: '/_restrict_login_signup/login/ldap/'
+      path: '/login/ldap'
+      fullPath: '/login/ldap'
+      preLoaderRoute: typeof RestrictloginsignupLoginLdapIndexImport
+      parentRoute: typeof RestrictloginsignupImport
+    }
+    '/_restrict_login_signup/login/select-organization/': {
+      id: '/_restrict_login_signup/login/select-organization/'
+      path: '/login/select-organization'
+      fullPath: '/login/select-organization'
+      preLoaderRoute: typeof RestrictloginsignupLoginSelectOrganizationIndexImport
+      parentRoute: typeof RestrictloginsignupImport
+    }
+    '/_restrict_login_signup/login/sso/': {
+      id: '/_restrict_login_signup/login/sso/'
+      path: '/login/sso'
+      fullPath: '/login/sso'
+      preLoaderRoute: typeof RestrictloginsignupLoginSsoIndexImport
+      parentRoute: typeof RestrictloginsignupImport
+    }
+    '/_restrict_login_signup/signup/sso/': {
+      id: '/_restrict_login_signup/signup/sso/'
+      path: '/signup/sso'
+      fullPath: '/signup/sso'
+      preLoaderRoute: typeof RestrictloginsignupSignupSsoIndexImport
+      parentRoute: typeof RestrictloginsignupImport
     }
     '/_authenticate/_org_details/_organization_layout/organization/': {
       id: '/_authenticate/_org_details/_organization_layout/organization/'
@@ -212,34 +357,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/organization'
       preLoaderRoute: typeof AuthenticateOrgdetailsOrganizationlayoutOrganizationIndexImport
       parentRoute: typeof AuthenticateOrgdetailsOrganizationlayoutImport
-    }
-    '/_authenticate/_restrict_login_signup/login/ldap/': {
-      id: '/_authenticate/_restrict_login_signup/login/ldap/'
-      path: '/login/ldap'
-      fullPath: '/login/ldap'
-      preLoaderRoute: typeof AuthenticateRestrictloginsignupLoginLdapIndexImport
-      parentRoute: typeof AuthenticateRestrictloginsignupImport
-    }
-    '/_authenticate/_restrict_login_signup/login/select-organization/': {
-      id: '/_authenticate/_restrict_login_signup/login/select-organization/'
-      path: '/login/select-organization'
-      fullPath: '/login/select-organization'
-      preLoaderRoute: typeof AuthenticateRestrictloginsignupLoginSelectOrganizationIndexImport
-      parentRoute: typeof AuthenticateRestrictloginsignupImport
-    }
-    '/_authenticate/_restrict_login_signup/login/sso/': {
-      id: '/_authenticate/_restrict_login_signup/login/sso/'
-      path: '/login/sso'
-      fullPath: '/login/sso'
-      preLoaderRoute: typeof AuthenticateRestrictloginsignupLoginSsoIndexImport
-      parentRoute: typeof AuthenticateRestrictloginsignupImport
-    }
-    '/_authenticate/_restrict_login_signup/signup/sso/': {
-      id: '/_authenticate/_restrict_login_signup/signup/sso/'
-      path: '/signup/sso'
-      fullPath: '/signup/sso'
-      preLoaderRoute: typeof AuthenticateRestrictloginsignupSignupSsoIndexImport
-      parentRoute: typeof AuthenticateRestrictloginsignupImport
     }
     '/_authenticate/_org_details/_organization_layout/organization/$organizationId/secret-manager': {
       id: '/_authenticate/_org_details/_organization_layout/organization/$organizationId/secret-manager'
@@ -296,69 +413,99 @@ const AuthenticateOrgdetailsRouteWithChildren =
     AuthenticateOrgdetailsRouteChildren,
   )
 
-interface AuthenticateRestrictloginsignupRouteChildren {
-  AuthenticateRestrictloginsignupLoginIndexRoute: typeof AuthenticateRestrictloginsignupLoginIndexRoute
-  AuthenticateRestrictloginsignupSignupIndexRoute: typeof AuthenticateRestrictloginsignupSignupIndexRoute
-  AuthenticateRestrictloginsignupLoginProviderErrorRoute: typeof AuthenticateRestrictloginsignupLoginProviderErrorRoute
-  AuthenticateRestrictloginsignupLoginProviderSuccessRoute: typeof AuthenticateRestrictloginsignupLoginProviderSuccessRoute
-  AuthenticateRestrictloginsignupLoginLdapIndexRoute: typeof AuthenticateRestrictloginsignupLoginLdapIndexRoute
-  AuthenticateRestrictloginsignupLoginSelectOrganizationIndexRoute: typeof AuthenticateRestrictloginsignupLoginSelectOrganizationIndexRoute
-  AuthenticateRestrictloginsignupLoginSsoIndexRoute: typeof AuthenticateRestrictloginsignupLoginSsoIndexRoute
-  AuthenticateRestrictloginsignupSignupSsoIndexRoute: typeof AuthenticateRestrictloginsignupSignupSsoIndexRoute
+interface AuthenticatePersonalsettingslayoutRouteChildren {
+  AuthenticatePersonalsettingslayoutPersonalSettingsIndexRoute: typeof AuthenticatePersonalsettingslayoutPersonalSettingsIndexRoute
 }
 
-const AuthenticateRestrictloginsignupRouteChildren: AuthenticateRestrictloginsignupRouteChildren =
+const AuthenticatePersonalsettingslayoutRouteChildren: AuthenticatePersonalsettingslayoutRouteChildren =
   {
-    AuthenticateRestrictloginsignupLoginIndexRoute:
-      AuthenticateRestrictloginsignupLoginIndexRoute,
-    AuthenticateRestrictloginsignupSignupIndexRoute:
-      AuthenticateRestrictloginsignupSignupIndexRoute,
-    AuthenticateRestrictloginsignupLoginProviderErrorRoute:
-      AuthenticateRestrictloginsignupLoginProviderErrorRoute,
-    AuthenticateRestrictloginsignupLoginProviderSuccessRoute:
-      AuthenticateRestrictloginsignupLoginProviderSuccessRoute,
-    AuthenticateRestrictloginsignupLoginLdapIndexRoute:
-      AuthenticateRestrictloginsignupLoginLdapIndexRoute,
-    AuthenticateRestrictloginsignupLoginSelectOrganizationIndexRoute:
-      AuthenticateRestrictloginsignupLoginSelectOrganizationIndexRoute,
-    AuthenticateRestrictloginsignupLoginSsoIndexRoute:
-      AuthenticateRestrictloginsignupLoginSsoIndexRoute,
-    AuthenticateRestrictloginsignupSignupSsoIndexRoute:
-      AuthenticateRestrictloginsignupSignupSsoIndexRoute,
+    AuthenticatePersonalsettingslayoutPersonalSettingsIndexRoute:
+      AuthenticatePersonalsettingslayoutPersonalSettingsIndexRoute,
   }
 
-const AuthenticateRestrictloginsignupRouteWithChildren =
-  AuthenticateRestrictloginsignupRoute._addFileChildren(
-    AuthenticateRestrictloginsignupRouteChildren,
+const AuthenticatePersonalsettingslayoutRouteWithChildren =
+  AuthenticatePersonalsettingslayoutRoute._addFileChildren(
+    AuthenticatePersonalsettingslayoutRouteChildren,
   )
 
 interface AuthenticateRouteChildren {
   AuthenticateOrgdetailsRoute: typeof AuthenticateOrgdetailsRouteWithChildren
-  AuthenticateRestrictloginsignupRoute: typeof AuthenticateRestrictloginsignupRouteWithChildren
+  AuthenticatePersonalsettingslayoutRoute: typeof AuthenticatePersonalsettingslayoutRouteWithChildren
+  AuthenticateCliRedirectRoute: typeof AuthenticateCliRedirectRoute
 }
 
 const AuthenticateRouteChildren: AuthenticateRouteChildren = {
   AuthenticateOrgdetailsRoute: AuthenticateOrgdetailsRouteWithChildren,
-  AuthenticateRestrictloginsignupRoute:
-    AuthenticateRestrictloginsignupRouteWithChildren,
+  AuthenticatePersonalsettingslayoutRoute:
+    AuthenticatePersonalsettingslayoutRouteWithChildren,
+  AuthenticateCliRedirectRoute: AuthenticateCliRedirectRoute,
 }
 
 const AuthenticateRouteWithChildren = AuthenticateRoute._addFileChildren(
   AuthenticateRouteChildren,
 )
 
+interface RestrictloginsignupRouteChildren {
+  RestrictloginsignupEmailNotVerifiedRoute: typeof RestrictloginsignupEmailNotVerifiedRoute
+  RestrictloginsignupPasswordResetRoute: typeof RestrictloginsignupPasswordResetRoute
+  RestrictloginsignupRequestnewinviteRoute: typeof RestrictloginsignupRequestnewinviteRoute
+  RestrictloginsignupSignupinviteRoute: typeof RestrictloginsignupSignupinviteRoute
+  RestrictloginsignupVerifyEmailRoute: typeof RestrictloginsignupVerifyEmailRoute
+  RestrictloginsignupLoginIndexRoute: typeof RestrictloginsignupLoginIndexRoute
+  RestrictloginsignupSignupIndexRoute: typeof RestrictloginsignupSignupIndexRoute
+  RestrictloginsignupLoginProviderErrorRoute: typeof RestrictloginsignupLoginProviderErrorRoute
+  RestrictloginsignupLoginProviderSuccessRoute: typeof RestrictloginsignupLoginProviderSuccessRoute
+  RestrictloginsignupLoginLdapIndexRoute: typeof RestrictloginsignupLoginLdapIndexRoute
+  RestrictloginsignupLoginSelectOrganizationIndexRoute: typeof RestrictloginsignupLoginSelectOrganizationIndexRoute
+  RestrictloginsignupLoginSsoIndexRoute: typeof RestrictloginsignupLoginSsoIndexRoute
+  RestrictloginsignupSignupSsoIndexRoute: typeof RestrictloginsignupSignupSsoIndexRoute
+}
+
+const RestrictloginsignupRouteChildren: RestrictloginsignupRouteChildren = {
+  RestrictloginsignupEmailNotVerifiedRoute:
+    RestrictloginsignupEmailNotVerifiedRoute,
+  RestrictloginsignupPasswordResetRoute: RestrictloginsignupPasswordResetRoute,
+  RestrictloginsignupRequestnewinviteRoute:
+    RestrictloginsignupRequestnewinviteRoute,
+  RestrictloginsignupSignupinviteRoute: RestrictloginsignupSignupinviteRoute,
+  RestrictloginsignupVerifyEmailRoute: RestrictloginsignupVerifyEmailRoute,
+  RestrictloginsignupLoginIndexRoute: RestrictloginsignupLoginIndexRoute,
+  RestrictloginsignupSignupIndexRoute: RestrictloginsignupSignupIndexRoute,
+  RestrictloginsignupLoginProviderErrorRoute:
+    RestrictloginsignupLoginProviderErrorRoute,
+  RestrictloginsignupLoginProviderSuccessRoute:
+    RestrictloginsignupLoginProviderSuccessRoute,
+  RestrictloginsignupLoginLdapIndexRoute:
+    RestrictloginsignupLoginLdapIndexRoute,
+  RestrictloginsignupLoginSelectOrganizationIndexRoute:
+    RestrictloginsignupLoginSelectOrganizationIndexRoute,
+  RestrictloginsignupLoginSsoIndexRoute: RestrictloginsignupLoginSsoIndexRoute,
+  RestrictloginsignupSignupSsoIndexRoute:
+    RestrictloginsignupSignupSsoIndexRoute,
+}
+
+const RestrictloginsignupRouteWithChildren =
+  RestrictloginsignupRoute._addFileChildren(RestrictloginsignupRouteChildren)
+
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '': typeof AuthenticateOrgdetailsOrganizationlayoutRouteWithChildren
-  '/login': typeof AuthenticateRestrictloginsignupLoginIndexRoute
-  '/signup': typeof AuthenticateRestrictloginsignupSignupIndexRoute
-  '/login/provider/error': typeof AuthenticateRestrictloginsignupLoginProviderErrorRoute
-  '/login/provider/success': typeof AuthenticateRestrictloginsignupLoginProviderSuccessRoute
+  '/cli-redirect': typeof AuthenticateCliRedirectRoute
+  '/email-not-verified': typeof RestrictloginsignupEmailNotVerifiedRoute
+  '/password-reset': typeof RestrictloginsignupPasswordResetRoute
+  '/requestnewinvite': typeof RestrictloginsignupRequestnewinviteRoute
+  '/signupinvite': typeof RestrictloginsignupSignupinviteRoute
+  '/verify-email': typeof RestrictloginsignupVerifyEmailRoute
+  '/login': typeof RestrictloginsignupLoginIndexRoute
+  '/signup': typeof RestrictloginsignupSignupIndexRoute
+  '/login/provider/error': typeof RestrictloginsignupLoginProviderErrorRoute
+  '/login/provider/success': typeof RestrictloginsignupLoginProviderSuccessRoute
+  '/personal-settings': typeof AuthenticatePersonalsettingslayoutPersonalSettingsIndexRoute
+  '/login/ldap': typeof RestrictloginsignupLoginLdapIndexRoute
+  '/login/select-organization': typeof RestrictloginsignupLoginSelectOrganizationIndexRoute
+  '/login/sso': typeof RestrictloginsignupLoginSsoIndexRoute
+  '/signup/sso': typeof RestrictloginsignupSignupSsoIndexRoute
   '/organization': typeof AuthenticateOrgdetailsOrganizationlayoutOrganizationIndexRoute
-  '/login/ldap': typeof AuthenticateRestrictloginsignupLoginLdapIndexRoute
-  '/login/select-organization': typeof AuthenticateRestrictloginsignupLoginSelectOrganizationIndexRoute
-  '/login/sso': typeof AuthenticateRestrictloginsignupLoginSsoIndexRoute
-  '/signup/sso': typeof AuthenticateRestrictloginsignupSignupSsoIndexRoute
   '/organization/$organizationId/secret-manager': typeof AuthenticateOrgdetailsOrganizationlayoutOrganizationOrganizationIdSecretManagerRoute
   '/organization/$organizationId': typeof AuthenticateOrgdetailsOrganizationlayoutOrganizationOrganizationIdIndexRoute
 }
@@ -366,15 +513,22 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '': typeof AuthenticateOrgdetailsOrganizationlayoutRouteWithChildren
-  '/login': typeof AuthenticateRestrictloginsignupLoginIndexRoute
-  '/signup': typeof AuthenticateRestrictloginsignupSignupIndexRoute
-  '/login/provider/error': typeof AuthenticateRestrictloginsignupLoginProviderErrorRoute
-  '/login/provider/success': typeof AuthenticateRestrictloginsignupLoginProviderSuccessRoute
+  '/cli-redirect': typeof AuthenticateCliRedirectRoute
+  '/email-not-verified': typeof RestrictloginsignupEmailNotVerifiedRoute
+  '/password-reset': typeof RestrictloginsignupPasswordResetRoute
+  '/requestnewinvite': typeof RestrictloginsignupRequestnewinviteRoute
+  '/signupinvite': typeof RestrictloginsignupSignupinviteRoute
+  '/verify-email': typeof RestrictloginsignupVerifyEmailRoute
+  '/login': typeof RestrictloginsignupLoginIndexRoute
+  '/signup': typeof RestrictloginsignupSignupIndexRoute
+  '/login/provider/error': typeof RestrictloginsignupLoginProviderErrorRoute
+  '/login/provider/success': typeof RestrictloginsignupLoginProviderSuccessRoute
+  '/personal-settings': typeof AuthenticatePersonalsettingslayoutPersonalSettingsIndexRoute
+  '/login/ldap': typeof RestrictloginsignupLoginLdapIndexRoute
+  '/login/select-organization': typeof RestrictloginsignupLoginSelectOrganizationIndexRoute
+  '/login/sso': typeof RestrictloginsignupLoginSsoIndexRoute
+  '/signup/sso': typeof RestrictloginsignupSignupSsoIndexRoute
   '/organization': typeof AuthenticateOrgdetailsOrganizationlayoutOrganizationIndexRoute
-  '/login/ldap': typeof AuthenticateRestrictloginsignupLoginLdapIndexRoute
-  '/login/select-organization': typeof AuthenticateRestrictloginsignupLoginSelectOrganizationIndexRoute
-  '/login/sso': typeof AuthenticateRestrictloginsignupLoginSsoIndexRoute
-  '/signup/sso': typeof AuthenticateRestrictloginsignupSignupSsoIndexRoute
   '/organization/$organizationId/secret-manager': typeof AuthenticateOrgdetailsOrganizationlayoutOrganizationOrganizationIdSecretManagerRoute
   '/organization/$organizationId': typeof AuthenticateOrgdetailsOrganizationlayoutOrganizationOrganizationIdIndexRoute
 }
@@ -383,18 +537,26 @@ export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/_authenticate': typeof AuthenticateRouteWithChildren
+  '/_restrict_login_signup': typeof RestrictloginsignupRouteWithChildren
   '/_authenticate/_org_details': typeof AuthenticateOrgdetailsRouteWithChildren
-  '/_authenticate/_restrict_login_signup': typeof AuthenticateRestrictloginsignupRouteWithChildren
+  '/_authenticate/_personal_settings_layout': typeof AuthenticatePersonalsettingslayoutRouteWithChildren
+  '/_authenticate/cli-redirect': typeof AuthenticateCliRedirectRoute
+  '/_restrict_login_signup/email-not-verified': typeof RestrictloginsignupEmailNotVerifiedRoute
+  '/_restrict_login_signup/password-reset': typeof RestrictloginsignupPasswordResetRoute
+  '/_restrict_login_signup/requestnewinvite': typeof RestrictloginsignupRequestnewinviteRoute
+  '/_restrict_login_signup/signupinvite': typeof RestrictloginsignupSignupinviteRoute
+  '/_restrict_login_signup/verify-email': typeof RestrictloginsignupVerifyEmailRoute
   '/_authenticate/_org_details/_organization_layout': typeof AuthenticateOrgdetailsOrganizationlayoutRouteWithChildren
-  '/_authenticate/_restrict_login_signup/login/': typeof AuthenticateRestrictloginsignupLoginIndexRoute
-  '/_authenticate/_restrict_login_signup/signup/': typeof AuthenticateRestrictloginsignupSignupIndexRoute
-  '/_authenticate/_restrict_login_signup/login/provider/error': typeof AuthenticateRestrictloginsignupLoginProviderErrorRoute
-  '/_authenticate/_restrict_login_signup/login/provider/success': typeof AuthenticateRestrictloginsignupLoginProviderSuccessRoute
+  '/_restrict_login_signup/login/': typeof RestrictloginsignupLoginIndexRoute
+  '/_restrict_login_signup/signup/': typeof RestrictloginsignupSignupIndexRoute
+  '/_restrict_login_signup/login/provider/error': typeof RestrictloginsignupLoginProviderErrorRoute
+  '/_restrict_login_signup/login/provider/success': typeof RestrictloginsignupLoginProviderSuccessRoute
+  '/_authenticate/_personal_settings_layout/personal-settings/': typeof AuthenticatePersonalsettingslayoutPersonalSettingsIndexRoute
+  '/_restrict_login_signup/login/ldap/': typeof RestrictloginsignupLoginLdapIndexRoute
+  '/_restrict_login_signup/login/select-organization/': typeof RestrictloginsignupLoginSelectOrganizationIndexRoute
+  '/_restrict_login_signup/login/sso/': typeof RestrictloginsignupLoginSsoIndexRoute
+  '/_restrict_login_signup/signup/sso/': typeof RestrictloginsignupSignupSsoIndexRoute
   '/_authenticate/_org_details/_organization_layout/organization/': typeof AuthenticateOrgdetailsOrganizationlayoutOrganizationIndexRoute
-  '/_authenticate/_restrict_login_signup/login/ldap/': typeof AuthenticateRestrictloginsignupLoginLdapIndexRoute
-  '/_authenticate/_restrict_login_signup/login/select-organization/': typeof AuthenticateRestrictloginsignupLoginSelectOrganizationIndexRoute
-  '/_authenticate/_restrict_login_signup/login/sso/': typeof AuthenticateRestrictloginsignupLoginSsoIndexRoute
-  '/_authenticate/_restrict_login_signup/signup/sso/': typeof AuthenticateRestrictloginsignupSignupSsoIndexRoute
   '/_authenticate/_org_details/_organization_layout/organization/$organizationId/secret-manager': typeof AuthenticateOrgdetailsOrganizationlayoutOrganizationOrganizationIdSecretManagerRoute
   '/_authenticate/_org_details/_organization_layout/organization/$organizationId/': typeof AuthenticateOrgdetailsOrganizationlayoutOrganizationOrganizationIdIndexRoute
 }
@@ -404,48 +566,70 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | ''
+    | '/cli-redirect'
+    | '/email-not-verified'
+    | '/password-reset'
+    | '/requestnewinvite'
+    | '/signupinvite'
+    | '/verify-email'
     | '/login'
     | '/signup'
     | '/login/provider/error'
     | '/login/provider/success'
-    | '/organization'
+    | '/personal-settings'
     | '/login/ldap'
     | '/login/select-organization'
     | '/login/sso'
     | '/signup/sso'
+    | '/organization'
     | '/organization/$organizationId/secret-manager'
     | '/organization/$organizationId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | ''
+    | '/cli-redirect'
+    | '/email-not-verified'
+    | '/password-reset'
+    | '/requestnewinvite'
+    | '/signupinvite'
+    | '/verify-email'
     | '/login'
     | '/signup'
     | '/login/provider/error'
     | '/login/provider/success'
-    | '/organization'
+    | '/personal-settings'
     | '/login/ldap'
     | '/login/select-organization'
     | '/login/sso'
     | '/signup/sso'
+    | '/organization'
     | '/organization/$organizationId/secret-manager'
     | '/organization/$organizationId'
   id:
     | '__root__'
     | '/'
     | '/_authenticate'
+    | '/_restrict_login_signup'
     | '/_authenticate/_org_details'
-    | '/_authenticate/_restrict_login_signup'
+    | '/_authenticate/_personal_settings_layout'
+    | '/_authenticate/cli-redirect'
+    | '/_restrict_login_signup/email-not-verified'
+    | '/_restrict_login_signup/password-reset'
+    | '/_restrict_login_signup/requestnewinvite'
+    | '/_restrict_login_signup/signupinvite'
+    | '/_restrict_login_signup/verify-email'
     | '/_authenticate/_org_details/_organization_layout'
-    | '/_authenticate/_restrict_login_signup/login/'
-    | '/_authenticate/_restrict_login_signup/signup/'
-    | '/_authenticate/_restrict_login_signup/login/provider/error'
-    | '/_authenticate/_restrict_login_signup/login/provider/success'
+    | '/_restrict_login_signup/login/'
+    | '/_restrict_login_signup/signup/'
+    | '/_restrict_login_signup/login/provider/error'
+    | '/_restrict_login_signup/login/provider/success'
+    | '/_authenticate/_personal_settings_layout/personal-settings/'
+    | '/_restrict_login_signup/login/ldap/'
+    | '/_restrict_login_signup/login/select-organization/'
+    | '/_restrict_login_signup/login/sso/'
+    | '/_restrict_login_signup/signup/sso/'
     | '/_authenticate/_org_details/_organization_layout/organization/'
-    | '/_authenticate/_restrict_login_signup/login/ldap/'
-    | '/_authenticate/_restrict_login_signup/login/select-organization/'
-    | '/_authenticate/_restrict_login_signup/login/sso/'
-    | '/_authenticate/_restrict_login_signup/signup/sso/'
     | '/_authenticate/_org_details/_organization_layout/organization/$organizationId/secret-manager'
     | '/_authenticate/_org_details/_organization_layout/organization/$organizationId/'
   fileRoutesById: FileRoutesById
@@ -454,11 +638,13 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticateRoute: typeof AuthenticateRouteWithChildren
+  RestrictloginsignupRoute: typeof RestrictloginsignupRouteWithChildren
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticateRoute: AuthenticateRouteWithChildren,
+  RestrictloginsignupRoute: RestrictloginsignupRouteWithChildren,
 }
 
 export const routeTree = rootRoute
@@ -472,7 +658,8 @@ export const routeTree = rootRoute
       "filePath": "__root.tsx",
       "children": [
         "/",
-        "/_authenticate"
+        "/_authenticate",
+        "/_restrict_login_signup"
       ]
     },
     "/": {
@@ -482,7 +669,26 @@ export const routeTree = rootRoute
       "filePath": "_authenticate.tsx",
       "children": [
         "/_authenticate/_org_details",
-        "/_authenticate/_restrict_login_signup"
+        "/_authenticate/_personal_settings_layout",
+        "/_authenticate/cli-redirect"
+      ]
+    },
+    "/_restrict_login_signup": {
+      "filePath": "_restrict_login_signup.tsx",
+      "children": [
+        "/_restrict_login_signup/email-not-verified",
+        "/_restrict_login_signup/password-reset",
+        "/_restrict_login_signup/requestnewinvite",
+        "/_restrict_login_signup/signupinvite",
+        "/_restrict_login_signup/verify-email",
+        "/_restrict_login_signup/login/",
+        "/_restrict_login_signup/signup/",
+        "/_restrict_login_signup/login/provider/error",
+        "/_restrict_login_signup/login/provider/success",
+        "/_restrict_login_signup/login/ldap/",
+        "/_restrict_login_signup/login/select-organization/",
+        "/_restrict_login_signup/login/sso/",
+        "/_restrict_login_signup/signup/sso/"
       ]
     },
     "/_authenticate/_org_details": {
@@ -492,19 +698,36 @@ export const routeTree = rootRoute
         "/_authenticate/_org_details/_organization_layout"
       ]
     },
-    "/_authenticate/_restrict_login_signup": {
-      "filePath": "_authenticate/_restrict_login_signup.tsx",
+    "/_authenticate/_personal_settings_layout": {
+      "filePath": "_authenticate/_personal_settings_layout.tsx",
       "parent": "/_authenticate",
       "children": [
-        "/_authenticate/_restrict_login_signup/login/",
-        "/_authenticate/_restrict_login_signup/signup/",
-        "/_authenticate/_restrict_login_signup/login/provider/error",
-        "/_authenticate/_restrict_login_signup/login/provider/success",
-        "/_authenticate/_restrict_login_signup/login/ldap/",
-        "/_authenticate/_restrict_login_signup/login/select-organization/",
-        "/_authenticate/_restrict_login_signup/login/sso/",
-        "/_authenticate/_restrict_login_signup/signup/sso/"
+        "/_authenticate/_personal_settings_layout/personal-settings/"
       ]
+    },
+    "/_authenticate/cli-redirect": {
+      "filePath": "_authenticate/cli-redirect.tsx",
+      "parent": "/_authenticate"
+    },
+    "/_restrict_login_signup/email-not-verified": {
+      "filePath": "_restrict_login_signup/email-not-verified.tsx",
+      "parent": "/_restrict_login_signup"
+    },
+    "/_restrict_login_signup/password-reset": {
+      "filePath": "_restrict_login_signup/password-reset.tsx",
+      "parent": "/_restrict_login_signup"
+    },
+    "/_restrict_login_signup/requestnewinvite": {
+      "filePath": "_restrict_login_signup/requestnewinvite.tsx",
+      "parent": "/_restrict_login_signup"
+    },
+    "/_restrict_login_signup/signupinvite": {
+      "filePath": "_restrict_login_signup/signupinvite.tsx",
+      "parent": "/_restrict_login_signup"
+    },
+    "/_restrict_login_signup/verify-email": {
+      "filePath": "_restrict_login_signup/verify-email.tsx",
+      "parent": "/_restrict_login_signup"
     },
     "/_authenticate/_org_details/_organization_layout": {
       "filePath": "_authenticate/_org_details/_organization_layout.tsx",
@@ -515,41 +738,45 @@ export const routeTree = rootRoute
         "/_authenticate/_org_details/_organization_layout/organization/$organizationId/"
       ]
     },
-    "/_authenticate/_restrict_login_signup/login/": {
-      "filePath": "_authenticate/_restrict_login_signup/login/index.tsx",
-      "parent": "/_authenticate/_restrict_login_signup"
+    "/_restrict_login_signup/login/": {
+      "filePath": "_restrict_login_signup/login/index.tsx",
+      "parent": "/_restrict_login_signup"
     },
-    "/_authenticate/_restrict_login_signup/signup/": {
-      "filePath": "_authenticate/_restrict_login_signup/signup/index.tsx",
-      "parent": "/_authenticate/_restrict_login_signup"
+    "/_restrict_login_signup/signup/": {
+      "filePath": "_restrict_login_signup/signup/index.tsx",
+      "parent": "/_restrict_login_signup"
     },
-    "/_authenticate/_restrict_login_signup/login/provider/error": {
-      "filePath": "_authenticate/_restrict_login_signup/login/provider/error.tsx",
-      "parent": "/_authenticate/_restrict_login_signup"
+    "/_restrict_login_signup/login/provider/error": {
+      "filePath": "_restrict_login_signup/login/provider/error.tsx",
+      "parent": "/_restrict_login_signup"
     },
-    "/_authenticate/_restrict_login_signup/login/provider/success": {
-      "filePath": "_authenticate/_restrict_login_signup/login/provider/success.tsx",
-      "parent": "/_authenticate/_restrict_login_signup"
+    "/_restrict_login_signup/login/provider/success": {
+      "filePath": "_restrict_login_signup/login/provider/success.tsx",
+      "parent": "/_restrict_login_signup"
+    },
+    "/_authenticate/_personal_settings_layout/personal-settings/": {
+      "filePath": "_authenticate/_personal_settings_layout/personal-settings/index.tsx",
+      "parent": "/_authenticate/_personal_settings_layout"
+    },
+    "/_restrict_login_signup/login/ldap/": {
+      "filePath": "_restrict_login_signup/login/ldap/index.tsx",
+      "parent": "/_restrict_login_signup"
+    },
+    "/_restrict_login_signup/login/select-organization/": {
+      "filePath": "_restrict_login_signup/login/select-organization/index.tsx",
+      "parent": "/_restrict_login_signup"
+    },
+    "/_restrict_login_signup/login/sso/": {
+      "filePath": "_restrict_login_signup/login/sso/index.tsx",
+      "parent": "/_restrict_login_signup"
+    },
+    "/_restrict_login_signup/signup/sso/": {
+      "filePath": "_restrict_login_signup/signup/sso/index.tsx",
+      "parent": "/_restrict_login_signup"
     },
     "/_authenticate/_org_details/_organization_layout/organization/": {
       "filePath": "_authenticate/_org_details/_organization_layout/organization/index.tsx",
       "parent": "/_authenticate/_org_details/_organization_layout"
-    },
-    "/_authenticate/_restrict_login_signup/login/ldap/": {
-      "filePath": "_authenticate/_restrict_login_signup/login/ldap/index.tsx",
-      "parent": "/_authenticate/_restrict_login_signup"
-    },
-    "/_authenticate/_restrict_login_signup/login/select-organization/": {
-      "filePath": "_authenticate/_restrict_login_signup/login/select-organization/index.tsx",
-      "parent": "/_authenticate/_restrict_login_signup"
-    },
-    "/_authenticate/_restrict_login_signup/login/sso/": {
-      "filePath": "_authenticate/_restrict_login_signup/login/sso/index.tsx",
-      "parent": "/_authenticate/_restrict_login_signup"
-    },
-    "/_authenticate/_restrict_login_signup/signup/sso/": {
-      "filePath": "_authenticate/_restrict_login_signup/signup/sso/index.tsx",
-      "parent": "/_authenticate/_restrict_login_signup"
     },
     "/_authenticate/_org_details/_organization_layout/organization/$organizationId/secret-manager": {
       "filePath": "_authenticate/_org_details/_organization_layout/organization/$organizationId/secret-manager.tsx",
