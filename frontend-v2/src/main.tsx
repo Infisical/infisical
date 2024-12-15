@@ -1,15 +1,34 @@
 import { StrictMode } from "react";
 import ReactDOM from "react-dom/client";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
+import NProgress from "nprogress";
 
+import { ContentLoader } from "./components/v2";
+import { queryClient } from "./hooks/api/reactQuery";
 // Import the generated route tree
 import { routeTree } from "./routeTree.gen";
 
+import "nprogress/nprogress.css";
+import "react-toastify/dist/ReactToastify.css";
+import "@fortawesome/fontawesome-svg-core/styles.css";
+import "react-day-picker/dist/style.css";
 import "./index.css";
 
 // Create a new router instance
-const router = createRouter({ routeTree });
+NProgress.configure({ showSpinner: false });
 
+const router = createRouter({
+  routeTree,
+  context: { serverConfig: null, queryClient },
+  defaultPendingComponent: () => (
+    <div className="bg-bunker-800">
+      <ContentLoader />
+    </div>
+  )
+});
+
+router.subscribe("onBeforeLoad", ({ pathChanged }) => pathChanged && NProgress.start());
+router.subscribe("onLoad", () => NProgress.done());
 // Register the router instance for type safety
 declare module "@tanstack/react-router" {
   interface Register {

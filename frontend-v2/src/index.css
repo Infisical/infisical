@@ -74,11 +74,11 @@ html {
 
   /* padding except for comment column */
   .secret-table th {
-    @apply py-2 px-4 font-medium;
+    @apply px-4 py-2 font-medium;
   }
 
   .secret-table td {
-    @apply py-1 px-1 pr-2 text-sm;
+    @apply px-1 py-1 pr-2 text-sm;
   }
 
   .secret-table th:not(:last-child),
@@ -134,10 +134,6 @@ html {
     scrollbar-width: thin;
     scrollbar-color: gray transparent;
   }
-
-  #nprogress .bar {
-    @apply bg-primary-400;
-  }
 }
 .tags-conic-bg {
   background: conic-gradient(
@@ -190,4 +186,8 @@ html {
   transform: translateY(20px);
   transition: all 0.2s;
   opacity: 0;
+}
+
+#nprogress .bar {
+  @apply bg-primary-400;
 }
