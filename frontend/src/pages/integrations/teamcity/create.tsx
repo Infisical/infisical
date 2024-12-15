@@ -98,16 +98,12 @@ export default function TeamCityCreateIntegrationPage() {
     }
   };
 
-  const filteredBuildConfigs = targetBuildConfigs?.concat({
-    name: "",
-    buildConfigId: ""
-  });
 
   return integrationAuth &&
     workspace &&
     selectedSourceEnvironment &&
     integrationAuthApps &&
-    filteredBuildConfigs &&
+    targetBuildConfigs &&
     targetAppId ? (
     <div className="flex h-full w-full items-center justify-center">
       <Head>
@@ -195,7 +191,7 @@ export default function TeamCityCreateIntegrationPage() {
             onValueChange={(val) => setTargetBuildConfigId(val)}
             className="w-full border border-mineshaft-500"
           >
-            {filteredBuildConfigs.map((buildConfig: any) => (
+            {targetBuildConfigs.map((buildConfig: any) => (
               <SelectItem
                 value={buildConfig.buildConfigId}
                 key={`target-build-config-${buildConfig.buildConfigId}`}
