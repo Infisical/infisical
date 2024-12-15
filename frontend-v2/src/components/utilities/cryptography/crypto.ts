@@ -1,6 +1,6 @@
 import argon2 from "argon2-browser/dist/argon2-bundled.min.js";
 import nacl from "tweetnacl";
-import { encodeBase64, decodeBase64, encodeUTF8, decodeUTF8 } from "tweetnacl-util";
+import { decodeBase64, decodeUTF8, encodeBase64, encodeUTF8 } from "tweetnacl-util";
 
 import aes from "./aes-256-gcm";
 

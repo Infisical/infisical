@@ -27,7 +27,7 @@ const attemptLoginMfa = async ({
   password: string;
   providerAuthToken?: string;
   mfaToken: string;
-}): Promise<Boolean> => {
+}): Promise<boolean> => {
   return new Promise((resolve, reject) => {
     client.init(
       {

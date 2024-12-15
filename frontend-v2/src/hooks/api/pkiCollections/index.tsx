@@ -3,5 +3,6 @@ export {
   useCreatePkiCollection,
   useDeletePkiCollection,
   useRemoveItemFromPkiCollection,
-  useUpdatePkiCollection} from "./mutations";
+  useUpdatePkiCollection
+} from "./mutations";
 export { useGetPkiCollectionById, useListPkiCollectionItems } from "./queries";

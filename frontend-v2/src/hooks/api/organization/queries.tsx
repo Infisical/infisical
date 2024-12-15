@@ -41,7 +41,8 @@ export const organizationKeys = {
   }: TListOrgIdentitiesDTO) =>
     [...organizationKeys.getOrgIdentityMemberships(orgId), params] as const,
   getOrgGroups: (orgId: string) => [{ orgId }, "organization-groups"] as const,
-  getOrgIntegrationAuths: (orgId: string) => [{ orgId }, "integration-auths"] as const
+  getOrgIntegrationAuths: (orgId: string) => [{ orgId }, "integration-auths"] as const,
+  getOrgById: (orgId: string) => ["org-by-id", { orgId }]
 };
 
 export const fetchOrganizations = async () => {
@@ -56,6 +57,22 @@ export const useGetOrganizations = () => {
     queryKey: organizationKeys.getUserOrganizations,
     queryFn: async () => {
       return fetchOrganizations();
+    }
+  });
+};
+
+export const fetchOrganizationById = async (id: string) => {
+  const {
+    data: { organization }
+  } = await apiRequest.get<{ organization: Organization }>(`/api/v1/organization/${id}`);
+  return organization;
+};
+
+export const useGetOrganizationById = (id: string) => {
+  return useQuery({
+    queryKey: organizationKeys.getOrgById(id),
+    queryFn: async () => {
+      return fetchOrganizationById(id);
     }
   });
 };

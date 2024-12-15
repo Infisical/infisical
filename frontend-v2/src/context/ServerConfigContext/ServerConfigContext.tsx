@@ -1,10 +1,10 @@
 import { createContext, ReactNode, useEffect, useMemo } from "react";
+import { Helmet } from "react-helmet";
+import { useNavigate, useRouteContext } from "@tanstack/react-router";
 
 import { ContentLoader } from "@app/components/v2/ContentLoader";
 import { useGetServerConfig } from "@app/hooks/api";
 import { TServerConfig } from "@app/hooks/api/admin/types";
-import { Helmet } from "react-helmet";
-import { useNavigate, useRouteContext } from "@tanstack/react-router";
 
 type TServerConfigContext = {
   config: TServerConfig;

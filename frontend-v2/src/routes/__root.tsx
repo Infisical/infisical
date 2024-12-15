@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
 
+import { NotificationContainer } from "@app/components/notifications";
 import { TooltipProvider } from "@app/components/v2";
 import { adminQueryKeys, fetchServerConfig } from "@app/hooks/api/admin/queries";
 import { TServerConfig } from "@app/hooks/api/admin/types";
@@ -20,6 +21,7 @@ const RootPage = () => {
           <Outlet />
         </TooltipProvider>
       </QueryClientProvider>
+      <NotificationContainer />
       <TanStackRouterDevtools />
     </>
   );

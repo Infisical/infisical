@@ -4,6 +4,7 @@ import { useGetOrgSubscription } from "@app/hooks/api";
 import { SubscriptionPlan } from "@app/hooks/api/types";
 
 import { useOrganization } from "../OrganizationContext";
+import { useRouteContext } from "@tanstack/react-router";
 
 type TSubscriptionContext = {
   subscription?: SubscriptionPlan;
@@ -36,10 +37,10 @@ export const SubscriptionProvider = ({ children }: Props): JSX.Element => {
 };
 
 export const useSubscription = () => {
-  const ctx = useContext(SubscriptionContext);
-  if (!ctx) {
-    throw new Error("useSubscription has to be used within <SubscriptionContext.Provider>");
-  }
+  const subscription = useRouteContext({
+    from: "/_authenticate/_org_details",
+    select: (el) => el.subscription
+  });
 
-  return ctx;
+  return { subscription };
 };
