@@ -1,9 +1,9 @@
 import { ParsedUrlQuery } from "querystring";
 
 import { useState } from "react";
-import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { faAngleRight, faCheck, faCopy, faLock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
 import { useOrganization, useWorkspace } from "@app/context";

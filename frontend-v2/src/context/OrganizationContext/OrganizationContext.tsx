@@ -2,6 +2,7 @@ import { createContext, ReactNode, useContext, useMemo } from "react";
 
 import { useGetOrganizations } from "@app/hooks/api";
 import { Organization } from "@app/hooks/api/types";
+import { useRouteContext } from "@tanstack/react-router";
 
 type TOrgContext = {
   orgs?: Organization[];
@@ -35,10 +36,10 @@ export const OrgProvider = ({ children }: Props): JSX.Element => {
 };
 
 export const useOrganization = () => {
-  const ctx = useContext(OrgContext);
-  if (!ctx) {
-    throw new Error("useOrganization to be used within <OrgContext.Provider>");
-  }
+  const currentOrg = useRouteContext({
+    from: "/_authenticate/_org_details",
+    select: (el) => el.organization
+  });
 
-  return ctx;
+  return { currentOrg };
 };

@@ -1,9 +1,9 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo } from "react";
+import { useParams } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import { useGetUserWorkspaces } from "@app/hooks/api";
 import { Workspace } from "@app/hooks/api/workspace/types";
-import { useParams } from "@tanstack/react-router";
 
 type TWorkspaceContext = {
   workspaces: Workspace[];

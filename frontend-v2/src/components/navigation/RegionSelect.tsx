@@ -1,8 +1,8 @@
 import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useLocation, useNavigate } from "@tanstack/react-router";
 
 import { Modal, ModalContent, ModalTrigger, Select, SelectItem } from "@app/components/v2";
-import { useLocation, useNavigate } from "@tanstack/react-router";
 
 enum Region {
   US = "us",

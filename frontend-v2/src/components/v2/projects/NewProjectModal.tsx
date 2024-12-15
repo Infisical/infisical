@@ -301,7 +301,7 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
             </AccordionContent>
           </AccordionItem>
         </Accordion>
-        <div className="absolute right-0 bottom-0 mr-6 mb-6 flex items-start justify-end">
+        <div className="absolute bottom-0 right-0 mb-6 mr-6 flex items-start justify-end">
           <ModalClose>
             <Button colorSchema="secondary" variant="plain" className="py-2">
               Cancel
