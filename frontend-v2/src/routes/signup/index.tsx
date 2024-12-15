@@ -47,7 +47,9 @@ const SignUpPage = () => {
     const tryAuth = async () => {
       try {
         const userOrgs = await fetchOrganizations();
-        navigate({ to: `/org/${userOrgs[0].id}/${ProjectType.SecretManager}/overview` });
+        navigate({
+          to: `/org/${userOrgs[0].id}/${ProjectType.SecretManager}/overview`
+        });
       } catch {
         console.log("Error - Not logged in yet");
       }
@@ -90,7 +92,9 @@ const SignUpPage = () => {
 
       if (!serverDetails?.emailConfigured && step === 5) {
         const userOrgs = await fetchOrganizations();
-        navigate({ to: `/org/${userOrgs[0].id}/${ProjectType.SecretManager}/overview` });
+        navigate({
+          to: `/org/${userOrgs[0].id}/${ProjectType.SecretManager}/overview`
+        });
       }
     })();
   }, [step]);
@@ -170,5 +174,8 @@ const SignUpPage = () => {
 };
 
 export const Route = createFileRoute("/signup/")({
-  component: SignUpPage
+  component: SignUpPage,
+  loader: ({ context }) => {
+    console.log(context);
+  }
 });

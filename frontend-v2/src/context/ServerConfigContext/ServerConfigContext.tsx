@@ -1,10 +1,10 @@
-import { createContext, ReactNode, useContext, useEffect, useMemo } from "react";
+import { createContext, ReactNode, useEffect, useMemo } from "react";
 
 import { ContentLoader } from "@app/components/v2/ContentLoader";
 import { useGetServerConfig } from "@app/hooks/api";
 import { TServerConfig } from "@app/hooks/api/admin/types";
 import { Helmet } from "react-helmet";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouteContext } from "@tanstack/react-router";
 
 type TServerConfigContext = {
   config: TServerConfig;
@@ -80,10 +80,7 @@ export const ServerConfigProvider = ({ children }: Props): JSX.Element => {
 };
 
 export const useServerConfig = () => {
-  const ctx = useContext(ServerConfigContext);
-  if (!ctx) {
-    throw new Error("useServerConfig has to be used within <UserContext.Provider>");
-  }
+  const config = useRouteContext({ from: "__root__", select: (el) => el.serverConfig });
 
-  return ctx;
+  return { config };
 };

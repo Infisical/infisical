@@ -21,7 +21,7 @@ export const adminQueryKeys = {
   getServerEncryptionStrategies: () => ["server-encryption-strategies"] as const
 };
 
-const fetchServerConfig = async () => {
+export const fetchServerConfig = async () => {
   const { data } = await apiRequest.get<{ config: TServerConfig }>("/api/v1/admin/config");
   return data.config;
 };
