@@ -20,7 +20,7 @@ import {
 import { useOrganization, useSubscription } from "@app/context";
 import { useGetOrgTrialUrl } from "@app/hooks/api";
 
-const supportOptions = [
+export const INFISICAL_SUPPORT_OPTIONS = [
   [
     <FontAwesomeIcon key={1} className="pr-4 text-sm" icon={faSlack} />,
     "Support Forum",
@@ -84,7 +84,7 @@ export const SidebarFooter = () => {
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="p-1">
-          {supportOptions.map(([icon, text, url]) => (
+          {INFISICAL_SUPPORT_OPTIONS.map(([icon, text, url]) => (
             <DropdownMenuItem key={url as string}>
               <a
                 target="_blank"

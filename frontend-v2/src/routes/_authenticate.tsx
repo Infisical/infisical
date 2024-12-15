@@ -7,9 +7,7 @@ import { setAuthToken } from "@app/hooks/api/reactQuery";
 import { fetchUserDetails } from "@app/hooks/api/users/queries";
 
 export const Route = createFileRoute("/_authenticate")({
-  beforeLoad: async ({ context, location }) => {
-    const isLoginRoute = location.pathname.startsWith("/login");
-    const isSignupRoute = location.pathname.startsWith("/signup");
+  beforeLoad: async ({ context }) => {
     try {
       const data = await context.queryClient.fetchQuery({
         queryKey: authKeys.getAuthToken,
@@ -27,7 +25,6 @@ export const Route = createFileRoute("/_authenticate")({
 
       return { organizationId: data.organizationId as string, isAuthenticated: true, user };
     } catch {
-      if (isLoginRoute || isSignupRoute) return {};
       createNotification({
         type: "error",
         title: "Access Restricted",

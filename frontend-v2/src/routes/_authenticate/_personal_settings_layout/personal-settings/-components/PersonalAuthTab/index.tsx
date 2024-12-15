@@ -1,0 +1,1 @@
+export { PersonalAuthTab } from "./PersonalAuthTab";
