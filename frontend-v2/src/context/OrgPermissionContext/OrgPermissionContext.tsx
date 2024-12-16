@@ -1,4 +1,5 @@
-import { createContext, ReactNode, useContext } from "react";
+import { createContext, ReactNode } from "react";
+import { useRouteContext } from "@tanstack/react-router";
 
 import { useGetUserOrgPermissions } from "@app/hooks/api";
 import { OrgUser } from "@app/hooks/api/types";
@@ -49,10 +50,10 @@ export const OrgPermissionProvider = ({ children }: Props): JSX.Element => {
 };
 
 export const useOrgPermission = () => {
-  const ctx = useContext(OrgPermissionContext);
-  if (!ctx) {
-    throw new Error("useOrgPermission to be used within <OrgPermissionProvider>");
-  }
+  const { permission } = useRouteContext({
+    from: "/_authenticate/_org_details",
+    select: (el) => el.orgPermission
+  });
 
-  return ctx;
+  return permission;
 };

@@ -35,7 +35,7 @@ const glob: JsInterpreter<FieldCondition<string>> = (node, object, context) => {
   return picomatch.isMatch(secretPath, permissionSecretGlobPath, { strictSlashes: false });
 };
 
-const conditionsMatcher = buildMongoQueryMatcher({ $glob }, { glob });
+export const conditionsMatcher = buildMongoQueryMatcher({ $glob }, { glob });
 
 export const roleQueryKeys = {
   getProjectRoles: (projectId: string) => ["roles", { projectId }] as const,
@@ -107,7 +107,7 @@ export const useGetOrgRole = (orgId: string, roleId: string) =>
     enabled: Boolean(orgId && roleId)
   });
 
-const getUserOrgPermissions = async ({ orgId }: TGetUserOrgPermissionsDTO) => {
+export const fetchUserOrgPermissions = async ({ orgId }: TGetUserOrgPermissionsDTO) => {
   if (orgId === "") return { permissions: [], membership: null };
 
   const { data } = await apiRequest.get<{
@@ -121,7 +121,7 @@ const getUserOrgPermissions = async ({ orgId }: TGetUserOrgPermissionsDTO) => {
 export const useGetUserOrgPermissions = ({ orgId }: TGetUserOrgPermissionsDTO) =>
   useQuery({
     queryKey: roleQueryKeys.getUserOrgPermissions({ orgId }),
-    queryFn: () => getUserOrgPermissions({ orgId }),
+    queryFn: () => fetchUserOrgPermissions({ orgId }),
     // enabled: Boolean(orgId),
     select: (data) => {
       const rule = unpackRules<RawRuleOf<MongoAbility<OrgPermissionSet>>>(data.permissions);

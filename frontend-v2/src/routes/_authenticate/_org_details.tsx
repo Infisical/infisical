@@ -1,6 +1,14 @@
+import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
+import { unpackRules } from "@casl/ability/extra";
 import { createFileRoute } from "@tanstack/react-router";
 
+import { OrgPermissionSet } from "@app/context/OrgPermissionContext/types";
 import { fetchOrganizationById, organizationKeys } from "@app/hooks/api/organization/queries";
+import {
+  conditionsMatcher,
+  fetchUserOrgPermissions,
+  roleQueryKeys
+} from "@app/hooks/api/roles/queries";
 import { fetchOrgSubscription, subscriptionQueryKeys } from "@app/hooks/api/subscriptions/queries";
 
 export const Route = createFileRoute("/_authenticate/_org_details")({
@@ -16,6 +24,18 @@ export const Route = createFileRoute("/_authenticate/_org_details")({
       queryFn: () => fetchOrgSubscription(organizationId)
     });
 
-    return { organization: orgDetails, subscription };
+    const orgPermission = await context.queryClient.fetchQuery({
+      queryKey: roleQueryKeys.getUserOrgPermissions({ orgId: organizationId }),
+      queryFn: () => fetchUserOrgPermissions({ orgId: organizationId })
+    });
+
+    const rule = unpackRules<RawRuleOf<MongoAbility<OrgPermissionSet>>>(orgPermission.permissions);
+    const ability = createMongoAbility<OrgPermissionSet>(rule, { conditionsMatcher });
+
+    return {
+      organization: orgDetails,
+      subscription,
+      orgPermission: { permission: ability, membership: orgPermission.membership }
+    };
   }
 });
