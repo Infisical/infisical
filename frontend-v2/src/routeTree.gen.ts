@@ -35,8 +35,22 @@ import { Route as authenticatePersonalSettingsIndexImport } from './routes/_auth
 import { Route as RestrictloginsignupLoginProviderSuccessImport } from './routes/_restrict_login_signup/login/provider/success'
 import { Route as RestrictloginsignupLoginProviderErrorImport } from './routes/_restrict_login_signup/login/provider/error'
 import { Route as authenticateOrgdetailsOrganizationIndexImport } from './routes/_authenticate/_org_details/organization/index'
-import { Route as authenticateOrgdetailsOrganizationOrganizationIdIndexImport } from './routes/_authenticate/_org_details/organization/$organizationId/index'
-import { Route as authenticateOrgdetailsOrganizationOrganizationIdSecretManagerImport } from './routes/_authenticate/_org_details/organization/$organizationId/secret-manager'
+import { Route as authenticateOrgdetailsOrganizationNoneIndexImport } from './routes/_authenticate/_org_details/organization/none/index'
+import { Route as authenticateOrgdetailsOrganizationOrganizationIdSettingsIndexImport } from './routes/_authenticate/_org_details/organization/$organizationId/settings/index'
+import { Route as authenticateOrgdetailsOrganizationOrganizationIdSecretSharingIndexImport } from './routes/_authenticate/_org_details/organization/$organizationId/secret-sharing/index'
+import { Route as authenticateOrgdetailsOrganizationOrganizationIdSecretScanningIndexImport } from './routes/_authenticate/_org_details/organization/$organizationId/secret-scanning/index'
+import { Route as authenticateOrgdetailsOrganizationOrganizationIdOverviewIndexImport } from './routes/_authenticate/_org_details/organization/$organizationId/overview/index'
+import { Route as authenticateOrgdetailsOrganizationOrganizationIdMembersIndexImport } from './routes/_authenticate/_org_details/organization/$organizationId/members/index'
+import { Route as authenticateOrgdetailsOrganizationOrganizationIdBillingIndexImport } from './routes/_authenticate/_org_details/organization/$organizationId/billing/index'
+import { Route as authenticateOrgdetailsOrganizationOrganizationIdAuditLogsIndexImport } from './routes/_authenticate/_org_details/organization/$organizationId/audit-logs/index'
+import { Route as authenticateOrgdetailsOrganizationOrganizationIdAdminIndexImport } from './routes/_authenticate/_org_details/organization/$organizationId/admin/index'
+import { Route as authenticateOrgdetailsOrganizationOrganizationIdSecretManagerOverviewImport } from './routes/_authenticate/_org_details/organization/$organizationId/secret-manager/overview'
+import { Route as authenticateOrgdetailsOrganizationOrganizationIdKmsOverviewImport } from './routes/_authenticate/_org_details/organization/$organizationId/kms/overview'
+import { Route as authenticateOrgdetailsOrganizationOrganizationIdCertManagerOverviewImport } from './routes/_authenticate/_org_details/organization/$organizationId/cert-manager/overview'
+import { Route as authenticateOrgdetailsOrganizationOrganizationIdRolesRoleIdIndexImport } from './routes/_authenticate/_org_details/organization/$organizationId/roles/$roleId/index'
+import { Route as authenticateOrgdetailsOrganizationOrganizationIdMembershipsMembershipIdIndexImport } from './routes/_authenticate/_org_details/organization/$organizationId/memberships/$membershipId/index'
+import { Route as authenticateOrgdetailsOrganizationOrganizationIdIdentitiesIdentityIdIndexImport } from './routes/_authenticate/_org_details/organization/$organizationId/identities/$identityId/index'
+import { Route as authenticateOrgdetailsOrganizationOrganizationIdGroupsGroupIdIndexImport } from './routes/_authenticate/_org_details/organization/$organizationId/groups/$groupId/index'
 
 // Create Virtual Routes
 
@@ -197,19 +211,133 @@ const authenticateOrgdetailsOrganizationIndexRoute =
     getParentRoute: () => authenticateOrgdetailsLayoutRoute,
   } as any)
 
-const authenticateOrgdetailsOrganizationOrganizationIdIndexRoute =
-  authenticateOrgdetailsOrganizationOrganizationIdIndexImport.update({
-    id: '/organization/$organizationId/',
-    path: '/organization/$organizationId/',
+const authenticateOrgdetailsOrganizationNoneIndexRoute =
+  authenticateOrgdetailsOrganizationNoneIndexImport.update({
+    id: '/organization/none/',
+    path: '/organization/none/',
     getParentRoute: () => authenticateOrgdetailsLayoutRoute,
   } as any)
 
-const authenticateOrgdetailsOrganizationOrganizationIdSecretManagerRoute =
-  authenticateOrgdetailsOrganizationOrganizationIdSecretManagerImport.update({
-    id: '/organization/$organizationId/secret-manager',
-    path: '/organization/$organizationId/secret-manager',
+const authenticateOrgdetailsOrganizationOrganizationIdSettingsIndexRoute =
+  authenticateOrgdetailsOrganizationOrganizationIdSettingsIndexImport.update({
+    id: '/organization/$organizationId/settings/',
+    path: '/organization/$organizationId/settings/',
     getParentRoute: () => authenticateOrgdetailsLayoutRoute,
   } as any)
+
+const authenticateOrgdetailsOrganizationOrganizationIdSecretSharingIndexRoute =
+  authenticateOrgdetailsOrganizationOrganizationIdSecretSharingIndexImport.update(
+    {
+      id: '/organization/$organizationId/secret-sharing/',
+      path: '/organization/$organizationId/secret-sharing/',
+      getParentRoute: () => authenticateOrgdetailsLayoutRoute,
+    } as any,
+  )
+
+const authenticateOrgdetailsOrganizationOrganizationIdSecretScanningIndexRoute =
+  authenticateOrgdetailsOrganizationOrganizationIdSecretScanningIndexImport.update(
+    {
+      id: '/organization/$organizationId/secret-scanning/',
+      path: '/organization/$organizationId/secret-scanning/',
+      getParentRoute: () => authenticateOrgdetailsLayoutRoute,
+    } as any,
+  )
+
+const authenticateOrgdetailsOrganizationOrganizationIdOverviewIndexRoute =
+  authenticateOrgdetailsOrganizationOrganizationIdOverviewIndexImport.update({
+    id: '/organization/$organizationId/overview/',
+    path: '/organization/$organizationId/overview/',
+    getParentRoute: () => authenticateOrgdetailsLayoutRoute,
+  } as any)
+
+const authenticateOrgdetailsOrganizationOrganizationIdMembersIndexRoute =
+  authenticateOrgdetailsOrganizationOrganizationIdMembersIndexImport.update({
+    id: '/organization/$organizationId/members/',
+    path: '/organization/$organizationId/members/',
+    getParentRoute: () => authenticateOrgdetailsLayoutRoute,
+  } as any)
+
+const authenticateOrgdetailsOrganizationOrganizationIdBillingIndexRoute =
+  authenticateOrgdetailsOrganizationOrganizationIdBillingIndexImport.update({
+    id: '/organization/$organizationId/billing/',
+    path: '/organization/$organizationId/billing/',
+    getParentRoute: () => authenticateOrgdetailsLayoutRoute,
+  } as any)
+
+const authenticateOrgdetailsOrganizationOrganizationIdAuditLogsIndexRoute =
+  authenticateOrgdetailsOrganizationOrganizationIdAuditLogsIndexImport.update({
+    id: '/organization/$organizationId/audit-logs/',
+    path: '/organization/$organizationId/audit-logs/',
+    getParentRoute: () => authenticateOrgdetailsLayoutRoute,
+  } as any)
+
+const authenticateOrgdetailsOrganizationOrganizationIdAdminIndexRoute =
+  authenticateOrgdetailsOrganizationOrganizationIdAdminIndexImport.update({
+    id: '/organization/$organizationId/admin/',
+    path: '/organization/$organizationId/admin/',
+    getParentRoute: () => authenticateOrgdetailsLayoutRoute,
+  } as any)
+
+const authenticateOrgdetailsOrganizationOrganizationIdSecretManagerOverviewRoute =
+  authenticateOrgdetailsOrganizationOrganizationIdSecretManagerOverviewImport.update(
+    {
+      id: '/organization/$organizationId/secret-manager/overview',
+      path: '/organization/$organizationId/secret-manager/overview',
+      getParentRoute: () => authenticateOrgdetailsLayoutRoute,
+    } as any,
+  )
+
+const authenticateOrgdetailsOrganizationOrganizationIdKmsOverviewRoute =
+  authenticateOrgdetailsOrganizationOrganizationIdKmsOverviewImport.update({
+    id: '/organization/$organizationId/kms/overview',
+    path: '/organization/$organizationId/kms/overview',
+    getParentRoute: () => authenticateOrgdetailsLayoutRoute,
+  } as any)
+
+const authenticateOrgdetailsOrganizationOrganizationIdCertManagerOverviewRoute =
+  authenticateOrgdetailsOrganizationOrganizationIdCertManagerOverviewImport.update(
+    {
+      id: '/organization/$organizationId/cert-manager/overview',
+      path: '/organization/$organizationId/cert-manager/overview',
+      getParentRoute: () => authenticateOrgdetailsLayoutRoute,
+    } as any,
+  )
+
+const authenticateOrgdetailsOrganizationOrganizationIdRolesRoleIdIndexRoute =
+  authenticateOrgdetailsOrganizationOrganizationIdRolesRoleIdIndexImport.update(
+    {
+      id: '/organization/$organizationId/roles/$roleId/',
+      path: '/organization/$organizationId/roles/$roleId/',
+      getParentRoute: () => authenticateOrgdetailsLayoutRoute,
+    } as any,
+  )
+
+const authenticateOrgdetailsOrganizationOrganizationIdMembershipsMembershipIdIndexRoute =
+  authenticateOrgdetailsOrganizationOrganizationIdMembershipsMembershipIdIndexImport.update(
+    {
+      id: '/organization/$organizationId/memberships/$membershipId/',
+      path: '/organization/$organizationId/memberships/$membershipId/',
+      getParentRoute: () => authenticateOrgdetailsLayoutRoute,
+    } as any,
+  )
+
+const authenticateOrgdetailsOrganizationOrganizationIdIdentitiesIdentityIdIndexRoute =
+  authenticateOrgdetailsOrganizationOrganizationIdIdentitiesIdentityIdIndexImport.update(
+    {
+      id: '/organization/$organizationId/identities/$identityId/',
+      path: '/organization/$organizationId/identities/$identityId/',
+      getParentRoute: () => authenticateOrgdetailsLayoutRoute,
+    } as any,
+  )
+
+const authenticateOrgdetailsOrganizationOrganizationIdGroupsGroupIdIndexRoute =
+  authenticateOrgdetailsOrganizationOrganizationIdGroupsGroupIdIndexImport.update(
+    {
+      id: '/organization/$organizationId/groups/$groupId/',
+      path: '/organization/$organizationId/groups/$groupId/',
+      getParentRoute: () => authenticateOrgdetailsLayoutRoute,
+    } as any,
+  )
 
 // Populate the FileRoutesByPath interface
 
@@ -376,18 +504,116 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof authenticateOrgdetailsOrganizationIndexImport
       parentRoute: typeof authenticateOrgdetailsLayoutImport
     }
-    '/_authenticate/_org_details/_org-layout/organization/$organizationId/secret-manager': {
-      id: '/_authenticate/_org_details/_org-layout/organization/$organizationId/secret-manager'
-      path: '/organization/$organizationId/secret-manager'
-      fullPath: '/organization/$organizationId/secret-manager'
-      preLoaderRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdSecretManagerImport
+    '/_authenticate/_org_details/_org-layout/organization/none/': {
+      id: '/_authenticate/_org_details/_org-layout/organization/none/'
+      path: '/organization/none'
+      fullPath: '/organization/none'
+      preLoaderRoute: typeof authenticateOrgdetailsOrganizationNoneIndexImport
       parentRoute: typeof authenticateOrgdetailsLayoutImport
     }
-    '/_authenticate/_org_details/_org-layout/organization/$organizationId/': {
-      id: '/_authenticate/_org_details/_org-layout/organization/$organizationId/'
-      path: '/organization/$organizationId'
-      fullPath: '/organization/$organizationId'
-      preLoaderRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdIndexImport
+    '/_authenticate/_org_details/_org-layout/organization/$organizationId/cert-manager/overview': {
+      id: '/_authenticate/_org_details/_org-layout/organization/$organizationId/cert-manager/overview'
+      path: '/organization/$organizationId/cert-manager/overview'
+      fullPath: '/organization/$organizationId/cert-manager/overview'
+      preLoaderRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdCertManagerOverviewImport
+      parentRoute: typeof authenticateOrgdetailsLayoutImport
+    }
+    '/_authenticate/_org_details/_org-layout/organization/$organizationId/kms/overview': {
+      id: '/_authenticate/_org_details/_org-layout/organization/$organizationId/kms/overview'
+      path: '/organization/$organizationId/kms/overview'
+      fullPath: '/organization/$organizationId/kms/overview'
+      preLoaderRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdKmsOverviewImport
+      parentRoute: typeof authenticateOrgdetailsLayoutImport
+    }
+    '/_authenticate/_org_details/_org-layout/organization/$organizationId/secret-manager/overview': {
+      id: '/_authenticate/_org_details/_org-layout/organization/$organizationId/secret-manager/overview'
+      path: '/organization/$organizationId/secret-manager/overview'
+      fullPath: '/organization/$organizationId/secret-manager/overview'
+      preLoaderRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdSecretManagerOverviewImport
+      parentRoute: typeof authenticateOrgdetailsLayoutImport
+    }
+    '/_authenticate/_org_details/_org-layout/organization/$organizationId/admin/': {
+      id: '/_authenticate/_org_details/_org-layout/organization/$organizationId/admin/'
+      path: '/organization/$organizationId/admin'
+      fullPath: '/organization/$organizationId/admin'
+      preLoaderRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdAdminIndexImport
+      parentRoute: typeof authenticateOrgdetailsLayoutImport
+    }
+    '/_authenticate/_org_details/_org-layout/organization/$organizationId/audit-logs/': {
+      id: '/_authenticate/_org_details/_org-layout/organization/$organizationId/audit-logs/'
+      path: '/organization/$organizationId/audit-logs'
+      fullPath: '/organization/$organizationId/audit-logs'
+      preLoaderRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdAuditLogsIndexImport
+      parentRoute: typeof authenticateOrgdetailsLayoutImport
+    }
+    '/_authenticate/_org_details/_org-layout/organization/$organizationId/billing/': {
+      id: '/_authenticate/_org_details/_org-layout/organization/$organizationId/billing/'
+      path: '/organization/$organizationId/billing'
+      fullPath: '/organization/$organizationId/billing'
+      preLoaderRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdBillingIndexImport
+      parentRoute: typeof authenticateOrgdetailsLayoutImport
+    }
+    '/_authenticate/_org_details/_org-layout/organization/$organizationId/members/': {
+      id: '/_authenticate/_org_details/_org-layout/organization/$organizationId/members/'
+      path: '/organization/$organizationId/members'
+      fullPath: '/organization/$organizationId/members'
+      preLoaderRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdMembersIndexImport
+      parentRoute: typeof authenticateOrgdetailsLayoutImport
+    }
+    '/_authenticate/_org_details/_org-layout/organization/$organizationId/overview/': {
+      id: '/_authenticate/_org_details/_org-layout/organization/$organizationId/overview/'
+      path: '/organization/$organizationId/overview'
+      fullPath: '/organization/$organizationId/overview'
+      preLoaderRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdOverviewIndexImport
+      parentRoute: typeof authenticateOrgdetailsLayoutImport
+    }
+    '/_authenticate/_org_details/_org-layout/organization/$organizationId/secret-scanning/': {
+      id: '/_authenticate/_org_details/_org-layout/organization/$organizationId/secret-scanning/'
+      path: '/organization/$organizationId/secret-scanning'
+      fullPath: '/organization/$organizationId/secret-scanning'
+      preLoaderRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdSecretScanningIndexImport
+      parentRoute: typeof authenticateOrgdetailsLayoutImport
+    }
+    '/_authenticate/_org_details/_org-layout/organization/$organizationId/secret-sharing/': {
+      id: '/_authenticate/_org_details/_org-layout/organization/$organizationId/secret-sharing/'
+      path: '/organization/$organizationId/secret-sharing'
+      fullPath: '/organization/$organizationId/secret-sharing'
+      preLoaderRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdSecretSharingIndexImport
+      parentRoute: typeof authenticateOrgdetailsLayoutImport
+    }
+    '/_authenticate/_org_details/_org-layout/organization/$organizationId/settings/': {
+      id: '/_authenticate/_org_details/_org-layout/organization/$organizationId/settings/'
+      path: '/organization/$organizationId/settings'
+      fullPath: '/organization/$organizationId/settings'
+      preLoaderRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdSettingsIndexImport
+      parentRoute: typeof authenticateOrgdetailsLayoutImport
+    }
+    '/_authenticate/_org_details/_org-layout/organization/$organizationId/groups/$groupId/': {
+      id: '/_authenticate/_org_details/_org-layout/organization/$organizationId/groups/$groupId/'
+      path: '/organization/$organizationId/groups/$groupId'
+      fullPath: '/organization/$organizationId/groups/$groupId'
+      preLoaderRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdGroupsGroupIdIndexImport
+      parentRoute: typeof authenticateOrgdetailsLayoutImport
+    }
+    '/_authenticate/_org_details/_org-layout/organization/$organizationId/identities/$identityId/': {
+      id: '/_authenticate/_org_details/_org-layout/organization/$organizationId/identities/$identityId/'
+      path: '/organization/$organizationId/identities/$identityId'
+      fullPath: '/organization/$organizationId/identities/$identityId'
+      preLoaderRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdIdentitiesIdentityIdIndexImport
+      parentRoute: typeof authenticateOrgdetailsLayoutImport
+    }
+    '/_authenticate/_org_details/_org-layout/organization/$organizationId/memberships/$membershipId/': {
+      id: '/_authenticate/_org_details/_org-layout/organization/$organizationId/memberships/$membershipId/'
+      path: '/organization/$organizationId/memberships/$membershipId'
+      fullPath: '/organization/$organizationId/memberships/$membershipId'
+      preLoaderRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdMembershipsMembershipIdIndexImport
+      parentRoute: typeof authenticateOrgdetailsLayoutImport
+    }
+    '/_authenticate/_org_details/_org-layout/organization/$organizationId/roles/$roleId/': {
+      id: '/_authenticate/_org_details/_org-layout/organization/$organizationId/roles/$roleId/'
+      path: '/organization/$organizationId/roles/$roleId'
+      fullPath: '/organization/$organizationId/roles/$roleId'
+      preLoaderRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdRolesRoleIdIndexImport
       parentRoute: typeof authenticateOrgdetailsLayoutImport
     }
   }
@@ -397,18 +623,60 @@ declare module '@tanstack/react-router' {
 
 interface authenticateOrgdetailsLayoutRouteChildren {
   authenticateOrgdetailsOrganizationIndexRoute: typeof authenticateOrgdetailsOrganizationIndexRoute
-  authenticateOrgdetailsOrganizationOrganizationIdSecretManagerRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdSecretManagerRoute
-  authenticateOrgdetailsOrganizationOrganizationIdIndexRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdIndexRoute
+  authenticateOrgdetailsOrganizationNoneIndexRoute: typeof authenticateOrgdetailsOrganizationNoneIndexRoute
+  authenticateOrgdetailsOrganizationOrganizationIdCertManagerOverviewRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdCertManagerOverviewRoute
+  authenticateOrgdetailsOrganizationOrganizationIdKmsOverviewRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdKmsOverviewRoute
+  authenticateOrgdetailsOrganizationOrganizationIdSecretManagerOverviewRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdSecretManagerOverviewRoute
+  authenticateOrgdetailsOrganizationOrganizationIdAdminIndexRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdAdminIndexRoute
+  authenticateOrgdetailsOrganizationOrganizationIdAuditLogsIndexRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdAuditLogsIndexRoute
+  authenticateOrgdetailsOrganizationOrganizationIdBillingIndexRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdBillingIndexRoute
+  authenticateOrgdetailsOrganizationOrganizationIdMembersIndexRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdMembersIndexRoute
+  authenticateOrgdetailsOrganizationOrganizationIdOverviewIndexRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdOverviewIndexRoute
+  authenticateOrgdetailsOrganizationOrganizationIdSecretScanningIndexRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdSecretScanningIndexRoute
+  authenticateOrgdetailsOrganizationOrganizationIdSecretSharingIndexRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdSecretSharingIndexRoute
+  authenticateOrgdetailsOrganizationOrganizationIdSettingsIndexRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdSettingsIndexRoute
+  authenticateOrgdetailsOrganizationOrganizationIdGroupsGroupIdIndexRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdGroupsGroupIdIndexRoute
+  authenticateOrgdetailsOrganizationOrganizationIdIdentitiesIdentityIdIndexRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdIdentitiesIdentityIdIndexRoute
+  authenticateOrgdetailsOrganizationOrganizationIdMembershipsMembershipIdIndexRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdMembershipsMembershipIdIndexRoute
+  authenticateOrgdetailsOrganizationOrganizationIdRolesRoleIdIndexRoute: typeof authenticateOrgdetailsOrganizationOrganizationIdRolesRoleIdIndexRoute
 }
 
 const authenticateOrgdetailsLayoutRouteChildren: authenticateOrgdetailsLayoutRouteChildren =
   {
     authenticateOrgdetailsOrganizationIndexRoute:
       authenticateOrgdetailsOrganizationIndexRoute,
-    authenticateOrgdetailsOrganizationOrganizationIdSecretManagerRoute:
-      authenticateOrgdetailsOrganizationOrganizationIdSecretManagerRoute,
-    authenticateOrgdetailsOrganizationOrganizationIdIndexRoute:
-      authenticateOrgdetailsOrganizationOrganizationIdIndexRoute,
+    authenticateOrgdetailsOrganizationNoneIndexRoute:
+      authenticateOrgdetailsOrganizationNoneIndexRoute,
+    authenticateOrgdetailsOrganizationOrganizationIdCertManagerOverviewRoute:
+      authenticateOrgdetailsOrganizationOrganizationIdCertManagerOverviewRoute,
+    authenticateOrgdetailsOrganizationOrganizationIdKmsOverviewRoute:
+      authenticateOrgdetailsOrganizationOrganizationIdKmsOverviewRoute,
+    authenticateOrgdetailsOrganizationOrganizationIdSecretManagerOverviewRoute:
+      authenticateOrgdetailsOrganizationOrganizationIdSecretManagerOverviewRoute,
+    authenticateOrgdetailsOrganizationOrganizationIdAdminIndexRoute:
+      authenticateOrgdetailsOrganizationOrganizationIdAdminIndexRoute,
+    authenticateOrgdetailsOrganizationOrganizationIdAuditLogsIndexRoute:
+      authenticateOrgdetailsOrganizationOrganizationIdAuditLogsIndexRoute,
+    authenticateOrgdetailsOrganizationOrganizationIdBillingIndexRoute:
+      authenticateOrgdetailsOrganizationOrganizationIdBillingIndexRoute,
+    authenticateOrgdetailsOrganizationOrganizationIdMembersIndexRoute:
+      authenticateOrgdetailsOrganizationOrganizationIdMembersIndexRoute,
+    authenticateOrgdetailsOrganizationOrganizationIdOverviewIndexRoute:
+      authenticateOrgdetailsOrganizationOrganizationIdOverviewIndexRoute,
+    authenticateOrgdetailsOrganizationOrganizationIdSecretScanningIndexRoute:
+      authenticateOrgdetailsOrganizationOrganizationIdSecretScanningIndexRoute,
+    authenticateOrgdetailsOrganizationOrganizationIdSecretSharingIndexRoute:
+      authenticateOrgdetailsOrganizationOrganizationIdSecretSharingIndexRoute,
+    authenticateOrgdetailsOrganizationOrganizationIdSettingsIndexRoute:
+      authenticateOrgdetailsOrganizationOrganizationIdSettingsIndexRoute,
+    authenticateOrgdetailsOrganizationOrganizationIdGroupsGroupIdIndexRoute:
+      authenticateOrgdetailsOrganizationOrganizationIdGroupsGroupIdIndexRoute,
+    authenticateOrgdetailsOrganizationOrganizationIdIdentitiesIdentityIdIndexRoute:
+      authenticateOrgdetailsOrganizationOrganizationIdIdentitiesIdentityIdIndexRoute,
+    authenticateOrgdetailsOrganizationOrganizationIdMembershipsMembershipIdIndexRoute:
+      authenticateOrgdetailsOrganizationOrganizationIdMembershipsMembershipIdIndexRoute,
+    authenticateOrgdetailsOrganizationOrganizationIdRolesRoleIdIndexRoute:
+      authenticateOrgdetailsOrganizationOrganizationIdRolesRoleIdIndexRoute,
   }
 
 const authenticateOrgdetailsLayoutRouteWithChildren =
@@ -540,8 +808,22 @@ export interface FileRoutesByFullPath {
   '/login/sso': typeof RestrictloginsignupLoginSsoIndexRoute
   '/signup/sso': typeof RestrictloginsignupSignupSsoIndexRoute
   '/organization': typeof authenticateOrgdetailsOrganizationIndexRoute
-  '/organization/$organizationId/secret-manager': typeof authenticateOrgdetailsOrganizationOrganizationIdSecretManagerRoute
-  '/organization/$organizationId': typeof authenticateOrgdetailsOrganizationOrganizationIdIndexRoute
+  '/organization/none': typeof authenticateOrgdetailsOrganizationNoneIndexRoute
+  '/organization/$organizationId/cert-manager/overview': typeof authenticateOrgdetailsOrganizationOrganizationIdCertManagerOverviewRoute
+  '/organization/$organizationId/kms/overview': typeof authenticateOrgdetailsOrganizationOrganizationIdKmsOverviewRoute
+  '/organization/$organizationId/secret-manager/overview': typeof authenticateOrgdetailsOrganizationOrganizationIdSecretManagerOverviewRoute
+  '/organization/$organizationId/admin': typeof authenticateOrgdetailsOrganizationOrganizationIdAdminIndexRoute
+  '/organization/$organizationId/audit-logs': typeof authenticateOrgdetailsOrganizationOrganizationIdAuditLogsIndexRoute
+  '/organization/$organizationId/billing': typeof authenticateOrgdetailsOrganizationOrganizationIdBillingIndexRoute
+  '/organization/$organizationId/members': typeof authenticateOrgdetailsOrganizationOrganizationIdMembersIndexRoute
+  '/organization/$organizationId/overview': typeof authenticateOrgdetailsOrganizationOrganizationIdOverviewIndexRoute
+  '/organization/$organizationId/secret-scanning': typeof authenticateOrgdetailsOrganizationOrganizationIdSecretScanningIndexRoute
+  '/organization/$organizationId/secret-sharing': typeof authenticateOrgdetailsOrganizationOrganizationIdSecretSharingIndexRoute
+  '/organization/$organizationId/settings': typeof authenticateOrgdetailsOrganizationOrganizationIdSettingsIndexRoute
+  '/organization/$organizationId/groups/$groupId': typeof authenticateOrgdetailsOrganizationOrganizationIdGroupsGroupIdIndexRoute
+  '/organization/$organizationId/identities/$identityId': typeof authenticateOrgdetailsOrganizationOrganizationIdIdentitiesIdentityIdIndexRoute
+  '/organization/$organizationId/memberships/$membershipId': typeof authenticateOrgdetailsOrganizationOrganizationIdMembershipsMembershipIdIndexRoute
+  '/organization/$organizationId/roles/$roleId': typeof authenticateOrgdetailsOrganizationOrganizationIdRolesRoleIdIndexRoute
 }
 
 export interface FileRoutesByTo {
@@ -563,8 +845,22 @@ export interface FileRoutesByTo {
   '/login/sso': typeof RestrictloginsignupLoginSsoIndexRoute
   '/signup/sso': typeof RestrictloginsignupSignupSsoIndexRoute
   '/organization': typeof authenticateOrgdetailsOrganizationIndexRoute
-  '/organization/$organizationId/secret-manager': typeof authenticateOrgdetailsOrganizationOrganizationIdSecretManagerRoute
-  '/organization/$organizationId': typeof authenticateOrgdetailsOrganizationOrganizationIdIndexRoute
+  '/organization/none': typeof authenticateOrgdetailsOrganizationNoneIndexRoute
+  '/organization/$organizationId/cert-manager/overview': typeof authenticateOrgdetailsOrganizationOrganizationIdCertManagerOverviewRoute
+  '/organization/$organizationId/kms/overview': typeof authenticateOrgdetailsOrganizationOrganizationIdKmsOverviewRoute
+  '/organization/$organizationId/secret-manager/overview': typeof authenticateOrgdetailsOrganizationOrganizationIdSecretManagerOverviewRoute
+  '/organization/$organizationId/admin': typeof authenticateOrgdetailsOrganizationOrganizationIdAdminIndexRoute
+  '/organization/$organizationId/audit-logs': typeof authenticateOrgdetailsOrganizationOrganizationIdAuditLogsIndexRoute
+  '/organization/$organizationId/billing': typeof authenticateOrgdetailsOrganizationOrganizationIdBillingIndexRoute
+  '/organization/$organizationId/members': typeof authenticateOrgdetailsOrganizationOrganizationIdMembersIndexRoute
+  '/organization/$organizationId/overview': typeof authenticateOrgdetailsOrganizationOrganizationIdOverviewIndexRoute
+  '/organization/$organizationId/secret-scanning': typeof authenticateOrgdetailsOrganizationOrganizationIdSecretScanningIndexRoute
+  '/organization/$organizationId/secret-sharing': typeof authenticateOrgdetailsOrganizationOrganizationIdSecretSharingIndexRoute
+  '/organization/$organizationId/settings': typeof authenticateOrgdetailsOrganizationOrganizationIdSettingsIndexRoute
+  '/organization/$organizationId/groups/$groupId': typeof authenticateOrgdetailsOrganizationOrganizationIdGroupsGroupIdIndexRoute
+  '/organization/$organizationId/identities/$identityId': typeof authenticateOrgdetailsOrganizationOrganizationIdIdentitiesIdentityIdIndexRoute
+  '/organization/$organizationId/memberships/$membershipId': typeof authenticateOrgdetailsOrganizationOrganizationIdMembershipsMembershipIdIndexRoute
+  '/organization/$organizationId/roles/$roleId': typeof authenticateOrgdetailsOrganizationOrganizationIdRolesRoleIdIndexRoute
 }
 
 export interface FileRoutesById {
@@ -592,8 +888,22 @@ export interface FileRoutesById {
   '/_restrict_login_signup/login/sso/': typeof RestrictloginsignupLoginSsoIndexRoute
   '/_restrict_login_signup/signup/sso/': typeof RestrictloginsignupSignupSsoIndexRoute
   '/_authenticate/_org_details/_org-layout/organization/': typeof authenticateOrgdetailsOrganizationIndexRoute
-  '/_authenticate/_org_details/_org-layout/organization/$organizationId/secret-manager': typeof authenticateOrgdetailsOrganizationOrganizationIdSecretManagerRoute
-  '/_authenticate/_org_details/_org-layout/organization/$organizationId/': typeof authenticateOrgdetailsOrganizationOrganizationIdIndexRoute
+  '/_authenticate/_org_details/_org-layout/organization/none/': typeof authenticateOrgdetailsOrganizationNoneIndexRoute
+  '/_authenticate/_org_details/_org-layout/organization/$organizationId/cert-manager/overview': typeof authenticateOrgdetailsOrganizationOrganizationIdCertManagerOverviewRoute
+  '/_authenticate/_org_details/_org-layout/organization/$organizationId/kms/overview': typeof authenticateOrgdetailsOrganizationOrganizationIdKmsOverviewRoute
+  '/_authenticate/_org_details/_org-layout/organization/$organizationId/secret-manager/overview': typeof authenticateOrgdetailsOrganizationOrganizationIdSecretManagerOverviewRoute
+  '/_authenticate/_org_details/_org-layout/organization/$organizationId/admin/': typeof authenticateOrgdetailsOrganizationOrganizationIdAdminIndexRoute
+  '/_authenticate/_org_details/_org-layout/organization/$organizationId/audit-logs/': typeof authenticateOrgdetailsOrganizationOrganizationIdAuditLogsIndexRoute
+  '/_authenticate/_org_details/_org-layout/organization/$organizationId/billing/': typeof authenticateOrgdetailsOrganizationOrganizationIdBillingIndexRoute
+  '/_authenticate/_org_details/_org-layout/organization/$organizationId/members/': typeof authenticateOrgdetailsOrganizationOrganizationIdMembersIndexRoute
+  '/_authenticate/_org_details/_org-layout/organization/$organizationId/overview/': typeof authenticateOrgdetailsOrganizationOrganizationIdOverviewIndexRoute
+  '/_authenticate/_org_details/_org-layout/organization/$organizationId/secret-scanning/': typeof authenticateOrgdetailsOrganizationOrganizationIdSecretScanningIndexRoute
+  '/_authenticate/_org_details/_org-layout/organization/$organizationId/secret-sharing/': typeof authenticateOrgdetailsOrganizationOrganizationIdSecretSharingIndexRoute
+  '/_authenticate/_org_details/_org-layout/organization/$organizationId/settings/': typeof authenticateOrgdetailsOrganizationOrganizationIdSettingsIndexRoute
+  '/_authenticate/_org_details/_org-layout/organization/$organizationId/groups/$groupId/': typeof authenticateOrgdetailsOrganizationOrganizationIdGroupsGroupIdIndexRoute
+  '/_authenticate/_org_details/_org-layout/organization/$organizationId/identities/$identityId/': typeof authenticateOrgdetailsOrganizationOrganizationIdIdentitiesIdentityIdIndexRoute
+  '/_authenticate/_org_details/_org-layout/organization/$organizationId/memberships/$membershipId/': typeof authenticateOrgdetailsOrganizationOrganizationIdMembershipsMembershipIdIndexRoute
+  '/_authenticate/_org_details/_org-layout/organization/$organizationId/roles/$roleId/': typeof authenticateOrgdetailsOrganizationOrganizationIdRolesRoleIdIndexRoute
 }
 
 export interface FileRouteTypes {
@@ -618,8 +928,22 @@ export interface FileRouteTypes {
     | '/login/sso'
     | '/signup/sso'
     | '/organization'
-    | '/organization/$organizationId/secret-manager'
-    | '/organization/$organizationId'
+    | '/organization/none'
+    | '/organization/$organizationId/cert-manager/overview'
+    | '/organization/$organizationId/kms/overview'
+    | '/organization/$organizationId/secret-manager/overview'
+    | '/organization/$organizationId/admin'
+    | '/organization/$organizationId/audit-logs'
+    | '/organization/$organizationId/billing'
+    | '/organization/$organizationId/members'
+    | '/organization/$organizationId/overview'
+    | '/organization/$organizationId/secret-scanning'
+    | '/organization/$organizationId/secret-sharing'
+    | '/organization/$organizationId/settings'
+    | '/organization/$organizationId/groups/$groupId'
+    | '/organization/$organizationId/identities/$identityId'
+    | '/organization/$organizationId/memberships/$membershipId'
+    | '/organization/$organizationId/roles/$roleId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -640,8 +964,22 @@ export interface FileRouteTypes {
     | '/login/sso'
     | '/signup/sso'
     | '/organization'
-    | '/organization/$organizationId/secret-manager'
-    | '/organization/$organizationId'
+    | '/organization/none'
+    | '/organization/$organizationId/cert-manager/overview'
+    | '/organization/$organizationId/kms/overview'
+    | '/organization/$organizationId/secret-manager/overview'
+    | '/organization/$organizationId/admin'
+    | '/organization/$organizationId/audit-logs'
+    | '/organization/$organizationId/billing'
+    | '/organization/$organizationId/members'
+    | '/organization/$organizationId/overview'
+    | '/organization/$organizationId/secret-scanning'
+    | '/organization/$organizationId/secret-sharing'
+    | '/organization/$organizationId/settings'
+    | '/organization/$organizationId/groups/$groupId'
+    | '/organization/$organizationId/identities/$identityId'
+    | '/organization/$organizationId/memberships/$membershipId'
+    | '/organization/$organizationId/roles/$roleId'
   id:
     | '__root__'
     | '/'
@@ -667,8 +1005,22 @@ export interface FileRouteTypes {
     | '/_restrict_login_signup/login/sso/'
     | '/_restrict_login_signup/signup/sso/'
     | '/_authenticate/_org_details/_org-layout/organization/'
-    | '/_authenticate/_org_details/_org-layout/organization/$organizationId/secret-manager'
-    | '/_authenticate/_org_details/_org-layout/organization/$organizationId/'
+    | '/_authenticate/_org_details/_org-layout/organization/none/'
+    | '/_authenticate/_org_details/_org-layout/organization/$organizationId/cert-manager/overview'
+    | '/_authenticate/_org_details/_org-layout/organization/$organizationId/kms/overview'
+    | '/_authenticate/_org_details/_org-layout/organization/$organizationId/secret-manager/overview'
+    | '/_authenticate/_org_details/_org-layout/organization/$organizationId/admin/'
+    | '/_authenticate/_org_details/_org-layout/organization/$organizationId/audit-logs/'
+    | '/_authenticate/_org_details/_org-layout/organization/$organizationId/billing/'
+    | '/_authenticate/_org_details/_org-layout/organization/$organizationId/members/'
+    | '/_authenticate/_org_details/_org-layout/organization/$organizationId/overview/'
+    | '/_authenticate/_org_details/_org-layout/organization/$organizationId/secret-scanning/'
+    | '/_authenticate/_org_details/_org-layout/organization/$organizationId/secret-sharing/'
+    | '/_authenticate/_org_details/_org-layout/organization/$organizationId/settings/'
+    | '/_authenticate/_org_details/_org-layout/organization/$organizationId/groups/$groupId/'
+    | '/_authenticate/_org_details/_org-layout/organization/$organizationId/identities/$identityId/'
+    | '/_authenticate/_org_details/_org-layout/organization/$organizationId/memberships/$membershipId/'
+    | '/_authenticate/_org_details/_org-layout/organization/$organizationId/roles/$roleId/'
   fileRoutesById: FileRoutesById
 }
 
@@ -764,8 +1116,22 @@ export const routeTree = rootRoute
       "parent": "/_authenticate/_org_details",
       "children": [
         "/_authenticate/_org_details/_org-layout/organization/",
-        "/_authenticate/_org_details/_org-layout/organization/$organizationId/secret-manager",
-        "/_authenticate/_org_details/_org-layout/organization/$organizationId/"
+        "/_authenticate/_org_details/_org-layout/organization/none/",
+        "/_authenticate/_org_details/_org-layout/organization/$organizationId/cert-manager/overview",
+        "/_authenticate/_org_details/_org-layout/organization/$organizationId/kms/overview",
+        "/_authenticate/_org_details/_org-layout/organization/$organizationId/secret-manager/overview",
+        "/_authenticate/_org_details/_org-layout/organization/$organizationId/admin/",
+        "/_authenticate/_org_details/_org-layout/organization/$organizationId/audit-logs/",
+        "/_authenticate/_org_details/_org-layout/organization/$organizationId/billing/",
+        "/_authenticate/_org_details/_org-layout/organization/$organizationId/members/",
+        "/_authenticate/_org_details/_org-layout/organization/$organizationId/overview/",
+        "/_authenticate/_org_details/_org-layout/organization/$organizationId/secret-scanning/",
+        "/_authenticate/_org_details/_org-layout/organization/$organizationId/secret-sharing/",
+        "/_authenticate/_org_details/_org-layout/organization/$organizationId/settings/",
+        "/_authenticate/_org_details/_org-layout/organization/$organizationId/groups/$groupId/",
+        "/_authenticate/_org_details/_org-layout/organization/$organizationId/identities/$identityId/",
+        "/_authenticate/_org_details/_org-layout/organization/$organizationId/memberships/$membershipId/",
+        "/_authenticate/_org_details/_org-layout/organization/$organizationId/roles/$roleId/"
       ]
     },
     "/_authenticate/personal-settings": {
@@ -822,12 +1188,68 @@ export const routeTree = rootRoute
       "filePath": "_authenticate/_org_details/organization/index.tsx",
       "parent": "/_authenticate/_org_details/_org-layout"
     },
-    "/_authenticate/_org_details/_org-layout/organization/$organizationId/secret-manager": {
-      "filePath": "_authenticate/_org_details/organization/$organizationId/secret-manager.tsx",
+    "/_authenticate/_org_details/_org-layout/organization/none/": {
+      "filePath": "_authenticate/_org_details/organization/none/index.tsx",
       "parent": "/_authenticate/_org_details/_org-layout"
     },
-    "/_authenticate/_org_details/_org-layout/organization/$organizationId/": {
-      "filePath": "_authenticate/_org_details/organization/$organizationId/index.tsx",
+    "/_authenticate/_org_details/_org-layout/organization/$organizationId/cert-manager/overview": {
+      "filePath": "_authenticate/_org_details/organization/$organizationId/cert-manager/overview.tsx",
+      "parent": "/_authenticate/_org_details/_org-layout"
+    },
+    "/_authenticate/_org_details/_org-layout/organization/$organizationId/kms/overview": {
+      "filePath": "_authenticate/_org_details/organization/$organizationId/kms/overview.tsx",
+      "parent": "/_authenticate/_org_details/_org-layout"
+    },
+    "/_authenticate/_org_details/_org-layout/organization/$organizationId/secret-manager/overview": {
+      "filePath": "_authenticate/_org_details/organization/$organizationId/secret-manager/overview.tsx",
+      "parent": "/_authenticate/_org_details/_org-layout"
+    },
+    "/_authenticate/_org_details/_org-layout/organization/$organizationId/admin/": {
+      "filePath": "_authenticate/_org_details/organization/$organizationId/admin/index.tsx",
+      "parent": "/_authenticate/_org_details/_org-layout"
+    },
+    "/_authenticate/_org_details/_org-layout/organization/$organizationId/audit-logs/": {
+      "filePath": "_authenticate/_org_details/organization/$organizationId/audit-logs/index.tsx",
+      "parent": "/_authenticate/_org_details/_org-layout"
+    },
+    "/_authenticate/_org_details/_org-layout/organization/$organizationId/billing/": {
+      "filePath": "_authenticate/_org_details/organization/$organizationId/billing/index.tsx",
+      "parent": "/_authenticate/_org_details/_org-layout"
+    },
+    "/_authenticate/_org_details/_org-layout/organization/$organizationId/members/": {
+      "filePath": "_authenticate/_org_details/organization/$organizationId/members/index.tsx",
+      "parent": "/_authenticate/_org_details/_org-layout"
+    },
+    "/_authenticate/_org_details/_org-layout/organization/$organizationId/overview/": {
+      "filePath": "_authenticate/_org_details/organization/$organizationId/overview/index.tsx",
+      "parent": "/_authenticate/_org_details/_org-layout"
+    },
+    "/_authenticate/_org_details/_org-layout/organization/$organizationId/secret-scanning/": {
+      "filePath": "_authenticate/_org_details/organization/$organizationId/secret-scanning/index.tsx",
+      "parent": "/_authenticate/_org_details/_org-layout"
+    },
+    "/_authenticate/_org_details/_org-layout/organization/$organizationId/secret-sharing/": {
+      "filePath": "_authenticate/_org_details/organization/$organizationId/secret-sharing/index.tsx",
+      "parent": "/_authenticate/_org_details/_org-layout"
+    },
+    "/_authenticate/_org_details/_org-layout/organization/$organizationId/settings/": {
+      "filePath": "_authenticate/_org_details/organization/$organizationId/settings/index.tsx",
+      "parent": "/_authenticate/_org_details/_org-layout"
+    },
+    "/_authenticate/_org_details/_org-layout/organization/$organizationId/groups/$groupId/": {
+      "filePath": "_authenticate/_org_details/organization/$organizationId/groups/$groupId/index.tsx",
+      "parent": "/_authenticate/_org_details/_org-layout"
+    },
+    "/_authenticate/_org_details/_org-layout/organization/$organizationId/identities/$identityId/": {
+      "filePath": "_authenticate/_org_details/organization/$organizationId/identities/$identityId/index.tsx",
+      "parent": "/_authenticate/_org_details/_org-layout"
+    },
+    "/_authenticate/_org_details/_org-layout/organization/$organizationId/memberships/$membershipId/": {
+      "filePath": "_authenticate/_org_details/organization/$organizationId/memberships/$membershipId/index.tsx",
+      "parent": "/_authenticate/_org_details/_org-layout"
+    },
+    "/_authenticate/_org_details/_org-layout/organization/$organizationId/roles/$roleId/": {
+      "filePath": "_authenticate/_org_details/organization/$organizationId/roles/$roleId/index.tsx",
       "parent": "/_authenticate/_org_details/_org-layout"
     }
   }
