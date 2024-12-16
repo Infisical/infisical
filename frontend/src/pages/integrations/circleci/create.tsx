@@ -54,7 +54,8 @@ export default function CircleCICreateIntegrationPage() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       secretPath: "/",
-      sourceEnvironment: currentWorkspace?.environments[0]
+      sourceEnvironment: currentWorkspace?.environments[0],
+      scope: CircleCiScope.Project
     }
   });
 
