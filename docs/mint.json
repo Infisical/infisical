@@ -424,7 +424,6 @@
           "group": "View more",
           "pages": [
             "integrations/cicd/circleci",
-            "integrations/cicd/circleci-context",
             "integrations/cicd/travisci",
             "integrations/cicd/rundeck",
             "integrations/cicd/codefresh",

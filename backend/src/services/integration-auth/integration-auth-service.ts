@@ -1694,7 +1694,6 @@ export const integrationAuthServiceFactory = ({
         }));
       } catch (error) {
         logger.error(error);
-        return [];
       }
     };
 

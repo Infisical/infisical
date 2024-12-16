@@ -28,15 +28,15 @@ const formSchema = z.discriminatedUnion("scope", [
     scope: z.literal("context"),
     secretPath: z.string().default("/"),
     sourceEnvironment: z.object({ name: z.string(), slug: z.string() }),
-    targetOrg: z.object({ name: z.string(), slug: z.string() }),
-    targetContext: z.object({ name: z.string(), id: z.string() })
+    targetOrg: z.object({ name: z.string().min(1), slug: z.string().min(1) }),
+    targetContext: z.object({ name: z.string().min(1), id: z.string().min(1) })
   }),
   z.object({
     scope: z.literal("project"),
     secretPath: z.string().default("/"),
     sourceEnvironment: z.object({ name: z.string(), slug: z.string() }),
-    targetOrg: z.object({ name: z.string(), slug: z.string() }),
-    targetProject: z.object({ name: z.string(), id: z.string() })
+    targetOrg: z.object({ name: z.string().min(1), slug: z.string().min(1) }),
+    targetProject: z.object({ name: z.string().min(1), id: z.string().min(1) })
   })
 ]);
 
@@ -49,7 +49,7 @@ export default function CircleCICreateIntegrationPage() {
 
   const integrationAuthId = router.query.integrationAuthId as string;
 
-  const { control, watch, handleSubmit } = useForm<TFormData>({
+  const { control, watch, handleSubmit, setValue } = useForm<TFormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       secretPath: "/",
@@ -196,7 +196,18 @@ export default function CircleCICreateIntegrationPage() {
                 getOptionValue={(option) => option.slug}
                 value={value}
                 getOptionLabel={(option) => option.name}
-                onChange={onChange}
+                onChange={(e) => {
+                  setValue("targetProject", {
+                    name: "",
+                    id: ""
+                  });
+                  setValue("targetContext", {
+                    name: "",
+                    id: ""
+                  });
+
+                  onChange(e);
+                }}
                 options={circleCIOrganizations}
                 placeholder={
                   circleCIOrganizations?.length
