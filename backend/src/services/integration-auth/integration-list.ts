@@ -76,8 +76,6 @@ export enum IntegrationUrls {
   RAILWAY_API_URL = "https://backboard.railway.app/graphql/v2",
   FLYIO_API_URL = "https://api.fly.io/graphql",
   CIRCLECI_API_URL = "https://circleci.com/api",
-  // eslint-disable-next-line
-  DATABRICKS_API_URL = "https:/xxxx.com/api",
   TRAVISCI_API_URL = "https://api.travis-ci.com",
   SUPABASE_API_URL = "https://api.supabase.com",
   LARAVELFORGE_API_URL = "https://forge.laravel.com",

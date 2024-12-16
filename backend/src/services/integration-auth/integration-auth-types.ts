@@ -227,6 +227,11 @@ export enum OctopusDeployScope {
   // add tenant, variable set, etc.
 }
 
+export enum CircleCiScope {
+  Project = "project",
+  Context = "context"
+}
+
 export type TOctopusDeployVariableSet = {
   Id: string;
   OwnerId: string;

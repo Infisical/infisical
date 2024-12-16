@@ -39,7 +39,12 @@ import { TCreateManySecretsRawFn, TUpdateManySecretsRawFn } from "@app/services/
 import { TIntegrationDALFactory } from "../integration/integration-dal";
 import { IntegrationMetadataSchema } from "../integration/integration-schema";
 import { IntegrationAuthMetadataSchema } from "./integration-auth-schema";
-import { OctopusDeployScope, TIntegrationsWithEnvironment, TOctopusDeployVariableSet } from "./integration-auth-types";
+import {
+  CircleCiScope,
+  OctopusDeployScope,
+  TIntegrationsWithEnvironment,
+  TOctopusDeployVariableSet
+} from "./integration-auth-types";
 import {
   IntegrationInitialSyncBehavior,
   IntegrationMappingBehavior,
@@ -2245,11 +2250,6 @@ const syncSecretsCircleCI = async ({
   secrets: Record<string, { value: string; comment?: string }>;
   accessToken: string;
 }) => {
-  enum CircleCiScope {
-    Project = "project",
-    Context = "context"
-  }
-
   if (integration.scope === CircleCiScope.Context) {
     // sync secrets to CircleCI
     await Promise.all(
@@ -2278,29 +2278,24 @@ const syncSecretsCircleCI = async ({
         context_id: string;
       };
 
-      type ResponseSchema = {
-        items: EnvVars[];
-        next_page_token: string | null;
-      };
-
       let nextPageToken: string | null | undefined;
       const envVars: EnvVars[] = [];
 
       while (nextPageToken !== null) {
-        const res = await request.get<ResponseSchema>(
-          `${IntegrationUrls.CIRCLECI_API_URL}/v2/context/${integration.appId}/environment-variable`,
-          {
-            headers: {
-              "Circle-Token": accessToken,
-              "Accept-Encoding": "application/json"
-            },
-            params: nextPageToken
-              ? new URLSearchParams({
-                  "page-token": nextPageToken
-                })
-              : undefined
-          }
-        );
+        const res = await request.get<{
+          items: EnvVars[];
+          next_page_token: string | null;
+        }>(`${IntegrationUrls.CIRCLECI_API_URL}/v2/context/${integration.appId}/environment-variable`, {
+          headers: {
+            "Circle-Token": accessToken,
+            "Accept-Encoding": "application/json"
+          },
+          params: nextPageToken
+            ? new URLSearchParams({
+                "page-token": nextPageToken
+              })
+            : undefined
+        });
 
         envVars.push(...res.data.items);
         nextPageToken = res.data.next_page_token;

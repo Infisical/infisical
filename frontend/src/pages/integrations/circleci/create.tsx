@@ -22,17 +22,18 @@ import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { useWorkspace } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
 import { useGetIntegrationAuthCircleCIOrganizations } from "@app/hooks/api/integrationAuth";
+import { CircleCiScope } from "@app/hooks/api/integrationAuth/types";
 
 const formSchema = z.discriminatedUnion("scope", [
   z.object({
-    scope: z.literal("context"),
+    scope: z.literal(CircleCiScope.Context),
     secretPath: z.string().default("/"),
     sourceEnvironment: z.object({ name: z.string(), slug: z.string() }),
     targetOrg: z.object({ name: z.string().min(1), slug: z.string().min(1) }),
     targetContext: z.object({ name: z.string().min(1), id: z.string().min(1) })
   }),
   z.object({
-    scope: z.literal("project"),
+    scope: z.literal(CircleCiScope.Project),
     secretPath: z.string().default("/"),
     sourceEnvironment: z.object({ name: z.string(), slug: z.string() }),
     targetOrg: z.object({ name: z.string().min(1), slug: z.string().min(1) }),
@@ -69,7 +70,7 @@ export default function CircleCICreateIntegrationPage() {
 
   const onSubmit = async (data: TFormData) => {
     try {
-      if (data.scope === "context") {
+      if (data.scope === CircleCiScope.Context) {
         await mutateAsync({
           scope: data.scope,
           integrationAuthId,
@@ -231,13 +232,13 @@ export default function CircleCICreateIntegrationPage() {
                 }}
                 className="w-full border border-mineshaft-500"
               >
-                <SelectItem value="project">Project</SelectItem>
-                <SelectItem value="context">Context</SelectItem>
+                <SelectItem value={CircleCiScope.Project}>Project</SelectItem>
+                <SelectItem value={CircleCiScope.Context}>Context</SelectItem>
               </Select>
             </FormControl>
           )}
         />
-        {selectedScope === "context" && selectedOrganizationEntry && (
+        {selectedScope === CircleCiScope.Context && selectedOrganizationEntry && (
           <Controller
             control={control}
             name="targetContext"
@@ -264,7 +265,7 @@ export default function CircleCICreateIntegrationPage() {
             )}
           />
         )}
-        {selectedScope === "project" && selectedOrganizationEntry && (
+        {selectedScope === CircleCiScope.Project && selectedOrganizationEntry && (
           <Controller
             control={control}
             name="targetProject"

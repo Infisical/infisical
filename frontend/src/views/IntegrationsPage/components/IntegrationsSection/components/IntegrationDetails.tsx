@@ -1,4 +1,5 @@
 import { FormLabel } from "@app/components/v2";
+import { CircleCiScope } from "@app/hooks/api/integrationAuth/types";
 import { IntegrationMappingBehavior, TIntegration } from "@app/hooks/api/integrations/types";
 
 type Props = {
@@ -53,7 +54,7 @@ export const IntegrationDetails = ({ integration }: Props) => {
             label={
               (integration.integration === "qovery" && integration?.scope) ||
               (integration.integration === "circleci" &&
-                (integration.scope === "context" ? "Context" : "Project")) ||
+                (integration.scope === CircleCiScope.Context ? "Context" : "Project")) ||
               (integration.integration === "bitbucket" && "Repository") ||
               (integration.integration === "octopus-deploy" && "Project") ||
               (integration.integration === "aws-secret-manager" && "Secret") ||

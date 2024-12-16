@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop */
 import { ForbiddenError } from "@casl/ability";
 import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
@@ -12,6 +11,7 @@ import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { decryptSymmetric128BitHexKeyUTF8, encryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
+import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { TGenericPermission, TProjectPermission } from "@app/lib/types";
 
@@ -1634,58 +1634,40 @@ export const integrationAuthServiceFactory = ({
       logger.error(error);
     }
 
-    const projectsByOrg = projects.reduce<Record<string, { name: string; id: string }[]>>((accum, project) => {
-      if (!accum[project.orgName]) {
-        return {
-          ...accum,
-          [project.orgName]: [
-            {
-              name: project.projectName,
-              id: project.projectId as string
-            }
-          ]
-        };
-      }
-      return {
-        ...accum,
-        [project.orgName]: [
-          ...accum[project.orgName],
-          {
-            name: project.projectName,
-            id: project.projectId as string
-          }
-        ]
-      };
-    }, {});
+    const projectsByOrg = groupBy(
+      projects.map((p) => ({
+        orgName: p.orgName,
+        name: p.projectName,
+        id: p.projectId
+      })),
+      (p) => p.orgName
+    );
 
     const getOrgContexts = async (orgSlug: string) => {
       type NextPageToken = string | null | undefined;
-
-      type CircleCIContextResponse = {
-        items: TCircleCIContext[];
-        next_page_token: NextPageToken;
-      };
 
       try {
         const contexts: TCircleCIContext[] = [];
         let nextPageToken: NextPageToken;
 
         while (nextPageToken !== null) {
-          const res = (
-            await request.get<CircleCIContextResponse>(`${IntegrationUrls.CIRCLECI_API_URL}/v2/context`, {
-              headers: {
-                "Circle-Token": accessToken,
-                "Accept-Encoding": "application/json"
-              },
-              params: new URLSearchParams({
-                "owner-slug": orgSlug,
-                ...(nextPageToken ? { "page-token": nextPageToken } : {})
-              })
+          // eslint-disable-next-line no-await-in-loop
+          const { data } = await request.get<{
+            items: TCircleCIContext[];
+            next_page_token: NextPageToken;
+          }>(`${IntegrationUrls.CIRCLECI_API_URL}/v2/context`, {
+            headers: {
+              "Circle-Token": accessToken,
+              "Accept-Encoding": "application/json"
+            },
+            params: new URLSearchParams({
+              "owner-slug": orgSlug,
+              ...(nextPageToken ? { "page-token": nextPageToken } : {})
             })
-          ).data;
+          });
 
-          contexts.push(...res.items);
-          nextPageToken = res.next_page_token;
+          contexts.push(...data.items);
+          nextPageToken = data.next_page_token;
         }
 
         return contexts?.map((context) => ({

@@ -1,6 +1,7 @@
 import { integrationSlugNameMapping } from "public/data/frequentConstants";
 
 import { FormLabel } from "@app/components/v2";
+import { CircleCiScope } from "@app/hooks/api/integrationAuth/types";
 import { IntegrationMappingBehavior, TIntegrationWithEnv } from "@app/hooks/api/integrations/types";
 
 type Props = {
@@ -46,7 +47,7 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
         case "qovery":
           return integration.scope;
         case "circleci":
-          if (integration.scope === "context") {
+          if (integration.scope === CircleCiScope.Context) {
             return "Context";
           }
 

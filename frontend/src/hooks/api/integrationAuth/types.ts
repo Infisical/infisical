@@ -138,3 +138,8 @@ export type TOctopusDeployVariableSetScopeValues = {
     Name: string;
   }[];
 };
+
+export enum CircleCiScope {
+  Context = "context",
+  Project = "project"
+}
