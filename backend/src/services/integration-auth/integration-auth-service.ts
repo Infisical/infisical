@@ -1638,7 +1638,7 @@ export const integrationAuthServiceFactory = ({
       projects.map((p) => ({
         orgName: p.orgName,
         name: p.projectName,
-        id: p.projectId
+        id: p.projectId as string
       })),
       (p) => p.orgName
     );
