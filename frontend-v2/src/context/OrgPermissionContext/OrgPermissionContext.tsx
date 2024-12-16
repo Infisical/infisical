@@ -50,10 +50,10 @@ export const OrgPermissionProvider = ({ children }: Props): JSX.Element => {
 };
 
 export const useOrgPermission = () => {
-  const { permission } = useRouteContext({
+  const ctx = useRouteContext({
     from: "/_authenticate/_org_details",
     select: (el) => el.orgPermission
   });
 
-  return permission;
+  return ctx;
 };

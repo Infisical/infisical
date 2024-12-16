@@ -14,7 +14,7 @@ export type DropdownMenuTriggerProps = DropdownMenuPrimitive.DropdownMenuTrigger
 export const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 
 // item container
-export type DropdownMenuContentProps = DropdownMenuPrimitive.MenuContentProps;
+export type DropdownMenuContentProps = DropdownMenuPrimitive.DropdownMenuContentProps;
 export const DropdownMenuContent = forwardRef<HTMLDivElement, DropdownMenuContentProps>(
   ({ children, className, ...props }, forwardedRef) => {
     return (
@@ -38,7 +38,7 @@ export const DropdownMenuContent = forwardRef<HTMLDivElement, DropdownMenuConten
 DropdownMenuContent.displayName = "DropdownMenuContent";
 
 // item container
-export type DropdownSubMenuContentProps = DropdownMenuPrimitive.MenuSubContentProps;
+export type DropdownSubMenuContentProps = DropdownMenuPrimitive.DropdownMenuSubContentProps;
 export const DropdownSubMenuContent = forwardRef<HTMLDivElement, DropdownSubMenuContentProps>(
   ({ children, className, ...props }, forwardedRef) => {
     return (
@@ -62,7 +62,7 @@ export const DropdownSubMenuContent = forwardRef<HTMLDivElement, DropdownSubMenu
 DropdownSubMenuContent.displayName = "DropdownMenuContent";
 
 // item label component
-export type DropdownLabelProps = DropdownMenuPrimitive.MenuLabelProps;
+export type DropdownLabelProps = DropdownMenuPrimitive.DropdownMenuLabelProps;
 export const DropdownMenuLabel = ({ className, ...props }: DropdownLabelProps) => (
   <DropdownMenuPrimitive.Label
     {...props}
@@ -72,7 +72,7 @@ export const DropdownMenuLabel = ({ className, ...props }: DropdownLabelProps) =
 
 // dropdown items
 export type DropdownMenuItemProps<T extends ElementType> =
-  DropdownMenuPrimitive.MenuContentProps & {
+  DropdownMenuPrimitive.DropdownMenuContentProps & {
     icon?: ReactNode;
     as?: T;
     inputRef?: Ref<T>;
