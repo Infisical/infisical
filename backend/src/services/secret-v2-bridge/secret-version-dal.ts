@@ -20,7 +20,8 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
         .join(TableName.SecretV2, `${TableName.SecretV2}.id`, `${TableName.SecretVersionV2}.secretId`)
         .join<TSecretVersionsV2, TSecretVersionsV2 & { secretId: string; max: number }>(
           (tx || db)(TableName.SecretVersionV2)
-            .groupBy("folderId", "secretId")
+            .where(`${TableName.SecretVersionV2}.folderId`, folderId)
+            .groupBy("secretId")
             .max("version")
             .select("secretId")
             .as("latestVersion"),

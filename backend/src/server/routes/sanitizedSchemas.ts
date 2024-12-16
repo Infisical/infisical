@@ -220,6 +220,7 @@ export const SanitizedProjectSchema = ProjectsSchema.pick({
   id: true,
   name: true,
   description: true,
+  type: true,
   slug: true,
   autoCapitalization: true,
   orgId: true,

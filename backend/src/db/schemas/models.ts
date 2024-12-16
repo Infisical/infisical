@@ -73,6 +73,7 @@ export enum TableName {
   IdentityUaClientSecret = "identity_ua_client_secrets",
   IdentityAwsAuth = "identity_aws_auths",
   IdentityOidcAuth = "identity_oidc_auths",
+  IdentityJwtAuth = "identity_jwt_auths",
   IdentityOrgMembership = "identity_org_memberships",
   IdentityProjectMembership = "identity_project_memberships",
   IdentityProjectMembershipRole = "identity_project_membership_role",
@@ -110,6 +111,7 @@ export enum TableName {
   SecretApprovalRequestSecretV2 = "secret_approval_requests_secrets_v2",
   SecretApprovalRequestSecretTagV2 = "secret_approval_request_secret_tags_v2",
   SnapshotSecretV2 = "secret_snapshot_secrets_v2",
+  ProjectSplitBackfillIds = "project_split_backfill_ids",
   // junction tables with tags
   SecretV2JnTag = "secret_v2_tag_junction",
   JnSecretTag = "secret_tag_junction",
@@ -201,5 +203,13 @@ export enum IdentityAuthMethod {
   GCP_AUTH = "gcp-auth",
   AWS_AUTH = "aws-auth",
   AZURE_AUTH = "azure-auth",
-  OIDC_AUTH = "oidc-auth"
+  OIDC_AUTH = "oidc-auth",
+  JWT_AUTH = "jwt-auth"
+}
+
+export enum ProjectType {
+  SecretManager = "secret-manager",
+  CertificateManager = "cert-manager",
+  KMS = "kms",
+  SSH = "ssh"
 }

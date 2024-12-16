@@ -1,5 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
-
+import { ProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-dal";
@@ -10,7 +10,6 @@ import { TSshCertificateTemplateDALFactory } from "@app/ee/services/ssh-certific
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
-
 import { SshCertTemplateStatus } from "../ssh-certificate-template/ssh-certificate-template-types";
 import { createSshCert, createSshKeyPair, getSshPublicKey } from "./ssh-certificate-authority-fns";
 import {
@@ -66,7 +65,7 @@ export const sshCertificateAuthorityServiceFactory = ({
     actor,
     actorOrgId
   }: TCreateSshCaDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
@@ -74,6 +73,7 @@ export const sshCertificateAuthorityServiceFactory = ({
       actorOrgId
     );
 
+    ForbidOnInvalidProjectType(ProjectType.SSH);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       ProjectPermissionSub.SshCertificateAuthorities
@@ -119,7 +119,7 @@ export const sshCertificateAuthorityServiceFactory = ({
     const ca = await sshCertificateAuthorityDAL.findById(caId);
     if (!ca) throw new NotFoundError({ message: `SSH CA with ID '${caId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       ca.projectId,
@@ -127,6 +127,7 @@ export const sshCertificateAuthorityServiceFactory = ({
       actorOrgId
     );
 
+    ForbidOnInvalidProjectType(ProjectType.SSH);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
       ProjectPermissionSub.SshCertificateAuthorities
@@ -189,7 +190,7 @@ export const sshCertificateAuthorityServiceFactory = ({
     const ca = await sshCertificateAuthorityDAL.findById(caId);
     if (!ca) throw new NotFoundError({ message: `SSH CA with ID '${caId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       ca.projectId,
@@ -197,6 +198,7 @@ export const sshCertificateAuthorityServiceFactory = ({
       actorOrgId
     );
 
+    ForbidOnInvalidProjectType(ProjectType.SSH);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
       ProjectPermissionSub.SshCertificateAuthorities
@@ -228,7 +230,7 @@ export const sshCertificateAuthorityServiceFactory = ({
     const ca = await sshCertificateAuthorityDAL.findById(caId);
     if (!ca) throw new NotFoundError({ message: `SSH CA with ID '${caId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       ca.projectId,
@@ -236,6 +238,7 @@ export const sshCertificateAuthorityServiceFactory = ({
       actorOrgId
     );
 
+    ForbidOnInvalidProjectType(ProjectType.SSH);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
       ProjectPermissionSub.SshCertificateAuthorities
@@ -270,7 +273,7 @@ export const sshCertificateAuthorityServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       sshCertificateTemplate.projectId,
@@ -278,6 +281,7 @@ export const sshCertificateAuthorityServiceFactory = ({
       actorOrgId
     );
 
+    ForbidOnInvalidProjectType(ProjectType.SSH);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       ProjectPermissionSub.SshCertificates
@@ -394,7 +398,7 @@ export const sshCertificateAuthorityServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       sshCertificateTemplate.projectId,
@@ -402,6 +406,7 @@ export const sshCertificateAuthorityServiceFactory = ({
       actorOrgId
     );
 
+    ForbidOnInvalidProjectType(ProjectType.SSH);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       ProjectPermissionSub.SshCertificates
@@ -493,7 +498,7 @@ export const sshCertificateAuthorityServiceFactory = ({
     const ca = await sshCertificateAuthorityDAL.findById(caId);
     if (!ca) throw new NotFoundError({ message: `SSH CA with ID '${caId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       ca.projectId,
@@ -501,6 +506,7 @@ export const sshCertificateAuthorityServiceFactory = ({
       actorOrgId
     );
 
+    ForbidOnInvalidProjectType(ProjectType.SSH);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
       ProjectPermissionSub.SshCertificateTemplates

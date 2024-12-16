@@ -351,6 +351,52 @@ export const OIDC_AUTH = {
   }
 } as const;
 
+export const JWT_AUTH = {
+  LOGIN: {
+    identityId: "The ID of the identity to login."
+  },
+  ATTACH: {
+    identityId: "The ID of the identity to attach the configuration onto.",
+    configurationType: "The configuration for validating JWTs. Must be one of: 'jwks', 'static'",
+    jwksUrl:
+      "The URL of the JWKS endpoint. Required if configurationType is 'jwks'. This endpoint must serve JSON Web Key Sets (JWKS) containing the public keys used to verify JWT signatures.",
+    jwksCaCert: "The PEM-encoded CA certificate for validating the TLS connection to the JWKS endpoint.",
+    publicKeys:
+      "A list of PEM-encoded public keys used to verify JWT signatures. Required if configurationType is 'static'. Each key must be in RSA or ECDSA format and properly PEM-encoded with BEGIN/END markers.",
+    boundIssuer: "The unique identifier of the JWT provider.",
+    boundAudiences: "The list of intended recipients.",
+    boundClaims: "The attributes that should be present in the JWT for it to be valid.",
+    boundSubject: "The expected principal that is the subject of the JWT.",
+    accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from.",
+    accessTokenTTL: "The lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The maximum number of times that an access token can be used."
+  },
+  UPDATE: {
+    identityId: "The ID of the identity to update the auth method for.",
+    configurationType: "The new configuration for validating JWTs. Must be one of: 'jwks', 'static'",
+    jwksUrl:
+      "The new URL of the JWKS endpoint. This endpoint must serve JSON Web Key Sets (JWKS) containing the public keys used to verify JWT signatures.",
+    jwksCaCert: "The new PEM-encoded CA certificate for validating the TLS connection to the JWKS endpoint.",
+    publicKeys:
+      "A new list of PEM-encoded public keys used to verify JWT signatures. Each key must be in RSA or ECDSA format and properly PEM-encoded with BEGIN/END markers.",
+    boundIssuer: "The new unique identifier of the JWT provider.",
+    boundAudiences: "The new list of intended recipients.",
+    boundClaims: "The new attributes that should be present in the JWT for it to be valid.",
+    boundSubject: "The new expected principal that is the subject of the JWT.",
+    accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from.",
+    accessTokenTTL: "The new lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used."
+  },
+  RETRIEVE: {
+    identityId: "The ID of the identity to retrieve the auth method for."
+  },
+  REVOKE: {
+    identityId: "The ID of the identity to revoke the auth method for."
+  }
+} as const;
+
 export const ORGANIZATIONS = {
   LIST_USER_MEMBERSHIPS: {
     organizationId: "The ID of the organization to get memberships from."
@@ -382,7 +428,8 @@ export const ORGANIZATIONS = {
     search: "The text string that identity membership names will be filtered by."
   },
   GET_PROJECTS: {
-    organizationId: "The ID of the organization to get projects from."
+    organizationId: "The ID of the organization to get projects from.",
+    type: "The type of project to filter by."
   },
   LIST_GROUPS: {
     organizationId: "The ID of the organization to list groups for."

@@ -53,7 +53,7 @@ export const RolePage = withProjectPermission(
           type: "success"
         });
         handlePopUpClose("deleteRole");
-        router.push(`/project/${projectId}/members?selectedTab=${TabSections.Roles}`);
+        router.push(`/${currentWorkspace?.type}/${projectId}/members?selectedTab=${TabSections.Roles}`);
       } catch (err) {
         console.error(err);
         const error = err as any;
@@ -77,7 +77,7 @@ export const RolePage = withProjectPermission(
               type="submit"
               leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
               onClick={() =>
-                router.push(`/project/${projectId}/members?selectedTab=${TabSections.Roles}`)
+                router.push(`/${currentWorkspace?.type}/${projectId}/members?selectedTab=${TabSections.Roles}`)
               }
               className="mb-4"
             >

@@ -14,6 +14,7 @@ import {
 } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useDeleteWorkspace, useGetWorkspaceUsers, useLeaveProject } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 export const DeleteProjectSection = () => {
@@ -63,7 +64,7 @@ export const DeleteProjectSection = () => {
         type: "success"
       });
 
-      router.push(`/org/${orgId}/overview`);
+      router.push(`/org/${orgId}/${ProjectType.SecretManager}/overview`);
       handlePopUpClose("deleteWorkspace");
     } catch (err) {
       console.error(err);
@@ -120,7 +121,7 @@ export const DeleteProjectSection = () => {
         workspaceId: currentWorkspace.id
       });
 
-      router.push(`/org/${currentOrg.id}/overview`);
+      router.push(`/org/${currentOrg.id}/${ProjectType.SecretManager}/overview`);
     } catch (err) {
       console.error(err);
       createNotification({

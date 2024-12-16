@@ -29,6 +29,7 @@ import {
   caTypeToNameMap,
   getCaStatusBadgeVariant
 } from "@app/hooks/api/ca/constants";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -75,7 +76,7 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                   <Tr
                     className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                     key={`ca-${ca.id}`}
-                    onClick={() => router.push(`/project/${currentWorkspace?.id}/ca/${ca.id}`)}
+                    onClick={() => router.push(`/${ProjectType.CertificateManager}/${currentWorkspace?.id}/ca/${ca.id}`)}
                   >
                     <Td>{ca.friendlyName}</Td>
                     <Td>

@@ -8,6 +8,7 @@ import {
   AddIdentityAwsAuthDTO,
   AddIdentityAzureAuthDTO,
   AddIdentityGcpAuthDTO,
+  AddIdentityJwtAuthDTO,
   AddIdentityKubernetesAuthDTO,
   AddIdentityOidcAuthDTO,
   AddIdentityTokenAuthDTO,
@@ -22,6 +23,7 @@ import {
   DeleteIdentityAzureAuthDTO,
   DeleteIdentityDTO,
   DeleteIdentityGcpAuthDTO,
+  DeleteIdentityJwtAuthDTO,
   DeleteIdentityKubernetesAuthDTO,
   DeleteIdentityOidcAuthDTO,
   DeleteIdentityTokenAuthDTO,
@@ -32,6 +34,7 @@ import {
   IdentityAwsAuth,
   IdentityAzureAuth,
   IdentityGcpAuth,
+  IdentityJwtAuth,
   IdentityKubernetesAuth,
   IdentityOidcAuth,
   IdentityTokenAuth,
@@ -42,6 +45,7 @@ import {
   UpdateIdentityAzureAuthDTO,
   UpdateIdentityDTO,
   UpdateIdentityGcpAuthDTO,
+  UpdateIdentityJwtAuthDTO,
   UpdateIdentityKubernetesAuthDTO,
   UpdateIdentityOidcAuthDTO,
   UpdateIdentityTokenAuthDTO,
@@ -515,6 +519,118 @@ export const useDeleteIdentityOidcAuth = () => {
       queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
       queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
       queryClient.invalidateQueries(identitiesKeys.getIdentityOidcAuth(identityId));
+    }
+  });
+};
+export const useUpdateIdentityJwtAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityJwtAuth, {}, UpdateIdentityJwtAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      configurationType,
+      jwksUrl,
+      jwksCaCert,
+      publicKeys,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps,
+      boundIssuer,
+      boundAudiences,
+      boundClaims,
+      boundSubject
+    }) => {
+      const {
+        data: { identityJwtAuth }
+      } = await apiRequest.patch<{ identityJwtAuth: IdentityJwtAuth }>(
+        `/api/v1/auth/jwt-auth/identities/${identityId}`,
+        {
+          configurationType,
+          jwksUrl,
+          jwksCaCert,
+          publicKeys,
+          boundIssuer,
+          boundAudiences,
+          boundClaims,
+          boundSubject,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+
+      return identityJwtAuth;
+    },
+    onSuccess: (_, { identityId, organizationId }) => {
+      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
+      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
+      queryClient.invalidateQueries(identitiesKeys.getIdentityJwtAuth(identityId));
+    }
+  });
+};
+
+export const useAddIdentityJwtAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityJwtAuth, {}, AddIdentityJwtAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      configurationType,
+      jwksUrl,
+      jwksCaCert,
+      publicKeys,
+      boundIssuer,
+      boundAudiences,
+      boundClaims,
+      boundSubject,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const {
+        data: { identityJwtAuth }
+      } = await apiRequest.post<{ identityJwtAuth: IdentityJwtAuth }>(
+        `/api/v1/auth/jwt-auth/identities/${identityId}`,
+        {
+          configurationType,
+          jwksUrl,
+          jwksCaCert,
+          publicKeys,
+          boundIssuer,
+          boundAudiences,
+          boundClaims,
+          boundSubject,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+
+      return identityJwtAuth;
+    },
+    onSuccess: (_, { identityId, organizationId }) => {
+      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
+      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
+      queryClient.invalidateQueries(identitiesKeys.getIdentityJwtAuth(identityId));
+    }
+  });
+};
+
+export const useDeleteIdentityJwtAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityTokenAuth, {}, DeleteIdentityJwtAuthDTO>({
+    mutationFn: async ({ identityId }) => {
+      const {
+        data: { identityJwtAuth }
+      } = await apiRequest.delete(`/api/v1/auth/jwt-auth/identities/${identityId}`);
+      return identityJwtAuth;
+    },
+    onSuccess: (_, { organizationId, identityId }) => {
+      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
+      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
+      queryClient.invalidateQueries(identitiesKeys.getIdentityJwtAuth(identityId));
     }
   });
 };

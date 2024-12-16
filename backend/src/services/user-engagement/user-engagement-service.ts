@@ -1,87 +1,44 @@
-import { PlainClient } from "@team-plain/typescript-sdk";
+import axios from "axios";
 
 import { getConfig } from "@app/lib/config/env";
 import { InternalServerError } from "@app/lib/errors";
 
+import { TOrgDALFactory } from "../org/org-dal";
 import { TUserDALFactory } from "../user/user-dal";
 
 type TUserEngagementServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
 };
 
 export type TUserEngagementServiceFactory = ReturnType<typeof userEngagementServiceFactory>;
 
-export const userEngagementServiceFactory = ({ userDAL }: TUserEngagementServiceFactoryDep) => {
-  const createUserWish = async (userId: string, text: string) => {
+export const userEngagementServiceFactory = ({ userDAL, orgDAL }: TUserEngagementServiceFactoryDep) => {
+  const createUserWish = async (userId: string, orgId: string, text: string) => {
     const user = await userDAL.findById(userId);
+    const org = await orgDAL.findById(orgId);
     const appCfg = getConfig();
 
-    if (!appCfg.PLAIN_API_KEY) {
+    if (!appCfg.PYLON_API_KEY) {
       throw new InternalServerError({
-        message: "Plain is not configured."
+        message: "Pylon is not configured."
       });
     }
 
-    const client = new PlainClient({
-      apiKey: appCfg.PLAIN_API_KEY
-    });
-
-    const customerUpsertRes = await client.upsertCustomer({
-      identifier: {
-        emailAddress: user.email
-      },
-      onCreate: {
-        fullName: `${user.firstName} ${user.lastName}`,
-        shortName: user.firstName,
-        email: {
-          email: user.email as string,
-          isVerified: user.isEmailVerified as boolean
-        },
-
-        externalId: user.id
-      },
-
-      onUpdate: {
-        fullName: {
-          value: `${user.firstName} ${user.lastName}`
-        },
-        shortName: {
-          value: user.firstName
-        },
-        email: {
-          email: user.email as string,
-          isVerified: user.isEmailVerified as boolean
-        },
-        externalId: {
-          value: user.id
-        }
+    const request = axios.create({
+      baseURL: "https://api.usepylon.com",
+      headers: {
+        Authorization: `Bearer ${appCfg.PYLON_API_KEY}`
       }
     });
 
-    if (customerUpsertRes.error) {
-      throw new InternalServerError({ message: customerUpsertRes.error.message });
-    }
-
-    const createThreadRes = await client.createThread({
-      title: "Wish",
-      customerIdentifier: {
-        externalId: customerUpsertRes.data.customer.externalId
-      },
-      components: [
-        {
-          componentText: {
-            text
-          }
-        }
-      ],
-      labelTypeIds: appCfg.PLAIN_WISH_LABEL_IDS?.split(",")
+    await request.post("/issues", {
+      title: `New Wish From: ${user.firstName} ${user.lastName} (${org.name})`,
+      body_html: text,
+      requester_email: user.email,
+      requester_name: `${user.firstName} ${user.lastName} (${org.name})`,
+      tags: ["wish"]
     });
-
-    if (createThreadRes.error) {
-      throw new InternalServerError({
-        message: createThreadRes.error.message
-      });
-    }
   };
   return {
     createUserWish

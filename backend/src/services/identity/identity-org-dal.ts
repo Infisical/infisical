@@ -6,6 +6,7 @@ import {
   TIdentityAwsAuths,
   TIdentityAzureAuths,
   TIdentityGcpAuths,
+  TIdentityJwtAuths,
   TIdentityKubernetesAuths,
   TIdentityOidcAuths,
   TIdentityOrgMemberships,
@@ -70,6 +71,11 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           `${TableName.IdentityOrgMembership}.identityId`,
           `${TableName.IdentityTokenAuth}.identityId`
         )
+        .leftJoin<TIdentityJwtAuths>(
+          TableName.IdentityJwtAuth,
+          `${TableName.IdentityOrgMembership}.identityId`,
+          `${TableName.IdentityJwtAuth}.identityId`
+        )
 
         .select(
           selectAllTableCols(TableName.IdentityOrgMembership),
@@ -81,6 +87,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("id").as("oidcId").withSchema(TableName.IdentityOidcAuth),
           db.ref("id").as("azureId").withSchema(TableName.IdentityAzureAuth),
           db.ref("id").as("tokenId").withSchema(TableName.IdentityTokenAuth),
+          db.ref("id").as("jwtId").withSchema(TableName.IdentityJwtAuth),
 
           db.ref("name").withSchema(TableName.Identity)
         );
@@ -183,6 +190,11 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           "paginatedIdentity.identityId",
           `${TableName.IdentityTokenAuth}.identityId`
         )
+        .leftJoin<TIdentityJwtAuths>(
+          TableName.IdentityJwtAuth,
+          "paginatedIdentity.identityId",
+          `${TableName.IdentityJwtAuth}.identityId`
+        )
 
         .select(
           db.ref("id").withSchema("paginatedIdentity"),
@@ -200,7 +212,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("id").as("kubernetesId").withSchema(TableName.IdentityKubernetesAuth),
           db.ref("id").as("oidcId").withSchema(TableName.IdentityOidcAuth),
           db.ref("id").as("azureId").withSchema(TableName.IdentityAzureAuth),
-          db.ref("id").as("tokenId").withSchema(TableName.IdentityTokenAuth)
+          db.ref("id").as("tokenId").withSchema(TableName.IdentityTokenAuth),
+          db.ref("id").as("jwtId").withSchema(TableName.IdentityJwtAuth)
         )
         // cr stands for custom role
         .select(db.ref("id").as("crId").withSchema(TableName.OrgRoles))
@@ -237,6 +250,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           uaId,
           awsId,
           gcpId,
+          jwtId,
           kubernetesId,
           oidcId,
           azureId,
@@ -271,7 +285,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
               kubernetesId,
               oidcId,
               azureId,
-              tokenId
+              tokenId,
+              jwtId
             })
           }
         }),

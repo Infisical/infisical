@@ -99,7 +99,7 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
           permissions: []
         });
 
-        router.push(`/project/${currentWorkspace?.id}/roles/${newRole.slug}`);
+        router.push(`/${currentWorkspace?.type}/${currentWorkspace?.id}/roles/${newRole.slug}`);
         handlePopUpToggle("role", false);
       }
 
