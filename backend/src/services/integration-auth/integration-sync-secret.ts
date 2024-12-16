@@ -46,6 +46,7 @@ import {
   Integrations,
   IntegrationUrls
 } from "./integration-list";
+import { isAzureKeyVaultReference } from "./integration-sync-secret-fns";
 
 const getSecretKeyValuePair = (secrets: Record<string, { value: string | null; comment?: string } | null>) =>
   Object.keys(secrets).reduce<Record<string, string | null | undefined>>((prev, key) => {
@@ -299,11 +300,6 @@ const syncSecretsAzureAppConfig = async ({
     value: string;
   }
 
-  // Format: {\"uri\":\"https://SOME-KEY-VAULT.vault.azure.net/secrets/SOME-SECRET-KEY\"}
-  // Also works without the backslash escapes
-  const azureSecretReferenceUriRegex =
-    /^\{(\\"|")uri(\\"|"):(\\"|")https:\/\/[a-zA-Z0-9-]+\.vault\.azure\.net\/secrets\/[a-zA-Z0-9-]+\\?\2\}$/;
-
   const getCompleteAzureAppConfigValues = async (url: string) => {
     let result: AzureAppConfigKeyValue[] = [];
     while (url) {
@@ -325,11 +321,12 @@ const syncSecretsAzureAppConfig = async ({
   };
 
   const metadata = IntegrationMetadataSchema.parse(integration.metadata);
-  const azureAppConfigSecrets = (
-    await getCompleteAzureAppConfigValues(
-      `${integration.app}/kv?api-version=2023-11-01&key=${metadata.secretPrefix || ""}*`
-    )
-  ).reduce(
+
+  const azureAppConfigValuesUrl = `${integration.app}/kv?api-version=2023-11-01&key=${metadata.secretPrefix}*${
+    metadata.azureLabel ? `&label=${metadata.azureLabel}` : ""
+  }`;
+
+  const azureAppConfigSecrets = (await getCompleteAzureAppConfigValues(azureAppConfigValuesUrl)).reduce(
     (accum, entry) => {
       accum[entry.key] = entry.value;
 
@@ -417,7 +414,7 @@ const syncSecretsAzureAppConfig = async ({
         `${integration.app}/kv/${key}?api-version=2023-11-01`,
         {
           value: secrets[key]?.value,
-          ...(azureSecretReferenceUriRegex.test(secrets[key]?.value || "") && {
+          ...(isAzureKeyVaultReference(secrets[key]?.value || "") && {
             content_type: "application/vnd.microsoft.appconfig.keyvaultref+json;charset=utf-8"
           })
         },
