@@ -1202,7 +1202,19 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
           organizations: z
             .object({
               name: z.string(),
-              slug: z.string()
+              slug: z.string(),
+              projects: z
+                .object({
+                  name: z.string(),
+                  id: z.string()
+                })
+                .array(),
+              contexts: z
+                .object({
+                  name: z.string(),
+                  id: z.string()
+                })
+                .array()
             })
             .array()
         })

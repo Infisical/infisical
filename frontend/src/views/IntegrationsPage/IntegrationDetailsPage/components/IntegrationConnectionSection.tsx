@@ -46,8 +46,11 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
         case "qovery":
           return integration.scope;
         case "circleci":
-        case "circleci-context":
-          return "Context";
+          if (integration.scope === "context") {
+            return "Context";
+          }
+
+          return "Project";
         case "terraform-cloud":
           return "Project";
         case "aws-secret-manager":
@@ -148,15 +151,6 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
     }
 
     if (integration.integration === "circleci" && integration.owner) {
-      return (
-        <div>
-          <FormLabel className="text-sm font-semibold text-mineshaft-300" label="Organization" />
-          <div className="text-sm text-mineshaft-300">{integration.owner}</div>
-        </div>
-      );
-    }
-
-    if (integration.integration === "circleci-context" && integration.owner) {
       return (
         <div>
           <FormLabel className="text-sm font-semibold text-mineshaft-300" label="Organization" />

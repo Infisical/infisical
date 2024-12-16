@@ -15,7 +15,6 @@ export const getIntegrationDestination = (integration: TIntegration) =>
   (["aws-parameter-store", "rundeck"].includes(integration.integration) && `${integration.path}`) ||
   (integration.scope?.startsWith("github-") && `${integration.owner}/${integration.app}`) ||
   integration.app ||
-  (integration.integration === "circleci-context" && `${integration.owner}`) ||
   "-";
 
 export const IntegrationDetails = ({ integration }: Props) => {
@@ -53,8 +52,8 @@ export const IntegrationDetails = ({ integration }: Props) => {
           <FormLabel
             label={
               (integration.integration === "qovery" && integration?.scope) ||
-              (integration.integration === "circleci" && "Project") ||
-              (integration.integration === "circleci-context" && "Context") ||
+              (integration.integration === "circleci" &&
+                (integration.scope === "context" ? "Context" : "Project")) ||
               (integration.integration === "bitbucket" && "Repository") ||
               (integration.integration === "octopus-deploy" && "Project") ||
               (integration.integration === "aws-secret-manager" && "Secret") ||
@@ -109,12 +108,6 @@ export const IntegrationDetails = ({ integration }: Props) => {
       {integration.integration === "circleci" && integration.owner && (
         <div>
           <FormLabel label="Organization" />
-          <div className={FIELD_CLASSNAME}>{integration.owner}</div>
-        </div>
-      )}
-      {integration.integration === "circleci-context" && integration.owner && (
-        <div>
-          <FormLabel label="Organization Slug" />
           <div className={FIELD_CLASSNAME}>{integration.owner}</div>
         </div>
       )}

@@ -108,6 +108,14 @@ export enum OctopusDeployScope {
 export type CircleCIOrganization = {
   name: string;
   slug: string;
+  projects: {
+    name: string;
+    id: string;
+  }[];
+  contexts: {
+    name: string;
+    id: string;
+  }[];
 };
 
 export type TGetIntegrationAuthOctopusDeployScopeValuesDTO = {

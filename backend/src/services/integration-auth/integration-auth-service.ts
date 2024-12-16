@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop */
 import { ForbiddenError } from "@casl/ability";
 import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
@@ -11,6 +12,7 @@ import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { decryptSymmetric128BitHexKeyUTF8, encryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { TGenericPermission, TProjectPermission } from "@app/lib/types";
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
@@ -18,6 +20,7 @@ import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { getApps } from "./integration-app-list";
+import { TCircleCIContext } from "./integration-app-types";
 import { TIntegrationAuthDALFactory } from "./integration-auth-dal";
 import { IntegrationAuthMetadataSchema, TIntegrationAuthMetadata } from "./integration-auth-schema";
 import {
@@ -1593,8 +1596,8 @@ export const integrationAuthServiceFactory = ({
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
 
-    const { data }: { data: TCircleCIOrganization[] } = await request.get(
-      `${IntegrationUrls.CIRCLECI_CONTEXT_API_URL}/v2/me/collaborations`,
+    const { data: organizations }: { data: TCircleCIOrganization[] } = await request.get(
+      `${IntegrationUrls.CIRCLECI_API_URL}/v2/me/collaborations`,
       {
         headers: {
           "Circle-Token": `${accessToken}`,
@@ -1603,7 +1606,106 @@ export const integrationAuthServiceFactory = ({
       }
     );
 
-    return data;
+    let projects: {
+      orgName: string;
+      projectName: string;
+      projectId?: string;
+    }[] = [];
+
+    try {
+      const projectRes = (
+        await request.get<{ reponame: string; username: string; vcs_url: string }[]>(
+          `${IntegrationUrls.CIRCLECI_API_URL}/v1.1/projects`,
+          {
+            headers: {
+              "Circle-Token": accessToken,
+              "Accept-Encoding": "application/json"
+            }
+          }
+        )
+      ).data;
+
+      projects = projectRes.map((a) => ({
+        orgName: a.username, // username maps to unique organization name in CircleCI
+        projectName: a.reponame, // reponame maps to project name within an organization in CircleCI
+        projectId: a.vcs_url.split("/").pop() // vcs_url maps to the project id in CircleCI
+      }));
+    } catch (error) {
+      logger.error(error);
+    }
+
+    const projectsByOrg = projects.reduce<Record<string, { name: string; id: string }[]>>((accum, project) => {
+      if (!accum[project.orgName]) {
+        return {
+          ...accum,
+          [project.orgName]: [
+            {
+              name: project.projectName,
+              id: project.projectId as string
+            }
+          ]
+        };
+      }
+      return {
+        ...accum,
+        [project.orgName]: [
+          ...accum[project.orgName],
+          {
+            name: project.projectName,
+            id: project.projectId as string
+          }
+        ]
+      };
+    }, {});
+
+    const getOrgContexts = async (orgSlug: string) => {
+      type NextPageToken = string | null | undefined;
+
+      type CircleCIContextResponse = {
+        items: TCircleCIContext[];
+        next_page_token: NextPageToken;
+      };
+
+      try {
+        const contexts: TCircleCIContext[] = [];
+        let nextPageToken: NextPageToken;
+
+        while (nextPageToken !== null) {
+          const res = (
+            await request.get<CircleCIContextResponse>(`${IntegrationUrls.CIRCLECI_API_URL}/v2/context`, {
+              headers: {
+                "Circle-Token": accessToken,
+                "Accept-Encoding": "application/json"
+              },
+              params: new URLSearchParams({
+                "owner-slug": orgSlug,
+                ...(nextPageToken ? { "page-token": nextPageToken } : {})
+              })
+            })
+          ).data;
+
+          contexts.push(...res.items);
+          nextPageToken = res.next_page_token;
+        }
+
+        return contexts?.map((context) => ({
+          name: context.name,
+          id: context.id
+        }));
+      } catch (error) {
+        logger.error(error);
+        return [];
+      }
+    };
+
+    return Promise.all(
+      organizations.map(async (org) => ({
+        name: org.name,
+        slug: org.slug,
+        projects: projectsByOrg[org.name] ?? [],
+        contexts: (await getOrgContexts(org.slug)) ?? []
+      }))
+    );
   };
 
   const deleteIntegrationAuths = async ({

@@ -8,7 +8,6 @@ import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { NotFoundError } from "@app/lib/errors";
 
-import { TCircleCIContext } from "./integration-app-types";
 import { IntegrationAuthMetadataSchema, TIntegrationAuthMetadata } from "./integration-auth-schema";
 import { Integrations, IntegrationUrls } from "./integration-list";
 
@@ -485,47 +484,6 @@ const getAppsCircleCI = async ({ accessToken }: { accessToken: string }) => {
     owner: a.username, // username maps to unique organization name in CircleCI
     name: a.reponame, // reponame maps to project name within an organization in CircleCI
     appId: a.vcs_url.split("/").pop() // vcs_url maps to the project id in CircleCI
-  }));
-
-  return apps;
-};
-
-/**
- * Return list of contexts for CircleCI_Context integration
- */
-const getAppsCircleCIContexts = async ({ accessToken, orgSlug }: { accessToken: string; orgSlug: string }) => {
-  type NextPageToken = string | null | undefined;
-
-  type CircleCIContextResponse = {
-    items: TCircleCIContext[];
-    next_page_token: NextPageToken;
-  };
-
-  const contexts: TCircleCIContext[] = [];
-
-  let nextPageToken: NextPageToken;
-
-  while (nextPageToken !== null) {
-    const res = (
-      await request.get<CircleCIContextResponse>(`${IntegrationUrls.CIRCLECI_CONTEXT_API_URL}/v2/context`, {
-        headers: {
-          "Circle-Token": accessToken,
-          "Accept-Encoding": "application/json"
-        },
-        params: new URLSearchParams({
-          "owner-slug": orgSlug,
-          ...(nextPageToken ? { "page-token": nextPageToken } : {})
-        })
-      })
-    ).data;
-
-    contexts.push(...res.items);
-    nextPageToken = res.next_page_token;
-  }
-
-  const apps = contexts?.map((context) => ({
-    name: context.name,
-    appId: context.id
   }));
 
   return apps;
@@ -1235,12 +1193,6 @@ export const getApps = async ({
     case Integrations.CIRCLECI:
       return getAppsCircleCI({
         accessToken
-      });
-
-    case Integrations.CIRCLECI_CONTEXT:
-      return getAppsCircleCIContexts({
-        accessToken,
-        orgSlug: workspaceSlug as string
       });
 
     case Integrations.DATABRICKS:

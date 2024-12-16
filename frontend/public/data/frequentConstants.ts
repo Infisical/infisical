@@ -16,7 +16,6 @@ const integrationSlugNameMapping: Mapping = {
   railway: "Railway",
   flyio: "Fly.io",
   circleci: "CircleCI",
-  "circleci-context": "CircleCI Context",
   databricks: "Databricks",
   travisci: "TravisCI",
   supabase: "Supabase",
