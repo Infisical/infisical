@@ -12,9 +12,12 @@ export type TTokenDALFactory = ReturnType<typeof tokenDALFactory>;
 export const tokenDALFactory = (db: TDbClient) => {
   const authOrm = ormify(db, TableName.AuthTokens);
 
-  const findOneTokenSession = async (filter: Partial<TAuthTokenSessions>): Promise<TAuthTokenSessions | undefined> => {
+  const findOneTokenSession = async (
+    filter: Partial<TAuthTokenSessions>,
+    tx?: Knex
+  ): Promise<TAuthTokenSessions | undefined> => {
     try {
-      const doc = await db.replicaNode()(TableName.AuthTokenSession).where(filter).first();
+      const doc = await (tx || db.replicaNode())(TableName.AuthTokenSession).where(filter).first();
       return doc;
     } catch (error) {
       throw new DatabaseError({ error, name: "FindOneTokenSession" });
