@@ -18,6 +18,7 @@ import {
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
 import { useDeleteSshCa, useGetSshCaById } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { SshCaModal } from "../SshPage/components/SshCaModal";
@@ -68,7 +69,7 @@ export const SshCaPage = withProjectPermission(
               variant="link"
               type="submit"
               leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
-              onClick={() => router.push(`/project/${projectId}/ssh`)}
+              onClick={() => router.push(`/${ProjectType.SSH}/${projectId}/ssh`)}
               className="mb-4"
             >
               SSH Certificate Authorities
