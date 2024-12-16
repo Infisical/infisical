@@ -15,8 +15,8 @@ import { useToggle } from "@app/hooks";
 import { completeAccountSignup, useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
-import { Mfa } from "@app/routes/login/-components/Mfa";
 import ProjectService from "@app/services/ProjectService";
+import { Mfa } from "@app/components/auth/Mfa";
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();

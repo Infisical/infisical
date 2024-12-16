@@ -25,7 +25,7 @@ const PersonalSettingsPage = () => {
   );
 };
 
-export const Route = createFileRoute("/_authenticate/_personal_settings_layout/personal-settings/")(
+export const Route = createFileRoute("/_authenticate/personal-settings/_personal-settings-layout/")(
   {
     component: PersonalSettingsPage
   }

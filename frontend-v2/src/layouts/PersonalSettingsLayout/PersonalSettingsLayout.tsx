@@ -16,7 +16,9 @@ import { InsecureConnectionBanner } from "../OrganizationLayout/components/Insec
 import { INFISICAL_SUPPORT_OPTIONS } from "../OrganizationLayout/components/SidebarFooter/SidebarFooter";
 
 export const PersonalSettingsLayout = () => {
-  const { organizationId } = useRouteContext({ from: "/_authenticate/_personal_settings_layout" });
+  const { organizationId } = useRouteContext({
+    from: "/_authenticate/personal-settings/_personal-settings-layout"
+  });
   const { t } = useTranslation();
 
   const infisicalPlatformVersion = import.meta.env.VITE_INFISICAL_PLATFORM_VERSION;
