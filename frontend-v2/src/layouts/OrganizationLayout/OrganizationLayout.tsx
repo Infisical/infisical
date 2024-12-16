@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, Outlet } from "@tanstack/react-router";
 
 import { Mfa } from "@app/components/auth/Mfa";
+import { CreateOrgModal } from "@app/components/organization/CreateOrgModal";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Menu, MenuItem } from "@app/components/v2";
 import { useOrganization, useUser } from "@app/context";
@@ -189,12 +190,10 @@ export const OrganizationLayout = () => {
               <SidebarFooter />
             </nav>
           </aside>
-          {
-            // <CreateOrgModal
-            //   isOpen={popUp?.createOrg?.isOpen}
-            //   onClose={() => handlePopUpToggle("createOrg", false)}
-            // />
-          }
+          <CreateOrgModal
+            isOpen={popUp?.createOrg?.isOpen}
+            onClose={() => handlePopUpToggle("createOrg", false)}
+          />
           <main className="flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800 dark:[color-scheme:dark]">
             <Outlet />
           </main>
