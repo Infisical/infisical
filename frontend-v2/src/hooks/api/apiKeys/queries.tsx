@@ -22,7 +22,7 @@ export const useCreateAPIKeyV2 = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(userKeys.myAPIKeysV2);
+      queryClient.invalidateQueries({ queryKey: userKeys.myAPIKeysV2 });
     }
   });
 };
@@ -39,7 +39,7 @@ export const useUpdateAPIKeyV2 = () => {
       return apiKeyData;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(userKeys.myAPIKeysV2);
+      queryClient.invalidateQueries({ queryKey: userKeys.myAPIKeysV2 });
     }
   });
 };
@@ -54,7 +54,7 @@ export const useDeleteAPIKeyV2 = () => {
       return apiKeyData;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(userKeys.myAPIKeysV2);
+      queryClient.invalidateQueries({ queryKey: userKeys.myAPIKeysV2 });
     }
   });
 };

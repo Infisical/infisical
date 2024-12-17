@@ -78,10 +78,10 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
   const userId = user?.id || "";
   const orgId = currentOrg?.id || "";
 
-  const { data: roles, isLoading: isRolesLoading } = useGetOrgRoles(orgId);
+  const { data: roles, isPending: isRolesLoading } = useGetOrgRoles(orgId);
 
   const { data: serverDetails } = useFetchServerStatus();
-  const { data: members = [], isLoading: isMembersLoading } = useGetOrgUsers(orgId);
+  const { data: members = [], isPending: isMembersLoading } = useGetOrgUsers(orgId);
 
   const { mutateAsync: addUsersMutateAsync } = useAddUsersToOrg();
   const { mutateAsync: updateOrgMembership } = useUpdateOrgMembership();

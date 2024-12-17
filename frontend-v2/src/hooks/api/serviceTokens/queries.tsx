@@ -43,7 +43,9 @@ export const useCreateServiceToken = () => {
       return data;
     },
     onSuccess: ({ serviceTokenData: { projectId } }) => {
-      queryClient.invalidateQueries(serviceTokenKeys.getAllWorkspaceServiceToken(projectId));
+      queryClient.invalidateQueries({
+        queryKey: serviceTokenKeys.getAllWorkspaceServiceToken(projectId)
+      });
     }
   });
 };
@@ -57,7 +59,9 @@ export const useDeleteServiceToken = () => {
       return data;
     },
     onSuccess: ({ serviceTokenData: { projectId } }) => {
-      queryClient.invalidateQueries(serviceTokenKeys.getAllWorkspaceServiceToken(projectId));
+      queryClient.invalidateQueries({
+        queryKey: serviceTokenKeys.getAllWorkspaceServiceToken(projectId)
+      });
     }
   });
 };

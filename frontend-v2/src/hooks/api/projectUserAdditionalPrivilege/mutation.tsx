@@ -19,7 +19,9 @@ export const useCreateProjectUserAdditionalPrivilege = () => {
       return data.privilege;
     },
     onSuccess: (_, { projectMembershipId }) => {
-      queryClient.invalidateQueries(projectUserPrivilegeKeys.list(projectMembershipId));
+      queryClient.invalidateQueries({
+        queryKey: projectUserPrivilegeKeys.list(projectMembershipId)
+      });
     }
   });
 };
@@ -36,7 +38,9 @@ export const useUpdateProjectUserAdditionalPrivilege = () => {
       return data.privilege;
     },
     onSuccess: (_, { projectMembershipId }) => {
-      queryClient.invalidateQueries(projectUserPrivilegeKeys.list(projectMembershipId));
+      queryClient.invalidateQueries({
+        queryKey: projectUserPrivilegeKeys.list(projectMembershipId)
+      });
     }
   });
 };
@@ -52,7 +56,9 @@ export const useDeleteProjectUserAdditionalPrivilege = () => {
       return data.privilege;
     },
     onSuccess: (_, { projectMembershipId }) => {
-      queryClient.invalidateQueries(projectUserPrivilegeKeys.list(projectMembershipId));
+      queryClient.invalidateQueries({
+        queryKey: projectUserPrivilegeKeys.list(projectMembershipId)
+      });
     }
   });
 };

@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
@@ -15,8 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Spinner,
-  Tooltip,
-  UpgradePlanModal
+  Tooltip
 } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { withPermission } from "@app/hoc";
@@ -44,7 +44,7 @@ const GroupPage = withPermission(
     const groupId = params.groupId as string;
     const { currentOrg } = useOrganization();
 
-    const { data, isLoading } = useGetGroupById(groupId);
+    const { data, isPending } = useGetGroupById(groupId);
 
     const { mutateAsync: deleteMutateAsync } = useDeleteGroup();
 
@@ -83,7 +83,7 @@ const GroupPage = withPermission(
       handlePopUpClose("deleteGroup");
     };
 
-    if (isLoading) return <Spinner size="sm" className="ml-2 mt-2" />;
+    if (isPending) return <Spinner size="sm" className="ml-2 mt-2" />;
 
     return (
       <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">

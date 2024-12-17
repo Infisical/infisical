@@ -3,6 +3,7 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import {
   Badge,
@@ -10,8 +11,7 @@ import {
   FormControl,
   Select,
   SelectItem,
-  Tooltip,
-  UpgradePlanModal
+  Tooltip
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import {

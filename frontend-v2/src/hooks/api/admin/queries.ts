@@ -48,6 +48,7 @@ export const useGetServerConfig = ({
 
 export const useAdminGetUsers = (filters: AdminGetUsersFilters) => {
   return useInfiniteQuery({
+    initialPageParam: 0,
     queryKey: adminQueryKeys.getUsers(filters),
     queryFn: async ({ pageParam }) => {
       const { data } = await apiRequest.get<{ users: User[] }>(

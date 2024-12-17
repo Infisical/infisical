@@ -17,7 +17,7 @@ export const OrgDeleteSection = () => {
     "deleteOrg"
   ] as const);
 
-  const { mutateAsync, isLoading } = useDeleteOrgById();
+  const { mutateAsync, isPending } = useDeleteOrgById();
 
   const handleDeleteOrgSubmit = async () => {
     try {
@@ -50,7 +50,7 @@ export const OrgDeleteSection = () => {
       <div className="py-4">
         <p className="text-md mb-4 text-mineshaft-100">Danger Zone</p>
         <Button
-          isLoading={isLoading}
+          isLoading={isPending}
           colorSchema="danger"
           variant="outline_bg"
           type="submit"

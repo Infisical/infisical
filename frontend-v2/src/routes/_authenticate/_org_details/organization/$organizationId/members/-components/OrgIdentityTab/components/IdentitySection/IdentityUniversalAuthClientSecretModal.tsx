@@ -75,7 +75,7 @@ export const IdentityUniversalAuthClientSecretModal = ({
     name?: string;
   };
 
-  const { data, isLoading } = useGetIdentityUniversalAuthClientSecrets(popUpData?.identityId ?? "");
+  const { data, isPending } = useGetIdentityUniversalAuthClientSecrets(popUpData?.identityId ?? "");
   const { data: identityUniversalAuth } = useGetIdentityUniversalAuth(popUpData?.identityId ?? "");
 
   const { mutateAsync: createClientSecretMutateAsync } =
@@ -278,8 +278,8 @@ export const IdentityUniversalAuthClientSecretModal = ({
               </Tr>
             </THead>
             <TBody>
-              {isLoading && <TableSkeleton columns={5} innerKey="org-identities-client-secrets" />}
-              {!isLoading &&
+              {isPending && <TableSkeleton columns={5} innerKey="org-identities-client-secrets" />}
+              {!isPending &&
                 data &&
                 data.length > 0 &&
                 data.map(
@@ -325,7 +325,7 @@ export const IdentityUniversalAuthClientSecretModal = ({
                     );
                   }
                 )}
-              {!isLoading && data && data?.length === 0 && (
+              {!isPending && data && data?.length === 0 && (
                 <Tr>
                   <Td colSpan={5}>
                     <EmptyState

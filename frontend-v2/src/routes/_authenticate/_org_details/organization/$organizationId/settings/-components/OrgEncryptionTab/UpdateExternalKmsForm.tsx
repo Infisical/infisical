@@ -12,11 +12,11 @@ type Props = {
 };
 
 export const UpdateExternalKmsForm = ({ isOpen, kmsId, onOpenChange }: Props) => {
-  const { data: externalKms, isLoading } = useGetExternalKmsById(kmsId);
+  const { data: externalKms, isPending } = useGetExternalKmsById(kmsId);
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent title="Edit configuration" bodyClassName="overflow-visible">
-        {isLoading && <ContentLoader />}
+        {isPending && <ContentLoader />}
         {externalKms?.external?.provider === ExternalKmsProvider.Aws && (
           <AwsKmsForm
             kms={externalKms}

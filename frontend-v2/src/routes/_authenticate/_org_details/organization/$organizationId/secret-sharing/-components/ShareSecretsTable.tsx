@@ -33,7 +33,7 @@ type Props = {
 export const ShareSecretsTable = ({ handlePopUpOpen }: Props) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
-  const { isLoading, data } = useGetSharedSecrets({
+  const { isPending, data } = useGetSharedSecrets({
     offset: (page - 1) * perPage,
     limit: perPage
   });
@@ -52,14 +52,14 @@ export const ShareSecretsTable = ({ handlePopUpOpen }: Props) => {
           </Tr>
         </THead>
         <TBody>
-          {isLoading && <TableSkeleton columns={7} innerKey="shared-secrets" />}
-          {!isLoading &&
+          {isPending && <TableSkeleton columns={7} innerKey="shared-secrets" />}
+          {!isPending &&
             data?.secrets?.map((row) => (
               <ShareSecretsRow key={row.id} row={row} handlePopUpOpen={handlePopUpOpen} />
             ))}
         </TBody>
       </Table>
-      {!isLoading &&
+      {!isPending &&
         data?.secrets &&
         data?.totalCount >= perPage &&
         data?.totalCount !== undefined && (
@@ -71,7 +71,7 @@ export const ShareSecretsTable = ({ handlePopUpOpen }: Props) => {
             onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
           />
         )}
-      {!isLoading && !data?.secrets?.length && (
+      {!isPending && !data?.secrets?.length && (
         <EmptyState title="No secrets shared yet" icon={faKey} />
       )}
     </TableContainer>

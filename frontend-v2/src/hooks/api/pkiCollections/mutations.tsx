@@ -25,7 +25,9 @@ export const useCreatePkiCollection = () => {
       return pkiCollection;
     },
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspacePkiCollections(projectId));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspacePkiCollections(projectId)
+      });
     }
   });
 };
@@ -41,8 +43,12 @@ export const useUpdatePkiCollection = () => {
       return pkiCollection;
     },
     onSuccess: (_, { projectId, collectionId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspacePkiCollections(projectId));
-      queryClient.invalidateQueries(pkiCollectionKeys.getPkiCollectionById(collectionId));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspacePkiCollections(projectId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: pkiCollectionKeys.getPkiCollectionById(collectionId)
+      });
     }
   });
 };
@@ -57,8 +63,12 @@ export const useDeletePkiCollection = () => {
       return pkiCollection;
     },
     onSuccess: (_, { projectId, collectionId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspacePkiCollections(projectId));
-      queryClient.invalidateQueries(pkiCollectionKeys.getPkiCollectionById(collectionId));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspacePkiCollections(projectId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: pkiCollectionKeys.getPkiCollectionById(collectionId)
+      });
     }
   });
 };
@@ -77,7 +87,9 @@ export const useAddItemToPkiCollection = () => {
       return pkiCollectionItem;
     },
     onSuccess: (_, { collectionId }) => {
-      queryClient.invalidateQueries(pkiCollectionKeys.getPkiCollectionItems(collectionId));
+      queryClient.invalidateQueries({
+        queryKey: pkiCollectionKeys.getPkiCollectionItems(collectionId)
+      });
     }
   });
 };
@@ -92,7 +104,9 @@ export const useRemoveItemFromPkiCollection = () => {
       return pkiCollectionItem;
     },
     onSuccess: (_, { collectionId }) => {
-      queryClient.invalidateQueries(pkiCollectionKeys.getPkiCollectionItems(collectionId));
+      queryClient.invalidateQueries({
+        queryKey: pkiCollectionKeys.getPkiCollectionItems(collectionId)
+      });
     }
   });
 };

@@ -20,7 +20,7 @@ import { RiskStatusSelection } from "./RiskStatusSelection";
 export const SecretScanningLogsTable = () => {
   const { currentOrg } = useOrganization();
   const organizationId = currentOrg.id;
-  const { isLoading, data: gitRisks } = useGetSecretScanningRisks(organizationId);
+  const { isPending, data: gitRisks } = useGetSecretScanningRisks(organizationId);
 
   return (
     <TableContainer className="mt-8">
@@ -37,7 +37,7 @@ export const SecretScanningLogsTable = () => {
           </Tr>
         </THead>
         <TBody>
-          {!isLoading &&
+          {!isPending &&
             gitRisks &&
             gitRisks?.map((risk) => {
               return (
@@ -76,8 +76,8 @@ export const SecretScanningLogsTable = () => {
                 </Tr>
               );
             })}
-          {isLoading && <TableSkeleton columns={7} innerKey="gitRisks" />}
-          {!isLoading && gitRisks && gitRisks?.length === 0 && (
+          {isPending && <TableSkeleton columns={7} innerKey="gitRisks" />}
+          {!isPending && gitRisks && gitRisks?.length === 0 && (
             <Tr>
               <Td colSpan={7}>
                 <EmptyState title="No risks detected." icon={faCheck} />

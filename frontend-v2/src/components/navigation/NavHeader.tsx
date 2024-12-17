@@ -128,16 +128,13 @@ export default function NavHeader({
         <div className="flex items-center space-x-3">
           <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-1.5 text-xs text-gray-400" />
           <Link
-            passHref
-            legacyBehavior
-            href={{
-              pathname: "/project/[id]/secrets/[env]",
+            to={{
+              pathname: "/project/[id]/secrets/[env]" as const,
               query: { id: navigate.query.id, env: navigate.query.env }
             }}
+            className="text-sm font-semibold text-primary/80 hover:text-primary"
           >
-            <a className="text-sm font-semibold text-primary/80 hover:text-primary">
-              {userAvailableEnvs?.find(({ slug }) => slug === currentEnv)?.name}
-            </a>
+            {userAvailableEnvs?.find(({ slug }) => slug === currentEnv)?.name}
           </Link>
         </div>
       )}

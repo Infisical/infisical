@@ -37,7 +37,9 @@ export const useCreateAccessApprovalPolicy = () => {
       return data;
     },
     onSuccess: (_, { projectSlug }) => {
-      queryClient.invalidateQueries(accessApprovalKeys.getAccessApprovalPolicies(projectSlug));
+      queryClient.invalidateQueries({
+        queryKey: accessApprovalKeys.getAccessApprovalPolicies(projectSlug)
+      });
     }
   });
 };
@@ -57,7 +59,9 @@ export const useUpdateAccessApprovalPolicy = () => {
       return data;
     },
     onSuccess: (_, { projectSlug }) => {
-      queryClient.invalidateQueries(accessApprovalKeys.getAccessApprovalPolicies(projectSlug));
+      queryClient.invalidateQueries({
+        queryKey: accessApprovalKeys.getAccessApprovalPolicies(projectSlug)
+      });
     }
   });
 };
@@ -71,7 +75,9 @@ export const useDeleteAccessApprovalPolicy = () => {
       return data;
     },
     onSuccess: (_, { projectSlug }) => {
-      queryClient.invalidateQueries(accessApprovalKeys.getAccessApprovalPolicies(projectSlug));
+      queryClient.invalidateQueries({
+        queryKey: accessApprovalKeys.getAccessApprovalPolicies(projectSlug)
+      });
     }
   });
 };
@@ -96,7 +102,9 @@ export const useCreateAccessRequest = () => {
       return data;
     },
     onSuccess: (_, { projectSlug }) => {
-      queryClient.invalidateQueries(accessApprovalKeys.getAccessApprovalRequestCount(projectSlug));
+      queryClient.invalidateQueries({
+        queryKey: accessApprovalKeys.getAccessApprovalRequestCount(projectSlug)
+      });
     }
   });
 };
@@ -124,10 +132,12 @@ export const useReviewAccessRequest = () => {
       return data;
     },
     onSuccess: (_, { projectSlug, envSlug, requestedBy }) => {
-      queryClient.invalidateQueries(
-        accessApprovalKeys.getAccessApprovalRequests(projectSlug, envSlug, requestedBy)
-      );
-      queryClient.invalidateQueries(accessApprovalKeys.getAccessApprovalRequestCount(projectSlug));
+      queryClient.invalidateQueries({
+        queryKey: accessApprovalKeys.getAccessApprovalRequests(projectSlug, envSlug, requestedBy)
+      });
+      queryClient.invalidateQueries({
+        queryKey: accessApprovalKeys.getAccessApprovalRequestCount(projectSlug)
+      });
     }
   });
 };

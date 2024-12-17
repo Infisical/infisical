@@ -18,7 +18,7 @@ export const useCreateScimToken = () => {
       return data;
     },
     onSuccess: (_, { organizationId }) => {
-      queryClient.invalidateQueries(scimKeys.getScimTokens(organizationId));
+      queryClient.invalidateQueries({ queryKey: scimKeys.getScimTokens(organizationId) });
     }
   });
 };
@@ -31,7 +31,7 @@ export const useDeleteScimToken = () => {
       return data;
     },
     onSuccess: (_, { organizationId }) => {
-      queryClient.invalidateQueries(scimKeys.getScimTokens(organizationId));
+      queryClient.invalidateQueries({ queryKey: scimKeys.getScimTokens(organizationId) });
     }
   });
 };

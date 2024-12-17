@@ -61,7 +61,7 @@ export const LogsFilter = ({
 
   const workspacesInOrg = workspaces.filter((ws) => ws.orgId === currentOrg?.id);
 
-  const { data, isLoading } = useGetAuditLogActorFilterOpts(workspaces?.[0]?.id ?? "");
+  const { data, isPending } = useGetAuditLogActorFilterOpts(workspaces?.[0]?.id ?? "");
 
   useEffect(() => {
     if (workspacesInOrg.length) {
@@ -205,7 +205,7 @@ export const LogsFilter = ({
           )}
         />
 
-        {!isLoading && data && data.length > 0 && !presets?.actorId && (
+        {!isPending && data && data.length > 0 && !presets?.actorId && (
           <Controller
             control={control}
             name="actor"

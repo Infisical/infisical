@@ -12,7 +12,7 @@ export const DeleteAccountSection = () => {
     "deleteAccount"
   ] as const);
 
-  const { mutateAsync: deleteUserMutateAsync, isLoading } = useDeleteMe();
+  const { mutateAsync: deleteUserMutateAsync, isPending } = useDeleteMe();
 
   const handleDeleteAccountSubmit = async () => {
     try {
@@ -38,7 +38,7 @@ export const DeleteAccountSection = () => {
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <p className="mb-4 text-xl font-semibold text-mineshaft-100">Danger Zone</p>
       <Button
-        isLoading={isLoading}
+        isLoading={isPending}
         colorSchema="danger"
         variant="outline_bg"
         type="submit"

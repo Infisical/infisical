@@ -914,7 +914,9 @@ export const useAuthorizeIntegration = () => {
       return integrationAuth;
     },
     onSuccess: (res) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceAuthorization(res.workspace));
+      queryClient.invalidateQueries({
+        queryKey: { queryKey: workspaceKeys.getWorkspaceAuthorization(res.workspace) }
+      });
     }
   });
 };
@@ -958,7 +960,9 @@ export const useSaveIntegrationAccessToken = () => {
       return integrationAuth;
     },
     onSuccess: (res) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceAuthorization(res.workspace));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceAuthorization(res.workspace)
+      });
     }
   });
 };
@@ -975,8 +979,12 @@ export const useDeleteIntegrationAuths = () => {
         })}`
       ),
     onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceAuthorization(workspaceId));
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceIntegrations(workspaceId));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceAuthorization(workspaceId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceIntegrations(workspaceId)
+      });
     }
   });
 };
@@ -988,8 +996,12 @@ export const useDeleteIntegrationAuth = () => {
   return useMutation<object, object, { id: string; workspaceId: string }>({
     mutationFn: ({ id }) => apiRequest.delete(`/api/v1/integration-auth/${id}`),
     onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceAuthorization(workspaceId));
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceIntegrations(workspaceId));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceAuthorization(workspaceId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceIntegrations(workspaceId)
+      });
     }
   });
 };

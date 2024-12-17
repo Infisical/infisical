@@ -3,13 +3,12 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createNotification } from "@app/components/notifications";
 import { userKeys } from "@app/hooks/api";
 import { authKeys, fetchAuthToken } from "@app/hooks/api/auth/queries";
-import { setAuthToken } from "@app/hooks/api/reactQuery";
 import { fetchUserDetails } from "@app/hooks/api/users/queries";
 
 export const Route = createFileRoute("/_authenticate")({
   beforeLoad: async ({ context }) => {
     const data = await context.queryClient
-      .fetchQuery({
+      .ensureQueryData({
         queryKey: authKeys.getAuthToken,
         queryFn: fetchAuthToken
       })
@@ -24,12 +23,11 @@ export const Route = createFileRoute("/_authenticate")({
         });
       });
 
-    setAuthToken(data.token);
     if (!data.organizationId) {
       throw redirect({ to: "/login/select-organization" });
     }
 
-    const user = await context.queryClient.fetchQuery({
+    const user = await context.queryClient.ensureQueryData({
       queryKey: userKeys.getUser,
       queryFn: fetchUserDetails
     });

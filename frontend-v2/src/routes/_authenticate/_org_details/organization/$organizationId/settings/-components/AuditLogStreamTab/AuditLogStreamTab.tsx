@@ -1,6 +1,7 @@
 import { faPlug, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
@@ -15,8 +16,7 @@ import {
   TBody,
   Td,
   THead,
-  Tr,
-  UpgradePlanModal
+  Tr
 } from "@app/components/v2";
 import {
   OrgPermissionActions,
@@ -41,7 +41,7 @@ export const AuditLogStreamsTab = withPermission(
     ] as const);
     const { subscription } = useSubscription();
 
-    const { data: auditLogStreams, isLoading: isAuditLogStreamsLoading } =
+    const { data: auditLogStreams, isPending: isAuditLogStreamsLoading } =
       useGetAuditLogStreams(orgId);
 
     // mutation

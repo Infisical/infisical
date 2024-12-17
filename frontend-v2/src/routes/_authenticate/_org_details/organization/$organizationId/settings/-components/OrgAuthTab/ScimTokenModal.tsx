@@ -61,7 +61,7 @@ export const ScimTokenModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Pr
   const [isScimUrlCopied, setIsScimUrlCopied] = useToggle(false);
   const [isScimTokenCopied, setIsScimTokenCopied] = useToggle(false);
 
-  const { data, isLoading } = useGetScimTokens(currentOrg?.id ?? "");
+  const { data, isPending } = useGetScimTokens(currentOrg?.id ?? "");
   const { mutateAsync: createScimTokenMutateAsync } = useCreateScimToken();
   const { mutateAsync: deleteScimTokenMutateAsync } = useDeleteScimToken();
 
@@ -256,8 +256,8 @@ export const ScimTokenModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Pr
               </Tr>
             </THead>
             <TBody>
-              {isLoading && <TableSkeleton columns={4} innerKey="org-scim-tokens" />}
-              {!isLoading &&
+              {isPending && <TableSkeleton columns={4} innerKey="org-scim-tokens" />}
+              {!isPending &&
                 data &&
                 data.length > 0 &&
                 data.map(({ id, description, ttlDays, createdAt }) => {
@@ -289,7 +289,7 @@ export const ScimTokenModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Pr
                     </Tr>
                   );
                 })}
-              {!isLoading && data && data?.length === 0 && (
+              {!isPending && data && data?.length === 0 && (
                 <Tr>
                   <Td colSpan={4}>
                     <EmptyState title="No SCIM tokens have been created yet" icon={faKey} />

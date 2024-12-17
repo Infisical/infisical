@@ -43,7 +43,7 @@ export const OrgAdminProjects = withPermission(
     const navigate = useNavigate();
     const orgAdminAccessProject = useOrgAdminAccessProject();
 
-    const { data, isLoading: isProjectsLoading } = useOrgAdminGetProjects({
+    const { data, isPending: isProjectsLoading } = useOrgAdminGetProjects({
       offset: (page - 1) * perPage,
       limit: perPage,
       search: debouncedSearch || undefined
@@ -130,12 +130,12 @@ export const OrgAdminProjects = withPermission(
                                   icon={<FontAwesomeIcon icon={faSignIn} />}
                                   disabled={
                                     orgAdminAccessProject.variables?.projectId === id &&
-                                    orgAdminAccessProject.isLoading
+                                    orgAdminAccessProject.isPending
                                   }
                                 >
                                   Access{" "}
                                   {orgAdminAccessProject.variables?.projectId === id &&
-                                    orgAdminAccessProject.isLoading && <Spinner size="xs" />}
+                                    orgAdminAccessProject.isPending && <Spinner size="xs" />}
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>

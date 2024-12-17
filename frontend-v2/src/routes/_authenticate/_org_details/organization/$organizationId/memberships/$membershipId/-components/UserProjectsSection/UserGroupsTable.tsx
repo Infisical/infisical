@@ -38,7 +38,7 @@ enum UserGroupsOrderBy {
 }
 
 export const UserGroupsTable = ({ handlePopUpOpen, orgMembership }: Props) => {
-  const { data: groupMemberships = [], isLoading } = useListUserGroupMemberships(
+  const { data: groupMemberships = [], isPending } = useListUserGroupMemberships(
     orgMembership.user.username
   );
 
@@ -122,7 +122,7 @@ export const UserGroupsTable = ({ handlePopUpOpen, orgMembership }: Props) => {
             onChangePerPage={setPerPage}
           />
         )}
-        {!isLoading && !filteredGroupMemberships?.length && (
+        {!isPending && !filteredGroupMemberships?.length && (
           <EmptyState
             title={
               groupMemberships.length

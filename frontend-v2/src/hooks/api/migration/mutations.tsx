@@ -34,7 +34,9 @@ export const useImportEnvKey = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace(ProjectType.SecretManager));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getAllUserWorkspace(ProjectType.SecretManager)
+      });
     }
   });
 };

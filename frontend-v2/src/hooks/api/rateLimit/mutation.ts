@@ -15,7 +15,7 @@ export const useUpdateRateLimit = () => {
     },
     onSuccess: (data) => {
       queryClient.setQueryData(rateLimitQueryKeys.rateLimit(), data);
-      queryClient.invalidateQueries(rateLimitQueryKeys.rateLimit());
+      queryClient.invalidateQueries({ queryKey: rateLimitQueryKeys.rateLimit() });
     }
   });
 };

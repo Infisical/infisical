@@ -109,7 +109,7 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
   const { currentOrg } = useOrganization();
   const { mutateAsync: addGcpExternalKms } = useAddExternalKms(currentOrg.id);
   const { mutateAsync: updateGcpExternalKms } = useUpdateExternalKms(currentOrg.id);
-  const { mutateAsync: fetchGcpKeys, isLoading: isFetchGcpKeysLoading } =
+  const { mutateAsync: fetchGcpKeys, isPending: isFetchGcpKeysLoading } =
     useExternalKmsFetchGcpKeys(currentOrg?.id);
 
   // transforms the credential file into a JSON object

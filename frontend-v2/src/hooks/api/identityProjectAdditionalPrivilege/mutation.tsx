@@ -19,7 +19,9 @@ export const useCreateIdentityProjectAdditionalPrivilege = () => {
       return data.privilege;
     },
     onSuccess: (_, { projectId, identityId }) => {
-      queryClient.invalidateQueries(identitiyProjectPrivilegeKeys.list({ projectId, identityId }));
+      queryClient.invalidateQueries({
+        queryKey: identitiyProjectPrivilegeKeys.list({ projectId, identityId })
+      });
     }
   });
 };
@@ -43,7 +45,9 @@ export const useUpdateIdentityProjectAdditionalPrivilege = () => {
       return res.privilege;
     },
     onSuccess: (_, { projectId, identityId }) => {
-      queryClient.invalidateQueries(identitiyProjectPrivilegeKeys.list({ projectId, identityId }));
+      queryClient.invalidateQueries({
+        queryKey: identitiyProjectPrivilegeKeys.list({ projectId, identityId })
+      });
     }
   });
 };
@@ -66,7 +70,9 @@ export const useDeleteIdentityProjectAdditionalPrivilege = () => {
       return data.privilege;
     },
     onSuccess: (_, { projectId, identityId }) => {
-      queryClient.invalidateQueries(identitiyProjectPrivilegeKeys.list({ projectId, identityId }));
+      queryClient.invalidateQueries({
+        queryKey: identitiyProjectPrivilegeKeys.list({ projectId, identityId })
+      });
     }
   });
 };

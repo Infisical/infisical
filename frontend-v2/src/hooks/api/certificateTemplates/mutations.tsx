@@ -25,8 +25,10 @@ export const useCreateCertTemplate = () => {
       return certificateTemplate;
     },
     onSuccess: ({ caId }, { projectId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceCertificateTemplates(projectId));
-      queryClient.invalidateQueries(caKeys.getCaCertTemplates(caId));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceCertificateTemplates(projectId)
+      });
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaCertTemplates(caId) });
     }
   });
 };
@@ -43,9 +45,11 @@ export const useUpdateCertTemplate = () => {
       return certificateTemplate;
     },
     onSuccess: ({ caId }, { projectId, id }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceCertificateTemplates(projectId));
-      queryClient.invalidateQueries(certTemplateKeys.getCertTemplateById(id));
-      queryClient.invalidateQueries(caKeys.getCaCertTemplates(caId));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceCertificateTemplates(projectId)
+      });
+      queryClient.invalidateQueries({ queryKey: certTemplateKeys.getCertTemplateById(id) });
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaCertTemplates(caId) });
     }
   });
 };
@@ -60,9 +64,11 @@ export const useDeleteCertTemplate = () => {
       return certificateTemplate;
     },
     onSuccess: ({ caId }, { projectId, id }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceCertificateTemplates(projectId));
-      queryClient.invalidateQueries(certTemplateKeys.getCertTemplateById(id));
-      queryClient.invalidateQueries(caKeys.getCaCertTemplates(caId));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceCertificateTemplates(projectId)
+      });
+      queryClient.invalidateQueries({ queryKey: certTemplateKeys.getCertTemplateById(id) });
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaCertTemplates(caId) });
     }
   });
 };
@@ -78,7 +84,9 @@ export const useCreateEstConfig = () => {
       return data;
     },
     onSuccess: (_, { certificateTemplateId }) => {
-      queryClient.invalidateQueries(certTemplateKeys.getEstConfig(certificateTemplateId));
+      queryClient.invalidateQueries({
+        queryKey: certTemplateKeys.getEstConfig(certificateTemplateId)
+      });
     }
   });
 };
@@ -94,7 +102,9 @@ export const useUpdateEstConfig = () => {
       return data;
     },
     onSuccess: (_, { certificateTemplateId }) => {
-      queryClient.invalidateQueries(certTemplateKeys.getEstConfig(certificateTemplateId));
+      queryClient.invalidateQueries({
+        queryKey: certTemplateKeys.getEstConfig(certificateTemplateId)
+      });
     }
   });
 };

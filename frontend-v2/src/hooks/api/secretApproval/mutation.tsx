@@ -30,7 +30,9 @@ export const useCreateSecretApprovalPolicy = () => {
       return data;
     },
     onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries(secretApprovalKeys.getApprovalPolicies(workspaceId));
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalKeys.getApprovalPolicies(workspaceId)
+      });
     }
   });
 };
@@ -50,7 +52,9 @@ export const useUpdateSecretApprovalPolicy = () => {
       return data;
     },
     onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries(secretApprovalKeys.getApprovalPolicies(workspaceId));
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalKeys.getApprovalPolicies(workspaceId)
+      });
     }
   });
 };
@@ -64,7 +68,9 @@ export const useDeleteSecretApprovalPolicy = () => {
       return data;
     },
     onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries(secretApprovalKeys.getApprovalPolicies(workspaceId));
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalKeys.getApprovalPolicies(workspaceId)
+      });
     }
   });
 };

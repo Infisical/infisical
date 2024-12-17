@@ -3,6 +3,7 @@ import { faEllipsis, faLock, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
@@ -19,8 +20,7 @@ import {
   TBody,
   Td,
   THead,
-  Tr,
-  UpgradePlanModal
+  Tr
 } from "@app/components/v2";
 import {
   OrgPermissionActions,
@@ -47,7 +47,7 @@ export const OrgEncryptionTab = withPermission(
       "editExternalKms",
       "removeExternalKms"
     ] as const);
-    const { data: externalKmsList, isLoading: isExternalKmsListLoading } =
+    const { data: externalKmsList, isPending: isExternalKmsListLoading } =
       useGetExternalKmsList(orgId);
 
     const { mutateAsync: removeExternalKms } = useRemoveExternalKms(currentOrg.id);

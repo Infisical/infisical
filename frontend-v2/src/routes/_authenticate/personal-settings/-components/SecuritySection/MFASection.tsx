@@ -33,7 +33,7 @@ export const MFASection = () => {
     "deleteTotpConfig"
   ] as const);
   const [shouldShowRecoveryCodes, setShouldShowRecoveryCodes] = useToggle();
-  const { data: totpConfiguration, isLoading: isTotpConfigurationLoading } =
+  const { data: totpConfiguration, isPending: isTotpConfigurationLoading } =
     useGetUserTotpConfiguration();
   const { mutateAsync: deleteTotpConfiguration } = useDeleteUserTotpConfiguration();
   const { mutateAsync: createTotpRecoveryCodes } = useCreateNewTotpRecoveryCodes();
@@ -206,7 +206,7 @@ export const MFASection = () => {
                 <div className="ml-6 mt-6 flex min-w-full">
                   <TotpRegistration
                     onComplete={async () => {
-                      await queryClient.invalidateQueries(userKeys.totpConfiguration);
+                      await queryClient.invalidateQueries({ queryKey: userKeys.totpConfiguration });
                     }}
                   />
                 </div>

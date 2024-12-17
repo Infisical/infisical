@@ -20,7 +20,7 @@ export const useUpdateSecretApprovalReviewStatus = () => {
       return data;
     },
     onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries(secretApprovalRequestKeys.detail({ id }));
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.detail({ id }) });
     }
   });
 };
@@ -36,8 +36,8 @@ export const useUpdateSecretApprovalRequestStatus = () => {
       return data;
     },
     onSuccess: (_, { id, workspaceId }) => {
-      queryClient.invalidateQueries(secretApprovalRequestKeys.detail({ id }));
-      queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId }));
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.detail({ id }) });
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ workspaceId }) });
     }
   });
 };
@@ -53,9 +53,9 @@ export const usePerformSecretApprovalRequestMerge = () => {
       return data;
     },
     onSuccess: (_, { id, workspaceId }) => {
-      queryClient.invalidateQueries(secretApprovalRequestKeys.detail({ id }));
-      queryClient.invalidateQueries(secretApprovalRequestKeys.list({ workspaceId }));
-      queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId }));
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.detail({ id }) });
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.list({ workspaceId }) });
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ workspaceId }) });
     }
   });
 };

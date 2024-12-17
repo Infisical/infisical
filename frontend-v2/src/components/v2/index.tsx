@@ -34,4 +34,3 @@ export * from "./Tabs";
 export * from "./Tag";
 export * from "./TextArea";
 export * from "./Tooltip";
-export * from "./UpgradePlanModal";

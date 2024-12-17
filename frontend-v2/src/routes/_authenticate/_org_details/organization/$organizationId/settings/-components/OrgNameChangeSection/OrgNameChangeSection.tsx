@@ -32,11 +32,11 @@ export const OrgNameChangeSection = (): JSX.Element => {
   const { handleSubmit, control, reset } = useForm<FormData>({
     resolver: zodResolver(formSchema)
   });
-  const { mutateAsync, isLoading } = useUpdateOrg();
+  const { mutateAsync, isPending } = useUpdateOrg();
 
   const canReadOrgRoles = permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
 
-  const { data: roles, isLoading: isRolesLoading } = useGetOrgRoles(currentOrg.id, canReadOrgRoles);
+  const { data: roles, isPending: isRolesLoading } = useGetOrgRoles(currentOrg.id, canReadOrgRoles);
   const [isFormInitialized, setIsFormInitialized] = useState(false);
 
   useEffect(() => {
@@ -153,7 +153,7 @@ export const OrgNameChangeSection = (): JSX.Element => {
       <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
         {(isAllowed) => (
           <Button
-            isLoading={isLoading}
+            isLoading={isPending}
             isDisabled={!isAllowed}
             colorSchema="primary"
             variant="outline_bg"

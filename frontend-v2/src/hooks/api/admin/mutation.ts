@@ -26,7 +26,7 @@ export const useCreateAdminUser = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(adminQueryKeys.serverConfig());
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.serverConfig() });
     }
   });
 };
@@ -48,8 +48,8 @@ export const useUpdateServerConfig = () => {
     },
     onSuccess: (data) => {
       queryClient.setQueryData(adminQueryKeys.serverConfig(), data);
-      queryClient.invalidateQueries(adminQueryKeys.serverConfig());
-      queryClient.invalidateQueries(organizationKeys.getUserOrganizations);
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.serverConfig() });
+      queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizations });
     }
   });
 };
@@ -82,7 +82,7 @@ export const useUpdateAdminSlackConfig = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(adminQueryKeys.getAdminSlackConfig());
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.getAdminSlackConfig() });
     }
   });
 };
@@ -94,7 +94,7 @@ export const useUpdateServerEncryptionStrategy = () => {
       await apiRequest.patch("/api/v1/admin/encryption-strategies", { strategy });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(adminQueryKeys.getServerEncryptionStrategies());
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.getServerEncryptionStrategies() });
     }
   });
 };

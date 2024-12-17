@@ -47,6 +47,7 @@ const fetchWorkspaceSnaphots = async ({
 
 export const useGetWorkspaceSnapshotList = (dto: TGetSecretSnapshotsDTO & { isPaused?: boolean }) =>
   useInfiniteQuery({
+    initialPageParam: 0,
     enabled: Boolean(dto.workspaceId && dto.environment) && !dto.isPaused,
     queryKey: secretSnapshotKeys.list({ ...dto }),
     queryFn: ({ pageParam }) => fetchWorkspaceSnaphots({ ...dto, offset: pageParam }),
@@ -149,23 +150,17 @@ export const usePerformSecretRollback = () => {
     },
     onSuccess: (_, { workspaceId, environment, directory }) => {
       queryClient.invalidateQueries({
-        queryKey: [
-          { workspaceId, environment, secretPath: directory },
-          "secrets"
-        ]
+        queryKey: [{ workspaceId, environment, secretPath: directory }, "secrets"]
       });
       queryClient.invalidateQueries({
-        queryKey: [
-          "secret-folders",
-          { projectId: workspaceId, environment, path: directory }
-        ]
+        queryKey: ["secret-folders", { projectId: workspaceId, environment, path: directory }]
       });
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.list({ workspaceId, environment, directory })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.count({ workspaceId, environment, directory })
-      );
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.list({ workspaceId, environment, directory })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.count({ workspaceId, environment, directory })
+      });
     }
   });
 };

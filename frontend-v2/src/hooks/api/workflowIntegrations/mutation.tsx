@@ -20,8 +20,10 @@ export const useUpdateSlackIntegration = () => {
       return data;
     },
     onSuccess: (_, { orgId, id }) => {
-      queryClient.invalidateQueries(workflowIntegrationKeys.getSlackIntegration(id));
-      queryClient.invalidateQueries(workflowIntegrationKeys.getSlackIntegrations(orgId));
+      queryClient.invalidateQueries({ queryKey: workflowIntegrationKeys.getSlackIntegration(id) });
+      queryClient.invalidateQueries({
+        queryKey: workflowIntegrationKeys.getSlackIntegrations(orgId)
+      });
     }
   });
 };
@@ -36,8 +38,8 @@ export const useDeleteSlackIntegration = () => {
       return data;
     },
     onSuccess: (_, { orgId, id }) => {
-      queryClient.invalidateQueries(workflowIntegrationKeys.getSlackIntegration(id));
-      queryClient.invalidateQueries(workflowIntegrationKeys.getIntegrations(orgId));
+      queryClient.invalidateQueries({ queryKey: workflowIntegrationKeys.getSlackIntegration(id) });
+      queryClient.invalidateQueries({ queryKey: workflowIntegrationKeys.getIntegrations(orgId) });
     }
   });
 };
@@ -54,7 +56,9 @@ export const useUpdateProjectSlackConfig = () => {
       return data;
     },
     onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceSlackConfig(workspaceId));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceSlackConfig(workspaceId)
+      });
     }
   });
 };

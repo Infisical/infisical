@@ -61,7 +61,7 @@ export const IdentityTokenListModal = ({ popUp, handlePopUpOpen, handlePopUpTogg
   };
 
   const { data: tokens } = useGetIdentityTokensTokenAuth(popUpData?.identityId ?? "");
-  const { data, isLoading } = useGetIdentityUniversalAuthClientSecrets(popUpData?.identityId ?? "");
+  const { data, isPending } = useGetIdentityUniversalAuthClientSecrets(popUpData?.identityId ?? "");
 
   const { mutateAsync: createToken } = useCreateTokenIdentityTokenAuth();
 
@@ -202,8 +202,8 @@ export const IdentityTokenListModal = ({ popUp, handlePopUpOpen, handlePopUpTogg
               </Tr>
             </THead>
             <TBody>
-              {isLoading && <TableSkeleton columns={5} innerKey="identities-tokens" />}
-              {!isLoading &&
+              {isPending && <TableSkeleton columns={5} innerKey="identities-tokens" />}
+              {!isPending &&
                 tokens?.map(
                   ({
                     id,
@@ -251,7 +251,7 @@ export const IdentityTokenListModal = ({ popUp, handlePopUpOpen, handlePopUpTogg
                     );
                   }
                 )}
-              {!isLoading && data && data?.length === 0 && (
+              {!isPending && data && data?.length === 0 && (
                 <Tr>
                   <Td colSpan={5}>
                     <EmptyState

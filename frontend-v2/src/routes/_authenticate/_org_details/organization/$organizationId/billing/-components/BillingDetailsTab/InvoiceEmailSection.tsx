@@ -24,7 +24,7 @@ export const InvoiceEmailSection = () => {
     resolver: yupResolver(schema)
   });
   const { data } = useGetOrgBillingDetails(currentOrg?.id ?? "");
-  const { mutateAsync, isLoading } = useUpdateOrgBillingDetails();
+  const { mutateAsync, isPending } = useUpdateOrgBillingDetails();
 
   useEffect(() => {
     if (data) {
@@ -80,8 +80,8 @@ export const InvoiceEmailSection = () => {
           <Button
             type="submit"
             colorSchema="secondary"
-            isLoading={isLoading}
-            isDisabled={isLoading || !isAllowed}
+            isLoading={isPending}
+            isDisabled={isPending || !isAllowed}
           >
             Save
           </Button>

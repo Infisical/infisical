@@ -47,8 +47,8 @@ type Props = {
 export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelete }: Props) => {
   const { currentOrg } = useOrganization();
 
-  const { mutateAsync: createMutateAsync, isLoading: createIsLoading } = useCreateLDAPConfig();
-  const { mutateAsync: updateMutateAsync, isLoading: updateIsLoading } = useUpdateLDAPConfig();
+  const { mutateAsync: createMutateAsync, isPending: createIsLoading } = useCreateLDAPConfig();
+  const { mutateAsync: updateMutateAsync, isPending: updateIsLoading } = useUpdateLDAPConfig();
   const { mutateAsync: testLDAPConnection } = useTestLDAPConnection();
   const { data } = useGetLDAPConfig(currentOrg?.id ?? "");
 

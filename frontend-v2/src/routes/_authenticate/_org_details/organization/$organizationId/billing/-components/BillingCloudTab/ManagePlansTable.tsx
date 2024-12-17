@@ -23,7 +23,7 @@ type Props = {
 export const ManagePlansTable = ({ billingCycle }: Props) => {
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
-  const { data: tableData, isLoading: isTableDataLoading } = useGetOrgPlansTable({
+  const { data: tableData, isPending: isTableDataLoading } = useGetOrgPlansTable({
     organizationId: currentOrg?.id ?? "",
     billingCycle
   });

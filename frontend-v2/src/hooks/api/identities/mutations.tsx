@@ -63,7 +63,9 @@ export const useCreateIdentity = () => {
       return identity;
     },
     onSuccess: (_, { organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
     }
   });
 };
@@ -83,8 +85,10 @@ export const useUpdateIdentity = () => {
       return identity;
     },
     onSuccess: (_, { organizationId, identityId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
     }
   });
 };
@@ -99,7 +103,9 @@ export const useDeleteIdentity = () => {
       return identity;
     },
     onSuccess: (_, { organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
     }
   });
 };
@@ -129,9 +135,13 @@ export const useAddIdentityUniversalAuth = () => {
       return identityUniversalAuth;
     },
     onSuccess: (_, { identityId, organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityUniversalAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityUniversalAuth(identityId)
+      });
     }
   });
 };
@@ -159,9 +169,13 @@ export const useUpdateIdentityUniversalAuth = () => {
       return identityUniversalAuth;
     },
     onSuccess: (_, { identityId, organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityUniversalAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityUniversalAuth(identityId)
+      });
     }
   });
 };
@@ -176,9 +190,13 @@ export const useDeleteIdentityUniversalAuth = () => {
       return identityUniversalAuth;
     },
     onSuccess: (_, { organizationId, identityId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityUniversalAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityUniversalAuth(identityId)
+      });
     }
   });
 };
@@ -202,9 +220,9 @@ export const useCreateIdentityUniversalAuthClientSecret = () => {
       return data;
     },
     onSuccess: (_, { identityId }) => {
-      queryClient.invalidateQueries(
-        identitiesKeys.getIdentityUniversalAuthClientSecrets(identityId)
-      );
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityUniversalAuthClientSecrets(identityId)
+      });
     }
   });
 };
@@ -221,9 +239,9 @@ export const useRevokeIdentityUniversalAuthClientSecret = () => {
       return clientSecretData;
     },
     onSuccess: (_, { identityId }) => {
-      queryClient.invalidateQueries(
-        identitiesKeys.getIdentityUniversalAuthClientSecrets(identityId)
-      );
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityUniversalAuthClientSecrets(identityId)
+      });
     }
   });
 };
@@ -261,9 +279,11 @@ export const useAddIdentityGcpAuth = () => {
       return identityGcpAuth;
     },
     onSuccess: (_, { identityId, organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityGcpAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityGcpAuth(identityId) });
     }
   });
 };
@@ -301,9 +321,11 @@ export const useUpdateIdentityGcpAuth = () => {
       return identityGcpAuth;
     },
     onSuccess: (_, { identityId, organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityGcpAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityGcpAuth(identityId) });
     }
   });
 };
@@ -318,9 +340,11 @@ export const useDeleteIdentityGcpAuth = () => {
       return identityGcpAuth;
     },
     onSuccess: (_, { organizationId, identityId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityGcpAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityGcpAuth(identityId) });
     }
   });
 };
@@ -356,9 +380,11 @@ export const useAddIdentityAwsAuth = () => {
       return identityAwsAuth;
     },
     onSuccess: (_, { identityId, organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityAwsAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityAwsAuth(identityId) });
     }
   });
 };
@@ -394,9 +420,11 @@ export const useUpdateIdentityAwsAuth = () => {
       return identityAwsAuth;
     },
     onSuccess: (_, { identityId, organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityAwsAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityAwsAuth(identityId) });
     }
   });
 };
@@ -411,9 +439,11 @@ export const useDeleteIdentityAwsAuth = () => {
       return identityAwsAuth;
     },
     onSuccess: (_, { organizationId, identityId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityAwsAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityAwsAuth(identityId) });
     }
   });
 };
@@ -455,9 +485,11 @@ export const useUpdateIdentityOidcAuth = () => {
       return identityOidcAuth;
     },
     onSuccess: (_, { identityId, organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityOidcAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityOidcAuth(identityId) });
     }
   });
 };
@@ -499,9 +531,11 @@ export const useAddIdentityOidcAuth = () => {
       return identityOidcAuth;
     },
     onSuccess: (_, { identityId, organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityOidcAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityOidcAuth(identityId) });
     }
   });
 };
@@ -516,9 +550,11 @@ export const useDeleteIdentityOidcAuth = () => {
       return identityOidcAuth;
     },
     onSuccess: (_, { organizationId, identityId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityOidcAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityOidcAuth(identityId) });
     }
   });
 };
@@ -563,9 +599,11 @@ export const useUpdateIdentityJwtAuth = () => {
       return identityJwtAuth;
     },
     onSuccess: (_, { identityId, organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityJwtAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityJwtAuth(identityId) });
     }
   });
 };
@@ -611,9 +649,11 @@ export const useAddIdentityJwtAuth = () => {
       return identityJwtAuth;
     },
     onSuccess: (_, { identityId, organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityJwtAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityJwtAuth(identityId) });
     }
   });
 };
@@ -628,9 +668,11 @@ export const useDeleteIdentityJwtAuth = () => {
       return identityJwtAuth;
     },
     onSuccess: (_, { organizationId, identityId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityJwtAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityJwtAuth(identityId) });
     }
   });
 };
@@ -666,9 +708,13 @@ export const useAddIdentityAzureAuth = () => {
       return identityAzureAuth;
     },
     onSuccess: (_, { identityId, organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityKubernetesAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityKubernetesAuth(identityId)
+      });
     }
   });
 };
@@ -710,9 +756,11 @@ export const useAddIdentityKubernetesAuth = () => {
       return identityKubernetesAuth;
     },
     onSuccess: (_, { identityId, organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityAzureAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityAzureAuth(identityId) });
     }
   });
 };
@@ -748,9 +796,11 @@ export const useUpdateIdentityAzureAuth = () => {
       return identityAzureAuth;
     },
     onSuccess: (_, { identityId, organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityAzureAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityAzureAuth(identityId) });
     }
   });
 };
@@ -765,9 +815,11 @@ export const useDeleteIdentityAzureAuth = () => {
       return identityAzureAuth;
     },
     onSuccess: (_, { organizationId, identityId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityAzureAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityAzureAuth(identityId) });
     }
   });
 };
@@ -809,9 +861,13 @@ export const useUpdateIdentityKubernetesAuth = () => {
       return identityKubernetesAuth;
     },
     onSuccess: (_, { identityId, organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityKubernetesAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityKubernetesAuth(identityId)
+      });
     }
   });
 };
@@ -826,9 +882,13 @@ export const useDeleteIdentityKubernetesAuth = () => {
       return identityKubernetesAuth;
     },
     onSuccess: (_, { organizationId, identityId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityKubernetesAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityKubernetesAuth(identityId)
+      });
     }
   });
 };
@@ -858,9 +918,13 @@ export const useAddIdentityTokenAuth = () => {
       return identityTokenAuth;
     },
     onSuccess: (_, { identityId, organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityUniversalAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityUniversalAuth(identityId)
+      });
     }
   });
 };
@@ -890,9 +954,13 @@ export const useUpdateIdentityTokenAuth = () => {
       return identityTokenAuth;
     },
     onSuccess: (_, { identityId, organizationId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityUniversalAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityUniversalAuth(identityId)
+      });
     }
   });
 };
@@ -907,9 +975,11 @@ export const useDeleteIdentityTokenAuth = () => {
       return identityTokenAuth;
     },
     onSuccess: (_, { organizationId, identityId }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityTokenAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityTokenAuth(identityId) });
     }
   });
 };
@@ -928,7 +998,9 @@ export const useCreateTokenIdentityTokenAuth = () => {
       return data;
     },
     onSuccess: (_, { identityId }) => {
-      queryClient.invalidateQueries(identitiesKeys.getIdentityTokensTokenAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityTokensTokenAuth(identityId)
+      });
     }
   });
 };
@@ -949,7 +1021,9 @@ export const useUpdateIdentityTokenAuthToken = () => {
       return token;
     },
     onSuccess: (_, { identityId }) => {
-      queryClient.invalidateQueries(identitiesKeys.getIdentityTokensTokenAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityTokensTokenAuth(identityId)
+      });
     }
   });
 };
@@ -965,7 +1039,9 @@ export const useRevokeIdentityTokenAuthToken = () => {
       return data;
     },
     onSuccess: (_, { identityId }) => {
-      queryClient.invalidateQueries(identitiesKeys.getIdentityTokensTokenAuth(identityId));
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityTokensTokenAuth(identityId)
+      });
     }
   });
 };

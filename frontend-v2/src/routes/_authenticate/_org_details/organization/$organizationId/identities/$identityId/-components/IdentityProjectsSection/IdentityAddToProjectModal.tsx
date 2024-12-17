@@ -58,8 +58,8 @@ const Content = ({ identityId, handlePopUpToggle }: Omit<Props, "popUp">) => {
 
   const projectId = watch("project")?.id;
   const { data: projectMemberships } = useGetIdentityProjectMemberships(identityId);
-  const { data: project, isLoading: isProjectLoading } = useGetWorkspaceById(projectId);
-  const { data: roles, isLoading: isRolesLoading } = useGetProjectRoles(project?.id ?? "");
+  const { data: project, isPending: isProjectLoading } = useGetWorkspaceById(projectId);
+  const { data: roles, isPending: isRolesLoading } = useGetProjectRoles(project?.id ?? "");
 
   const filteredWorkspaces = useMemo(() => {
     const wsWorkspaceIds = new Map();

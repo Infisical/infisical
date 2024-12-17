@@ -26,7 +26,7 @@ export const useCreateProjectRole = () => {
       return role;
     },
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries(roleQueryKeys.getProjectRoles(projectId));
+      queryClient.invalidateQueries({ queryKey: roleQueryKeys.getProjectRoles(projectId) });
     }
   });
 };
@@ -42,9 +42,11 @@ export const useUpdateProjectRole = () => {
       return role;
     },
     onSuccess: (_, { projectId, slug }) => {
-      queryClient.invalidateQueries(roleQueryKeys.getProjectRoles(projectId));
+      queryClient.invalidateQueries({ queryKey: roleQueryKeys.getProjectRoles(projectId) });
       if (slug) {
-        queryClient.invalidateQueries(roleQueryKeys.getProjectRoleBySlug(projectId, slug));
+        queryClient.invalidateQueries({
+          queryKey: roleQueryKeys.getProjectRoleBySlug(projectId, slug)
+        });
       }
     }
   });
@@ -60,7 +62,7 @@ export const useDeleteProjectRole = () => {
       return role;
     },
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries(roleQueryKeys.getProjectRoles(projectId));
+      queryClient.invalidateQueries({ queryKey: roleQueryKeys.getProjectRoles(projectId) });
     }
   });
 };
@@ -80,7 +82,7 @@ export const useCreateOrgRole = () => {
       return role;
     },
     onSuccess: (_, { orgId }) => {
-      queryClient.invalidateQueries(roleQueryKeys.getOrgRoles(orgId));
+      queryClient.invalidateQueries({ queryKey: roleQueryKeys.getOrgRoles(orgId) });
     }
   });
 };
@@ -100,8 +102,8 @@ export const useUpdateOrgRole = () => {
       return role;
     },
     onSuccess: (_, { id, orgId }) => {
-      queryClient.invalidateQueries(roleQueryKeys.getOrgRoles(orgId));
-      queryClient.invalidateQueries(roleQueryKeys.getOrgRole(orgId, id));
+      queryClient.invalidateQueries({ queryKey: roleQueryKeys.getOrgRoles(orgId) });
+      queryClient.invalidateQueries({ queryKey: roleQueryKeys.getOrgRole(orgId, id) });
     }
   });
 };
@@ -120,8 +122,8 @@ export const useDeleteOrgRole = () => {
       return role;
     },
     onSuccess: (_, { id, orgId }) => {
-      queryClient.invalidateQueries(roleQueryKeys.getOrgRoles(orgId));
-      queryClient.invalidateQueries(roleQueryKeys.getOrgRole(orgId, id));
+      queryClient.invalidateQueries({ queryKey: roleQueryKeys.getOrgRoles(orgId) });
+      queryClient.invalidateQueries({ queryKey: roleQueryKeys.getOrgRole(orgId, id) });
     }
   });
 };

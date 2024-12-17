@@ -22,7 +22,7 @@ import { useDeleteOrgPmtMethod, useGetOrgPmtMethods } from "@app/hooks/api";
 
 export const PmtMethodsTable = () => {
   const { currentOrg } = useOrganization();
-  const { data, isLoading } = useGetOrgPmtMethods(currentOrg?.id ?? "");
+  const { data, isPending } = useGetOrgPmtMethods(currentOrg?.id ?? "");
   const deleteOrgPmtMethod = useDeleteOrgPmtMethod();
   const { handlePopUpOpen, handlePopUpClose, handlePopUpToggle, popUp } = usePopUp([
     "removeCard"
@@ -64,7 +64,7 @@ export const PmtMethodsTable = () => {
             </Tr>
           </THead>
           <TBody>
-            {!isLoading &&
+            {!isPending &&
               data &&
               data?.length > 0 &&
               data.map(({ _id: id, brand, exp_month, exp_year, funding, last4 }) => (
@@ -94,8 +94,8 @@ export const PmtMethodsTable = () => {
                   </Td>
                 </Tr>
               ))}
-            {isLoading && <TableSkeleton columns={5} innerKey="pmt-methods" />}
-            {!isLoading && data && data?.length === 0 && (
+            {isPending && <TableSkeleton columns={5} innerKey="pmt-methods" />}
+            {!isPending && data && data?.length === 0 && (
               <Tr>
                 <Td colSpan={5}>
                   <EmptyState title="No payment methods on file" icon={faCreditCard} />

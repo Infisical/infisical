@@ -1,6 +1,7 @@
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, Switch, UpgradePlanModal } from "@app/components/v2";
+import { Button, Switch } from "@app/components/v2";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,

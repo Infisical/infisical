@@ -14,9 +14,9 @@ type Props = {
 };
 
 export const GroupDetailsSection = ({ groupId, handlePopUpOpen }: Props) => {
-  const { data, isLoading } = useGetGroupById(groupId);
+  const { data, isPending } = useGetGroupById(groupId);
 
-  if (isLoading) return <Spinner size="sm" className="ml-2 mt-2" />;
+  if (isPending) return <Spinner size="sm" className="ml-2 mt-2" />;
 
   return data ? (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">

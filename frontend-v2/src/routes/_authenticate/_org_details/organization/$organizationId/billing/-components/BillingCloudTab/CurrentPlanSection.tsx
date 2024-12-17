@@ -17,7 +17,7 @@ import { useGetOrgPlanTable } from "@app/hooks/api";
 
 export const CurrentPlanSection = () => {
   const { currentOrg } = useOrganization();
-  const { data, isLoading } = useGetOrgPlanTable(currentOrg?.id ?? "");
+  const { data, isPending } = useGetOrgPlanTable(currentOrg?.id ?? "");
 
   const displayCell = (value: null | number | string | boolean) => {
     if (value === null) return "-";
@@ -44,7 +44,7 @@ export const CurrentPlanSection = () => {
             </Tr>
           </THead>
           <TBody>
-            {!isLoading &&
+            {!isPending &&
               data &&
               data?.rows?.length > 0 &&
               data.rows.map(({ name, allowed, used }) => {
@@ -56,8 +56,8 @@ export const CurrentPlanSection = () => {
                   </Tr>
                 );
               })}
-            {isLoading && <TableSkeleton columns={5} innerKey="invoices" />}
-            {!isLoading && data && data?.rows?.length === 0 && (
+            {isPending && <TableSkeleton columns={5} innerKey="invoices" />}
+            {!isPending && data && data?.rows?.length === 0 && (
               <Tr>
                 <Td colSpan={3}>
                   <EmptyState title="No plan details found" icon={faFileInvoice} />

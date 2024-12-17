@@ -24,8 +24,10 @@ export const useCreateDynamicSecret = () => {
     },
     onSuccess: (_, { path, environmentSlug, projectSlug }) => {
       // TODO: optimize but we currently don't pass projectId
-      queryClient.invalidateQueries(dashboardKeys.all());
-      queryClient.invalidateQueries(dynamicSecretKeys.list({ path, projectSlug, environmentSlug }));
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all() });
+      queryClient.invalidateQueries({
+        queryKey: dynamicSecretKeys.list({ path, projectSlug, environmentSlug })
+      });
     }
   });
 };
@@ -43,8 +45,10 @@ export const useUpdateDynamicSecret = () => {
     },
     onSuccess: (_, { path, environmentSlug, projectSlug }) => {
       // TODO: optimize but currently don't pass projectId
-      queryClient.invalidateQueries(dashboardKeys.all());
-      queryClient.invalidateQueries(dynamicSecretKeys.list({ path, projectSlug, environmentSlug }));
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all() });
+      queryClient.invalidateQueries({
+        queryKey: dynamicSecretKeys.list({ path, projectSlug, environmentSlug })
+      });
     }
   });
 };
@@ -62,8 +66,10 @@ export const useDeleteDynamicSecret = () => {
     },
     onSuccess: (_, { path, environmentSlug, projectSlug }) => {
       // TODO: optimize but currently don't pass projectId
-      queryClient.invalidateQueries(dashboardKeys.all());
-      queryClient.invalidateQueries(dynamicSecretKeys.list({ path, projectSlug, environmentSlug }));
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all() });
+      queryClient.invalidateQueries({
+        queryKey: dynamicSecretKeys.list({ path, projectSlug, environmentSlug })
+      });
     }
   });
 };

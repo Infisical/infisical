@@ -29,7 +29,7 @@ export const useCreateCa = () => {
       return ca;
     },
     onSuccess: (_, { projectSlug }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceCas({ projectSlug }));
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.getWorkspaceCas({ projectSlug }) });
     }
   });
 };
@@ -44,8 +44,8 @@ export const useUpdateCa = () => {
       return ca;
     },
     onSuccess: ({ id }, { projectSlug }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceCas({ projectSlug }));
-      queryClient.invalidateQueries(caKeys.getCaById(id));
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.getWorkspaceCas({ projectSlug }) });
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaById(id) });
     }
   });
 };
@@ -60,7 +60,7 @@ export const useDeleteCa = () => {
       return ca;
     },
     onSuccess: (_, { projectSlug }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceCas({ projectSlug }));
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.getWorkspaceCas({ projectSlug }) });
     }
   });
 };
@@ -89,9 +89,9 @@ export const useImportCaCertificate = () => {
       return data;
     },
     onSuccess: (_, { caId, projectSlug }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceCas({ projectSlug }));
-      queryClient.invalidateQueries(caKeys.getCaCerts(caId));
-      queryClient.invalidateQueries(caKeys.getCaCert(caId));
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.getWorkspaceCas({ projectSlug }) });
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaCerts(caId) });
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaCert(caId) });
     }
   });
 };
@@ -108,7 +108,9 @@ export const useCreateCertificate = () => {
       return data;
     },
     onSuccess: (_, { projectSlug }) => {
-      queryClient.invalidateQueries(workspaceKeys.forWorkspaceCertificates(projectSlug));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.forWorkspaceCertificates(projectSlug)
+      });
     }
   });
 };
@@ -124,12 +126,12 @@ export const useRenewCa = () => {
       return data;
     },
     onSuccess: (_, { caId, projectSlug }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceCas({ projectSlug }));
-      queryClient.invalidateQueries(caKeys.getCaById(caId));
-      queryClient.invalidateQueries(caKeys.getCaCert(caId));
-      queryClient.invalidateQueries(caKeys.getCaCerts(caId));
-      queryClient.invalidateQueries(caKeys.getCaCsr(caId));
-      queryClient.invalidateQueries(caKeys.getCaCrl(caId));
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.getWorkspaceCas({ projectSlug }) });
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaById(caId) });
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaCert(caId) });
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaCerts(caId) });
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaCsr(caId) });
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaCrl(caId) });
     }
   });
 };

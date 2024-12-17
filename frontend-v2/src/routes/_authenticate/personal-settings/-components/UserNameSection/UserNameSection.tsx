@@ -18,7 +18,7 @@ export const UserNameSection = (): JSX.Element => {
   const { user } = useUser();
 
   const { handleSubmit, control, reset } = useForm<FormData>({ resolver: zodResolver(formSchema) });
-  const { mutateAsync, isLoading } = useRenameUser();
+  const { mutateAsync, isPending } = useRenameUser();
 
   useEffect(() => {
     if (user) {
@@ -63,7 +63,7 @@ export const UserNameSection = (): JSX.Element => {
           name="name"
         />
       </div>
-      <Button isLoading={isLoading} colorSchema="primary" variant="outline_bg" type="submit">
+      <Button isLoading={isPending} colorSchema="primary" variant="outline_bg" type="submit">
         Save
       </Button>
     </form>

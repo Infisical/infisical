@@ -18,7 +18,7 @@ import {
 import { useDeleteAPIKey, useGetMyAPIKeys } from "@app/hooks/api";
 
 export const APIKeyTable = () => {
-  const { data, isLoading } = useGetMyAPIKeys();
+  const { data, isPending } = useGetMyAPIKeys();
   const { mutateAsync } = useDeleteAPIKey();
 
   const handleDeleteAPIKeyDataClick = async (apiKeyDataId: string) => {
@@ -50,8 +50,8 @@ export const APIKeyTable = () => {
           </Tr>
         </THead>
         <TBody>
-          {isLoading && <TableSkeleton columns={4} innerKey="api-keys" />}
-          {!isLoading &&
+          {isPending && <TableSkeleton columns={4} innerKey="api-keys" />}
+          {!isPending &&
             data &&
             data.length > 0 &&
             data.map(({ id, name, createdAt, expiresAt, lastUsed }) => {
@@ -77,7 +77,7 @@ export const APIKeyTable = () => {
                 </Tr>
               );
             })}
-          {!isLoading && data && data?.length === 0 && (
+          {!isPending && data && data?.length === 0 && (
             <Tr>
               <Td colSpan={5}>
                 <EmptyState title="No API Keys on file" icon={faKey} />

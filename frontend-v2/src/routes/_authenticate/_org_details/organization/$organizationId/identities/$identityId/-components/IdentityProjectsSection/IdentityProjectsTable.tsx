@@ -41,7 +41,7 @@ enum IdentityProjectsOrderBy {
 }
 
 export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) => {
-  const { data: projectMemberships = [], isLoading } = useGetIdentityProjectMemberships(identityId);
+  const { data: projectMemberships = [], isPending } = useGetIdentityProjectMemberships(identityId);
 
   const {
     search,
@@ -113,8 +113,8 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
             </Tr>
           </THead>
           <TBody>
-            {isLoading && <TableSkeleton columns={4} innerKey="identity-project-memberships" />}
-            {!isLoading &&
+            {isPending && <TableSkeleton columns={4} innerKey="identity-project-memberships" />}
+            {!isPending &&
               filteredProjectMemberships.slice(offset, perPage * page).map((membership) => {
                 return (
                   <IdentityProjectRow
@@ -135,7 +135,7 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
             onChangePerPage={setPerPage}
           />
         )}
-        {!isLoading && !filteredProjectMemberships?.length && (
+        {!isPending && !filteredProjectMemberships?.length && (
           <EmptyState
             title={
               projectMemberships.length

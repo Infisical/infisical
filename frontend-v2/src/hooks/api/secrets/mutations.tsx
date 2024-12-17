@@ -47,19 +47,19 @@ export const useCreateSecretV3 = ({
       return data;
     },
     onSuccess: (_, { workspaceId, environment, secretPath }) => {
-      queryClient.invalidateQueries(
-        dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
-      );
-      queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId }));
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
+      });
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ workspaceId }) });
     },
     ...options
   });
@@ -102,19 +102,19 @@ export const useUpdateSecretV3 = ({
       return data;
     },
     onSuccess: (_, { workspaceId, environment, secretPath }) => {
-      queryClient.invalidateQueries(
-        dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
-      );
-      queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId }));
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
+      });
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ workspaceId }) });
     },
     ...options
   });
@@ -148,19 +148,19 @@ export const useDeleteSecretV3 = ({
       return data;
     },
     onSuccess: (_, { workspaceId, environment, secretPath }) => {
-      queryClient.invalidateQueries(
-        dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
-      );
-      queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId }));
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
+      });
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ workspaceId }) });
     },
     ...options
   });
@@ -184,19 +184,19 @@ export const useCreateSecretBatch = ({
       return data;
     },
     onSuccess: (_, { workspaceId, environment, secretPath }) => {
-      queryClient.invalidateQueries(
-        dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
-      );
-      queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId }));
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
+      });
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ workspaceId }) });
     },
     ...options
   });
@@ -220,19 +220,19 @@ export const useUpdateSecretBatch = ({
       return data;
     },
     onSuccess: (_, { workspaceId, environment, secretPath }) => {
-      queryClient.invalidateQueries(
-        dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
-      );
-      queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId }));
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
+      });
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ workspaceId }) });
     },
     ...options
   });
@@ -258,19 +258,19 @@ export const useDeleteSecretBatch = ({
       return data;
     },
     onSuccess: (_, { workspaceId, environment, secretPath }) => {
-      queryClient.invalidateQueries(
-        dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
-      );
-      queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId }));
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
+      });
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ workspaceId }) });
     },
     ...options
   });
@@ -316,34 +316,36 @@ export const useMoveSecrets = ({
       return data;
     },
     onSuccess: (_, { projectId, sourceEnvironment, sourceSecretPath }) => {
-      queryClient.invalidateQueries(
-        dashboardKeys.getDashboardSecrets({
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({
           projectId,
           secretPath: sourceSecretPath
         })
-      );
-      queryClient.invalidateQueries(
-        secretKeys.getProjectSecret({
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretKeys.getProjectSecret({
           workspaceId: projectId,
           environment: sourceEnvironment,
           secretPath: sourceSecretPath
         })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.list({
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.list({
           environment: sourceEnvironment,
           workspaceId: projectId,
           directory: sourceSecretPath
         })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.count({
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.count({
           environment: sourceEnvironment,
           workspaceId: projectId,
           directory: sourceSecretPath
         })
-      );
-      queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId: projectId }));
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalRequestKeys.count({ workspaceId: projectId })
+      });
     },
     ...options
   });

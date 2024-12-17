@@ -43,7 +43,7 @@ export const AddGroupMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
   };
 
   const offset = (page - 1) * perPage;
-  const { data, isLoading } = useListGroupUsers({
+  const { data, isPending } = useListGroupUsers({
     id: popUpData?.groupId,
     groupSlug: popUpData?.slug,
     offset,
@@ -113,8 +113,8 @@ export const AddGroupMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
               </Tr>
             </THead>
             <TBody>
-              {isLoading && <TableSkeleton columns={2} innerKey="group-users" />}
-              {!isLoading &&
+              {isPending && <TableSkeleton columns={2} innerKey="group-users" />}
+              {!isPending &&
                 data?.users?.map(({ id, firstName, lastName, username }) => {
                   return (
                     <Tr className="items-center" key={`group-user-${id}`}>
@@ -130,7 +130,7 @@ export const AddGroupMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
                           {(isAllowed) => {
                             return (
                               <Button
-                                isLoading={isLoading}
+                                isLoading={isPending}
                                 isDisabled={!isAllowed}
                                 colorSchema="primary"
                                 variant="outline_bg"
@@ -148,7 +148,7 @@ export const AddGroupMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
                 })}
             </TBody>
           </Table>
-          {!isLoading && totalCount > 0 && (
+          {!isPending && totalCount > 0 && (
             <Pagination
               count={totalCount}
               page={page}
@@ -157,7 +157,7 @@ export const AddGroupMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
               onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
             />
           )}
-          {!isLoading && !data?.users?.length && (
+          {!isPending && !data?.users?.length && (
             <EmptyState
               title={
                 debouncedSearch ? "No users match search" : "All users are already in the group"

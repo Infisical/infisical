@@ -20,7 +20,7 @@ export const EditProjectTemplateSection = ({ template, onBack }: Props) => {
     template.name as InfisicalProjectTemplate
   );
 
-  const { data: projectTemplate, isLoading } = useGetProjectTemplateById(template.id, {
+  const { data: projectTemplate, isPending } = useGetProjectTemplateById(template.id, {
     initialData: template,
     enabled: !isInfisicalTemplate
   });
@@ -37,7 +37,7 @@ export const EditProjectTemplateSection = ({ template, onBack }: Props) => {
         Back to Templates
       </Button>
       {/* eslint-disable-next-line no-nested-ternary */}
-      {isLoading ? (
+      {isPending ? (
         <div className="flex h-[60vh] w-full items-center justify-center p-24">
           <Spinner />
         </div>

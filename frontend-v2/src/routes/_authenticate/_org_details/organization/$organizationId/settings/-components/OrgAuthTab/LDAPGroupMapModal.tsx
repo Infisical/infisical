@@ -64,8 +64,8 @@ export const LDAPGroupMapModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }:
 
   const { data: ldapConfig } = useGetLDAPConfig(currentOrg?.id ?? "");
   const { data: groups } = useGetOrganizationGroups(currentOrg?.id ?? "");
-  const { data: groupMaps, isLoading } = useGetLDAPGroupMaps(ldapConfig?.id ?? "");
-  const { mutateAsync: createLDAPGroupMapping, isLoading: createIsLoading } =
+  const { data: groupMaps, isPending } = useGetLDAPGroupMaps(ldapConfig?.id ?? "");
+  const { mutateAsync: createLDAPGroupMapping, isPending: createIsLoading } =
     useCreateLDAPGroupMapping();
   const { mutateAsync: deleteLDAPGroupMapping } = useDeleteLDAPGroupMapping();
   const navigate = useNavigate();
@@ -215,8 +215,8 @@ export const LDAPGroupMapModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }:
                   </Tr>
                 </THead>
                 <TBody>
-                  {isLoading && <TableSkeleton columns={3} innerKey="ldap-group-maps" />}
-                  {!isLoading &&
+                  {isPending && <TableSkeleton columns={3} innerKey="ldap-group-maps" />}
+                  {!isPending &&
                     groupMaps?.map(({ id, ldapGroupCN, group }) => {
                       return (
                         <Tr className="h-10 items-center" key={`ldap-group-map-${id}`}>

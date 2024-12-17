@@ -13,7 +13,7 @@ type Props = {
 export const UpgradePlanModal = ({ text, isOpen, onOpenChange }: Props): JSX.Element => {
   const { subscription } = useSubscription();
   const { currentOrg } = useOrganization();
-  const { mutateAsync, isLoading } = useGetOrgTrialUrl();
+  const { mutateAsync, isPending } = useGetOrgTrialUrl();
   const link =
     subscription && subscription.slug !== null
       ? `/org/${currentOrg?.id}/billing`
@@ -50,7 +50,7 @@ export const UpgradePlanModal = ({ text, isOpen, onOpenChange }: Props): JSX.Ele
         </p>
         <div className="mt-8 flex items-center">
           <Button
-            isLoading={isLoading}
+            isLoading={isPending}
             colorSchema="primary"
             onClick={handleUpgradeBtnClick}
             className="mr-4"

@@ -21,7 +21,7 @@ import { ManagePlansModal } from "./ManagePlansModal";
 export const PreviewSection = () => {
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
-  const { data, isLoading } = useGetOrgPlanBillingInfo(currentOrg?.id ?? "");
+  const { data, isPending } = useGetOrgPlanBillingInfo(currentOrg?.id ?? "");
   const getOrgTrialUrl = useGetOrgTrialUrl();
   const createCustomerPortalSession = useCreateCustomerPortalSession();
 
@@ -124,7 +124,7 @@ export const PreviewSection = () => {
             </div>
           </div>
         )}
-      {!isLoading && subscription && data && (
+      {!isPending && subscription && data && (
         <div className="mb-6 flex">
           <div className="mr-4 flex-1 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
             <p className="mb-2 text-gray-400">Current plan</p>

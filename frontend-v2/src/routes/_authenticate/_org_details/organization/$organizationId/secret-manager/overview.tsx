@@ -19,18 +19,11 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { NewProjectModal } from "@app/components/projects";
-import {
-  Button,
-  IconButton,
-  Input,
-  Pagination,
-  Skeleton,
-  Tooltip,
-  UpgradePlanModal
-} from "@app/components/v2";
+import { Button, IconButton, Input, Pagination, Skeleton, Tooltip } from "@app/components/v2";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -82,10 +75,10 @@ export const ProductOverview = ({ type }: Props) => {
 
   const navigate = useNavigate();
 
-  const { data: workspaces, isLoading: isWorkspaceLoading } = useGetUserWorkspaces({ type });
+  const { data: workspaces, isPending: isWorkspaceLoading } = useGetUserWorkspaces({ type });
   const { currentOrg } = useOrganization();
   const orgWorkspaces = workspaces || [];
-  const { data: projectFavorites, isLoading: isProjectFavoritesLoading } =
+  const { data: projectFavorites, isPending: isProjectFavoritesLoading } =
     useGetUserProjectFavorites(currentOrg?.id);
   const { mutateAsync: updateUserProjectFavorites } = useUpdateUserProjectFavorites();
 

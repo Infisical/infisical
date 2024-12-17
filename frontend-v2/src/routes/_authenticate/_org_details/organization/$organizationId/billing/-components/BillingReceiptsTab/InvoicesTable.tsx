@@ -18,7 +18,7 @@ import { useGetOrgInvoices } from "@app/hooks/api";
 
 export const InvoicesTable = () => {
   const { currentOrg } = useOrganization();
-  const { data, isLoading } = useGetOrgInvoices(currentOrg?.id ?? "");
+  const { data, isPending } = useGetOrgInvoices(currentOrg?.id ?? "");
   return (
     <TableContainer className="mt-8">
       <Table>
@@ -32,7 +32,7 @@ export const InvoicesTable = () => {
           </Tr>
         </THead>
         <TBody>
-          {!isLoading &&
+          {!isPending &&
             data &&
             data?.length > 0 &&
             data.map(({ id, created, paid, number, total, invoice_pdf }) => {
@@ -65,8 +65,8 @@ export const InvoicesTable = () => {
                 </Tr>
               );
             })}
-          {isLoading && <TableSkeleton columns={5} innerKey="invoices" />}
-          {!isLoading && data && data?.length === 0 && (
+          {isPending && <TableSkeleton columns={5} innerKey="invoices" />}
+          {!isPending && data && data?.length === 0 && (
             <Tr>
               <Td colSpan={5}>
                 <EmptyState title="No invoices on file" icon={faFileInvoice} />

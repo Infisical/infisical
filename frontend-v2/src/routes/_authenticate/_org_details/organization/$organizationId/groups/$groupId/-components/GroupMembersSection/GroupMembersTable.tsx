@@ -58,7 +58,7 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
     toggleOrderDirection
   } = usePagination(GroupMembersOrderBy.Name, { initPerPage: 10 });
 
-  const { data: groupMemberships, isLoading } = useListGroupUsers({
+  const { data: groupMemberships, isPending } = useListGroupUsers({
     id: groupId,
     groupSlug,
     offset,
@@ -138,8 +138,8 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
             </Tr>
           </THead>
           <TBody>
-            {isLoading && <TableSkeleton columns={4} innerKey="group-user-memberships" />}
-            {!isLoading &&
+            {isPending && <TableSkeleton columns={4} innerKey="group-user-memberships" />}
+            {!isPending &&
               filteredGroupMemberships.slice(offset, perPage * page).map((userGroupMembership) => {
                 return (
                   <GroupMembershipRow
@@ -160,7 +160,7 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
             onChangePerPage={setPerPage}
           />
         )}
-        {!isLoading && !filteredGroupMemberships?.length && (
+        {!isPending && !filteredGroupMemberships?.length && (
           <EmptyState
             title={
               groupMemberships?.users.length
