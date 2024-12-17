@@ -23,6 +23,7 @@ export const registerSshRouter = async (server: FastifyZodProvider) => {
         certificateTemplateId: z
           .string()
           .trim()
+          .min(1)
           .describe(SSH_CERTIFICATE_AUTHORITIES.SIGN_SSH_KEY.certificateTemplateId),
         publicKey: z.string().trim().describe(SSH_CERTIFICATE_AUTHORITIES.SIGN_SSH_KEY.publicKey),
         certType: z
@@ -92,6 +93,7 @@ export const registerSshRouter = async (server: FastifyZodProvider) => {
         certificateTemplateId: z
           .string()
           .trim()
+          .min(1)
           .describe(SSH_CERTIFICATE_AUTHORITIES.ISSUE_SSH_CREDENTIALS.certificateTemplateId),
         keyAlgorithm: z
           .nativeEnum(CertKeyAlgorithm)
