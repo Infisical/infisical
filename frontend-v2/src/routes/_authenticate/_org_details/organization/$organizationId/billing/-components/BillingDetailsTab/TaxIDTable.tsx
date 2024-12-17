@@ -72,7 +72,7 @@ const taxIDTypeLabelMap: { [key: string]: string } = {
 
 export const TaxIDTable = () => {
   const { currentOrg } = useOrganization();
-  const { data, isLoading } = useGetOrgTaxIds(currentOrg?.id ?? "");
+  const { data, isPending } = useGetOrgTaxIds(currentOrg?.id ?? "");
   const deleteOrgTaxId = useDeleteOrgTaxId();
 
   const handleDeleteTaxIdBtnClick = async (taxId: string) => {
@@ -94,7 +94,7 @@ export const TaxIDTable = () => {
           </Tr>
         </THead>
         <TBody>
-          {!isLoading &&
+          {!isPending &&
             data &&
             data?.length > 0 &&
             data.map(({ id, type, value }) => (
@@ -124,8 +124,8 @@ export const TaxIDTable = () => {
                 </Td>
               </Tr>
             ))}
-          {isLoading && <TableSkeleton columns={3} innerKey="tax-ids" />}
-          {!isLoading && data && data?.length === 0 && (
+          {isPending && <TableSkeleton columns={3} innerKey="tax-ids" />}
+          {!isPending && data && data?.length === 0 && (
             <Tr>
               <Td colSpan={5}>
                 <EmptyState title="No Tax IDs on file" icon={faFileInvoice} />

@@ -114,7 +114,9 @@ export const useCreateIntegration = () => {
       return integration;
     },
     onSuccess: (res) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceIntegrations(res.workspace));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceIntegrations(res.workspace)
+      });
     }
   });
 };
@@ -132,8 +134,12 @@ export const useDeleteIntegration = () => {
         `/api/v1/integration/${id}?shouldDeleteIntegrationSecrets=${shouldDeleteIntegrationSecrets}`
       ),
     onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceIntegrations(workspaceId));
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceAuthorization(workspaceId));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceIntegrations(workspaceId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceAuthorization(workspaceId)
+      });
     }
   });
 };

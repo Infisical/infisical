@@ -10,7 +10,7 @@ import { PmtMethodsTable } from "./PmtMethodsTable";
 
 export const PmtMethodsSection = () => {
   const { currentOrg } = useOrganization();
-  const { mutateAsync, isLoading } = useAddOrgPmtMethod();
+  const { mutateAsync, isPending } = useAddOrgPmtMethod();
 
   const handleAddPmtMethodBtnClick = async () => {
     if (!currentOrg?.id) return;
@@ -32,7 +32,7 @@ export const PmtMethodsSection = () => {
             <Button
               onClick={handleAddPmtMethodBtnClick}
               colorSchema="secondary"
-              isLoading={isLoading}
+              isLoading={isPending}
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               isDisabled={!isAllowed}
             >

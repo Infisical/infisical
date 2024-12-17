@@ -49,7 +49,7 @@ export const useCreateLDAPConfig = () => {
       return data;
     },
     onSuccess(_, dto) {
-      queryClient.invalidateQueries(ldapConfigKeys.getLDAPConfig(dto.organizationId));
+      queryClient.invalidateQueries({ queryKey: ldapConfigKeys.getLDAPConfig(dto.organizationId) });
     }
   });
 };
@@ -99,7 +99,7 @@ export const useUpdateLDAPConfig = () => {
       return data;
     },
     onSuccess(_, dto) {
-      queryClient.invalidateQueries(ldapConfigKeys.getLDAPConfig(dto.organizationId));
+      queryClient.invalidateQueries({ queryKey: ldapConfigKeys.getLDAPConfig(dto.organizationId) });
     }
   });
 };
@@ -123,7 +123,7 @@ export const useCreateLDAPGroupMapping = () => {
       return data;
     },
     onSuccess(_, { ldapConfigId }) {
-      queryClient.invalidateQueries(ldapConfigKeys.getLDAPGroupMaps(ldapConfigId));
+      queryClient.invalidateQueries({ queryKey: ldapConfigKeys.getLDAPGroupMaps(ldapConfigId) });
     }
   });
 };
@@ -144,7 +144,7 @@ export const useDeleteLDAPGroupMapping = () => {
       return data;
     },
     onSuccess(_, { ldapConfigId }) {
-      queryClient.invalidateQueries(ldapConfigKeys.getLDAPGroupMaps(ldapConfigId));
+      queryClient.invalidateQueries({ queryKey: ldapConfigKeys.getLDAPGroupMaps(ldapConfigId) });
     }
   });
 };

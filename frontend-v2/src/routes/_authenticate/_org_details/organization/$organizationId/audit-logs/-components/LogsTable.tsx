@@ -44,7 +44,7 @@ export const LogsTable = ({
     // Use the projectId from the filter if it exists
     filter?.projectId || null;
 
-  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useGetAuditLogs(
+  const { data, isPending, isFetchingNextPage, hasNextPage, fetchNextPage } = useGetAuditLogs(
     {
       ...filter,
       limit: AUDIT_LOG_LIMIT
@@ -55,7 +55,7 @@ export const LogsTable = ({
     }
   );
 
-  const isEmpty = !isLoading && !data?.pages?.[0].length;
+  const isEmpty = !isPending && !data?.pages?.[0].length;
 
   return (
     <div>
@@ -78,7 +78,7 @@ export const LogsTable = ({
             </Tr>
           </THead>
           <TBody>
-            {!isLoading &&
+            {!isPending &&
               data?.pages?.map((group, i) => (
                 <Fragment key={`audit-log-fragment-${i + 1}`}>
                   {group.map((auditLog) => (
@@ -91,7 +91,7 @@ export const LogsTable = ({
                   ))}
                 </Fragment>
               ))}
-            {isLoading && <TableSkeleton innerKey="logs-table" columns={5} key="logs" />}
+            {isPending && <TableSkeleton innerKey="logs-table" columns={5} key="logs" />}
             {isEmpty && (
               <Tr>
                 <Td colSpan={5}>

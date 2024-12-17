@@ -54,7 +54,7 @@ export const AddAPIKeyModal = ({ popUp, handlePopUpToggle }: Props) => {
   const [newAPIKey, setNewAPIKey] = useState("");
   const [isAPIKeyCopied, setIsAPIKeyCopied] = useToggle(false);
 
-  const { mutateAsync, isLoading } = useCreateAPIKey();
+  const { mutateAsync, isPending } = useCreateAPIKey();
 
   const { control, handleSubmit, reset } = useForm<FormData>({
     resolver: zodResolver(schema)
@@ -149,8 +149,8 @@ export const AddAPIKeyModal = ({ popUp, handlePopUpToggle }: Props) => {
                 className="mr-4"
                 size="sm"
                 type="submit"
-                isLoading={isLoading}
-                isDisabled={isLoading}
+                isLoading={isPending}
+                isDisabled={isPending}
               >
                 Add
               </Button>

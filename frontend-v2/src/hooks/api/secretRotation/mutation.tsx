@@ -18,7 +18,7 @@ export const useCreateSecretRotation = () => {
       return data;
     },
     onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries(secretRotationKeys.list({ workspaceId }));
+      queryClient.invalidateQueries({ queryKey: secretRotationKeys.list({ workspaceId }) });
     }
   });
 };
@@ -32,7 +32,7 @@ export const useDeleteSecretRotation = () => {
       return data;
     },
     onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries(secretRotationKeys.list({ workspaceId }));
+      queryClient.invalidateQueries({ queryKey: secretRotationKeys.list({ workspaceId }) });
     }
   });
 };
@@ -46,7 +46,7 @@ export const useRestartSecretRotation = () => {
       return data;
     },
     onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries(secretRotationKeys.list({ workspaceId }));
+      queryClient.invalidateQueries({ queryKey: secretRotationKeys.list({ workspaceId }) });
     }
   });
 };

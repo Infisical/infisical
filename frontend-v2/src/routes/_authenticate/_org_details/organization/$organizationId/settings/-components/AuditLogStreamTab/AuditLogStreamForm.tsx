@@ -108,7 +108,7 @@ export const AuditLogStreamForm = ({ id = "", onClose }: Props) => {
     }
   };
 
-  if (isEdit && auditLogStream.isLoading) {
+  if (isEdit && auditLogStream.isPending) {
     return (
       <div className="flex items-center justify-center p-8">
         <Spinner size="lg" />

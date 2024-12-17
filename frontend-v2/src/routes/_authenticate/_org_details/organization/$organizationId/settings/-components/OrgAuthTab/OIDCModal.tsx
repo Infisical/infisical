@@ -99,8 +99,8 @@ export type OIDCFormData = z.infer<typeof schema>;
 export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelete }: Props) => {
   const { currentOrg } = useOrganization();
 
-  const { mutateAsync: createMutateAsync, isLoading: createIsLoading } = useCreateOIDCConfig();
-  const { mutateAsync: updateMutateAsync, isLoading: updateIsLoading } = useUpdateOIDCConfig();
+  const { mutateAsync: createMutateAsync, isPending: createIsLoading } = useCreateOIDCConfig();
+  const { mutateAsync: updateMutateAsync, isPending: updateIsLoading } = useUpdateOIDCConfig();
   const [isDeletePopupOpen, setIsDeletePopupOpen] = useToggle(false);
 
   const { data } = useGetOIDCConfig(currentOrg?.slug ?? "");

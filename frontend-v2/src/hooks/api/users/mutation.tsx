@@ -42,7 +42,7 @@ export const useAddUserToWsE2EE = () => {
       return data;
     },
     onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(workspaceId));
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.getWorkspaceUsers(workspaceId) });
     }
   });
 };
@@ -59,8 +59,10 @@ export const useAddUserToWsNonE2EE = () => {
       return data;
     },
     onSuccess: (_, { orgId, projectId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(projectId));
-      queryClient.invalidateQueries(userKeys.allOrgMembershipProjectMemberships(orgId));
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.getWorkspaceUsers(projectId) });
+      queryClient.invalidateQueries({
+        queryKey: userKeys.allOrgMembershipProjectMemberships(orgId)
+      });
     }
   });
 };
@@ -110,7 +112,7 @@ export const useUpdateUserProjectFavorites = () => {
       return {};
     },
     onSuccess: (_, { orgId }) => {
-      queryClient.invalidateQueries(userKeys.userProjectFavorites(orgId));
+      queryClient.invalidateQueries({ queryKey: userKeys.userProjectFavorites(orgId) });
     }
   });
 };
@@ -136,7 +138,7 @@ export const useDeleteUserTotpConfiguration = () => {
       return {};
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(userKeys.totpConfiguration);
+      queryClient.invalidateQueries({ queryKey: userKeys.totpConfiguration });
     }
   });
 };
@@ -150,7 +152,7 @@ export const useCreateNewTotpRecoveryCodes = () => {
       return {};
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(userKeys.totpConfiguration);
+      queryClient.invalidateQueries({ queryKey: userKeys.totpConfiguration });
     }
   });
 };

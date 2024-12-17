@@ -92,7 +92,7 @@ export const useCreateOrg = (options: { invalidate: boolean } = { invalidate: tr
     },
     onSuccess: () => {
       if (options?.invalidate) {
-        queryClient.invalidateQueries(organizationKeys.getUserOrganizations);
+        queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizations });
       }
     }
   });
@@ -122,7 +122,7 @@ export const useUpdateOrg = () => {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(organizationKeys.getUserOrganizations);
+      queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizations });
     }
   });
 };
@@ -226,7 +226,9 @@ export const useUpdateOrgBillingDetails = () => {
       return data;
     },
     onSuccess(_, dto) {
-      queryClient.invalidateQueries(organizationKeys.getOrgBillingDetails(dto.organizationId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgBillingDetails(dto.organizationId)
+      });
     }
   });
 };
@@ -271,7 +273,9 @@ export const useAddOrgPmtMethod = () => {
       return url;
     },
     onSuccess(_, dto) {
-      queryClient.invalidateQueries(organizationKeys.getOrgPmtMethods(dto.organizationId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgPmtMethods(dto.organizationId)
+      });
     }
   });
 };
@@ -294,7 +298,9 @@ export const useDeleteOrgPmtMethod = () => {
       return data;
     },
     onSuccess(_, dto) {
-      queryClient.invalidateQueries(organizationKeys.getOrgPmtMethods(dto.organizationId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgPmtMethods(dto.organizationId)
+      });
     }
   });
 };
@@ -337,7 +343,9 @@ export const useAddOrgTaxId = () => {
       return data;
     },
     onSuccess(_, dto) {
-      queryClient.invalidateQueries(organizationKeys.getOrgTaxIds(dto.organizationId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgTaxIds(dto.organizationId)
+      });
     }
   });
 };
@@ -354,7 +362,9 @@ export const useDeleteOrgTaxId = () => {
       return data;
     },
     onSuccess(_, dto) {
-      queryClient.invalidateQueries(organizationKeys.getOrgTaxIds(dto.organizationId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgTaxIds(dto.organizationId)
+      });
     }
   });
 };
@@ -461,20 +471,34 @@ export const useDeleteOrgById = () => {
       return organization;
     },
     onSuccess(_, dto) {
-      queryClient.invalidateQueries(organizationKeys.getUserOrganizations);
-      queryClient.invalidateQueries(organizationKeys.getOrgPlanBillingInfo(dto.organizationId));
-      queryClient.invalidateQueries(organizationKeys.getOrgPlanTable(dto.organizationId));
-      queryClient.invalidateQueries(
-        organizationKeys.getOrgPlansTable(dto.organizationId, "monthly")
-      ); // You might need to invalidate for 'yearly' as well.
-      queryClient.invalidateQueries(
-        organizationKeys.getOrgPlansTable(dto.organizationId, "yearly")
-      );
-      queryClient.invalidateQueries(organizationKeys.getOrgBillingDetails(dto.organizationId));
-      queryClient.invalidateQueries(organizationKeys.getOrgPmtMethods(dto.organizationId));
-      queryClient.invalidateQueries(organizationKeys.getOrgTaxIds(dto.organizationId));
-      queryClient.invalidateQueries(organizationKeys.getOrgInvoices(dto.organizationId));
-      queryClient.invalidateQueries(organizationKeys.getOrgLicenses(dto.organizationId));
+      queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizations });
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgPlanBillingInfo(dto.organizationId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgPlanTable(dto.organizationId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgPlansTable(dto.organizationId, "monthly")
+      }); // You might need to invalidate for 'yearly' as well.
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgPlansTable(dto.organizationId, "yearly")
+      });
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgBillingDetails(dto.organizationId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgPmtMethods(dto.organizationId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgTaxIds(dto.organizationId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgInvoices(dto.organizationId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgLicenses(dto.organizationId)
+      });
     }
   });
 };

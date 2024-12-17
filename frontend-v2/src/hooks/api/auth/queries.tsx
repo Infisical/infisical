@@ -304,13 +304,14 @@ export const fetchAuthToken = async () => {
   const { data } = await apiRequest.post<GetAuthTokenAPI>("/api/v1/auth/token", undefined, {
     withCredentials: true
   });
-
+  setAuthToken(data.token);
   return data;
 };
 
 export const useGetAuthToken = () =>
-  useQuery(authKeys.getAuthToken, fetchAuthToken, {
-    onSuccess: (data) => setAuthToken(data.token),
+  useQuery({
+    queryKey: authKeys.getAuthToken,
+    queryFn: fetchAuthToken,
     retry: 0
   });
 

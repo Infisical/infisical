@@ -1,6 +1,7 @@
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, Switch, UpgradePlanModal } from "@app/components/v2";
+import { Button, Switch } from "@app/components/v2";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -17,7 +18,7 @@ export const OrgOIDCSection = (): JSX.Element => {
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
 
-  const { data, isLoading } = useGetOIDCConfig(currentOrg?.slug ?? "");
+  const { data, isPending } = useGetOIDCConfig(currentOrg?.slug ?? "");
   const { mutateAsync } = useUpdateOIDCConfig();
   const { mutateAsync: updateOrg } = useUpdateOrg();
 
@@ -91,7 +92,7 @@ export const OrgOIDCSection = (): JSX.Element => {
       <div className="py-4">
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-md text-mineshaft-100">OIDC</h2>
-          {!isLoading && (
+          {!isPending && (
             <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Sso}>
               {(isAllowed) => (
                 <Button
@@ -111,7 +112,7 @@ export const OrgOIDCSection = (): JSX.Element => {
         <div className="py-4">
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-md text-mineshaft-100">Enable OIDC</h2>
-            {!isLoading && (
+            {!isPending && (
               <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
                 {(isAllowed) => (
                   <Switch

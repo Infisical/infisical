@@ -33,7 +33,7 @@ export const useAddIncidentContact = () => {
       return data;
     },
     onSuccess: (_, { orgId }) => {
-      queryClient.invalidateQueries(incidentContactKeys.getAllContact(orgId));
+      queryClient.invalidateQueries({ queryKey: incidentContactKeys.getAllContact(orgId) });
     }
   });
 };
@@ -49,7 +49,7 @@ export const useDeleteIncidentContact = () => {
       return data;
     },
     onSuccess: (_, { orgId }) => {
-      queryClient.invalidateQueries(incidentContactKeys.getAllContact(orgId));
+      queryClient.invalidateQueries({ queryKey: incidentContactKeys.getAllContact(orgId) });
     }
   });
 };

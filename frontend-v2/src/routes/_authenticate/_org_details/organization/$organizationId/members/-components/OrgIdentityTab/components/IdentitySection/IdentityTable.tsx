@@ -73,7 +73,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
 
   const { mutateAsync: updateMutateAsync } = useUpdateIdentity();
 
-  const { data, isLoading, isFetching } = useGetIdentityMembershipOrgs(
+  const { data, isPending, isFetching } = useGetIdentityMembershipOrgs(
     {
       organizationId,
       offset,
@@ -82,7 +82,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
       orderBy,
       search: debouncedSearch
     },
-    { keepPreviousData: true }
+    { placeholderData: (prevData) => prevData }
   );
 
   const { totalCount = 0 } = data ?? {};
@@ -188,8 +188,8 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
             </Tr>
           </THead>
           <TBody>
-            {isLoading && <TableSkeleton columns={3} innerKey="org-identities" />}
-            {!isLoading &&
+            {isPending && <TableSkeleton columns={3} innerKey="org-identities" />}
+            {!isPending &&
               data?.identityMemberships.map(({ identity: { id, name }, role, customRole }) => {
                 return (
                   <Tr
@@ -300,7 +300,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
               })}
           </TBody>
         </Table>
-        {!isLoading && data && totalCount > 0 && (
+        {!isPending && data && totalCount > 0 && (
           <Pagination
             count={totalCount}
             page={page}
@@ -309,7 +309,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
             onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
           />
         )}
-        {!isLoading && data && data?.identityMemberships.length === 0 && (
+        {!isPending && data && data?.identityMemberships.length === 0 && (
           <EmptyState
             title={
               debouncedSearch.trim().length > 0

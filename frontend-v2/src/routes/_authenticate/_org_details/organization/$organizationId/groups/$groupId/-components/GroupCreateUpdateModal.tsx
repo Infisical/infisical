@@ -40,8 +40,8 @@ type Props = {
 export const GroupCreateUpdateModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props) => {
   const { currentOrg } = useOrganization();
   const { data: roles } = useGetOrgRoles(currentOrg?.id || "");
-  const { mutateAsync: createMutateAsync, isLoading: createIsLoading } = useCreateGroup();
-  const { mutateAsync: updateMutateAsync, isLoading: updateIsLoading } = useUpdateGroup();
+  const { mutateAsync: createMutateAsync, isPending: createIsLoading } = useCreateGroup();
+  const { mutateAsync: updateMutateAsync, isPending: updateIsLoading } = useUpdateGroup();
 
   const { control, handleSubmit, reset } = useForm<TGroupFormData>({
     resolver: zodResolver(GroupFormSchema)

@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { UpgradePlanModal } from "@app/components/v2";
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
 import { withPermission } from "@app/hoc";
 import { ActorType, EventType, UserAgentType } from "@app/hooks/api/auditLogs/enums";

@@ -37,7 +37,7 @@ export const useNavigateToSelectOrganization = () => {
     if (config.defaultAuthOrgId) {
       redirectTo += `org_id=${config.defaultAuthOrgId}&`;
     } else {
-      queryClient.invalidateQueries(userKeys.getUser);
+      queryClient.invalidateQueries({ queryKey: userKeys.getUser });
     }
 
     if (cliCallbackPort) {

@@ -33,7 +33,7 @@ const SecretScanning = withPermission(
     const { mutateAsync: linkGitAppInstallationWithOrganization } =
       useLinkGitAppInstallationWithOrg();
     const { mutateAsync: createNewIntegrationSession } = useCreateNewInstallationSession();
-    const { data: installationStatus, isLoading: isSecretScanningInstatllationStatusLoading } =
+    const { data: installationStatus, isPending: isSecretScanningInstatllationStatusLoading } =
       useGetSecretScanningInstallationStatus(organizationId);
     const integrationEnabled =
       !isSecretScanningInstatllationStatusLoading && installationStatus?.appInstallationCompleted;

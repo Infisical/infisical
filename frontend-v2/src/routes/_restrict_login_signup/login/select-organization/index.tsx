@@ -43,7 +43,7 @@ const SelectOrganizationPage = () => {
 
   const organizations = useGetOrganizations();
   const selectOrg = useSelectOrganization();
-  const { data: user, isLoading: userLoading } = useGetUser();
+  const { data: user, isPending: userLoading } = useGetUser();
   const [shouldShowMfa, toggleShowMfa] = useToggle(false);
   const [requiredMfaMethod, setRequiredMfaMethod] = useState(MfaMethod.EMAIL);
   const [isInitialOrgCheckLoading, setIsInitialOrgCheckLoading] = useState(true);
@@ -175,7 +175,7 @@ const SelectOrganizationPage = () => {
   }, [navigate]);
 
   useEffect(() => {
-    if (organizations.isLoading || !organizations.data) return;
+    if (organizations.isPending || !organizations.data) return;
 
     // Case: User has no organizations.
     // This can happen if the user was previously a member, but the organization was deleted or the user was removed.
@@ -191,7 +191,7 @@ const SelectOrganizationPage = () => {
     } else {
       setIsInitialOrgCheckLoading(false);
     }
-  }, [organizations.isLoading, organizations.data]);
+  }, [organizations.isPending, organizations.data]);
 
   useEffect(() => {
     if (defaultSelectedOrg) {
@@ -248,7 +248,7 @@ const SelectOrganizationPage = () => {
               </div>
             </div>
             <div className="mt-2 w-1/4 min-w-[21.2rem] space-y-4 rounded-md text-center md:min-w-[25.1rem] lg:w-1/4">
-              {organizations.isLoading ? (
+              {organizations.isPending ? (
                 <Spinner />
               ) : (
                 organizations.data?.map((org) => (

@@ -57,8 +57,8 @@ type Props = {
 export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelete }: Props) => {
   const { currentOrg } = useOrganization();
 
-  const { mutateAsync: createMutateAsync, isLoading: createIsLoading } = useCreateSSOConfig();
-  const { mutateAsync: updateMutateAsync, isLoading: updateIsLoading } = useUpdateSSOConfig();
+  const { mutateAsync: createMutateAsync, isPending: createIsLoading } = useCreateSSOConfig();
+  const { mutateAsync: updateMutateAsync, isPending: updateIsLoading } = useUpdateSSOConfig();
   const [isDeletePopupOpen, setIsDeletePopupOpen] = useToggle();
   const { data } = useGetSSOConfig(currentOrg?.id ?? "");
 

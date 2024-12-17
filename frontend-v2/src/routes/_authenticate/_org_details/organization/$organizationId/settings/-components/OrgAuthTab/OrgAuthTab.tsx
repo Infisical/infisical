@@ -1,6 +1,7 @@
 import { twMerge } from "tailwind-merge";
 
-import { Button, ContentLoader, UpgradePlanModal } from "@app/components/v2";
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { Button, ContentLoader } from "@app/components/v2";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -38,13 +39,13 @@ export const OrgAuthTab = withPermission(
 
     const { subscription } = useSubscription();
 
-    const { data: oidcConfig, isLoading: isLoadingOidcConfig } = useGetOIDCConfig(
+    const { data: oidcConfig, isPending: isLoadingOidcConfig } = useGetOIDCConfig(
       currentOrg?.slug ?? ""
     );
-    const { data: samlConfig, isLoading: isLoadingSamlConfig } = useGetSSOConfig(
+    const { data: samlConfig, isPending: isLoadingSamlConfig } = useGetSSOConfig(
       currentOrg?.id ?? ""
     );
-    const { data: ldapConfig, isLoading: isLoadingLdapConfig } = useGetLDAPConfig(
+    const { data: ldapConfig, isPending: isLoadingLdapConfig } = useGetLDAPConfig(
       currentOrg?.id ?? ""
     );
     const areConfigsLoading = isLoadingOidcConfig || isLoadingSamlConfig || isLoadingLdapConfig;

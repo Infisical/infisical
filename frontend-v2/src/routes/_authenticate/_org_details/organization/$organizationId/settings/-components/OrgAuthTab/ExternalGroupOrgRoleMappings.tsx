@@ -43,7 +43,7 @@ type TForm = z.infer<typeof formSchema>;
 
 export const ExternalGroupOrgRoleMappings = () => {
   const { currentOrg } = useOrganization();
-  const { data: roles, isLoading: isRolesLoading } = useGetOrgRoles(currentOrg.id);
+  const { data: roles, isPending: isRolesLoading } = useGetOrgRoles(currentOrg.id);
   const { data: mappings } = useGetExternalGroupOrgRoleMappings();
   const updateMappings = useUpdateExternalGroupOrgRoleMappings();
   const { permission } = useOrgPermission();

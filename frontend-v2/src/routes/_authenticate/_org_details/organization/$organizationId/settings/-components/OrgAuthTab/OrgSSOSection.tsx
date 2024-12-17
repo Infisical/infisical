@@ -1,6 +1,7 @@
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, Switch, UpgradePlanModal } from "@app/components/v2";
+import { Button, Switch } from "@app/components/v2";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -16,7 +17,7 @@ export const OrgSSOSection = (): JSX.Element => {
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
 
-  const { data, isLoading } = useGetSSOConfig(currentOrg?.id ?? "");
+  const { data, isPending } = useGetSSOConfig(currentOrg?.id ?? "");
   const { mutateAsync } = useUpdateSSOConfig();
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "upgradePlan",
@@ -83,7 +84,7 @@ export const OrgSSOSection = (): JSX.Element => {
       <div className="py-4">
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-md text-mineshaft-100">SAML</h2>
-          {!isLoading && (
+          {!isPending && (
             <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Sso}>
               {(isAllowed) => (
                 <Button onClick={addSSOBtnClick} colorSchema="secondary" isDisabled={!isAllowed}>
@@ -98,7 +99,7 @@ export const OrgSSOSection = (): JSX.Element => {
       <div className="py-4">
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-md text-mineshaft-100">Enable SAML</h2>
-          {!isLoading && (
+          {!isPending && (
             <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
               {(isAllowed) => (
                 <Switch

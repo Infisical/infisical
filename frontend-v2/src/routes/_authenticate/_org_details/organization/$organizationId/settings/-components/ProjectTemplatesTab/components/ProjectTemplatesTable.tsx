@@ -35,7 +35,7 @@ type Props = {
 export const ProjectTemplatesTable = ({ onEdit }: Props) => {
   const { subscription } = useSubscription();
 
-  const { isLoading, data: projectTemplates = [] } = useListProjectTemplates({
+  const { isPending, data: projectTemplates = [] } = useListProjectTemplates({
     enabled: subscription?.projectTemplates
   });
   const [search, setSearch] = useState("");
@@ -69,7 +69,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
             </Tr>
           </THead>
           <TBody>
-            {isLoading && (
+            {isPending && (
               <TableSkeleton
                 innerKey="project-templates-table"
                 columns={4}
@@ -164,7 +164,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
                 </Tr>
               );
             })}
-            {!isLoading && filteredTemplates?.length === 0 && (
+            {!isPending && filteredTemplates?.length === 0 && (
               <Tr>
                 <Td colSpan={5}>
                   <EmptyState

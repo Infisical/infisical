@@ -7,6 +7,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
@@ -16,8 +17,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Tooltip,
-  UpgradePlanModal
+  Tooltip
 } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { withPermission } from "@app/hoc";

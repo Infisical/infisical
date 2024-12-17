@@ -24,7 +24,7 @@ export const CompanyNameSection = () => {
     resolver: zodResolver(schema)
   });
   const { data } = useGetOrgBillingDetails(currentOrg?.id ?? "");
-  const { mutateAsync, isLoading } = useUpdateOrgBillingDetails();
+  const { mutateAsync, isPending } = useUpdateOrgBillingDetails();
 
   useEffect(() => {
     if (data) {
@@ -79,8 +79,8 @@ export const CompanyNameSection = () => {
           <Button
             type="submit"
             colorSchema="secondary"
-            isLoading={isLoading}
-            isDisabled={isLoading || !isAllowed}
+            isLoading={isPending}
+            isDisabled={isPending || !isAllowed}
           >
             Save
           </Button>

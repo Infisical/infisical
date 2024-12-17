@@ -39,7 +39,7 @@ export const useCreateWsTag = () => {
       return data.workspaceTag;
     },
     onSuccess: (tagData) => {
-      queryClient.invalidateQueries(workspaceTags.getWsTags(tagData?.projectId));
+      queryClient.invalidateQueries({ queryKey: workspaceTags.getWsTags(tagData?.projectId) });
     }
   });
 };
@@ -55,7 +55,7 @@ export const useDeleteWsTag = () => {
       return data.workspaceTag;
     },
     onSuccess: (tagData) => {
-      queryClient.invalidateQueries(workspaceTags.getWsTags(tagData?.projectId));
+      queryClient.invalidateQueries({ queryKey: workspaceTags.getWsTags(tagData?.projectId) });
     }
   });
 };

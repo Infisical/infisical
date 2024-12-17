@@ -47,7 +47,7 @@ export const useGetCmeksByProjectId = (
       return data;
     },
     enabled: Boolean(projectId) && (options?.enabled ?? true),
-    keepPreviousData: true,
+    placeholderData: (previousData) => previousData,
     ...options
   });
 };

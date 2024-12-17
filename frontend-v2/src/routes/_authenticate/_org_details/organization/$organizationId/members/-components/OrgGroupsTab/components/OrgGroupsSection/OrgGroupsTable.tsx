@@ -65,7 +65,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
-  const { isLoading, data: groups = [] } = useGetOrganizationGroups(orgId);
+  const { isPending, data: groups = [] } = useGetOrganizationGroups(orgId);
   const { mutateAsync: updateMutateAsync } = useUpdateGroup();
 
   const { data: roles } = useGetOrgRoles(orgId);
@@ -219,8 +219,8 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
             </Tr>
           </THead>
           <TBody>
-            {isLoading && <TableSkeleton columns={4} innerKey="org-groups" />}
-            {!isLoading &&
+            {isPending && <TableSkeleton columns={4} innerKey="org-groups" />}
+            {!isPending &&
               filteredGroups
                 .slice(offset, perPage * page)
                 .map(({ id, name, slug, role, customRole }) => {
@@ -381,7 +381,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
             onChangePerPage={setPerPage}
           />
         )}
-        {!isLoading && !filteredGroups?.length && (
+        {!isPending && !filteredGroups?.length && (
           <EmptyState
             title={
               groups.length

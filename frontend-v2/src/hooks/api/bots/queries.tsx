@@ -31,7 +31,7 @@ export const useUpdateBotActiveStatus = () => {
       });
     },
     onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries(queryKeys.getBot(workspaceId));
+      queryClient.invalidateQueries({ queryKey: queryKeys.getBot(workspaceId) });
     }
   });
 };

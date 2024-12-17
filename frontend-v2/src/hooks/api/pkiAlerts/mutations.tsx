@@ -14,7 +14,7 @@ export const useCreatePkiAlert = () => {
       return alert;
     },
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspacePkiAlerts(projectId));
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.getWorkspacePkiAlerts(projectId) });
     }
   });
 };
@@ -30,8 +30,8 @@ export const useUpdatePkiAlert = () => {
       return alert;
     },
     onSuccess: (_, { projectId, alertId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspacePkiAlerts(projectId));
-      queryClient.invalidateQueries(pkiAlertKeys.getPkiAlertById(alertId));
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.getWorkspacePkiAlerts(projectId) });
+      queryClient.invalidateQueries({ queryKey: pkiAlertKeys.getPkiAlertById(alertId) });
     }
   });
 };
@@ -44,8 +44,8 @@ export const useDeletePkiAlert = () => {
       return alert;
     },
     onSuccess: (_, { projectId, alertId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspacePkiAlerts(projectId));
-      queryClient.invalidateQueries(pkiAlertKeys.getPkiAlertById(alertId));
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.getWorkspacePkiAlerts(projectId) });
+      queryClient.invalidateQueries({ queryKey: pkiAlertKeys.getPkiAlertById(alertId) });
     }
   });
 };

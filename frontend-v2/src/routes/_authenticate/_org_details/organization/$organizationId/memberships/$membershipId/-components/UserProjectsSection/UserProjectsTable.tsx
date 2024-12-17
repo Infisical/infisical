@@ -56,7 +56,7 @@ export const UserProjectsTable = ({ membershipId, handlePopUpOpen }: Props) => {
     toggleOrderDirection
   } = usePagination(UserProjectsOrderBy.Name, { initPerPage: 10 });
 
-  const { data: projectMemberships = [], isLoading } = useGetOrgMembershipProjectMemberships(
+  const { data: projectMemberships = [], isPending } = useGetOrgMembershipProjectMemberships(
     orgId,
     membershipId
   );
@@ -117,8 +117,8 @@ export const UserProjectsTable = ({ membershipId, handlePopUpOpen }: Props) => {
             </Tr>
           </THead>
           <TBody>
-            {isLoading && <TableSkeleton columns={3} innerKey="user-project-memberships" />}
-            {!isLoading &&
+            {isPending && <TableSkeleton columns={3} innerKey="user-project-memberships" />}
+            {!isPending &&
               filteredProjectMemberships.slice(offset, perPage * page).map((membership) => {
                 return (
                   <UserProjectRow
@@ -139,7 +139,7 @@ export const UserProjectsTable = ({ membershipId, handlePopUpOpen }: Props) => {
             onChangePerPage={setPerPage}
           />
         )}
-        {!isLoading && !filteredProjectMemberships?.length && (
+        {!isPending && !filteredProjectMemberships?.length && (
           <EmptyState
             title={
               projectMemberships.length

@@ -24,7 +24,7 @@ import { useDeleteIncidentContact, useGetOrgIncidentContact } from "@app/hooks/a
 
 export const OrgIncidentContactsTable = () => {
   const { currentOrg } = useOrganization();
-  const { data: contacts, isLoading } = useGetOrgIncidentContact(currentOrg?.id ?? "");
+  const { data: contacts, isPending } = useGetOrgIncidentContact(currentOrg?.id ?? "");
   const [searchContact, setSearchContact] = useState("");
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "removeContact",
@@ -78,7 +78,7 @@ export const OrgIncidentContactsTable = () => {
             </Tr>
           </THead>
           <TBody>
-            {isLoading && <TableSkeleton columns={2} innerKey="incident-contact" />}
+            {isPending && <TableSkeleton columns={2} innerKey="incident-contact" />}
             {filteredContacts?.map(({ email, id }) => (
               <Tr key={email}>
                 <Td className="w-full">{email}</Td>
@@ -103,7 +103,7 @@ export const OrgIncidentContactsTable = () => {
             ))}
           </TBody>
         </Table>
-        {filteredContacts?.length === 0 && !isLoading && (
+        {filteredContacts?.length === 0 && !isPending && (
           <EmptyState title="No incident contacts found" icon={faContactBook} />
         )}
       </TableContainer>

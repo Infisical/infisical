@@ -125,21 +125,21 @@ export const useCreateFolder = () => {
       return data;
     },
     onSuccess: (_, { projectId, environment, path }) => {
-      queryClient.invalidateQueries(
-        dashboardKeys.getDashboardSecrets({
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({
           projectId,
           secretPath: path ?? "/"
         })
-      );
-      queryClient.invalidateQueries(
-        folderQueryKeys.getSecretFolders({ projectId, environment, path })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.list({ workspaceId: projectId, environment, directory: path })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.count({ workspaceId: projectId, environment, directory: path })
-      );
+      });
+      queryClient.invalidateQueries({
+        queryKey: folderQueryKeys.getSecretFolders({ projectId, environment, path })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.list({ workspaceId: projectId, environment, directory: path })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.count({ workspaceId: projectId, environment, directory: path })
+      });
     }
   });
 };
@@ -158,21 +158,21 @@ export const useUpdateFolder = () => {
       return data;
     },
     onSuccess: (_, { projectId, environment, path }) => {
-      queryClient.invalidateQueries(
-        dashboardKeys.getDashboardSecrets({
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({
           projectId,
           secretPath: path ?? "/"
         })
-      );
-      queryClient.invalidateQueries(
-        folderQueryKeys.getSecretFolders({ projectId, environment, path })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.list({ workspaceId: projectId, environment, directory: path })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.count({ workspaceId: projectId, environment, directory: path })
-      );
+      });
+      queryClient.invalidateQueries({
+        queryKey: folderQueryKeys.getSecretFolders({ projectId, environment, path })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.list({ workspaceId: projectId, environment, directory: path })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.count({ workspaceId: projectId, environment, directory: path })
+      });
     }
   });
 };
@@ -192,21 +192,21 @@ export const useDeleteFolder = () => {
       return data;
     },
     onSuccess: (_, { path = "/", projectId, environment }) => {
-      queryClient.invalidateQueries(
-        dashboardKeys.getDashboardSecrets({
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({
           projectId,
           secretPath: path
         })
-      );
-      queryClient.invalidateQueries(
-        folderQueryKeys.getSecretFolders({ projectId, environment, path })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.list({ workspaceId: projectId, environment, directory: path })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.count({ workspaceId: projectId, environment, directory: path })
-      );
+      });
+      queryClient.invalidateQueries({
+        queryKey: folderQueryKeys.getSecretFolders({ projectId, environment, path })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.list({ workspaceId: projectId, environment, directory: path })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.count({ workspaceId: projectId, environment, directory: path })
+      });
     }
   });
 };
@@ -225,33 +225,33 @@ export const useUpdateFolderBatch = () => {
     },
     onSuccess: (_, { projectId, folders }) => {
       folders.forEach((folder) => {
-        queryClient.invalidateQueries(
-          dashboardKeys.getDashboardSecrets({
+        queryClient.invalidateQueries({
+          queryKey: dashboardKeys.getDashboardSecrets({
             projectId,
             secretPath: folder.path ?? "/"
           })
-        );
-        queryClient.invalidateQueries(
-          folderQueryKeys.getSecretFolders({
+        });
+        queryClient.invalidateQueries({
+          queryKey: folderQueryKeys.getSecretFolders({
             projectId,
             environment: folder.environment,
             path: folder.path
           })
-        );
-        queryClient.invalidateQueries(
-          secretSnapshotKeys.list({
+        });
+        queryClient.invalidateQueries({
+          queryKey: secretSnapshotKeys.list({
             workspaceId: projectId,
             environment: folder.environment,
             directory: folder.path
           })
-        );
-        queryClient.invalidateQueries(
-          secretSnapshotKeys.count({
+        });
+        queryClient.invalidateQueries({
+          queryKey: secretSnapshotKeys.count({
             workspaceId: projectId,
             environment: folder.environment,
             directory: folder.path
           })
-        );
+        });
       });
     }
   });

@@ -32,7 +32,7 @@ export const AddOrgIncidentContactModal = ({
     resolver: zodResolver(addContactFormSchema)
   });
 
-  const { mutateAsync, isLoading } = useAddIncidentContact();
+  const { mutateAsync, isPending } = useAddIncidentContact();
 
   const onFormSubmit = async ({ email }: TAddContactForm) => {
     try {
@@ -86,7 +86,7 @@ export const AddOrgIncidentContactModal = ({
             )}
           />
           <div className="mt-8 flex items-center space-x-4">
-            <Button size="sm" type="submit" isLoading={isLoading} isDisabled={isLoading}>
+            <Button size="sm" type="submit" isLoading={isPending} isDisabled={isPending}>
               Add Incident Contact
             </Button>
             <Button

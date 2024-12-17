@@ -22,7 +22,7 @@ export const useCreateAuditLogStream = () => {
       return data;
     },
     onSuccess: (_, { orgId }) => {
-      queryClient.invalidateQueries(auditLogStreamKeys.list(orgId));
+      queryClient.invalidateQueries({ queryKey: auditLogStreamKeys.list(orgId) });
     }
   });
 };
@@ -39,7 +39,7 @@ export const useUpdateAuditLogStream = () => {
       return data;
     },
     onSuccess: (_, { orgId }) => {
-      queryClient.invalidateQueries(auditLogStreamKeys.list(orgId));
+      queryClient.invalidateQueries({ queryKey: auditLogStreamKeys.list(orgId) });
     }
   });
 };
@@ -55,7 +55,7 @@ export const useDeleteAuditLogStream = () => {
       return data;
     },
     onSuccess: (_, { orgId }) => {
-      queryClient.invalidateQueries(auditLogStreamKeys.list(orgId));
+      queryClient.invalidateQueries({ queryKey: auditLogStreamKeys.list(orgId) });
     }
   });
 };

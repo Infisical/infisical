@@ -41,7 +41,7 @@ const PasswordResetPage = () => {
 
   const {
     mutateAsync: verifyPasswordResetCodeMutateAsync,
-    isLoading: isVerifyPasswordResetLoading
+    isPending: isVerifyPasswordResetLoading
   } = useVerifyPasswordResetCode();
   const { mutateAsync: resetPasswordMutateAsync } = useResetPassword();
 

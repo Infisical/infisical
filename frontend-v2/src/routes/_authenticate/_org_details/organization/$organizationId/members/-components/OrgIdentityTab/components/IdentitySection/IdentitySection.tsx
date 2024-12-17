@@ -1,9 +1,10 @@
 import { faArrowUpRightFromSquare, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal, UpgradePlanModal } from "@app/components/v2";
+import { Button, DeleteActionModal } from "@app/components/v2";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,

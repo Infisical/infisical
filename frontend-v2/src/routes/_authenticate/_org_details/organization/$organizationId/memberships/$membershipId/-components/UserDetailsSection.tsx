@@ -45,7 +45,7 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
   const { data: roles } = useGetOrgRoles(orgId);
   const { data: serverDetails } = useFetchServerStatus();
   const { data: membership } = useGetOrgMembership(orgId, membershipId);
-  const { mutateAsync: inviteUsers, isLoading } = useAddUsersToOrg();
+  const { mutateAsync: inviteUsers, isPending } = useAddUsersToOrg();
 
   const onResendInvite = async (email: string) => {
     try {
@@ -209,7 +209,7 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
                     className="mt-4 w-full"
                     colorSchema="primary"
                     type="submit"
-                    isLoading={isLoading}
+                    isLoading={isPending}
                     onClick={() => {
                       onResendInvite(membership.user.email as string);
                     }}

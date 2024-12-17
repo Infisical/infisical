@@ -3,8 +3,9 @@ import { faArrowUpRightFromSquare, faBookOpen, faPlus } from "@fortawesome/free-
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { AnimatePresence, motion } from "framer-motion";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, UpgradePlanModal } from "@app/components/v2";
+import { Button } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
 import { TProjectTemplate } from "@app/hooks/api/projectTemplates";
 import { usePopUp } from "@app/hooks/usePopUp";

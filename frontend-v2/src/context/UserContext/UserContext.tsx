@@ -1,7 +1,14 @@
-import { useRouteContext } from "@tanstack/react-router";
+import { useSuspenseQuery } from "@tanstack/react-query";
+
+import { userKeys } from "@app/hooks/api";
+import { fetchUserDetails } from "@app/hooks/api/users/queries";
 
 export const useUser = () => {
-  const user = useRouteContext({ from: "/_authenticate", select: (el) => el.user })!;
+  const { data: user } = useSuspenseQuery({
+    queryKey: userKeys.getUser,
+    queryFn: fetchUserDetails,
+    staleTime: Infinity
+  });
 
   return { user };
 };

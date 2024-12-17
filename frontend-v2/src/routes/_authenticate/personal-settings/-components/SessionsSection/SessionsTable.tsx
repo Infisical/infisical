@@ -14,7 +14,7 @@ import {
 import { useGetMySessions } from "@app/hooks/api";
 
 export const SessionsTable = () => {
-  const { data, isLoading } = useGetMySessions();
+  const { data, isPending } = useGetMySessions();
 
   const formatDate = (dateToFormat: string) => {
     const date = new Date(dateToFormat);
@@ -39,8 +39,8 @@ export const SessionsTable = () => {
           </Tr>
         </THead>
         <TBody>
-          {isLoading && <TableSkeleton columns={4} innerKey="sesssions" />}
-          {!isLoading &&
+          {isPending && <TableSkeleton columns={4} innerKey="sesssions" />}
+          {!isPending &&
             data &&
             data.length > 0 &&
             data.map(({ id, createdAt, lastUsed, ip, userAgent }) => {
@@ -53,7 +53,7 @@ export const SessionsTable = () => {
                 </Tr>
               );
             })}
-          {!isLoading && data && data?.length === 0 && (
+          {!isPending && data && data?.length === 0 && (
             <Tr>
               <Td colSpan={4}>
                 <EmptyState title="No sessions on file" icon={faServer} />

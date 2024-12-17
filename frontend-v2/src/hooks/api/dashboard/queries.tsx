@@ -1,8 +1,6 @@
 import { useCallback } from "react";
 import { useQuery, UseQueryOptions } from "@tanstack/react-query";
-import axios from "axios";
 
-import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
 import {
   DashboardProjectSecretsByKeys,
@@ -175,26 +173,6 @@ export const useGetProjectSecretsOverview = (
         includeDynamicSecrets,
         environments
       }),
-    onError: (error) => {
-      if (axios.isAxiosError(error)) {
-        const { message, requestId } = error.response?.data as {
-          message: string;
-          requestId: string;
-        };
-        createNotification({
-          title: "Error fetching secret details",
-          type: "error",
-          text: message,
-          copyActions: [
-            {
-              value: requestId,
-              name: "Request ID",
-              label: `Request ID: ${requestId}`
-            }
-          ]
-        });
-      }
-    },
     select: useCallback((data: Awaited<ReturnType<typeof fetchProjectSecretsOverview>>) => {
       const { secrets, ...select } = data;
       const uniqueSecrets = secrets ? unique(secrets, (i) => i.secretKey) : [];
@@ -213,7 +191,7 @@ export const useGetProjectSecretsOverview = (
         totalUniqueFoldersInPage: uniqueFolders.length
       };
     }, []),
-    keepPreviousData: true
+    placeholderData: (previousData) => previousData
   });
 };
 
@@ -278,26 +256,6 @@ export const useGetProjectSecretsDetails = (
         includeDynamicSecrets,
         tags
       }),
-    onError: (error) => {
-      if (axios.isAxiosError(error)) {
-        const { message, requestId } = error.response?.data as {
-          message: string;
-          requestId: string;
-        };
-        createNotification({
-          title: "Error fetching secret details",
-          type: "error",
-          text: message,
-          copyActions: [
-            {
-              value: requestId,
-              name: "Request ID",
-              label: `Request ID: ${requestId}`
-            }
-          ]
-        });
-      }
-    },
     select: useCallback(
       (data: Awaited<ReturnType<typeof fetchProjectSecretsDetails>>) => ({
         ...data,
@@ -305,7 +263,7 @@ export const useGetProjectSecretsDetails = (
       }),
       []
     ),
-    keepPreviousData: true
+    placeholderData: (previousData) => previousData
   });
 };
 
@@ -373,26 +331,6 @@ export const useGetProjectSecretsQuickSearch = (
         environments,
         tags
       }),
-    onError: (error) => {
-      if (axios.isAxiosError(error)) {
-        const { message, requestId } = error.response?.data as {
-          message: string;
-          requestId: string;
-        };
-        createNotification({
-          title: "Error fetching secrets deep search",
-          type: "error",
-          text: message,
-          copyActions: [
-            {
-              value: requestId,
-              name: "Request ID",
-              label: `Request ID: ${requestId}`
-            }
-          ]
-        });
-      }
-    },
     select: useCallback((data: Awaited<ReturnType<typeof fetchProjectSecretsQuickSearch>>) => {
       const { secrets, folders, dynamicSecrets } = data;
 
@@ -413,6 +351,6 @@ export const useGetProjectSecretsQuickSearch = (
         dynamicSecrets: groupedDynamicSecrets
       };
     }, []),
-    keepPreviousData: true
+    placeholderData: (previousData) => previousData
   });
 };

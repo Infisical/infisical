@@ -16,7 +16,7 @@ import { useGetOrgLicenses } from "@app/hooks/api";
 
 export const LicensesSection = () => {
   const { currentOrg } = useOrganization();
-  const { data, isLoading } = useGetOrgLicenses(currentOrg?.id ?? "");
+  const { data, isPending } = useGetOrgLicenses(currentOrg?.id ?? "");
 
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
@@ -32,7 +32,7 @@ export const LicensesSection = () => {
             </Tr>
           </THead>
           <TBody>
-            {!isLoading &&
+            {!isPending &&
               data &&
               data?.length > 0 &&
               data.map(({ id, licenseKey, isActivated, createdAt, expiresAt }) => {
@@ -47,8 +47,8 @@ export const LicensesSection = () => {
                   </Tr>
                 );
               })}
-            {isLoading && <TableSkeleton columns={4} innerKey="licenses" />}
-            {!isLoading && data && data?.length === 0 && (
+            {isPending && <TableSkeleton columns={4} innerKey="licenses" />}
+            {!isPending && data && data?.length === 0 && (
               <Tr>
                 <Td colSpan={4}>
                   <EmptyState title="No enterprise licenses on file" icon={faFileContract} />

@@ -26,15 +26,15 @@ export const useCreateSecretImport = () => {
       return data;
     },
     onSuccess: (_, { environment, projectId, path }) => {
-      queryClient.invalidateQueries(
-        secretImportKeys.getProjectSecretImports({ projectId, environment, path })
-      );
-      queryClient.invalidateQueries(
-        secretImportKeys.getSecretImportSecrets({ projectId, environment, path })
-      );
-      queryClient.invalidateQueries(
-        dashboardKeys.getDashboardSecrets({ projectId, secretPath: path ?? "/" })
-      );
+      queryClient.invalidateQueries({
+        queryKey: secretImportKeys.getProjectSecretImports({ projectId, environment, path })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretImportKeys.getSecretImportSecrets({ projectId, environment, path })
+      });
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath: path ?? "/" })
+      });
     }
   });
 };
@@ -53,15 +53,15 @@ export const useUpdateSecretImport = () => {
       return data;
     },
     onSuccess: (_, { environment, projectId, path }) => {
-      queryClient.invalidateQueries(
-        secretImportKeys.getProjectSecretImports({ projectId, path, environment })
-      );
-      queryClient.invalidateQueries(
-        secretImportKeys.getSecretImportSecrets({ environment, path, projectId })
-      );
-      queryClient.invalidateQueries(
-        dashboardKeys.getDashboardSecrets({ projectId, secretPath: path ?? "/" })
-      );
+      queryClient.invalidateQueries({
+        queryKey: secretImportKeys.getProjectSecretImports({ projectId, environment, path })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretImportKeys.getSecretImportSecrets({ projectId, environment, path })
+      });
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath: path ?? "/" })
+      });
     }
   });
 };
@@ -94,15 +94,15 @@ export const useDeleteSecretImport = () => {
       return data;
     },
     onSuccess: (_, { projectId, environment, path }) => {
-      queryClient.invalidateQueries(
-        secretImportKeys.getProjectSecretImports({ projectId, environment, path })
-      );
-      queryClient.invalidateQueries(
-        secretImportKeys.getSecretImportSecrets({ projectId, environment, path })
-      );
-      queryClient.invalidateQueries(
-        dashboardKeys.getDashboardSecrets({ projectId, secretPath: path ?? "/" })
-      );
+      queryClient.invalidateQueries({
+        queryKey: secretImportKeys.getProjectSecretImports({ projectId, environment, path })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretImportKeys.getSecretImportSecrets({ projectId, environment, path })
+      });
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath: path ?? "/" })
+      });
     }
   });
 };

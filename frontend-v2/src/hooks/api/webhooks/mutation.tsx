@@ -14,7 +14,7 @@ export const useCreateWebhook = () => {
       return data;
     },
     onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries(queryKeys.getWebhooks(workspaceId));
+      queryClient.invalidateQueries({ queryKey: queryKeys.getWebhooks(workspaceId) });
     }
   });
 };
@@ -28,10 +28,10 @@ export const useTestWebhook = () => {
       return data;
     },
     onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries(queryKeys.getWebhooks(workspaceId));
+      queryClient.invalidateQueries({ queryKey: queryKeys.getWebhooks(workspaceId) });
     },
     onError: (_, { workspaceId }) => {
-      queryClient.invalidateQueries(queryKeys.getWebhooks(workspaceId));
+      queryClient.invalidateQueries({ queryKey: queryKeys.getWebhooks(workspaceId) });
     }
   });
 };
@@ -47,7 +47,7 @@ export const useUpdateWebhook = () => {
       return data;
     },
     onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries(queryKeys.getWebhooks(workspaceId));
+      queryClient.invalidateQueries({ queryKey: queryKeys.getWebhooks(workspaceId) });
     }
   });
 };
@@ -61,7 +61,7 @@ export const useDeleteWebhook = () => {
       return data;
     },
     onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries(queryKeys.getWebhooks(workspaceId));
+      queryClient.invalidateQueries({ queryKey: queryKeys.getWebhooks(workspaceId) });
     }
   });
 };
