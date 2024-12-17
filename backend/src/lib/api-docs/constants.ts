@@ -1221,8 +1221,7 @@ export const SSH_CERTIFICATE_AUTHORITIES = {
     sshCaId: "The ID of the SSH CA to get the certificate templates for."
   },
   SIGN_SSH_KEY: {
-    projectId: "The ID of the project to sign the SSH public key for.",
-    templateName: "The name of the SSH certificate template to sign the SSH public key with.",
+    certificateTemplateId: "The ID of the SSH certificate template to sign the SSH public key with.",
     publicKey: "The SSH public key to sign.",
     certType: "The type of certificate to issue. This can be one of user or host.",
     principals: "The list of principals (usernames, hostnames) to include in the certificate.",
@@ -1232,8 +1231,7 @@ export const SSH_CERTIFICATE_AUTHORITIES = {
     signedKey: "The SSH certificate or signed SSH public key."
   },
   ISSUE_SSH_CREDENTIALS: {
-    projectId: "The ID of the project to issue the SSH credentials for.",
-    templateName: "The name of the SSH certificate template to issue the SSH credentials with.",
+    certificateTemplateId: "The ID of the SSH certificate template to issue the SSH credentials with.",
     keyAlgorithm: "The type of public key algorithm and size, in bits, of the key pair for the SSH CA.",
     certType: "The type of certificate to issue. This can be one of user or host.",
     principals: "The list of principals (usernames, hostnames) to include in the certificate.",

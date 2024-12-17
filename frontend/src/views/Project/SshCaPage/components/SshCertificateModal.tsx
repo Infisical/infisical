@@ -126,8 +126,8 @@ export const SshCertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
       switch (operation) {
         case SshCertificateOperation.SIGN_SSH_KEY: {
           const { serialNumber, signedKey } = await signSshKey({
-            projectId: currentWorkspace?.id || "",
-            templateName: templateData.name,
+            projectId,
+            certificateTemplateId: templateData.id,
             publicKey: existingPublicKey,
             certType,
             principals: principals.split(",").map((user) => user.trim()),
@@ -144,7 +144,7 @@ export const SshCertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
         case SshCertificateOperation.ISSUE_SSH_CREDS: {
           const { serialNumber, publicKey, privateKey, signedKey } = await issueSshCreds({
             projectId,
-            templateName: templateData.name,
+            certificateTemplateId: templateData.id,
             keyAlgorithm,
             certType,
             principals: principals.split(",").map((user) => user.trim()),

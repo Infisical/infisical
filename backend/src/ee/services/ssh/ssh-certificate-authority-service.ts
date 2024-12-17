@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+
 import { ProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -10,6 +11,7 @@ import { TSshCertificateTemplateDALFactory } from "@app/ee/services/ssh-certific
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+
 import { SshCertTemplateStatus } from "../ssh-certificate-template/ssh-certificate-template-types";
 import { createSshCert, createSshKeyPair, getSshPublicKey } from "./ssh-certificate-authority-fns";
 import {
@@ -30,7 +32,7 @@ type TSshCertificateAuthorityServiceFactoryDep = {
     "transaction" | "create" | "findById" | "updateById" | "deleteById" | "findOne"
   >;
   sshCertificateAuthoritySecretDAL: Pick<TSshCertificateAuthoritySecretDALFactory, "create" | "findOne">;
-  sshCertificateTemplateDAL: Pick<TSshCertificateTemplateDALFactory, "find" | "getByName">;
+  sshCertificateTemplateDAL: Pick<TSshCertificateTemplateDALFactory, "find" | "getById">;
   sshCertificateDAL: Pick<TSshCertificateDALFactory, "create" | "transaction">;
   sshCertificateBodyDAL: Pick<TSshCertificateBodyDALFactory, "create">;
   kmsService: Pick<
@@ -41,8 +43,6 @@ type TSshCertificateAuthorityServiceFactoryDep = {
 };
 
 export type TSshCertificateAuthorityServiceFactory = ReturnType<typeof sshCertificateAuthorityServiceFactory>;
-
-// TODO: secretManagerEncryptor -> sshEncryptor (cc akhil)
 
 export const sshCertificateAuthorityServiceFactory = ({
   sshCertificateAuthorityDAL,
@@ -92,7 +92,6 @@ export const sshCertificateAuthorityServiceFactory = ({
 
       const { publicKey, privateKey } = await createSshKeyPair(keyAlgorithm);
 
-      // TODO: update to sshEncryptor
       const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
@@ -135,7 +134,6 @@ export const sshCertificateAuthorityServiceFactory = ({
 
     const sshCaSecret = await sshCertificateAuthoritySecretDAL.findOne({ sshCaId: ca.id });
 
-    // TODO: update to sshDecryptor
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: ca.projectId
@@ -159,7 +157,6 @@ export const sshCertificateAuthorityServiceFactory = ({
 
     const sshCaSecret = await sshCertificateAuthoritySecretDAL.findOne({ sshCaId: ca.id });
 
-    // TODO: update to sshDecryptor
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: ca.projectId
@@ -208,7 +205,6 @@ export const sshCertificateAuthorityServiceFactory = ({
 
     const sshCaSecret = await sshCertificateAuthoritySecretDAL.findOne({ sshCaId: ca.id });
 
-    // TODO: update to sshDecryptor
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: ca.projectId
@@ -254,8 +250,7 @@ export const sshCertificateAuthorityServiceFactory = ({
    * SSH public key is signed using CA behind SSH certificate with name [templateName].
    */
   const issueSshCreds = async ({
-    projectId,
-    templateName,
+    certificateTemplateId,
     keyAlgorithm,
     certType,
     principals,
@@ -266,7 +261,7 @@ export const sshCertificateAuthorityServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TIssueSshCredsDTO) => {
-    const sshCertificateTemplate = await sshCertificateTemplateDAL.getByName(templateName, projectId);
+    const sshCertificateTemplate = await sshCertificateTemplateDAL.getById(certificateTemplateId);
     if (!sshCertificateTemplate) {
       throw new NotFoundError({
         message: "No SSH certificate template found with specified name"
@@ -306,10 +301,9 @@ export const sshCertificateAuthorityServiceFactory = ({
 
     const sshCaSecret = await sshCertificateAuthoritySecretDAL.findOne({ sshCaId: sshCertificateTemplate.sshCaId });
 
-    // TODO: update to sshDecryptor
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
-      projectId
+      projectId: sshCertificateTemplate.projectId
     });
 
     const decryptedCaPrivateKey = secretManagerDecryptor({
@@ -329,7 +323,6 @@ export const sshCertificateAuthorityServiceFactory = ({
       certType
     });
 
-    // TODO: update to sshEncryptor
     const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: sshCertificateTemplate.projectId
@@ -379,8 +372,7 @@ export const sshCertificateAuthorityServiceFactory = ({
    * using CA behind SSH certificate template with name [templateName]
    */
   const signSshKey = async ({
-    projectId,
-    templateName,
+    certificateTemplateId,
     publicKey,
     certType,
     principals,
@@ -391,7 +383,7 @@ export const sshCertificateAuthorityServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TSignSshKeyDTO) => {
-    const sshCertificateTemplate = await sshCertificateTemplateDAL.getByName(templateName, projectId);
+    const sshCertificateTemplate = await sshCertificateTemplateDAL.getById(certificateTemplateId);
     if (!sshCertificateTemplate) {
       throw new NotFoundError({
         message: "No SSH certificate template found with specified name"
@@ -431,10 +423,9 @@ export const sshCertificateAuthorityServiceFactory = ({
 
     const sshCaSecret = await sshCertificateAuthoritySecretDAL.findOne({ sshCaId: sshCertificateTemplate.sshCaId });
 
-    // TODO: update to sshDecryptor
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
-      projectId
+      projectId: sshCertificateTemplate.projectId
     });
 
     const decryptedCaPrivateKey = secretManagerDecryptor({
@@ -451,7 +442,6 @@ export const sshCertificateAuthorityServiceFactory = ({
       certType
     });
 
-    // TODO: update to sshEncryptor
     const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: sshCertificateTemplate.projectId

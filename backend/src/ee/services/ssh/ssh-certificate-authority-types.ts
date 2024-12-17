@@ -36,22 +36,22 @@ export type TDeleteSshCaDTO = {
 } & Omit<TProjectPermission, "projectId">;
 
 export type TIssueSshCredsDTO = {
-  templateName: string;
+  certificateTemplateId: string;
   keyAlgorithm: CertKeyAlgorithm;
   certType: SshCertType;
   principals: string[];
   ttl?: string;
   keyId?: string;
-} & TProjectPermission;
+} & Omit<TProjectPermission, "projectId">;
 
 export type TSignSshKeyDTO = {
-  templateName: string;
+  certificateTemplateId: string;
   publicKey: string;
   certType: SshCertType;
   principals: string[];
   ttl?: string;
   keyId?: string;
-} & TProjectPermission;
+} & Omit<TProjectPermission, "projectId">;
 
 export type TGetSshCaCertificateTemplatesDTO = {
   caId: string;

@@ -20,8 +20,10 @@ export const registerSshRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "Sign SSH public key",
       body: z.object({
-        projectId: z.string().trim().describe(SSH_CERTIFICATE_AUTHORITIES.SIGN_SSH_KEY.projectId),
-        templateName: z.string().trim().describe(SSH_CERTIFICATE_AUTHORITIES.SIGN_SSH_KEY.templateName),
+        certificateTemplateId: z
+          .string()
+          .trim()
+          .describe(SSH_CERTIFICATE_AUTHORITIES.SIGN_SSH_KEY.certificateTemplateId),
         publicKey: z.string().trim().describe(SSH_CERTIFICATE_AUTHORITIES.SIGN_SSH_KEY.publicKey),
         certType: z
           .nativeEnum(SshCertType)
@@ -87,8 +89,10 @@ export const registerSshRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "Issue SSH credentials (certificate + key)",
       body: z.object({
-        projectId: z.string().trim().describe(SSH_CERTIFICATE_AUTHORITIES.ISSUE_SSH_CREDENTIALS.projectId),
-        templateName: z.string().trim().describe(SSH_CERTIFICATE_AUTHORITIES.ISSUE_SSH_CREDENTIALS.templateName),
+        certificateTemplateId: z
+          .string()
+          .trim()
+          .describe(SSH_CERTIFICATE_AUTHORITIES.ISSUE_SSH_CREDENTIALS.certificateTemplateId),
         keyAlgorithm: z
           .nativeEnum(CertKeyAlgorithm)
           .default(CertKeyAlgorithm.RSA_2048)
