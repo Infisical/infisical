@@ -1,5 +1,4 @@
-import { APP_CONNECTION_REGISTER_MAP, registerAppConnectionRouter } from "src/server/routes/v1/app-connection-routers";
-
+import { APP_CONNECTION_REGISTER_MAP, registerAppConnectionRouter } from "@app/server/routes/v1/app-connection-routers";
 import { registerCmekRouter } from "@app/server/routes/v1/cmek-router";
 import { registerDashboardRouter } from "@app/server/routes/v1/dashboard-router";
 
