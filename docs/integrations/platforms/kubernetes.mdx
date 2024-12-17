@@ -43,7 +43,12 @@ The operator can be install via [Helm](https://helm.sh) or [kubectl](https://git
 
     **Namespace-scoped Installation**
 
-    The operator can be configured to watch and manage secrets in a specific namespace instead of having cluster-wide access.
+    The operator can be configured to watch and manage secrets in a specific namespace instead of having cluster-wide access. This is useful for:
+
+    - **Enhanced Security**: Limit the operator's permissions to only specific namespaces instead of cluster-wide access
+    - **Multi-tenant Clusters**: Run separate operator instances for different teams or applications
+    - **Resource Isolation**: Ensure operators in different namespaces don't interfere with each other
+    - **Development & Testing**: Run development and production operators side by side in isolated namespaces
 
     **Note**: For multiple namespace-scoped installations, only the first installation should install CRDs. Subsequent installations should set `installCRDs: false` to avoid conflicts.
 
