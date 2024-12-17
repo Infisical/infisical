@@ -1240,6 +1240,7 @@ export const registerRoutes = async (
     auditLogDAL,
     queueService,
     secretVersionDAL,
+    secretDAL,
     secretFolderVersionDAL: folderVersionDAL,
     snapshotDAL,
     identityAccessTokenDAL,
