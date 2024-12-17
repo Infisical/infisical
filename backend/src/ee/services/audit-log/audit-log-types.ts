@@ -2,6 +2,7 @@ import {
   TCreateProjectTemplateDTO,
   TUpdateProjectTemplateDTO
 } from "@app/ee/services/project-template/project-template-types";
+import { AppConnection, TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/lib/app-connections";
 import { SymmetricEncryption } from "@app/lib/crypto/cipher";
 import { TProjectPermission } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -208,7 +209,12 @@ export enum EventType {
   CREATE_PROJECT_TEMPLATE = "create-project-template",
   UPDATE_PROJECT_TEMPLATE = "update-project-template",
   DELETE_PROJECT_TEMPLATE = "delete-project-template",
-  APPLY_PROJECT_TEMPLATE = "apply-project-template"
+  APPLY_PROJECT_TEMPLATE = "apply-project-template",
+  GET_APP_CONNECTIONS = "get-app-connections",
+  GET_APP_CONNECTION = "get-app-connection",
+  CREATE_APP_CONNECTION = "create-app-connection",
+  UPDATE_APP_CONNECTION = "update-app-connection",
+  DELETE_APP_CONNECTION = "delete-app-connection"
 }
 
 interface UserActorMetadata {
@@ -1742,6 +1748,37 @@ interface ApplyProjectTemplateEvent {
   };
 }
 
+interface GetAppConnectionsEvent {
+  type: EventType.GET_APP_CONNECTIONS;
+  metadata?: {
+    app: AppConnection;
+  };
+}
+
+interface GetAppConnectionEvent {
+  type: EventType.GET_APP_CONNECTION;
+  metadata: {
+    connectionId: string;
+  };
+}
+
+interface CreateAppConnectionEvent {
+  type: EventType.CREATE_APP_CONNECTION;
+  metadata: Omit<TCreateAppConnectionDTO, "credentials"> & { connectionId: string };
+}
+
+interface UpdateAppConnectionEvent {
+  type: EventType.UPDATE_APP_CONNECTION;
+  metadata: Omit<TUpdateAppConnectionDTO, "credentials"> & { connectionId: string; credentialsUpdated: boolean };
+}
+
+interface DeleteAppConnectionEvent {
+  type: EventType.DELETE_APP_CONNECTION;
+  metadata: {
+    connectionId: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -1902,4 +1939,9 @@ export type Event =
   | CreateProjectTemplateEvent
   | UpdateProjectTemplateEvent
   | DeleteProjectTemplateEvent
-  | ApplyProjectTemplateEvent;
+  | ApplyProjectTemplateEvent
+  | GetAppConnectionsEvent
+  | GetAppConnectionEvent
+  | CreateAppConnectionEvent
+  | UpdateAppConnectionEvent
+  | DeleteAppConnectionEvent;

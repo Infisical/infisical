@@ -4,6 +4,7 @@ import { Tab } from "@headlessui/react";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { AppConnectionsTab } from "@app/views/Settings/OrgSettingsPage/components/AppConnectionsTab";
 import { ProjectTemplatesTab } from "@app/views/Settings/OrgSettingsPage/components/ProjectTemplatesTab";
 
 import { AuditLogStreamsTab } from "../AuditLogStreamTab";
@@ -18,6 +19,7 @@ const tabs = [
   { name: "Security", key: "tab-org-security" },
   { name: "Encryption", key: "tab-org-encryption" },
   { name: "Workflow Integrations", key: "workflow-integrations" },
+  { name: "App Connections", key: "app-connections" },
   { name: "Audit Log Streams", key: "tag-audit-log-streams" },
   { name: "Import", key: "tab-import" },
   { name: "Project Templates", key: "project-templates" }
@@ -66,6 +68,9 @@ export const OrgTabGroup = () => {
         </Tab.Panel>
         <Tab.Panel>
           <OrgWorkflowIntegrationTab />
+        </Tab.Panel>
+        <Tab.Panel>
+          <AppConnectionsTab />
         </Tab.Panel>
         <Tab.Panel>
           <AuditLogStreamsTab />

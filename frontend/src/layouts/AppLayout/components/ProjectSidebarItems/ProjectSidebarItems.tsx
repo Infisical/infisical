@@ -24,7 +24,8 @@ export const ProjectSidebarItem = () => {
   if (
     !currentWorkspace ||
     router.asPath.startsWith("personal") ||
-    router.asPath.startsWith("integrations")
+    router.asPath.startsWith("integrations") ||
+    router.asPath.startsWith("/app-connections")
   ) {
     return <div />;
   }

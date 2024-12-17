@@ -44,7 +44,7 @@ export const FormLabel = ({
     )}
     {tooltipText && (
       <Tooltip content={tooltipText} className={tooltipClassName}>
-        <FontAwesomeIcon icon={faQuestionCircle} size="1x" className="ml-2" />
+        <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
       </Tooltip>
     )}
   </Label.Root>
