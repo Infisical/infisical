@@ -1,1 +1,1 @@
-export { ServerConfigProvider, useServerConfig } from "./ServerConfigContext";
+export { useServerConfig } from "./ServerConfigContext";

@@ -6,6 +6,7 @@ import jsrp from "jsrp";
 import nacl from "tweetnacl";
 import { encodeBase64 } from "tweetnacl-util";
 
+import { Mfa } from "@app/components/auth/Mfa";
 import Aes256Gcm from "@app/components/utilities/cryptography/aes-256-gcm";
 import { deriveArgonKey } from "@app/components/utilities/cryptography/crypto";
 import { saveTokenToLocalStorage } from "@app/components/utilities/saveTokenToLocalStorage";
@@ -16,7 +17,6 @@ import { completeAccountSignup, useSelectOrganization } from "@app/hooks/api/aut
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import ProjectService from "@app/services/ProjectService";
-import { Mfa } from "@app/components/auth/Mfa";
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();

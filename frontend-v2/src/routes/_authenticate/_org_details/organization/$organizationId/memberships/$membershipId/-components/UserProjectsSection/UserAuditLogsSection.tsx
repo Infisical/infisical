@@ -7,6 +7,8 @@ import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@a
 import { withPermission } from "@app/hoc";
 import { OrgUser } from "@app/hooks/api/types";
 
+import { LogsSection } from "../../../../audit-logs/-components";
+
 type Props = {
   orgMembership: OrgUser;
 };

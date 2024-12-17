@@ -1,7 +1,6 @@
 import { faSlack } from "@fortawesome/free-brands-svg-icons";
 import { faEllipsis, faGear, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate } from "@tanstack/react-router";
 import axios from "axios";
 import { twMerge } from "tailwind-merge";
 
@@ -45,7 +44,6 @@ export const OrgWorkflowIntegrationTab = withPermission(
     ] as const);
 
     const { currentOrg } = useOrganization();
-    const navigate = useNavigate();
     const { data: workflowIntegrations, isLoading: isWorkflowIntegrationsLoading } =
       useGetWorkflowIntegrations(currentOrg?.id);
 

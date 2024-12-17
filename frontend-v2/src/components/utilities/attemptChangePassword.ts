@@ -38,7 +38,7 @@ const attemptChangePassword = ({ email, currentPassword, newPassword }: Params):
         const clientProof = clientOldPassword.getProof();
 
         clientNewPassword.init({ username: email, password: newPassword }, async () => {
-          clientNewPassword.createVerifier(async (err, result) => {
+          clientNewPassword.createVerifier(async (_err, result) => {
             try {
               const derivedKey = await deriveArgonKey({
                 password: newPassword,

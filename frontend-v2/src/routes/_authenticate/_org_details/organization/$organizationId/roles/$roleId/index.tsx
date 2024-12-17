@@ -1,12 +1,12 @@
-import { Helmet } from 'react-helmet'
-import { useTranslation } from 'react-i18next'
-import { faChevronLeft, faEllipsis } from '@fortawesome/free-solid-svg-icons'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { createFileRoute, useNavigate, useParams } from '@tanstack/react-router'
-import { twMerge } from 'tailwind-merge'
+import { Helmet } from "react-helmet";
+import { useTranslation } from "react-i18next";
+import { faChevronLeft, faEllipsis } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
+import { twMerge } from "tailwind-merge";
 
-import { createNotification } from '@app/components/notifications'
-import { OrgPermissionCan } from '@app/components/permissions'
+import { createNotification } from "@app/components/notifications";
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
   DeleteActionModal,
@@ -14,79 +14,70 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Tooltip,
-} from '@app/components/v2'
-import {
-  OrgPermissionActions,
-  OrgPermissionSubjects,
-  useOrganization,
-} from '@app/context'
-import { withPermission } from '@app/hoc'
-import { useDeleteOrgRole, useGetOrgRole } from '@app/hooks/api'
-import { usePopUp } from '@app/hooks/usePopUp'
-import { TabSections } from '@app/types/org'
+  Tooltip
+} from "@app/components/v2";
+import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import { withPermission } from "@app/hoc";
+import { useDeleteOrgRole, useGetOrgRole } from "@app/hooks/api";
+import { usePopUp } from "@app/hooks/usePopUp";
+import { TabSections } from "@app/types/org";
 
-import {
-  RoleDetailsSection,
-  RoleModal,
-  RolePermissionsSection,
-} from './-components'
+import { RoleDetailsSection, RoleModal, RolePermissionsSection } from "./-components";
 
 export const RolePage = withPermission(
   () => {
-    const navigate = useNavigate()
+    const navigate = useNavigate();
     const params = useParams({
-      from: '/_authenticate/_org_details/_org-layout/organization/$organizationId/roles/$roleId',
-    })
-    const roleId = params.roleId as string
-    const { currentOrg } = useOrganization()
-    const orgId = currentOrg?.id || ''
-    const { data } = useGetOrgRole(orgId, roleId)
-    const { mutateAsync: deleteOrgRole } = useDeleteOrgRole()
+      from: "/_authenticate/_org_details/_org-layout/organization/$organizationId/roles/$roleId/"
+    });
+    const roleId = params.roleId as string;
+    const { currentOrg } = useOrganization();
+    const orgId = currentOrg?.id || "";
+    const { data } = useGetOrgRole(orgId, roleId);
+    const { mutateAsync: deleteOrgRole } = useDeleteOrgRole();
 
-    const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } =
-      usePopUp(['role', 'deleteOrgRole'] as const)
+    const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
+      "role",
+      "deleteOrgRole"
+    ] as const);
 
     const onDeleteOrgRoleSubmit = async () => {
       try {
-        if (!orgId || !roleId) return
+        if (!orgId || !roleId) return;
 
         await deleteOrgRole({
           orgId,
-          id: roleId,
-        })
+          id: roleId
+        });
 
         createNotification({
-          text: 'Successfully deleted organization role',
-          type: 'success',
-        })
+          text: "Successfully deleted organization role",
+          type: "success"
+        });
 
-        handlePopUpClose('deleteOrgRole')
+        handlePopUpClose("deleteOrgRole");
         navigate({
-          to: '/organization/$organizationId/members' as const,
+          to: "/organization/$organizationId/members" as const,
           params: {
-            organizationId: currentOrg.id,
+            organizationId: currentOrg.id
           },
           search: {
-            selectedTab: TabSections.Roles,
-          },
-        })
+            selectedTab: TabSections.Roles
+          }
+        });
       } catch (err) {
-        console.error(err)
-        const error = err as any
-        const text =
-          error?.response?.data?.message ?? 'Failed to delete organization role'
+        console.error(err);
+        const error = err as any;
+        const text = error?.response?.data?.message ?? "Failed to delete organization role";
 
         createNotification({
           text,
-          type: 'error',
-        })
+          type: "error"
+        });
       }
-    }
+    };
 
-    const isCustomRole = !['admin', 'member', 'no-access'].includes(
-      data?.slug ?? '',
-    )
+    const isCustomRole = !["admin", "member", "no-access"].includes(data?.slug ?? "");
 
     return (
       <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
@@ -98,14 +89,14 @@ export const RolePage = withPermission(
               leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
               onClick={() => {
                 navigate({
-                  to: '/organization/$organizationId/members' as const,
+                  to: "/organization/$organizationId/members" as const,
                   params: {
-                    organizationId: currentOrg.id,
+                    organizationId: currentOrg.id
                   },
                   search: {
-                    selectedTab: TabSections.Roles,
-                  },
-                })
+                    selectedTab: TabSections.Roles
+                  }
+                });
               }}
               className="mb-4"
             >
@@ -123,20 +114,16 @@ export const RolePage = withPermission(
                     </div>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="p-1">
-                    <OrgPermissionCan
-                      I={OrgPermissionActions.Edit}
-                      a={OrgPermissionSubjects.Role}
-                    >
+                    <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Role}>
                       {(isAllowed) => (
                         <DropdownMenuItem
                           className={twMerge(
-                            !isAllowed &&
-                              'pointer-events-none cursor-not-allowed opacity-50',
+                            !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
                           )}
                           onClick={async () => {
-                            handlePopUpOpen('role', {
-                              roleId,
-                            })
+                            handlePopUpOpen("role", {
+                              roleId
+                            });
                           }}
                           disabled={!isAllowed}
                         >
@@ -152,11 +139,11 @@ export const RolePage = withPermission(
                         <DropdownMenuItem
                           className={twMerge(
                             isAllowed
-                              ? 'hover:!bg-red-500 hover:!text-white'
-                              : 'pointer-events-none cursor-not-allowed opacity-50',
+                              ? "hover:!bg-red-500 hover:!text-white"
+                              : "pointer-events-none cursor-not-allowed opacity-50"
                           )}
                           onClick={async () => {
-                            handlePopUpOpen('deleteOrgRole')
+                            handlePopUpOpen("deleteOrgRole");
                           }}
                           disabled={!isAllowed}
                         >
@@ -170,10 +157,7 @@ export const RolePage = withPermission(
             </div>
             <div className="flex">
               <div className="mr-4 w-96">
-                <RoleDetailsSection
-                  roleId={roleId}
-                  handlePopUpOpen={handlePopUpOpen}
-                />
+                <RoleDetailsSection roleId={roleId} handlePopUpOpen={handlePopUpOpen} />
               </div>
               <RolePermissionsSection roleId={roleId} />
             </div>
@@ -182,34 +166,32 @@ export const RolePage = withPermission(
         <RoleModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <DeleteActionModal
           isOpen={popUp.deleteOrgRole.isOpen}
-          title={`Are you sure want to delete the organization role ${data?.name ?? ''}?`}
-          onChange={(isOpen) => handlePopUpToggle('deleteOrgRole', isOpen)}
+          title={`Are you sure want to delete the organization role ${data?.name ?? ""}?`}
+          onChange={(isOpen) => handlePopUpToggle("deleteOrgRole", isOpen)}
           deleteKey="confirm"
           onDeleteApproved={() => onDeleteOrgRoleSubmit()}
         />
       </div>
-    )
+    );
   },
-  { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Role },
-)
+  { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Role }
+);
 
 const OrgRoleRoute = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation();
   return (
     <>
       <Helmet>
-        <title>
-          {t('common.head-title', { title: t('settings.org.title') })}
-        </title>
+        <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <RolePage />
     </>
-  )
-}
+  );
+};
 
 export const Route = createFileRoute(
-  '/_authenticate/_org_details/_org-layout/organization/$organizationId/roles/$roleId/',
+  "/_authenticate/_org_details/_org-layout/organization/$organizationId/roles/$roleId/"
 )({
-  component: OrgRoleRoute,
-})
+  component: OrgRoleRoute
+});

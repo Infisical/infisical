@@ -32,7 +32,9 @@ export const PersonalSettingsLayout = () => {
             <nav className="items-between flex h-full flex-col justify-between overflow-y-auto dark:[color-scheme:dark]">
               <div className="flex-grow">
                 <Link
-                  to={`/organization/$organizationId/${ProjectType.SecretManager}` as const}
+                  to={
+                    `/organization/$organizationId/${ProjectType.SecretManager}/overview` as const
+                  }
                   params={{ organizationId }}
                 >
                   <div className="my-6 flex cursor-default items-center justify-center pr-2 text-sm text-mineshaft-300 hover:text-mineshaft-100">

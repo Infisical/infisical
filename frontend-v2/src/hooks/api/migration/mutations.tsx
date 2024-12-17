@@ -21,7 +21,9 @@ export const useImportEnvKey = () => {
             "Content-Type": "multipart/form-data"
           },
           onUploadProgress: (progressEvent) => {
-            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            const percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / (progressEvent?.total || 1)
+            );
             console.log(`Upload Progress: ${percentCompleted}%`);
           }
         });

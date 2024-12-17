@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -9,7 +10,6 @@ import { useOrganization } from "@app/context";
 import { useCreateOrgRole, useGetOrgRole, useUpdateOrgRole } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { slugSchema } from "@app/lib/schemas";
-import { useNavigate } from "@tanstack/react-router";
 
 const schema = z
   .object({
@@ -104,7 +104,7 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
 
         handlePopUpToggle("role", false);
         navigate({
-          to: "/organization/$organizationId/roles/roleId",
+          to: "/organization/$organizationId/roles/$roleId",
           params: {
             organizationId: orgId,
             roleId: newRole.id

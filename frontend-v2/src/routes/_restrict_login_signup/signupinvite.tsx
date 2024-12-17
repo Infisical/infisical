@@ -7,9 +7,11 @@ import { Helmet } from "react-helmet";
 import { faWarning, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
 import jsrp from "jsrp";
 import nacl from "tweetnacl";
 import { encodeBase64 } from "tweetnacl-util";
+import { z } from "zod";
 
 import { Mfa } from "@app/components/auth/Mfa";
 import InputField from "@app/components/basic/InputField";
@@ -386,7 +388,7 @@ const SignupInvitePage = () => {
               setBackupKeyIssued
             });
             navigate({
-              to: `/organization/$organizationId/${ProjectType.SecretManager}` as const,
+              to: `/organization/$organizationId/${ProjectType.SecretManager}/overview` as const,
               params: {
                 organizationId
               }
@@ -427,6 +429,13 @@ const SignupInvitePage = () => {
   );
 };
 
+const SignupInvitePageQueryParamsSchema = z.object({
+  token: z.string(),
+  to: z.string(),
+  organization_id: z.string()
+});
+
 export const Route = createFileRoute("/_restrict_login_signup/signupinvite")({
-  component: SignupInvitePage
+  component: SignupInvitePage,
+  validateSearch: zodValidator(SignupInvitePageQueryParamsSchema)
 });

@@ -2,6 +2,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 
 import { authKeys, fetchAuthToken } from "@app/hooks/api/auth/queries";
 import { setAuthToken } from "@app/hooks/api/reactQuery";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 export const Route = createFileRoute("/_restrict_login_signup")({
   beforeLoad: async ({ context }) => {
@@ -20,7 +21,7 @@ export const Route = createFileRoute("/_restrict_login_signup")({
       throw redirect({ to: "/login/select-organization" });
     }
     throw redirect({
-      to: "/organization/$organizationId/secret-manager",
+      to: `/organization/$organizationId/${ProjectType.SecretManager}/overview` as const,
       params: {
         organizationId: data.organizationId
       }

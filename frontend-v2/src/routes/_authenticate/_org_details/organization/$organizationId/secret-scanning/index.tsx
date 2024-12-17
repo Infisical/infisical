@@ -1,73 +1,68 @@
-import { useEffect } from 'react'
-import { Helmet } from 'react-helmet'
-import { createFileRoute, useSearch } from '@tanstack/react-router'
+import { useEffect } from "react";
+import { Helmet } from "react-helmet";
+import { createFileRoute, useSearch } from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
+import { z } from "zod";
 
-import { OrgPermissionCan } from '@app/components/permissions'
-import { Button, NoticeBanner } from '@app/components/v2'
+import { OrgPermissionCan } from "@app/components/permissions";
+import { Button, NoticeBanner } from "@app/components/v2";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
-  useServerConfig,
-} from '@app/context'
-import { withPermission } from '@app/hoc'
+  useServerConfig
+} from "@app/context";
+import { withPermission } from "@app/hoc";
 import {
   useCreateNewInstallationSession,
   useGetSecretScanningInstallationStatus,
-  useLinkGitAppInstallationWithOrg,
-} from '@app/hooks/api/secretScanning'
+  useLinkGitAppInstallationWithOrg
+} from "@app/hooks/api/secretScanning";
 
-import { SecretScanningLogsTable } from './-components'
+import { SecretScanningLogsTable } from "./-components";
 
 const SecretScanning = withPermission(
   () => {
     const queryParams = useSearch({
-      from: '/_authenticate/_org_details/_org-layout/organization/$organizationId/secret-scanning',
-    })
-    const { config } = useServerConfig()
-    const { currentOrg } = useOrganization()
-    const organizationId = currentOrg.id
+      from: "/_authenticate/_org_details/_org-layout/organization/$organizationId/secret-scanning/"
+    });
+    const { config } = useServerConfig();
+    const { currentOrg } = useOrganization();
+    const organizationId = currentOrg.id;
 
     const { mutateAsync: linkGitAppInstallationWithOrganization } =
-      useLinkGitAppInstallationWithOrg()
-    const { mutateAsync: createNewIntegrationSession } =
-      useCreateNewInstallationSession()
-    const {
-      data: installationStatus,
-      isLoading: isSecretScanningInstatllationStatusLoading,
-    } = useGetSecretScanningInstallationStatus(organizationId)
+      useLinkGitAppInstallationWithOrg();
+    const { mutateAsync: createNewIntegrationSession } = useCreateNewInstallationSession();
+    const { data: installationStatus, isLoading: isSecretScanningInstatllationStatusLoading } =
+      useGetSecretScanningInstallationStatus(organizationId);
     const integrationEnabled =
-      !isSecretScanningInstatllationStatusLoading &&
-      installationStatus?.appInstallationCompleted
+      !isSecretScanningInstatllationStatusLoading && installationStatus?.appInstallationCompleted;
 
     useEffect(() => {
       const linkInstallation = async () => {
-        if (
-          typeof queryParams.state === 'string' &&
-          typeof queryParams.installation_id === 'string'
-        ) {
+        if (queryParams.state && queryParams.installation_id) {
           try {
             const isLinked = await linkGitAppInstallationWithOrganization({
               installationId: queryParams.installation_id as string,
-              sessionId: queryParams.state as string,
-            })
+              sessionId: queryParams.state as string
+            });
             if (isLinked) {
-              window.location.reload()
+              window.location.reload();
             }
 
-            console.log('installation verification complete')
+            console.log("installation verification complete");
           } catch (e) {
-            console.log('app installation is stale, start new session', e)
+            console.log("app installation is stale, start new session", e);
           }
         }
-      }
-      linkInstallation()
-    }, [queryParams.state, queryParams.installation_id])
+      };
+      linkInstallation();
+    }, [queryParams.state, queryParams.installation_id]);
 
     const generateNewIntegrationSession = async () => {
-      const session = await createNewIntegrationSession({ organizationId })
-      window.location.href = `https://github.com/apps/infisical-radar/installations/new?state=${session.sessionId}`
-    }
+      const session = await createNewIntegrationSession({ organizationId });
+      window.location.href = `https://github.com/apps/infisical-radar/installations/new?state=${session.sessionId}`;
+    };
 
     return (
       <div>
@@ -78,26 +73,20 @@ const SecretScanning = withPermission(
         </Helmet>
         <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
           <div className="w-full max-w-7xl px-6">
-            <div className="mt-6 text-3xl font-semibold text-gray-200">
-              Secret Scanning
-            </div>
+            <div className="mt-6 text-3xl font-semibold text-gray-200">Secret Scanning</div>
             <div className="mb-6 text-lg text-mineshaft-300">
-              Automatically monitor your GitHub activity and prevent secret
-              leaks
+              Automatically monitor your GitHub activity and prevent secret leaks
             </div>
             {config.isSecretScanningDisabled && (
-              <NoticeBanner
-                title="Secret scanning is in maintenance"
-                className="mb-4"
-              >
-                We are working on improving the performance of secret scanning
-                due to increased usage.
+              <NoticeBanner title="Secret scanning is in maintenance" className="mb-4">
+                We are working on improving the performance of secret scanning due to increased
+                usage.
               </NoticeBanner>
             )}
             <div className="relative mb-6 flex justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6">
               <div className="flex flex-col items-start">
                 <div className="mb-1 flex flex-row">
-                  Secret Scanning Status:{' '}
+                  Secret Scanning Status:{" "}
                   {integrationEnabled ? (
                     <p className="ml-1.5 font-semibold text-green">Enabled</p>
                   ) : (
@@ -107,8 +96,8 @@ const SecretScanning = withPermission(
                 <div>
                   {integrationEnabled ? (
                     <p className="text-mineshaft-300">
-                      Your GitHub organization is connected to Infisical, and is
-                      being continuously monitored for secret leaks.
+                      Your GitHub organization is connected to Infisical, and is being continuously
+                      monitored for secret leaks.
                     </p>
                   ) : (
                     <p className="text-mineshaft-300">
@@ -148,16 +137,22 @@ const SecretScanning = withPermission(
           </div>
         </div>
       </div>
-    )
+    );
   },
   {
     action: OrgPermissionActions.Read,
-    subject: OrgPermissionSubjects.SecretScanning,
-  },
-)
+    subject: OrgPermissionSubjects.SecretScanning
+  }
+);
+
+const SecretScanningQueryParams = z.object({
+  state: z.string().catch(""),
+  installation_id: z.string().catch("")
+});
 
 export const Route = createFileRoute(
-  '/_authenticate/_org_details/_org-layout/organization/$organizationId/secret-scanning/',
+  "/_authenticate/_org_details/_org-layout/organization/$organizationId/secret-scanning/"
 )({
   component: SecretScanning,
-})
+  validateSearch: zodValidator(SecretScanningQueryParams)
+});

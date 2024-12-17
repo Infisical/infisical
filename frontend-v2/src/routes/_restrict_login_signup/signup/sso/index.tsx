@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { createFileRoute, useSearch } from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
 import { jwtDecode } from "jwt-decode";
+import { z } from "zod";
 
 import { BackupPDFStep } from "./-components/BackupPDFStep";
 import { EmailConfirmationStep } from "./-components/EmailConfirmationStep";
@@ -10,7 +12,7 @@ import { UserInfoSSOStep } from "./-components/UserInfoSSOStep";
 
 const SignupSSOPage = () => {
   const { t } = useTranslation();
-  const search = useSearch({ from: "/signup/sso/" });
+  const search = useSearch({ from: "/_restrict_login_signup/signup/sso/" });
   const token = search.token as string;
 
   const [step, setStep] = useState(0);
@@ -85,6 +87,11 @@ const SignupSSOPage = () => {
   );
 };
 
+const SignupSSOPageQueryParamsSchema = z.object({
+  token: z.string()
+});
+
 export const Route = createFileRoute("/_restrict_login_signup/signup/sso/")({
-  component: SignupSSOPage
+  component: SignupSSOPage,
+  validateSearch: zodValidator(SignupSSOPageQueryParamsSchema)
 });

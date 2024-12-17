@@ -30,7 +30,7 @@ const RootPage = () => {
 export const Route = createRootRouteWithContext<TRouterContext>()({
   component: RootPage,
   beforeLoad: async ({ context }) => {
-    const serverConfig = await context.queryClient.fetchQuery({
+    const serverConfig = await context.queryClient.ensureQueryData({
       queryKey: adminQueryKeys.serverConfig(),
       queryFn: fetchServerConfig
     });

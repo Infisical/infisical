@@ -90,7 +90,12 @@ export default function NavHeader({
       )}
       <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-3 text-sm text-gray-400" />
       {pageName === "Secrets" ? (
-        <Link to={{ pathname: "/project/[id]/secrets/overview", query: { id: navigate.query.id } }}>
+        <Link
+          to={{
+            pathname: "/project/$projectId/secrets/overview",
+            params: { id: currentWorkspace?.id }
+          }}
+        >
           <a className="text-sm font-semibold text-primary/80 hover:text-primary">{pageName}</a>
         </Link>
       ) : (

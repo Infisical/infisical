@@ -6,6 +6,7 @@ import {
   faServer
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useNavigate } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -37,7 +38,6 @@ import { useGetIdentityMembershipOrgs, useGetOrgRoles, useUpdateIdentity } from 
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { OrgIdentityOrderBy } from "@app/hooks/api/organization/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
-import { useNavigate } from "@tanstack/react-router";
 
 type Props = {
   handlePopUpOpen: (
@@ -254,7 +254,13 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                                 )}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  navigate.push(`/org/${organizationId}/identities/${id}`);
+                                  navigate({
+                                    to: "/organization/$organizationId/identities/$identityId",
+                                    params: {
+                                      organizationId,
+                                      identityId: id
+                                    }
+                                  });
                                 }}
                                 disabled={!isAllowed}
                               >

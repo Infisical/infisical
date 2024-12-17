@@ -148,14 +148,18 @@ export const usePerformSecretRollback = () => {
       return data;
     },
     onSuccess: (_, { workspaceId, environment, directory }) => {
-      queryClient.invalidateQueries([
-        { workspaceId, environment, secretPath: directory },
-        "secrets"
-      ]);
-      queryClient.invalidateQueries([
-        "secret-folders",
-        { projectId: workspaceId, environment, path: directory }
-      ]);
+      queryClient.invalidateQueries({
+        queryKey: [
+          { workspaceId, environment, secretPath: directory },
+          "secrets"
+        ]
+      });
+      queryClient.invalidateQueries({
+        queryKey: [
+          "secret-folders",
+          { projectId: workspaceId, environment, path: directory }
+        ]
+      });
       queryClient.invalidateQueries(
         secretSnapshotKeys.list({ workspaceId, environment, directory })
       );

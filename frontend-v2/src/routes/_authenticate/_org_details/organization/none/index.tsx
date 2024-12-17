@@ -1,10 +1,10 @@
 import { useEffect } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { createFileRoute } from "@tanstack/react-router";
 
 import { CreateOrgModal } from "@app/components/organization/CreateOrgModal";
 import { usePopUp } from "@app/hooks";
-import { createFileRoute } from "@tanstack/react-router";
 
 const NoneOrganization = () => {
   const { t } = useTranslation();

@@ -24,7 +24,7 @@ export const navigateUserToOrg = async (navigate: NavigateFn, organizationId?: s
   } else {
     // user is not part of any non-auth enforced orgs
     localStorage.removeItem("orgData.id");
-    navigate({ to: "/org/none" });
+    navigate({ to: "/organization/none" });
   }
 };
 

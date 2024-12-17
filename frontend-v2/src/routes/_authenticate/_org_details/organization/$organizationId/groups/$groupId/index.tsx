@@ -1,12 +1,12 @@
-import { Helmet } from 'react-helmet'
-import { useTranslation } from 'react-i18next'
-import { faChevronLeft, faEllipsis } from '@fortawesome/free-solid-svg-icons'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { createFileRoute, useNavigate, useParams } from '@tanstack/react-router'
-import { twMerge } from 'tailwind-merge'
+import { Helmet } from "react-helmet";
+import { useTranslation } from "react-i18next";
+import { faChevronLeft, faEllipsis } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
+import { twMerge } from "tailwind-merge";
 
-import { createNotification } from '@app/components/notifications'
-import { OrgPermissionCan } from '@app/components/permissions'
+import { createNotification } from "@app/components/notifications";
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
   DeleteActionModal,
@@ -16,81 +16,74 @@ import {
   DropdownMenuTrigger,
   Spinner,
   Tooltip,
-  UpgradePlanModal,
-} from '@app/components/v2'
-import {
-  OrgPermissionActions,
-  OrgPermissionSubjects,
-  useOrganization,
-} from '@app/context'
-import { withPermission } from '@app/hoc'
-import { useDeleteGroup } from '@app/hooks/api'
-import { useGetGroupById } from '@app/hooks/api/groups/queries'
-import { usePopUp } from '@app/hooks/usePopUp'
+  UpgradePlanModal
+} from "@app/components/v2";
+import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import { withPermission } from "@app/hoc";
+import { useDeleteGroup } from "@app/hooks/api";
+import { useGetGroupById } from "@app/hooks/api/groups/queries";
+import { usePopUp } from "@app/hooks/usePopUp";
 
-import { GroupCreateUpdateModal } from './-components/GroupCreateUpdateModal'
-import { GroupMembersSection } from './-components/GroupMembersSection'
-import { GroupDetailsSection } from './-components'
+import { GroupCreateUpdateModal } from "./-components/GroupCreateUpdateModal";
+import { GroupMembersSection } from "./-components/GroupMembersSection";
+import { GroupDetailsSection } from "./-components";
 
 export enum TabSections {
-  Member = 'members',
-  Groups = 'groups',
-  Roles = 'roles',
-  Identities = 'identities',
+  Member = "members",
+  Groups = "groups",
+  Roles = "roles",
+  Identities = "identities"
 }
 
 const GroupPage = withPermission(
   () => {
-    const navigate = useNavigate()
+    const navigate = useNavigate();
     const params = useParams({
-      from: '/_authenticate/_org_details/_org-layout/organization/$organizationId/groups/$groupId',
-    })
-    const groupId = params.groupId as string
-    const { currentOrg } = useOrganization()
+      from: "/_authenticate/_org_details/_org-layout/organization/$organizationId/groups/$groupId/"
+    });
+    const groupId = params.groupId as string;
+    const { currentOrg } = useOrganization();
 
-    const { data, isLoading } = useGetGroupById(groupId)
+    const { data, isLoading } = useGetGroupById(groupId);
 
-    const { mutateAsync: deleteMutateAsync } = useDeleteGroup()
+    const { mutateAsync: deleteMutateAsync } = useDeleteGroup();
 
-    const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } =
-      usePopUp(['groupCreateUpdate', 'deleteGroup', 'upgradePlan'] as const)
+    const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
+      "groupCreateUpdate",
+      "deleteGroup",
+      "upgradePlan"
+    ] as const);
 
-    const onDeleteGroupSubmit = async ({
-      name,
-      id,
-    }: {
-      name: string
-      id: string
-    }) => {
+    const onDeleteGroupSubmit = async ({ name, id }: { name: string; id: string }) => {
       try {
         await deleteMutateAsync({
-          id,
-        })
+          id
+        });
         createNotification({
           text: `Successfully deleted the ${name} group`,
-          type: 'success',
-        })
+          type: "success"
+        });
         navigate({
-          to: '/organization/$organizationId/members' as const,
+          to: "/organization/$organizationId/members" as const,
           params: {
-            organizationId: currentOrg.id,
+            organizationId: currentOrg.id
           },
           search: {
-            selectedTab: TabSections.Groups,
-          },
-        })
+            selectedTab: TabSections.Groups
+          }
+        });
       } catch (err) {
-        console.error(err)
+        console.error(err);
         createNotification({
           text: `Failed to delete the ${name} group`,
-          type: 'error',
-        })
+          type: "error"
+        });
       }
 
-      handlePopUpClose('deleteGroup')
-    }
+      handlePopUpClose("deleteGroup");
+    };
 
-    if (isLoading) return <Spinner size="sm" className="ml-2 mt-2" />
+    if (isLoading) return <Spinner size="sm" className="ml-2 mt-2" />;
 
     return (
       <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
@@ -102,23 +95,21 @@ const GroupPage = withPermission(
               leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
               onClick={() => {
                 navigate({
-                  to: '/organization/$organizationId/members' as const,
+                  to: "/organization/$organizationId/members" as const,
                   params: {
-                    organizationId: currentOrg.id,
+                    organizationId: currentOrg.id
                   },
                   search: {
-                    selectedTab: TabSections.Groups,
-                  },
-                })
+                    selectedTab: TabSections.Groups
+                  }
+                });
               }}
               className="mb-4"
             >
               Groups
             </Button>
             <div className="mb-4 flex items-center justify-between">
-              <p className="text-3xl font-semibold text-white">
-                {data.group.name}
-              </p>
+              <p className="text-3xl font-semibold text-white">{data.group.name}</p>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild className="rounded-lg">
                   <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
@@ -128,23 +119,19 @@ const GroupPage = withPermission(
                   </div>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="p-1">
-                  <OrgPermissionCan
-                    I={OrgPermissionActions.Edit}
-                    a={OrgPermissionSubjects.Groups}
-                  >
+                  <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Groups}>
                     {(isAllowed) => (
                       <DropdownMenuItem
                         className={twMerge(
-                          !isAllowed &&
-                            'pointer-events-none cursor-not-allowed opacity-50',
+                          !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
                         )}
                         onClick={async () => {
-                          handlePopUpOpen('groupCreateUpdate', {
+                          handlePopUpOpen("groupCreateUpdate", {
                             groupId,
                             name: data.group.name,
                             slug: data.group.slug,
-                            role: data.group.role,
-                          })
+                            role: data.group.role
+                          });
                         }}
                         disabled={!isAllowed}
                       >
@@ -160,14 +147,14 @@ const GroupPage = withPermission(
                       <DropdownMenuItem
                         className={twMerge(
                           isAllowed
-                            ? 'hover:!bg-red-500 hover:!text-white'
-                            : 'pointer-events-none cursor-not-allowed opacity-50',
+                            ? "hover:!bg-red-500 hover:!text-white"
+                            : "pointer-events-none cursor-not-allowed opacity-50"
                         )}
                         onClick={async () => {
-                          handlePopUpOpen('deleteGroup', {
+                          handlePopUpOpen("deleteGroup", {
                             id: groupId,
-                            name: data.group.name,
-                          })
+                            name: data.group.name
+                          });
                         }}
                         disabled={!isAllowed}
                       >
@@ -180,15 +167,9 @@ const GroupPage = withPermission(
             </div>
             <div className="flex">
               <div className="mr-4 w-96">
-                <GroupDetailsSection
-                  groupId={groupId}
-                  handlePopUpOpen={handlePopUpOpen}
-                />
+                <GroupDetailsSection groupId={groupId} handlePopUpOpen={handlePopUpOpen} />
               </div>
-              <GroupMembersSection
-                groupId={groupId}
-                groupSlug={data.group.slug}
-              />
+              <GroupMembersSection groupId={groupId} groupSlug={data.group.slug} />
             </div>
           </div>
         )}
@@ -200,46 +181,40 @@ const GroupPage = withPermission(
         <DeleteActionModal
           isOpen={popUp.deleteGroup.isOpen}
           title={`Are you sure want to delete the group named ${
-            (popUp?.deleteGroup?.data as { name: string })?.name || ''
+            (popUp?.deleteGroup?.data as { name: string })?.name || ""
           }?`}
-          onChange={(isOpen) => handlePopUpToggle('deleteGroup', isOpen)}
+          onChange={(isOpen) => handlePopUpToggle("deleteGroup", isOpen)}
           deleteKey="confirm"
           onDeleteApproved={() =>
-            onDeleteGroupSubmit(
-              popUp?.deleteGroup?.data as { name: string; id: string },
-            )
+            onDeleteGroupSubmit(popUp?.deleteGroup?.data as { name: string; id: string })
           }
         />
         <UpgradePlanModal
           isOpen={popUp.upgradePlan.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle('upgradePlan', isOpen)}
-          text={
-            (popUp.upgradePlan?.data as { description: string })?.description
-          }
+          onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+          text={(popUp.upgradePlan?.data as { description: string })?.description}
         />
       </div>
-    )
+    );
   },
-  { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Groups },
-)
+  { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Groups }
+);
 
 const GroupDetailPage = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation();
   return (
     <>
       <Helmet>
-        <title>
-          {t('common.head-title', { title: t('settings.org.title') })}
-        </title>
+        <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <GroupPage />
     </>
-  )
-}
+  );
+};
 
 export const Route = createFileRoute(
-  '/_authenticate/_org_details/_org-layout/organization/$organizationId/groups/$groupId/',
+  "/_authenticate/_org_details/_org-layout/organization/$organizationId/groups/$groupId/"
 )({
-  component: GroupDetailPage,
-})
+  component: GroupDetailPage
+});

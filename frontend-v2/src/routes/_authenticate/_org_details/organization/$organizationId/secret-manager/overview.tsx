@@ -1,9 +1,9 @@
 // REFACTOR(akhilmhdh): This file needs to be split into multiple components too complex
 
-import { ReactNode, useMemo, useState } from 'react'
-import { Helmet } from 'react-helmet'
-import { useTranslation } from 'react-i18next'
-import { faFolderOpen, faStar } from '@fortawesome/free-regular-svg-icons'
+import { ReactNode, useMemo, useState } from "react";
+import { Helmet } from "react-helmet";
+import { useTranslation } from "react-i18next";
+import { faFolderOpen, faStar } from "@fortawesome/free-regular-svg-icons";
 import {
   faArrowDownAZ,
   faArrowRight,
@@ -14,14 +14,14 @@ import {
   faMagnifyingGlass,
   faPlus,
   faSearch,
-  faStar as faSolidStar,
-} from '@fortawesome/free-solid-svg-icons'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+  faStar as faSolidStar
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 
-import { createNotification } from '@app/components/notifications'
-import { OrgPermissionCan } from '@app/components/permissions'
-import { NewProjectModal } from '@app/components/projects'
+import { createNotification } from "@app/components/notifications";
+import { OrgPermissionCan } from "@app/components/permissions";
+import { NewProjectModal } from "@app/components/projects";
 import {
   Button,
   IconButton,
@@ -29,89 +29,86 @@ import {
   Pagination,
   Skeleton,
   Tooltip,
-  UpgradePlanModal,
-} from '@app/components/v2'
+  UpgradePlanModal
+} from "@app/components/v2";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
-  useSubscription,
-} from '@app/context'
-import { getProjectHomePage } from '@app/helpers/project'
-import { usePagination, useResetPageHelper } from '@app/hooks'
-import { useGetUserWorkspaces } from '@app/hooks/api'
-import { OrderByDirection } from '@app/hooks/api/generic/types'
+  useSubscription
+} from "@app/context";
+import { getProjectHomePage } from "@app/helpers/project";
+import { usePagination, useResetPageHelper } from "@app/hooks";
+import { useGetUserWorkspaces } from "@app/hooks/api";
+import { OrderByDirection } from "@app/hooks/api/generic/types";
 // import { fetchUserWsKey } from "@app/hooks/api/keys/queries";
-import { useFetchServerStatus } from '@app/hooks/api/serverDetails'
-import { Workspace } from '@app/hooks/api/types'
-import { useUpdateUserProjectFavorites } from '@app/hooks/api/users/mutation'
-import { useGetUserProjectFavorites } from '@app/hooks/api/users/queries'
-import { ProjectType } from '@app/hooks/api/workspace/types'
-import { usePopUp } from '@app/hooks/usePopUp'
+import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
+import { Workspace } from "@app/hooks/api/types";
+import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
+import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
+import { ProjectType } from "@app/hooks/api/workspace/types";
+import { usePopUp } from "@app/hooks/usePopUp";
 
 enum ProjectsViewMode {
-  GRID = 'grid',
-  LIST = 'list',
+  GRID = "grid",
+  LIST = "list"
 }
 
 enum ProjectOrderBy {
-  Name = 'name',
+  Name = "name"
 }
 
 const formatTitle = (type: ProjectType) => {
-  if (type === ProjectType.SecretManager) return 'Secret Management'
-  if (type === ProjectType.CertificateManager) return 'Cert Management'
-  return 'Key Management'
-}
+  if (type === ProjectType.SecretManager) return "Secret Management";
+  if (type === ProjectType.CertificateManager) return "Cert Management";
+  return "Key Management";
+};
 
 const formatDescription = (type: ProjectType) => {
   if (type === ProjectType.SecretManager)
-    return 'Securely store, manage, and rotate various application secrets, such as database credentials, API keys, etc.'
+    return "Securely store, manage, and rotate various application secrets, such as database credentials, API keys, etc.";
   if (type === ProjectType.CertificateManager)
-    return 'Manage your PKI infrastructure and issue digital certificates for services, applications, and devices.'
-  return 'Centralize the management of keys for cryptographic operations, such as encryption and decryption.'
-}
+    return "Manage your PKI infrastructure and issue digital certificates for services, applications, and devices.";
+  return "Centralize the management of keys for cryptographic operations, such as encryption and decryption.";
+};
 
 type Props = {
-  type: ProjectType
-}
+  type: ProjectType;
+};
 
 // #TODO: Update all the workspaceIds
 export const ProductOverview = ({ type }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation();
 
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
-  const { data: workspaces, isLoading: isWorkspaceLoading } =
-    useGetUserWorkspaces({ type })
-  const { currentOrg } = useOrganization()
-  const orgWorkspaces = workspaces || []
+  const { data: workspaces, isLoading: isWorkspaceLoading } = useGetUserWorkspaces({ type });
+  const { currentOrg } = useOrganization();
+  const orgWorkspaces = workspaces || [];
   const { data: projectFavorites, isLoading: isProjectFavoritesLoading } =
-    useGetUserProjectFavorites(currentOrg?.id)
-  const { mutateAsync: updateUserProjectFavorites } =
-    useUpdateUserProjectFavorites()
+    useGetUserProjectFavorites(currentOrg?.id);
+  const { mutateAsync: updateUserProjectFavorites } = useUpdateUserProjectFavorites();
 
-  const isProjectViewLoading = isWorkspaceLoading || isProjectFavoritesLoading
+  const isProjectViewLoading = isWorkspaceLoading || isProjectFavoritesLoading;
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
-    'addNewWs',
-    'upgradePlan',
-  ] as const)
+    "addNewWs",
+    "upgradePlan"
+  ] as const);
 
-  const [searchFilter, setSearchFilter] = useState('')
-  const { data: serverDetails } = useFetchServerStatus()
+  const [searchFilter, setSearchFilter] = useState("");
+  const { data: serverDetails } = useFetchServerStatus();
   const [projectsViewMode, setProjectsViewMode] = useState<ProjectsViewMode>(
-    (localStorage.getItem('projectsViewMode') as ProjectsViewMode) ||
-      ProjectsViewMode.GRID,
-  )
+    (localStorage.getItem("projectsViewMode") as ProjectsViewMode) || ProjectsViewMode.GRID
+  );
 
-  const { subscription } = useSubscription()
+  const { subscription } = useSubscription();
 
   const isAddingProjectsAllowed = subscription?.workspaceLimit
     ? subscription.workspacesUsed < subscription.workspaceLimit
-    : true
+    : true;
 
-  const isWorkspaceEmpty = !isProjectViewLoading && orgWorkspaces?.length === 0
+  const isWorkspaceEmpty = !isProjectViewLoading && orgWorkspaces?.length === 0;
 
   const {
     setPage,
@@ -121,76 +118,72 @@ export const ProductOverview = ({ type }: Props) => {
     offset,
     limit,
     toggleOrderDirection,
-    orderDirection,
-  } = usePagination(ProjectOrderBy.Name, { initPerPage: 24 })
+    orderDirection
+  } = usePagination(ProjectOrderBy.Name, { initPerPage: 24 });
 
   const filteredWorkspaces = useMemo(
     () =>
       orgWorkspaces
-        .filter((ws) =>
-          ws?.name?.toLowerCase().includes(searchFilter.toLowerCase()),
-        )
+        .filter((ws) => ws?.name?.toLowerCase().includes(searchFilter.toLowerCase()))
         .sort((a, b) =>
           orderDirection === OrderByDirection.ASC
             ? a.name.toLowerCase().localeCompare(b.name.toLowerCase())
-            : b.name.toLowerCase().localeCompare(a.name.toLowerCase()),
+            : b.name.toLowerCase().localeCompare(a.name.toLowerCase())
         ),
-    [searchFilter, orderDirection, orgWorkspaces],
-  )
+    [searchFilter, orderDirection, orgWorkspaces]
+  );
 
   useResetPageHelper({
     setPage,
     offset,
-    totalCount: filteredWorkspaces.length,
-  })
+    totalCount: filteredWorkspaces.length
+  });
 
   const { workspacesWithFaveProp } = useMemo(() => {
     const workspacesWithFav = filteredWorkspaces
       .map((w): Workspace & { isFavorite: boolean } => ({
         ...w,
-        isFavorite: Boolean(projectFavorites?.includes(w.id)),
+        isFavorite: Boolean(projectFavorites?.includes(w.id))
       }))
       .sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite))
-      .slice(offset, limit * page)
+      .slice(offset, limit * page);
 
     return {
-      workspacesWithFaveProp: workspacesWithFav,
-    }
-  }, [filteredWorkspaces, projectFavorites])
+      workspacesWithFaveProp: workspacesWithFav
+    };
+  }, [filteredWorkspaces, projectFavorites]);
 
   const addProjectToFavorites = async (projectId: string) => {
     try {
       if (currentOrg?.id) {
         await updateUserProjectFavorites({
           orgId: currentOrg?.id,
-          projectFavorites: [...(projectFavorites || []), projectId],
-        })
+          projectFavorites: [...(projectFavorites || []), projectId]
+        });
       }
     } catch {
       createNotification({
-        text: 'Failed to add project to favorites.',
-        type: 'error',
-      })
+        text: "Failed to add project to favorites.",
+        type: "error"
+      });
     }
-  }
+  };
 
   const removeProjectFromFavorites = async (projectId: string) => {
     try {
       if (currentOrg?.id) {
         await updateUserProjectFavorites({
           orgId: currentOrg?.id,
-          projectFavorites: [
-            ...(projectFavorites || []).filter((entry) => entry !== projectId),
-          ],
-        })
+          projectFavorites: [...(projectFavorites || []).filter((entry) => entry !== projectId)]
+        });
       }
     } catch {
       createNotification({
-        text: 'Failed to remove project from favorites.',
-        type: 'error',
-      })
+        text: "Failed to remove project from favorites.",
+        type: "error"
+      });
     }
-  }
+  };
 
   const renderProjectGridItem = (workspace: Workspace, isFavorite: boolean) => (
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
@@ -198,24 +191,22 @@ export const ProductOverview = ({ type }: Props) => {
       onClick={() => {
         // TODO(rbr): fix this
         navigate({
-          to: getProjectHomePage(workspace),
-        })
-        localStorage.setItem('projectData.id', workspace.id)
+          to: getProjectHomePage(workspace)
+        });
+        localStorage.setItem("projectData.id", workspace.id);
       }}
       key={workspace.id}
       className="flex h-40 min-w-72 cursor-pointer flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
     >
       <div className="flex flex-row justify-between">
-        <div className="mt-0 truncate text-lg text-mineshaft-100">
-          {workspace.name}
-        </div>
+        <div className="mt-0 truncate text-lg text-mineshaft-100">{workspace.name}</div>
         {isFavorite ? (
           <FontAwesomeIcon
             icon={faSolidStar}
             className="text-sm text-yellow-600 hover:text-mineshaft-400"
             onClick={(e) => {
-              e.stopPropagation()
-              removeProjectFromFavorites(workspace.id)
+              e.stopPropagation();
+              removeProjectFromFavorites(workspace.id);
             }}
           />
         ) : (
@@ -223,8 +214,8 @@ export const ProductOverview = ({ type }: Props) => {
             icon={faStar}
             className="text-sm text-mineshaft-400 hover:text-mineshaft-300"
             onClick={(e) => {
-              e.stopPropagation()
-              addProjectToFavorites(workspace.id)
+              e.stopPropagation();
+              addProjectToFavorites(workspace.id);
             }}
           />
         )}
@@ -233,10 +224,10 @@ export const ProductOverview = ({ type }: Props) => {
       <div
         className="mb-2.5 mt-1 grow text-sm text-mineshaft-300"
         style={{
-          overflow: 'hidden',
-          display: '-webkit-box',
-          WebkitBoxOrient: 'vertical',
-          WebkitLineClamp: 2,
+          overflow: "hidden",
+          display: "-webkit-box",
+          WebkitBoxOrient: "vertical",
+          WebkitLineClamp: 2
         }}
       >
         {workspace.description}
@@ -250,7 +241,7 @@ export const ProductOverview = ({ type }: Props) => {
         )}
         <button type="button">
           <div className="group ml-auto w-max cursor-pointer rounded-full border border-mineshaft-600 bg-mineshaft-900 px-4 py-2 text-sm text-mineshaft-300 transition-all hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200">
-            Explore{' '}
+            Explore{" "}
             <FontAwesomeIcon
               icon={faArrowRight}
               className="pl-1.5 pr-0.5 duration-200 hover:pl-2 hover:pr-0"
@@ -259,31 +250,25 @@ export const ProductOverview = ({ type }: Props) => {
         </button>
       </div>
     </div>
-  )
+  );
 
-  const renderProjectListItem = (
-    workspace: Workspace,
-    isFavorite: boolean,
-    index: number,
-  ) => (
+  const renderProjectListItem = (workspace: Workspace, isFavorite: boolean, index: number) => (
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
     <div
       onClick={() => {
         // TODO(rbr): fix this
         navigate({
-          to: getProjectHomePage(workspace),
-        })
-        localStorage.setItem('projectData.id', workspace.id)
+          to: getProjectHomePage(workspace)
+        });
+        localStorage.setItem("projectData.id", workspace.id);
       }}
       key={workspace.id}
       className={`group grid h-14 min-w-72 cursor-pointer grid-cols-6 border-l border-r border-t border-mineshaft-600 bg-mineshaft-800 px-6 hover:bg-mineshaft-700 ${
-        index === 0 && 'rounded-t-md'
+        index === 0 && "rounded-t-md"
       }`}
     >
       <div className="flex items-center sm:col-span-3 lg:col-span-4">
-        <div className="truncate text-sm text-mineshaft-100">
-          {workspace.name}
-        </div>
+        <div className="truncate text-sm text-mineshaft-100">{workspace.name}</div>
       </div>
       <div className="flex items-center justify-end sm:col-span-3 lg:col-span-2">
         <div className="text-center text-sm text-mineshaft-300">
@@ -294,8 +279,8 @@ export const ProductOverview = ({ type }: Props) => {
             icon={faSolidStar}
             className="ml-6 text-sm text-yellow-600 hover:text-mineshaft-400"
             onClick={(e) => {
-              e.stopPropagation()
-              removeProjectFromFavorites(workspace.id)
+              e.stopPropagation();
+              removeProjectFromFavorites(workspace.id);
             }}
           />
         ) : (
@@ -303,16 +288,16 @@ export const ProductOverview = ({ type }: Props) => {
             icon={faStar}
             className="ml-6 text-sm text-mineshaft-400 hover:text-mineshaft-300"
             onClick={(e) => {
-              e.stopPropagation()
-              addProjectToFavorites(workspace.id)
+              e.stopPropagation();
+              addProjectToFavorites(workspace.id);
             }}
           />
         )}
       </div>
     </div>
-  )
+  );
 
-  let projectsComponents: ReactNode
+  let projectsComponents: ReactNode;
 
   if (filteredWorkspaces.length || isProjectViewLoading) {
     switch (projectsViewMode) {
@@ -339,14 +324,14 @@ export const ProductOverview = ({ type }: Props) => {
             {!isProjectViewLoading && (
               <>
                 {workspacesWithFaveProp.map((workspace) =>
-                  renderProjectGridItem(workspace, workspace.isFavorite),
+                  renderProjectGridItem(workspace, workspace.isFavorite)
                 )}
               </>
             )}
           </div>
-        )
+        );
 
-        break
+        break;
       case ProjectsViewMode.LIST:
       default:
         projectsComponents = (
@@ -356,19 +341,19 @@ export const ProductOverview = ({ type }: Props) => {
                 <div
                   key={`workspace-cards-loading-${i + 1}`}
                   className={`group flex h-12 min-w-72 cursor-pointer flex-row items-center justify-between border border-mineshaft-600 bg-mineshaft-800 px-6 hover:bg-mineshaft-700 ${
-                    i === 0 && 'rounded-t-md'
-                  } ${i === 2 && 'rounded-b-md border-b'}`}
+                    i === 0 && "rounded-t-md"
+                  } ${i === 2 && "rounded-b-md border-b"}`}
                 >
                   <Skeleton className="w-full bg-mineshaft-600" />
                 </div>
               ))}
             {!isProjectViewLoading &&
               workspacesWithFaveProp.map((workspace, ind) =>
-                renderProjectListItem(workspace, workspace.isFavorite, ind),
+                renderProjectListItem(workspace, workspace.isFavorite, ind)
               )}
           </div>
-        )
-        break
+        );
+        break;
     }
   } else if (orgWorkspaces.length && searchFilter) {
     projectsComponents = (
@@ -377,19 +362,15 @@ export const ProductOverview = ({ type }: Props) => {
           icon={faSearch}
           className="mb-4 mt-2 w-full text-center text-5xl text-mineshaft-400"
         />
-        <div className="text-center font-light">
-          No projects match search...
-        </div>
+        <div className="text-center font-light">No projects match search...</div>
       </div>
-    )
+    );
   }
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col justify-start bg-bunker-800 md:h-screen">
       <Helmet>
-        <title>
-          {t('common.head-title', { title: t('settings.members.title') })}
-        </title>
+        <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       {!serverDetails?.redisConfigured && (
@@ -400,8 +381,8 @@ export const ProductOverview = ({ type }: Props) => {
               icon={faExclamationCircle}
               className="mr-4 p-4 text-2xl text-mineshaft-50"
             />
-            Attention: Updated versions of Infisical now require Redis for full
-            functionality. Learn how to configure it
+            Attention: Updated versions of Infisical now require Redis for full functionality. Learn
+            how to configure it
             <a
               href="https://infisical.com/docs/self-hosting/configuration/redis"
               rel="noopener noreferrer"
@@ -417,9 +398,7 @@ export const ProductOverview = ({ type }: Props) => {
       )}
       <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0">
         <div className="flex w-full justify-between">
-          <p className="mr-4 text-3xl font-semibold text-white">
-            {formatTitle(type)}
-          </p>
+          <p className="mr-4 text-3xl font-semibold text-white">{formatTitle(type)}</p>
         </div>
         <div>
           <p className="mr-4 mt-2 text-gray-400">{formatDescription(type)}</p>
@@ -437,9 +416,7 @@ export const ProductOverview = ({ type }: Props) => {
               <IconButton
                 className="min-w-[2.4rem] border-none hover:bg-mineshaft-600"
                 ariaLabel={`Sort ${
-                  orderDirection === OrderByDirection.ASC
-                    ? 'descending'
-                    : 'ascending'
+                  orderDirection === OrderByDirection.ASC ? "descending" : "ascending"
                 }`}
                 variant="plain"
                 size="xs"
@@ -447,11 +424,7 @@ export const ProductOverview = ({ type }: Props) => {
                 onClick={toggleOrderDirection}
               >
                 <FontAwesomeIcon
-                  icon={
-                    orderDirection === OrderByDirection.ASC
-                      ? faArrowDownAZ
-                      : faArrowUpZA
-                  }
+                  icon={orderDirection === OrderByDirection.ASC ? faArrowDownAZ : faArrowUpZA}
                 />
               </IconButton>
             </Tooltip>
@@ -460,15 +433,13 @@ export const ProductOverview = ({ type }: Props) => {
             <IconButton
               variant="outline_bg"
               onClick={() => {
-                localStorage.setItem('projectsViewMode', ProjectsViewMode.GRID)
-                setProjectsViewMode(ProjectsViewMode.GRID)
+                localStorage.setItem("projectsViewMode", ProjectsViewMode.GRID);
+                setProjectsViewMode(ProjectsViewMode.GRID);
               }}
               ariaLabel="grid"
               size="xs"
               className={`${
-                projectsViewMode === ProjectsViewMode.GRID
-                  ? 'bg-mineshaft-500'
-                  : 'bg-transparent'
+                projectsViewMode === ProjectsViewMode.GRID ? "bg-mineshaft-500" : "bg-transparent"
               } min-w-[2.4rem] border-none hover:bg-mineshaft-600`}
             >
               <FontAwesomeIcon icon={faBorderAll} />
@@ -476,24 +447,19 @@ export const ProductOverview = ({ type }: Props) => {
             <IconButton
               variant="outline_bg"
               onClick={() => {
-                localStorage.setItem('projectsViewMode', ProjectsViewMode.LIST)
-                setProjectsViewMode(ProjectsViewMode.LIST)
+                localStorage.setItem("projectsViewMode", ProjectsViewMode.LIST);
+                setProjectsViewMode(ProjectsViewMode.LIST);
               }}
               ariaLabel="list"
               size="xs"
               className={`${
-                projectsViewMode === ProjectsViewMode.LIST
-                  ? 'bg-mineshaft-500'
-                  : 'bg-transparent'
+                projectsViewMode === ProjectsViewMode.LIST ? "bg-mineshaft-500" : "bg-transparent"
               } min-w-[2.4rem] border-none hover:bg-mineshaft-600`}
             >
               <FontAwesomeIcon icon={faList} />
             </IconButton>
           </div>
-          <OrgPermissionCan
-            I={OrgPermissionActions.Create}
-            an={OrgPermissionSubjects.Workspace}
-          >
+          <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
             {(isAllowed) => (
               <Button
                 isDisabled={!isAllowed}
@@ -501,9 +467,9 @@ export const ProductOverview = ({ type }: Props) => {
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
                 onClick={() => {
                   if (isAddingProjectsAllowed) {
-                    handlePopUpOpen('addNewWs')
+                    handlePopUpOpen("addNewWs");
                   } else {
-                    handlePopUpOpen('upgradePlan')
+                    handlePopUpOpen("upgradePlan");
                   }
                 }}
                 className="ml-2"
@@ -518,8 +484,8 @@ export const ProductOverview = ({ type }: Props) => {
           <Pagination
             className={
               projectsViewMode === ProjectsViewMode.GRID
-                ? 'col-span-full !justify-start border-transparent bg-transparent pl-2'
-                : 'rounded-b-md border border-mineshaft-600'
+                ? "col-span-full !justify-start border-transparent bg-transparent pl-2"
+                : "rounded-b-md border border-mineshaft-600"
             }
             perPage={perPage}
             perPageList={[12, 24, 48, 96]}
@@ -536,36 +502,34 @@ export const ProductOverview = ({ type }: Props) => {
               className="mb-4 mt-2 w-full text-center text-5xl text-mineshaft-400"
             />
             <div className="text-center font-light">
-              You are not part of any projects in this organization yet. When
-              you are, they will appear here.
+              You are not part of any projects in this organization yet. When you are, they will
+              appear here.
             </div>
             <div className="mt-0.5 text-center font-light">
-              Create a new project, or ask other organization members to give
-              you necessary permissions.
+              Create a new project, or ask other organization members to give you necessary
+              permissions.
             </div>
           </div>
         )}
       </div>
       <NewProjectModal
         isOpen={popUp.addNewWs.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle('addNewWs', isOpen)}
+        onOpenChange={(isOpen) => handlePopUpToggle("addNewWs", isOpen)}
         projectType={type}
       />
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle('upgradePlan', isOpen)}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="You have exceeded the number of projects allowed on the free plan."
       />
     </div>
-  )
-}
+  );
+};
 
-const SecretManagerOverviewPage = () => (
-  <ProductOverview type={ProjectType.SecretManager} />
-)
+const SecretManagerOverviewPage = () => <ProductOverview type={ProjectType.SecretManager} />;
 
 export const Route = createFileRoute(
-  '/_authenticate/_org_details/_org-layout/organization/$organizationId/secret-manager/overview',
+  "/_authenticate/_org_details/_org-layout/organization/$organizationId/secret-manager/overview"
 )({
-  component: SecretManagerOverviewPage,
-})
+  component: SecretManagerOverviewPage
+});
