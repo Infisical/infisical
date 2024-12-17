@@ -44,25 +44,19 @@ var sshSignKeyCmd = &cobra.Command{
 	Run:                   signKey,
 }
 
+var algoToFileName = map[infisicalSdkUtil.CertKeyAlgorithm]string{
+	infisicalSdkUtil.RSA2048:   "id_rsa_2048",
+	infisicalSdkUtil.RSA4096:   "id_rsa_4096",
+	infisicalSdkUtil.ECDSAP256: "id_ecdsa_p256",
+	infisicalSdkUtil.ECDSAP384: "id_ecdsa_p384",
+}
+
 func isValidKeyAlgorithm(algo infisicalSdkUtil.CertKeyAlgorithm) bool {
 	switch algo {
 	case infisicalSdkUtil.RSA2048, infisicalSdkUtil.RSA4096, infisicalSdkUtil.ECDSAP256, infisicalSdkUtil.ECDSAP384:
 		return true
 	default:
 		return false
-	}
-}
-
-func getFileName(algo infisicalSdkUtil.CertKeyAlgorithm) string {
-	switch algo {
-	case infisicalSdkUtil.RSA2048:
-		return "id_rsa_2048"
-	case infisicalSdkUtil.RSA4096:
-		return "id_rsa_4096"
-	case infisicalSdkUtil.ECDSAP256:
-		return "id_ecdsa_p256"
-	default:
-		return "id_ecdsa_p384"
 	}
 }
 
@@ -76,53 +70,63 @@ func isValidCertType(certType infisicalSdkUtil.SshCertType) bool {
 }
 
 func writeToFile(filePath string, content string, perm os.FileMode) error {
-    // Ensure the directory exists
-    dir := filepath.Dir(filePath)
-    if err := os.MkdirAll(dir, 0755); err != nil {
-        return fmt.Errorf("failed to create directory %s: %w", dir, err)
-    }
+	// Ensure the directory exists
+	dir := filepath.Dir(filePath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create directory %s: %w", dir, err)
+	}
 
-    // Write the content to the file
-    err := os.WriteFile(filePath, []byte(content), perm)
-    if err != nil {
-        return fmt.Errorf("failed to write to file %s: %w", filePath, err)
-    }
+	// Write the content to the file
+	err := os.WriteFile(filePath, []byte(content), perm)
+	if err != nil {
+		return fmt.Errorf("failed to write to file %s: %w", filePath, err)
+	}
 
-    return nil
+	return nil
 }
 
 func issueCredentials(cmd *cobra.Command, args []string) {
+
+	token, err := util.GetInfisicalToken(cmd)
+	if err != nil {
+		util.HandleError(err, "Unable to parse flag")
+	}
+
 	var infisicalToken string
-	util.RequireLogin()
-	loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
-	if err != nil {
-		util.HandleError(err, "Unable to authenticate")
+
+	if token != nil && (token.Type == util.SERVICE_TOKEN_IDENTIFIER || token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER) {
+		infisicalToken = token.Token
+	} else {
+		util.RequireLogin()
+		util.RequireLocalWorkspaceFile()
+
+		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
+		if err != nil {
+			util.HandleError(err, "Unable to authenticate")
+		}
+
+		if loggedInUserDetails.LoginExpired {
+			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+		}
+		infisicalToken = loggedInUserDetails.UserCredentials.JTWToken
 	}
 
-	if loggedInUserDetails.LoginExpired {
-		util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
-	}
-	infisicalToken = loggedInUserDetails.UserCredentials.JTWToken
-	
-	projectId, err := cmd.Flags().GetString("projectId")
+	certificateTemplateId, err := cmd.Flags().GetString("certificateTemplateId")
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
 	}
-	if projectId == "" {
-		util.PrintErrorMessageAndExit("You must set the --projectId flag")
-	}
-
-	templateName, err := cmd.Flags().GetString("templateName")
-	if err != nil {
-		util.HandleError(err, "Unable to parse flag")
-	}
-	if templateName == "" {
-		util.PrintErrorMessageAndExit("You must set the --templateName flag")
+	if certificateTemplateId == "" {
+		util.PrintErrorMessageAndExit("You must set the --certificateTemplateId flag")
 	}
 
 	principalsStr, err := cmd.Flags().GetString("principals")
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
+	}
+
+	// Check if the input string is empty before splitting
+	if principalsStr == "" {
+		util.HandleError(fmt.Errorf("no principals provided"), "The 'principals' flag cannot be empty")
 	}
 
 	// Convert the comma-delimited string into a slice of strings
@@ -137,112 +141,112 @@ func issueCredentials(cmd *cobra.Command, args []string) {
 	}
 
 	if !isValidKeyAlgorithm(infisicalSdkUtil.CertKeyAlgorithm(keyAlgorithm)) {
-		util.HandleError(fmt.Errorf("invalid keyAlgorithm: %s", keyAlgorithm), 
+		util.HandleError(fmt.Errorf("invalid keyAlgorithm: %s", keyAlgorithm),
 			"Valid values: RSA_2048, RSA_4096, EC_prime256v1, EC_secp384r1")
 	}
-	
+
 	certType, err := cmd.Flags().GetString("certType")
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
 	if !isValidCertType(infisicalSdkUtil.SshCertType(certType)) {
-		util.HandleError(fmt.Errorf("invalid certType: %s", certType), 
+		util.HandleError(fmt.Errorf("invalid certType: %s", certType),
 			"Valid values: user, host")
 	}
-	
+
 	ttl, err := cmd.Flags().GetString("ttl")
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
 	}
-	
+
 	keyId, err := cmd.Flags().GetString("keyId")
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
 	}
-	
+
 	outFilePath, err := cmd.Flags().GetString("outFilePath")
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
 	}
-	
+
 	var (
-		outputDir string
+		outputDir      string
 		privateKeyPath string
-		publicKeyPath string
-		signedKeyPath string
+		publicKeyPath  string
+		signedKeyPath  string
 	)
-	
-    if outFilePath == "" {
-        // Use current working directory
-        cwd, err := os.Getwd()
-        if err != nil {
-            util.HandleError(err, "Failed to get current working directory")
-        }
-        outputDir = cwd
-    } else {
-        // Expand ~ to home directory if present
-        if strings.HasPrefix(outFilePath, "~") {
-            homeDir, err := os.UserHomeDir()
-            if err != nil {
-                util.HandleError(err, "Failed to resolve home directory")
-            }
-            outFilePath = strings.Replace(outFilePath, "~", homeDir, 1)
-        }
+
+	if outFilePath == "" {
+		// Use current working directory
+		cwd, err := os.Getwd()
+		if err != nil {
+			util.HandleError(err, "Failed to get current working directory")
+		}
+		outputDir = cwd
+	} else {
+		// Expand ~ to home directory if present
+		if strings.HasPrefix(outFilePath, "~") {
+			homeDir, err := os.UserHomeDir()
+			if err != nil {
+				util.HandleError(err, "Failed to resolve home directory")
+			}
+			outFilePath = strings.Replace(outFilePath, "~", homeDir, 1)
+		}
 
 		// Check if outFilePath ends with "-cert.pub"
-        if strings.HasSuffix(outFilePath, "-cert.pub") {
-            // Treat outFilePath as the signed key path
-            signedKeyPath = outFilePath
+		if strings.HasSuffix(outFilePath, "-cert.pub") {
+			// Treat outFilePath as the signed key path
+			signedKeyPath = outFilePath
 
-            // Derive the base name by removing "-cert.pub"
-            baseName := strings.TrimSuffix(filepath.Base(outFilePath), "-cert.pub")
+			// Derive the base name by removing "-cert.pub"
+			baseName := strings.TrimSuffix(filepath.Base(outFilePath), "-cert.pub")
 
-            // Set the output directory
-            outputDir = filepath.Dir(outFilePath)
+			// Set the output directory
+			outputDir = filepath.Dir(outFilePath)
 
-            // Define private and public key paths
-            privateKeyPath = filepath.Join(outputDir, baseName)
-            publicKeyPath = filepath.Join(outputDir, baseName+".pub")
-        } else {
-            // Treat outFilePath as a directory
-            outputDir = outFilePath
+			// Define private and public key paths
+			privateKeyPath = filepath.Join(outputDir, baseName)
+			publicKeyPath = filepath.Join(outputDir, baseName+".pub")
+		} else {
+			// Treat outFilePath as a directory
+			outputDir = outFilePath
 
-            // Check if the directory exists; if not, create it
-            info, err := os.Stat(outputDir)
-            if os.IsNotExist(err) {
-                err = os.MkdirAll(outputDir, 0755)
-                if err != nil {
-                    util.HandleError(err, "Failed to create output directory")
-                }
-            } else if err != nil {
-                util.HandleError(err, "Failed to access output directory")
-            } else if !info.IsDir() {
-                util.PrintErrorMessageAndExit("The provided --outFilePath is not a directory")
-            }
+			// Check if the directory exists; if not, create it
+			info, err := os.Stat(outputDir)
+			if os.IsNotExist(err) {
+				err = os.MkdirAll(outputDir, 0755)
+				if err != nil {
+					util.HandleError(err, "Failed to create output directory")
+				}
+			} else if err != nil {
+				util.HandleError(err, "Failed to access output directory")
+			} else if !info.IsDir() {
+				util.PrintErrorMessageAndExit("The provided --outFilePath is not a directory")
+			}
+		}
+	}
 
-            // Define file names based on key algorithm
-            fileName := getFileName(infisicalSdkUtil.CertKeyAlgorithm(keyAlgorithm))
+	// Define file names based on key algorithm
+	fileName := algoToFileName[infisicalSdkUtil.CertKeyAlgorithm(keyAlgorithm)]
 
-            // Define file paths
-            privateKeyPath = filepath.Join(outputDir, fileName)
-            publicKeyPath = filepath.Join(outputDir, fileName+".pub")
-            signedKeyPath = filepath.Join(outputDir, fileName+"-cert.pub")
-        }
-    }
+	// Define file paths
+	privateKeyPath = filepath.Join(outputDir, fileName)
+	publicKeyPath = filepath.Join(outputDir, fileName+".pub")
+	signedKeyPath = filepath.Join(outputDir, fileName+"-cert.pub")
 
 	// If outFilePath ends with "-cert.pub", ensure the signedKeyPath is set
-    if strings.HasSuffix(outFilePath, "-cert.pub") {
-        // Ensure the signedKeyPath was set
-        if signedKeyPath == "" {
-            util.HandleError(fmt.Errorf("signedKeyPath is not set correctly"), "Internal error")
-        }
-    } else {
-        // Ensure all paths are set
-        if privateKeyPath == "" || publicKeyPath == "" || signedKeyPath == "" {
-            util.HandleError(fmt.Errorf("file paths are not set correctly"), "Internal error")
-        }
-    }
+	if strings.HasSuffix(outFilePath, "-cert.pub") {
+		// Ensure the signedKeyPath was set
+		if signedKeyPath == "" {
+			util.HandleError(fmt.Errorf("signedKeyPath is not set correctly"), "Internal error")
+		}
+	} else {
+		// Ensure all paths are set
+		if privateKeyPath == "" || publicKeyPath == "" || signedKeyPath == "" {
+			util.HandleError(fmt.Errorf("file paths are not set correctly"), "Internal error")
+		}
+	}
 
 	infisicalClient := infisicalSdk.NewInfisicalClient(context.Background(), infisicalSdk.Config{
 		SiteUrl:          config.INFISICAL_URL,
@@ -252,83 +256,87 @@ func issueCredentials(cmd *cobra.Command, args []string) {
 	infisicalClient.Auth().SetAccessToken(infisicalToken)
 
 	creds, err := infisicalClient.Ssh().IssueCredentials(infisicalSdk.IssueSshCredsOptions{
-		ProjectID: projectId,
-		TemplateName: templateName,
-		Principals: principals,
-		KeyAlgorithm: infisicalSdkUtil.CertKeyAlgorithm(keyAlgorithm),
-		CertType: infisicalSdkUtil.SshCertType(certType),
-		TTL: ttl,
-		KeyID: keyId,
+		CertificateTemplateID: certificateTemplateId,
+		Principals:            principals,
+		KeyAlgorithm:          infisicalSdkUtil.CertKeyAlgorithm(keyAlgorithm),
+		CertType:              infisicalSdkUtil.SshCertType(certType),
+		TTL:                   ttl,
+		KeyID:                 keyId,
 	})
 
 	if err != nil {
 		util.HandleError(err, "To issue SSH credentials")
 	}
 
-    // If signedKeyPath wasn't set in the directory scenario, set it now
-    if signedKeyPath == "" {
-        fileName := getFileName(infisicalSdkUtil.CertKeyAlgorithm(keyAlgorithm))
-        signedKeyPath = filepath.Join(outputDir, fileName + "-cert.pub")
-    }
+	// If signedKeyPath wasn't set in the directory scenario, set it now
+	if signedKeyPath == "" {
+		fileName := algoToFileName[infisicalSdkUtil.CertKeyAlgorithm(keyAlgorithm)]
+		signedKeyPath = filepath.Join(outputDir, fileName+"-cert.pub")
+	}
 
-    if privateKeyPath == "" {
-        privateKeyPath = filepath.Join(outputDir, getFileName(infisicalSdkUtil.CertKeyAlgorithm(keyAlgorithm)))
-    }
-    err = writeToFile(privateKeyPath, creds.PrivateKey, 0600)
-    if err != nil {
-        util.HandleError(err, "Failed to write Private Key to file")
-    }
+	if privateKeyPath == "" {
+		privateKeyPath = filepath.Join(outputDir, algoToFileName[infisicalSdkUtil.CertKeyAlgorithm(keyAlgorithm)])
+	}
+	err = writeToFile(privateKeyPath, creds.PrivateKey, 0600)
+	if err != nil {
+		util.HandleError(err, "Failed to write Private Key to file")
+	}
 
-    if publicKeyPath == "" {
-        publicKeyPath = privateKeyPath + ".pub"
-    }
-    err = writeToFile(publicKeyPath, creds.PublicKey, 0644)
-    if err != nil {
-        util.HandleError(err, "Failed to write Public Key to file")
-    }
+	if publicKeyPath == "" {
+		publicKeyPath = privateKeyPath + ".pub"
+	}
+	err = writeToFile(publicKeyPath, creds.PublicKey, 0644)
+	if err != nil {
+		util.HandleError(err, "Failed to write Public Key to file")
+	}
 
-    err = writeToFile(signedKeyPath, creds.SignedKey, 0644)
-    if err != nil {
-        util.HandleError(err, "Failed to write Signed Key to file")
-    }
+	err = writeToFile(signedKeyPath, creds.SignedKey, 0644)
+	if err != nil {
+		util.HandleError(err, "Failed to write Signed Key to file")
+	}
 
-    fmt.Println("Successfully wrote SSH certificate tox:", signedKeyPath)
+	fmt.Println("Successfully wrote SSH certificate to:", signedKeyPath)
 }
 
 func signKey(cmd *cobra.Command, args []string) {
+
+	token, err := util.GetInfisicalToken(cmd)
+	if err != nil {
+		util.HandleError(err, "Unable to parse flag")
+	}
+
 	var infisicalToken string
-	util.RequireLogin()
-	loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
-	if err != nil {
-		util.HandleError(err, "Unable to authenticate")
+
+	if token != nil && (token.Type == util.SERVICE_TOKEN_IDENTIFIER || token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER) {
+		infisicalToken = token.Token
+	} else {
+		util.RequireLogin()
+		util.RequireLocalWorkspaceFile()
+
+		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
+		if err != nil {
+			util.HandleError(err, "Unable to authenticate")
+		}
+
+		if loggedInUserDetails.LoginExpired {
+			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+		}
+		infisicalToken = loggedInUserDetails.UserCredentials.JTWToken
 	}
 
-	if loggedInUserDetails.LoginExpired {
-		util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
-	}
-	infisicalToken = loggedInUserDetails.UserCredentials.JTWToken
-	
-	projectId, err := cmd.Flags().GetString("projectId")
+	certificateTemplateId, err := cmd.Flags().GetString("certificateTemplateId")
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
 	}
-	if projectId == "" {
-		util.PrintErrorMessageAndExit("You must set the --projectId flag")
+	if certificateTemplateId == "" {
+		util.PrintErrorMessageAndExit("You must set the --certificateTemplateId flag")
 	}
 
-	templateName, err := cmd.Flags().GetString("templateName")
-	if err != nil {
-		util.HandleError(err, "Unable to parse flag")
-	}
-	if templateName == "" {
-		util.PrintErrorMessageAndExit("You must set the --templateName flag")
-	}
-	
 	publicKey, err := cmd.Flags().GetString("publicKey")
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
 	}
-	
+
 	publicKeyFilePath, err := cmd.Flags().GetString("publicKeyFilePath")
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
@@ -356,7 +364,7 @@ func signKey(cmd *cobra.Command, args []string) {
 		if !strings.HasSuffix(publicKeyFilePath, ".pub") {
 			util.HandleError(fmt.Errorf("public key file must have a .pub extension"), "Invalid input")
 		}
-	
+
 		content, err := os.ReadFile(publicKeyFilePath)
 		if err != nil {
 			util.HandleError(err, "Failed to read public key file")
@@ -365,7 +373,7 @@ func signKey(cmd *cobra.Command, args []string) {
 		publicKey = strings.TrimSpace(string(content))
 	}
 
-	if (strings.TrimSpace(publicKey) == "") {
+	if strings.TrimSpace(publicKey) == "" {
 		util.HandleError(fmt.Errorf("Public key is empty"), "Invalid input")
 	}
 
@@ -374,29 +382,32 @@ func signKey(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
+	// Check if the input string is empty before splitting
+	if principalsStr == "" {
+		util.HandleError(fmt.Errorf("no principals provided"), "The 'principals' flag cannot be empty")
+	}
+
 	// Convert the comma-delimited string into a slice of strings
 	principals := strings.Split(principalsStr, ",")
-
-	// Trim whitespace around each principal
 	for i, principal := range principals {
 		principals[i] = strings.TrimSpace(principal)
 	}
-	
+
 	certType, err := cmd.Flags().GetString("certType")
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
 	if !isValidCertType(infisicalSdkUtil.SshCertType(certType)) {
-		util.HandleError(fmt.Errorf("invalid certType: %s", certType), 
+		util.HandleError(fmt.Errorf("invalid certType: %s", certType),
 			"Valid values: user, host")
 	}
-	
+
 	ttl, err := cmd.Flags().GetString("ttl")
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
 	}
-	
+
 	keyId, err := cmd.Flags().GetString("keyId")
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
@@ -406,39 +417,39 @@ func signKey(cmd *cobra.Command, args []string) {
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
 	}
-	
+
 	var (
-		outputDir string
+		outputDir     string
 		signedKeyPath string
 	)
 
 	if outFilePath == "" {
-        // Use current working directory
-        if err != nil {
-            util.HandleError(err, "Failed to get current working directory")
-        }
-		
-		// check if public key path exists
-		if (publicKeyFilePath == "") {
-            util.PrintErrorMessageAndExit("--outFilePath must be specified when --publicKeyFilePath is not provided")
+		// Use current working directory
+		if err != nil {
+			util.HandleError(err, "Failed to get current working directory")
 		}
-		
+
+		// check if public key path exists
+		if publicKeyFilePath == "" {
+			util.PrintErrorMessageAndExit("--outFilePath must be specified when --publicKeyFilePath is not provided")
+		}
+
 		outputDir = filepath.Dir(publicKeyFilePath)
 		// Derive the base name by removing "-cert.pub"
 		baseName := strings.TrimSuffix(filepath.Base(publicKeyFilePath), ".pub")
-		signedKeyPath = filepath.Join(outputDir, baseName + "-cert.pub")
-    } else {
+		signedKeyPath = filepath.Join(outputDir, baseName+"-cert.pub")
+	} else {
 		// Expand ~ to home directory if present
-        if strings.HasPrefix(outFilePath, "~") {
-            homeDir, err := os.UserHomeDir()
-            if err != nil {
-                util.HandleError(err, "Failed to resolve home directory")
-            }
-            outFilePath = strings.Replace(outFilePath, "~", homeDir, 1)
-        }
-		
+		if strings.HasPrefix(outFilePath, "~") {
+			homeDir, err := os.UserHomeDir()
+			if err != nil {
+				util.HandleError(err, "Failed to resolve home directory")
+			}
+			outFilePath = strings.Replace(outFilePath, "~", homeDir, 1)
+		}
+
 		// Check if outFilePath ends with "-cert.pub"
-		if (!strings.HasSuffix(outFilePath, "-cert.pub")) {
+		if !strings.HasSuffix(outFilePath, "-cert.pub") {
 			util.PrintErrorMessageAndExit("--outFilePath must end with -cert.pub")
 		}
 
@@ -472,13 +483,12 @@ func signKey(cmd *cobra.Command, args []string) {
 	infisicalClient.Auth().SetAccessToken(infisicalToken)
 
 	creds, err := infisicalClient.Ssh().SignKey(infisicalSdk.SignSshPublicKeyOptions{
-		ProjectID: projectId,
-		TemplateName: templateName,
-		PublicKey: publicKey,
-		Principals: principals,
-		CertType: infisicalSdkUtil.SshCertType(certType),
-		TTL: ttl,
-		KeyID: keyId,
+		CertificateTemplateID: certificateTemplateId,
+		PublicKey:             publicKey,
+		Principals:            principals,
+		CertType:              infisicalSdkUtil.SshCertType(certType),
+		TTL:                   ttl,
+		KeyID:                 keyId,
 	})
 
 	if err != nil {
@@ -486,16 +496,16 @@ func signKey(cmd *cobra.Command, args []string) {
 	}
 
 	err = writeToFile(signedKeyPath, creds.SignedKey, 0644)
-    if err != nil {
-        util.HandleError(err, "Failed to write Signed Key to file")
-    }
-	
-    fmt.Println("Successfully wrote SSH certificate to:", signedKeyPath)
+	if err != nil {
+		util.HandleError(err, "Failed to write Signed Key to file")
+	}
+
+	fmt.Println("Successfully wrote SSH certificate to:", signedKeyPath)
 }
 
 func init() {
-	sshSignKeyCmd.Flags().String("projectId", "", "The projectId to issue credentials for")
-	sshSignKeyCmd.Flags().String("templateName", "", "The template name to issue credentials for")
+	sshSignKeyCmd.Flags().String("token", "", "Issue SSH certificate using machine identity access token")
+	sshSignKeyCmd.Flags().String("certificateTemplateId", "", "The ID of the SSH certificate template to issue the SSH certificate for")
 	sshSignKeyCmd.Flags().String("publicKey", "", "The public key to sign")
 	sshSignKeyCmd.Flags().String("publicKeyFilePath", "", "The file path to the public key file to sign")
 	sshSignKeyCmd.Flags().String("outFilePath", "", "The path to write the SSH certificate to such as ~/.ssh/id_rsa-cert.pub. If not provided, the credentials will be saved to the directory of the specified public key file path or the current working directory")
@@ -505,8 +515,8 @@ func init() {
 	sshSignKeyCmd.Flags().String("keyId", "", "The keyId that the created certificate should have")
 	sshCmd.AddCommand(sshSignKeyCmd)
 
-	sshIssueCredentialsCmd.Flags().String("projectId", "", "The projectId to issue SSH credentials for")
-	sshIssueCredentialsCmd.Flags().String("templateName", "", "The template name to issue SSH credentials for")
+	sshIssueCredentialsCmd.Flags().String("token", "", "Issue SSH credentials using machine identity access token")
+	sshIssueCredentialsCmd.Flags().String("certificateTemplateId", "", "The ID of the SSH certificate template to issue SSH credentials for")
 	sshIssueCredentialsCmd.Flags().String("principals", "", "The principals to issue SSH credentials for")
 	sshIssueCredentialsCmd.Flags().String("keyAlgorithm", string(infisicalSdkUtil.RSA2048), "The key algorithm to issue SSH credentials for")
 	sshIssueCredentialsCmd.Flags().String("certType", string(infisicalSdkUtil.UserCert), "The cert type to issue SSH credentials for")
