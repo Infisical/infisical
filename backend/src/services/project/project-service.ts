@@ -441,7 +441,12 @@ export const projectServiceFactory = ({
     const workspaces = await projectDAL.findAllProjects(actorId, actorOrgId, type);
 
     if (includeRoles) {
-      const { permission } = await permissionService.getUserOrgPermission(actorId, actorOrgId, actorAuthMethod);
+      const { permission } = await permissionService.getUserOrgPermission(
+        actorId,
+        actorOrgId,
+        actorAuthMethod,
+        actorOrgId
+      );
 
       // `includeRoles` is specifically used by organization admins when inviting new users to the organizations to avoid looping redundant api calls.
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
