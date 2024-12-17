@@ -51,6 +51,7 @@ import {
   Integrations,
   IntegrationUrls
 } from "./integration-list";
+import { isAzureKeyVaultReference } from "./integration-sync-secret-fns";
 
 const getSecretKeyValuePair = (secrets: Record<string, { value: string | null; comment?: string } | null>) =>
   Object.keys(secrets).reduce<Record<string, string | null | undefined>>((prev, key) => {
@@ -325,11 +326,12 @@ const syncSecretsAzureAppConfig = async ({
   };
 
   const metadata = IntegrationMetadataSchema.parse(integration.metadata);
-  const azureAppConfigSecrets = (
-    await getCompleteAzureAppConfigValues(
-      `${integration.app}/kv?api-version=2023-11-01&key=${metadata.secretPrefix || ""}*`
-    )
-  ).reduce(
+
+  const azureAppConfigValuesUrl = `${integration.app}/kv?api-version=2023-11-01&key=${metadata.secretPrefix}*${
+    metadata.azureLabel ? `&label=${metadata.azureLabel}` : ""
+  }`;
+
+  const azureAppConfigSecrets = (await getCompleteAzureAppConfigValues(azureAppConfigValuesUrl)).reduce(
     (accum, entry) => {
       accum[entry.key] = entry.value;
 
@@ -410,14 +412,24 @@ const syncSecretsAzureAppConfig = async ({
   }
 
   // create or update secrets on Azure App Config
+
   for await (const key of Object.keys(secrets)) {
     if (!(key in azureAppConfigSecrets) || secrets[key]?.value !== azureAppConfigSecrets[key]) {
       await request.put(
         `${integration.app}/kv/${key}?api-version=2023-11-01`,
         {
-          value: secrets[key]?.value
+          value: secrets[key]?.value,
+          ...(isAzureKeyVaultReference(secrets[key]?.value || "") && {
+            content_type: "application/vnd.microsoft.appconfig.keyvaultref+json;charset=utf-8"
+          })
         },
         {
+          ...(metadata.azureLabel && {
+            params: {
+              label: metadata.azureLabel
+            }
+          }),
+
           headers: {
             Authorization: `Bearer ${accessToken}`
           },
@@ -437,6 +449,11 @@ const syncSecretsAzureAppConfig = async ({
         headers: {
           Authorization: `Bearer ${accessToken}`
         },
+        ...(metadata.azureLabel && {
+          params: {
+            label: metadata.azureLabel
+          }
+        }),
         // we force IPV4 because docker setup fails with ipv6
         httpsAgent: new https.Agent({
           family: 4

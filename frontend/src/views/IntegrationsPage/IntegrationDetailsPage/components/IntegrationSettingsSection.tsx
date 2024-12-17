@@ -14,6 +14,7 @@ const metadataMappings: Record<keyof NonNullable<TIntegrationWithEnv["metadata"]
   githubVisibilityRepoIds: "Github Visibility Repo Ids",
   shouldAutoRedeploy: "Auto Redeploy Target Application When Secrets Change",
   secretAWSTag: "Tags For Secrets Stored In AWS",
+  azureLabel: "Azure Label",
   kmsKeyId: "AWS KMS Key ID",
   secretSuffix: "Secret Suffix",
   secretPrefix: "Secret Prefix",
@@ -86,7 +87,7 @@ export const IntegrationSettingsSection = ({ integration }: Props) => {
           Object.entries(integration.metadata).map(([key, value]) => (
             <div key={key} className="flex flex-col">
               <p className="text-sm text-gray-400">
-                {metadataMappings[key as keyof typeof metadataMappings]}
+                {!!value && metadataMappings[key as keyof typeof metadataMappings]}
               </p>
               <p className="text-sm text-gray-200">{renderValue(key as MetadataKey, value)}</p>
             </div>

@@ -41,6 +41,7 @@ export type TIntegration = {
       key: string;
       value: string;
     }[];
+    azureLabel?: string;
 
     kmsKeyId?: string;
     secretSuffix?: string;
