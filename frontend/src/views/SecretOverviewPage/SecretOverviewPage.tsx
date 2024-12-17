@@ -1125,6 +1125,7 @@ export const SecretOverviewPage = () => {
           bodyClassName="overflow-visible"
           title="Create Secrets"
           subTitle="Create a secret across multiple environments"
+          onPointerDownOutside={(e) => e.preventDefault()}
         >
           <CreateSecretForm
             secretPath={secretPath}
