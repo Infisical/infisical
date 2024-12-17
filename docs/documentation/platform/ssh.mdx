@@ -1,0 +1,48 @@
+---
+title: "Infisical SSH"
+sidebarTitle: "Infisical SSH"
+description: "Learn how to generate SSH credentials to provide secure and centralized SSH access control for your infrastructure."
+---
+
+Infisical can be used to issue SSH certificates to provide short-lived, secure SSH access to your infrastructure.
+
+## Concept
+
+The following sequence diagram illustrates the client workflow for accessing a host using an SSH certificate (and optionally key pair)
+supplied by Infisical.
+
+```mermaid
+sequenceDiagram
+  participant Client as Client
+  participant Infisical as Infisical (SSH CA)
+  participant Host as Host
+
+  Note over Client,Client: Step 1: Client Authentication with Infisical
+  Client->>Infisical: Send credential(s) to authenticate with Infisical
+
+  Infisical-->>Client: Return access token
+
+  Note over Client,Infisical: Step 2: SSH Certificate Request
+  Client->>Infisical: Make authenticated request for SSH certificate via either /api/v1/ssh/issue or /api/v1/ssh/sign
+
+  Infisical-->>Client: Return signed SSH certificate (and optionally key pair)
+
+  Note over Client,Client: Step 3: SSH Operation
+  Client->>Host: SSH into Host using the SSH certificate
+
+  Host-->>Client: Grant access to the host
+```
+
+TODO: Mention required configuration on the host.
+
+At a high-level, Infisical issues a signed SSH certificate to a client that can be used to access a host.
+
+To be more specific:
+
+1. The client authenticates with Infisical; this can be done using a machine identity [authentication method](/documentation/platform/identities/machine-identities) or a user [authentication method](/documentation/platform/identities/user-identities).
+2. The client makes an authenticated request for an SSH certificate via either the `/api/v1/ssh/issue` or `/api/v1/ssh/sign` endpoints. Note tha if the client wishes to use an existing SSH key pair, it can use the `/api/v1/ssh/sign` endpoint; otherwise, it can use the `/api/v1/ssh/issue` endpoint to have Infisical issue a new SSH key pair in conjunction with the certificate.
+3. The client uses the issued SSH certificate (and potentially SSH key pair) to access the host.
+
+<Info>Test</Info>
+
+<Note>Note on using CLI</Note>
