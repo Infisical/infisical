@@ -9,6 +9,7 @@ import { twMerge } from "tailwind-merge";
 
 import { useOrganization, useWorkspace } from "@app/context";
 import { useToggle } from "@app/hooks";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { createNotification } from "../notifications";
 import { IconButton, Select, SelectItem, Tooltip } from "../v2";
@@ -69,7 +70,11 @@ export default function NavHeader({
       <div className="mr-2 flex h-5 w-5 min-w-[1.25rem] items-center justify-center rounded-md bg-primary text-sm text-black">
         {currentOrg?.name?.charAt(0)}
       </div>
-      <Link passHref legacyBehavior href={`/org/${currentOrg?.id}/overview`}>
+      <Link
+        passHref
+        legacyBehavior
+        href={`/org/${currentOrg?.id}/${ProjectType.SecretManager}/overview`}
+      >
         <a className="truncate pl-0.5 text-sm font-semibold text-primary/80 hover:text-primary">
           {currentOrg?.name}
         </a>
@@ -93,7 +98,10 @@ export default function NavHeader({
         <Link
           passHref
           legacyBehavior
-          href={{ pathname: "/project/[id]/secrets/overview", query: { id: router.query.id } }}
+          href={{
+            pathname: `/${ProjectType.SecretManager}/[id]/secrets/overview`,
+            query: { id: router.query.id }
+          }}
         >
           <a className="text-sm font-semibold text-primary/80 hover:text-primary">{pageName}</a>
         </Link>
@@ -130,7 +138,7 @@ export default function NavHeader({
             passHref
             legacyBehavior
             href={{
-              pathname: "/project/[id]/secrets/[env]",
+              pathname: `/${ProjectType.SecretManager}/[id]/secrets/[env]`,
               query: { id: router.query.id, env: router.query.env }
             }}
           >
@@ -199,7 +207,10 @@ export default function NavHeader({
                 <Link
                   passHref
                   legacyBehavior
-                  href={{ pathname: "/project/[id]/secrets/[env]", query }}
+                  href={{
+                    pathname: `/${ProjectType.SecretManager}/[id]/secrets/[env]`,
+                    query
+                  }}
                 >
                   <a
                     className={twMerge(
