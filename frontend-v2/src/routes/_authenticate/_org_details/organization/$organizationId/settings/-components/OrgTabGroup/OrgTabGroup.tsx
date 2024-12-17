@@ -24,7 +24,7 @@ const tabs = [
 ];
 export const OrgTabGroup = () => {
   const search = useSearch({
-    from: "/_authenticate/_org_details/_org-layout/organization/$organizationId/settings"
+    from: "/_authenticate/_org_details/_org-layout/organization/$organizationId/settings/"
   });
   const [selectedTab, setSelectedTab] = useState(search.selectedTab || tabs[0].key);
 

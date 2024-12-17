@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useNavigate } from "@tanstack/react-router";
 import axios from "axios";
 import { z } from "zod";
 
@@ -14,7 +15,6 @@ import {
   useUpdateSlackIntegration
 } from "@app/hooks/api";
 import { slugSchema } from "@app/lib/schemas";
-import { useNavigate } from "@tanstack/react-router";
 
 type Props = {
   id?: string;

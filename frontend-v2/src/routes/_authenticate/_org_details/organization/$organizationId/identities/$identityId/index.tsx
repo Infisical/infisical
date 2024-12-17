@@ -1,14 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { useState } from 'react'
-import { Helmet } from 'react-helmet'
-import { useTranslation } from 'react-i18next'
-import { faChevronLeft, faEllipsis } from '@fortawesome/free-solid-svg-icons'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { createFileRoute, useNavigate, useParams } from '@tanstack/react-router'
-import { twMerge } from 'tailwind-merge'
+import { useState } from "react";
+import { Helmet } from "react-helmet";
+import { useTranslation } from "react-i18next";
+import { faChevronLeft, faEllipsis } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
+import { twMerge } from "tailwind-merge";
 
-import { createNotification } from '@app/components/notifications'
-import { OrgPermissionCan } from '@app/components/permissions'
+import { createNotification } from "@app/components/notifications";
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
   DeleteActionModal,
@@ -17,168 +17,155 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Tooltip,
-  UpgradePlanModal,
-} from '@app/components/v2'
-import {
-  OrgPermissionActions,
-  OrgPermissionSubjects,
-  useOrganization,
-} from '@app/context'
-import { withPermission } from '@app/hoc'
+  UpgradePlanModal
+} from "@app/components/v2";
+import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import { withPermission } from "@app/hoc";
 import {
   IdentityAuthMethod,
   useDeleteIdentity,
   useGetIdentityById,
   useRevokeIdentityTokenAuthToken,
-  useRevokeIdentityUniversalAuthClientSecret,
-} from '@app/hooks/api'
-import { Identity } from '@app/hooks/api/identities/types'
-import { usePopUp } from '@app/hooks/usePopUp'
-import { TabSections } from '@app/types/org'
+  useRevokeIdentityUniversalAuthClientSecret
+} from "@app/hooks/api";
+import { Identity } from "@app/hooks/api/identities/types";
+import { usePopUp } from "@app/hooks/usePopUp";
+import { TabSections } from "@app/types/org";
 
-import { IdentityAuthMethodModal } from '../../members/-components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModal'
-import { IdentityModal } from '../../members/-components/OrgIdentityTab/components/IdentitySection/IdentityModal'
-import { IdentityUniversalAuthClientSecretModal } from '../../members/-components/OrgIdentityTab/components/IdentitySection/IdentityUniversalAuthClientSecretModal'
+import { IdentityAuthMethodModal } from "../../members/-components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModal";
+import { IdentityModal } from "../../members/-components/OrgIdentityTab/components/IdentitySection/IdentityModal";
+import { IdentityUniversalAuthClientSecretModal } from "../../members/-components/OrgIdentityTab/components/IdentitySection/IdentityUniversalAuthClientSecretModal";
 import {
   IdentityAuthenticationSection,
   IdentityClientSecretModal,
   IdentityDetailsSection,
   IdentityProjectsSection,
   IdentityTokenListModal,
-  IdentityTokenModal,
-} from './-components'
+  IdentityTokenModal
+} from "./-components";
 
 export const IdentitySection = withPermission(
   () => {
-    const navigate = useNavigate()
+    const navigate = useNavigate();
     const params = useParams({
-      from: '/_authenticate/_org_details/_org-layout/organization/$organizationId/identities/$identityId',
-    })
-    const identityId = params.identityId as string
-    const { currentOrg } = useOrganization()
-    const orgId = currentOrg?.id || ''
-    const { data } = useGetIdentityById(identityId)
-    const { mutateAsync: deleteIdentity } = useDeleteIdentity()
-    const { mutateAsync: revokeToken } = useRevokeIdentityTokenAuthToken()
-    const { mutateAsync: revokeClientSecret } =
-      useRevokeIdentityUniversalAuthClientSecret()
+      from: "/_authenticate/_org_details/_org-layout/organization/$organizationId/identities/$identityId/"
+    });
+    const identityId = params.identityId as string;
+    const { currentOrg } = useOrganization();
+    const orgId = currentOrg?.id || "";
+    const { data } = useGetIdentityById(identityId);
+    const { mutateAsync: deleteIdentity } = useDeleteIdentity();
+    const { mutateAsync: revokeToken } = useRevokeIdentityTokenAuthToken();
+    const { mutateAsync: revokeClientSecret } = useRevokeIdentityUniversalAuthClientSecret();
 
     const [selectedAuthMethod, setSelectedAuthMethod] = useState<
-      Identity['authMethods'][number] | null
-    >(null)
+      Identity["authMethods"][number] | null
+    >(null);
 
-    const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } =
-      usePopUp([
-        'identity',
-        'deleteIdentity',
-        'identityAuthMethod',
-        'revokeAuthMethod',
-        'token',
-        'tokenList',
-        'revokeToken',
-        'clientSecret',
-        'revokeClientSecret',
-        'universalAuthClientSecret', // list of client secrets
-        'upgradePlan',
-      ] as const)
+    const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
+      "identity",
+      "deleteIdentity",
+      "identityAuthMethod",
+      "revokeAuthMethod",
+      "token",
+      "tokenList",
+      "revokeToken",
+      "clientSecret",
+      "revokeClientSecret",
+      "universalAuthClientSecret", // list of client secrets
+      "upgradePlan"
+    ] as const);
 
     const onDeleteIdentitySubmit = async (id: string) => {
       try {
         await deleteIdentity({
           identityId: id,
-          organizationId: orgId,
-        })
+          organizationId: orgId
+        });
 
         createNotification({
-          text: 'Successfully deleted identity',
-          type: 'success',
-        })
+          text: "Successfully deleted identity",
+          type: "success"
+        });
 
-        handlePopUpClose('deleteIdentity')
+        handlePopUpClose("deleteIdentity");
         navigate({
-          to: `/organization/${orgId}/members` as const,
-          search: {
-            selectedTab: TabSections.Identities,
+          to: "/organization/$organizationId/members",
+          params: {
+            organizationId: orgId
           },
-        })
+          search: {
+            selectedTab: TabSections.Identities
+          }
+        });
       } catch (err) {
-        console.error(err)
-        const error = err as any
-        const text =
-          error?.response?.data?.message ?? 'Failed to delete identity'
+        console.error(err);
+        const error = err as any;
+        const text = error?.response?.data?.message ?? "Failed to delete identity";
 
         createNotification({
           text,
-          type: 'error',
-        })
+          type: "error"
+        });
       }
-    }
+    };
 
     const onRevokeTokenSubmit = async ({
       identityId: parentIdentityId,
       tokenId,
-      name,
+      name
     }: {
-      identityId: string
-      tokenId: string
-      name: string
+      identityId: string;
+      tokenId: string;
+      name: string;
     }) => {
       try {
         await revokeToken({
           identityId: parentIdentityId,
-          tokenId,
-        })
+          tokenId
+        });
 
-        handlePopUpClose('revokeToken')
+        handlePopUpClose("revokeToken");
 
         createNotification({
-          text: `Successfully revoked token ${name ?? ''}`,
-          type: 'success',
-        })
+          text: `Successfully revoked token ${name ?? ""}`,
+          type: "success"
+        });
       } catch (err) {
-        console.error(err)
-        const error = err as any
-        const text =
-          error?.response?.data?.message ?? 'Failed to delete identity'
+        console.error(err);
+        const error = err as any;
+        const text = error?.response?.data?.message ?? "Failed to delete identity";
 
         createNotification({
           text,
-          type: 'error',
-        })
+          type: "error"
+        });
       }
-    }
+    };
 
-    const onDeleteClientSecretSubmit = async ({
-      clientSecretId,
-    }: {
-      clientSecretId: string
-    }) => {
+    const onDeleteClientSecretSubmit = async ({ clientSecretId }: { clientSecretId: string }) => {
       try {
-        if (
-          !data?.identity.id ||
-          selectedAuthMethod !== IdentityAuthMethod.UNIVERSAL_AUTH
-        )
-          return
+        if (!data?.identity.id || selectedAuthMethod !== IdentityAuthMethod.UNIVERSAL_AUTH) return;
 
         await revokeClientSecret({
           identityId: data?.identity.id,
-          clientSecretId,
-        })
+          clientSecretId
+        });
 
-        handlePopUpToggle('revokeClientSecret', false)
+        handlePopUpToggle("revokeClientSecret", false);
 
         createNotification({
-          text: 'Successfully deleted client secret',
-          type: 'success',
-        })
+          text: "Successfully deleted client secret",
+          type: "success"
+        });
       } catch (err) {
-        console.error(err)
+        console.error(err);
         createNotification({
-          text: 'Failed to delete client secret',
-          type: 'error',
-        })
+          text: "Failed to delete client secret",
+          type: "error"
+        });
       }
-    }
+    };
 
     return (
       <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
@@ -190,20 +177,21 @@ export const IdentitySection = withPermission(
               leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
               onClick={() => {
                 navigate({
-                  to: `/organization/${orgId}/members` as const,
-                  search: {
-                    selectedTab: TabSections.Identities,
+                  to: "/organization/$organizationId/members",
+                  params: {
+                    organizationId: orgId
                   },
-                })
+                  search: {
+                    selectedTab: TabSections.Identities
+                  }
+                });
               }}
               className="mb-4"
             >
               Identities
             </Button>
             <div className="mb-4 flex items-center justify-between">
-              <p className="text-3xl font-semibold text-white">
-                {data.identity.name}
-              </p>
+              <p className="text-3xl font-semibold text-white">{data.identity.name}</p>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild className="rounded-lg">
                   <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
@@ -220,16 +208,15 @@ export const IdentitySection = withPermission(
                     {(isAllowed) => (
                       <DropdownMenuItem
                         className={twMerge(
-                          !isAllowed &&
-                            'pointer-events-none cursor-not-allowed opacity-50',
+                          !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
                         )}
                         onClick={async () => {
-                          handlePopUpOpen('identity', {
+                          handlePopUpOpen("identity", {
                             identityId,
                             name: data.identity.name,
                             role: data.role,
-                            customRole: data.customRole,
-                          })
+                            customRole: data.customRole
+                          });
                         }}
                         disabled={!isAllowed}
                       >
@@ -244,15 +231,14 @@ export const IdentitySection = withPermission(
                     {(isAllowed) => (
                       <DropdownMenuItem
                         className={twMerge(
-                          !isAllowed &&
-                            'pointer-events-none cursor-not-allowed opacity-50',
+                          !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
                         )}
                         onClick={async () => {
-                          handlePopUpOpen('identityAuthMethod', {
+                          handlePopUpOpen("identityAuthMethod", {
                             identityId,
                             name: data.identity.name,
-                            allAuthMethods: data.identity.authMethods,
-                          })
+                            allAuthMethods: data.identity.authMethods
+                          });
                         }}
                         disabled={!isAllowed}
                       >
@@ -268,14 +254,14 @@ export const IdentitySection = withPermission(
                       <DropdownMenuItem
                         className={twMerge(
                           isAllowed
-                            ? 'hover:!bg-red-500 hover:!text-white'
-                            : 'pointer-events-none cursor-not-allowed opacity-50',
+                            ? "hover:!bg-red-500 hover:!text-white"
+                            : "pointer-events-none cursor-not-allowed opacity-50"
                         )}
                         onClick={async () => {
-                          handlePopUpOpen('deleteIdentity', {
+                          handlePopUpOpen("deleteIdentity", {
                             identityId,
-                            name: data.identity.name,
-                          })
+                            name: data.identity.name
+                          });
                         }}
                         disabled={!isAllowed}
                       >
@@ -288,10 +274,7 @@ export const IdentitySection = withPermission(
             </div>
             <div className="flex">
               <div className="mr-4 w-96">
-                <IdentityDetailsSection
-                  identityId={identityId}
-                  handlePopUpOpen={handlePopUpOpen}
-                />
+                <IdentityDetailsSection identityId={identityId} handlePopUpOpen={handlePopUpOpen} />
                 <IdentityAuthenticationSection
                   selectedAuthMethod={selectedAuthMethod}
                   setSelectedAuthMethod={setSelectedAuthMethod}
@@ -309,19 +292,13 @@ export const IdentitySection = withPermission(
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
         />
-        <IdentityTokenModal
-          popUp={popUp}
-          handlePopUpToggle={handlePopUpToggle}
-        />
+        <IdentityTokenModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <IdentityTokenListModal
           popUp={popUp}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
         />
-        <IdentityClientSecretModal
-          popUp={popUp}
-          handlePopUpToggle={handlePopUpToggle}
-        />
+        <IdentityClientSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <IdentityUniversalAuthClientSecretModal
           popUp={popUp}
           handlePopUpOpen={handlePopUpOpen}
@@ -329,87 +306,82 @@ export const IdentitySection = withPermission(
         />
         <UpgradePlanModal
           isOpen={popUp.upgradePlan.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle('upgradePlan', isOpen)}
-          text={
-            (popUp.upgradePlan?.data as { description: string })?.description
-          }
+          onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+          text={(popUp.upgradePlan?.data as { description: string })?.description}
         />
         <DeleteActionModal
           isOpen={popUp.deleteIdentity.isOpen}
           title={`Are you sure want to delete ${
-            (popUp?.deleteIdentity?.data as { name: string })?.name || ''
+            (popUp?.deleteIdentity?.data as { name: string })?.name || ""
           }?`}
-          onChange={(isOpen) => handlePopUpToggle('deleteIdentity', isOpen)}
+          onChange={(isOpen) => handlePopUpToggle("deleteIdentity", isOpen)}
           deleteKey="confirm"
           onDeleteApproved={() =>
             onDeleteIdentitySubmit(
-              (popUp?.deleteIdentity?.data as { identityId: string })
-                ?.identityId,
+              (popUp?.deleteIdentity?.data as { identityId: string })?.identityId
             )
           }
         />
         <DeleteActionModal
           isOpen={popUp.revokeToken.isOpen}
           title={`Are you sure want to revoke ${
-            (popUp?.revokeToken?.data as { name: string })?.name || ''
+            (popUp?.revokeToken?.data as { name: string })?.name || ""
           }?`}
-          onChange={(isOpen) => handlePopUpToggle('revokeToken', isOpen)}
+          onChange={(isOpen) => handlePopUpToggle("revokeToken", isOpen)}
           deleteKey="confirm"
           onDeleteApproved={() => {
             const revokeTokenData = popUp?.revokeToken?.data as {
-              identityId: string
-              tokenId: string
-              name: string
-            }
+              identityId: string;
+              tokenId: string;
+              name: string;
+            };
 
-            return onRevokeTokenSubmit(revokeTokenData)
+            return onRevokeTokenSubmit(revokeTokenData);
           }}
         />
         <DeleteActionModal
           isOpen={popUp.revokeClientSecret.isOpen}
           title={`Are you sure want to delete the client secret ${
             (popUp?.revokeClientSecret?.data as { clientSecretPrefix: string })
-              ?.clientSecretPrefix || ''
+              ?.clientSecretPrefix || ""
           }************?`}
-          onChange={(isOpen) => handlePopUpToggle('revokeClientSecret', isOpen)}
+          onChange={(isOpen) => handlePopUpToggle("revokeClientSecret", isOpen)}
           deleteKey="confirm"
           onDeleteApproved={() => {
             const deleteClientSecretData = popUp?.revokeClientSecret?.data as {
-              clientSecretId: string
-              clientSecretPrefix: string
-            }
+              clientSecretId: string;
+              clientSecretPrefix: string;
+            };
 
             return onDeleteClientSecretSubmit({
-              clientSecretId: deleteClientSecretData.clientSecretId,
-            })
+              clientSecretId: deleteClientSecretData.clientSecretId
+            });
           }}
         />
       </div>
-    )
+    );
   },
   {
     action: OrgPermissionActions.Read,
-    subject: OrgPermissionSubjects.Identity,
-  },
-)
+    subject: OrgPermissionSubjects.Identity
+  }
+);
 
 const IdentityDetailPage = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation();
   return (
     <>
       <Helmet>
-        <title>
-          {t('common.head-title', { title: t('settings.org.title') })}
-        </title>
+        <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <IdentitySection />
     </>
-  )
-}
+  );
+};
 
 export const Route = createFileRoute(
-  '/_authenticate/_org_details/_org-layout/organization/$organizationId/identities/$identityId/',
+  "/_authenticate/_org_details/_org-layout/organization/$organizationId/identities/$identityId/"
 )({
-  component: IdentityDetailPage,
-})
+  component: IdentityDetailPage
+});

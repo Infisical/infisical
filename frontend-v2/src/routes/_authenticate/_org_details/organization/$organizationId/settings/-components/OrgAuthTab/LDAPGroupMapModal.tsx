@@ -3,6 +3,7 @@ import { Controller, useForm } from "react-hook-form";
 import { faUsers, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -35,7 +36,6 @@ import {
   useGetOrganizationGroups
 } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
-import { useNavigate } from "@tanstack/react-router";
 
 const schema = z.object({
   ldapGroupCN: z.string().min(1, "LDAP Group CN is required"),

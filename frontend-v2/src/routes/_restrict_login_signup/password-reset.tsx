@@ -4,7 +4,9 @@ import { FormEvent, useState } from "react";
 import { faCheck, faX } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
 import jsrp from "jsrp";
+import { z } from "zod";
 
 import InputField from "@app/components/basic/InputField";
 import passwordCheck from "@app/components/utilities/checks/password/PasswordCheck";
@@ -389,6 +391,12 @@ const PasswordResetPage = () => {
   );
 };
 
+const PasswordResetPageQueryParamsSchema = z.object({
+  token: z.string(),
+  to: z.string()
+});
+
 export const Route = createFileRoute("/_restrict_login_signup/password-reset")({
-  component: PasswordResetPage
+  component: PasswordResetPage,
+  validateSearch: zodValidator(PasswordResetPageQueryParamsSchema)
 });

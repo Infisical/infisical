@@ -39,7 +39,7 @@ export const SecretPathInput = ({
   const workspaceId = currentWorkspace?.id || "";
   const { folderNames: folders } = useGetFoldersByEnv({
     path: secretPath,
-    environments: [environment || currentWorkspace?.environments?.[0].slug],
+    environments: [environment || currentWorkspace?.environments?.[0].slug || ""],
     projectId: workspaceId
   });
 

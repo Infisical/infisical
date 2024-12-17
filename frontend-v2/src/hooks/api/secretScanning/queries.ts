@@ -1,5 +1,7 @@
-import { apiRequest } from "@app/config/request";
 import { useQuery } from "@tanstack/react-query";
+
+import { apiRequest } from "@app/config/request";
+
 import { TSecretScanningGitRisks } from "./types";
 
 export const secretScanningQueryKeys = {

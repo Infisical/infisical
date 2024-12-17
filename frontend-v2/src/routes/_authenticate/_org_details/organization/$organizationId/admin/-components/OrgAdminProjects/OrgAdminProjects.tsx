@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { faEllipsis, faMagnifyingGlass, faSignIn } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
 
@@ -31,7 +32,6 @@ import {
 import { withPermission } from "@app/hoc";
 import { useDebounce } from "@app/hooks";
 import { useOrgAdminAccessProject, useOrgAdminGetProjects } from "@app/hooks/api";
-import { useNavigate } from "@tanstack/react-router";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 
 export const OrgAdminProjects = withPermission(

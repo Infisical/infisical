@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import { IconButton, Tag, Td, Tooltip, Tr } from "@app/components/v2";
@@ -8,7 +9,6 @@ import { useWorkspace } from "@app/context";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { TWorkspaceUser } from "@app/hooks/api/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
-import { useNavigate } from "@tanstack/react-router";
 import { TabSections } from "@app/types/org";
 
 type Props = {

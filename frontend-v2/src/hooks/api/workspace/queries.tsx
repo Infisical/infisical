@@ -148,9 +148,12 @@ export const useGetUserWorkspaces = ({
   includeRoles?: boolean;
   type?: ProjectType | "all";
 } = {}) =>
-  useQuery(workspaceKeys.getAllUserWorkspace(type || ""), () =>
-    fetchUserWorkspaces(includeRoles, type)
-  );
+  useQuery({
+    queryKey: workspaceKeys.getAllUserWorkspace(type || ""),
+
+    queryFn: () =>
+      fetchUserWorkspaces(includeRoles, type)
+  });
 
 const fetchUserWorkspaceMemberships = async (orgId: string) => {
   const { data } = await apiRequest.get<Record<string, Workspace[]>>(
@@ -324,7 +327,9 @@ export const useDeleteWorkspace = () => {
     },
     onSuccess: (dto) => {
       queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace(dto.type));
-      queryClient.invalidateQueries(["org-admin-projects"]);
+      queryClient.invalidateQueries({
+        queryKey: ["org-admin-projects"]
+      });
     }
   });
 };

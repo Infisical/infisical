@@ -74,7 +74,9 @@ export const OrganizationLayout = () => {
                 <div className="px-1">
                   <Menu className="mt-4">
                     <Link
-                      to={`/organization/$organizationId/${ProjectType.SecretManager}` as const}
+                      to={
+                        `/organization/$organizationId/${ProjectType.SecretManager}/overview` as const
+                      }
                       params={{ organizationId: currentOrg.id }}
                       activeOptions={{ exact: true }}
                     >
@@ -86,7 +88,7 @@ export const OrganizationLayout = () => {
                     </Link>
                     <Link
                       to={
-                        `/organization/$organizationid/${ProjectType.CertificateManager}` as const
+                        `/organization/$organizationId/${ProjectType.CertificateManager}/overview` as const
                       }
                       params={{ organizationId: currentOrg.id }}
                       activeOptions={{ exact: true }}
@@ -98,7 +100,7 @@ export const OrganizationLayout = () => {
                       )}
                     </Link>
                     <Link
-                      to={`/organization/$organizationId/${ProjectType.KMS}` as const}
+                      to={`/organization/$organizationId/${ProjectType.KMS}/overview` as const}
                       params={{ organizationId: currentOrg.id }}
                       activeOptions={{ exact: true }}
                     >

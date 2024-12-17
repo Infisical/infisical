@@ -1,9 +1,8 @@
 export { AuthProvider } from "./AuthContext";
-export { OrgProvider, useOrganization } from "./OrganizationContext";
+export { useOrganization } from "./OrganizationContext";
 export type { TOrgPermission } from "./OrgPermissionContext";
 export {
   OrgPermissionActions,
-  OrgPermissionProvider,
   OrgPermissionSubjects,
   useOrgPermission
 } from "./OrgPermissionContext";
@@ -16,7 +15,7 @@ export {
   ProjectPermissionSub,
   useProjectPermission
 } from "./ProjectPermissionContext";
-export { ServerConfigProvider, useServerConfig } from "./ServerConfigContext";
-export { SubscriptionProvider, useSubscription } from "./SubscriptionContext";
-export { UserProvider, useUser } from "./UserContext";
+export { useServerConfig } from "./ServerConfigContext";
+export { useSubscription } from "./SubscriptionContext";
+export { useUser } from "./UserContext";
 export { useWorkspace, WorkspaceProvider } from "./WorkspaceContext";
