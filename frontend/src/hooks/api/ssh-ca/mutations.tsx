@@ -68,7 +68,10 @@ export const useSignSshKey = () => {
   const queryClient = useQueryClient();
   return useMutation<TSignSshKeyResponse, {}, TSignSshKeyDTO>({
     mutationFn: async (body) => {
-      const { data } = await apiRequest.post<TSignSshKeyResponse>("/api/v1/ssh/sign", body);
+      const { data } = await apiRequest.post<TSignSshKeyResponse>(
+        "/api/v1/ssh/certificates/sign",
+        body
+      );
       return data;
     },
     onSuccess: (_, { projectId }) => {
@@ -81,7 +84,10 @@ export const useIssueSshCreds = () => {
   const queryClient = useQueryClient();
   return useMutation<TIssueSshCredsResponse, {}, TIssueSshCredsDTO>({
     mutationFn: async (body) => {
-      const { data } = await apiRequest.post<TIssueSshCredsResponse>("/api/v1/ssh/issue", body);
+      const { data } = await apiRequest.post<TIssueSshCredsResponse>(
+        "/api/v1/ssh/certificates/issue",
+        body
+      );
       return data;
     },
     onSuccess: (_, { projectId }) => {
