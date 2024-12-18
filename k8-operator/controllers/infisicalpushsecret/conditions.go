@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Infisical/infisical/k8-operator/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -19,7 +20,7 @@ func (r *InfisicalPushSecretReconciler) SetSuccessfullyReconciledConditions(ctx 
 			Type:    "secrets.infisical.com/SuccessfullyReconciled",
 			Status:  metav1.ConditionTrue,
 			Reason:  "Error",
-			Message: "Reconcile failed, secrets were not pushed to Infisical. Check operator logs for more info",
+			Message: fmt.Sprintf("Reconcile failed, secrets were not pushed to Infisical. Error: %s", err.Error()),
 		})
 	} else {
 		meta.SetStatusCondition(&infisicalPushSecret.Status.Conditions, metav1.Condition{
