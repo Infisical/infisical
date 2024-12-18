@@ -9,7 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (r *InfisicalPushSecretReconciler) SetSuccessfullyReconciledConditions(ctx context.Context, infisicalPushSecret *v1alpha1.InfisicalPushSecret, err error) error {
+func (r *InfisicalPushSecretReconciler) SetReconcileStatusCondition(ctx context.Context, infisicalPushSecret *v1alpha1.InfisicalPushSecret, err error) error {
 
 	if infisicalPushSecret.Status.Conditions == nil {
 		infisicalPushSecret.Status.Conditions = []metav1.Condition{}
@@ -17,14 +17,14 @@ func (r *InfisicalPushSecretReconciler) SetSuccessfullyReconciledConditions(ctx 
 
 	if err != nil {
 		meta.SetStatusCondition(&infisicalPushSecret.Status.Conditions, metav1.Condition{
-			Type:    "secrets.infisical.com/SuccessfullyReconciled",
+			Type:    "secrets.infisical.com/Reconcile",
 			Status:  metav1.ConditionTrue,
 			Reason:  "Error",
 			Message: fmt.Sprintf("Reconcile failed, secrets were not pushed to Infisical. Error: %s", err.Error()),
 		})
 	} else {
 		meta.SetStatusCondition(&infisicalPushSecret.Status.Conditions, metav1.Condition{
-			Type:    "secrets.infisical.com/SuccessfullyReconciled",
+			Type:    "secrets.infisical.com/Reconcile",
 			Status:  metav1.ConditionFalse,
 			Reason:  "OK",
 			Message: "Reconcile succeeded, secrets were pushed to Infisical",
@@ -35,7 +35,7 @@ func (r *InfisicalPushSecretReconciler) SetSuccessfullyReconciledConditions(ctx 
 
 }
 
-func (r *InfisicalPushSecretReconciler) SetFailedToReplaceSecretsConditions(ctx context.Context, infisicalPushSecret *v1alpha1.InfisicalPushSecret, failMessage string) error {
+func (r *InfisicalPushSecretReconciler) SetFailedToReplaceSecretsStatusCondition(ctx context.Context, infisicalPushSecret *v1alpha1.InfisicalPushSecret, failMessage string) error {
 	if infisicalPushSecret.Status.Conditions == nil {
 		infisicalPushSecret.Status.Conditions = []metav1.Condition{}
 	}
@@ -59,7 +59,7 @@ func (r *InfisicalPushSecretReconciler) SetFailedToReplaceSecretsConditions(ctx 
 	return r.Client.Status().Update(ctx, infisicalPushSecret)
 }
 
-func (r *InfisicalPushSecretReconciler) SetFailedToCreateSecretsConditions(ctx context.Context, infisicalPushSecret *v1alpha1.InfisicalPushSecret, failMessage string) error {
+func (r *InfisicalPushSecretReconciler) SetFailedToCreateSecretsStatusCondition(ctx context.Context, infisicalPushSecret *v1alpha1.InfisicalPushSecret, failMessage string) error {
 	if infisicalPushSecret.Status.Conditions == nil {
 		infisicalPushSecret.Status.Conditions = []metav1.Condition{}
 	}
@@ -83,7 +83,7 @@ func (r *InfisicalPushSecretReconciler) SetFailedToCreateSecretsConditions(ctx c
 	return r.Client.Status().Update(ctx, infisicalPushSecret)
 }
 
-func (r *InfisicalPushSecretReconciler) SetFailedToUpdateSecretsConditions(ctx context.Context, infisicalPushSecret *v1alpha1.InfisicalPushSecret, failMessage string) error {
+func (r *InfisicalPushSecretReconciler) SetFailedToUpdateSecretsStatusCondition(ctx context.Context, infisicalPushSecret *v1alpha1.InfisicalPushSecret, failMessage string) error {
 	if infisicalPushSecret.Status.Conditions == nil {
 		infisicalPushSecret.Status.Conditions = []metav1.Condition{}
 	}
@@ -107,7 +107,7 @@ func (r *InfisicalPushSecretReconciler) SetFailedToUpdateSecretsConditions(ctx c
 	return r.Client.Status().Update(ctx, infisicalPushSecret)
 }
 
-func (r *InfisicalPushSecretReconciler) SetFailedToDeleteSecretsConditions(ctx context.Context, infisicalPushSecret *v1alpha1.InfisicalPushSecret, failMessage string) error {
+func (r *InfisicalPushSecretReconciler) SetFailedToDeleteSecretsStatusCondition(ctx context.Context, infisicalPushSecret *v1alpha1.InfisicalPushSecret, failMessage string) error {
 	if infisicalPushSecret.Status.Conditions == nil {
 		infisicalPushSecret.Status.Conditions = []metav1.Condition{}
 	}
@@ -131,7 +131,7 @@ func (r *InfisicalPushSecretReconciler) SetFailedToDeleteSecretsConditions(ctx c
 	return r.Client.Status().Update(ctx, infisicalPushSecret)
 }
 
-func (r *InfisicalPushSecretReconciler) SetAuthenticatedConditions(ctx context.Context, infisicalPushSecret *v1alpha1.InfisicalPushSecret, errorToConditionOn error) error {
+func (r *InfisicalPushSecretReconciler) SetAuthenticatedStatusCondition(ctx context.Context, infisicalPushSecret *v1alpha1.InfisicalPushSecret, errorToConditionOn error) error {
 	if infisicalPushSecret.Status.Conditions == nil {
 		infisicalPushSecret.Status.Conditions = []metav1.Condition{}
 	}
