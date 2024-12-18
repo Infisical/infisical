@@ -9,7 +9,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
-export const registerSshRouter = async (server: FastifyZodProvider) => {
+export const registerSshCertRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/sign",
