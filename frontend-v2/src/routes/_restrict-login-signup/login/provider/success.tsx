@@ -7,7 +7,7 @@ import SecurityClient from "@app/components/utilities/SecurityClient";
 
 const LoginProviderSuccess = () => {
   const search = useSearch({
-    from: "/_restrict_login_signup/login/provider/success"
+    from: "/_restrict-login-signup/login/provider/success"
   });
 
   useEffect(() => {

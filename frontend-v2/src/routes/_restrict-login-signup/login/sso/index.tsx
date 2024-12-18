@@ -10,7 +10,7 @@ import { PasswordStep } from "../-components";
 
 const LoginSSOPage = () => {
   const { t } = useTranslation();
-  const search = useSearch({ from: "/_restrict_login_signup/login/sso/" });
+  const search = useSearch({ from: "/_restrict-login-signup/login/sso/" });
   const token = search.token as string;
   const [step, setStep] = useState(0);
   const [password, setPassword] = useState("");

@@ -21,10 +21,7 @@ export const Route = createFileRoute("/_restrict-login-signup")({
       throw redirect({ to: "/login/select-organization" });
     }
     throw redirect({
-      to: `/organization/$organizationId/${ProjectType.SecretManager}/overview` as const,
-      params: {
-        organizationId: data.organizationId
-      }
+      to: `/organization/${ProjectType.SecretManager}/overview` as const
     });
   }
 });

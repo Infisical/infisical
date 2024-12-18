@@ -8,7 +8,7 @@ import { Mfa } from "@app/components/auth/Mfa";
 import { CreateOrgModal } from "@app/components/organization/CreateOrgModal";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Menu, MenuItem } from "@app/components/v2";
-import { useOrganization, useUser } from "@app/context";
+import { useUser } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
 import { useSelectOrganization } from "@app/hooks/api";
 import { MfaMethod } from "@app/hooks/api/auth/types";
@@ -19,8 +19,6 @@ import { SidebarFooter } from "./components/SidebarFooter";
 import { SidebarHeader } from "./components/SidebarHeader";
 
 export const OrganizationLayout = () => {
-  const { currentOrg } = useOrganization();
-
   const [shouldShowMfa, toggleShowMfa] = useToggle(false);
   const [requiredMfaMethod, setRequiredMfaMethod] = useState(MfaMethod.EMAIL);
   const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
@@ -73,70 +71,42 @@ export const OrganizationLayout = () => {
                 <SidebarHeader onChangeOrg={handleOrgChange} />
                 <div className="px-1">
                   <Menu className="mt-4">
-                    <Link
-                      to={
-                        `/organization/$organizationId/${ProjectType.SecretManager}/overview` as const
-                      }
-                      params={{ organizationId: currentOrg.id }}
-                      activeOptions={{ exact: true }}
-                    >
+                    <Link to={`/organization/${ProjectType.SecretManager}/overview` as const}>
                       {({ isActive }) => (
                         <MenuItem isSelected={isActive} icon="system-outline-165-view-carousel">
                           Secret Management
                         </MenuItem>
                       )}
                     </Link>
-                    <Link
-                      to={
-                        `/organization/$organizationId/${ProjectType.CertificateManager}/overview` as const
-                      }
-                      params={{ organizationId: currentOrg.id }}
-                      activeOptions={{ exact: true }}
-                    >
+                    <Link to={`/organization/${ProjectType.CertificateManager}/overview` as const}>
                       {({ isActive }) => (
                         <MenuItem isSelected={isActive} icon="note">
                           Cert Management
                         </MenuItem>
                       )}
                     </Link>
-                    <Link
-                      to={`/organization/$organizationId/${ProjectType.KMS}/overview` as const}
-                      params={{ organizationId: currentOrg.id }}
-                      activeOptions={{ exact: true }}
-                    >
+                    <Link to={`/organization/${ProjectType.KMS}/overview` as const}>
                       {({ isActive }) => (
                         <MenuItem isSelected={isActive} icon="note">
                           Key Management
                         </MenuItem>
                       )}
                     </Link>
-                    <Link
-                      to="/organization/$organizationId/members"
-                      params={{ organizationId: currentOrg.id }}
-                      activeOptions={{ exact: true }}
-                    >
+                    <Link to="/organization/members">
                       {({ isActive }) => (
                         <MenuItem isSelected={isActive} icon="system-outline-96-groups">
                           Access Control
                         </MenuItem>
                       )}
                     </Link>
-                    <Link
-                      to="/organization/$organizationId/secret-scanning"
-                      params={{ organizationId: currentOrg.id }}
-                      activeOptions={{ exact: true }}
-                    >
+                    <Link to="/organization/secret-scanning">
                       {({ isActive }) => (
                         <MenuItem isSelected={isActive} icon="system-outline-69-document-scan">
                           Secret Scanning
                         </MenuItem>
                       )}
                     </Link>
-                    <Link
-                      to="/organization/$organizationId/secret-sharing"
-                      params={{ organizationId: currentOrg.id }}
-                      activeOptions={{ exact: true }}
-                    >
+                    <Link to="/organization/secret-sharing">
                       {({ isActive }) => (
                         <MenuItem isSelected={isActive} icon="system-outline-90-lock-closed">
                           Secret Sharing
@@ -146,11 +116,7 @@ export const OrganizationLayout = () => {
                     {(window.location.origin.includes("https://app.infisical.com") ||
                       window.location.origin.includes("https://eu.infisical.com") ||
                       window.location.origin.includes("https://gamma.infisical.com")) && (
-                      <Link
-                        to="/organization/$organizationId/billing"
-                        params={{ organizationId: currentOrg.id }}
-                        activeOptions={{ exact: true }}
-                      >
+                      <Link to="/organization/billing">
                         {({ isActive }) => (
                           <MenuItem
                             isSelected={isActive}
@@ -161,22 +127,14 @@ export const OrganizationLayout = () => {
                         )}
                       </Link>
                     )}
-                    <Link
-                      to="/organization/$organizationId/audit-logs"
-                      params={{ organizationId: currentOrg.id }}
-                      activeOptions={{ exact: true }}
-                    >
+                    <Link to="/organization/audit-logs">
                       {({ isActive }) => (
                         <MenuItem isSelected={isActive} icon="system-outline-168-view-headline">
                           Audit Logs
                         </MenuItem>
                       )}
                     </Link>
-                    <Link
-                      to="/organization/$organizationId/settings"
-                      params={{ organizationId: currentOrg.id }}
-                      activeOptions={{ exact: true }}
-                    >
+                    <Link to="/organization/settings">
                       {({ isActive }) => (
                         <MenuItem
                           isSelected={isActive}

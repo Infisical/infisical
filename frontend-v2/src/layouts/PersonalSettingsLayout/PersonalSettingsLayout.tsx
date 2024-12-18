@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { faArrowLeft, faInfo, faMobile, faQuestion } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link, Outlet, useRouteContext } from "@tanstack/react-router";
+import { Link, Outlet } from "@tanstack/react-router";
 
 import { WishForm } from "@app/components/features/WishForm";
 import {
@@ -16,9 +16,6 @@ import { InsecureConnectionBanner } from "../OrganizationLayout/components/Insec
 import { INFISICAL_SUPPORT_OPTIONS } from "../OrganizationLayout/components/SidebarFooter/SidebarFooter";
 
 export const PersonalSettingsLayout = () => {
-  const { organizationId } = useRouteContext({
-    from: "/_authenticate/personal-settings/_personal-settings-layout"
-  });
   const { t } = useTranslation();
 
   const infisicalPlatformVersion = import.meta.env.VITE_INFISICAL_PLATFORM_VERSION;
@@ -31,12 +28,7 @@ export const PersonalSettingsLayout = () => {
           <aside className="dark w-full border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60">
             <nav className="items-between flex h-full flex-col justify-between overflow-y-auto dark:[color-scheme:dark]">
               <div className="flex-grow">
-                <Link
-                  to={
-                    `/organization/$organizationId/${ProjectType.SecretManager}/overview` as const
-                  }
-                  params={{ organizationId }}
-                >
+                <Link to={`/organization/${ProjectType.SecretManager}/overview` as const}>
                   <div className="my-6 flex cursor-default items-center justify-center pr-2 text-sm text-mineshaft-300 hover:text-mineshaft-100">
                     <FontAwesomeIcon icon={faArrowLeft} className="pr-3" />
                     Back to organization

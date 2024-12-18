@@ -58,7 +58,7 @@ export const CreateOrgModal: FC<CreateOrgModalProps> = ({ isOpen, onClose }) => 
       });
 
       navigate({
-        to: `/organization/$organizationId/${ProjectType.SecretManager}/overview` as const,
+        to: `/organization/${ProjectType.SecretManager}/overview` as const,
         params: {
           organizationId: organization.id
         }

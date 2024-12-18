@@ -19,8 +19,8 @@ import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { InsecureConnectionBanner } from "../OrganizationLayout/components/InsecureConnectionBanner";
 import { SidebarFooter } from "../OrganizationLayout/components/SidebarFooter";
-import { SidebarHeader } from "./components/SidebarHeader";
 import { ProjectSelect } from "./components/ProjectSelect";
+import { SidebarHeader } from "./components/SidebarHeader";
 
 // This is a generic layout shared by all types of projects.
 // If the product layout differs significantly, create a new layout as needed.

@@ -12,7 +12,7 @@ import { UserInfoSSOStep } from "./-components/UserInfoSSOStep";
 
 const SignupSSOPage = () => {
   const { t } = useTranslation();
-  const search = useSearch({ from: "/_restrict_login_signup/signup/sso/" });
+  const search = useSearch({ from: "/_restrict-login-signup/signup/sso/" });
   const token = search.token as string;
 
   const [step, setStep] = useState(0);

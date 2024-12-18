@@ -62,10 +62,7 @@ export const SidebarFooter = () => {
       {(window.location.origin.includes("https://app.infisical.com") ||
         window.location.origin.includes("https://gamma.infisical.com")) && <WishForm />}
       <Link
-        to="/organization/$organizationId/members"
-        params={{
-          organizationId: currentOrg?.id
-        }}
+        to="/organization/members"
         search={{
           action: "invite"
         }}

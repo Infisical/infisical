@@ -42,7 +42,7 @@ export const SidebarHeader = ({ onChangeOrg }: Prop) => {
 
   return (
     <div className="flex h-12 cursor-default items-center px-3 pt-6">
-      <Link to={`/organization/$organizationId/${currentWorkspace.type}/overview`} params={{}}>
+      <Link to={`/organization/$${currentWorkspace.type}/overview` as const}>
         <div className="pl-1 pr-2 text-mineshaft-400 duration-200 hover:text-mineshaft-100">
           <FontAwesomeIcon icon={faArrowLeft} />
         </div>
