@@ -31,6 +31,8 @@ import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-ap
 import { TSecretRotationServiceFactory } from "@app/ee/services/secret-rotation/secret-rotation-service";
 import { TSecretScanningServiceFactory } from "@app/ee/services/secret-scanning/secret-scanning-service";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
+import { TSshCertificateAuthorityServiceFactory } from "@app/ee/services/ssh/ssh-certificate-authority-service";
+import { TSshCertificateTemplateServiceFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-service";
 import { TTrustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
 import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
 import { TApiKeyServiceFactory } from "@app/services/api-key/api-key-service";
@@ -177,6 +179,8 @@ declare module "fastify" {
       auditLogStream: TAuditLogStreamServiceFactory;
       certificate: TCertificateServiceFactory;
       certificateTemplate: TCertificateTemplateServiceFactory;
+      sshCertificateAuthority: TSshCertificateAuthorityServiceFactory;
+      sshCertificateTemplate: TSshCertificateTemplateServiceFactory;
       certificateAuthority: TCertificateAuthorityServiceFactory;
       certificateAuthorityCrl: TCertificateAuthorityCrlServiceFactory;
       certificateEst: TCertificateEstServiceFactory;

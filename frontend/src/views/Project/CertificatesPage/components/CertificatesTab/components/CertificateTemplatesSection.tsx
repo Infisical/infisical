@@ -1,7 +1,3 @@
-/**
- * TODO (dangtony98): Reevaluate if this component should be in main
- * CertificateTab or under CA page in the future.
- */
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -18,7 +14,7 @@ import { CertificateTemplatesTable } from "./CertificateTemplatesTable";
 
 type Props = {
   caId: string;
-}
+};
 
 export const CertificateTemplatesSection = ({ caId }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([

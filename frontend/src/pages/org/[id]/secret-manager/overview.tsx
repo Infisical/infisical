@@ -62,7 +62,8 @@ enum ProjectOrderBy {
 const formatTitle = (type: ProjectType) => {
   if (type === ProjectType.SecretManager) return "Secret Management";
   if (type === ProjectType.CertificateManager) return "Cert Management";
-  return "Key Management";
+  if (type === ProjectType.KMS) return "Key Management";
+  return "SSH";
 };
 
 const formatDescription = (type: ProjectType) => {
@@ -70,7 +71,9 @@ const formatDescription = (type: ProjectType) => {
     return "Securely store, manage, and rotate various application secrets, such as database credentials, API keys, etc.";
   if (type === ProjectType.CertificateManager)
     return "Manage your PKI infrastructure and issue digital certificates for services, applications, and devices.";
-  return "Centralize the management of keys for cryptographic operations, such as encryption and decryption.";
+  if (type === ProjectType.KMS)
+    return "Centralize the management of keys for cryptographic operations, such as encryption and decryption.";
+  return "Generate SSH credentials to provide secure and centralized SSH access control for your infrastructure.";
 };
 
 type Props = {

@@ -492,6 +492,17 @@ export const PROJECTS = {
   LIST_INTEGRATION_AUTHORIZATION: {
     workspaceId: "The ID of the project to list integration auths for."
   },
+  LIST_SSH_CAS: {
+    projectId: "The ID of the project to list SSH CAs for."
+  },
+  LIST_SSH_CERTIFICATES: {
+    projectId: "The ID of the project to list SSH certificates for.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th SSH certificate.",
+    limit: "The number of SSH certificates to return."
+  },
+  LIST_SSH_CERTIFICATE_TEMPLATES: {
+    projectId: "The ID of the project to list SSH certificate templates for."
+  },
   LIST_CAS: {
     slug: "The slug of the project to list CAs for.",
     status: "The status of the CA to filter by.",
@@ -1184,6 +1195,84 @@ export const AUDIT_LOG_STREAMS = {
   },
   GET_BY_ID: {
     id: "The ID of the audit log stream to get details."
+  }
+};
+
+export const SSH_CERTIFICATE_AUTHORITIES = {
+  CREATE: {
+    projectId: "The ID of the project to create the SSH CA in.",
+    friendlyName: "A friendly name for the SSH CA.",
+    keyAlgorithm: "The type of public key algorithm and size, in bits, of the key pair for the SSH CA."
+  },
+  GET: {
+    sshCaId: "The ID of the SSH CA to get."
+  },
+  GET_PUBLIC_KEY: {
+    sshCaId: "The ID of the SSH CA to get the public key for."
+  },
+  UPDATE: {
+    sshCaId: "The ID of the SSH CA to update.",
+    friendlyName: "A friendly name for the SSH CA to update to.",
+    status: "The status of the SSH CA to update to. This can be one of active or disabled."
+  },
+  DELETE: {
+    sshCaId: "The ID of the SSH CA to delete."
+  },
+  GET_CERTIFICATE_TEMPLATES: {
+    sshCaId: "The ID of the SSH CA to get the certificate templates for."
+  },
+  SIGN_SSH_KEY: {
+    certificateTemplateId: "The ID of the SSH certificate template to sign the SSH public key with.",
+    publicKey: "The SSH public key to sign.",
+    certType: "The type of certificate to issue. This can be one of user or host.",
+    principals: "The list of principals (usernames, hostnames) to include in the certificate.",
+    ttl: "The time to live for the certificate such as 1m, 1h, 1d, ... If not specified, the default TTL for the template will be used.",
+    keyId: "The key ID to include in the certificate. If not specified, a default key ID will be generated.",
+    serialNumber: "The serial number of the issued SSH certificate.",
+    signedKey: "The SSH certificate or signed SSH public key."
+  },
+  ISSUE_SSH_CREDENTIALS: {
+    certificateTemplateId: "The ID of the SSH certificate template to issue the SSH credentials with.",
+    keyAlgorithm: "The type of public key algorithm and size, in bits, of the key pair for the SSH CA.",
+    certType: "The type of certificate to issue. This can be one of user or host.",
+    principals: "The list of principals (usernames, hostnames) to include in the certificate.",
+    ttl: "The time to live for the certificate such as 1m, 1h, 1d, ... If not specified, the default TTL for the template will be used.",
+    keyId: "The key ID to include in the certificate. If not specified, a default key ID will be generated.",
+    serialNumber: "The serial number of the issued SSH certificate.",
+    signedKey: "The SSH certificate or signed SSH public key.",
+    privateKey: "The private key corresponding to the issued SSH certificate.",
+    publicKey: "The public key of the issued SSH certificate."
+  }
+};
+
+export const SSH_CERTIFICATE_TEMPLATES = {
+  GET: {
+    certificateTemplateId: "The ID of the SSH certificate template to get."
+  },
+  CREATE: {
+    sshCaId: "The ID of the SSH CA to associate the certificate template with.",
+    name: "The name of the certificate template.",
+    ttl: "The default time to live for issued certificates such as 1m, 1h, 1d, 1y, ...",
+    maxTTL: "The maximum time to live for issued certificates such as 1m, 1h, 1d, 1y, ...",
+    allowedUsers: "The list of allowed users for certificates issued under this template.",
+    allowedHosts: "The list of allowed hosts for certificates issued under this template.",
+    allowUserCertificates: "Whether or not to allow user certificates to be issued under this template.",
+    allowHostCertificates: "Whether or not to allow host certificates to be issued under this template.",
+    allowCustomKeyIds: "Whether or not to allow custom key IDs for certificates issued under this template."
+  },
+  UPDATE: {
+    certificateTemplateId: "The ID of the SSH certificate template to update.",
+    name: "The name of the certificate template.",
+    ttl: "The default time to live for issued certificates such as 1m, 1h, 1d, 1y, ...",
+    maxTTL: "The maximum time to live for issued certificates such as 1m, 1h, 1d, 1y, ...",
+    allowedUsers: "The list of allowed users for certificates issued under this template.",
+    allowedHosts: "The list of allowed hosts for certificates issued under this template.",
+    allowUserCertificates: "Whether or not to allow user certificates to be issued under this template.",
+    allowHostCertificates: "Whether or not to allow host certificates to be issued under this template.",
+    allowCustomKeyIds: "Whether or not to allow custom key IDs for certificates issued under this template."
+  },
+  DELETE: {
+    certificateTemplateId: "The ID of the SSH certificate template to delete."
   }
 };
 
