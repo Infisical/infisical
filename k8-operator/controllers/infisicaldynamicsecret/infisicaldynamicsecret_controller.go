@@ -134,7 +134,7 @@ func (r *InfisicalDynamicSecretReconciler) Reconcile(ctx context.Context, req ct
 	}
 
 	nextReconcile, err := r.ReconcileInfisicalDynamicSecret(ctx, logger, &infisicalDynamicSecretCRD)
-	r.SetReconcileStatus(ctx, logger, &infisicalDynamicSecretCRD, err)
+	r.SetReconcileConditionStatus(ctx, logger, &infisicalDynamicSecretCRD, err)
 
 	if err == nil && nextReconcile.Seconds() >= 5 {
 		requeueTime = nextReconcile
@@ -148,7 +148,7 @@ func (r *InfisicalDynamicSecretReconciler) Reconcile(ctx context.Context, req ct
 	}
 
 	numDeployments, err := controllerhelpers.ReconcileDeploymentsWithManagedSecrets(ctx, r.Client, logger, infisicalDynamicSecretCRD.Spec.ManagedSecretReference)
-	r.SetReconcileAutoRedeploymentStatus(ctx, logger, &infisicalDynamicSecretCRD, numDeployments, err)
+	r.SetReconcileAutoRedeploymentConditionStatus(ctx, logger, &infisicalDynamicSecretCRD, numDeployments, err)
 
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("unable to reconcile auto redeployment. Will requeue after [requeueTime=%v]", requeueTime))

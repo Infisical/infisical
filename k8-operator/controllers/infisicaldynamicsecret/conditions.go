@@ -10,7 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (r *InfisicalDynamicSecretReconciler) SetReconcileAutoRedeploymentStatus(ctx context.Context, logger logr.Logger, infisicalDynamicSecret *v1alpha1.InfisicalDynamicSecret, numDeployments int, errorToConditionOn error) {
+func (r *InfisicalDynamicSecretReconciler) SetReconcileAutoRedeploymentConditionStatus(ctx context.Context, logger logr.Logger, infisicalDynamicSecret *v1alpha1.InfisicalDynamicSecret, numDeployments int, errorToConditionOn error) {
 	if infisicalDynamicSecret.Status.Conditions == nil {
 		infisicalDynamicSecret.Status.Conditions = []metav1.Condition{}
 	}
@@ -37,7 +37,7 @@ func (r *InfisicalDynamicSecretReconciler) SetReconcileAutoRedeploymentStatus(ct
 	}
 }
 
-func (r *InfisicalDynamicSecretReconciler) SetAuthenticatedStatus(ctx context.Context, logger logr.Logger, infisicalDynamicSecret *v1alpha1.InfisicalDynamicSecret, errorToConditionOn error) {
+func (r *InfisicalDynamicSecretReconciler) SetAuthenticatedConditionStatus(ctx context.Context, logger logr.Logger, infisicalDynamicSecret *v1alpha1.InfisicalDynamicSecret, errorToConditionOn error) {
 	if infisicalDynamicSecret.Status.Conditions == nil {
 		infisicalDynamicSecret.Status.Conditions = []metav1.Condition{}
 	}
@@ -64,7 +64,7 @@ func (r *InfisicalDynamicSecretReconciler) SetAuthenticatedStatus(ctx context.Co
 	}
 }
 
-func (r *InfisicalDynamicSecretReconciler) SetLeaseRenewalStatus(ctx context.Context, logger logr.Logger, infisicalDynamicSecret *v1alpha1.InfisicalDynamicSecret, errorToConditionOn error) {
+func (r *InfisicalDynamicSecretReconciler) SetLeaseRenewalConditionStatus(ctx context.Context, logger logr.Logger, infisicalDynamicSecret *v1alpha1.InfisicalDynamicSecret, errorToConditionOn error) {
 	if infisicalDynamicSecret.Status.Conditions == nil {
 		infisicalDynamicSecret.Status.Conditions = []metav1.Condition{}
 	}
@@ -91,7 +91,7 @@ func (r *InfisicalDynamicSecretReconciler) SetLeaseRenewalStatus(ctx context.Con
 	}
 }
 
-func (r *InfisicalDynamicSecretReconciler) SetCreatedLeaseStatus(ctx context.Context, logger logr.Logger, infisicalDynamicSecret *v1alpha1.InfisicalDynamicSecret, errorToConditionOn error) {
+func (r *InfisicalDynamicSecretReconciler) SetCreatedLeaseConditionStatus(ctx context.Context, logger logr.Logger, infisicalDynamicSecret *v1alpha1.InfisicalDynamicSecret, errorToConditionOn error) {
 	if infisicalDynamicSecret.Status.Conditions == nil {
 		infisicalDynamicSecret.Status.Conditions = []metav1.Condition{}
 	}
@@ -118,7 +118,7 @@ func (r *InfisicalDynamicSecretReconciler) SetCreatedLeaseStatus(ctx context.Con
 	}
 }
 
-func (r *InfisicalDynamicSecretReconciler) SetReconcileStatus(ctx context.Context, logger logr.Logger, infisicalDynamicSecret *v1alpha1.InfisicalDynamicSecret, errorToConditionOn error) {
+func (r *InfisicalDynamicSecretReconciler) SetReconcileConditionStatus(ctx context.Context, logger logr.Logger, infisicalDynamicSecret *v1alpha1.InfisicalDynamicSecret, errorToConditionOn error) {
 	if infisicalDynamicSecret.Status.Conditions == nil {
 		infisicalDynamicSecret.Status.Conditions = []metav1.Condition{}
 	}
