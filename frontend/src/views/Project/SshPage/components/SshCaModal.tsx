@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { useRouter } from "next/router";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -17,6 +18,7 @@ import { useWorkspace } from "@app/context";
 import { useCreateSshCa, useGetSshCaById, useUpdateSshCa } from "@app/hooks/api";
 import { certKeyAlgorithms } from "@app/hooks/api/certificates/constants";
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -39,6 +41,7 @@ const schema = z
 export type FormData = z.infer<typeof schema>;
 
 export const SshCaModal = ({ popUp, handlePopUpToggle }: Props) => {
+  const router = useRouter();
   const { currentWorkspace } = useWorkspace();
   const projectId = currentWorkspace?.id || "";
   const { data: ca } = useGetSshCaById((popUp?.sshCa?.data as { caId: string })?.caId || "");
@@ -83,11 +86,13 @@ export const SshCaModal = ({ popUp, handlePopUpToggle }: Props) => {
           friendlyName
         });
       } else {
-        await createMutateAsync({
+        const { id: newCaId } = await createMutateAsync({
           projectId,
           friendlyName,
           keyAlgorithm
         });
+
+        router.push(`/${ProjectType.SSH}/${projectId}/ca/${newCaId}`);
       }
 
       reset();
