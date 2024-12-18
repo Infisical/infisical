@@ -52,12 +52,8 @@ var algoToFileName = map[infisicalSdkUtil.CertKeyAlgorithm]string{
 }
 
 func isValidKeyAlgorithm(algo infisicalSdkUtil.CertKeyAlgorithm) bool {
-	switch algo {
-	case infisicalSdkUtil.RSA2048, infisicalSdkUtil.RSA4096, infisicalSdkUtil.ECDSAP256, infisicalSdkUtil.ECDSAP384:
-		return true
-	default:
-		return false
-	}
+    _, exists := algoToFileName[algo]
+    return exists
 }
 
 func isValidCertType(certType infisicalSdkUtil.SshCertType) bool {
