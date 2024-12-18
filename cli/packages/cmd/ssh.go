@@ -261,7 +261,7 @@ func issueCredentials(cmd *cobra.Command, args []string) {
 	})
 
 	if err != nil {
-		util.HandleError(err, "To issue SSH credentials")
+		util.HandleError(err, "Failed to issue SSH credentials")
 	}
 
 	// If signedKeyPath wasn't set in the directory scenario, set it now
@@ -488,7 +488,7 @@ func signKey(cmd *cobra.Command, args []string) {
 	})
 
 	if err != nil {
-		util.HandleError(err, "To sign a SSH public key")
+		util.HandleError(err, "Failed to sign SSH public key")
 	}
 
 	err = writeToFile(signedKeyPath, creds.SignedKey, 0644)
