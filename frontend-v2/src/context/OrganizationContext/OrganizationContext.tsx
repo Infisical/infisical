@@ -5,7 +5,7 @@ import { fetchOrganizationById, organizationKeys } from "@app/hooks/api/organiza
 
 export const useOrganization = () => {
   const organizationId = useRouteContext({
-    from: "/_authenticate/_org_details",
+    from: "/_authenticate/_ctx-org-details",
     select: (el) => el.organizationId
   });
 

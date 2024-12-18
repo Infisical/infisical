@@ -1,1 +1,1 @@
-export { useWorkspace, WorkspaceProvider } from "./WorkspaceContext";
+export { useWorkspace } from "./WorkspaceContext";

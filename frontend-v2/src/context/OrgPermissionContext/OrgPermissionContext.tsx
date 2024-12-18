@@ -13,7 +13,7 @@ import { OrgPermissionSet } from "./types";
 
 export const useOrgPermission = () => {
   const organizationId = useRouteContext({
-    from: "/_authenticate/_org_details",
+    from: "/_authenticate/_ctx-org-details",
     select: (el) => el.organizationId
   });
 

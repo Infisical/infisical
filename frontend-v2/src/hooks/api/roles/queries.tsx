@@ -130,7 +130,9 @@ export const useGetUserOrgPermissions = ({ orgId }: TGetUserOrgPermissionsDTO) =
     }
   });
 
-const getUserProjectPermissions = async ({ workspaceId }: TGetUserProjectPermissionDTO) => {
+export const fetchUserProjectPermissions = async ({
+  workspaceId
+}: TGetUserProjectPermissionDTO) => {
   const { data } = await apiRequest.get<{
     data: {
       permissions: PackRule<RawRuleOf<MongoAbility<OrgPermissionSet>>>[];
@@ -144,7 +146,7 @@ const getUserProjectPermissions = async ({ workspaceId }: TGetUserProjectPermiss
 export const useGetUserProjectPermissions = ({ workspaceId }: TGetUserProjectPermissionDTO) =>
   useQuery({
     queryKey: roleQueryKeys.getUserProjectPermissions({ workspaceId }),
-    queryFn: () => getUserProjectPermissions({ workspaceId }),
+    queryFn: () => fetchUserProjectPermissions({ workspaceId }),
     enabled: Boolean(workspaceId),
     select: (data) => {
       const rule = unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(data.permissions);
