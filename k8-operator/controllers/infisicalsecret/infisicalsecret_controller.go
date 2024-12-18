@@ -15,7 +15,7 @@ import (
 
 	secretsv1alpha1 "github.com/Infisical/infisical/k8-operator/api/v1alpha1"
 	"github.com/Infisical/infisical/k8-operator/packages/api"
-	controllerhelpers "github.com/Infisical/infisical/k8-operator/packages/controllerutil"
+	controllerhelpers "github.com/Infisical/infisical/k8-operator/packages/controllerhelpers"
 	"github.com/Infisical/infisical/k8-operator/packages/util"
 	"github.com/go-logr/logr"
 )
@@ -34,6 +34,8 @@ var infisicalSecretResourceVariablesMap map[string]util.ResourceVariables = make
 func (r *InfisicalSecretReconciler) GetLogger(req ctrl.Request) logr.Logger {
 	return r.BaseLogger.WithValues("infisicalsecret", req.NamespacedName)
 }
+
+var resourceVariablesMap map[string]util.ResourceVariables = make(map[string]util.ResourceVariables)
 
 //+kubebuilder:rbac:groups=secrets.infisical.com,resources=infisicalsecrets,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=secrets.infisical.com,resources=infisicalsecrets/status,verbs=get;update;patch
@@ -108,7 +110,7 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	if infisicalSecretCRD.Spec.HostAPI == "" {
 		api.API_HOST_URL = infisicalConfig["hostAPI"]
 	} else {
-		api.API_HOST_URL = infisicalSecretCRD.Spec.HostAPI
+		api.API_HOST_URL = util.AppendAPIEndpoint(infisicalSecretCRD.Spec.HostAPI)
 	}
 
 	if infisicalSecretCRD.Spec.TLS.CaRef.SecretName != "" {
@@ -136,7 +138,7 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}, nil
 	}
 
-	numDeployments, err := r.ReconcileDeploymentsWithManagedSecrets(ctx, logger, infisicalSecretCRD)
+	numDeployments, err := controllerhelpers.ReconcileDeploymentsWithManagedSecrets(ctx, r.Client, logger, infisicalSecretCRD.Spec.ManagedSecretReference)
 	r.SetInfisicalAutoRedeploymentReady(ctx, logger, &infisicalSecretCRD, numDeployments, err)
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("unable to reconcile auto redeployment. Will requeue after [requeueTime=%v]", requeueTime))
