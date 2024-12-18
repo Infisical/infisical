@@ -112,7 +112,7 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 	if authDetails.AuthStrategy == "" {
 		logger.Info("No authentication strategy found. Attempting to authenticate")
 		authDetails, err = r.handleAuthentication(ctx, infisicalPushSecret, infisicalClient)
-		r.SetAuthenticatedConditions(ctx, &infisicalPushSecret, err)
+		r.SetAuthenticatedStatusCondition(ctx, &infisicalPushSecret, err)
 
 		if err != nil {
 			return fmt.Errorf("unable to authenticate [err=%s]", err)
@@ -401,28 +401,28 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 	} else {
 		errorMessage = ""
 	}
-	r.SetFailedToCreateSecretsConditions(ctx, &infisicalPushSecret, fmt.Sprintf("Failed to create secrets: [%s]", errorMessage))
+	r.SetFailedToCreateSecretsStatusCondition(ctx, &infisicalPushSecret, fmt.Sprintf("Failed to create secrets: [%s]", errorMessage))
 
 	if len(secretsFailedToUpdate) > 0 {
 		errorMessage = fmt.Sprintf("Failed to update secrets: [%s]", strings.Join(secretsFailedToUpdate, ", "))
 	} else {
 		errorMessage = ""
 	}
-	r.SetFailedToUpdateSecretsConditions(ctx, &infisicalPushSecret, fmt.Sprintf("Failed to update secrets: [%s]", errorMessage))
+	r.SetFailedToUpdateSecretsStatusCondition(ctx, &infisicalPushSecret, fmt.Sprintf("Failed to update secrets: [%s]", errorMessage))
 
 	if len(secretsFailedToDelete) > 0 {
 		errorMessage = fmt.Sprintf("Failed to delete secrets: [%s]", strings.Join(secretsFailedToDelete, ", "))
 	} else {
 		errorMessage = ""
 	}
-	r.SetFailedToDeleteSecretsConditions(ctx, &infisicalPushSecret, errorMessage)
+	r.SetFailedToDeleteSecretsStatusCondition(ctx, &infisicalPushSecret, errorMessage)
 
 	if len(secretsFailedToReplaceById) > 0 {
 		errorMessage = fmt.Sprintf("Failed to replace secrets: [%s]", strings.Join(secretsFailedToReplaceById, ", "))
 	} else {
 		errorMessage = ""
 	}
-	r.SetFailedToReplaceSecretsConditions(ctx, &infisicalPushSecret, errorMessage)
+	r.SetFailedToReplaceSecretsStatusCondition(ctx, &infisicalPushSecret, errorMessage)
 
 	// Update the status of the InfisicalPushSecret
 	if err := r.Client.Status().Update(ctx, &infisicalPushSecret); err != nil {

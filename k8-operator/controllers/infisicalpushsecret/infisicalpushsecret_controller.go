@@ -159,7 +159,7 @@ func (r *InfisicalPushSecretReconciler) Reconcile(ctx context.Context, req ctrl.
 	}
 
 	err = r.ReconcileInfisicalPushSecret(ctx, logger, infisicalPushSecretCRD)
-	r.SetSuccessfullyReconciledConditions(ctx, &infisicalPushSecretCRD, err)
+	r.SetReconcileStatusCondition(ctx, &infisicalPushSecretCRD, err)
 
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("unable to reconcile Infisical Push Secret. Will requeue after [requeueTime=%v]", requeueTime))
