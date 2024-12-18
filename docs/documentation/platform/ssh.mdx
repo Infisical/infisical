@@ -68,7 +68,7 @@ At a high-level, Infisical issues a signed SSH certificate to a client that can 
 To be more specific:
 
 1. The client authenticates with Infisical; this can be done using a machine identity [authentication method](/documentation/platform/identities/machine-identities) or a user [authentication method](/documentation/platform/identities/user-identities).
-2. The client makes an authenticated request for an SSH certificate via either the `/api/v1/ssh/issue` or `/api/v1/ssh/sign` endpoints. Note tha if the client wishes to use an existing SSH key pair, it can use the `/api/v1/ssh/sign` endpoint; otherwise, it can use the `/api/v1/ssh/issue` endpoint to have Infisical issue a new SSH key pair in conjunction with the certificate.
+2. The client makes an authenticated request for an SSH certificate via either the `/api/v1/ssh/issue` or `/api/v1/ssh/sign` endpoints. Note that if the client wishes to use an existing SSH key pair, it can use the `/api/v1/ssh/sign` endpoint; otherwise, it can use the `/api/v1/ssh/issue` endpoint to have Infisical issue a new SSH key pair in conjunction with the certificate.
 3. The client uses the issued SSH certificate (and potentially SSH key pair) to temporarily access the host.
 
 <Note>
@@ -115,7 +115,7 @@ as part of the SSH operation.
     - SSH Template Name: A name for the certificate template; this must be a valid slug.
     - Allowed Users: A comma-separated list of valid usernames (e.g. `ec2-user`) on the remote host for which a client can request a certificate for. If you wish to allow a client to request a certificate for any username, set this to `*`; alternatively, if left blank, the template will not allow issuance of certificates under any username.
     - Allowed Hosts: A comma-separated list of valid hostnames/domains on the remote host for which a client can request a certificate for. Each item in the list can be either a wildcard hostname (e.g. `*.acme.com`), a specific hostname (e.g. `example.com`), an IPv4 address (e.g. `192.168.1.1`), or an IPv6 address. If left empty, the template will not allow any hostnames; if set to `*`, the template will allow any hostname.
-    - Default TTL: The default Time-toLive (TTL) for certificates issued under this template when a client does not explicitly specify a TTL in the certificate request.
+    - Default TTL: The default Time-to-Live (TTL) for certificates issued under this template when a client does not explicitly specify a TTL in the certificate request.
     - Max TTL: The maximum TTL for certificates issued under this template.
     - Allow User Certificates: Whether or not to allow issuance of user certificates.
     - Allow Host Certificates: Whether or not to allow issuance of host certificates.
@@ -129,6 +129,10 @@ as part of the SSH operation.
     2.1. Begin by downloading the CA's public key from the CA's details section.
     
     ![ssh ca public key](/images/platform/ssh/ssh-ca-public-key.png)
+    
+    <Note>
+      The CA's public key can also be retrieved programmatically via API by making a `GET` request to the `/ssh/ca/<ca-id>/public-key` endpoint.
+    </Note>
     
     2.2. Next, create a file containing this public key in the SSH folder of the remote host; we'll call the file `ca.pub`.
 
@@ -226,8 +230,7 @@ infisical login
     <Note>
       We recommend setting up aliases so you can more easily SSH into the desired host.
 
-      For example, you may set up an SSH alias using the SSH client configuration file (usually `~/.ssh/config`), defining a host alias as below
-      including the file path to the issued SSH credential(s).
+      For example, you may set up an SSH alias using the SSH client configuration file (usually `~/.ssh/config`), defining a host alias including the file path to the issued SSH credential(s).
     </Note>
 
   </Step>
