@@ -80,6 +80,7 @@ export const useCreateIntegration = () => {
           key: string;
           value: string;
         }[];
+        azureLabel?: string;
         githubVisibility?: string;
         githubVisibilityRepoIds?: string[];
         kmsKeyId?: string;

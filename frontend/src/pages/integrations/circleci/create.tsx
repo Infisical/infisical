@@ -1,293 +1,309 @@
-import { useEffect, useMemo, useState } from "react";
-import Head from "next/head";
+import { Controller, useForm } from "react-hook-form";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import {
-  faArrowUpRightFromSquare,
-  faBookOpen,
-  faBugs,
-  faCircleInfo
-} from "@fortawesome/free-solid-svg-icons";
+import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import queryString from "query-string";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { useCreateIntegration } from "@app/hooks/api";
-
 import {
   Button,
   Card,
   CardTitle,
+  FilterableSelect,
   FormControl,
-  Input,
   Select,
-  SelectItem
-} from "../../../components/v2";
-import {
-  useGetIntegrationAuthApps,
-  useGetIntegrationAuthById
-} from "../../../hooks/api/integrationAuth";
-import { useGetWorkspaceById } from "../../../hooks/api/workspace";
+  SelectItem,
+  Spinner
+} from "@app/components/v2";
+import { SecretPathInput } from "@app/components/v2/SecretPathInput";
+import { useWorkspace } from "@app/context";
+import { useCreateIntegration } from "@app/hooks/api";
+import { useGetIntegrationAuthCircleCIOrganizations } from "@app/hooks/api/integrationAuth";
+import { CircleCiScope } from "@app/hooks/api/integrationAuth/types";
+
+const formSchema = z.discriminatedUnion("scope", [
+  z.object({
+    scope: z.literal(CircleCiScope.Context),
+    secretPath: z.string().default("/"),
+    sourceEnvironment: z.object({ name: z.string(), slug: z.string() }),
+    targetOrg: z.object({ name: z.string().min(1), slug: z.string().min(1) }),
+    targetContext: z.object({ name: z.string().min(1), id: z.string().min(1) })
+  }),
+  z.object({
+    scope: z.literal(CircleCiScope.Project),
+    secretPath: z.string().default("/"),
+    sourceEnvironment: z.object({ name: z.string(), slug: z.string() }),
+    targetOrg: z.object({ name: z.string().min(1), slug: z.string().min(1) }),
+    targetProject: z.object({ name: z.string().min(1), id: z.string().min(1) })
+  })
+]);
+
+type TFormData = z.infer<typeof formSchema>;
 
 export default function CircleCICreateIntegrationPage() {
   const router = useRouter();
-  const { mutateAsync } = useCreateIntegration();
+  const { mutateAsync, isLoading: isCreatingIntegration } = useCreateIntegration();
+  const { currentWorkspace, isLoading: isProjectLoading } = useWorkspace();
 
-  const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
+  const integrationAuthId = router.query.integrationAuthId as string;
 
-  const { data: workspace } = useGetWorkspaceById(localStorage.getItem("projectData.id") ?? "");
-  const { data: integrationAuth, isLoading: isintegrationAuthLoading } = useGetIntegrationAuthById(
-    (integrationAuthId as string) ?? ""
-  );
-  const { data: integrationAuthApps, isLoading: isIntegrationAuthAppsLoading } =
-    useGetIntegrationAuthApps({
-      integrationAuthId: (integrationAuthId as string) ?? ""
-    });
-
-  const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
-  const [targetOrganization, setTargetOrganization] = useState("");
-  const [secretPath, setSecretPath] = useState("/");
-
-  const [targetProjectId, setTargetProjectId] = useState("");
-
-  const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    if (workspace) {
-      setSelectedSourceEnvironment(workspace.environments[0].slug);
+  const { control, watch, handleSubmit, setValue } = useForm<TFormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      secretPath: "/",
+      sourceEnvironment: currentWorkspace?.environments[0],
+      scope: CircleCiScope.Project
     }
-  }, [workspace]);
+  });
 
-  const handleButtonClick = async () => {
+  const selectedScope = watch("scope");
+  const selectedOrg = watch("targetOrg");
+
+  const { data: circleCIOrganizations, isLoading: isCircleCIOrganizationsLoading } =
+    useGetIntegrationAuthCircleCIOrganizations(integrationAuthId);
+
+  const selectedOrganizationEntry = selectedOrg
+    ? circleCIOrganizations?.find((org) => org.slug === selectedOrg.slug)
+    : undefined;
+
+  const onSubmit = async (data: TFormData) => {
     try {
-      if (!integrationAuth?.id) return;
-
-      if (!targetProjectId || targetOrganization === "none") {
-        createNotification({
-          type: "error",
-          text: "Please select a project"
+      if (data.scope === CircleCiScope.Context) {
+        await mutateAsync({
+          scope: data.scope,
+          integrationAuthId,
+          isActive: true,
+          sourceEnvironment: data.sourceEnvironment.slug,
+          app: data.targetContext.name,
+          appId: data.targetContext.id,
+          owner: data.targetOrg.name,
+          secretPath: data.secretPath
         });
-        setIsLoading(false);
-        return;
+      } else {
+        await mutateAsync({
+          scope: data.scope,
+          integrationAuthId,
+          isActive: true,
+          app: data.targetProject.name, // project name
+          owner: data.targetOrg.name, // organization name
+          appId: data.targetProject.id, // project id (used for syncing)
+          sourceEnvironment: data.sourceEnvironment.slug,
+          secretPath: data.secretPath
+        });
       }
 
-      setIsLoading(true);
-
-      const selectedApp = integrationAuthApps?.find(
-        (integrationAuthApp) => integrationAuthApp.appId === targetProjectId
-      );
-
-      if (!selectedApp) {
-        createNotification({
-          type: "error",
-          text: "Invalid project selected"
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      await mutateAsync({
-        integrationAuthId: integrationAuth?.id,
-        isActive: true,
-        app: selectedApp.name, // project name
-        owner: selectedApp.owner, // organization name
-        appId: selectedApp.appId, // project id (used for syncing)
-        sourceEnvironment: selectedSourceEnvironment,
-        secretPath
+      createNotification({
+        type: "success",
+        text: "Successfully created integration"
       });
-
-      setIsLoading(false);
-
-      router.push(`/integrations/${localStorage.getItem("projectData.id")}`);
+      router.push(`/integrations/${currentWorkspace?.id}`);
     } catch (err) {
+      createNotification({
+        type: "error",
+        text: "Failed to create integration"
+      });
       console.error(err);
     }
   };
 
-  const filteredProjects = useMemo(() => {
-    if (!integrationAuthApps) return [];
+  if (isProjectLoading || isCircleCIOrganizationsLoading)
+    return (
+      <div className="flex h-full w-full items-center justify-center p-24">
+        <Spinner />
+      </div>
+    );
 
-    return integrationAuthApps.filter((integrationAuthApp) => {
-      return integrationAuthApp.owner === targetOrganization;
-    });
-  }, [integrationAuthApps, targetOrganization]);
-
-  const filteredOrganizations = useMemo(() => {
-    const organizations = new Set<string>();
-
-    if (integrationAuthApps) {
-      integrationAuthApps.forEach((integrationAuthApp) => {
-        if (!integrationAuthApp.owner) return;
-        organizations.add(integrationAuthApp.owner);
-      });
-    }
-
-    return Array.from(organizations);
-  }, [integrationAuthApps]);
-
-  return integrationAuth && workspace && selectedSourceEnvironment && integrationAuthApps ? (
-    <div className="flex h-full w-full flex-col items-center justify-center">
-      <Head>
-        <title>Set Up CircleCI Integration</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Head>
-      <Card className="max-w-lg rounded-md border border-mineshaft-600">
+  return (
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="flex h-full w-full items-center justify-center"
+    >
+      <Card className="max-w-lg rounded-md p-8 pt-4">
         <CardTitle
-          className="px-6 text-left text-xl"
-          subTitle="Choose which environment or folder in Infisical you want to sync to CircleCI environment variables."
+          className="w-full px-0 text-left text-xl"
+          subTitle="Choose which environment or folder in Infisical you want to sync to CircleCI."
         >
-          <div className="flex flex-row items-center">
-            <div className="flex items-center pb-0.5">
+          <div className="flex w-full flex-row items-center justify-between">
+            <div className="flex flex-row items-center gap-1.5">
               <Image
-                src="/images/integrations/Circle CI.png"
+                src="/images/integrations/CircleCI.png"
                 height={30}
                 width={30}
                 alt="CircleCI logo"
               />
+
+              <span className="">CircleCI Context Integration </span>
             </div>
-            <span className="ml-1.5">CircleCI Integration </span>
-            <Link href="https://infisical.com/docs/integrations/cicd/circleci" passHref>
-              <a target="_blank" rel="noopener noreferrer">
-                <div className="ml-2 mb-1 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                  Docs
-                  <FontAwesomeIcon
-                    icon={faArrowUpRightFromSquare}
-                    className="ml-1.5 mb-[0.07rem] text-xxs"
-                  />
-                </div>
-              </a>
+
+            <Link
+              href="https://infisical.com/docs/integrations/cicd/circleci"
+              target="_blank"
+              rel="noopener noreferrer"
+              passHref
+            >
+              <div className="ml-2 mb-1 flex cursor-pointer flex-row items-center gap-0.5 rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                Docs
+                <FontAwesomeIcon
+                  icon={faArrowUpRightFromSquare}
+                  className="ml-1.5 mb-[0.07rem] text-xxs"
+                />
+              </div>
             </Link>
           </div>
         </CardTitle>
-
-        <FormControl label="Project Environment" className="px-6">
-          <Select
-            value={selectedSourceEnvironment}
-            onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-mineshaft-500"
-          >
-            {workspace?.environments.map((sourceEnvironment) => (
-              <SelectItem
-                value={sourceEnvironment.slug}
-                key={`source-environment-${sourceEnvironment.slug}`}
-              >
-                {sourceEnvironment.name}
-              </SelectItem>
-            ))}
-          </Select>
-        </FormControl>
-        <FormControl label="Secrets Path" className="px-6">
-          <Input
-            value={secretPath}
-            onChange={(evt) => setSecretPath(evt.target.value)}
-            placeholder="Provide a path, default is /"
-          />
-        </FormControl>
-
-        <FormControl label="CircleCI Organization" className="px-6">
-          <Select
-            value={targetOrganization}
-            onValueChange={(val) => {
-              setTargetOrganization(val);
-              setTargetProjectId("none");
-            }}
-            className="w-full border border-mineshaft-500"
-            isDisabled={filteredOrganizations.length === 0}
-          >
-            {filteredOrganizations.length > 0 ? (
-              filteredOrganizations.map((org) => (
-                <SelectItem value={org} key={`target-org-${org}`}>
-                  {org}
-                </SelectItem>
-              ))
-            ) : (
-              <SelectItem value="none" key="target-app-none">
-                No organizations found
-              </SelectItem>
-            )}
-          </Select>
-        </FormControl>
-
-        {targetOrganization && (
-          <FormControl label="CircleCI Project ID" className="px-6">
-            <Select
-              value={targetProjectId}
-              onValueChange={(val) => {
-                setTargetProjectId(val);
-              }}
-              className="w-full border border-mineshaft-500"
-              isDisabled={filteredProjects.length === 0}
+        <Controller
+          control={control}
+          name="sourceEnvironment"
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl
+              errorText={error?.message}
+              isError={Boolean(error)}
+              label="Project Environment"
             >
-              {filteredProjects.length > 0 ? (
-                filteredProjects.map((project) => (
-                  <SelectItem value={project.appId!} key={`target-project-${project.owner}`}>
-                    {project.name}
-                  </SelectItem>
-                ))
-              ) : (
-                <SelectItem value="none" key="target-app-none">
-                  No projects found
-                </SelectItem>
-              )}
-            </Select>
-          </FormControl>
+              <FilterableSelect
+                getOptionValue={(option) => option.slug}
+                value={value}
+                getOptionLabel={(option) => option.name}
+                onChange={onChange}
+                options={currentWorkspace?.environments}
+                placeholder="Select a project environment"
+                isDisabled={!currentWorkspace?.environments.length}
+              />
+            </FormControl>
+          )}
+        />
+        <Controller
+          control={control}
+          name="secretPath"
+          render={({ field, fieldState: { error } }) => (
+            <FormControl label="Secrets Path" errorText={error?.message} isError={Boolean(error)}>
+              <SecretPathInput {...field} />
+            </FormControl>
+          )}
+        />
+        <Controller
+          control={control}
+          name="targetOrg"
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl
+              errorText={error?.message}
+              isError={Boolean(error)}
+              label="CircleCI Organization"
+            >
+              <FilterableSelect
+                getOptionValue={(option) => option.slug}
+                value={value}
+                getOptionLabel={(option) => option.name}
+                onChange={(e) => {
+                  setValue("targetProject", {
+                    name: "",
+                    id: ""
+                  });
+                  setValue("targetContext", {
+                    name: "",
+                    id: ""
+                  });
+
+                  onChange(e);
+                }}
+                options={circleCIOrganizations}
+                placeholder={
+                  circleCIOrganizations?.length
+                    ? "Select an organization..."
+                    : "No organizations found..."
+                }
+                isDisabled={!circleCIOrganizations?.length}
+              />
+            </FormControl>
+          )}
+        />
+        <Controller
+          control={control}
+          name="scope"
+          render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+            <FormControl label="Scope" errorText={error?.message} isError={Boolean(error)}>
+              <Select
+                defaultValue={field.value}
+                onValueChange={(e) => {
+                  onChange(e);
+                }}
+                className="w-full border border-mineshaft-500"
+              >
+                <SelectItem value={CircleCiScope.Project}>Project</SelectItem>
+                <SelectItem value={CircleCiScope.Context}>Context</SelectItem>
+              </Select>
+            </FormControl>
+          )}
+        />
+        {selectedScope === CircleCiScope.Context && selectedOrganizationEntry && (
+          <Controller
+            control={control}
+            name="targetContext"
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <FormControl
+                errorText={error?.message}
+                isError={Boolean(error)}
+                label="CircleCI Context"
+              >
+                <FilterableSelect
+                  value={value}
+                  getOptionValue={(option) => option.id!}
+                  getOptionLabel={(option) => option.name}
+                  onChange={onChange}
+                  options={selectedOrganizationEntry?.contexts}
+                  placeholder={
+                    selectedOrganizationEntry.contexts?.length
+                      ? "Select a context..."
+                      : "No contexts found..."
+                  }
+                  isDisabled={!selectedOrganizationEntry.contexts?.length}
+                />
+              </FormControl>
+            )}
+          />
+        )}
+        {selectedScope === CircleCiScope.Project && selectedOrganizationEntry && (
+          <Controller
+            control={control}
+            name="targetProject"
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <FormControl
+                errorText={error?.message}
+                isError={Boolean(error)}
+                label="CircleCI Project"
+              >
+                <FilterableSelect
+                  value={value}
+                  getOptionValue={(option) => option.id!}
+                  getOptionLabel={(option) => option.name}
+                  onChange={onChange}
+                  options={selectedOrganizationEntry?.projects}
+                  placeholder={
+                    selectedOrganizationEntry.projects?.length
+                      ? "Select a project..."
+                      : "No projects found..."
+                  }
+                  isDisabled={!selectedOrganizationEntry.projects?.length}
+                />
+              </FormControl>
+            )}
+          />
         )}
         <Button
-          onClick={handleButtonClick}
+          type="submit"
           colorSchema="primary"
-          variant="outline_bg"
-          className="mb-6 mt-2 ml-auto mr-6 w-min"
-          isLoading={isLoading}
-          isDisabled={integrationAuthApps.length === 0}
+          className="mt-4"
+          isLoading={isCreatingIntegration}
+          isDisabled={isCreatingIntegration}
         >
           Create Integration
         </Button>
       </Card>
-      <div className="mt-6 w-full max-w-md border-t border-mineshaft-800" />
-      <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4">
-        <div className="flex flex-row items-center">
-          <FontAwesomeIcon icon={faCircleInfo} className="text-xl text-mineshaft-200" />{" "}
-          <span className="text-md ml-3 text-mineshaft-100">Pro Tip</span>
-        </div>
-        <span className="mt-4 text-sm text-mineshaft-300">
-          After creating an integration, your secrets will start syncing immediately. This might
-          cause an unexpected override of current secrets in CircleCI with secrets from Infisical.
-        </span>
-      </div>
-    </div>
-  ) : (
-    <div className="flex h-full w-full items-center justify-center">
-      <Head>
-        <title>Set Up CircleCI Integration</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Head>
-      {isIntegrationAuthAppsLoading || isintegrationAuthLoading ? (
-        <img
-          src="/images/loading/loading.gif"
-          height={70}
-          width={120}
-          alt="infisical loading indicator"
-        />
-      ) : (
-        <div className="flex h-max max-w-md flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 text-center text-mineshaft-200">
-          <FontAwesomeIcon icon={faBugs} className="inlineli my-2 text-6xl" />
-          <p>
-            Something went wrong. Please contact{" "}
-            <a
-              className="inline cursor-pointer text-mineshaft-100 underline decoration-primary-500 underline-offset-4 opacity-80 duration-200 hover:opacity-100"
-              target="_blank"
-              rel="noopener noreferrer"
-              href="mailto:support@infisical.com"
-            >
-              support@infisical.com
-            </a>{" "}
-            if the issue persists.
-          </p>
-        </div>
-      )}
-    </div>
+    </form>
   );
 }
 

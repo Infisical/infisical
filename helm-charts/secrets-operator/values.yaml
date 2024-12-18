@@ -32,7 +32,7 @@ controllerManager:
           - ALL
     image:
       repository: infisical/kubernetes-operator
-      tag: v0.7.6
+      tag: v0.7.7
     resources:
       limits:
         cpu: 500m
@@ -48,6 +48,7 @@ controllerManager:
 kubernetesClusterDomain: cluster.local
 scopedNamespace: ""
 scopedRBAC: false
+installCRDs: true
 metricsService:
   ports:
     - name: https

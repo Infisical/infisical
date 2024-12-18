@@ -105,6 +105,19 @@ export enum OctopusDeployScope {
   // tenant, variable set
 }
 
+export type CircleCIOrganization = {
+  name: string;
+  slug: string;
+  projects: {
+    name: string;
+    id: string;
+  }[];
+  contexts: {
+    name: string;
+    id: string;
+  }[];
+};
+
 export type TGetIntegrationAuthOctopusDeployScopeValuesDTO = {
   integrationAuthId: string;
   spaceId: string;
@@ -125,3 +138,8 @@ export type TOctopusDeployVariableSetScopeValues = {
     Name: string;
   }[];
 };
+
+export enum CircleCiScope {
+  Context = "context",
+  Project = "project"
+}

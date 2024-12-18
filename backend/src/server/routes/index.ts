@@ -551,7 +551,11 @@ export const registerRoutes = async (
 
   const orgService = orgServiceFactory({
     userAliasDAL,
+    queueService,
     identityMetadataDAL,
+    secretDAL,
+    secretV2BridgeDAL,
+    folderDAL,
     licenseService,
     samlConfigDAL,
     orgRoleDAL,
@@ -572,6 +576,7 @@ export const registerRoutes = async (
     groupDAL,
     orgBotDAL,
     oidcConfigDAL,
+    loginService,
     projectBotService
   });
   const signupService = authSignupServiceFactory({
@@ -805,10 +810,58 @@ export const registerRoutes = async (
     projectTemplateDAL
   });
 
+  const integrationAuthService = integrationAuthServiceFactory({
+    integrationAuthDAL,
+    integrationDAL,
+    permissionService,
+    projectBotService,
+    kmsService
+  });
+
+  const secretQueueService = secretQueueFactory({
+    keyStore,
+    queueService,
+    secretDAL,
+    folderDAL,
+    integrationAuthService,
+    projectBotService,
+    integrationDAL,
+    secretImportDAL,
+    projectEnvDAL,
+    webhookDAL,
+    orgDAL,
+    auditLogService,
+    userDAL,
+    projectMembershipDAL,
+    smtpService,
+    projectDAL,
+    projectBotDAL,
+    secretVersionDAL,
+    secretBlindIndexDAL,
+    secretTagDAL,
+    secretVersionTagDAL,
+    kmsService,
+    secretVersionV2BridgeDAL,
+    secretV2BridgeDAL,
+    secretVersionTagV2BridgeDAL,
+    secretRotationDAL,
+    integrationAuthDAL,
+    snapshotDAL,
+    snapshotSecretV2BridgeDAL,
+    secretApprovalRequestDAL,
+    projectKeyDAL,
+    projectUserMembershipRoleDAL,
+    orgService
+  });
+
   const projectService = projectServiceFactory({
     permissionService,
     projectDAL,
+    secretDAL,
+    secretV2BridgeDAL,
+    queueService,
     projectQueue: projectQueueService,
+    projectBotService,
     identityProjectDAL,
     identityOrgMembershipDAL,
     projectKeyDAL,
@@ -891,48 +944,6 @@ export const registerRoutes = async (
     projectDAL
   });
 
-  const integrationAuthService = integrationAuthServiceFactory({
-    integrationAuthDAL,
-    integrationDAL,
-    permissionService,
-    projectBotService,
-    kmsService
-  });
-  const secretQueueService = secretQueueFactory({
-    keyStore,
-    queueService,
-    secretDAL,
-    folderDAL,
-    integrationAuthService,
-    projectBotService,
-    integrationDAL,
-    secretImportDAL,
-    projectEnvDAL,
-    webhookDAL,
-    orgDAL,
-    auditLogService,
-    userDAL,
-    projectMembershipDAL,
-    smtpService,
-    projectDAL,
-    projectBotDAL,
-    secretVersionDAL,
-    secretBlindIndexDAL,
-    secretTagDAL,
-    secretVersionTagDAL,
-    kmsService,
-    secretVersionV2BridgeDAL,
-    secretV2BridgeDAL,
-    secretVersionTagV2BridgeDAL,
-    secretRotationDAL,
-    integrationAuthDAL,
-    snapshotDAL,
-    snapshotSecretV2BridgeDAL,
-    secretApprovalRequestDAL,
-    projectKeyDAL,
-    projectUserMembershipRoleDAL,
-    orgService
-  });
   const secretImportService = secretImportServiceFactory({
     licenseService,
     projectBotService,
@@ -1261,6 +1272,7 @@ export const registerRoutes = async (
     auditLogDAL,
     queueService,
     secretVersionDAL,
+    secretDAL,
     secretFolderVersionDAL: folderVersionDAL,
     snapshotDAL,
     identityAccessTokenDAL,

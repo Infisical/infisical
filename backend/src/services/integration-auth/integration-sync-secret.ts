@@ -39,13 +39,19 @@ import { TCreateManySecretsRawFn, TUpdateManySecretsRawFn } from "@app/services/
 import { TIntegrationDALFactory } from "../integration/integration-dal";
 import { IntegrationMetadataSchema } from "../integration/integration-schema";
 import { IntegrationAuthMetadataSchema } from "./integration-auth-schema";
-import { OctopusDeployScope, TIntegrationsWithEnvironment, TOctopusDeployVariableSet } from "./integration-auth-types";
+import {
+  CircleCiScope,
+  OctopusDeployScope,
+  TIntegrationsWithEnvironment,
+  TOctopusDeployVariableSet
+} from "./integration-auth-types";
 import {
   IntegrationInitialSyncBehavior,
   IntegrationMappingBehavior,
   Integrations,
   IntegrationUrls
 } from "./integration-list";
+import { isAzureKeyVaultReference } from "./integration-sync-secret-fns";
 
 const getSecretKeyValuePair = (secrets: Record<string, { value: string | null; comment?: string } | null>) =>
   Object.keys(secrets).reduce<Record<string, string | null | undefined>>((prev, key) => {
@@ -320,11 +326,12 @@ const syncSecretsAzureAppConfig = async ({
   };
 
   const metadata = IntegrationMetadataSchema.parse(integration.metadata);
-  const azureAppConfigSecrets = (
-    await getCompleteAzureAppConfigValues(
-      `${integration.app}/kv?api-version=2023-11-01&key=${metadata.secretPrefix || ""}*`
-    )
-  ).reduce(
+
+  const azureAppConfigValuesUrl = `${integration.app}/kv?api-version=2023-11-01&key=${metadata.secretPrefix}*${
+    metadata.azureLabel ? `&label=${metadata.azureLabel}` : ""
+  }`;
+
+  const azureAppConfigSecrets = (await getCompleteAzureAppConfigValues(azureAppConfigValuesUrl)).reduce(
     (accum, entry) => {
       accum[entry.key] = entry.value;
 
@@ -405,14 +412,24 @@ const syncSecretsAzureAppConfig = async ({
   }
 
   // create or update secrets on Azure App Config
+
   for await (const key of Object.keys(secrets)) {
     if (!(key in azureAppConfigSecrets) || secrets[key]?.value !== azureAppConfigSecrets[key]) {
       await request.put(
         `${integration.app}/kv/${key}?api-version=2023-11-01`,
         {
-          value: secrets[key]?.value
+          value: secrets[key]?.value,
+          ...(isAzureKeyVaultReference(secrets[key]?.value || "") && {
+            content_type: "application/vnd.microsoft.appconfig.keyvaultref+json;charset=utf-8"
+          })
         },
         {
+          ...(metadata.azureLabel && {
+            params: {
+              label: metadata.azureLabel
+            }
+          }),
+
           headers: {
             Authorization: `Bearer ${accessToken}`
           },
@@ -432,6 +449,11 @@ const syncSecretsAzureAppConfig = async ({
         headers: {
           Authorization: `Bearer ${accessToken}`
         },
+        ...(metadata.azureLabel && {
+          params: {
+            label: metadata.azureLabel
+          }
+        }),
         // we force IPV4 because docker setup fails with ipv6
         httpsAgent: new https.Agent({
           family: 4
@@ -2245,102 +2267,174 @@ const syncSecretsCircleCI = async ({
   secrets: Record<string, { value: string; comment?: string }>;
   accessToken: string;
 }) => {
-  const getProjectSlug = async () => {
-    const requestConfig = {
-      headers: {
-        "Circle-Token": accessToken,
-        "Accept-Encoding": "application/json"
-      }
-    };
-
-    try {
-      const projectDetails = (
-        await request.get<{ slug: string }>(
-          `${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${integration.appId}`,
-          requestConfig
+  if (integration.scope === CircleCiScope.Context) {
+    // sync secrets to CircleCI
+    await Promise.all(
+      Object.keys(secrets).map(async (key) =>
+        request.put(
+          `${IntegrationUrls.CIRCLECI_API_URL}/v2/context/${integration.appId}/environment-variable/${key}`,
+          {
+            value: secrets[key].value
+          },
+          {
+            headers: {
+              "Circle-Token": accessToken,
+              "Content-Type": "application/json"
+            }
+          }
         )
-      ).data;
+      )
+    );
 
-      return projectDetails.slug;
-    } catch (err) {
-      if (err instanceof AxiosError) {
-        if (err.response?.data?.message !== "Not Found") {
-          throw new Error("Failed to get project slug from CircleCI during first attempt.");
-        }
-      }
-    }
+    // get secrets from CircleCI
+    const getSecretsRes = async () => {
+      type EnvVars = {
+        variable: string;
+        created_at: string;
+        updated_at: string;
+        context_id: string;
+      };
 
-    // For backwards compatibility with old CircleCI integrations where we don't keep track of the organization name, so we can't filter by organization
-    try {
-      const circleCiOrganization = (
-        await request.get<{ slug: string; name: string }[]>(
-          `${IntegrationUrls.CIRCLECI_API_URL}/v2/me/collaborations`,
-          requestConfig
-        )
-      ).data;
+      let nextPageToken: string | null | undefined;
+      const envVars: EnvVars[] = [];
 
-      // Case 1: This is a new integration where the organization name is stored under `integration.owner`
-      if (integration.owner) {
-        const org = circleCiOrganization.find((o) => o.name === integration.owner);
-        if (org) {
-          return `${org.slug}/${integration.app}`;
-        }
-      }
-
-      // Case 2: This is an old integration where the organization name is not stored, so we have to assume the first organization is the correct one
-      return `${circleCiOrganization[0].slug}/${integration.app}`;
-    } catch (err) {
-      throw new Error("Failed to get project slug from CircleCI during second attempt.");
-    }
-  };
-
-  const projectSlug = await getProjectSlug();
-
-  // sync secrets to CircleCI
-  await Promise.all(
-    Object.keys(secrets).map(async (key) =>
-      request.post(
-        `${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${projectSlug}/envvar`,
-        {
-          name: key,
-          value: secrets[key].value
-        },
-        {
+      while (nextPageToken !== null) {
+        const res = await request.get<{
+          items: EnvVars[];
+          next_page_token: string | null;
+        }>(`${IntegrationUrls.CIRCLECI_API_URL}/v2/context/${integration.appId}/environment-variable`, {
           headers: {
             "Circle-Token": accessToken,
-            "Content-Type": "application/json"
-          }
-        }
-      )
-    )
-  );
+            "Accept-Encoding": "application/json"
+          },
+          params: nextPageToken
+            ? new URLSearchParams({
+                "page-token": nextPageToken
+              })
+            : undefined
+        });
 
-  // get secrets from CircleCI
-  const getSecretsRes = (
-    await request.get<{ items: { name: string }[] }>(
-      `${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${projectSlug}/envvar`,
-      {
+        envVars.push(...res.data.items);
+        nextPageToken = res.data.next_page_token;
+      }
+
+      return envVars;
+    };
+
+    // delete secrets from CircleCI
+    await Promise.all(
+      (await getSecretsRes()).map(async (sec) => {
+        if (!(sec.variable in secrets)) {
+          return request.delete(
+            `${IntegrationUrls.CIRCLECI_API_URL}/v2/context/${integration.appId}/environment-variable/${sec.variable}`,
+            {
+              headers: {
+                "Circle-Token": accessToken,
+                "Content-Type": "application/json"
+              }
+            }
+          );
+        }
+      })
+    );
+  } else {
+    const getProjectSlug = async () => {
+      const requestConfig = {
         headers: {
           "Circle-Token": accessToken,
           "Accept-Encoding": "application/json"
         }
-      }
-    )
-  ).data?.items;
+      };
 
-  // delete secrets from CircleCI
-  await Promise.all(
-    getSecretsRes.map(async (sec) => {
-      if (!(sec.name in secrets)) {
-        return request.delete(`${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${projectSlug}/envvar/${sec.name}`, {
+      try {
+        const projectDetails = (
+          await request.get<{ slug: string }>(
+            `${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${integration.appId}`,
+            requestConfig
+          )
+        ).data;
+
+        return projectDetails.slug;
+      } catch (err) {
+        if (err instanceof AxiosError) {
+          if (err.response?.data?.message !== "Not Found") {
+            throw new Error("Failed to get project slug from CircleCI during first attempt.");
+          }
+        }
+      }
+
+      // For backwards compatibility with old CircleCI integrations where we don't keep track of the organization name, so we can't filter by organization
+      try {
+        const circleCiOrganization = (
+          await request.get<{ slug: string; name: string }[]>(
+            `${IntegrationUrls.CIRCLECI_API_URL}/v2/me/collaborations`,
+            requestConfig
+          )
+        ).data;
+
+        // Case 1: This is a new integration where the organization name is stored under `integration.owner`
+        if (integration.owner) {
+          const org = circleCiOrganization.find((o) => o.name === integration.owner);
+          if (org) {
+            return `${org.slug}/${integration.app}`;
+          }
+        }
+
+        // Case 2: This is an old integration where the organization name is not stored, so we have to assume the first organization is the correct one
+        return `${circleCiOrganization[0].slug}/${integration.app}`;
+      } catch (err) {
+        throw new Error("Failed to get project slug from CircleCI during second attempt.");
+      }
+    };
+
+    const projectSlug = await getProjectSlug();
+
+    // sync secrets to CircleCI
+    await Promise.all(
+      Object.keys(secrets).map(async (key) =>
+        request.post(
+          `${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${projectSlug}/envvar`,
+          {
+            name: key,
+            value: secrets[key].value
+          },
+          {
+            headers: {
+              "Circle-Token": accessToken,
+              "Content-Type": "application/json"
+            }
+          }
+        )
+      )
+    );
+
+    // get secrets from CircleCI
+    const getSecretsRes = (
+      await request.get<{ items: { name: string }[] }>(
+        `${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${projectSlug}/envvar`,
+        {
           headers: {
             "Circle-Token": accessToken,
-            "Content-Type": "application/json"
+            "Accept-Encoding": "application/json"
           }
-        });
-      }
-    })
-  );
+        }
+      )
+    ).data?.items;
+
+    // delete secrets from CircleCI
+    await Promise.all(
+      getSecretsRes.map(async (sec) => {
+        if (!(sec.name in secrets)) {
+          return request.delete(`${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${projectSlug}/envvar/${sec.name}`, {
+            headers: {
+              "Circle-Token": accessToken,
+              "Content-Type": "application/json"
+            }
+          });
+        }
+      })
+    );
+  }
 };
 
 /**

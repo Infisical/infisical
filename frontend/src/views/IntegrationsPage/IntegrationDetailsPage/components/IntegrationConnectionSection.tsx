@@ -1,6 +1,7 @@
 import { integrationSlugNameMapping } from "public/data/frequentConstants";
 
 import { FormLabel } from "@app/components/v2";
+import { CircleCiScope } from "@app/hooks/api/integrationAuth/types";
 import { IntegrationMappingBehavior, TIntegrationWithEnv } from "@app/hooks/api/integrations/types";
 
 type Props = {
@@ -46,6 +47,11 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
         case "qovery":
           return integration.scope;
         case "circleci":
+          if (integration.scope === CircleCiScope.Context) {
+            return "Context";
+          }
+
+          return "Project";
         case "terraform-cloud":
           return "Project";
         case "aws-secret-manager":
@@ -77,7 +83,6 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
             return `${integration.owner}`;
           }
           return `${integration.owner}/${integration.app}`;
-
         case "aws-parameter-store":
         case "rundeck":
           return `${integration.path}`;
