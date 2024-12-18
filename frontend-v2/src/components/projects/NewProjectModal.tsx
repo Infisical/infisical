@@ -148,8 +148,7 @@ const NewProjectForm = ({ onOpenChange, projectType }: NewProjectFormProps) => {
       createNotification({ text: "Project created", type: "success" });
       reset();
       onOpenChange(false);
-      // TODO(rbr): make this return constant so this gets typed
-      navigate({ to: getProjectHomePage(project) });
+      navigate({ to: getProjectHomePage(project), params: { projectId: project.id } });
     } catch (err) {
       console.error(err);
       createNotification({ text: "Failed to create project", type: "error" });

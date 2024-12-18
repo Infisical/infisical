@@ -64,7 +64,7 @@ const SignupInvitePage = () => {
   const [requiredMfaMethod, setRequiredMfaMethod] = useState(MfaMethod.EMAIL);
   const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
   const navigate = useNavigate();
-  const search = useSearch({ from: "/_restrict_login_signup/signupinvite" });
+  const search = useSearch({ from: "/_restrict-login-signup/signupinvite" });
   const parsedUrl = search;
   const token = parsedUrl.token as string;
   const organizationId = parsedUrl.organization_id as string;
@@ -388,10 +388,7 @@ const SignupInvitePage = () => {
               setBackupKeyIssued
             });
             navigate({
-              to: `/organization/$organizationId/${ProjectType.SecretManager}/overview` as const,
-              params: {
-                organizationId
-              }
+              to: `/organization/${ProjectType.SecretManager}/overview` as const
             });
           }}
           size="lg"

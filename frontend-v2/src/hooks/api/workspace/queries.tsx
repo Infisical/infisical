@@ -150,7 +150,6 @@ export const useGetUserWorkspaces = ({
 } = {}) =>
   useQuery({
     queryKey: workspaceKeys.getAllUserWorkspace(type || ""),
-
     queryFn: () => fetchUserWorkspaces(includeRoles, type)
   });
 

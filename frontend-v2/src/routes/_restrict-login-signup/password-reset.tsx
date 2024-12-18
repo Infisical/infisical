@@ -37,7 +37,7 @@ const PasswordResetPage = () => {
   const [passwordErrorBreached, setPasswordErrorBreached] = useState(false);
 
   const navigate = useNavigate();
-  const search = useSearch({ from: "/_restrict_login_signup/password-reset" });
+  const search = useSearch({ from: "/_restrict-login-signup/password-reset" });
 
   const {
     mutateAsync: verifyPasswordResetCodeMutateAsync,
