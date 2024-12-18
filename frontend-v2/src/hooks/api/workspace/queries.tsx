@@ -39,7 +39,7 @@ import {
   Workspace
 } from "./types";
 
-const fetchWorkspaceById = async (workspaceId: string) => {
+export const fetchWorkspaceById = async (workspaceId: string) => {
   const { data } = await apiRequest.get<{ workspace: Workspace }>(
     `/api/v1/workspace/${workspaceId}`
   );

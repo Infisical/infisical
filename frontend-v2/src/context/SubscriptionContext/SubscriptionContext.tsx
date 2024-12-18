@@ -5,7 +5,7 @@ import { fetchOrgSubscription, subscriptionQueryKeys } from "@app/hooks/api/subs
 
 export const useSubscription = () => {
   const organizationId = useRouteContext({
-    from: "/_authenticate/_org_details",
+    from: "/_authenticate/_ctx-org-details",
     select: (el) => el.organizationId
   });
 
