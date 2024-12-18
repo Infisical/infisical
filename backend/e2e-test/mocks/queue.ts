@@ -22,8 +22,10 @@ export const mockQueue = (): TQueueServiceFactory => {
     listen: (name, event) => {
       events[name] = event;
     },
+    getRepeatableJobs: async () => [],
     clearQueue: async () => {},
     stopJobById: async () => {},
-    stopRepeatableJobByJobId: async () => true
+    stopRepeatableJobByJobId: async () => true,
+    stopRepeatableJobByKey: async () => true
   };
 };

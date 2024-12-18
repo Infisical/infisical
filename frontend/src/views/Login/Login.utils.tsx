@@ -7,7 +7,7 @@ import { ProjectType } from "@app/hooks/api/workspace/types";
 import { queryClient } from "@app/reactQuery";
 
 export const navigateUserToOrg = async (router: NextRouter, organizationId?: string) => {
-  const userOrgs = await fetchOrganizations();
+  const userOrgs = await fetchOrganizations().catch(() => []);
 
   const nonAuthEnforcedOrgs = userOrgs.filter((org) => !org.authEnforced);
 
