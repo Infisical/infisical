@@ -114,6 +114,7 @@
             "documentation/platform/pki/alerting"
           ]
         },
+        "documentation/platform/ssh",
         {
           "group": "Key Management (KMS)",
           "pages": [

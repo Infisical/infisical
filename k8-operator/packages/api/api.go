@@ -24,10 +24,6 @@ func CallGetServiceTokenDetailsV2(httpClient *resty.Client) (GetServiceTokenDeta
 		return GetServiceTokenDetailsResponse{}, fmt.Errorf("CallGetServiceTokenDetails: Unsuccessful response: [response=%s]", response)
 	}
 
-	// logging for better debugging and user experience
-	fmt.Printf("Workspace ID: %v\n", tokenDetailsResponse.Workspace)
-	fmt.Printf("TokenName: %v\n", tokenDetailsResponse.Name)
-
 	return tokenDetailsResponse, nil
 }
 

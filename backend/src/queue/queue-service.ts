@@ -317,6 +317,13 @@ export const queueServiceFactory = (
     }
   };
 
+  const getRepeatableJobs = (name: QueueName, startOffset?: number, endOffset?: number) => {
+    const q = queueContainer[name];
+    if (!q) throw new Error(`Queue '${name}' not initialized`);
+
+    return q.getRepeatableJobs(startOffset, endOffset);
+  };
+
   const stopRepeatableJobByJobId = async <T extends QueueName>(name: T, jobId: string) => {
     const q = queueContainer[name];
     const job = await q.getJob(jobId);
@@ -324,6 +331,11 @@ export const queueServiceFactory = (
     if (!job.repeatJobKey) return true;
     await job.remove();
     return q.removeRepeatableByKey(job.repeatJobKey);
+  };
+
+  const stopRepeatableJobByKey = async <T extends QueueName>(name: T, repeatJobKey: string) => {
+    const q = queueContainer[name];
+    return q.removeRepeatableByKey(repeatJobKey);
   };
 
   const stopJobById = async <T extends QueueName>(name: T, jobId: string) => {
@@ -349,8 +361,10 @@ export const queueServiceFactory = (
     shutdown,
     stopRepeatableJob,
     stopRepeatableJobByJobId,
+    stopRepeatableJobByKey,
     clearQueue,
     stopJobById,
+    getRepeatableJobs,
     startPg,
     queuePg
   };

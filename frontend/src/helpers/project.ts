@@ -69,14 +69,19 @@ export const getProjectHomePage = (workspace: Workspace) => {
     return `/${workspace.type}/${workspace.id}/certificates`;
   }
 
-  return `/${workspace.type}/${workspace.id}/kms`;
+  if (workspace.type === ProjectType.KMS) {
+    return `/${workspace.type}/${workspace.id}/kms`;
+  }
+
+  return `/${workspace.type}/${workspace.id}/ssh`;
 };
 
 export const getProjectTitle = (type: ProjectType) => {
   const titleConvert = {
     [ProjectType.SecretManager]: "Secret Management",
     [ProjectType.KMS]: "Key Management",
-    [ProjectType.CertificateManager]: "Cert Management"
+    [ProjectType.CertificateManager]: "Cert Management",
+    [ProjectType.SSH]: "SSH"
   };
   return titleConvert[type];
 };

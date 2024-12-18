@@ -6,6 +6,8 @@ import (
 	"sync"
 
 	"github.com/Infisical/infisical/k8-operator/api/v1alpha1"
+	"github.com/Infisical/infisical/k8-operator/packages/constants"
+	"github.com/go-logr/logr"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -15,7 +17,7 @@ import (
 const DEPLOYMENT_SECRET_NAME_ANNOTATION_PREFIX = "secrets.infisical.com/managed-secret"
 const AUTO_RELOAD_DEPLOYMENT_ANNOTATION = "secrets.infisical.com/auto-reload" // needs to be set to true for a deployment to start auto redeploying
 
-func (r *InfisicalSecretReconciler) ReconcileDeploymentsWithManagedSecrets(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret) (int, error) {
+func (r *InfisicalSecretReconciler) ReconcileDeploymentsWithManagedSecrets(ctx context.Context, logger logr.Logger, infisicalSecret v1alpha1.InfisicalSecret) (int, error) {
 	listOfDeployments := &v1.DeploymentList{}
 	err := r.Client.List(ctx, listOfDeployments, &client.ListOptions{Namespace: infisicalSecret.Spec.ManagedSecretReference.SecretNamespace})
 	if err != nil {
@@ -42,8 +44,8 @@ func (r *InfisicalSecretReconciler) ReconcileDeploymentsWithManagedSecrets(ctx c
 			wg.Add(1)
 			go func(d v1.Deployment, s corev1.Secret) {
 				defer wg.Done()
-				if err := r.ReconcileDeployment(ctx, d, s); err != nil {
-					fmt.Printf("unable to reconcile deployment with [name=%v]. Will try next requeue", deployment.ObjectMeta.Name)
+				if err := r.ReconcileDeployment(ctx, logger, d, s); err != nil {
+					logger.Error(err, fmt.Sprintf("unable to reconcile deployment with [name=%v]. Will try next requeue", deployment.ObjectMeta.Name))
 				}
 			}(deployment, *managedKubeSecret)
 		}
@@ -80,17 +82,17 @@ func (r *InfisicalSecretReconciler) IsDeploymentUsingManagedSecret(deployment v1
 
 // This function ensures that a deployment is in sync with a Kubernetes secret by comparing their versions.
 // If the version of the secret is different from the version annotation on the deployment, the annotation is updated to trigger a restart of the deployment.
-func (r *InfisicalSecretReconciler) ReconcileDeployment(ctx context.Context, deployment v1.Deployment, secret corev1.Secret) error {
+func (r *InfisicalSecretReconciler) ReconcileDeployment(ctx context.Context, logger logr.Logger, deployment v1.Deployment, secret corev1.Secret) error {
 	annotationKey := fmt.Sprintf("%s.%s", DEPLOYMENT_SECRET_NAME_ANNOTATION_PREFIX, secret.Name)
-	annotationValue := secret.Annotations[SECRET_VERSION_ANNOTATION]
+	annotationValue := secret.Annotations[constants.SECRET_VERSION_ANNOTATION]
 
 	if deployment.Annotations[annotationKey] == annotationValue &&
 		deployment.Spec.Template.Annotations[annotationKey] == annotationValue {
-		fmt.Printf("The [deploymentName=%v] is already using the most up to date managed secrets. No action required.\n", deployment.ObjectMeta.Name)
+		logger.Info(fmt.Sprintf("The [deploymentName=%v] is already using the most up to date managed secrets. No action required.", deployment.ObjectMeta.Name))
 		return nil
 	}
 
-	fmt.Printf("deployment is using outdated managed secret. Starting re-deployment [deploymentName=%v]\n", deployment.ObjectMeta.Name)
+	logger.Info(fmt.Sprintf("Deployment is using outdated managed secret. Starting re-deployment [deploymentName=%v]", deployment.ObjectMeta.Name))
 
 	if deployment.Spec.Template.Annotations == nil {
 		deployment.Spec.Template.Annotations = make(map[string]string)

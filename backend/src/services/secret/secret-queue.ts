@@ -248,7 +248,9 @@ export const secretQueueFactory = ({
                 ? secondsToMillis(newSecret.secretReminderRepeatDays)
                 : daysToMillisecond(newSecret.secretReminderRepeatDays),
             immediately: true
-          }
+          },
+          removeOnComplete: true,
+          removeOnFail: true
         }
       );
     } catch (err) {

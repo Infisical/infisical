@@ -54,6 +54,9 @@ export enum ProjectPermissionSub {
   CertificateAuthorities = "certificate-authorities",
   Certificates = "certificates",
   CertificateTemplates = "certificate-templates",
+  SshCertificateAuthorities = "ssh-certificate-authorities",
+  SshCertificates = "ssh-certificates",
+  SshCertificateTemplates = "ssh-certificate-templates",
   PkiAlerts = "pki-alerts",
   PkiCollections = "pki-collections",
   Kms = "kms",
@@ -132,6 +135,9 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateAuthorities]
   | [ProjectPermissionActions, ProjectPermissionSub.Certificates]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateTemplates]
+  | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateAuthorities]
+  | [ProjectPermissionActions, ProjectPermissionSub.SshCertificates]
+  | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateTemplates]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
   | [ProjectPermissionCmekActions, ProjectPermissionSub.Cmek]
@@ -339,6 +345,28 @@ const GeneralPermissionSchema = [
     )
   }),
   z.object({
+    subject: z
+      .literal(ProjectPermissionSub.SshCertificateAuthorities)
+      .describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.SshCertificates).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z
+      .literal(ProjectPermissionSub.SshCertificateTemplates)
+      .describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
     subject: z.literal(ProjectPermissionSub.PkiAlerts).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
@@ -480,7 +508,10 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.Certificates,
     ProjectPermissionSub.CertificateTemplates,
     ProjectPermissionSub.PkiAlerts,
-    ProjectPermissionSub.PkiCollections
+    ProjectPermissionSub.PkiCollections,
+    ProjectPermissionSub.SshCertificateAuthorities,
+    ProjectPermissionSub.SshCertificates,
+    ProjectPermissionSub.SshCertificateTemplates
   ].forEach((el) => {
     can(
       [
@@ -665,6 +696,11 @@ const buildMemberPermissionRules = () => {
   can([ProjectPermissionActions.Read], ProjectPermissionSub.PkiAlerts);
   can([ProjectPermissionActions.Read], ProjectPermissionSub.PkiCollections);
 
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.SshCertificateAuthorities);
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.SshCertificates);
+  can([ProjectPermissionActions.Create], ProjectPermissionSub.SshCertificates);
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.SshCertificateTemplates);
+
   can(
     [
       ProjectPermissionCmekActions.Create,
@@ -707,6 +743,9 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.CertificateAuthorities);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
   can(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificateAuthorities);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificates);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificateTemplates);
 
   return rules;
 };
