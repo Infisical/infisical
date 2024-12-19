@@ -159,7 +159,19 @@ as part of the SSH operation.
 
 ## Guide to Using Infisical SSH to Access a Host
 
-We show how to obtain a SSH certificate (and optionally a new SSH key pair) for a client to access a host via CLI:
+We show how to obtain a SSH certificate and use it for a client to access a host via CLI:
+
+<Note>
+  The subsequent guide assumes the following prerequisites:
+
+- SSH Agent is running: The `ssh-agent` must be actively running on the host machine.
+- OpenSSH is installed: The system should have OpenSSH installed; this includes
+  both the `ssh` client and `ssh-agent`.
+- `SSH_AUTH_SOCK` environment variable
+  is set; the `SSH_AUTH_SOCK` variable should point to the UNIX socket that
+  `ssh-agent` uses for communication.
+
+</Note>
 
 <Steps>
   <Step title="Authenticate with Infisical">
@@ -169,69 +181,24 @@ infisical login
 ```
 
   </Step>
-  <Step title="Obtain a SSH certificate (and optionally new key-pair)">
-    Depending on the use-case, a client may either request a SSH certificate along with a new SSH key pair or obtain a SSH certificate for an existing SSH key pair to access a host.
+  <Step title="Obtain a SSH certificate and load it into the SSH agent">
+    Run the `infisical ssh issue-credentials` command, specifying the `--addToAgent` flag to automatically load the SSH certificate into the SSH agent.
+    ```bash
+    infisical ssh issue-credentials --certificateTemplateId=<certificate-template-id> --principals=<username> --addToAgent
+    ```
 
-    <AccordionGroup>
-      <Accordion title="Using New Key Pair (Recommended)">
-        If you wish to obtain a new SSH key pair in conjunction with the SSH certificate, then you can use the `infisical ssh issue-credentials` command.
+    Here's some guidance on each flag:
 
-        ```bash
-        infisical ssh issue-credentials --certificateTemplateId=<certificate-template-id> --principals=<username>
-        ```
-
-        The following flags may be relevant:
-
-        - `certificateTemplateId`: The ID of the certificate template to use for issuing the SSH certificate.
-        - `principals`: The comma-delimited username(s) or hostname(s) to include in the SSH certificate.
-        - `outFilePath` (optional): The path to the file to write the SSH certificate to.
-
-        <Note>
-          If `outFilePath` is not specified, the SSH certificate will be written to the current working directory where the command is run.
-        </Note>
-
-      </Accordion>
-      <Accordion title="Using Existing Key Pair">
-        If you have an existing SSH key pair, then you can use the `infisical ssh sign-key` command with either
-        the `--publicKey` flag or the `--publicKeyFilePath` flag to obtain a SSH certificate corresponding to
-        the existing credential.
-
-        ```bash
-        infisical ssh sign-key --publicKeyFilePath=<public-key-file-path> --certificateTemplateId=<certificate-template-id> --principals=<username>
-        ```
-
-        The following flags may be relevant:
-
-        - `publicKey`: The public key to sign.
-        - `publicKeyFilePath`: The path to the public key file to sign.
-        - `certificateTemplateId`: The ID of the certificate template to use for issuing the SSH certificate.
-        - `principals`: The comma-delimited username(s) or hostname(s) to include in the SSH certificate.
-        - `outFilePath` (optional): The path to the file to write the SSH certificate to.
-
-        <Note>
-          If `outFilePath` is not specified but `publicKeyFilePath` is then the SSH certificate will be written to the directory of the public key file; if the public key file is called `id_rsa.pub`, then the file containing the SSH certificate will be called `id_rsa-cert.pub`.
-
-          Otherwise, if `outFilePath` is not specified, the SSH certificate will be written to the current working directory where the command is run.
-        </Note>
-
-      </Accordion>
-    </AccordionGroup>
+    - `certificateTemplateId`: The ID of the certificate template to use for issuing the SSH certificate.
+    - `principals`: The comma-delimited username(s) or hostname(s) to include in the SSH certificate.
 
   </Step>
   <Step title="SSH into the host">
-    Once you have obtained the SSH certificate, you can use it to SSH into the desired host.
+    Finally, SSH into the desired host; the SSH operation will be performed using the SSH certificate loaded into the SSH agent.
 
     ```bash
-    ssh -i /path/to/private_key.pem \
-    -o CertificateFile=/path/to/ssh-cert.pub \
-    username@hostname
+    ssh username@hostname
     ```
-
-    <Note>
-      We recommend setting up aliases so you can more easily SSH into the desired host.
-
-      For example, you may set up an SSH alias using the SSH client configuration file (usually `~/.ssh/config`), defining a host alias including the file path to the issued SSH credential(s).
-    </Note>
 
   </Step>
 </Steps>
