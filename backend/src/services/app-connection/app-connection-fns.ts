@@ -1,17 +1,16 @@
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { TAppConnectionServiceFactoryDep } from "@app/services/app-connection/app-connection-service";
+import { TAppConnection, TAppConnectionConfig } from "@app/services/app-connection/app-connection-types";
 import {
   AwsConnectionMethod,
   getAwsAppConnectionListItem,
   validateAwsConnectionCredentials
-} from "src/services/app-connection/aws";
+} from "@app/services/app-connection/aws";
 import {
   getGitHubConnectionListItem,
   GitHubConnectionMethod,
   validateGitHubConnectionCredentials
-} from "src/services/app-connection/github";
-
-import { AppConnection } from "@app/services/app-connection/app-connection-enums";
-import { TAppConnectionServiceFactoryDep } from "@app/services/app-connection/app-connection-service";
-import { TAppConnection, TAppConnectionConfig } from "@app/services/app-connection/app-connection-types";
+} from "@app/services/app-connection/github";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 export const listAppConnectionOptions = () => {

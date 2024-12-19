@@ -1,10 +1,10 @@
-import { AwsConnectionListItemSchema, SanitizedAwsConnectionSchema } from "src/services/app-connection/aws";
-import { GitHubConnectionListItemSchema, SanitizedGitHubConnectionSchema } from "src/services/app-connection/github";
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { AwsConnectionListItemSchema, SanitizedAwsConnectionSchema } from "@app/services/app-connection/aws";
+import { GitHubConnectionListItemSchema, SanitizedGitHubConnectionSchema } from "@app/services/app-connection/github";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 // can't use discriminated due to multiple schemas for certain apps

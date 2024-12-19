@@ -1,10 +1,9 @@
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   CreateGitHubConnectionSchema,
   SanitizedGitHubConnectionSchema,
   UpdateGitHubConnectionSchema
-} from "src/services/app-connection/github";
-
-import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+} from "@app/services/app-connection/github";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
