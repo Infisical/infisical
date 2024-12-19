@@ -6,9 +6,11 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/config"
@@ -16,6 +18,8 @@ import (
 	infisicalSdk "github.com/infisical/go-sdk"
 	infisicalSdkUtil "github.com/infisical/go-sdk/packages/util"
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
 )
 
 var sshCmd = &cobra.Command{
@@ -52,8 +56,8 @@ var algoToFileName = map[infisicalSdkUtil.CertKeyAlgorithm]string{
 }
 
 func isValidKeyAlgorithm(algo infisicalSdkUtil.CertKeyAlgorithm) bool {
-    _, exists := algoToFileName[algo]
-    return exists
+	_, exists := algoToFileName[algo]
+	return exists
 }
 
 func isValidCertType(certType infisicalSdkUtil.SshCertType) bool {
@@ -76,6 +80,71 @@ func writeToFile(filePath string, content string, perm os.FileMode) error {
 	err := os.WriteFile(filePath, []byte(content), perm)
 	if err != nil {
 		return fmt.Errorf("failed to write to file %s: %w", filePath, err)
+	}
+
+	return nil
+}
+
+func addCredentialsToAgent(privateKeyContent, certContent string) error {
+	// Parse the private key
+	privateKey, err := ssh.ParseRawPrivateKey([]byte(privateKeyContent))
+	if err != nil {
+		return fmt.Errorf("failed to parse private key: %w", err)
+	}
+
+	// Parse the certificate
+	pubKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(certContent))
+	if err != nil {
+		return fmt.Errorf("failed to parse certificate: %w", err)
+	}
+
+	cert, ok := pubKey.(*ssh.Certificate)
+	if !ok {
+		return fmt.Errorf("parsed key is not a certificate")
+	}
+	// Calculate LifetimeSecs based on certificate's valid-to time
+	validUntil := time.Unix(int64(cert.ValidBefore), 0)
+	now := time.Now()
+
+	// Handle ValidBefore as either a timestamp or an enumeration
+	// SSH certificates use ValidBefore as a timestamp unless set to 0 or ~0
+	if cert.ValidBefore == ssh.CertTimeInfinity {
+		// If certificate never expires, set default lifetime to 1 year (can adjust as needed)
+		validUntil = now.Add(365 * 24 * time.Hour)
+	}
+
+	// Calculate the duration until expiration
+	lifetime := validUntil.Sub(now)
+	if lifetime <= 0 {
+		return fmt.Errorf("certificate is already expired")
+	}
+
+	// Convert duration to seconds
+	lifetimeSecs := uint32(lifetime.Seconds())
+
+	// Connect to the SSH agent
+	socket := os.Getenv("SSH_AUTH_SOCK")
+	if socket == "" {
+		return fmt.Errorf("SSH_AUTH_SOCK not set")
+	}
+
+	conn, err := net.Dial("unix", socket)
+	if err != nil {
+		return fmt.Errorf("failed to connect to SSH agent: %w", err)
+	}
+	defer conn.Close()
+
+	agentClient := agent.NewClient(conn)
+
+	// Add the key with certificate to the agent
+	err = agentClient.Add(agent.AddedKey{
+		PrivateKey:   privateKey,
+		Certificate:  cert,
+		Comment:      "Added via Infisical CLI",
+		LifetimeSecs: lifetimeSecs,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to add key to agent: %w", err)
 	}
 
 	return nil
@@ -166,6 +235,15 @@ func issueCredentials(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
+	addToAgent, err := cmd.Flags().GetBool("addToAgent")
+	if err != nil {
+		util.HandleError(err, "Unable to parse addToAgent flag")
+	}
+
+	if outFilePath == "" && addToAgent == false {
+		util.PrintErrorMessageAndExit("You must provide either --outFilePath or --addToAgent flag to use this command")
+	}
+
 	var (
 		outputDir      string
 		privateKeyPath string
@@ -173,14 +251,7 @@ func issueCredentials(cmd *cobra.Command, args []string) {
 		signedKeyPath  string
 	)
 
-	if outFilePath == "" {
-		// Use current working directory
-		cwd, err := os.Getwd()
-		if err != nil {
-			util.HandleError(err, "Failed to get current working directory")
-		}
-		outputDir = cwd
-	} else {
+	if outFilePath != "" {
 		// Expand ~ to home directory if present
 		if strings.HasPrefix(outFilePath, "~") {
 			homeDir, err := os.UserHomeDir()
@@ -264,34 +335,47 @@ func issueCredentials(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Failed to issue SSH credentials")
 	}
 
-	// If signedKeyPath wasn't set in the directory scenario, set it now
-	if signedKeyPath == "" {
-		fileName := algoToFileName[infisicalSdkUtil.CertKeyAlgorithm(keyAlgorithm)]
-		signedKeyPath = filepath.Join(outputDir, fileName+"-cert.pub")
+	if outFilePath != "" {
+		// If signedKeyPath wasn't set in the directory scenario, set it now
+		if signedKeyPath == "" {
+			fileName := algoToFileName[infisicalSdkUtil.CertKeyAlgorithm(keyAlgorithm)]
+			signedKeyPath = filepath.Join(outputDir, fileName+"-cert.pub")
+		}
+
+		if privateKeyPath == "" {
+			privateKeyPath = filepath.Join(outputDir, algoToFileName[infisicalSdkUtil.CertKeyAlgorithm(keyAlgorithm)])
+		}
+		err = writeToFile(privateKeyPath, creds.PrivateKey, 0600)
+		if err != nil {
+			util.HandleError(err, "Failed to write Private Key to file")
+		}
+
+		if publicKeyPath == "" {
+			publicKeyPath = privateKeyPath + ".pub"
+		}
+		err = writeToFile(publicKeyPath, creds.PublicKey, 0644)
+		if err != nil {
+			util.HandleError(err, "Failed to write Public Key to file")
+		}
+
+		err = writeToFile(signedKeyPath, creds.SignedKey, 0644)
+		if err != nil {
+			util.HandleError(err, "Failed to write Signed Key to file")
+		}
+
+		fmt.Println("Successfully wrote SSH certificate to:", signedKeyPath)
 	}
 
-	if privateKeyPath == "" {
-		privateKeyPath = filepath.Join(outputDir, algoToFileName[infisicalSdkUtil.CertKeyAlgorithm(keyAlgorithm)])
+	// Add SSH credentials to the SSH agent if needed
+	if addToAgent {
+		// Call the helper function to handle add-to-agent flow
+		err := addCredentialsToAgent(creds.PrivateKey, creds.SignedKey)
+		if err != nil {
+			util.HandleError(err, "Failed to add keys to SSH agent")
+		} else {
+			fmt.Println("The SSH key and certificate have been successfully added to your ssh-agent.")
+		}
 	}
-	err = writeToFile(privateKeyPath, creds.PrivateKey, 0600)
-	if err != nil {
-		util.HandleError(err, "Failed to write Private Key to file")
-	}
-
-	if publicKeyPath == "" {
-		publicKeyPath = privateKeyPath + ".pub"
-	}
-	err = writeToFile(publicKeyPath, creds.PublicKey, 0644)
-	if err != nil {
-		util.HandleError(err, "Failed to write Public Key to file")
-	}
-
-	err = writeToFile(signedKeyPath, creds.SignedKey, 0644)
-	if err != nil {
-		util.HandleError(err, "Failed to write Signed Key to file")
-	}
-
-	fmt.Println("Successfully wrote SSH certificate to:", signedKeyPath)
 }
 
 func signKey(cmd *cobra.Command, args []string) {
@@ -519,6 +603,7 @@ func init() {
 	sshIssueCredentialsCmd.Flags().String("ttl", "", "The ttl to issue SSH credentials for")
 	sshIssueCredentialsCmd.Flags().String("keyId", "", "The keyId to issue SSH credentials for")
 	sshIssueCredentialsCmd.Flags().String("outFilePath", "", "The path to write the SSH credentials to such as ~/.ssh, ./some_folder, ./some_folder/id_rsa-cert.pub. If not provided, the credentials will be saved to the current working directory")
+	sshIssueCredentialsCmd.Flags().Bool("addToAgent", false, "Whether to add issued SSH credentials to the SSH agent")
 	sshCmd.AddCommand(sshIssueCredentialsCmd)
 	rootCmd.AddCommand(sshCmd)
 }
