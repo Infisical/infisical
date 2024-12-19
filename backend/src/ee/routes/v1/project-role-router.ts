@@ -39,7 +39,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
           )
           .describe(PROJECT_ROLE.CREATE.slug),
         name: z.string().min(1).trim().describe(PROJECT_ROLE.CREATE.name),
-        description: z.string().trim().optional().describe(PROJECT_ROLE.CREATE.description),
+        description: z.string().trim().nullish().describe(PROJECT_ROLE.CREATE.description),
         permissions: ProjectPermissionV1Schema.array().describe(PROJECT_ROLE.CREATE.permissions)
       }),
       response: {
@@ -95,7 +95,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
           .describe(PROJECT_ROLE.UPDATE.slug)
           .optional(),
         name: z.string().trim().optional().describe(PROJECT_ROLE.UPDATE.name),
-        description: z.string().trim().optional().describe(PROJECT_ROLE.UPDATE.description),
+        description: z.string().trim().nullish().describe(PROJECT_ROLE.UPDATE.description),
         permissions: ProjectPermissionV1Schema.array().describe(PROJECT_ROLE.UPDATE.permissions).optional()
       }),
       response: {

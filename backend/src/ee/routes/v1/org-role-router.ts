@@ -23,7 +23,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
           "Please choose a different slug, the slug you have entered is reserved"
         ),
         name: z.string().trim(),
-        description: z.string().trim().optional(),
+        description: z.string().trim().nullish(),
         permissions: z.any().array()
       }),
       response: {
@@ -95,7 +95,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
           )
           .optional(),
         name: z.string().trim().optional(),
-        description: z.string().trim().optional(),
+        description: z.string().trim().nullish(),
         permissions: z.any().array().optional()
       }),
       response: {
