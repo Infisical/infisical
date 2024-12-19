@@ -55,7 +55,7 @@ export default function VercelCreateIntegrationPage() {
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
   const [secretPath, setSecretPath] = useState("/");
   const [initialSyncBehavior, setInitialSyncBehavior] = useState<IntegrationSyncBehavior>(
-    IntegrationSyncBehavior.OVERWRITE_TARGET
+    IntegrationSyncBehavior.PREFER_SOURCE
   );
   const [targetAppId, setTargetAppId] = useState("");
   const [targetEnvironment, setTargetEnvironment] = useState("");
