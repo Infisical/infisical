@@ -945,6 +945,7 @@ export const secretQueueFactory = ({
               errorHistogram.record(1, {
                 version: 1,
                 integration: integration.integration,
+                integrationId: integration.id,
                 type: err instanceof AxiosError ? "AxiosError" : err?.constructor?.name || "UnknownError",
                 status: err instanceof AxiosError ? err.response?.status : undefined,
                 name: err instanceof Error ? err.name : undefined,
