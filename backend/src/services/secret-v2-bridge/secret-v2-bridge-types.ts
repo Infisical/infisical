@@ -78,6 +78,7 @@ export type TUpdateSecretDTO = TProjectPermission & {
   metadata?: {
     source?: string;
   };
+  secretMetadata?: ResourceMetadataDTO;
 };
 
 export type TDeleteSecretDTO = TProjectPermission & {
@@ -116,6 +117,7 @@ export type TUpdateManySecretDTO = Omit<TProjectPermission, "projectId"> & {
     tagIds?: string[];
     secretReminderRepeatDays?: number | null;
     secretReminderNote?: string | null;
+    secretMetadata?: ResourceMetadataDTO;
   }[];
 };
 
@@ -167,10 +169,12 @@ type TRequireReferenceIfValue =
 
 export type TFnSecretBulkUpdate = {
   folderId: string;
+  orgId: string;
   inputSecrets: {
     filter: Partial<TSecretsV2>;
-    data: TRequireReferenceIfValue & { tags?: string[] };
+    data: TRequireReferenceIfValue & { tags?: string[]; secretMetadata?: ResourceMetadataDTO };
   }[];
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   secretDAL: Pick<TSecretV2BridgeDALFactory, "bulkUpdate" | "upsertSecretReferences">;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "deleteTagsToSecretV2">;

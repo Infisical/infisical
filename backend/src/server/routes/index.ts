@@ -1311,7 +1311,8 @@ export const registerRoutes = async (
     folderDAL,
     secretDAL: secretV2BridgeDAL,
     queueService,
-    secretV2BridgeService
+    secretV2BridgeService,
+    resourceMetadataDAL
   });
 
   const migrationService = externalMigrationServiceFactory({

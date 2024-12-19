@@ -17,6 +17,7 @@ import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedDynamicSecretSchema, secretRawSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { ResourceMetadataSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -116,6 +117,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           secrets: secretRawSchema
             .extend({
               secretPath: z.string().optional(),
+              secretMetadata: ResourceMetadataSchema.optional(),
               tags: SecretTagsSchema.pick({
                 id: true,
                 slug: true,
@@ -408,6 +410,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           secrets: secretRawSchema
             .extend({
               secretPath: z.string().optional(),
+              secretMetadata: ResourceMetadataSchema.optional(),
               tags: SecretTagsSchema.pick({
                 id: true,
                 slug: true,
@@ -693,6 +696,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           secrets: secretRawSchema
             .extend({
               secretPath: z.string().optional(),
+              secretMetadata: ResourceMetadataSchema.optional(),
               tags: SecretTagsSchema.pick({
                 id: true,
                 slug: true,
@@ -864,6 +868,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           secrets: secretRawSchema
             .extend({
               secretPath: z.string().optional(),
+              secretMetadata: ResourceMetadataSchema.optional(),
               tags: SecretTagsSchema.pick({
                 id: true,
                 slug: true,

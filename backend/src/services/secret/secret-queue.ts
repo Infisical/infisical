@@ -104,7 +104,7 @@ type TSecretQueueFactoryDep = {
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create">;
-  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
 };
 
 export type TGetSecrets = {
@@ -318,7 +318,8 @@ export const secretQueueFactory = ({
     kmsService,
     secretVersionV2BridgeDAL,
     secretV2BridgeDAL,
-    secretVersionTagV2BridgeDAL
+    secretVersionTagV2BridgeDAL,
+    resourceMetadataDAL
   });
 
   /**

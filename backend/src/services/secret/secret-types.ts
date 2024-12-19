@@ -231,6 +231,7 @@ export type TUpdateSecretRawDTO = TProjectPermission & {
   metadata?: {
     source?: string;
   };
+  secretMetadata?: ResourceMetadataDTO;
 };
 
 export type TDeleteSecretRawDTO = TProjectPermission & {
@@ -435,6 +436,7 @@ export type TUpdateManySecretsRawFnFactory = {
   >;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
 };
 
 export type TUpdateManySecretsRawFn = {

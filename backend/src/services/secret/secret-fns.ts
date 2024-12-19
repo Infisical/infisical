@@ -912,6 +912,7 @@ export const updateManySecretsRawFnFactory = ({
   secretVersionTagV2BridgeDAL,
   secretVersionV2BridgeDAL,
   secretV2BridgeDAL,
+  resourceMetadataDAL,
   kmsService
 }: TUpdateManySecretsRawFnFactory) => {
   const getBotKeyFn = getBotKeyFnFactory(projectBotDAL, projectDAL);
@@ -923,6 +924,7 @@ export const updateManySecretsRawFnFactory = ({
     userId
   }: TUpdateManySecretsRawFn): Promise<Array<{ id: string }>> => {
     const { botKey, shouldUseSecretV2Bridge } = await getBotKeyFn(projectId);
+    const project = await projectDAL.findById(projectId);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
@@ -991,11 +993,13 @@ export const updateManySecretsRawFnFactory = ({
       const updatedSecrets = await secretDAL.transaction(async (tx) =>
         fnSecretV2BridgeBulkUpdate({
           folderId,
+          orgId: project.orgId,
           tx,
           inputSecrets: inputSecrets.map((el) => ({
             filter: { id: secretsToUpdateInDBGroupedByKey[el.key][0].id, type: SecretType.Shared },
             data: el
           })),
+          resourceMetadataDAL,
           secretDAL: secretV2BridgeDAL,
           secretVersionDAL: secretVersionV2BridgeDAL,
           secretTagDAL,

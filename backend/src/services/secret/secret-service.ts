@@ -1533,7 +1533,8 @@ export const secretServiceFactory = ({
     secretReminderRepeatDays,
     metadata,
     secretComment,
-    newSecretName
+    newSecretName,
+    secretMetadata
   }: TUpdateSecretRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     const policy =
@@ -1585,7 +1586,8 @@ export const secretServiceFactory = ({
         secretName,
         newSecretName,
         metadata,
-        secretValue
+        secretValue,
+        secretMetadata
       });
       return { type: SecretProtectionType.Direct as const, secret };
     }

@@ -6,6 +6,7 @@ import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import { TFnSecretBulkDelete, TFnSecretBulkInsert, TFnSecretBulkUpdate } from "./secret-v2-bridge-types";
@@ -151,10 +152,12 @@ export const fnSecretBulkUpdate = async ({
   tx,
   inputSecrets,
   folderId,
+  orgId,
   secretDAL,
   secretVersionDAL,
   secretTagDAL,
-  secretVersionTagDAL
+  secretVersionTagDAL,
+  resourceMetadataDAL
 }: TFnSecretBulkUpdate) => {
   const sanitizedInputSecrets = inputSecrets.map(
     ({
@@ -251,6 +254,34 @@ export const fnSecretBulkUpdate = async ({
       await secretVersionTagDAL.insertMany(newSecretVersionTags, tx);
     }
   }
+
+  const inputSecretIdsWithMetadata = inputSecrets
+    .filter((sec) => Boolean(sec.data.secretMetadata))
+    .map((sec) => sec.filter.id);
+
+  await resourceMetadataDAL.delete(
+    {
+      $in: {
+        secretId: inputSecretIdsWithMetadata
+      }
+    },
+    tx
+  );
+
+  await resourceMetadataDAL.insertMany(
+    inputSecrets.flatMap(({ filter: { id }, data: { secretMetadata } }) => {
+      if (secretMetadata) {
+        return secretMetadata.map(({ key, value }) => ({
+          key,
+          value,
+          secretId: id,
+          orgId
+        }));
+      }
+      return [];
+    }),
+    tx
+  );
 
   return newSecrets.map((secret) => ({ ...secret, _id: secret.id }));
 };
@@ -591,6 +622,7 @@ export const reshapeBridgeSecret = (
       color?: string | null;
       name: string;
     }[];
+    secretMetadata?: ResourceMetadataDTO;
   }
 ) => ({
   secretKey: secret.key,
@@ -609,6 +641,7 @@ export const reshapeBridgeSecret = (
   secretReminderRepeatDays: secret.reminderRepeatDays,
   secretReminderNote: secret.reminderNote,
   metadata: secret.metadata,
+  secretMetadata: secret.secretMetadata,
   createdAt: secret.createdAt,
   updatedAt: secret.updatedAt
 });

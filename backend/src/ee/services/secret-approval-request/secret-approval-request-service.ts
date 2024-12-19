@@ -92,7 +92,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   secretBlindIndexDAL: Pick<TSecretBlindIndexDALFactory, "findOne">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "findLatestVersionMany" | "insertMany">;
-  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
   smtpService: Pick<TSmtpService, "sendMail">;
   userDAL: Pick<TUserDALFactory, "find" | "findOne" | "findById">;
@@ -573,6 +573,7 @@ export const secretApprovalRequestServiceFactory = ({
         const updatedSecrets = secretUpdationCommits.length
           ? await fnSecretV2BridgeBulkUpdate({
               folderId,
+              orgId: actorOrgId,
               tx,
               inputSecrets: secretUpdationCommits.map((el) => {
                 const encryptedValue =
@@ -604,7 +605,8 @@ export const secretApprovalRequestServiceFactory = ({
               secretDAL: secretV2BridgeDAL,
               secretVersionDAL: secretVersionV2BridgeDAL,
               secretTagDAL,
-              secretVersionTagDAL: secretVersionTagV2BridgeDAL
+              secretVersionTagDAL: secretVersionTagV2BridgeDAL,
+              resourceMetadataDAL
             })
           : [];
         const deletedSecret = secretDeletionCommits.length

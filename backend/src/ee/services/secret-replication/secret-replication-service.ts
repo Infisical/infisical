@@ -57,7 +57,7 @@ type TSecretReplicationServiceFactoryDep = {
   >;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "find" | "insertMany">;
   secretVersionV2TagBridgeDAL: Pick<TSecretVersionV2TagDALFactory, "find" | "insertMany">;
-  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "replicateSecrets">;
   queueService: Pick<TQueueServiceFactory, "start" | "listen" | "queue" | "stopJobById">;
   secretApprovalPolicyService: Pick<TSecretApprovalPolicyServiceFactory, "getSecretApprovalPolicy">;
@@ -433,10 +433,12 @@ export const secretReplicationServiceFactory = ({
                 }
                 if (locallyUpdatedSecrets.length) {
                   await fnSecretV2BridgeBulkUpdate({
+                    orgId,
                     folderId: destinationReplicationFolderId,
                     secretVersionDAL: secretVersionV2BridgeDAL,
                     secretDAL: secretV2BridgeDAL,
                     tx,
+                    resourceMetadataDAL,
                     secretTagDAL,
                     secretVersionTagDAL: secretVersionV2TagBridgeDAL,
                     inputSecrets: locallyUpdatedSecrets.map((doc) => {

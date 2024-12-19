@@ -75,7 +75,7 @@ type TSecretV2BridgeServiceFactoryDep = {
     "insertV2Bridge" | "insertApprovalSecretV2Tags"
   >;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
-  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
 };
 
 export type TSecretV2BridgeServiceFactory = ReturnType<typeof secretV2BridgeServiceFactory>;
@@ -317,6 +317,7 @@ export const secretV2BridgeServiceFactory = ({
     actorAuthMethod,
     projectId,
     secretPath,
+    secretMetadata,
     ...inputSecret
   }: TUpdateSecretDTO) => {
     const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
@@ -443,6 +444,8 @@ export const secretV2BridgeServiceFactory = ({
     const updatedSecret = await secretDAL.transaction(async (tx) =>
       fnSecretBulkUpdate({
         folderId,
+        orgId: actorOrgId,
+        resourceMetadataDAL,
         inputSecrets: [
           {
             filter: { id: secretId },
@@ -456,6 +459,7 @@ export const secretV2BridgeServiceFactory = ({
               skipMultilineEncoding: inputSecret.skipMultilineEncoding,
               key: inputSecret.newSecretName || secretName,
               tags: inputSecret.tagIds,
+              secretMetadata,
               ...encryptedValue
             }
           }
@@ -971,8 +975,8 @@ export const secretV2BridgeServiceFactory = ({
       ? secretDAL.findOneWithTags({
           folderId,
           type: secretType,
-          key: secretName,
-          userId: secretType === SecretType.Personal ? actorId : null
+          [`${TableName.SecretV2}.key` as "key"]: secretName,
+          [`${TableName.SecretV2}.userId` as "userId"]: secretType === SecretType.Personal ? actorId : null
         })
       : secretVersionDAL
           .findOne({
@@ -1384,6 +1388,7 @@ export const secretV2BridgeServiceFactory = ({
     const secrets = await secretDAL.transaction(async (tx) =>
       fnSecretBulkUpdate({
         folderId,
+        orgId: actorOrgId,
         tx,
         inputSecrets: inputSecrets.map((el) => {
           const originalSecret = secretsToUpdateInDBGroupedByKey[el.secretKey][0];
@@ -1407,6 +1412,7 @@ export const secretV2BridgeServiceFactory = ({
               skipMultilineEncoding: el.skipMultilineEncoding,
               key: el.newSecretName || el.secretKey,
               tags: el.tagIds,
+              secretMetadata: el.secretMetadata,
               ...encryptedValue
             }
           };
@@ -1414,7 +1420,8 @@ export const secretV2BridgeServiceFactory = ({
         secretDAL,
         secretVersionDAL,
         secretTagDAL,
-        secretVersionTagDAL
+        secretVersionTagDAL,
+        resourceMetadataDAL
       })
     );
     await snapshotService.performSnapshot(folderId);
@@ -1855,6 +1862,8 @@ export const secretV2BridgeServiceFactory = ({
         if (locallyUpdatedSecrets.length) {
           await fnSecretBulkUpdate({
             folderId: destinationFolder.id,
+            orgId: actorOrgId,
+            resourceMetadataDAL,
             secretVersionDAL,
             secretDAL,
             tx,
