@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { INTEGRATION } from "@app/lib/api-docs";
 
-import { IntegrationMappingBehavior } from "../integration-auth/integration-list";
+import { IntegrationMappingBehavior, IntegrationMetadataSyncMode } from "../integration-auth/integration-list";
 
 export const IntegrationMetadataSchema = z.object({
   initialSyncBehavior: z.string().optional().describe(INTEGRATION.CREATE.metadata.initialSyncBehavoir),
@@ -49,6 +49,11 @@ export const IntegrationMetadataSchema = z.object({
   shouldEnableDelete: z.boolean().optional().describe(INTEGRATION.CREATE.metadata.shouldEnableDelete),
   shouldMaskSecrets: z.boolean().optional().describe(INTEGRATION.CREATE.metadata.shouldMaskSecrets),
   shouldProtectSecrets: z.boolean().optional().describe(INTEGRATION.CREATE.metadata.shouldProtectSecrets),
+
+  metadataSyncMode: z
+    .nativeEnum(IntegrationMetadataSyncMode)
+    .optional()
+    .describe(INTEGRATION.CREATE.metadata.metadataSyncMode),
 
   octopusDeployScopeValues: z
     .object({

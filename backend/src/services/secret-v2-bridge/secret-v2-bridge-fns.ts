@@ -6,6 +6,7 @@ import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import { TFnSecretBulkDelete, TFnSecretBulkInsert, TFnSecretBulkUpdate } from "./secret-v2-bridge-types";
@@ -54,9 +55,11 @@ export const getAllSecretReferences = (maybeSecretReference: string) => {
 export const fnSecretBulkInsert = async ({
   // TODO: Pick types here
   folderId,
+  orgId,
   inputSecrets,
   secretDAL,
   secretVersionDAL,
+  resourceMetadataDAL,
   secretTagDAL,
   secretVersionTagDAL,
   tx
@@ -91,6 +94,7 @@ export const fnSecretBulkInsert = async ({
     sanitizedInputSecrets.map((el) => ({ ...el, folderId })),
     tx
   );
+
   const newSecretGroupedByKeyName = groupBy(newSecrets, (item) => item.key);
   const newSecretTags = inputSecrets.flatMap(({ tagIds: secretTags = [], key }) =>
     secretTags.map((tag) => ({
@@ -106,6 +110,7 @@ export const fnSecretBulkInsert = async ({
     })),
     tx
   );
+
   await secretDAL.upsertSecretReferences(
     inputSecrets.map(({ references = [], key }) => ({
       secretId: newSecretGroupedByKeyName[key][0].id,
@@ -113,6 +118,22 @@ export const fnSecretBulkInsert = async ({
     })),
     tx
   );
+
+  await resourceMetadataDAL.insertMany(
+    inputSecrets.flatMap(({ key: secretKey, secretMetadata }) => {
+      if (secretMetadata) {
+        return secretMetadata.map(({ key, value }) => ({
+          key,
+          value,
+          secretId: newSecretGroupedByKeyName[secretKey][0].id,
+          orgId
+        }));
+      }
+      return [];
+    }),
+    tx
+  );
+
   if (newSecretTags.length) {
     const secTags = await secretTagDAL.saveTagsToSecretV2(newSecretTags, tx);
     const secVersionsGroupBySecId = groupBy(secretVersions, (i) => i.secretId);
@@ -120,6 +141,7 @@ export const fnSecretBulkInsert = async ({
       [`${TableName.SecretVersionV2}Id` as const]: secVersionsGroupBySecId[secrets_v2Id][0].id,
       [`${TableName.SecretTag}Id` as const]: secret_tagsId
     }));
+
     await secretVersionTagDAL.insertMany(newSecretVersionTags, tx);
   }
 
@@ -130,10 +152,12 @@ export const fnSecretBulkUpdate = async ({
   tx,
   inputSecrets,
   folderId,
+  orgId,
   secretDAL,
   secretVersionDAL,
   secretTagDAL,
-  secretVersionTagDAL
+  secretVersionTagDAL,
+  resourceMetadataDAL
 }: TFnSecretBulkUpdate) => {
   const sanitizedInputSecrets = inputSecrets.map(
     ({
@@ -230,6 +254,34 @@ export const fnSecretBulkUpdate = async ({
       await secretVersionTagDAL.insertMany(newSecretVersionTags, tx);
     }
   }
+
+  const inputSecretIdsWithMetadata = inputSecrets
+    .filter((sec) => Boolean(sec.data.secretMetadata))
+    .map((sec) => sec.filter.id);
+
+  await resourceMetadataDAL.delete(
+    {
+      $in: {
+        secretId: inputSecretIdsWithMetadata
+      }
+    },
+    tx
+  );
+
+  await resourceMetadataDAL.insertMany(
+    inputSecrets.flatMap(({ filter: { id }, data: { secretMetadata } }) => {
+      if (secretMetadata) {
+        return secretMetadata.map(({ key, value }) => ({
+          key,
+          value,
+          secretId: id,
+          orgId
+        }));
+      }
+      return [];
+    }),
+    tx
+  );
 
   return newSecrets.map((secret) => ({ ...secret, _id: secret.id }));
 };
@@ -570,6 +622,7 @@ export const reshapeBridgeSecret = (
       color?: string | null;
       name: string;
     }[];
+    secretMetadata?: ResourceMetadataDTO;
   }
 ) => ({
   secretKey: secret.key,
@@ -588,6 +641,7 @@ export const reshapeBridgeSecret = (
   secretReminderRepeatDays: secret.reminderRepeatDays,
   secretReminderNote: secret.reminderNote,
   metadata: secret.metadata,
+  secretMetadata: secret.secretMetadata,
   createdAt: secret.createdAt,
   updatedAt: secret.updatedAt
 });

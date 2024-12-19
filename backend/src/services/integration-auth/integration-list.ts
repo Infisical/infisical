@@ -427,3 +427,8 @@ export const getIntegrationOptions = async () => {
 
   return INTEGRATION_OPTIONS;
 };
+
+export enum IntegrationMetadataSyncMode {
+  CUSTOM = "custom",
+  SECRET_METADATA = "secret-metadata"
+}

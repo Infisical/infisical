@@ -13,6 +13,8 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
+import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
+import { ResourceMetadataDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
 import { fnSecretBulkInsert, fnSecretBulkUpdate } from "@app/services/secret/secret-fns";
 import { TSecretQueueFactory, uniqueSecretQueueKey } from "@app/services/secret/secret-queue";
@@ -56,6 +58,7 @@ type TSecretReplicationServiceFactoryDep = {
   >;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "find" | "insertMany">;
   secretVersionV2TagBridgeDAL: Pick<TSecretVersionV2TagDALFactory, "find" | "insertMany">;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "replicateSecrets">;
   queueService: Pick<TQueueServiceFactory, "start" | "listen" | "queue" | "stopJobById">;
   secretApprovalPolicyService: Pick<TSecretApprovalPolicyServiceFactory, "getSecretApprovalPolicy">;
@@ -121,7 +124,8 @@ export const secretReplicationServiceFactory = ({
   secretVersionV2TagBridgeDAL,
   secretVersionV2BridgeDAL,
   secretV2BridgeDAL,
-  kmsService
+  kmsService,
+  resourceMetadataDAL
 }: TSecretReplicationServiceFactoryDep) => {
   const $getReplicatedSecrets = (
     botKey: string,
@@ -151,8 +155,10 @@ export const secretReplicationServiceFactory = ({
   };
 
   const $getReplicatedSecretsV2 = (
-    localSecrets: (TSecretsV2 & { secretKey: string; secretValue?: string })[],
-    importedSecrets: { secrets: (TSecretsV2 & { secretKey: string; secretValue?: string })[] }[]
+    localSecrets: (TSecretsV2 & { secretKey: string; secretValue?: string; secretMetadata?: ResourceMetadataDTO })[],
+    importedSecrets: {
+      secrets: (TSecretsV2 & { secretKey: string; secretValue?: string; secretMetadata?: ResourceMetadataDTO })[];
+    }[]
   ) => {
     const deDupe = new Set<string>();
     const secrets = [...localSecrets];
@@ -178,6 +184,7 @@ export const secretReplicationServiceFactory = ({
       secretPath,
       environmentSlug,
       projectId,
+      orgId,
       actorId,
       actor,
       pickOnlyImportIds,
@@ -222,6 +229,7 @@ export const secretReplicationServiceFactory = ({
           .map(({ folderId }) =>
             secretQueueService.replicateSecrets({
               projectId,
+              orgId,
               secretPath: foldersGroupedById[folderId][0]?.path as string,
               environmentSlug: foldersGroupedById[folderId][0]?.environmentSlug as string,
               actorId,
@@ -267,6 +275,7 @@ export const secretReplicationServiceFactory = ({
           ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
           : undefined
       }));
+
       const sourceSecrets = $getReplicatedSecretsV2(sourceDecryptedLocalSecrets, sourceImportedSecrets);
       const sourceSecretsGroupByKey = groupBy(sourceSecrets, (i) => i.key);
 
@@ -406,10 +415,12 @@ export const secretReplicationServiceFactory = ({
                 if (locallyCreatedSecrets.length) {
                   await fnSecretV2BridgeBulkInsert({
                     folderId: destinationReplicationFolderId,
+                    orgId,
                     secretVersionDAL: secretVersionV2BridgeDAL,
                     secretDAL: secretV2BridgeDAL,
                     tx,
                     secretTagDAL,
+                    resourceMetadataDAL,
                     secretVersionTagDAL: secretVersionV2TagBridgeDAL,
                     inputSecrets: locallyCreatedSecrets.map((doc) => {
                       return {
@@ -419,6 +430,7 @@ export const secretReplicationServiceFactory = ({
                         encryptedValue: doc.encryptedValue,
                         encryptedComment: doc.encryptedComment,
                         skipMultilineEncoding: doc.skipMultilineEncoding,
+                        secretMetadata: doc.secretMetadata,
                         references: doc.secretValue ? getAllSecretReferences(doc.secretValue).nestedReferences : []
                       };
                     })
@@ -426,10 +438,12 @@ export const secretReplicationServiceFactory = ({
                 }
                 if (locallyUpdatedSecrets.length) {
                   await fnSecretV2BridgeBulkUpdate({
+                    orgId,
                     folderId: destinationReplicationFolderId,
                     secretVersionDAL: secretVersionV2BridgeDAL,
                     secretDAL: secretV2BridgeDAL,
                     tx,
+                    resourceMetadataDAL,
                     secretTagDAL,
                     secretVersionTagDAL: secretVersionV2TagBridgeDAL,
                     inputSecrets: locallyUpdatedSecrets.map((doc) => {
@@ -445,6 +459,7 @@ export const secretReplicationServiceFactory = ({
                           encryptedValue: doc.encryptedValue as Buffer,
                           encryptedComment: doc.encryptedComment,
                           skipMultilineEncoding: doc.skipMultilineEncoding,
+                          secretMetadata: doc.secretMetadata,
                           references: doc.secretValue ? getAllSecretReferences(doc.secretValue).nestedReferences : []
                         }
                       };
@@ -466,6 +481,7 @@ export const secretReplicationServiceFactory = ({
 
               await secretQueueService.syncSecrets({
                 projectId,
+                orgId,
                 secretPath: destinationFolder.path,
                 environmentSlug: destinationFolder.environmentSlug,
                 actorId,
@@ -751,6 +767,7 @@ export const secretReplicationServiceFactory = ({
 
             await secretQueueService.syncSecrets({
               projectId,
+              orgId,
               secretPath: destinationFolder.path,
               environmentSlug: destinationFolder.environmentSlug,
               actorId,

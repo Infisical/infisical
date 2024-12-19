@@ -31,7 +31,8 @@ const metadataMappings: Record<keyof NonNullable<TIntegrationWithEnv["metadata"]
   shouldEnableDelete: "GitHub Secret Deletion Enabled",
   octopusDeployScopeValues: "Octopus Deploy Scope Values",
   awsIamRole: "AWS IAM Role",
-  region: "Region"
+  region: "Region",
+  metadataSyncMode: "Metadata Sync Mode"
 } as const;
 
 export const IntegrationSettingsSection = ({ integration }: Props) => {

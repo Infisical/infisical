@@ -71,6 +71,7 @@ export * from "./project-user-additional-privilege";
 export * from "./project-user-membership-roles";
 export * from "./projects";
 export * from "./rate-limit";
+export * from "./resource-metadata";
 export * from "./saml-configs";
 export * from "./scim-tokens";
 export * from "./secret-approval-policies";
