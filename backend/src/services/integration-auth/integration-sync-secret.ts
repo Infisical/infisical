@@ -1489,6 +1489,11 @@ const syncSecretsVercel = async ({
 
   const metadata = IntegrationMetadataSchema.parse(integration.metadata);
 
+  // Default to overwrite target for old integrations that doesn't have a initial sync behavior set.
+  if (!metadata.initialSyncBehavior) {
+    metadata.initialSyncBehavior = IntegrationInitialSyncBehavior.OVERWRITE_TARGET;
+  }
+
   const secretsToAddToInfisical: { [key: string]: VercelSecret } = {};
 
   Object.keys(res).forEach((vercelKey) => {
