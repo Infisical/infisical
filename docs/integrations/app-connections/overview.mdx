@@ -17,17 +17,25 @@ that can be used across Infisical projects. Example use cases include syncing se
     ```mermaid
     %%{init: {'flowchart': {'curve': 'linear'} } }%%
     graph TD
-    A[AWS Connection]
-    A --> B[Project 1 Secret Sync]
-    A --> C[Project 2 Secret Sync]
-    A --> D[Project 3 Generate Dynamic Secret]
+    A[AWS]
+    B[AWS Connection]
+    C[Project 1 Secret Sync]
+    D[Project 2 Secret Sync]
+    E[Project 3 Generate Dynamic Secret]
+
+    B --> A
+    C --> B
+    D --> B
+    E --> B
 
     classDef default fill:#ffffff,stroke:#666,stroke-width:2px,rx:10px,color:black
     classDef aws fill:#FFF2B2,stroke:#E6C34A,stroke-width:2px,color:black,rx:15px
     classDef project fill:#E6F4FF,stroke:#0096D6,stroke-width:2px,color:black,rx:15px
+    classDef connection fill:#F4FFE6,stroke:#96D600,stroke-width:2px,color:black,rx:15px
 
     class A aws
-    class B,C,D project
+    class B connection
+    class C,D,E project
     ```
 
 </div>

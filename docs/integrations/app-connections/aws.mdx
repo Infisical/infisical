@@ -68,37 +68,69 @@ Infisical supports two methods for connecting to AWS.
 
                 <Tabs>
                     <Tab title="Secrets Sync">
-                        Add the **SecretsManagerReadWrite** policy to your IAM Role.
+                        <AccordionGroup>
+                            <Accordion title="AWS Secrets Manager">
+                                Use the following custom policy to grant the minimum permissions required by Infisical to sync secrets to AWS Secrets Manager:
 
-                        ![IAM Role Permissions](/images/integrations/aws/integration-aws-iam-assume-permission.png)
+                                ![IAM Role Secrets Manager Permissions](/images/app-connections/aws/secrets-manager-permissions.png)
 
-                        Alternatively, use the following custom policy to grant the minimum permissions required by Infisical to sync secrets to AWS Parameter Store:
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                        {
+                                            "Sid": "AllowSecretsManagerAccess",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                            "secretsmanager:GetSecretValue",
+                                            "secretsmanager:CreateSecret",
+                                            "secretsmanager:UpdateSecret",
+                                            "secretsmanager:DescribeSecret",
+                                            "secretsmanager:TagResource",
+                                            "secretsmanager:UntagResource",
+                                            "kms:ListKeys",
+                                            "kms:ListAliases",
+                                            "kms:Encrypt",
+                                            "kms:Decrypt"
+                                            ],
+                                            "Resource": "*"
+                                        }
+                                    ]
+                                }
+                                ```
+                            </Accordion>
+                            <Accordion title="AWS Paramter Store">
+                                Use the following custom policy to grant the minimum permissions required by Infisical to sync secrets to AWS Parameter Store:
 
-                        ```json
-                        {
-                            "Version": "2012-10-17",
-                            "Statement": [
-                        {
-                            "Sid": "AllowSSMAccess",
-                            "Effect": "Allow",
-                            "Action": [
-                            "ssm:PutParameter",
-                            "ssm:DeleteParameter",
-                            "ssm:GetParameters",
-                            "ssm:GetParametersByPath",
-                            "ssm:DescribeParameters",
-                            "ssm:DeleteParameters",
-                            "ssm:AddTagsToResource", // if you need to add tags to secrets
-                            "kms:ListKeys", // if you need to specify the KMS key
-                            "kms:ListAliases", // if you need to specify the KMS key
-                            "kms:Encrypt", // if you need to specify the KMS key
-                            "kms:Decrypt" // if you need to specify the KMS key
-                            ],
-                            "Resource": "*"
-                        }
-                            ]
-                        }
-                        ```
+                                ![IAM Role Secrets Manager Permissions](/images/app-connections/aws/parameter-store-permissions.png)
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                        {
+                                            "Sid": "AllowSSMAccess",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                            "ssm:PutParameter",
+                                            "ssm:DeleteParameter",
+                                            "ssm:GetParameters",
+                                            "ssm:GetParametersByPath",
+                                            "ssm:DescribeParameters",
+                                            "ssm:DeleteParameters",
+                                            "ssm:AddTagsToResource", // if you need to add tags to secrets
+                                            "kms:ListKeys", // if you need to specify the KMS key
+                                            "kms:ListAliases", // if you need to specify the KMS key
+                                            "kms:Encrypt", // if you need to specify the KMS key
+                                            "kms:Decrypt" // if you need to specify the KMS key
+                                            ],
+                                            "Resource": "*"
+                                        }
+                                    ]
+                                }
+                                ```
+                            </Accordion>
+                        </AccordionGroup>
                     </Tab>
                 </Tabs>
             </Step>
@@ -186,36 +218,69 @@ Infisical supports two methods for connecting to AWS.
 
                 <Tabs>
                     <Tab title="Secrets Sync">
-                        Add the **SecretsManagerReadWrite** policy to your IAM Role.
+                        <AccordionGroup>
+                            <Accordion title="AWS Secrets Manager">
+                                Use the following custom policy to grant the minimum permissions required by Infisical to sync secrets to AWS Secrets Manager:
 
-                        ![IAM Role Permissions](/images/integrations/aws/integration-aws-iam-assume-permission.png)
-                        Alternatively, use the following custom policy to grant the minimum permissions required by Infisical to sync secrets to AWS Parameter Store:
+                                ![IAM Role Secrets Manager Permissions](/images/app-connections/aws/secrets-manager-permissions.png)
 
-                        ```json
-                        {
-                            "Version": "2012-10-17",
-                            "Statement": [
-                        {
-                            "Sid": "AllowSSMAccess",
-                            "Effect": "Allow",
-                            "Action": [
-                            "ssm:PutParameter",
-                            "ssm:DeleteParameter",
-                            "ssm:GetParameters",
-                            "ssm:GetParametersByPath",
-                            "ssm:DescribeParameters",
-                            "ssm:DeleteParameters",
-                            "ssm:AddTagsToResource", // if you need to add tags to secrets
-                            "kms:ListKeys", // if you need to specify the KMS key
-                            "kms:ListAliases", // if you need to specify the KMS key
-                            "kms:Encrypt", // if you need to specify the KMS key
-                            "kms:Decrypt" // if you need to specify the KMS key
-                            ],
-                            "Resource": "*"
-                        }
-                            ]
-                        }
-                        ```
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                {
+                                    "Sid": "AllowSecretsManagerAccess",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                    "secretsmanager:GetSecretValue",
+                                    "secretsmanager:CreateSecret",
+                                    "secretsmanager:UpdateSecret",
+                                    "secretsmanager:DescribeSecret",
+                                    "secretsmanager:TagResource",
+                                    "secretsmanager:UntagResource",
+                                    "kms:ListKeys",
+                                    "kms:ListAliases",
+                                    "kms:Encrypt",
+                                    "kms:Decrypt"
+                                    ],
+                                    "Resource": "*"
+                                }
+                                    ]
+                                }
+                                ```
+                            </Accordion>
+                            <Accordion title="AWS Paramter Store">
+                                Use the following custom policy to grant the minimum permissions required by Infisical to sync secrets to AWS Parameter Store:
+
+                                ![IAM Role Secrets Manager Permissions](/images/app-connections/aws/parameter-store-permissions.png)
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                {
+                                    "Sid": "AllowSSMAccess",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                    "ssm:PutParameter",
+                                    "ssm:DeleteParameter",
+                                    "ssm:GetParameters",
+                                    "ssm:GetParametersByPath",
+                                    "ssm:DescribeParameters",
+                                    "ssm:DeleteParameters",
+                                    "ssm:AddTagsToResource", // if you need to add tags to secrets
+                                    "kms:ListKeys", // if you need to specify the KMS key
+                                    "kms:ListAliases", // if you need to specify the KMS key
+                                    "kms:Encrypt", // if you need to specify the KMS key
+                                    "kms:Decrypt" // if you need to specify the KMS key
+                                    ],
+                                    "Resource": "*"
+                                }
+                                    ]
+                                }
+                                ```
+                            </Accordion>
+                        </AccordionGroup>
                     </Tab>
                 </Tabs>
             </Step>

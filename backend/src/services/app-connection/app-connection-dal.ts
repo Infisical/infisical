@@ -5,7 +5,7 @@ import { ormify } from "@app/lib/knex";
 export type TAppConnectionDALFactory = ReturnType<typeof appConnectionDALFactory>;
 
 export const appConnectionDALFactory = (db: TDbClient) => {
-  const appConnection = ormify(db, TableName.AppConnection);
+  const appConnectionOrm = ormify(db, TableName.AppConnection);
 
-  return { ...appConnection };
+  return { ...appConnectionOrm };
 };

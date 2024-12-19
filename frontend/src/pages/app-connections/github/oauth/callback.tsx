@@ -13,7 +13,7 @@ import {
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
-type FormData = Pick<TGitHubConnection, "name" | "method"> & {
+type FormData = Pick<TGitHubConnection, "name" | "method" | "description"> & {
   returnUrl?: string;
   connectionId?: string;
 };
@@ -58,7 +58,7 @@ export default function GitHubOAuthCallbackPage() {
       localStorage.removeItem("githubConnectionFormData");
       localStorage.removeItem("latestCSRFToken");
 
-      const { connectionId, name, returnUrl } = formData;
+      const { connectionId, name, description, returnUrl } = formData;
 
       let appConnection: TAppConnection;
 
@@ -85,6 +85,7 @@ export default function GitHubOAuthCallbackPage() {
           appConnection = await createAppConnection.mutateAsync({
             app: AppConnection.GitHub,
             name,
+            description,
             ...(installationId
               ? {
                   method: GitHubConnectionMethod.App,

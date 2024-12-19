@@ -1,9 +1,10 @@
-import { AppConnection } from "@app/lib/app-connections";
 import {
   CreateGitHubConnectionSchema,
-  GitHubAppConnectionSchema,
+  SanitizedGitHubConnectionSchema,
   UpdateGitHubConnectionSchema
-} from "@app/lib/app-connections/github";
+} from "src/services/app-connection/github";
+
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
@@ -11,7 +12,7 @@ export const registerGitHubConnectionRouter = async (server: FastifyZodProvider)
   registerAppConnectionEndpoints({
     app: AppConnection.GitHub,
     server,
-    responseSchema: GitHubAppConnectionSchema,
+    responseSchema: SanitizedGitHubConnectionSchema,
     createSchema: CreateGitHubConnectionSchema,
     updateSchema: UpdateGitHubConnectionSchema
   });

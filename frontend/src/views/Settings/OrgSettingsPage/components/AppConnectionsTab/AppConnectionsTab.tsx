@@ -65,7 +65,7 @@ export const AppConnectionsTab = withPermission(
             </div>
             <OrgPermissionCan
               I={OrgPermissionActions.Create}
-              a={OrgPermissionSubjects.ProjectTemplates}
+              a={OrgPermissionSubjects.AppConnections}
             >
               {(isAllowed) => (
                 <Button

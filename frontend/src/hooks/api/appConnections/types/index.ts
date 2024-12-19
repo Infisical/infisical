@@ -15,10 +15,12 @@ export type TAppConnectionResponse = { appConnection: TAppConnection };
 
 export type TCreateAppConnectionDTO = Pick<
   TAppConnection,
-  "name" | "credentials" | "method" | "app"
+  "name" | "credentials" | "method" | "app" | "description"
 >;
 
-export type TUpdateAppConnectionDTO = Partial<Pick<TAppConnection, "name" | "credentials">> & {
+export type TUpdateAppConnectionDTO = Partial<
+  Pick<TAppConnection, "name" | "credentials" | "description">
+> & {
   connectionId: string;
   app: AppConnection;
 };

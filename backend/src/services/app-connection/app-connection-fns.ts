@@ -1,10 +1,20 @@
-import { AppConnection, AppConnectionListItem, TAppConnection, TAppConnectionConfig } from "@app/lib/app-connections";
-import { getAwsAppConnectionListItem, validateAwsConnectionCredentials } from "@app/lib/app-connections/aws";
-import { getGitHubConnectionListItem, validateGitHubConnectionCredentials } from "@app/lib/app-connections/github";
+import {
+  AwsConnectionMethod,
+  getAwsAppConnectionListItem,
+  validateAwsConnectionCredentials
+} from "src/services/app-connection/aws";
+import {
+  getGitHubConnectionListItem,
+  GitHubConnectionMethod,
+  validateGitHubConnectionCredentials
+} from "src/services/app-connection/github";
+
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactoryDep } from "@app/services/app-connection/app-connection-service";
+import { TAppConnection, TAppConnectionConfig } from "@app/services/app-connection/app-connection-types";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
-export const listAppConnectionOptions = (): (AppConnectionListItem & Record<string, unknown>)[] => {
+export const listAppConnectionOptions = () => {
   return [getAwsAppConnectionListItem(), getGitHubConnectionListItem()].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -63,5 +73,21 @@ export const validateAppConnectionCredentials = async (
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection ${app}`);
+  }
+};
+
+export const getAppConnectionMethodName = (method: TAppConnection["method"]) => {
+  switch (method) {
+    case GitHubConnectionMethod.App:
+      return "GitHub App";
+    case GitHubConnectionMethod.OAuth:
+      return "OAuth";
+    case AwsConnectionMethod.AccessKey:
+      return "Access Key";
+    case AwsConnectionMethod.AssumeRole:
+      return "Assume Role";
+    default:
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+      throw new Error(`Unhandled App Connection Method: ${method}`);
   }
 };

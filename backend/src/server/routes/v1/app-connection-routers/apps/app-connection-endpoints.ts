@@ -2,10 +2,12 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AppConnections } from "@app/lib/api-docs";
-import { AppConnection, TAppConnection, TAppConnectionInput } from "@app/lib/app-connections";
-import { APP_CONNECTION_NAME_MAP } from "@app/lib/app-connections/maps";
+import { startsWithVowel } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
+import { TAppConnection, TAppConnectionInput } from "@app/services/app-connection/app-connection-types";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerAppConnectionEndpoints = <T extends TAppConnection, I extends TAppConnectionInput>({
@@ -17,8 +19,13 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
 }: {
   app: AppConnection;
   server: FastifyZodProvider;
-  createSchema: z.ZodType<{ name: string; method: I["method"]; credentials: I["credentials"] }>;
-  updateSchema: z.ZodType<{ name?: string; credentials?: I["credentials"] }>;
+  createSchema: z.ZodType<{
+    name: string;
+    method: I["method"];
+    credentials: I["credentials"];
+    description?: string | null;
+  }>;
+  updateSchema: z.ZodType<{ name?: string; credentials?: I["credentials"]; description?: string | null }>;
   responseSchema: z.ZodTypeAny;
 }) => {
   const appName = APP_CONNECTION_NAME_MAP[app];
@@ -35,7 +42,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         200: z.object({ appConnections: responseSchema.array() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const appConnections = (await server.services.appConnection.listAppConnectionsByOrg(req.permission, app)) as T[];
 
@@ -45,7 +52,9 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         event: {
           type: EventType.GET_APP_CONNECTIONS,
           metadata: {
-            app
+            app,
+            count: appConnections.length,
+            connectionIds: appConnections.map((connection) => connection.id)
           }
         }
       });
@@ -69,7 +78,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         200: z.object({ appConnection: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { connectionId } = req.params;
 
@@ -112,7 +121,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         200: z.object({ appConnection: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { connectionName } = req.params;
 
@@ -144,18 +153,20 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       rateLimit: writeLimit
     },
     schema: {
-      description: `Create an ${appName} Connection for the current organization.`,
+      description: `Create ${
+        startsWithVowel(appName) ? "an" : "a"
+      } ${appName} Connection for the current organization.`,
       body: createSchema,
       response: {
         200: z.object({ appConnection: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { name, method, credentials } = req.body;
+      const { name, method, credentials, description } = req.body;
 
       const appConnection = (await server.services.appConnection.createAppConnection(
-        { name, method, app, credentials },
+        { name, method, app, credentials, description },
         req.permission
       )) as TAppConnection;
 
@@ -193,13 +204,13 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         200: z.object({ appConnection: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { name, credentials } = req.body;
+      const { name, credentials, description } = req.body;
       const { connectionId } = req.params;
 
       const appConnection = (await server.services.appConnection.updateAppConnection(
-        { name, credentials, connectionId },
+        { name, credentials, connectionId, description },
         req.permission
       )) as T;
 
@@ -210,6 +221,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
           type: EventType.UPDATE_APP_CONNECTION,
           metadata: {
             name,
+            description,
             credentialsUpdated: Boolean(credentials),
             connectionId
           }
@@ -235,7 +247,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         200: z.object({ appConnection: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { connectionId } = req.params;
 

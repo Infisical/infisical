@@ -12,6 +12,7 @@ import { TImmutableDBKeys } from "./models";
 export const AppConnectionsSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
+  description: z.string().nullable().optional(),
   app: z.string(),
   method: z.string(),
   encryptedCredentials: zodBuffer,

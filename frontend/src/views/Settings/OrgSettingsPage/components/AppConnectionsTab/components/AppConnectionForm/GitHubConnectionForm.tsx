@@ -1,37 +1,33 @@
 import crypto from "crypto";
 
 import { useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { Button, FormControl, Input, ModalClose, Select, SelectItem } from "@app/components/v2";
-import { APP_CONNECTION_MAP, APP_CONNECTION_METHOD_MAP } from "@app/helpers/appConnections";
+import { Button, FormControl, ModalClose, Select, SelectItem } from "@app/components/v2";
+import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import {
   GitHubConnectionMethod,
   TGitHubConnection,
   useGetAppConnectionOption
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import { slugSchema } from "@app/lib/schemas";
+
+import {
+  genericAppConnectionFieldsSchema,
+  GenericAppConnectionsFields
+} from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TGitHubConnection;
 };
 
-const rootSchema = z.object({
-  name: slugSchema({ min: 1, max: 32, field: "Name" }),
-  app: z.literal(AppConnection.GitHub)
+const formSchema = genericAppConnectionFieldsSchema.extend({
+  app: z.literal(AppConnection.GitHub),
+  method: z.nativeEnum(GitHubConnectionMethod)
 });
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(GitHubConnectionMethod.App)
-  }),
-  rootSchema.extend({
-    method: z.literal(GitHubConnectionMethod.OAuth)
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 
@@ -44,19 +40,20 @@ export const GitHubConnectionForm = ({ appConnection }: Props) => {
     isLoading
   } = useGetAppConnectionOption(AppConnection.GitHub);
 
-  const {
-    handleSubmit,
-    register,
-    control,
-    watch,
-    formState: { isSubmitting, errors, isDirty }
-  } = useForm<FormData>({
+  const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: appConnection ?? {
       app: AppConnection.GitHub,
       method: GitHubConnectionMethod.App
     }
   });
+
+  const {
+    handleSubmit,
+    control,
+    watch,
+    formState: { isSubmitting, isDirty }
+  } = form;
 
   const selectedMethod = watch("method");
 
@@ -98,75 +95,70 @@ export const GitHubConnectionForm = ({ appConnection }: Props) => {
       throw new Error(`Unhandled GitHub Connection method: ${selectedMethod}`);
   }
 
+  const methodDetails = getAppConnectionMethodDetails(selectedMethod);
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      {!isUpdate && (
-        <FormControl
-          helperText="Name must be slug-friendly"
-          errorText={errors.name?.message}
-          isError={Boolean(errors.name?.message)}
-          label="Name"
-        >
-          <Input
-            autoFocus
-            placeholder={`my-${AppConnection.GitHub}-connection`}
-            {...register("name")}
-          />
-        </FormControl>
-      )}
-      <Controller
-        name="method"
-        control={control}
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            tooltipText={`The method you would like to use to connect with ${
-              APP_CONNECTION_MAP[AppConnection.GitHub].name
-            }. This field cannot be changed after creation.`}
-            errorText={
-              !isLoading && isMissingConfig
-                ? `Environment variables have not been configured. See Docs to configure GitHub ${APP_CONNECTION_METHOD_MAP[selectedMethod].name} Connections.`
-                : error?.message
-            }
-            isError={Boolean(error?.message) || isMissingConfig}
-            label="Method"
-          >
-            <Select
-              isDisabled={isUpdate}
-              value={value}
-              onValueChange={(val) => onChange(val)}
-              className="w-full border border-mineshaft-500"
-              position="popper"
-              dropdownContainerClassName="max-w-none"
+    <FormProvider {...form}>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        {!isUpdate && <GenericAppConnectionsFields />}
+        <Controller
+          name="method"
+          control={control}
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl
+              tooltipText={`The method you would like to use to connect with ${
+                APP_CONNECTION_MAP[AppConnection.GitHub].name
+              }. This field cannot be changed after creation.`}
+              errorText={
+                !isLoading && isMissingConfig
+                  ? `Environment variables have not been configured. ${
+                      isInfisicalCloud()
+                        ? "Please contact Infisical."
+                        : `See Docs to configure GitHub ${methodDetails.name} Connections.`
+                    }`
+                  : error?.message
+              }
+              isError={Boolean(error?.message) || isMissingConfig}
+              label="Method"
             >
-              {Object.values(GitHubConnectionMethod).map((method) => {
-                return (
-                  <SelectItem value={method} key={method}>
-                    {APP_CONNECTION_METHOD_MAP[method].name}{" "}
-                    {method === GitHubConnectionMethod.App ? " (Recommended)" : ""}
-                  </SelectItem>
-                );
-              })}
-            </Select>
-          </FormControl>
-        )}
-      />
-      <div className="mt-8 flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          colorSchema="secondary"
-          isLoading={isSubmitting || isRedirecting}
-          isDisabled={isSubmitting || (!isUpdate && !isDirty) || isMissingConfig || isRedirecting}
-        >
-          {isUpdate ? "Reconnect to GitHub" : "Connect to GitHub"}
-        </Button>
-        <ModalClose asChild>
-          <Button colorSchema="secondary" variant="plain">
-            Cancel
+              <Select
+                isDisabled={isUpdate}
+                value={value}
+                onValueChange={(val) => onChange(val)}
+                className="w-full border border-mineshaft-500"
+                position="popper"
+                dropdownContainerClassName="max-w-none"
+              >
+                {Object.values(GitHubConnectionMethod).map((method) => {
+                  return (
+                    <SelectItem value={method} key={method}>
+                      {methodDetails.name}{" "}
+                      {method === GitHubConnectionMethod.App ? " (Recommended)" : ""}
+                    </SelectItem>
+                  );
+                })}
+              </Select>
+            </FormControl>
+          )}
+        />
+        <div className="mt-8 flex items-center">
+          <Button
+            className="mr-4"
+            size="sm"
+            type="submit"
+            colorSchema="secondary"
+            isLoading={isSubmitting || isRedirecting}
+            isDisabled={isSubmitting || (!isUpdate && !isDirty) || isMissingConfig || isRedirecting}
+          >
+            {isUpdate ? "Reconnect to GitHub" : "Connect to GitHub"}
           </Button>
-        </ModalClose>
-      </div>
-    </form>
+          <ModalClose asChild>
+            <Button colorSchema="secondary" variant="plain">
+              Cancel
+            </Button>
+          </ModalClose>
+        </div>
+      </form>
+    </FormProvider>
   );
 };

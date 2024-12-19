@@ -3,10 +3,10 @@ import { AxiosResponse } from "axios";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, ForbiddenRequestError, InternalServerError } from "@app/lib/errors";
+import { getAppConnectionMethodName } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
 import { AppConnection } from "../app-connection-enums";
-import { APP_CONNECTION_METHOD_NAME_MAP } from "../maps";
 import { GitHubConnectionMethod } from "./github-connection-enums";
 import { TGitHubConnectionConfig } from "./github-connection-types";
 
@@ -14,9 +14,9 @@ export const getGitHubConnectionListItem = () => {
   const { INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID, INF_APP_CONNECTION_GITHUB_APP_SLUG } = getConfig();
 
   return {
-    name: "GitHub",
-    app: AppConnection.GitHub,
-    methods: Object.values(GitHubConnectionMethod),
+    name: "GitHub" as const,
+    app: AppConnection.GitHub as const,
+    methods: Object.values(GitHubConnectionMethod) as [GitHubConnectionMethod.App, GitHubConnectionMethod.OAuth],
     oauthClientId: INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID,
     appClientSlug: INF_APP_CONNECTION_GITHUB_APP_SLUG
   };
@@ -53,7 +53,7 @@ export const validateGitHubConnectionCredentials = async (config: TGitHubConnect
 
   if (!clientId || !clientSecret) {
     throw new InternalServerError({
-      message: `GitHub ${APP_CONNECTION_METHOD_NAME_MAP[method]} environment variables have not been configured`
+      message: `GitHub ${getAppConnectionMethodName(method)} environment variables have not been configured`
     });
   }
 

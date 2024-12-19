@@ -4,9 +4,10 @@ import {
 } from "@app/ee/services/project-template/project-template-types";
 import { SshCaStatus, SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
 import { SshCertTemplateStatus } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-types";
-import { AppConnection, TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/lib/app-connections";
 import { SymmetricEncryption } from "@app/lib/crypto/cipher";
 import { TProjectPermission } from "@app/lib/types";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/services/app-connection/app-connection-types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-types";
@@ -1875,8 +1876,10 @@ interface ApplyProjectTemplateEvent {
 
 interface GetAppConnectionsEvent {
   type: EventType.GET_APP_CONNECTIONS;
-  metadata?: {
-    app: AppConnection;
+  metadata: {
+    app?: AppConnection;
+    count: number;
+    connectionIds: string[];
   };
 }
 

@@ -45,8 +45,34 @@ export const AppConnectionsSelect = ({ onSelect }: Props) => {
       ))}
       <Tooltip
         side="bottom"
-        className="text-center"
-        content="Infisical is busy adding support for more connections. Check back soon if you don't see the one you're looking for."
+        className="max-w-sm py-4"
+        content={
+          <>
+            <p className="mb-2">Infisical is constantly adding support for more connections.</p>
+            <p>
+              {`If you don't see the third-party
+            app you're looking for,`}{" "}
+              <a
+                target="_blank"
+                className="underline hover:text-mineshaft-300"
+                href="https://infisical.com/slack"
+                rel="noopener noreferrer"
+              >
+                let us know on Slack
+              </a>{" "}
+              or{" "}
+              <a
+                target="_blank"
+                className="underline hover:text-mineshaft-300"
+                href="https://github.com/Infisical/infisical/discussions"
+                rel="noopener noreferrer"
+              >
+                make a request on GitHub
+              </a>
+              .
+            </p>
+          </>
+        }
       >
         <div className="group relative flex h-28 flex-col items-center justify-center rounded-md border border-dashed border-mineshaft-600 bg-mineshaft-800 p-4">
           <FontAwesomeIcon className="mt-auto text-xl" icon={faWrench} />

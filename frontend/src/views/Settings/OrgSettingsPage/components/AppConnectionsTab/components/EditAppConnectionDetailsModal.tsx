@@ -1,14 +1,15 @@
-import { useForm } from "react-hook-form";
+import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, Modal, ModalClose, ModalContent } from "@app/components/v2";
+import { Button, Modal, ModalClose, ModalContent } from "@app/components/v2";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { TAppConnection, useUpdateAppConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import { slugSchema } from "@app/lib/schemas";
 import { DiscriminativePick } from "@app/lib/types";
+
+import { genericAppConnectionFieldsSchema, GenericAppConnectionsFields } from "./AppConnectionForm";
 
 type Props = {
   isOpen: boolean;
@@ -16,8 +17,7 @@ type Props = {
   appConnection?: TAppConnection;
 };
 
-const formSchema = z.object({
-  name: slugSchema({ min: 1, max: 32, field: "Name" }),
+const formSchema = genericAppConnectionFieldsSchema.extend({
   app: z.nativeEnum(AppConnection)
 });
 
@@ -29,14 +29,19 @@ const Content = ({ appConnection, onComplete }: ContentProps) => {
   const updateAppConnection = useUpdateAppConnection();
   const { name: appName } = APP_CONNECTION_MAP[appConnection.app];
 
+  const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: appConnection.name,
+      app: appConnection.app,
+      description: appConnection.description
+    }
+  });
+
   const {
     handleSubmit,
-    register,
-    formState: { isSubmitting, errors, isDirty }
-  } = useForm<FormData>({
-    resolver: zodResolver(formSchema),
-    defaultValues: { name: appConnection.name, app: appConnection.app }
-  });
+    formState: { isSubmitting, isDirty }
+  } = form;
 
   const onSubmit = async (formData: DiscriminativePick<TAppConnection, "name" | "app">) => {
     try {
@@ -60,38 +65,32 @@ const Content = ({ appConnection, onComplete }: ContentProps) => {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      <FormControl
-        helperText="Name must be slug-friendly"
-        errorText={errors.name?.message}
-        isError={Boolean(errors.name?.message)}
-        label="Name"
-      >
-        <Input autoFocus placeholder={`my-${AppConnection.AWS}-connection`} {...register("name")} />
-      </FormControl>
-
-      <div className="mt-8 flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          colorSchema="secondary"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting || !isDirty}
-        >
-          Update Name
-        </Button>
-        <ModalClose asChild>
-          <Button colorSchema="secondary" variant="plain">
-            Cancel
+    <FormProvider {...form}>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <GenericAppConnectionsFields />
+        <div className="mt-8 flex items-center">
+          <Button
+            className="mr-4"
+            size="sm"
+            type="submit"
+            colorSchema="secondary"
+            isLoading={isSubmitting}
+            isDisabled={isSubmitting || !isDirty}
+          >
+            Update Details
           </Button>
-        </ModalClose>
-      </div>
-    </form>
+          <ModalClose asChild>
+            <Button colorSchema="secondary" variant="plain">
+              Cancel
+            </Button>
+          </ModalClose>
+        </div>
+      </form>
+    </FormProvider>
   );
 };
 
-export const EditAppConnectionNameModal = ({ isOpen, onOpenChange, appConnection }: Props) => {
+export const EditAppConnectionDetailsModal = ({ isOpen, onOpenChange, appConnection }: Props) => {
   if (!appConnection) return null;
 
   return (

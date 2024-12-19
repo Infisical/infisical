@@ -1,17 +1,21 @@
+import { AwsConnectionListItemSchema, SanitizedAwsConnectionSchema } from "src/services/app-connection/aws";
+import { GitHubConnectionListItemSchema, SanitizedGitHubConnectionSchema } from "src/services/app-connection/github";
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { AppConnection } from "@app/lib/app-connections";
-import { SanitizedAwsConnectionSchema } from "@app/lib/app-connections/aws";
-import { SanitizedGitHubConnectionSchema } from "@app/lib/app-connections/github";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 // can't use discriminated due to multiple schemas for certain apps
-export const SanitizedAppConnectionSchema = z.union([
+const SanitizedAppConnectionSchema = z.union([
   ...SanitizedAwsConnectionSchema.options,
   ...SanitizedGitHubConnectionSchema.options
+]);
+
+const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
+  AwsConnectionListItemSchema,
+  GitHubConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {
@@ -25,18 +29,11 @@ export const registerAppConnectionRouter = async (server: FastifyZodProvider) =>
       description: "List the available App Connection Options.",
       response: {
         200: z.object({
-          appConnectionOptions: z
-            .object({
-              name: z.string(),
-              app: z.nativeEnum(AppConnection),
-              methods: z.string().array()
-            })
-            .passthrough()
-            .array()
+          appConnectionOptions: AppConnectionOptionsSchema.array()
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: () => {
       const appConnectionOptions = server.services.appConnection.listAppConnectionOptions();
       return { appConnectionOptions };
@@ -55,7 +52,7 @@ export const registerAppConnectionRouter = async (server: FastifyZodProvider) =>
         200: z.object({ appConnections: SanitizedAppConnectionSchema.array() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const appConnections = await server.services.appConnection.listAppConnectionsByOrg(req.permission);
 
@@ -63,7 +60,11 @@ export const registerAppConnectionRouter = async (server: FastifyZodProvider) =>
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
         event: {
-          type: EventType.GET_APP_CONNECTIONS
+          type: EventType.GET_APP_CONNECTIONS,
+          metadata: {
+            count: appConnections.length,
+            connectionIds: appConnections.map((connection) => connection.id)
+          }
         }
       });
 

@@ -30,7 +30,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { useSubscription } from "@app/context";
-import { APP_CONNECTION_MAP, APP_CONNECTION_METHOD_MAP } from "@app/helpers/appConnections";
+import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { TAppConnection, useListAppConnections } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -39,7 +39,7 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { AppConnectionRow } from "./AppConnectionRow";
 import { DeleteAppConnectionModal } from "./DeleteAppConnectionModal";
 import { EditAppConnectionCredentialsModal } from "./EditAppConnectionCredentialsModal";
-import { EditAppConnectionNameModal } from "./EditAppConnectionNameModal";
+import { EditAppConnectionDetailsModal } from "./EditAppConnectionDetailsModal";
 
 enum AppConnectionsOrderBy {
   App = "app",
@@ -61,7 +61,7 @@ export const AppConnectionsTable = () => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "deleteConnection",
     "editCredentials",
-    "editName"
+    "editDetails"
   ] as const);
 
   const [filters, setFilters] = useState<AppConnectionFilters>({
@@ -95,7 +95,7 @@ export const AppConnectionsTable = () => {
 
           return (
             APP_CONNECTION_MAP[app].name.toLowerCase().includes(searchValue) ||
-            APP_CONNECTION_METHOD_MAP[method].name.toLowerCase().includes(searchValue) ||
+            getAppConnectionMethodDetails(method).name.toLowerCase().includes(searchValue) ||
             name.toLowerCase().includes(searchValue)
           );
         })
@@ -109,9 +109,11 @@ export const AppConnectionsTable = () => {
                 .toLowerCase()
                 .localeCompare(connectionTwo.name.toLowerCase());
             case AppConnectionsOrderBy.Method:
-              return APP_CONNECTION_METHOD_MAP[connectionOne.method].name
-                .toLowerCase()
-                .localeCompare(APP_CONNECTION_METHOD_MAP[connectionTwo.method].name.toLowerCase());
+              return getAppConnectionMethodDetails(connectionOne.method)
+                .name.toLowerCase()
+                .localeCompare(
+                  getAppConnectionMethodDetails(connectionTwo.method).name.toLowerCase()
+                );
             case AppConnectionsOrderBy.App:
             default:
               return APP_CONNECTION_MAP[connectionOne.app].name
@@ -152,8 +154,8 @@ export const AppConnectionsTable = () => {
   const handleEditCredentials = (appConnection: TAppConnection) =>
     handlePopUpOpen("editCredentials", appConnection);
 
-  const handleEditName = (appConnection: TAppConnection) =>
-    handlePopUpOpen("editName", appConnection);
+  const handleEditDetails = (appConnection: TAppConnection) =>
+    handlePopUpOpen("editDetails", appConnection);
 
   return (
     <div>
@@ -274,7 +276,7 @@ export const AppConnectionsTable = () => {
                 key={connection.id}
                 onDelete={handleDelete}
                 onEditCredentials={handleEditCredentials}
-                onEditName={handleEditName}
+                onEditDetails={handleEditDetails}
               />
             ))}
           </TBody>
@@ -309,10 +311,10 @@ export const AppConnectionsTable = () => {
         onOpenChange={(isOpen) => handlePopUpToggle("editCredentials", isOpen)}
         appConnection={popUp.editCredentials.data}
       />
-      <EditAppConnectionNameModal
-        isOpen={popUp.editName.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("editName", isOpen)}
-        appConnection={popUp.editName.data}
+      <EditAppConnectionDetailsModal
+        isOpen={popUp.editDetails.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("editDetails", isOpen)}
+        appConnection={popUp.editDetails.data}
       />
     </div>
   );

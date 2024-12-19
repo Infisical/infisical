@@ -5,6 +5,7 @@ import {
   faCopy,
   faEdit,
   faEllipsisV,
+  faInfoCircle,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -23,7 +24,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
-import { APP_CONNECTION_MAP, APP_CONNECTION_METHOD_MAP } from "@app/helpers/appConnections";
+import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { useToggle } from "@app/hooks";
 import { TAppConnection } from "@app/hooks/api/appConnections";
 
@@ -31,16 +32,16 @@ type Props = {
   appConnection: TAppConnection;
   onDelete: (appConnection: TAppConnection) => void;
   onEditCredentials: (appConnection: TAppConnection) => void;
-  onEditName: (appConnection: TAppConnection) => void;
+  onEditDetails: (appConnection: TAppConnection) => void;
 };
 
 export const AppConnectionRow = ({
   appConnection,
   onDelete,
   onEditCredentials,
-  onEditName
+  onEditDetails
 }: Props) => {
-  const { id, name, method, app } = appConnection;
+  const { id, name, method, app, description } = appConnection;
 
   const [isIdCopied, setIsIdCopied] = useToggle(false);
 
@@ -59,6 +60,8 @@ export const AppConnectionRow = ({
     return () => clearTimeout(timer);
   }, [isIdCopied]);
 
+  const methodDetails = getAppConnectionMethodDetails(method);
+
   return (
     <Tr
       className={twMerge("group h-12 transition-colors duration-100 hover:bg-mineshaft-700")}
@@ -75,16 +78,23 @@ export const AppConnectionRow = ({
         </div>
       </Td>
       <Td className="!min-w-[8rem] max-w-0">
-        <p className="truncate">{name}</p>
+        <div className="flex w-full items-center">
+          <p className="truncate">{name}</p>
+          {description && (
+            <Tooltip content={description}>
+              <FontAwesomeIcon icon={faInfoCircle} className="ml-1 text-mineshaft-400" />
+            </Tooltip>
+          )}
+        </div>
       </Td>
       <Td className="!min-w-[8rem] max-w-0">
         <p className="truncate">
           <FontAwesomeIcon
             size="sm"
             className="mr-1.5 text-mineshaft-300/75"
-            icon={APP_CONNECTION_METHOD_MAP[method].icon}
+            icon={methodDetails.icon}
           />
-          {APP_CONNECTION_METHOD_MAP[method].name}
+          {methodDetails.name}
         </p>
       </Td>
 
@@ -116,9 +126,9 @@ export const AppConnectionRow = ({
                   <DropdownMenuItem
                     isDisabled={!isAllowed}
                     icon={<FontAwesomeIcon icon={faEdit} />}
-                    onClick={() => onEditName(appConnection)}
+                    onClick={() => onEditDetails(appConnection)}
                   >
-                    Edit Name
+                    Edit Details
                   </DropdownMenuItem>
                 )}
               </OrgPermissionCan>

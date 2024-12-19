@@ -3,21 +3,26 @@ import { ForbiddenError } from "@casl/ability";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import {
-  AppConnection,
-  TAppConnection,
-  TAppConnectionConfig,
-  TCreateAppConnectionDTO,
-  TUpdateAppConnectionDTO
-} from "@app/lib/app-connections";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { OrgServiceActor } from "@app/lib/types";
+import { DiscriminativePick, OrgServiceActor } from "@app/lib/types";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   decryptAppConnectionCredentials,
   encryptAppConnectionCredentials,
+  getAppConnectionMethodName,
   listAppConnectionOptions,
   validateAppConnectionCredentials
 } from "@app/services/app-connection/app-connection-fns";
+import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
+import {
+  TAppConnection,
+  TAppConnectionConfig,
+  TCreateAppConnectionDTO,
+  TUpdateAppConnectionDTO,
+  TValidateAppConnectionCredentials
+} from "@app/services/app-connection/app-connection-types";
+import { ValidateAwsConnectionCredentialsSchema } from "@app/services/app-connection/aws";
+import { ValidateGitHubConnectionCredentialsSchema } from "@app/services/app-connection/github";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAppConnectionDALFactory } from "./app-connection-dal";
@@ -30,6 +35,11 @@ export type TAppConnectionServiceFactoryDep = {
 };
 
 export type TAppConnectionServiceFactory = ReturnType<typeof appConnectionServiceFactory>;
+
+const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAppConnectionCredentials> = {
+  [AppConnection.AWS]: ValidateAwsConnectionCredentialsSchema,
+  [AppConnection.GitHub]: ValidateGitHubConnectionCredentialsSchema
+};
 
 export const appConnectionServiceFactory = ({
   appConnectionDAL,
@@ -160,40 +170,53 @@ export const appConnectionServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.AppConnections);
 
-    const isConflictingName = Boolean(
-      await appConnectionDAL.findOne({
-        name: params.name,
-        orgId: actor.orgId
-      })
-    );
+    const appConnection = await appConnectionDAL.transaction(async (tx) => {
+      const isConflictingName = Boolean(
+        await appConnectionDAL.findOne(
+          {
+            name: params.name,
+            orgId: actor.orgId
+          },
+          tx
+        )
+      );
 
-    if (isConflictingName)
-      throw new BadRequestError({
-        message: `An App Connection with the name "${params.name}" already exists`
+      if (isConflictingName)
+        throw new BadRequestError({
+          message: `An App Connection with the name "${params.name}" already exists`
+        });
+
+      const validatedCredentials = await validateAppConnectionCredentials({
+        app,
+        credentials,
+        method,
+        orgId: actor.orgId
+      } as TAppConnectionConfig);
+
+      const encryptedCredentials = await encryptAppConnectionCredentials({
+        credentials: validatedCredentials,
+        orgId: actor.orgId,
+        kmsService
       });
 
-    const validatedCredentials = await validateAppConnectionCredentials({
-      app,
-      credentials,
-      method,
-      orgId: actor.orgId
-    } as TAppConnectionConfig);
+      const connection = await appConnectionDAL.create(
+        {
+          orgId: actor.orgId,
+          encryptedCredentials,
+          method,
+          app,
+          ...params
+        },
+        tx
+      );
 
-    const encryptedCredentials = await encryptAppConnectionCredentials({
-      credentials: validatedCredentials,
-      orgId: actor.orgId,
-      kmsService
+      return {
+        ...connection,
+        credentials: validatedCredentials
+      };
     });
 
-    const appConnection = await appConnectionDAL.create({
-      orgId: actor.orgId,
-      encryptedCredentials,
-      method,
-      app,
-      ...params
-    });
-
-    return { ...appConnection, credentials: validatedCredentials };
+    return appConnection;
   };
 
   const updateAppConnection = async (
@@ -216,44 +239,69 @@ export const appConnectionServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.AppConnections);
 
-    if (params.name && appConnection.name !== params.name) {
-      const isConflictingName = Boolean(
-        await appConnectionDAL.findOne({
-          name: params.name,
-          orgId: appConnection.orgId
-        })
+    const updatedAppConnection = await appConnectionDAL.transaction(async (tx) => {
+      if (params.name && appConnection.name !== params.name) {
+        const isConflictingName = Boolean(
+          await appConnectionDAL.findOne(
+            {
+              name: params.name,
+              orgId: appConnection.orgId
+            },
+            tx
+          )
+        );
+
+        if (isConflictingName)
+          throw new BadRequestError({
+            message: `An App Connection with the name "${params.name}" already exists`
+          });
+      }
+
+      let encryptedCredentials: undefined | Buffer;
+
+      if (credentials) {
+        const { app, method } = appConnection as DiscriminativePick<TAppConnectionConfig, "app" | "method">;
+
+        if (
+          !VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[app].safeParse({
+            method,
+            credentials
+          }).success
+        )
+          throw new BadRequestError({
+            message: `Invalid credential format for ${
+              APP_CONNECTION_NAME_MAP[app]
+            } Connection with method ${getAppConnectionMethodName(method)}`
+          });
+
+        const validatedCredentials = await validateAppConnectionCredentials({
+          app,
+          orgId: actor.orgId,
+          credentials,
+          method
+        } as TAppConnectionConfig);
+
+        if (!validatedCredentials)
+          throw new BadRequestError({ message: "Unable to validate connection - check credentials" });
+
+        encryptedCredentials = await encryptAppConnectionCredentials({
+          credentials: validatedCredentials,
+          orgId: actor.orgId,
+          kmsService
+        });
+      }
+
+      const updatedConnection = await appConnectionDAL.updateById(
+        connectionId,
+        {
+          orgId: actor.orgId,
+          encryptedCredentials,
+          ...params
+        },
+        tx
       );
 
-      if (isConflictingName)
-        throw new BadRequestError({
-          message: `An App Connection with the name "${params.name}" already exists`
-        });
-    }
-
-    let encryptedCredentials: undefined | Buffer;
-
-    if (credentials) {
-      const validatedCredentials = await validateAppConnectionCredentials({
-        app: appConnection.app,
-        credentials,
-        method: appConnection.method,
-        orgId: actor.orgId
-      } as TAppConnectionConfig);
-
-      if (!validatedCredentials)
-        throw new BadRequestError({ message: "Unable to validate connection - check credentials" });
-
-      encryptedCredentials = await encryptAppConnectionCredentials({
-        credentials: validatedCredentials,
-        orgId: actor.orgId,
-        kmsService
-      });
-    }
-
-    const updatedAppConnection = await appConnectionDAL.updateById(connectionId, {
-      orgId: actor.orgId,
-      encryptedCredentials,
-      ...params
+      return updatedConnection;
     });
 
     return {

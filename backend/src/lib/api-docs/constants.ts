@@ -1,5 +1,5 @@
-import { AppConnection } from "@app/lib/app-connections";
-import { APP_CONNECTION_NAME_MAP } from "@app/lib/app-connections/maps";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 
 export const GROUPS = {
   CREATE: {
@@ -1620,6 +1620,7 @@ export const AppConnections = {
     const appName = APP_CONNECTION_NAME_MAP[app];
     return {
       name: `The name of the ${appName} Connection to create. Must be slug-friendly.`,
+      description: `An optional description for the ${appName} Connection.`,
       credentials: `The credentials used to connect with ${appName}.`,
       method: `The method used to authenticate with ${appName}.`
     };
@@ -1629,11 +1630,12 @@ export const AppConnections = {
     return {
       connectionId: `The ID of the ${appName} Connection to be updated.`,
       name: `The updated name of the ${appName} Connection. Must be slug-friendly.`,
+      description: `The updated description of the ${appName} Connection.`,
       credentials: `The credentials used to connect with ${appName}.`,
       method: `The method used to authenticate with ${appName}.`
     };
   },
   DELETE: (app: AppConnection) => ({
-    connectionId: `The ID of the ${app} connection to be deleted.`
+    connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[app]} connection to be deleted.`
   })
 };

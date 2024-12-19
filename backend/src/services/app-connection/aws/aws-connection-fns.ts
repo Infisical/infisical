@@ -2,20 +2,20 @@ import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 import AWS from "aws-sdk";
 import { randomUUID } from "crypto";
 
-import { AppConnection } from "@app/lib/app-connections/app-connection-enums";
-import { TAwsConnectionConfig } from "@app/lib/app-connections/aws/aws-connection-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { AwsConnectionMethod } from "./aws-connection-enums";
+import { TAwsConnectionConfig } from "./aws-connection-types";
 
 export const getAwsAppConnectionListItem = () => {
   const { INF_APP_CONNECTION_AWS_ACCESS_KEY_ID } = getConfig();
 
   return {
-    name: "AWS",
-    app: AppConnection.AWS,
-    methods: Object.values(AwsConnectionMethod),
+    name: "AWS" as const,
+    app: AppConnection.AWS as const,
+    methods: Object.values(AwsConnectionMethod) as [AwsConnectionMethod.AssumeRole, AwsConnectionMethod.AccessKey],
     accessKeyId: INF_APP_CONNECTION_AWS_ACCESS_KEY_ID
   };
 };

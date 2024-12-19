@@ -1,9 +1,10 @@
-import { AppConnection } from "@app/lib/app-connections";
 import {
   CreateAwsConnectionSchema,
   SanitizedAwsConnectionSchema,
   UpdateAwsConnectionSchema
-} from "@app/lib/app-connections/aws";
+} from "src/services/app-connection/aws";
+
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
