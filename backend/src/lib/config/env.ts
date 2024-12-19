@@ -180,7 +180,24 @@ const envSchema = z
     HSM_SLOT: z.coerce.number().optional().default(0),
 
     USE_PG_QUEUE: zodStrBool.default("false"),
-    SHOULD_INIT_PG_QUEUE: zodStrBool.default("false")
+    SHOULD_INIT_PG_QUEUE: zodStrBool.default("false"),
+
+    /* App Connections ----------------------------------------------------------------------------- */
+
+    // aws
+    INF_APP_CONNECTION_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY: zpStr(z.string().optional()),
+
+    // github oauth
+    INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_SECRET: zpStr(z.string().optional()),
+
+    // github app
+    INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_GITHUB_APP_SLUG: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_GITHUB_APP_ID: zpStr(z.string().optional())
   })
   // To ensure that basic encryption is always possible.
   .refine(

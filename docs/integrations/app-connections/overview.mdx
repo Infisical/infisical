@@ -1,0 +1,77 @@
+---
+sidebarTitle: "Overview"
+description: "Learn how to manage and configure third-party app connections with Infisical."
+---
+
+App Connections enable your organization to integrate Infisical with third-party services in a secure and versatile way.
+
+## Concept
+
+App Connections are an organization-level resource used to establish connections with third-party applications
+that can be used across Infisical projects. Example use cases include syncing secrets, generating dynamic secrets, and more.
+
+<br />
+
+<div align="center">
+
+    ```mermaid
+    %%{init: {'flowchart': {'curve': 'linear'} } }%%
+    graph TD
+    A[AWS]
+    B[AWS Connection]
+    C[Project 1 Secret Sync]
+    D[Project 2 Secret Sync]
+    E[Project 3 Generate Dynamic Secret]
+
+    B --> A
+    C --> B
+    D --> B
+    E --> B
+
+    classDef default fill:#ffffff,stroke:#666,stroke-width:2px,rx:10px,color:black
+    classDef aws fill:#FFF2B2,stroke:#E6C34A,stroke-width:2px,color:black,rx:15px
+    classDef project fill:#E6F4FF,stroke:#0096D6,stroke-width:2px,color:black,rx:15px
+    classDef connection fill:#F4FFE6,stroke:#96D600,stroke-width:2px,color:black,rx:15px
+
+    class A aws
+    class B connection
+    class C,D,E project
+    ```
+
+</div>
+
+## Workflow
+
+App Connections require initial setup in both your third-party application and Infisical. Follow these steps to establish a secure connection:
+
+<Note>
+    For step-by-step guides specific to each application, refer to the App Connections section in the Navigation Bar.
+</Note>
+
+1. <strong>Create Access Entity:</strong> If necessary, create an entity such as a service account or role within the third-party application you want to connect to. Be sure
+to limit the access of this entity to the minimal permission set required to perform the operations you need. For example:
+    - For secret syncing: Read/write permissions to specific secret stores
+    - For dynamic secrets: Permissions to create temporary credentials
+
+<Tip>
+    Whenever possible, Infisical encourages creating a designated service account for your App Connection to limit the scope of permissions based on your use-case.
+</Tip>
+
+2. <strong>Generate Authentication Credentials:</strong> Obtain the required credentials from your third-party application. These can vary between applications and might be:
+    - an API key or access token
+    - A client ID and secret pair
+    - other credentials, etc.
+
+3. <strong>Create App Connection:</strong> Configure the connection in Infisical using your generated credentials through either the UI or API.
+
+<Info>
+    Some App Connections can only be created via the UI such as connections using OAuth.
+</Info>
+
+4. <strong>Utilize the Connection:</strong> Use your App Connection for various features across Infisical such as our Secrets Sync by selecting it via the dropdown menu
+in the UI or by passing the associated `connectionId` when generating resources via the API.
+
+<Note>
+    Infisical is continuously expanding its third-party application support. If your desired application isn't listed,
+    you can still use previous methods of connecting to it such as our Native Integrations.
+</Note>

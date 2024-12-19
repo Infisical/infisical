@@ -27,7 +27,8 @@ export enum OrgPermissionSubjects {
   Kms = "kms",
   AdminConsole = "organization-admin-console",
   AuditLogs = "audit-logs",
-  ProjectTemplates = "project-templates"
+  ProjectTemplates = "project-templates",
+  AppConnections = "app-connections"
 }
 
 export type OrgPermissionSet =
@@ -46,6 +47,7 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.Kms]
   | [OrgPermissionActions, OrgPermissionSubjects.AuditLogs]
   | [OrgPermissionActions, OrgPermissionSubjects.ProjectTemplates]
+  | [OrgPermissionActions, OrgPermissionSubjects.AppConnections]
   | [OrgPermissionAdminConsoleAction, OrgPermissionSubjects.AdminConsole];
 
 const buildAdminPermission = () => {
@@ -123,6 +125,11 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.ProjectTemplates);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.ProjectTemplates);
 
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.AppConnections);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.AppConnections);
+  can(OrgPermissionActions.Edit, OrgPermissionSubjects.AppConnections);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.AppConnections);
+
   can(OrgPermissionAdminConsoleAction.AccessAllProjects, OrgPermissionSubjects.AdminConsole);
 
   return rules;
@@ -152,6 +159,8 @@ const buildMemberPermission = () => {
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.Identity);
 
   can(OrgPermissionActions.Read, OrgPermissionSubjects.AuditLogs);
+
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.AppConnections);
 
   return rules;
 };

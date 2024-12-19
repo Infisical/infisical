@@ -91,6 +91,8 @@ import { readLimit } from "@app/server/config/rateLimiter";
 import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue/access-token-queue";
 import { apiKeyDALFactory } from "@app/services/api-key/api-key-dal";
 import { apiKeyServiceFactory } from "@app/services/api-key/api-key-service";
+import { appConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { appConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { authDALFactory } from "@app/services/auth/auth-dal";
 import { authLoginServiceFactory } from "@app/services/auth/auth-login-service";
 import { authPaswordServiceFactory } from "@app/services/auth/auth-password-service";
@@ -314,6 +316,7 @@ export const registerRoutes = async (
   const auditLogStreamDAL = auditLogStreamDALFactory(db);
   const trustedIpDAL = trustedIpDALFactory(db);
   const telemetryDAL = telemetryDALFactory(db);
+  const appConnectionDAL = appConnectionDALFactory(db);
 
   // ee db layer ops
   const permissionDAL = permissionDALFactory(db);
@@ -1352,6 +1355,13 @@ export const registerRoutes = async (
     externalGroupOrgRoleMappingDAL
   });
 
+  const appConnectionService = appConnectionServiceFactory({
+    appConnectionDAL,
+    permissionService,
+    kmsService,
+    licenseService
+  });
+
   await superAdminService.initServerCfg();
 
   // setup the communication with license key server
@@ -1448,7 +1458,8 @@ export const registerRoutes = async (
     migration: migrationService,
     externalGroupOrgRoleMapping: externalGroupOrgRoleMappingService,
     projectTemplate: projectTemplateService,
-    totp: totpService
+    totp: totpService,
+    appConnection: appConnectionService
   });
 
   const cronJobs: CronJob[] = [];

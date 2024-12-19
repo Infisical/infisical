@@ -14,3 +14,5 @@ export const prefixWithSlash = (str: string) => {
   if (str.startsWith("/")) return str;
   return `/${str}`;
 };
+
+export const startsWithVowel = (str: string) => /^[aeiou]/i.test(str);

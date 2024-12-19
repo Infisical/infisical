@@ -418,7 +418,53 @@ When set, all visits to the Infisical login page will automatically redirect use
   information.
 </Accordion>
 
-## Native secret integrations
+## App Connections
+
+You can configure third-party app connections for re-use across Infisical Projects.
+
+<Accordion title="AWS Assume Role Connection">
+    <ParamField query="INF_APP_CONNECTION_AWS_ACCESS_KEY_ID" type="string" default="none" optional>
+        The AWS IAM User access key ID for assuming roles
+    </ParamField>
+
+    <ParamField query="INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY" type="string" default="none" optional>
+        The AWS IAM User secret key for assuming roles
+    </ParamField>
+</Accordion>
+
+<Accordion title="GitHub App Connection">
+    <ParamField query="INF_APP_CONNECTION_GITHUB_APP_ID" type="string" default="none" optional>
+        The ID of the GitHub App
+    </ParamField>
+
+    <ParamField query="INF_APP_CONNECTION_GITHUB_APP_SLUG" type="string" default="none" optional>
+        The slug of the GitHub App
+    </ParamField>
+
+    <ParamField query="INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID" type="string" default="none" optional>
+        The client ID for the GitHub App
+    </ParamField>
+
+    <ParamField query="INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET" type="string" default="none" optional>
+        The client secret for the GitHub App
+    </ParamField>
+
+    <ParamField query="INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY" type="string" default="none" optional>
+        The private key for the GitHub App
+    </ParamField>
+</Accordion>
+
+<Accordion title="GitHub OAuth Connection">
+    <ParamField query="INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID" type="string" default="none" optional>
+        The OAuth2 client ID for GitHub OAuth Connection
+    </ParamField>
+
+    <ParamField query="INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_SECRET" type="string" default="none" optional>
+        The OAuth2 client secret for GitHub OAuth Connection
+    </ParamField>
+</Accordion>
+
+## Native Secret Integrations
 
 To help you sync secrets from Infisical to services such as Github and Gitlab, Infisical provides native integrations out of the box.
 
@@ -492,7 +538,7 @@ To help you sync secrets from Infisical to services such as Github and Gitlab, I
   </ParamField>
 </Accordion>
 
-<Accordion title="AWS">
+<Accordion title="AWS Integration">
   <ParamField query="CLIENT_ID_AWS_INTEGRATION" type="string" default="none" optional>
 	  The AWS IAM User access key for assuming roles.
   </ParamField>

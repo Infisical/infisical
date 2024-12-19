@@ -52,11 +52,18 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         message: error.message,
         error: error.name
       });
-    } else if (error instanceof DatabaseError || error instanceof InternalServerError) {
+    } else if (error instanceof DatabaseError) {
       void res.status(HttpStatusCodes.InternalServerError).send({
         reqId: req.id,
         statusCode: HttpStatusCodes.InternalServerError,
         message: "Something went wrong",
+        error: error.name
+      });
+    } else if (error instanceof InternalServerError) {
+      void res.status(HttpStatusCodes.InternalServerError).send({
+        reqId: req.id,
+        statusCode: HttpStatusCodes.InternalServerError,
+        message: error.message ?? "Something went wrong",
         error: error.name
       });
     } else if (error instanceof GatewayTimeoutError) {

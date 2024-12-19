@@ -45,4 +45,5 @@ export type SubscriptionPlan = {
   pkiEst: boolean;
   enforceMfa: boolean;
   projectTemplates: boolean;
+  appConnections: boolean; // TODO: remove once released
 };

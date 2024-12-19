@@ -49,7 +49,8 @@ export const formSchema = z.object({
       identity: generalPermissionSchema,
       "organization-admin-console": adminConsolePermissionSchmea,
       [OrgPermissionSubjects.Kms]: generalPermissionSchema,
-      [OrgPermissionSubjects.ProjectTemplates]: generalPermissionSchema
+      [OrgPermissionSubjects.ProjectTemplates]: generalPermissionSchema,
+      [OrgPermissionSubjects.AppConnections]: generalPermissionSchema
     })
     .optional()
 });

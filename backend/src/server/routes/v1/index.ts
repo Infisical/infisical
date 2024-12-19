@@ -1,3 +1,4 @@
+import { APP_CONNECTION_REGISTER_MAP, registerAppConnectionRouter } from "@app/server/routes/v1/app-connection-routers";
 import { registerCmekRouter } from "@app/server/routes/v1/cmek-router";
 import { registerDashboardRouter } from "@app/server/routes/v1/dashboard-router";
 
@@ -110,4 +111,14 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerDashboardRouter, { prefix: "/dashboard" });
   await server.register(registerCmekRouter, { prefix: "/kms" });
   await server.register(registerExternalGroupOrgRoleMappingRouter, { prefix: "/external-group-mappings" });
+
+  await server.register(
+    async (appConnectionsRouter) => {
+      await appConnectionsRouter.register(registerAppConnectionRouter);
+      for await (const [app, router] of Object.entries(APP_CONNECTION_REGISTER_MAP)) {
+        await appConnectionsRouter.register(router, { prefix: `/${app}` });
+      }
+    },
+    { prefix: "/app-connections" }
+  );
 };
