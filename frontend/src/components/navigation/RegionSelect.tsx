@@ -3,6 +3,7 @@ import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Modal, ModalContent, ModalTrigger, Select, SelectItem } from "@app/components/v2";
+import { isInfisicalCloud } from "@app/helpers/platform";
 
 enum Region {
   US = "us",
@@ -79,10 +80,7 @@ export const RegionSelect = () => {
   };
 
   const shouldDisplay =
-    window.location.origin.includes("https://app.infisical.com") ||
-    window.location.origin.includes("https://us.infisical.com") ||
-    window.location.origin.includes("https://eu.infisical.com") ||
-    window.location.origin.includes("http://localhost:8080");
+    isInfisicalCloud() || window.location.origin.includes("http://localhost:8080");
 
   // only display region select for cloud
   if (!shouldDisplay) return null;
