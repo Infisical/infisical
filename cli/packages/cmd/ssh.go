@@ -235,6 +235,15 @@ func issueCredentials(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
+	addToAgent, err := cmd.Flags().GetBool("addToAgent")
+	if err != nil {
+		util.HandleError(err, "Unable to parse addToAgent flag")
+	}
+
+	if outFilePath == "" && addToAgent == false {
+		util.PrintErrorMessageAndExit("You must provide either --outFilePath or --addToAgent flag to use this command")
+	}
+
 	var (
 		outputDir      string
 		privateKeyPath string
@@ -357,12 +366,7 @@ func issueCredentials(cmd *cobra.Command, args []string) {
 		fmt.Println("Successfully wrote SSH certificate to:", signedKeyPath)
 	}
 
-	// Check if we need to add the key to the SSH agent
-	addToAgent, err := cmd.Flags().GetBool("addToAgent")
-	if err != nil {
-		util.HandleError(err, "Unable to parse addToAgent flag")
-	}
-
+	// Add SSH credentials to the SSH agent if needed
 	if addToAgent {
 		// Call the helper function to handle add-to-agent flow
 		err := addCredentialsToAgent(creds.PrivateKey, creds.SignedKey)
