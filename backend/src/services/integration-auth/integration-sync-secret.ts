@@ -38,6 +38,7 @@ import { TCreateManySecretsRawFn, TUpdateManySecretsRawFn } from "@app/services/
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
 import { IntegrationMetadataSchema } from "../integration/integration-schema";
+import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-schema";
 import { IntegrationAuthMetadataSchema } from "./integration-auth-schema";
 import {
   CircleCiScope,
@@ -48,6 +49,7 @@ import {
 import {
   IntegrationInitialSyncBehavior,
   IntegrationMappingBehavior,
+  IntegrationMetadataSyncMode,
   Integrations,
   IntegrationUrls
 } from "./integration-list";
@@ -1074,14 +1076,14 @@ const syncSecretsAWSSecretManager = async ({
   projectId
 }: {
   integration: TIntegrations;
-  secrets: Record<string, { value: string; comment?: string }>;
+  secrets: Record<string, { value: string; comment?: string; secretMetadata?: ResourceMetadataDTO }>;
   accessId: string | null;
   accessToken: string;
   awsAssumeRoleArn: string | null;
   projectId?: string;
 }) => {
   const appCfg = getConfig();
-  const metadata = z.record(z.any()).parse(integration.metadata || {});
+  const metadata = IntegrationMetadataSchema.parse(integration.metadata || {});
 
   if (!accessId && !awsAssumeRoleArn) {
     throw new Error("AWS access ID/AWS Assume Role is required");
@@ -1129,8 +1131,25 @@ const syncSecretsAWSSecretManager = async ({
 
   const processAwsSecret = async (
     secretId: string,
-    secretValue: Record<string, string | null | undefined> | string
+    secretValue: Record<string, string | null | undefined> | string,
+    secretMetadata?: ResourceMetadataDTO
   ) => {
+    const secretAWSTag = metadata.secretAWSTag as { key: string; value: string }[] | undefined;
+    const shouldTag =
+      (secretAWSTag && secretAWSTag.length) ||
+      (metadata.metadataSyncMode === IntegrationMetadataSyncMode.SECRET_METADATA &&
+        metadata.mappingBehavior === IntegrationMappingBehavior.ONE_TO_ONE);
+    const tagArray =
+      (metadata.metadataSyncMode === IntegrationMetadataSyncMode.SECRET_METADATA ? secretMetadata : secretAWSTag) ?? [];
+
+    const integrationTagObj = tagArray.reduce(
+      (acc, item) => {
+        acc[item.key] = item.value;
+        return acc;
+      },
+      {} as Record<string, string>
+    );
+
     try {
       const awsSecretManagerSecret = await secretsManager.send(
         new GetSecretValueCommand({
@@ -1165,9 +1184,7 @@ const syncSecretsAWSSecretManager = async ({
         }
       }
 
-      const secretAWSTag = metadata.secretAWSTag as { key: string; value: string }[] | undefined;
-
-      if (secretAWSTag && secretAWSTag.length) {
+      if (shouldTag) {
         const describedSecret = await secretsManager.send(
           // requires secretsmanager:DescribeSecret policy
           new DescribeSecretCommand({
@@ -1176,14 +1193,6 @@ const syncSecretsAWSSecretManager = async ({
         );
 
         if (!describedSecret.Tags) return;
-
-        const integrationTagObj = secretAWSTag.reduce(
-          (acc, item) => {
-            acc[item.key] = item.value;
-            return acc;
-          },
-          {} as Record<string, string>
-        );
 
         const awsTagObj = (describedSecret.Tags || []).reduce(
           (acc, item) => {
@@ -1216,7 +1225,7 @@ const syncSecretsAWSSecretManager = async ({
           }
         });
 
-        secretAWSTag?.forEach((tag) => {
+        tagArray.forEach((tag) => {
           if (!(tag.key in awsTagObj)) {
             // create tag in AWS secret manager
             tagsToUpdate.push({
@@ -1253,8 +1262,8 @@ const syncSecretsAWSSecretManager = async ({
               Name: secretId,
               SecretString: typeof secretValue === "string" ? secretValue : JSON.stringify(secretValue),
               ...(metadata.kmsKeyId && { KmsKeyId: metadata.kmsKeyId }),
-              Tags: metadata.secretAWSTag
-                ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({
+              Tags: shouldTag
+                ? tagArray.map((tag: { key: string; value: string }) => ({
                     Key: tag.key,
                     Value: tag.value
                   }))
@@ -1271,7 +1280,7 @@ const syncSecretsAWSSecretManager = async ({
 
   if (metadata.mappingBehavior === IntegrationMappingBehavior.ONE_TO_ONE) {
     for await (const [key, value] of Object.entries(secrets)) {
-      await processAwsSecret(key, value.value);
+      await processAwsSecret(key, value.value, value.secretMetadata);
     }
   } else {
     await processAwsSecret(integration.app as string, getSecretKeyValuePair(secrets));
@@ -4392,7 +4401,7 @@ export const syncIntegrationSecrets = async ({
     secretPath: string;
   };
   integrationAuth: TIntegrationAuths;
-  secrets: Record<string, { value: string; comment?: string }>;
+  secrets: Record<string, { value: string; comment?: string; secretMetadata?: ResourceMetadataDTO }>;
   accessId: string | null;
   awsAssumeRoleArn: string | null;
   accessToken: string;

@@ -4,7 +4,12 @@ import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
 
 import { workspaceKeys } from "../workspace";
-import { TCloudIntegration, TIntegrationWithEnv, TOctopusDeployScopeValues } from "./types";
+import {
+  IntegrationMetadataSyncMode,
+  TCloudIntegration,
+  TIntegrationWithEnv,
+  TOctopusDeployScopeValues
+} from "./types";
 
 export const integrationQueryKeys = {
   getIntegrations: () => ["integrations"] as const,
@@ -89,6 +94,7 @@ export const useCreateIntegration = () => {
         shouldProtectSecrets?: boolean;
         shouldEnableDelete?: boolean;
         octopusDeployScopeValues?: TOctopusDeployScopeValues;
+        metadataSyncMode?: IntegrationMetadataSyncMode;
       };
     }) => {
       const {

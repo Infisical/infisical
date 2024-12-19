@@ -47,6 +47,7 @@ import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
+import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
@@ -121,7 +122,12 @@ export const uniqueSecretQueueKey = (environment: string, secretPath: string) =>
 
 type TIntegrationSecret = Record<
   string,
-  { value: string; comment?: string; skipMultilineEncoding?: boolean | null | undefined }
+  {
+    value: string;
+    comment?: string;
+    skipMultilineEncoding?: boolean | null | undefined;
+    secretMetadata?: ResourceMetadataDTO;
+  }
 >;
 
 // TODO(akhilmhdh): split this into multiple queue
@@ -370,6 +376,7 @@ export const secretQueueFactory = ({
         }
 
         content[secretKey].skipMultilineEncoding = Boolean(secret.skipMultilineEncoding);
+        content[secretKey].secretMetadata = secret.secretMetadata;
       })
     );
 
@@ -395,7 +402,8 @@ export const secretQueueFactory = ({
           content[importedSecret.key] = {
             skipMultilineEncoding: importedSecret.skipMultilineEncoding,
             comment: importedSecret.secretComment,
-            value: importedSecret.secretValue || ""
+            value: importedSecret.secretValue || "",
+            secretMetadata: importedSecret.secretMetadata
           };
         }
       }
