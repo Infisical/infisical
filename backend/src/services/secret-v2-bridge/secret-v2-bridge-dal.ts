@@ -78,6 +78,12 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
           `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
           `${TableName.SecretTag}.id`
         )
+        .leftJoin(TableName.ResourceMetadata, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
+        .select(
+          db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
+          db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
+          db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue")
+        )
         .select(selectAllTableCols(TableName.SecretV2))
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
@@ -102,6 +108,15 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
               color,
               slug,
               name: slug
+            })
+          },
+          {
+            key: "metadataId",
+            label: "secretMetadata" as const,
+            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+              id: metadataId,
+              key: metadataKey,
+              value: metadataValue
             })
           }
         ]
@@ -221,7 +236,9 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
       const secs = await (tx || db.replicaNode())(TableName.SecretV2)
         .where({ folderId })
         .where((bd) => {
-          void bd.whereNull("userId").orWhere({ userId: userId || null });
+          void bd
+            .whereNull(`${TableName.SecretV2}.userId`)
+            .orWhere({ [`${TableName.SecretV2}.userId` as "userId"]: userId || null });
         })
         .leftJoin(
           TableName.SecretV2JnTag,
@@ -233,10 +250,16 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
           `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
           `${TableName.SecretTag}.id`
         )
+        .leftJoin(TableName.ResourceMetadata, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
         .select(selectAllTableCols(TableName.SecretV2))
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
         .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
+        .select(
+          db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
+          db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
+          db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue")
+        )
         .orderBy("id", "asc");
 
       const data = sqlNestRelationships({
@@ -252,6 +275,15 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
               color,
               slug,
               name: slug
+            })
+          },
+          {
+            key: "metadataId",
+            label: "secretMetadata" as const,
+            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+              id: metadataId,
+              key: metadataKey,
+              value: metadataValue
             })
           }
         ]
@@ -367,7 +399,9 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
           }
         })
         .where((bd) => {
-          void bd.whereNull(`${TableName.SecretV2}.userId`).orWhere({ userId: userId || null });
+          void bd
+            .whereNull(`${TableName.SecretV2}.userId`)
+            .orWhere({ [`${TableName.SecretV2}.userId` as "userId"]: userId || null });
         })
         .leftJoin(
           TableName.SecretV2JnTag,
@@ -379,13 +413,23 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
           `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
           `${TableName.SecretTag}.id`
         )
+        .leftJoin(TableName.ResourceMetadata, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
         .select(
           selectAllTableCols(TableName.SecretV2),
-          db.raw(`DENSE_RANK() OVER (ORDER BY "key" ${filters?.orderDirection ?? OrderByDirection.ASC}) as rank`)
+          db.raw(
+            `DENSE_RANK() OVER (ORDER BY "${TableName.SecretV2}".key ${
+              filters?.orderDirection ?? OrderByDirection.ASC
+            }) as rank`
+          )
         )
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
         .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
+        .select(
+          db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
+          db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
+          db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue")
+        )
         .where((bd) => {
           const slugs = filters?.tagSlugs?.filter(Boolean);
           if (slugs && slugs.length > 0) {
@@ -424,6 +468,15 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
               color,
               slug,
               name: slug
+            })
+          },
+          {
+            key: "metadataId",
+            label: "secretMetadata" as const,
+            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+              id: metadataId,
+              key: metadataKey,
+              value: metadataValue
             })
           }
         ]
@@ -545,10 +598,17 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
           `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
           `${TableName.SecretTag}.id`
         )
+        .leftJoin(TableName.ResourceMetadata, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
         .select(selectAllTableCols(TableName.SecretV2))
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
-        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"));
+        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
+        .select(
+          db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
+          db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
+          db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue")
+        );
+
       const docs = sqlNestRelationships({
         data: rawDocs,
         key: "id",
@@ -562,6 +622,15 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
               color,
               slug,
               name: slug
+            })
+          },
+          {
+            key: "metadataId",
+            label: "secretMetadata" as const,
+            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+              id: metadataId,
+              key: metadataKey,
+              value: metadataValue
             })
           }
         ]

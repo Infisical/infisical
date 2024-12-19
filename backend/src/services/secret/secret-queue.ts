@@ -46,6 +46,7 @@ import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
+import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
@@ -103,6 +104,7 @@ type TSecretQueueFactoryDep = {
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create">;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
 };
 
 export type TGetSecrets = {
@@ -156,7 +158,8 @@ export const secretQueueFactory = ({
   auditLogService,
   orgService,
   projectUserMembershipRoleDAL,
-  projectKeyDAL
+  projectKeyDAL,
+  resourceMetadataDAL
 }: TSecretQueueFactoryDep) => {
   const removeSecretReminder = async (dto: TRemoveSecretReminderDTO) => {
     const appCfg = getConfig();
@@ -299,7 +302,8 @@ export const secretQueueFactory = ({
     kmsService,
     secretVersionV2BridgeDAL,
     secretV2BridgeDAL,
-    secretVersionTagV2BridgeDAL
+    secretVersionTagV2BridgeDAL,
+    resourceMetadataDAL
   });
 
   const updateManySecretsRawFn = updateManySecretsRawFnFactory({
@@ -314,7 +318,8 @@ export const secretQueueFactory = ({
     kmsService,
     secretVersionV2BridgeDAL,
     secretV2BridgeDAL,
-    secretVersionTagV2BridgeDAL
+    secretVersionTagV2BridgeDAL,
+    resourceMetadataDAL
   });
 
   /**
@@ -590,6 +595,7 @@ export const secretQueueFactory = ({
       _depth: depth,
       secretPath,
       projectId,
+      orgId,
       environmentSlug: environment,
       excludeReplication,
       actorId,
@@ -618,6 +624,7 @@ export const secretQueueFactory = ({
         _deDupeReplicationQueue: deDupeReplicationQueue,
         _depth: depth,
         projectId,
+        orgId,
         secretPath,
         actorId,
         actor,
@@ -674,6 +681,7 @@ export const secretQueueFactory = ({
       if (!folder) {
         throw new Error("Secret path not found");
       }
+      const project = await projectDAL.findById(projectId);
 
       // find all imports made with the given environment and secret path
       const linkSourceDto = {
@@ -708,6 +716,7 @@ export const secretQueueFactory = ({
             .map(({ folderId }) =>
               syncSecrets({
                 projectId,
+                orgId: project.orgId,
                 secretPath: foldersGroupedById[folderId][0]?.path as string,
                 environmentSlug: foldersGroupedById[folderId][0]?.environmentSlug as string,
                 _deDupeQueue: deDupeQueue,
@@ -760,6 +769,7 @@ export const secretQueueFactory = ({
             .map((folderId) =>
               syncSecrets({
                 projectId,
+                orgId: project.orgId,
                 secretPath: referencedFoldersGroupedById[folderId][0]?.path as string,
                 environmentSlug: referencedFoldersGroupedById[folderId][0]?.environmentSlug as string,
                 _deDupeQueue: deDupeQueue,

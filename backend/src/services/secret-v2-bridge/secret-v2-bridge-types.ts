@@ -7,6 +7,8 @@ import { SecretsOrderBy } from "@app/services/secret/secret-types";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
+import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
+import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import { TSecretVersionV2DALFactory } from "./secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "./secret-version-tag-dal";
@@ -58,6 +60,7 @@ export type TCreateSecretDTO = TProjectPermission & {
   skipMultilineEncoding?: boolean;
   secretReminderRepeatDays?: number | null;
   secretReminderNote?: string | null;
+  secretMetadata?: ResourceMetadataDTO;
 };
 
 export type TUpdateSecretDTO = TProjectPermission & {
@@ -75,6 +78,7 @@ export type TUpdateSecretDTO = TProjectPermission & {
   metadata?: {
     source?: string;
   };
+  secretMetadata?: ResourceMetadataDTO;
 };
 
 export type TDeleteSecretDTO = TProjectPermission & {
@@ -94,6 +98,7 @@ export type TCreateManySecretDTO = Omit<TProjectPermission, "projectId"> & {
     secretComment?: string;
     skipMultilineEncoding?: boolean;
     tagIds?: string[];
+    secretMetadata?: ResourceMetadataDTO;
     metadata?: {
       source?: string;
     };
@@ -113,6 +118,7 @@ export type TUpdateManySecretDTO = Omit<TProjectPermission, "projectId"> & {
     tagIds?: string[];
     secretReminderRepeatDays?: number | null;
     secretReminderNote?: string | null;
+    secretMetadata?: ResourceMetadataDTO;
   }[];
 };
 
@@ -136,8 +142,16 @@ export type TSecretReference = { environment: string; secretPath: string; secret
 
 export type TFnSecretBulkInsert = {
   folderId: string;
+  orgId: string;
   tx?: Knex;
-  inputSecrets: Array<Omit<TSecretsV2Insert, "folderId"> & { tagIds?: string[]; references: TSecretReference[] }>;
+  inputSecrets: Array<
+    Omit<TSecretsV2Insert, "folderId"> & {
+      tagIds?: string[];
+      references: TSecretReference[];
+      secretMetadata?: ResourceMetadataDTO;
+    }
+  >;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;
   secretDAL: Pick<TSecretV2BridgeDALFactory, "insertMany" | "upsertSecretReferences">;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2">;
@@ -156,10 +170,12 @@ type TRequireReferenceIfValue =
 
 export type TFnSecretBulkUpdate = {
   folderId: string;
+  orgId: string;
   inputSecrets: {
     filter: Partial<TSecretsV2>;
-    data: TRequireReferenceIfValue & { tags?: string[] };
+    data: TRequireReferenceIfValue & { tags?: string[]; secretMetadata?: ResourceMetadataDTO };
   }[];
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   secretDAL: Pick<TSecretV2BridgeDALFactory, "bulkUpdate" | "upsertSecretReferences">;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "deleteTagsToSecretV2">;

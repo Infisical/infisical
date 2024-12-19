@@ -288,6 +288,7 @@ export const secretServiceFactory = ({
         actorId,
         actor,
         projectId,
+        orgId: actorOrgId,
         environmentSlug: folder.environment.slug
       });
     }
@@ -429,6 +430,7 @@ export const secretServiceFactory = ({
       await snapshotService.performSnapshot(folderId);
       await secretQueueService.syncSecrets({
         secretPath: path,
+        orgId: actorOrgId,
         actorId,
         actor,
         projectId,
@@ -526,6 +528,7 @@ export const secretServiceFactory = ({
         actorId,
         actor,
         projectId,
+        orgId: actorOrgId,
         environmentSlug: folder.environment.slug
       });
     }
@@ -820,6 +823,7 @@ export const secretServiceFactory = ({
       actorId,
       secretPath: path,
       projectId,
+      orgId: actorOrgId,
       environmentSlug: folder.environment.slug
     });
 
@@ -928,6 +932,7 @@ export const secretServiceFactory = ({
       actorId,
       secretPath: path,
       projectId,
+      orgId: actorOrgId,
       environmentSlug: folder.environment.slug
     });
 
@@ -1014,6 +1019,7 @@ export const secretServiceFactory = ({
       actorId,
       secretPath: path,
       projectId,
+      orgId: actorOrgId,
       environmentSlug: folder.environment.slug
     });
 
@@ -1385,7 +1391,8 @@ export const secretServiceFactory = ({
     skipMultilineEncoding,
     tagIds,
     secretReminderNote,
-    secretReminderRepeatDays
+    secretReminderRepeatDays,
+    secretMetadata
   }: TCreateSecretRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     const policy =
@@ -1435,7 +1442,8 @@ export const secretServiceFactory = ({
         tagIds,
         secretReminderNote,
         skipMultilineEncoding,
-        secretReminderRepeatDays
+        secretReminderRepeatDays,
+        secretMetadata
       });
       return { secret, type: SecretProtectionType.Direct as const };
     }
@@ -1525,7 +1533,8 @@ export const secretServiceFactory = ({
     secretReminderRepeatDays,
     metadata,
     secretComment,
-    newSecretName
+    newSecretName,
+    secretMetadata
   }: TUpdateSecretRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     const policy =
@@ -1577,7 +1586,8 @@ export const secretServiceFactory = ({
         secretName,
         newSecretName,
         metadata,
-        secretValue
+        secretValue,
+        secretMetadata
       });
       return { type: SecretProtectionType.Direct as const, secret };
     }
@@ -2262,6 +2272,7 @@ export const secretServiceFactory = ({
     await secretQueueService.syncSecrets({
       secretPath,
       projectId: project.id,
+      orgId: project.orgId,
       environmentSlug: environment,
       excludeReplication: true
     });
@@ -2370,6 +2381,7 @@ export const secretServiceFactory = ({
     await secretQueueService.syncSecrets({
       secretPath,
       projectId: project.id,
+      orgId: project.orgId,
       environmentSlug: environment,
       excludeReplication: true
     });
@@ -2828,6 +2840,7 @@ export const secretServiceFactory = ({
       await snapshotService.performSnapshot(destinationFolder.id);
       await secretQueueService.syncSecrets({
         projectId: project.id,
+        orgId: project.orgId,
         secretPath: destinationFolder.path,
         environmentSlug: destinationFolder.environment.slug,
         actorId,
@@ -2839,6 +2852,7 @@ export const secretServiceFactory = ({
       await snapshotService.performSnapshot(sourceFolder.id);
       await secretQueueService.syncSecrets({
         projectId: project.id,
+        orgId: project.orgId,
         secretPath: sourceFolder.path,
         environmentSlug: sourceFolder.environment.slug,
         actorId,

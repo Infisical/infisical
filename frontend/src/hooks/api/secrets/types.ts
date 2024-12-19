@@ -48,6 +48,7 @@ export type SecretV3RawSanitized = {
   overrideAction?: string;
   folderId?: string;
   skipMultilineEncoding?: boolean;
+  secretMetadata?: { key: string; value: string }[];
 };
 
 export type SecretV3Raw = {
@@ -63,6 +64,7 @@ export type SecretV3Raw = {
   secretComment?: string;
   secretReminderNote?: string;
   secretReminderRepeatDays?: number;
+  secretMetadata?: { key: string; value: string }[];
   skipMultilineEncoding?: boolean;
   metadata?: Record<string, string>;
   tags?: WsTag[];
@@ -148,6 +150,7 @@ export type TUpdateSecretsV3DTO = {
   secretReminderRepeatDays?: number | null;
   secretReminderNote?: string | null;
   tagIds?: string[];
+  secretMetadata?: { key: string; value: string }[];
 };
 
 export type TDeleteSecretsV3DTO = {

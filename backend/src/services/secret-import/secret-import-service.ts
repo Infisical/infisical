@@ -160,6 +160,7 @@ export const secretImportServiceFactory = ({
     if (secImport.isReplication && sourceFolder) {
       await secretQueueService.replicateSecrets({
         secretPath: secImport.importPath,
+        orgId: actorOrgId,
         projectId,
         environmentSlug: importEnv.slug,
         pickOnlyImportIds: [secImport.id],
@@ -169,6 +170,7 @@ export const secretImportServiceFactory = ({
     } else {
       await secretQueueService.syncSecrets({
         secretPath,
+        orgId: actorOrgId,
         projectId,
         environmentSlug: environment,
         actorId,
@@ -340,6 +342,7 @@ export const secretImportServiceFactory = ({
 
     await secretQueueService.syncSecrets({
       secretPath,
+      orgId: actorOrgId,
       projectId,
       environmentSlug: environment,
       actor,
@@ -415,6 +418,7 @@ export const secretImportServiceFactory = ({
 
     if (membership && sourceFolder) {
       await secretQueueService.replicateSecrets({
+        orgId: actorOrgId,
         secretPath: secretImportDoc.importPath,
         projectId,
         environmentSlug: secretImportDoc.importEnv.slug,

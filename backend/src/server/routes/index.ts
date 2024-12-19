@@ -179,6 +179,7 @@ import { projectUserMembershipRoleDALFactory } from "@app/services/project-membe
 import { projectRoleDALFactory } from "@app/services/project-role/project-role-dal";
 import { projectRoleServiceFactory } from "@app/services/project-role/project-role-service";
 import { dailyResourceCleanUpQueueServiceFactory } from "@app/services/resource-cleanup/resource-cleanup-queue";
+import { resourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { secretDALFactory } from "@app/services/secret/secret-dal";
 import { secretQueueFactory } from "@app/services/secret/secret-queue";
 import { secretServiceFactory } from "@app/services/secret/secret-service";
@@ -371,6 +372,7 @@ export const registerRoutes = async (
   const externalGroupOrgRoleMappingDAL = externalGroupOrgRoleMappingDALFactory(db);
 
   const projectTemplateDAL = projectTemplateDALFactory(db);
+  const resourceMetadataDAL = resourceMetadataDALFactory(db);
 
   const permissionService = permissionServiceFactory({
     permissionDAL,
@@ -851,7 +853,8 @@ export const registerRoutes = async (
     secretApprovalRequestDAL,
     projectKeyDAL,
     projectUserMembershipRoleDAL,
-    orgService
+    orgService,
+    resourceMetadataDAL
   });
 
   const projectService = projectServiceFactory({
@@ -977,7 +980,8 @@ export const registerRoutes = async (
     secretApprovalPolicyService,
     secretApprovalRequestSecretDAL,
     kmsService,
-    snapshotService
+    snapshotService,
+    resourceMetadataDAL
   });
 
   const secretApprovalRequestService = secretApprovalRequestServiceFactory({
@@ -1004,7 +1008,8 @@ export const registerRoutes = async (
     projectEnvDAL,
     userDAL,
     licenseService,
-    projectSlackConfigDAL
+    projectSlackConfigDAL,
+    resourceMetadataDAL
   });
 
   const secretService = secretServiceFactory({
@@ -1083,8 +1088,10 @@ export const registerRoutes = async (
     kmsService,
     secretV2BridgeDAL,
     secretVersionV2TagBridgeDAL: secretVersionTagV2BridgeDAL,
-    secretVersionV2BridgeDAL
+    secretVersionV2BridgeDAL,
+    resourceMetadataDAL
   });
+
   const secretRotationQueue = secretRotationQueueFactory({
     telemetryService,
     secretRotationDAL,
@@ -1336,7 +1343,8 @@ export const registerRoutes = async (
     folderDAL,
     secretDAL: secretV2BridgeDAL,
     queueService,
-    secretV2BridgeService
+    secretV2BridgeService,
+    resourceMetadataDAL
   });
 
   const migrationService = externalMigrationServiceFactory({
