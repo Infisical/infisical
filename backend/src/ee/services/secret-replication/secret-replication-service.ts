@@ -13,6 +13,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
+import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
 import { fnSecretBulkInsert, fnSecretBulkUpdate } from "@app/services/secret/secret-fns";
 import { TSecretQueueFactory, uniqueSecretQueueKey } from "@app/services/secret/secret-queue";
@@ -56,6 +57,7 @@ type TSecretReplicationServiceFactoryDep = {
   >;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "find" | "insertMany">;
   secretVersionV2TagBridgeDAL: Pick<TSecretVersionV2TagDALFactory, "find" | "insertMany">;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "replicateSecrets">;
   queueService: Pick<TQueueServiceFactory, "start" | "listen" | "queue" | "stopJobById">;
   secretApprovalPolicyService: Pick<TSecretApprovalPolicyServiceFactory, "getSecretApprovalPolicy">;
@@ -121,7 +123,8 @@ export const secretReplicationServiceFactory = ({
   secretVersionV2TagBridgeDAL,
   secretVersionV2BridgeDAL,
   secretV2BridgeDAL,
-  kmsService
+  kmsService,
+  resourceMetadataDAL
 }: TSecretReplicationServiceFactoryDep) => {
   const $getReplicatedSecrets = (
     botKey: string,
@@ -178,6 +181,7 @@ export const secretReplicationServiceFactory = ({
       secretPath,
       environmentSlug,
       projectId,
+      orgId,
       actorId,
       actor,
       pickOnlyImportIds,
@@ -222,6 +226,7 @@ export const secretReplicationServiceFactory = ({
           .map(({ folderId }) =>
             secretQueueService.replicateSecrets({
               projectId,
+              orgId,
               secretPath: foldersGroupedById[folderId][0]?.path as string,
               environmentSlug: foldersGroupedById[folderId][0]?.environmentSlug as string,
               actorId,
@@ -406,10 +411,12 @@ export const secretReplicationServiceFactory = ({
                 if (locallyCreatedSecrets.length) {
                   await fnSecretV2BridgeBulkInsert({
                     folderId: destinationReplicationFolderId,
+                    orgId,
                     secretVersionDAL: secretVersionV2BridgeDAL,
                     secretDAL: secretV2BridgeDAL,
                     tx,
                     secretTagDAL,
+                    resourceMetadataDAL,
                     secretVersionTagDAL: secretVersionV2TagBridgeDAL,
                     inputSecrets: locallyCreatedSecrets.map((doc) => {
                       return {
@@ -466,6 +473,7 @@ export const secretReplicationServiceFactory = ({
 
               await secretQueueService.syncSecrets({
                 projectId,
+                orgId,
                 secretPath: destinationFolder.path,
                 environmentSlug: destinationFolder.environmentSlug,
                 actorId,
@@ -751,6 +759,7 @@ export const secretReplicationServiceFactory = ({
 
             await secretQueueService.syncSecrets({
               projectId,
+              orgId,
               secretPath: destinationFolder.path,
               environmentSlug: destinationFolder.environmentSlug,
               actorId,

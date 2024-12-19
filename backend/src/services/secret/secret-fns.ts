@@ -749,7 +749,8 @@ export const createManySecretsRawFnFactory = ({
   secretVersionV2BridgeDAL,
   secretV2BridgeDAL,
   secretVersionTagV2BridgeDAL,
-  kmsService
+  kmsService,
+  resourceMetadataDAL
 }: TCreateManySecretsRawFnFactory) => {
   const getBotKeyFn = getBotKeyFnFactory(projectBotDAL, projectDAL);
   const createManySecretsRawFn = async ({
@@ -760,7 +761,7 @@ export const createManySecretsRawFnFactory = ({
     userId
   }: TCreateManySecretsRawFn) => {
     const { botKey, shouldUseSecretV2Bridge } = await getBotKeyFn(projectId);
-
+    const project = await projectDAL.findById(projectId);
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
       throw new NotFoundError({
@@ -814,7 +815,9 @@ export const createManySecretsRawFnFactory = ({
             tagIds: el.tags
           })),
           folderId,
+          orgId: project.orgId,
           secretDAL: secretV2BridgeDAL,
+          resourceMetadataDAL,
           secretVersionDAL: secretVersionV2BridgeDAL,
           secretTagDAL,
           secretVersionTagDAL: secretVersionTagV2BridgeDAL,

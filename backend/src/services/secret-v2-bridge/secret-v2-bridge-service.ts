@@ -18,6 +18,7 @@ import { ActorType } from "../auth/auth-type";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
@@ -74,6 +75,7 @@ type TSecretV2BridgeServiceFactoryDep = {
     "insertV2Bridge" | "insertApprovalSecretV2Tags"
   >;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;
 };
 
 export type TSecretV2BridgeServiceFactory = ReturnType<typeof secretV2BridgeServiceFactory>;
@@ -95,7 +97,8 @@ export const secretV2BridgeServiceFactory = ({
   secretApprovalPolicyService,
   secretApprovalRequestDAL,
   secretApprovalRequestSecretDAL,
-  kmsService
+  kmsService,
+  resourceMetadataDAL
 }: TSecretV2BridgeServiceFactoryDep) => {
   const $validateSecretReferences = async (
     projectId: string,
@@ -186,6 +189,7 @@ export const secretV2BridgeServiceFactory = ({
     actorAuthMethod,
     projectId,
     secretPath,
+    secretMetadata,
     ...inputSecret
   }: TCreateSecretDTO) => {
     const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
@@ -255,6 +259,7 @@ export const secretV2BridgeServiceFactory = ({
     const secret = await secretDAL.transaction((tx) =>
       fnSecretBulkInsert({
         folderId,
+        orgId: actorOrgId,
         inputSecrets: [
           {
             version: 1,
@@ -272,9 +277,11 @@ export const secretV2BridgeServiceFactory = ({
             key: secretName,
             userId: inputSecret.type === SecretType.Personal ? actorId : null,
             tagIds: inputSecret.tagIds,
-            references: nestedReferences
+            references: nestedReferences,
+            secretMetadata
           }
         ],
+        resourceMetadataDAL,
         secretDAL,
         secretVersionDAL,
         secretTagDAL,
@@ -287,6 +294,7 @@ export const secretV2BridgeServiceFactory = ({
       await snapshotService.performSnapshot(folderId);
       await secretQueueService.syncSecrets({
         secretPath,
+        orgId: actorOrgId,
         actorId,
         actor,
         projectId,
@@ -475,6 +483,7 @@ export const secretV2BridgeServiceFactory = ({
         actorId,
         actor,
         projectId,
+        orgId: actorOrgId,
         environmentSlug: folder.environment.slug
       });
     }
@@ -562,6 +571,7 @@ export const secretV2BridgeServiceFactory = ({
         actorId,
         actor,
         projectId,
+        orgId: actorOrgId,
         environmentSlug: folder.environment.slug
       });
     }
@@ -1189,7 +1199,9 @@ export const secretV2BridgeServiceFactory = ({
           };
         }),
         folderId,
+        orgId: actorOrgId,
         secretDAL,
+        resourceMetadataDAL,
         secretVersionDAL,
         secretTagDAL,
         secretVersionTagDAL,
@@ -1203,6 +1215,7 @@ export const secretV2BridgeServiceFactory = ({
       actorId,
       secretPath,
       projectId,
+      orgId: actorOrgId,
       environmentSlug: folder.environment.slug
     });
 
@@ -1410,6 +1423,7 @@ export const secretV2BridgeServiceFactory = ({
       actorId,
       secretPath,
       projectId,
+      orgId: actorOrgId,
       environmentSlug: folder.environment.slug
     });
 
@@ -1512,6 +1526,7 @@ export const secretV2BridgeServiceFactory = ({
       actorId,
       secretPath,
       projectId,
+      orgId: actorOrgId,
       environmentSlug: folder.environment.slug
     });
 
@@ -1815,10 +1830,12 @@ export const secretV2BridgeServiceFactory = ({
         if (locallyCreatedSecrets.length) {
           await fnSecretBulkInsert({
             folderId: destinationFolder.id,
+            orgId: actorOrgId,
             secretVersionDAL,
             secretDAL,
             tx,
             secretTagDAL,
+            resourceMetadataDAL,
             secretVersionTagDAL,
             inputSecrets: locallyCreatedSecrets.map((doc) => {
               return {
@@ -1938,6 +1955,7 @@ export const secretV2BridgeServiceFactory = ({
       await snapshotService.performSnapshot(destinationFolder.id);
       await secretQueueService.syncSecrets({
         projectId,
+        orgId: actorOrgId,
         secretPath: destinationFolder.path,
         environmentSlug: destinationFolder.environment.slug,
         actorId,
@@ -1949,6 +1967,7 @@ export const secretV2BridgeServiceFactory = ({
       await snapshotService.performSnapshot(sourceFolder.id);
       await secretQueueService.syncSecrets({
         projectId,
+        orgId: actorOrgId,
         secretPath: sourceFolder.path,
         environmentSlug: sourceFolder.environment.slug,
         actorId,

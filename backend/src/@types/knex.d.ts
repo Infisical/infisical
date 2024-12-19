@@ -218,6 +218,9 @@ import {
   TRateLimit,
   TRateLimitInsert,
   TRateLimitUpdate,
+  TResourceMetadata,
+  TResourceMetadataInsert,
+  TResourceMetadataUpdate,
   TSamlConfigs,
   TSamlConfigsInsert,
   TSamlConfigsUpdate,
@@ -845,6 +848,11 @@ declare module "knex/types/tables" {
       TProjectSplitBackfillIds,
       TProjectSplitBackfillIdsInsert,
       TProjectSplitBackfillIdsUpdate
+    >;
+    [TableName.ResourceMetadata]: KnexOriginal.CompositeTableType<
+      TResourceMetadata,
+      TResourceMetadataInsert,
+      TResourceMetadataUpdate
     >;
   }
 }

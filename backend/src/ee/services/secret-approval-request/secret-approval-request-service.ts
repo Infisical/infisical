@@ -22,6 +22,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
+import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
 import {
   decryptSecretWithBot,
@@ -91,6 +92,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   secretBlindIndexDAL: Pick<TSecretBlindIndexDALFactory, "findOne">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "findLatestVersionMany" | "insertMany">;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
   smtpService: Pick<TSmtpService, "sendMail">;
   userDAL: Pick<TUserDALFactory, "find" | "findOne" | "findById">;
@@ -138,7 +140,8 @@ export const secretApprovalRequestServiceFactory = ({
   secretVersionV2BridgeDAL,
   secretVersionTagV2BridgeDAL,
   licenseService,
-  projectSlackConfigDAL
+  projectSlackConfigDAL,
+  resourceMetadataDAL
 }: TSecretApprovalRequestServiceFactoryDep) => {
   const requestCount = async ({ projectId, actor, actorId, actorOrgId, actorAuthMethod }: TApprovalRequestCountDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
@@ -543,6 +546,7 @@ export const secretApprovalRequestServiceFactory = ({
           ? await fnSecretV2BridgeBulkInsert({
               tx,
               folderId,
+              orgId: actorOrgId,
               inputSecrets: secretCreationCommits.map((el) => ({
                 tagIds: el?.tags.map(({ id }) => id),
                 version: 1,
@@ -559,6 +563,7 @@ export const secretApprovalRequestServiceFactory = ({
                   : [],
                 type: SecretType.Shared
               })),
+              resourceMetadataDAL,
               secretDAL: secretV2BridgeDAL,
               secretVersionDAL: secretVersionV2BridgeDAL,
               secretTagDAL,
@@ -824,6 +829,7 @@ export const secretApprovalRequestServiceFactory = ({
     }
     await secretQueueService.syncSecrets({
       projectId,
+      orgId: actorOrgId,
       secretPath: folder.path,
       environmentSlug: folder.environmentSlug,
       actorId,

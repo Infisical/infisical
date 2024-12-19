@@ -54,9 +54,11 @@ export const getAllSecretReferences = (maybeSecretReference: string) => {
 export const fnSecretBulkInsert = async ({
   // TODO: Pick types here
   folderId,
+  orgId,
   inputSecrets,
   secretDAL,
   secretVersionDAL,
+  resourceMetadataDAL,
   secretTagDAL,
   secretVersionTagDAL,
   tx
@@ -91,6 +93,7 @@ export const fnSecretBulkInsert = async ({
     sanitizedInputSecrets.map((el) => ({ ...el, folderId })),
     tx
   );
+
   const newSecretGroupedByKeyName = groupBy(newSecrets, (item) => item.key);
   const newSecretTags = inputSecrets.flatMap(({ tagIds: secretTags = [], key }) =>
     secretTags.map((tag) => ({
@@ -106,6 +109,7 @@ export const fnSecretBulkInsert = async ({
     })),
     tx
   );
+
   await secretDAL.upsertSecretReferences(
     inputSecrets.map(({ references = [], key }) => ({
       secretId: newSecretGroupedByKeyName[key][0].id,
@@ -113,6 +117,22 @@ export const fnSecretBulkInsert = async ({
     })),
     tx
   );
+
+  await resourceMetadataDAL.insertMany(
+    inputSecrets.flatMap(({ key: secretKey, secretMetadata }) => {
+      if (secretMetadata) {
+        return secretMetadata.map(({ key, value }) => ({
+          key,
+          value,
+          secretId: newSecretGroupedByKeyName[secretKey][0].id,
+          orgId
+        }));
+      }
+      return [];
+    }),
+    tx
+  );
+
   if (newSecretTags.length) {
     const secTags = await secretTagDAL.saveTagsToSecretV2(newSecretTags, tx);
     const secVersionsGroupBySecId = groupBy(secretVersions, (i) => i.secretId);
@@ -120,6 +140,7 @@ export const fnSecretBulkInsert = async ({
       [`${TableName.SecretVersionV2}Id` as const]: secVersionsGroupBySecId[secrets_v2Id][0].id,
       [`${TableName.SecretTag}Id` as const]: secret_tagsId
     }));
+
     await secretVersionTagDAL.insertMany(newSecretVersionTags, tx);
   }
 
