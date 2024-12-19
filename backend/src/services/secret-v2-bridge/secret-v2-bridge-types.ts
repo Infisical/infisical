@@ -98,6 +98,7 @@ export type TCreateManySecretDTO = Omit<TProjectPermission, "projectId"> & {
     secretComment?: string;
     skipMultilineEncoding?: boolean;
     tagIds?: string[];
+    secretMetadata?: ResourceMetadataDTO;
     metadata?: {
       source?: string;
     };

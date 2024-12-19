@@ -144,7 +144,7 @@ export const secretV2BridgeServiceFactory = ({
               },
               {
                 operator: "eq",
-                field: "key",
+                field: `${TableName.SecretV2}.key` as "key",
                 value: el.secretKey
               }
             ]
@@ -1127,7 +1127,7 @@ export const secretV2BridgeServiceFactory = ({
               value: [
                 {
                   operator: "eq",
-                  field: "key",
+                  field: `${TableName.SecretV2}.key` as "key",
                   value: el.secretKey
                 },
                 {
@@ -1199,6 +1199,7 @@ export const secretV2BridgeServiceFactory = ({
             key: el.secretKey,
             tagIds: el.tagIds,
             references,
+            secretMetadata: el.secretMetadata,
             type: SecretType.Shared
           };
         }),
@@ -1271,7 +1272,7 @@ export const secretV2BridgeServiceFactory = ({
               value: [
                 {
                   operator: "eq",
-                  field: "key",
+                  field: `${TableName.SecretV2}.key` as "key",
                   value: el.secretKey
                 },
                 {
@@ -1336,7 +1337,7 @@ export const secretV2BridgeServiceFactory = ({
                 value: [
                   {
                     operator: "eq",
-                    field: "key",
+                    field: `${TableName.SecretV2}.key` as "key",
                     value: el.secretKey
                   },
                   {
@@ -1482,7 +1483,7 @@ export const secretV2BridgeServiceFactory = ({
               value: [
                 {
                   operator: "eq",
-                  field: "key",
+                  field: `${TableName.SecretV2}.key` as "key",
                   value: el.secretKey
                 },
                 {
@@ -1854,6 +1855,7 @@ export const secretV2BridgeServiceFactory = ({
                 skipMultilineEncoding: doc.skipMultilineEncoding,
                 reminderNote: doc.reminderNote,
                 reminderRepeatDays: doc.reminderRepeatDays,
+                secretMetadata: doc.secretMetadata,
                 references: doc.value ? getAllSecretReferences(doc.value).nestedReferences : []
               };
             })
@@ -1881,6 +1883,7 @@ export const secretV2BridgeServiceFactory = ({
                   encryptedComment: doc.encryptedComment,
                   skipMultilineEncoding: doc.skipMultilineEncoding,
                   reminderNote: doc.reminderNote,
+                  secretMetadata: doc.secretMetadata,
                   reminderRepeatDays: doc.reminderRepeatDays,
                   ...(doc.encryptedValue
                     ? {

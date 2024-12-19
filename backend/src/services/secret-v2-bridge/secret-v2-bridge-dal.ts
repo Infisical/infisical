@@ -78,6 +78,12 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
           `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
           `${TableName.SecretTag}.id`
         )
+        .leftJoin(TableName.ResourceMetadata, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
+        .select(
+          db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
+          db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
+          db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue")
+        )
         .select(selectAllTableCols(TableName.SecretV2))
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
@@ -102,6 +108,15 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
               color,
               slug,
               name: slug
+            })
+          },
+          {
+            key: "metadataId",
+            label: "secretMetadata" as const,
+            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+              id: metadataId,
+              key: metadataKey,
+              value: metadataValue
             })
           }
         ]

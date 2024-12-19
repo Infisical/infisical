@@ -8,7 +8,8 @@ import {
   faClock,
   faPlus,
   faShare,
-  faTag
+  faTag,
+  faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -26,6 +27,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
   FormControl,
+  FormLabel,
   IconButton,
   Input,
   Switch,
@@ -87,9 +89,14 @@ export const SecretDetailSidebar = ({
 
   const { permission } = useProjectPermission();
 
-  const { fields, append, remove } = useFieldArray({
+  const tagFields = useFieldArray({
     control,
     name: "tags"
+  });
+
+  const metadataFormFields = useFieldArray({
+    control,
+    name: "secretMetadata"
   });
 
   const secretKey = secret?.key || "";
@@ -153,10 +160,10 @@ export const SecretDetailSidebar = ({
     if (selectedTagsGroupById?.[tag.id]) {
       const tagPos = selectedTags.findIndex(({ id }) => id === tag.id);
       if (tagPos !== -1) {
-        remove(tagPos);
+        tagFields.remove(tagPos);
       }
     } else {
-      append(tag);
+      tagFields.append(tag);
     }
   };
 
@@ -277,9 +284,73 @@ export const SecretDetailSidebar = ({
                   )}
                 />
               )}
+              <FormControl label="Metadata">
+                <div className="flex flex-col space-y-2">
+                  {metadataFormFields.fields.map(({ id: metadataFieldId }, i) => (
+                    <div key={metadataFieldId} className="flex items-end space-x-2">
+                      <div className="flex-grow">
+                        {i === 0 && <span className="text-xs text-mineshaft-400">Key</span>}
+                        <Controller
+                          control={control}
+                          name={`secretMetadata.${i}.key`}
+                          render={({ field, fieldState: { error } }) => (
+                            <FormControl
+                              isError={Boolean(error?.message)}
+                              errorText={error?.message}
+                              className="mb-0"
+                            >
+                              <Input {...field} className="max-h-8" />
+                            </FormControl>
+                          )}
+                        />
+                      </div>
+                      <div className="flex-grow">
+                        {i === 0 && (
+                          <FormLabel
+                            label="Value"
+                            className="text-xs text-mineshaft-400"
+                            isOptional
+                          />
+                        )}
+                        <Controller
+                          control={control}
+                          name={`secretMetadata.${i}.value`}
+                          render={({ field, fieldState: { error } }) => (
+                            <FormControl
+                              isError={Boolean(error?.message)}
+                              errorText={error?.message}
+                              className="mb-0"
+                            >
+                              <Input {...field} className="max-h-8" />
+                            </FormControl>
+                          )}
+                        />
+                      </div>
+                      <IconButton
+                        ariaLabel="delete key"
+                        className="bottom-0.5 max-h-8"
+                        variant="outline_bg"
+                        onClick={() => metadataFormFields.remove(i)}
+                      >
+                        <FontAwesomeIcon icon={faTrash} />
+                      </IconButton>
+                    </div>
+                  ))}
+                  <div className="mt-2">
+                    <Button
+                      leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                      size="xs"
+                      variant="outline_bg"
+                      onClick={() => metadataFormFields.append({ key: "", value: "" })}
+                    >
+                      Add Key
+                    </Button>
+                  </div>
+                </div>
+              </FormControl>
               <FormControl label="Tags" className="">
                 <div className="grid auto-cols-min grid-flow-col gap-2 overflow-hidden pt-2">
-                  {fields.map(({ tagColor, id: formId, slug, id }) => (
+                  {tagFields.fields.map(({ tagColor, id: formId, slug, id }) => (
                     <Tag
                       className="flex w-min items-center space-x-2"
                       key={formId}

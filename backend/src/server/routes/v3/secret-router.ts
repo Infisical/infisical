@@ -222,7 +222,12 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               secretPath: z.string(),
               environment: z.string(),
               folderId: z.string().optional(),
-              secrets: secretRawSchema.omit({ createdAt: true, updatedAt: true }).array()
+              secrets: secretRawSchema
+                .omit({ createdAt: true, updatedAt: true })
+                .extend({
+                  secretMetadata: ResourceMetadataSchema.optional()
+                })
+                .array()
             })
             .array()
             .optional()

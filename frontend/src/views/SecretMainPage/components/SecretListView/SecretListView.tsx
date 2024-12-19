@@ -78,7 +78,8 @@ export const SecretListView = ({
       tags,
       skipMultilineEncoding,
       newKey,
-      secretId
+      secretId,
+      secretMetadata
     }: Partial<{
       value: string;
       comment: string;
@@ -88,6 +89,7 @@ export const SecretListView = ({
       skipMultilineEncoding: boolean;
       newKey: string;
       secretId: string;
+      secretMetadata?: { key: string; value: string }[];
     }> = {}
   ) => {
     if (operation === "delete") {
@@ -115,7 +117,8 @@ export const SecretListView = ({
         secretReminderRepeatDays: reminderRepeatDays,
         secretReminderNote: reminderNote,
         skipMultilineEncoding,
-        newSecretName: newKey
+        newSecretName: newKey,
+        secretMetadata
       });
       return;
     }
@@ -138,7 +141,10 @@ export const SecretListView = ({
   const handleSaveSecret = useCallback(
     async (
       orgSecret: SecretV3RawSanitized,
-      modSecret: Omit<SecretV3RawSanitized, "tags"> & { tags?: { id: string }[] },
+      modSecret: Omit<SecretV3RawSanitized, "tags"> & {
+        tags?: { id: string }[];
+        secretMetadata?: { key: string; value: string }[];
+      },
       cb?: () => void
     ) => {
       const { key: oldKey } = orgSecret;
@@ -151,7 +157,8 @@ export const SecretListView = ({
         tags,
         comment,
         reminderRepeatDays,
-        reminderNote
+        reminderNote,
+        secretMetadata
       } = modSecret;
       const hasKeyChanged = oldKey !== key && key;
 
@@ -166,7 +173,8 @@ export const SecretListView = ({
             "comment",
             "skipMultilineEncoding",
             "reminderRepeatDays",
-            "reminderNote"
+            "reminderNote",
+            "secretMetadata"
           ] as const
         ).every((el) => orgSecret[el] === modSecret[el]) && isSameTags;
 
@@ -199,7 +207,8 @@ export const SecretListView = ({
             reminderNote,
             secretId: orgSecret.id,
             newKey: hasKeyChanged ? key : undefined,
-            skipMultilineEncoding: modSecret.skipMultilineEncoding
+            skipMultilineEncoding: modSecret.skipMultilineEncoding,
+            secretMetadata
           });
           if (cb) cb();
         }
