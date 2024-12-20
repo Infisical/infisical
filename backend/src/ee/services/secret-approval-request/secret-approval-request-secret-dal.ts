@@ -256,6 +256,7 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
           `${TableName.SecretVersionV2Tag}.${TableName.SecretTag}Id`,
           db.ref("id").withSchema("secVerTag")
         )
+        .leftJoin(TableName.ResourceMetadata, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
         .select(selectAllTableCols(TableName.SecretApprovalRequestSecretV2))
         .select({
           secVerTagId: "secVerTag.id",
@@ -279,6 +280,11 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
           db.ref("key").withSchema(TableName.SecretVersionV2).as("secVerKey"),
           db.ref("encryptedValue").withSchema(TableName.SecretVersionV2).as("secVerValue"),
           db.ref("encryptedComment").withSchema(TableName.SecretVersionV2).as("secVerComment")
+        )
+        .select(
+          db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
+          db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
+          db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue")
         );
       const formatedDoc = sqlNestRelationships({
         data: doc,
@@ -338,9 +344,19 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
                 })
               }
             ]
+          },
+          {
+            key: "metadataId",
+            label: "oldSecretMetadata" as const,
+            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+              id: metadataId,
+              key: metadataKey,
+              value: metadataValue
+            })
           }
         ]
       });
+
       return formatedDoc?.map(({ secret, secretVersion, ...el }) => ({
         ...el,
         secret: secret?.[0],

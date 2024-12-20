@@ -62,6 +62,7 @@ export type TIntegration = {
     octopusDeployScopeValues?: TOctopusDeployScopeValues;
     awsIamRole?: string;
     region?: string;
+    metadataSyncMode?: IntegrationMetadataSyncMode;
   };
 };
 
@@ -91,4 +92,9 @@ export enum IntegrationSyncBehavior {
 export enum IntegrationMappingBehavior {
   ONE_TO_ONE = "one-to-one",
   MANY_TO_ONE = "many-to-one"
+}
+
+export enum IntegrationMetadataSyncMode {
+  CUSTOM = "custom",
+  SECRET_METADATA = "secret-metadata"
 }

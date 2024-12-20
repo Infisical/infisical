@@ -1,4 +1,4 @@
-import { faExclamationTriangle, faInfo } from "@fortawesome/free-solid-svg-icons";
+import { faExclamationTriangle, faInfo, faKey } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import {
@@ -18,7 +18,10 @@ import { CommitType, SecretV3Raw, TSecretApprovalSecChange, WsTag } from "@app/h
 export type Props = {
   op: CommitType;
   secretVersion?: SecretV3Raw;
-  newVersion?: Omit<TSecretApprovalSecChange, "tags"> & { tags?: WsTag[] };
+  newVersion?: Omit<TSecretApprovalSecChange, "tags"> & {
+    tags?: WsTag[];
+    secretMetadata?: { key: string; value: string }[];
+  };
   presentSecretVersionNumber: number;
   hasMerged?: Boolean;
   conflicts: Array<{ secretId: string; op: CommitType }>;
@@ -80,11 +83,12 @@ export const SecretApprovalRequestChangeItem = ({
         <Table>
           <THead>
             <Tr>
-              {op === CommitType.UPDATE && <Th className="w-12" />}
-              <Th className="min-table-row">Secret</Th>
-              <Th>Value</Th>
-              <Th className="min-table-row">Comment</Th>
-              <Th className="min-table-row">Tags</Th>
+              {op === CommitType.UPDATE && <Th className="w-12 shrink-0" />}
+              <Th className="w-48 shrink-0">Secret</Th>
+              <Th className="min-w-0 flex-1">Value</Th>
+              <Th className="w-24 shrink-0">Comment</Th>
+              <Th className="w-24 shrink-0">Tags</Th>
+              <Th className="w-40 shrink-0">Metadata</Th>
             </Tr>
           </THead>
           {op === CommitType.UPDATE ? (
@@ -110,6 +114,33 @@ export const SecretApprovalRequestChangeItem = ({
                     </Tag>
                   ))}
                 </Td>
+                <Td>
+                  {secretVersion?.secretMetadata?.length ? (
+                    <div className="mt-1 flex flex-wrap gap-2 text-sm text-mineshaft-300">
+                      {secretVersion.secretMetadata?.map((el) => (
+                        <div key={el.key} className="flex items-center">
+                          <Tag
+                            size="xs"
+                            className="mr-0 flex items-center rounded-r-none border border-mineshaft-500"
+                          >
+                            <FontAwesomeIcon icon={faKey} size="xs" className="mr-1" />
+                            <div>{el.key}</div>
+                          </Tag>
+                          <Tag
+                            size="xs"
+                            className="flex items-center rounded-l-none border border-mineshaft-500 bg-mineshaft-900 pl-1"
+                          >
+                            <div className="max-w-[150px] overflow-hidden text-ellipsis whitespace-nowrap">
+                              {el.value}
+                            </div>
+                          </Tag>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-mineshaft-300">-</p>
+                  )}
+                </Td>
               </Tr>
               <Tr>
                 <Td className="text-green-600">NEW</Td>
@@ -131,6 +162,33 @@ export const SecretApprovalRequestChangeItem = ({
                       <div className="text-sm">{slug}</div>
                     </Tag>
                   ))}
+                </Td>
+                <Td>
+                  {newVersion?.secretMetadata?.length ? (
+                    <div className="mt-1 flex flex-wrap gap-2 text-sm text-mineshaft-300">
+                      {newVersion.secretMetadata?.map((el) => (
+                        <div key={el.key} className="flex items-center">
+                          <Tag
+                            size="xs"
+                            className="mr-0 flex items-center rounded-r-none border border-mineshaft-500"
+                          >
+                            <FontAwesomeIcon icon={faKey} size="xs" className="mr-1" />
+                            <div>{el.key}</div>
+                          </Tag>
+                          <Tag
+                            size="xs"
+                            className="flex items-center rounded-l-none border border-mineshaft-500 bg-mineshaft-900 pl-1"
+                          >
+                            <div className="max-w-[150px] overflow-hidden text-ellipsis whitespace-nowrap">
+                              {el.value}
+                            </div>
+                          </Tag>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-mineshaft-300">-</p>
+                  )}
                 </Td>
               </Tr>
             </TBody>
@@ -171,6 +229,33 @@ export const SecretApprovalRequestChangeItem = ({
                         <div className="text-sm">{slug}</div>
                       </Tag>
                     )
+                  )}
+                </Td>
+                <Td>
+                  {newVersion?.secretMetadata?.length ? (
+                    <div className="mt-1 flex flex-wrap gap-2 text-sm text-mineshaft-300">
+                      {newVersion.secretMetadata?.map((el) => (
+                        <div key={el.key} className="flex items-center">
+                          <Tag
+                            size="xs"
+                            className="mr-0 flex items-center rounded-r-none border border-mineshaft-500"
+                          >
+                            <FontAwesomeIcon icon={faKey} size="xs" className="mr-1" />
+                            <div>{el.key}</div>
+                          </Tag>
+                          <Tag
+                            size="xs"
+                            className="flex items-center rounded-l-none border border-mineshaft-500 bg-mineshaft-900 pl-1"
+                          >
+                            <div className="max-w-[150px] overflow-hidden text-ellipsis whitespace-nowrap">
+                              {el.value}
+                            </div>
+                          </Tag>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-mineshaft-300">-</p>
                   )}
                 </Td>
               </Tr>

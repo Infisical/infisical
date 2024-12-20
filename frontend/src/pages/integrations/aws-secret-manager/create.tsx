@@ -19,7 +19,10 @@ import z from "zod";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { useCreateIntegration } from "@app/hooks/api";
 import { useGetIntegrationAuthAwsKmsKeys } from "@app/hooks/api/integrationAuth/queries";
-import { IntegrationMappingBehavior } from "@app/hooks/api/integrations/types";
+import {
+  IntegrationMappingBehavior,
+  IntegrationMetadataSyncMode
+} from "@app/hooks/api/integrations/types";
 
 import {
   Badge,
@@ -97,6 +100,7 @@ const schema = z
     mappingBehavior: z.nativeEnum(IntegrationMappingBehavior),
     kmsKeyId: z.string().optional(),
     shouldTag: z.boolean().optional(),
+    metadataSyncMode: z.nativeEnum(IntegrationMetadataSyncMode).optional(),
     tags: z
       .object({
         key: z.string(),
@@ -139,6 +143,7 @@ export default function AWSSecretManagerCreateIntegrationPage() {
   });
 
   const shouldTagState = watch("shouldTag");
+  const selectedMetadataSyncMode = watch("metadataSyncMode");
   const selectedSourceEnvironment = watch("sourceEnvironment");
   const selectedAWSRegion = watch("awsRegion");
   const selectedMappingBehavior = watch("mappingBehavior");
@@ -171,7 +176,8 @@ export default function AWSSecretManagerCreateIntegrationPage() {
     tags,
     secretPrefix,
     kmsKeyId,
-    mappingBehavior
+    mappingBehavior,
+    metadataSyncMode
   }: TFormSchema) => {
     try {
       if (!integrationAuth?.id) return;
@@ -186,7 +192,8 @@ export default function AWSSecretManagerCreateIntegrationPage() {
         metadata: {
           ...(shouldTag
             ? {
-                secretAWSTag: tags
+                secretAWSTag: tags,
+                metadataSyncMode
               }
             : {}),
           ...(secretPrefix && { secretPrefix }),
@@ -339,7 +346,12 @@ export default function AWSSecretManagerCreateIntegrationPage() {
                     >
                       <Select
                         defaultValue={field.value}
-                        onValueChange={(e) => onChange(e)}
+                        onValueChange={(e) => {
+                          if (e === IntegrationMappingBehavior.MANY_TO_ONE) {
+                            setValue("metadataSyncMode", IntegrationMetadataSyncMode.CUSTOM);
+                          }
+                          onChange(e);
+                        }}
                         className="w-full border border-mineshaft-500"
                         dropdownContainerClassName="max-w-full"
                       >
@@ -386,7 +398,7 @@ export default function AWSSecretManagerCreateIntegrationPage() {
                 animate={{ opacity: 1, translateX: 0 }}
                 exit={{ opacity: 0, translateX: 30 }}
               >
-                <div className="mt-2 ml-1">
+                <div className="mt-2 ml-1 mb-3">
                   <Controller
                     control={control}
                     name="shouldTag"
@@ -401,37 +413,76 @@ export default function AWSSecretManagerCreateIntegrationPage() {
                     )}
                   />
                 </div>
-                {shouldTagState && (
-                  <div className="mt-4 flex justify-between">
+                {shouldTagState &&
+                  selectedMappingBehavior === IntegrationMappingBehavior.ONE_TO_ONE && (
                     <Controller
                       control={control}
-                      name="tags.0.key"
-                      render={({ field, fieldState: { error } }) => (
+                      name="metadataSyncMode"
+                      render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                         <FormControl
-                          label="Tag Key"
+                          label="Tag Sync Mode"
                           errorText={error?.message}
                           isError={Boolean(error)}
                         >
-                          <Input placeholder="managed-by" {...field} />
+                          <Select
+                            defaultValue={field.value}
+                            onValueChange={(e) => {
+                              setValue("tags", []);
+                              onChange(e);
+                            }}
+                            className="w-full border border-mineshaft-500"
+                            dropdownContainerClassName="max-w-full"
+                          >
+                            <SelectItem
+                              value={IntegrationMetadataSyncMode.SECRET_METADATA}
+                              className="text-left"
+                              key={`sync-mode-${IntegrationMetadataSyncMode.SECRET_METADATA}`}
+                            >
+                              Secret Metadata
+                            </SelectItem>
+                            <SelectItem
+                              value={IntegrationMetadataSyncMode.CUSTOM}
+                              className="text-left"
+                              key={`sync-mode-${IntegrationMetadataSyncMode.CUSTOM}`}
+                            >
+                              Custom
+                            </SelectItem>
+                          </Select>
                         </FormControl>
                       )}
                     />
-                    <Controller
-                      control={control}
-                      name="tags.0.value"
-                      render={({ field, fieldState: { error } }) => (
-                        <FormControl
-                          label="Tag Value"
-                          errorText={error?.message}
-                          isError={Boolean(error)}
-                        >
-                          <Input placeholder="infisical" {...field} />
-                        </FormControl>
-                      )}
-                    />
-                  </div>
-                )}
-
+                  )}
+                {shouldTagState &&
+                  selectedMetadataSyncMode === IntegrationMetadataSyncMode.CUSTOM && (
+                    <div className="mt-4 flex justify-between">
+                      <Controller
+                        control={control}
+                        name="tags.0.key"
+                        render={({ field, fieldState: { error } }) => (
+                          <FormControl
+                            label="Tag Key"
+                            errorText={error?.message}
+                            isError={Boolean(error)}
+                          >
+                            <Input placeholder="managed-by" {...field} />
+                          </FormControl>
+                        )}
+                      />
+                      <Controller
+                        control={control}
+                        name="tags.0.value"
+                        render={({ field, fieldState: { error } }) => (
+                          <FormControl
+                            label="Tag Value"
+                            errorText={error?.message}
+                            isError={Boolean(error)}
+                          >
+                            <Input placeholder="infisical" {...field} />
+                          </FormControl>
+                        )}
+                      />
+                    </div>
+                  )}
                 <Controller
                   control={control}
                   name="secretPrefix"

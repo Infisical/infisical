@@ -80,6 +80,7 @@ export enum TableName {
   IdentityProjectAdditionalPrivilege = "identity_project_additional_privilege",
   // used by both identity and users
   IdentityMetadata = "identity_metadata",
+  ResourceMetadata = "resource_metadata",
   ScimToken = "scim_tokens",
   AccessApprovalPolicy = "access_approval_policies",
   AccessApprovalPolicyApprover = "access_approval_policies_approvers",
