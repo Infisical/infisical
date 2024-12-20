@@ -1,10 +1,5 @@
 import { useRouter } from "next/router";
-import {
-  faBan,
-  faCertificate,
-  faEllipsis,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
+import { faBan, faCertificate, faEllipsis, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";

@@ -24,7 +24,8 @@ export const ProjectSidebarItem = () => {
   if (
     !currentWorkspace ||
     router.asPath.startsWith("personal") ||
-    router.asPath.startsWith("integrations")
+    router.asPath.startsWith("integrations") ||
+    router.asPath.startsWith("/app-connections")
   ) {
     return <div />;
   }
@@ -32,6 +33,7 @@ export const ProjectSidebarItem = () => {
   const isSecretManager = currentWorkspace?.type === ProjectType.SecretManager;
   const isCertManager = currentWorkspace?.type === ProjectType.CertificateManager;
   const isCmek = currentWorkspace?.type === ProjectType.KMS;
+  const isSsh = currentWorkspace?.type === ProjectType.SSH;
 
   return (
     <Menu>
@@ -75,6 +77,18 @@ export const ProjectSidebarItem = () => {
           <a>
             <MenuItem
               isSelected={router.asPath === `/${ProjectType.KMS}/${currentWorkspace?.id}/kms`}
+              icon="system-outline-90-lock-closed"
+            >
+              Overview
+            </MenuItem>
+          </a>
+        </Link>
+      )}
+      {isSsh && (
+        <Link href={`/${ProjectType.SSH}/${currentWorkspace?.id}/ssh`} passHref>
+          <a>
+            <MenuItem
+              isSelected={router.asPath === `/${ProjectType.SSH}/${currentWorkspace?.id}/ssh`}
               icon="system-outline-90-lock-closed"
             >
               Overview

@@ -17,7 +17,7 @@ import {
   // DatePicker
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
-import { CaType, useCreateCa, useGetCaById,useUpdateCa } from "@app/hooks/api/ca";
+import { CaType, useCreateCa, useGetCaById, useUpdateCa } from "@app/hooks/api/ca";
 import { certKeyAlgorithms } from "@app/hooks/api/certificates/constants";
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -72,7 +72,7 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
   // const [isStartDatePickerOpen, setIsStartDatePickerOpen] = useState(false);
 
   const { data: ca } = useGetCaById((popUp?.ca?.data as { caId: string })?.caId || "");
-  
+
   const { mutateAsync: createMutateAsync } = useCreateCa();
   const { mutateAsync: updateMutateAsync } = useUpdateCa();
 
@@ -151,7 +151,7 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
   }: FormData) => {
     try {
       if (!currentWorkspace?.slug) return;
-      
+
       if (ca) {
         // update
         await updateMutateAsync({

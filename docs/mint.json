@@ -114,6 +114,7 @@
             "documentation/platform/pki/alerting"
           ]
         },
+        "documentation/platform/ssh",
         {
           "group": "Key Management (KMS)",
           "pages": [
@@ -338,6 +339,14 @@
         "cli/scanning-overview",
         "cli/project-config",
         "cli/faq"
+      ]
+    },
+    {
+      "group": "App Connections",
+      "pages": [
+        "integrations/app-connections/overview",
+        "integrations/app-connections/aws",
+        "integrations/app-connections/github"
       ]
     },
     {
@@ -757,6 +766,33 @@
           ]
         },
         {
+          "group": "App Connections",
+          "pages": [
+            "api-reference/endpoints/app-connections/list",
+            "api-reference/endpoints/app-connections/options",
+            { "group":  "AWS",
+              "pages": [
+                "api-reference/endpoints/app-connections/aws/list",
+                "api-reference/endpoints/app-connections/aws/get-by-id",
+                "api-reference/endpoints/app-connections/aws/get-by-name",
+                "api-reference/endpoints/app-connections/aws/create",
+                "api-reference/endpoints/app-connections/aws/update",
+                "api-reference/endpoints/app-connections/aws/delete"
+              ]
+            },
+            { "group":  "GitHub",
+              "pages": [
+                "api-reference/endpoints/app-connections/github/list",
+                "api-reference/endpoints/app-connections/github/get-by-id",
+                "api-reference/endpoints/app-connections/github/get-by-name",
+                "api-reference/endpoints/app-connections/github/create",
+                "api-reference/endpoints/app-connections/github/update",
+                "api-reference/endpoints/app-connections/github/delete"
+              ]
+            }
+          ]
+        },
+        {
           "group": "Integrations",
           "pages": [
             "api-reference/endpoints/integrations/create-auth",
@@ -842,6 +878,40 @@
             "api-reference/endpoints/pki-alerts/read",
             "api-reference/endpoints/pki-alerts/update",
             "api-reference/endpoints/pki-alerts/delete"
+          ]
+        }
+      ]
+    },
+    {
+      "group": "Infisical SSH",
+      "pages": [
+        {
+          "group": "Certificates",
+          "pages": [
+            "api-reference/endpoints/ssh/certificates/issue-credentials",
+            "api-reference/endpoints/ssh/certificates/sign-key"
+          ]
+        },
+        {
+          "group": "Certificate Authorities",
+          "pages": [
+            "api-reference/endpoints/ssh/ca/list",
+            "api-reference/endpoints/ssh/ca/create",
+            "api-reference/endpoints/ssh/ca/read",
+            "api-reference/endpoints/ssh/ca/update",
+            "api-reference/endpoints/ssh/ca/delete",
+            "api-reference/endpoints/ssh/ca/public-key",
+            "api-reference/endpoints/ssh/ca/list-certificate-templates"
+          ]
+        },
+        {
+          "group": "Certificate Templates",
+          "pages": [
+            "api-reference/endpoints/ssh/certificate-templates/list",
+            "api-reference/endpoints/ssh/certificate-templates/create",
+            "api-reference/endpoints/ssh/certificate-templates/read",
+            "api-reference/endpoints/ssh/certificate-templates/update",
+            "api-reference/endpoints/ssh/certificate-templates/delete"
           ]
         }
       ]

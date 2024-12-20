@@ -139,7 +139,8 @@ RUN apk --update add \
     freetds-dev \
     bash \
     curl \
-    git
+    git \
+    openssh
 
 # Configure ODBC in production
 RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/libtdsodbc.so\nSetup = /usr/lib/libtdsodbc.so\nFileUsage = 1\n" > /etc/odbcinst.ini

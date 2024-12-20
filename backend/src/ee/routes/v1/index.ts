@@ -25,6 +25,9 @@ import { registerSecretRotationRouter } from "./secret-rotation-router";
 import { registerSecretScanningRouter } from "./secret-scanning-router";
 import { registerSecretVersionRouter } from "./secret-version-router";
 import { registerSnapshotRouter } from "./snapshot-router";
+import { registerSshCaRouter } from "./ssh-certificate-authority-router";
+import { registerSshCertRouter } from "./ssh-certificate-router";
+import { registerSshCertificateTemplateRouter } from "./ssh-certificate-template-router";
 import { registerTrustedIpRouter } from "./trusted-ip-router";
 import { registerUserAdditionalPrivilegeRouter } from "./user-additional-privilege-router";
 
@@ -66,6 +69,15 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
       await pkiRouter.register(registerCaCrlRouter, { prefix: "/crl" });
     },
     { prefix: "/pki" }
+  );
+
+  await server.register(
+    async (sshRouter) => {
+      await sshRouter.register(registerSshCaRouter, { prefix: "/ca" });
+      await sshRouter.register(registerSshCertRouter, { prefix: "/certificates" });
+      await sshRouter.register(registerSshCertificateTemplateRouter, { prefix: "/certificate-templates" });
+    },
+    { prefix: "/ssh" }
   );
 
   await server.register(

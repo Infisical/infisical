@@ -75,6 +75,13 @@ import { snapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-da
 import { snapshotFolderDALFactory } from "@app/ee/services/secret-snapshot/snapshot-folder-dal";
 import { snapshotSecretDALFactory } from "@app/ee/services/secret-snapshot/snapshot-secret-dal";
 import { snapshotSecretV2DALFactory } from "@app/ee/services/secret-snapshot/snapshot-secret-v2-dal";
+import { sshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-dal";
+import { sshCertificateAuthoritySecretDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-secret-dal";
+import { sshCertificateAuthorityServiceFactory } from "@app/ee/services/ssh/ssh-certificate-authority-service";
+import { sshCertificateBodyDALFactory } from "@app/ee/services/ssh-certificate/ssh-certificate-body-dal";
+import { sshCertificateDALFactory } from "@app/ee/services/ssh-certificate/ssh-certificate-dal";
+import { sshCertificateTemplateDALFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-dal";
+import { sshCertificateTemplateServiceFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-service";
 import { trustedIpDALFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal";
 import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
@@ -84,6 +91,8 @@ import { readLimit } from "@app/server/config/rateLimiter";
 import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue/access-token-queue";
 import { apiKeyDALFactory } from "@app/services/api-key/api-key-dal";
 import { apiKeyServiceFactory } from "@app/services/api-key/api-key-service";
+import { appConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { appConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { authDALFactory } from "@app/services/auth/auth-dal";
 import { authLoginServiceFactory } from "@app/services/auth/auth-login-service";
 import { authPaswordServiceFactory } from "@app/services/auth/auth-password-service";
@@ -308,6 +317,7 @@ export const registerRoutes = async (
   const auditLogStreamDAL = auditLogStreamDALFactory(db);
   const trustedIpDAL = trustedIpDALFactory(db);
   const telemetryDAL = telemetryDALFactory(db);
+  const appConnectionDAL = appConnectionDALFactory(db);
 
   // ee db layer ops
   const permissionDAL = permissionDALFactory(db);
@@ -345,6 +355,12 @@ export const registerRoutes = async (
   const licenseDAL = licenseDALFactory(db);
   const dynamicSecretDAL = dynamicSecretDALFactory(db);
   const dynamicSecretLeaseDAL = dynamicSecretLeaseDALFactory(db);
+
+  const sshCertificateDAL = sshCertificateDALFactory(db);
+  const sshCertificateBodyDAL = sshCertificateBodyDALFactory(db);
+  const sshCertificateAuthorityDAL = sshCertificateAuthorityDALFactory(db);
+  const sshCertificateAuthoritySecretDAL = sshCertificateAuthoritySecretDALFactory(db);
+  const sshCertificateTemplateDAL = sshCertificateTemplateDALFactory(db);
 
   const kmsDAL = kmskeyDALFactory(db);
   const internalKmsDAL = internalKmsDALFactory(db);
@@ -714,6 +730,22 @@ export const registerRoutes = async (
     queueService
   });
 
+  const sshCertificateAuthorityService = sshCertificateAuthorityServiceFactory({
+    sshCertificateAuthorityDAL,
+    sshCertificateAuthoritySecretDAL,
+    sshCertificateTemplateDAL,
+    sshCertificateDAL,
+    sshCertificateBodyDAL,
+    kmsService,
+    permissionService
+  });
+
+  const sshCertificateTemplateService = sshCertificateTemplateServiceFactory({
+    sshCertificateTemplateDAL,
+    sshCertificateAuthorityDAL,
+    permissionService
+  });
+
   const certificateAuthorityService = certificateAuthorityServiceFactory({
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
@@ -851,6 +883,9 @@ export const registerRoutes = async (
     certificateDAL,
     pkiAlertDAL,
     pkiCollectionDAL,
+    sshCertificateAuthorityDAL,
+    sshCertificateDAL,
+    sshCertificateTemplateDAL,
     projectUserMembershipRoleDAL,
     identityProjectMembershipRoleDAL,
     keyStore,
@@ -1328,6 +1363,13 @@ export const registerRoutes = async (
     externalGroupOrgRoleMappingDAL
   });
 
+  const appConnectionService = appConnectionServiceFactory({
+    appConnectionDAL,
+    permissionService,
+    kmsService,
+    licenseService
+  });
+
   await superAdminService.initServerCfg();
 
   // setup the communication with license key server
@@ -1396,6 +1438,8 @@ export const registerRoutes = async (
     auditLog: auditLogService,
     auditLogStream: auditLogStreamService,
     certificate: certificateService,
+    sshCertificateAuthority: sshCertificateAuthorityService,
+    sshCertificateTemplate: sshCertificateTemplateService,
     certificateAuthority: certificateAuthorityService,
     certificateTemplate: certificateTemplateService,
     certificateAuthorityCrl: certificateAuthorityCrlService,
@@ -1422,7 +1466,8 @@ export const registerRoutes = async (
     migration: migrationService,
     externalGroupOrgRoleMapping: externalGroupOrgRoleMappingService,
     projectTemplate: projectTemplateService,
-    totp: totpService
+    totp: totpService,
+    appConnection: appConnectionService
   });
 
   const cronJobs: CronJob[] = [];

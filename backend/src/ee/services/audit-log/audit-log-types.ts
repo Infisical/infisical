@@ -2,9 +2,14 @@ import {
   TCreateProjectTemplateDTO,
   TUpdateProjectTemplateDTO
 } from "@app/ee/services/project-template/project-template-types";
+import { SshCaStatus, SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
+import { SshCertTemplateStatus } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-types";
 import { SymmetricEncryption } from "@app/lib/crypto/cipher";
 import { TProjectPermission } from "@app/lib/types";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/services/app-connection/app-connection-types";
 import { ActorType } from "@app/services/auth/auth-type";
+import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-types";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
@@ -143,6 +148,17 @@ export enum EventType {
   SECRET_APPROVAL_REQUEST = "secret-approval-request",
   SECRET_APPROVAL_CLOSED = "secret-approval-closed",
   SECRET_APPROVAL_REOPENED = "secret-approval-reopened",
+  SIGN_SSH_KEY = "sign-ssh-key",
+  ISSUE_SSH_CREDS = "issue-ssh-creds",
+  CREATE_SSH_CA = "create-ssh-certificate-authority",
+  GET_SSH_CA = "get-ssh-certificate-authority",
+  UPDATE_SSH_CA = "update-ssh-certificate-authority",
+  DELETE_SSH_CA = "delete-ssh-certificate-authority",
+  GET_SSH_CA_CERTIFICATE_TEMPLATES = "get-ssh-certificate-authority-certificate-templates",
+  CREATE_SSH_CERTIFICATE_TEMPLATE = "create-ssh-certificate-template",
+  UPDATE_SSH_CERTIFICATE_TEMPLATE = "update-ssh-certificate-template",
+  DELETE_SSH_CERTIFICATE_TEMPLATE = "delete-ssh-certificate-template",
+  GET_SSH_CERTIFICATE_TEMPLATE = "get-ssh-certificate-template",
   CREATE_CA = "create-certificate-authority",
   GET_CA = "get-certificate-authority",
   UPDATE_CA = "update-certificate-authority",
@@ -208,7 +224,12 @@ export enum EventType {
   CREATE_PROJECT_TEMPLATE = "create-project-template",
   UPDATE_PROJECT_TEMPLATE = "update-project-template",
   DELETE_PROJECT_TEMPLATE = "delete-project-template",
-  APPLY_PROJECT_TEMPLATE = "apply-project-template"
+  APPLY_PROJECT_TEMPLATE = "apply-project-template",
+  GET_APP_CONNECTIONS = "get-app-connections",
+  GET_APP_CONNECTION = "get-app-connection",
+  CREATE_APP_CONNECTION = "create-app-connection",
+  UPDATE_APP_CONNECTION = "update-app-connection",
+  DELETE_APP_CONNECTION = "delete-app-connection"
 }
 
 interface UserActorMetadata {
@@ -1206,6 +1227,117 @@ interface SecretApprovalRequest {
   };
 }
 
+interface SignSshKey {
+  type: EventType.SIGN_SSH_KEY;
+  metadata: {
+    certificateTemplateId: string;
+    certType: SshCertType;
+    principals: string[];
+    ttl: string;
+    keyId: string;
+  };
+}
+
+interface IssueSshCreds {
+  type: EventType.ISSUE_SSH_CREDS;
+  metadata: {
+    certificateTemplateId: string;
+    keyAlgorithm: CertKeyAlgorithm;
+    certType: SshCertType;
+    principals: string[];
+    ttl: string;
+    keyId: string;
+  };
+}
+
+interface CreateSshCa {
+  type: EventType.CREATE_SSH_CA;
+  metadata: {
+    sshCaId: string;
+    friendlyName: string;
+  };
+}
+
+interface GetSshCa {
+  type: EventType.GET_SSH_CA;
+  metadata: {
+    sshCaId: string;
+    friendlyName: string;
+  };
+}
+
+interface UpdateSshCa {
+  type: EventType.UPDATE_SSH_CA;
+  metadata: {
+    sshCaId: string;
+    friendlyName: string;
+    status: SshCaStatus;
+  };
+}
+
+interface DeleteSshCa {
+  type: EventType.DELETE_SSH_CA;
+  metadata: {
+    sshCaId: string;
+    friendlyName: string;
+  };
+}
+
+interface GetSshCaCertificateTemplates {
+  type: EventType.GET_SSH_CA_CERTIFICATE_TEMPLATES;
+  metadata: {
+    sshCaId: string;
+    friendlyName: string;
+  };
+}
+
+interface CreateSshCertificateTemplate {
+  type: EventType.CREATE_SSH_CERTIFICATE_TEMPLATE;
+  metadata: {
+    certificateTemplateId: string;
+    sshCaId: string;
+    name: string;
+    ttl: string;
+    maxTTL: string;
+    allowedUsers: string[];
+    allowedHosts: string[];
+    allowUserCertificates: boolean;
+    allowHostCertificates: boolean;
+    allowCustomKeyIds: boolean;
+  };
+}
+
+interface GetSshCertificateTemplate {
+  type: EventType.GET_SSH_CERTIFICATE_TEMPLATE;
+  metadata: {
+    certificateTemplateId: string;
+  };
+}
+
+interface UpdateSshCertificateTemplate {
+  type: EventType.UPDATE_SSH_CERTIFICATE_TEMPLATE;
+  metadata: {
+    certificateTemplateId: string;
+    sshCaId: string;
+    name: string;
+    status: SshCertTemplateStatus;
+    ttl: string;
+    maxTTL: string;
+    allowedUsers: string[];
+    allowedHosts: string[];
+    allowUserCertificates: boolean;
+    allowHostCertificates: boolean;
+    allowCustomKeyIds: boolean;
+  };
+}
+
+interface DeleteSshCertificateTemplate {
+  type: EventType.DELETE_SSH_CERTIFICATE_TEMPLATE;
+  metadata: {
+    certificateTemplateId: string;
+  };
+}
+
 interface CreateCa {
   type: EventType.CREATE_CA;
   metadata: {
@@ -1742,6 +1874,39 @@ interface ApplyProjectTemplateEvent {
   };
 }
 
+interface GetAppConnectionsEvent {
+  type: EventType.GET_APP_CONNECTIONS;
+  metadata: {
+    app?: AppConnection;
+    count: number;
+    connectionIds: string[];
+  };
+}
+
+interface GetAppConnectionEvent {
+  type: EventType.GET_APP_CONNECTION;
+  metadata: {
+    connectionId: string;
+  };
+}
+
+interface CreateAppConnectionEvent {
+  type: EventType.CREATE_APP_CONNECTION;
+  metadata: Omit<TCreateAppConnectionDTO, "credentials"> & { connectionId: string };
+}
+
+interface UpdateAppConnectionEvent {
+  type: EventType.UPDATE_APP_CONNECTION;
+  metadata: Omit<TUpdateAppConnectionDTO, "credentials"> & { connectionId: string; credentialsUpdated: boolean };
+}
+
+interface DeleteAppConnectionEvent {
+  type: EventType.DELETE_APP_CONNECTION;
+  metadata: {
+    connectionId: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -1837,6 +2002,17 @@ export type Event =
   | SecretApprovalClosed
   | SecretApprovalRequest
   | SecretApprovalReopened
+  | SignSshKey
+  | IssueSshCreds
+  | CreateSshCa
+  | GetSshCa
+  | UpdateSshCa
+  | DeleteSshCa
+  | GetSshCaCertificateTemplates
+  | CreateSshCertificateTemplate
+  | UpdateSshCertificateTemplate
+  | GetSshCertificateTemplate
+  | DeleteSshCertificateTemplate
   | CreateCa
   | GetCa
   | UpdateCa
@@ -1902,4 +2078,9 @@ export type Event =
   | CreateProjectTemplateEvent
   | UpdateProjectTemplateEvent
   | DeleteProjectTemplateEvent
-  | ApplyProjectTemplateEvent;
+  | ApplyProjectTemplateEvent
+  | GetAppConnectionsEvent
+  | GetAppConnectionEvent
+  | CreateAppConnectionEvent
+  | UpdateAppConnectionEvent
+  | DeleteAppConnectionEvent;

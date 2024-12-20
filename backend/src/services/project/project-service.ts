@@ -8,6 +8,9 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TProjectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-service";
 import { InfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-types";
+import { TSshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-dal";
+import { TSshCertificateDALFactory } from "@app/ee/services/ssh-certificate/ssh-certificate-dal";
+import { TSshCertificateTemplateDALFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-dal";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -57,6 +60,9 @@ import {
   TListProjectCertificateTemplatesDTO,
   TListProjectCertsDTO,
   TListProjectsDTO,
+  TListProjectSshCasDTO,
+  TListProjectSshCertificatesDTO,
+  TListProjectSshCertificateTemplatesDTO,
   TLoadProjectKmsBackupDTO,
   TToggleProjectAutoCapitalizationDTO,
   TUpdateAuditLogsRetentionDTO,
@@ -97,6 +103,9 @@ type TProjectServiceFactoryDep = {
   certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "getCertTemplatesByProjectId">;
   pkiAlertDAL: Pick<TPkiAlertDALFactory, "find">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "find">;
+  sshCertificateAuthorityDAL: Pick<TSshCertificateAuthorityDALFactory, "find">;
+  sshCertificateDAL: Pick<TSshCertificateDALFactory, "find" | "countSshCertificatesInProject">;
+  sshCertificateTemplateDAL: Pick<TSshCertificateTemplateDALFactory, "find">;
   permissionService: TPermissionServiceFactory;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -146,6 +155,9 @@ export const projectServiceFactory = ({
   certificateTemplateDAL,
   pkiCollectionDAL,
   pkiAlertDAL,
+  sshCertificateAuthorityDAL,
+  sshCertificateDAL,
+  sshCertificateTemplateDAL,
   keyStore,
   kmsService,
   projectBotDAL,
@@ -923,6 +935,118 @@ export const projectServiceFactory = ({
     };
   };
 
+  /**
+   * Return list of SSH CAs for project
+   */
+  const listProjectSshCas = async ({
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    actor,
+    projectId
+  }: TListProjectSshCasDTO) => {
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbidOnInvalidProjectType(ProjectType.SSH);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      ProjectPermissionSub.SshCertificateAuthorities
+    );
+
+    const cas = await sshCertificateAuthorityDAL.find(
+      {
+        projectId
+      },
+      { sort: [["updatedAt", "desc"]] }
+    );
+
+    return cas;
+  };
+
+  /**
+   * Return list of SSH certificates for project
+   */
+  const listProjectSshCertificates = async ({
+    limit = 25,
+    offset = 0,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    actor,
+    projectId
+  }: TListProjectSshCertificatesDTO) => {
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbidOnInvalidProjectType(ProjectType.SSH);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificates);
+
+    const cas = await sshCertificateAuthorityDAL.find({
+      projectId
+    });
+
+    const certificates = await sshCertificateDAL.find(
+      {
+        $in: {
+          sshCaId: cas.map((ca) => ca.id)
+        }
+      },
+      { offset, limit, sort: [["updatedAt", "desc"]] }
+    );
+
+    const count = await sshCertificateDAL.countSshCertificatesInProject(projectId);
+
+    return { certificates, totalCount: count };
+  };
+
+  /**
+   * Return list of SSH certificate templates for project
+   */
+  const listProjectSshCertificateTemplates = async ({
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    actor,
+    projectId
+  }: TListProjectSshCertificateTemplatesDTO) => {
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbidOnInvalidProjectType(ProjectType.SSH);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      ProjectPermissionSub.SshCertificateTemplates
+    );
+
+    const cas = await sshCertificateAuthorityDAL.find({
+      projectId
+    });
+
+    const certificateTemplates = await sshCertificateTemplateDAL.find({
+      $in: {
+        sshCaId: cas.map((ca) => ca.id)
+      }
+    });
+
+    return { certificateTemplates };
+  };
+
   const updateProjectKmsKey = async ({
     projectId,
     kms,
@@ -1156,6 +1280,9 @@ export const projectServiceFactory = ({
     listProjectAlerts,
     listProjectPkiCollections,
     listProjectCertificateTemplates,
+    listProjectSshCas,
+    listProjectSshCertificates,
+    listProjectSshCertificateTemplates,
     updateVersionLimit,
     updateAuditLogsRetention,
     updateProjectKmsKey,

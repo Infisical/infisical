@@ -327,6 +327,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                   </div>
                 )}
                 {!router.asPath.includes("org") &&
+                  !router.asPath.includes("app-connections") &&
                   (!router.asPath.includes("personal") && currentWorkspace ? (
                     <ProjectSelect />
                   ) : (
@@ -339,7 +340,8 @@ export const AppLayout = ({ children }: LayoutProps) => {
                   ))}
                 <div className={`px-1 ${!router.asPath.includes("personal") ? "block" : "hidden"}`}>
                   <ProjectSidebarItem />
-                  {router.pathname.startsWith("/org") && (
+                  {(router.pathname.startsWith("/org") ||
+                    router.pathname.startsWith("/app-connections")) && (
                     <Menu className="mt-4">
                       <Link
                         href={`/org/${currentOrg?.id}/${ProjectType.SecretManager}/overview`}
@@ -378,6 +380,18 @@ export const AppLayout = ({ children }: LayoutProps) => {
                             icon="unlock"
                           >
                             Key Management
+                          </MenuItem>
+                        </a>
+                      </Link>
+                      <Link href={`/org/${currentOrg?.id}/ssh/overview`} passHref>
+                        <a>
+                          <MenuItem
+                            isSelected={
+                              router.asPath === `/org/${currentWorkspace?.id}/ssh/overview`
+                            }
+                            icon="system-regular-126-verified-hover-verified"
+                          >
+                            SSH
                           </MenuItem>
                         </a>
                       </Link>

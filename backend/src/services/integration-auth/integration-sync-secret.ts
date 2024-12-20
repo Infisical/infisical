@@ -1406,14 +1406,24 @@ const syncSecretsHeroku = async ({
  * Sync/push [secrets] to Vercel project named [integration.app]
  */
 const syncSecretsVercel = async ({
+  createManySecretsRawFn,
   integration,
   integrationAuth,
-  secrets,
+  secrets: infisicalSecrets,
   accessToken
 }: {
-  integration: TIntegrations;
+  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<{ id: string }>>;
+  integration: TIntegrations & {
+    projectId: string;
+    environment: {
+      id: string;
+      name: string;
+      slug: string;
+    };
+    secretPath: string;
+  };
   integrationAuth: TIntegrationAuths;
-  secrets: Record<string, { value: string; comment?: string }>;
+  secrets: Record<string, { value: string; comment?: string } | null>;
   accessToken: string;
 }) => {
   interface VercelSecret {
@@ -1486,80 +1496,119 @@ const syncSecretsVercel = async ({
     }
   }
 
-  const updateSecrets: VercelSecret[] = [];
-  const deleteSecrets: VercelSecret[] = [];
-  const newSecrets: VercelSecret[] = [];
+  const metadata = IntegrationMetadataSchema.parse(integration.metadata);
 
-  // Identify secrets to create
-  Object.keys(secrets).forEach((key) => {
-    if (!(key in res)) {
-      // case: secret has been created
-      newSecrets.push({
-        key,
-        value: secrets[key].value,
-        type: "encrypted",
-        target: [integration.targetEnvironment as string],
-        ...(integration.path
-          ? {
-              gitBranch: integration.path
-            }
-          : {})
-      });
+  // Default to overwrite target for old integrations that doesn't have a initial sync behavior set.
+  if (!metadata.initialSyncBehavior) {
+    metadata.initialSyncBehavior = IntegrationInitialSyncBehavior.OVERWRITE_TARGET;
+  }
+
+  const secretsToAddToInfisical: { [key: string]: VercelSecret } = {};
+
+  Object.keys(res).forEach((vercelKey) => {
+    if (!integration.lastUsed) {
+      // first time using integration
+      // -> apply initial sync behavior
+      switch (metadata.initialSyncBehavior) {
+        // Override all the secrets in Vercel
+        case IntegrationInitialSyncBehavior.OVERWRITE_TARGET: {
+          if (!(vercelKey in infisicalSecrets)) infisicalSecrets[vercelKey] = null;
+          break;
+        }
+        case IntegrationInitialSyncBehavior.PREFER_SOURCE: {
+          // if the vercel secret is not in infisical, we need to add it to infisical
+          if (!(vercelKey in infisicalSecrets)) {
+            infisicalSecrets[vercelKey] = {
+              value: res[vercelKey].value
+            };
+            secretsToAddToInfisical[vercelKey] = res[vercelKey];
+          }
+          break;
+        }
+        default: {
+          throw new Error(`Invalid initial sync behavior: ${metadata.initialSyncBehavior}`);
+        }
+      }
+    } else if (!(vercelKey in infisicalSecrets)) {
+      infisicalSecrets[vercelKey] = null;
     }
   });
 
-  // Identify secrets to update and delete
-  Object.keys(res).forEach((key) => {
-    if (key in secrets) {
-      if (res[key].value !== secrets[key].value) {
-        // case: secret value has changed
-        updateSecrets.push({
-          id: res[key].id,
-          key,
-          value: secrets[key].value,
-          type: res[key].type,
-          target: res[key].target.includes(integration.targetEnvironment as string)
-            ? [...res[key].target]
-            : [...res[key].target, integration.targetEnvironment as string],
-          ...(integration.path
-            ? {
-                gitBranch: integration.path
-              }
-            : {})
-        });
-      }
-    } else {
-      // case: secret has been deleted
-      deleteSecrets.push({
-        id: res[key].id,
-        key,
-        value: res[key].value,
-        type: "encrypted", // value doesn't matter
-        target: [integration.targetEnvironment as string],
-        ...(integration.path
-          ? {
-              gitBranch: integration.path
-            }
-          : {})
-      });
-    }
-  });
-
-  // Sync/push new secrets
-  if (newSecrets.length > 0) {
-    await request.post(`${IntegrationUrls.VERCEL_API_URL}/v10/projects/${integration.app}/env`, newSecrets, {
-      params,
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Accept-Encoding": "application/json"
-      }
+  if (Object.keys(secretsToAddToInfisical).length) {
+    await createManySecretsRawFn({
+      projectId: integration.projectId,
+      environment: integration.environment.slug,
+      path: integration.secretPath,
+      secrets: Object.keys(secretsToAddToInfisical).map((key) => ({
+        secretName: key,
+        secretValue: secretsToAddToInfisical[key].value,
+        type: SecretType.Shared,
+        secretComment: ""
+      }))
     });
   }
 
-  for await (const secret of updateSecrets) {
-    if (secret.type !== "sensitive") {
-      const { id, ...updatedSecret } = secret;
-      await request.patch(`${IntegrationUrls.VERCEL_API_URL}/v9/projects/${integration.app}/env/${id}`, updatedSecret, {
+  // update and create logic
+  for await (const key of Object.keys(infisicalSecrets)) {
+    if (!(key in res) || infisicalSecrets[key]?.value !== res[key].value) {
+      // if the key is not in the vercel res, we need to create it
+      if (!(key in res)) {
+        await request.post(
+          `${IntegrationUrls.VERCEL_API_URL}/v10/projects/${integration.app}/env`,
+          {
+            key,
+            value: infisicalSecrets[key]?.value,
+            type: "encrypted",
+            target: [integration.targetEnvironment as string],
+            ...(integration.path
+              ? {
+                  gitBranch: integration.path
+                }
+              : {})
+          },
+          {
+            params,
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Accept-Encoding": "application/json"
+            }
+          }
+        );
+
+        // Else if the key already exists and its not sensitive, we need to update it
+      } else if (res[key].type !== "sensitive") {
+        await request.patch(
+          `${IntegrationUrls.VERCEL_API_URL}/v9/projects/${integration.app}/env/${res[key].id}`,
+          {
+            key,
+            value: infisicalSecrets[key]?.value,
+            type: res[key].type,
+            target: res[key].target.includes(integration.targetEnvironment as string)
+              ? [...res[key].target]
+              : [...res[key].target, integration.targetEnvironment as string],
+            ...(integration.path
+              ? {
+                  gitBranch: integration.path
+                }
+              : {})
+          },
+          {
+            params,
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Accept-Encoding": "application/json"
+            }
+          }
+        );
+      }
+    }
+  }
+
+  // delete logic
+  for await (const key of Object.keys(res)) {
+    if (infisicalSecrets[key] === null) {
+      // case: delete secret
+      await request.delete(`${IntegrationUrls.VERCEL_API_URL}/v9/projects/${integration.app}/env/${res[key].id}`, {
         params,
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -1567,16 +1616,6 @@ const syncSecretsVercel = async ({
         }
       });
     }
-  }
-
-  for await (const secret of deleteSecrets) {
-    await request.delete(`${IntegrationUrls.VERCEL_API_URL}/v9/projects/${integration.app}/env/${secret.id}`, {
-      params,
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Accept-Encoding": "application/json"
-      }
-    });
   }
 };
 
@@ -4480,7 +4519,8 @@ export const syncIntegrationSecrets = async ({
         integration,
         integrationAuth,
         secrets,
-        accessToken
+        accessToken,
+        createManySecretsRawFn
       });
       break;
     case Integrations.NETLIFY:
