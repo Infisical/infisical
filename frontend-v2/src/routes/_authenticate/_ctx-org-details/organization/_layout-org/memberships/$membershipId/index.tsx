@@ -98,10 +98,7 @@ export const OrgUserPage = withPermission(
 
         handlePopUpClose("removeMember");
         navigate({
-          to: "/organization/$organizationId/members" as const,
-          params: {
-            organizationId: currentOrg.id
-          },
+          to: "/organization/members" as const,
           search: {
             selectedTab: TabSections.Member
           }
@@ -127,10 +124,7 @@ export const OrgUserPage = withPermission(
               leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
               onClick={() => {
                 navigate({
-                  to: "/organization/$organizationId/members" as const,
-                  params: {
-                    organizationId: currentOrg.id
-                  },
+                  to: "/organization/members" as const,
                   search: {
                     selectedTab: TabSections.Member
                   }

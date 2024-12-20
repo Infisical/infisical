@@ -45,14 +45,23 @@ import { Route as AuthenticateCtxOrgDetailsOrganizationLayoutOrgMembersIndexImpo
 import { Route as AuthenticateCtxOrgDetailsOrganizationLayoutOrgBillingIndexImport } from './routes/_authenticate/_ctx-org-details/organization/_layout-org/billing/index'
 import { Route as AuthenticateCtxOrgDetailsOrganizationLayoutOrgAuditLogsIndexImport } from './routes/_authenticate/_ctx-org-details/organization/_layout-org/audit-logs/index'
 import { Route as AuthenticateCtxOrgDetailsOrganizationLayoutOrgAdminIndexImport } from './routes/_authenticate/_ctx-org-details/organization/_layout-org/admin/index'
-import { Route as AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewImport } from './routes/_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/overview'
 import { Route as AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretManagerOverviewImport } from './routes/_authenticate/_ctx-org-details/organization/_layout-org/secret-manager/overview'
 import { Route as AuthenticateCtxOrgDetailsOrganizationLayoutOrgKmsOverviewImport } from './routes/_authenticate/_ctx-org-details/organization/_layout-org/kms/overview'
 import { Route as AuthenticateCtxOrgDetailsOrganizationLayoutOrgCertManagerOverviewImport } from './routes/_authenticate/_ctx-org-details/organization/_layout-org/cert-manager/overview'
+import { Route as AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSettingsIndexImport } from './routes/_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/settings/index'
+import { Route as AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretRotationIndexImport } from './routes/_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/secret-rotation/index'
+import { Route as AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewIndexImport } from './routes/_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/overview/index'
+import { Route as AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerApprovalIndexImport } from './routes/_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/approval/index'
+import { Route as AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAllowlistIndexImport } from './routes/_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/allowlist/index'
+import { Route as AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAccessIndexImport } from './routes/_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/access/index'
 import { Route as AuthenticateCtxOrgDetailsOrganizationLayoutOrgRolesRoleIdIndexImport } from './routes/_authenticate/_ctx-org-details/organization/_layout-org/roles/$roleId/index'
 import { Route as AuthenticateCtxOrgDetailsOrganizationLayoutOrgMembershipsMembershipIdIndexImport } from './routes/_authenticate/_ctx-org-details/organization/_layout-org/memberships/$membershipId/index'
 import { Route as AuthenticateCtxOrgDetailsOrganizationLayoutOrgIdentitiesIdentityIdIndexImport } from './routes/_authenticate/_ctx-org-details/organization/_layout-org/identities/$identityId/index'
 import { Route as AuthenticateCtxOrgDetailsOrganizationLayoutOrgGroupsGroupIdIndexImport } from './routes/_authenticate/_ctx-org-details/organization/_layout-org/groups/$groupId/index'
+import { Route as AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretsEnvSlugIndexImport } from './routes/_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/secrets.$envSlug/index'
+import { Route as AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRolesRoleSlugIndexImport } from './routes/_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/roles/$roleSlug/index'
+import { Route as AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerMembersMembershipIdIndexImport } from './routes/_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/members.$membershipId/index'
+import { Route as AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerIdentitiesIdentityIdIndexImport } from './routes/_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/identities.$identityId/index'
 
 // Create Virtual Routes
 
@@ -309,16 +318,6 @@ const AuthenticateCtxOrgDetailsOrganizationLayoutOrgAdminIndexRoute =
     getParentRoute: () => AuthenticateCtxOrgDetailsOrganizationLayoutOrgRoute,
   } as any)
 
-const AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewRoute =
-  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewImport.update(
-    {
-      id: '/overview',
-      path: '/overview',
-      getParentRoute: () =>
-        AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRoute,
-    } as any,
-  )
-
 const AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretManagerOverviewRoute =
   AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretManagerOverviewImport.update(
     {
@@ -341,6 +340,66 @@ const AuthenticateCtxOrgDetailsOrganizationLayoutOrgCertManagerOverviewRoute =
       id: '/cert-manager/overview',
       path: '/cert-manager/overview',
       getParentRoute: () => AuthenticateCtxOrgDetailsOrganizationLayoutOrgRoute,
+    } as any,
+  )
+
+const AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSettingsIndexRoute =
+  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSettingsIndexImport.update(
+    {
+      id: '/settings/',
+      path: '/settings/',
+      getParentRoute: () =>
+        AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRoute,
+    } as any,
+  )
+
+const AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretRotationIndexRoute =
+  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretRotationIndexImport.update(
+    {
+      id: '/secret-rotation/',
+      path: '/secret-rotation/',
+      getParentRoute: () =>
+        AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRoute,
+    } as any,
+  )
+
+const AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewIndexRoute =
+  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewIndexImport.update(
+    {
+      id: '/overview/',
+      path: '/overview/',
+      getParentRoute: () =>
+        AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRoute,
+    } as any,
+  )
+
+const AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerApprovalIndexRoute =
+  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerApprovalIndexImport.update(
+    {
+      id: '/approval/',
+      path: '/approval/',
+      getParentRoute: () =>
+        AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRoute,
+    } as any,
+  )
+
+const AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAllowlistIndexRoute =
+  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAllowlistIndexImport.update(
+    {
+      id: '/allowlist/',
+      path: '/allowlist/',
+      getParentRoute: () =>
+        AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRoute,
+    } as any,
+  )
+
+const AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAccessIndexRoute =
+  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAccessIndexImport.update(
+    {
+      id: '/access/',
+      path: '/access/',
+      getParentRoute: () =>
+        AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRoute,
     } as any,
   )
 
@@ -375,6 +434,46 @@ const AuthenticateCtxOrgDetailsOrganizationLayoutOrgGroupsGroupIdIndexRoute =
       id: '/groups/$groupId/',
       path: '/groups/$groupId/',
       getParentRoute: () => AuthenticateCtxOrgDetailsOrganizationLayoutOrgRoute,
+    } as any,
+  )
+
+const AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretsEnvSlugIndexRoute =
+  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretsEnvSlugIndexImport.update(
+    {
+      id: '/secrets/$envSlug/',
+      path: '/secrets/$envSlug/',
+      getParentRoute: () =>
+        AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRoute,
+    } as any,
+  )
+
+const AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRolesRoleSlugIndexRoute =
+  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRolesRoleSlugIndexImport.update(
+    {
+      id: '/roles/$roleSlug/',
+      path: '/roles/$roleSlug/',
+      getParentRoute: () =>
+        AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRoute,
+    } as any,
+  )
+
+const AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerMembersMembershipIdIndexRoute =
+  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerMembersMembershipIdIndexImport.update(
+    {
+      id: '/members/$membershipId/',
+      path: '/members/$membershipId/',
+      getParentRoute: () =>
+        AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRoute,
+    } as any,
+  )
+
+const AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerIdentitiesIdentityIdIndexRoute =
+  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerIdentitiesIdentityIdIndexImport.update(
+    {
+      id: '/identities/$identityId/',
+      path: '/identities/$identityId/',
+      getParentRoute: () =>
+        AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRoute,
     } as any,
   )
 
@@ -585,13 +684,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretManagerOverviewImport
       parentRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgImport
     }
-    '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/overview': {
-      id: '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/overview'
-      path: '/overview'
-      fullPath: '/secret-manager/$projectId/overview'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerImport
-    }
     '/_authenticate/_ctx-org-details/organization/_layout-org/admin/': {
       id: '/_authenticate/_ctx-org-details/organization/_layout-org/admin/'
       path: '/admin'
@@ -683,6 +775,76 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgRolesRoleIdIndexImport
       parentRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgImport
     }
+    '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/access/': {
+      id: '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/access/'
+      path: '/access'
+      fullPath: '/secret-manager/$projectId/access'
+      preLoaderRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAccessIndexImport
+      parentRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerImport
+    }
+    '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/allowlist/': {
+      id: '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/allowlist/'
+      path: '/allowlist'
+      fullPath: '/secret-manager/$projectId/allowlist'
+      preLoaderRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAllowlistIndexImport
+      parentRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerImport
+    }
+    '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/approval/': {
+      id: '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/approval/'
+      path: '/approval'
+      fullPath: '/secret-manager/$projectId/approval'
+      preLoaderRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerApprovalIndexImport
+      parentRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerImport
+    }
+    '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/overview/': {
+      id: '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/overview/'
+      path: '/overview'
+      fullPath: '/secret-manager/$projectId/overview'
+      preLoaderRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewIndexImport
+      parentRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerImport
+    }
+    '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secret-rotation/': {
+      id: '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secret-rotation/'
+      path: '/secret-rotation'
+      fullPath: '/secret-manager/$projectId/secret-rotation'
+      preLoaderRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretRotationIndexImport
+      parentRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerImport
+    }
+    '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/settings/': {
+      id: '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/settings/'
+      path: '/settings'
+      fullPath: '/secret-manager/$projectId/settings'
+      preLoaderRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSettingsIndexImport
+      parentRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerImport
+    }
+    '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/identities/$identityId/': {
+      id: '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/identities/$identityId/'
+      path: '/identities/$identityId'
+      fullPath: '/secret-manager/$projectId/identities/$identityId'
+      preLoaderRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerIdentitiesIdentityIdIndexImport
+      parentRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerImport
+    }
+    '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/members/$membershipId/': {
+      id: '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/members/$membershipId/'
+      path: '/members/$membershipId'
+      fullPath: '/secret-manager/$projectId/members/$membershipId'
+      preLoaderRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerMembersMembershipIdIndexImport
+      parentRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerImport
+    }
+    '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/roles/$roleSlug/': {
+      id: '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/roles/$roleSlug/'
+      path: '/roles/$roleSlug'
+      fullPath: '/secret-manager/$projectId/roles/$roleSlug'
+      preLoaderRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRolesRoleSlugIndexImport
+      parentRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerImport
+    }
+    '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secrets/$envSlug/': {
+      id: '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secrets/$envSlug/'
+      path: '/secrets/$envSlug'
+      fullPath: '/secret-manager/$projectId/secrets/$envSlug'
+      preLoaderRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretsEnvSlugIndexImport
+      parentRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerImport
+    }
   }
 }
 
@@ -767,13 +929,40 @@ const AuthenticateCtxOrgDetailsOrganizationRouteWithChildren =
   )
 
 interface AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRouteChildren {
-  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewRoute
+  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAccessIndexRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAccessIndexRoute
+  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAllowlistIndexRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAllowlistIndexRoute
+  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerApprovalIndexRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerApprovalIndexRoute
+  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewIndexRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewIndexRoute
+  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretRotationIndexRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretRotationIndexRoute
+  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSettingsIndexRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSettingsIndexRoute
+  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerIdentitiesIdentityIdIndexRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerIdentitiesIdentityIdIndexRoute
+  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerMembersMembershipIdIndexRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerMembersMembershipIdIndexRoute
+  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRolesRoleSlugIndexRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRolesRoleSlugIndexRoute
+  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretsEnvSlugIndexRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretsEnvSlugIndexRoute
 }
 
 const AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRouteChildren: AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRouteChildren =
   {
-    AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewRoute:
-      AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewRoute,
+    AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAccessIndexRoute:
+      AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAccessIndexRoute,
+    AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAllowlistIndexRoute:
+      AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAllowlistIndexRoute,
+    AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerApprovalIndexRoute:
+      AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerApprovalIndexRoute,
+    AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewIndexRoute:
+      AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewIndexRoute,
+    AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretRotationIndexRoute:
+      AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretRotationIndexRoute,
+    AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSettingsIndexRoute:
+      AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSettingsIndexRoute,
+    AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerIdentitiesIdentityIdIndexRoute:
+      AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerIdentitiesIdentityIdIndexRoute,
+    AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerMembersMembershipIdIndexRoute:
+      AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerMembersMembershipIdIndexRoute,
+    AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRolesRoleSlugIndexRoute:
+      AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRolesRoleSlugIndexRoute,
+    AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretsEnvSlugIndexRoute:
+      AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretsEnvSlugIndexRoute,
   }
 
 const AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRouteWithChildren =
@@ -928,7 +1117,6 @@ export interface FileRoutesByFullPath {
   '/organization/cert-manager/overview': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgCertManagerOverviewRoute
   '/organization/kms/overview': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgKmsOverviewRoute
   '/organization/secret-manager/overview': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretManagerOverviewRoute
-  '/secret-manager/$projectId/overview': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewRoute
   '/organization/admin': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgAdminIndexRoute
   '/organization/audit-logs': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgAuditLogsIndexRoute
   '/organization/billing': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgBillingIndexRoute
@@ -942,6 +1130,16 @@ export interface FileRoutesByFullPath {
   '/organization/identities/$identityId': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgIdentitiesIdentityIdIndexRoute
   '/organization/memberships/$membershipId': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgMembershipsMembershipIdIndexRoute
   '/organization/roles/$roleId': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgRolesRoleIdIndexRoute
+  '/secret-manager/$projectId/access': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAccessIndexRoute
+  '/secret-manager/$projectId/allowlist': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAllowlistIndexRoute
+  '/secret-manager/$projectId/approval': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerApprovalIndexRoute
+  '/secret-manager/$projectId/overview': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewIndexRoute
+  '/secret-manager/$projectId/secret-rotation': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretRotationIndexRoute
+  '/secret-manager/$projectId/settings': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSettingsIndexRoute
+  '/secret-manager/$projectId/identities/$identityId': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerIdentitiesIdentityIdIndexRoute
+  '/secret-manager/$projectId/members/$membershipId': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerMembersMembershipIdIndexRoute
+  '/secret-manager/$projectId/roles/$roleSlug': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRolesRoleSlugIndexRoute
+  '/secret-manager/$projectId/secrets/$envSlug': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretsEnvSlugIndexRoute
 }
 
 export interface FileRoutesByTo {
@@ -967,7 +1165,6 @@ export interface FileRoutesByTo {
   '/organization/cert-manager/overview': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgCertManagerOverviewRoute
   '/organization/kms/overview': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgKmsOverviewRoute
   '/organization/secret-manager/overview': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretManagerOverviewRoute
-  '/secret-manager/$projectId/overview': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewRoute
   '/organization/admin': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgAdminIndexRoute
   '/organization/audit-logs': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgAuditLogsIndexRoute
   '/organization/billing': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgBillingIndexRoute
@@ -981,6 +1178,16 @@ export interface FileRoutesByTo {
   '/organization/identities/$identityId': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgIdentitiesIdentityIdIndexRoute
   '/organization/memberships/$membershipId': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgMembershipsMembershipIdIndexRoute
   '/organization/roles/$roleId': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgRolesRoleIdIndexRoute
+  '/secret-manager/$projectId/access': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAccessIndexRoute
+  '/secret-manager/$projectId/allowlist': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAllowlistIndexRoute
+  '/secret-manager/$projectId/approval': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerApprovalIndexRoute
+  '/secret-manager/$projectId/overview': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewIndexRoute
+  '/secret-manager/$projectId/secret-rotation': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretRotationIndexRoute
+  '/secret-manager/$projectId/settings': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSettingsIndexRoute
+  '/secret-manager/$projectId/identities/$identityId': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerIdentitiesIdentityIdIndexRoute
+  '/secret-manager/$projectId/members/$membershipId': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerMembersMembershipIdIndexRoute
+  '/secret-manager/$projectId/roles/$roleSlug': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRolesRoleSlugIndexRoute
+  '/secret-manager/$projectId/secrets/$envSlug': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretsEnvSlugIndexRoute
 }
 
 export interface FileRoutesById {
@@ -1014,7 +1221,6 @@ export interface FileRoutesById {
   '/_authenticate/_ctx-org-details/organization/_layout-org/cert-manager/overview': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgCertManagerOverviewRoute
   '/_authenticate/_ctx-org-details/organization/_layout-org/kms/overview': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgKmsOverviewRoute
   '/_authenticate/_ctx-org-details/organization/_layout-org/secret-manager/overview': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretManagerOverviewRoute
-  '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/overview': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewRoute
   '/_authenticate/_ctx-org-details/organization/_layout-org/admin/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgAdminIndexRoute
   '/_authenticate/_ctx-org-details/organization/_layout-org/audit-logs/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgAuditLogsIndexRoute
   '/_authenticate/_ctx-org-details/organization/_layout-org/billing/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgBillingIndexRoute
@@ -1028,6 +1234,16 @@ export interface FileRoutesById {
   '/_authenticate/_ctx-org-details/organization/_layout-org/identities/$identityId/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgIdentitiesIdentityIdIndexRoute
   '/_authenticate/_ctx-org-details/organization/_layout-org/memberships/$membershipId/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgMembershipsMembershipIdIndexRoute
   '/_authenticate/_ctx-org-details/organization/_layout-org/roles/$roleId/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgRolesRoleIdIndexRoute
+  '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/access/': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAccessIndexRoute
+  '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/allowlist/': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAllowlistIndexRoute
+  '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/approval/': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerApprovalIndexRoute
+  '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/overview/': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewIndexRoute
+  '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secret-rotation/': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretRotationIndexRoute
+  '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/settings/': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSettingsIndexRoute
+  '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/identities/$identityId/': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerIdentitiesIdentityIdIndexRoute
+  '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/members/$membershipId/': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerMembersMembershipIdIndexRoute
+  '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/roles/$roleSlug/': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRolesRoleSlugIndexRoute
+  '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secrets/$envSlug/': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretsEnvSlugIndexRoute
 }
 
 export interface FileRouteTypes {
@@ -1057,7 +1273,6 @@ export interface FileRouteTypes {
     | '/organization/cert-manager/overview'
     | '/organization/kms/overview'
     | '/organization/secret-manager/overview'
-    | '/secret-manager/$projectId/overview'
     | '/organization/admin'
     | '/organization/audit-logs'
     | '/organization/billing'
@@ -1071,6 +1286,16 @@ export interface FileRouteTypes {
     | '/organization/identities/$identityId'
     | '/organization/memberships/$membershipId'
     | '/organization/roles/$roleId'
+    | '/secret-manager/$projectId/access'
+    | '/secret-manager/$projectId/allowlist'
+    | '/secret-manager/$projectId/approval'
+    | '/secret-manager/$projectId/overview'
+    | '/secret-manager/$projectId/secret-rotation'
+    | '/secret-manager/$projectId/settings'
+    | '/secret-manager/$projectId/identities/$identityId'
+    | '/secret-manager/$projectId/members/$membershipId'
+    | '/secret-manager/$projectId/roles/$roleSlug'
+    | '/secret-manager/$projectId/secrets/$envSlug'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -1095,7 +1320,6 @@ export interface FileRouteTypes {
     | '/organization/cert-manager/overview'
     | '/organization/kms/overview'
     | '/organization/secret-manager/overview'
-    | '/secret-manager/$projectId/overview'
     | '/organization/admin'
     | '/organization/audit-logs'
     | '/organization/billing'
@@ -1109,6 +1333,16 @@ export interface FileRouteTypes {
     | '/organization/identities/$identityId'
     | '/organization/memberships/$membershipId'
     | '/organization/roles/$roleId'
+    | '/secret-manager/$projectId/access'
+    | '/secret-manager/$projectId/allowlist'
+    | '/secret-manager/$projectId/approval'
+    | '/secret-manager/$projectId/overview'
+    | '/secret-manager/$projectId/secret-rotation'
+    | '/secret-manager/$projectId/settings'
+    | '/secret-manager/$projectId/identities/$identityId'
+    | '/secret-manager/$projectId/members/$membershipId'
+    | '/secret-manager/$projectId/roles/$roleSlug'
+    | '/secret-manager/$projectId/secrets/$envSlug'
   id:
     | '__root__'
     | '/'
@@ -1140,7 +1374,6 @@ export interface FileRouteTypes {
     | '/_authenticate/_ctx-org-details/organization/_layout-org/cert-manager/overview'
     | '/_authenticate/_ctx-org-details/organization/_layout-org/kms/overview'
     | '/_authenticate/_ctx-org-details/organization/_layout-org/secret-manager/overview'
-    | '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/overview'
     | '/_authenticate/_ctx-org-details/organization/_layout-org/admin/'
     | '/_authenticate/_ctx-org-details/organization/_layout-org/audit-logs/'
     | '/_authenticate/_ctx-org-details/organization/_layout-org/billing/'
@@ -1154,6 +1387,16 @@ export interface FileRouteTypes {
     | '/_authenticate/_ctx-org-details/organization/_layout-org/identities/$identityId/'
     | '/_authenticate/_ctx-org-details/organization/_layout-org/memberships/$membershipId/'
     | '/_authenticate/_ctx-org-details/organization/_layout-org/roles/$roleId/'
+    | '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/access/'
+    | '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/allowlist/'
+    | '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/approval/'
+    | '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/overview/'
+    | '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secret-rotation/'
+    | '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/settings/'
+    | '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/identities/$identityId/'
+    | '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/members/$membershipId/'
+    | '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/roles/$roleSlug/'
+    | '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secrets/$envSlug/'
   fileRoutesById: FileRoutesById
 }
 
@@ -1336,7 +1579,16 @@ export const routeTree = rootRoute
       "filePath": "_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager.tsx",
       "parent": "/_authenticate/_ctx-org-details/secret-manager/$projectId",
       "children": [
-        "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/overview"
+        "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/access/",
+        "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/allowlist/",
+        "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/approval/",
+        "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/overview/",
+        "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secret-rotation/",
+        "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/settings/",
+        "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/identities/$identityId/",
+        "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/members/$membershipId/",
+        "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/roles/$roleSlug/",
+        "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secrets/$envSlug/"
       ]
     },
     "/_authenticate/_ctx-org-details/organization/_layout-org/": {
@@ -1354,10 +1606,6 @@ export const routeTree = rootRoute
     "/_authenticate/_ctx-org-details/organization/_layout-org/secret-manager/overview": {
       "filePath": "_authenticate/_ctx-org-details/organization/_layout-org/secret-manager/overview.tsx",
       "parent": "/_authenticate/_ctx-org-details/organization/_layout-org"
-    },
-    "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/overview": {
-      "filePath": "_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/overview.tsx",
-      "parent": "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager"
     },
     "/_authenticate/_ctx-org-details/organization/_layout-org/admin/": {
       "filePath": "_authenticate/_ctx-org-details/organization/_layout-org/admin/index.tsx",
@@ -1410,6 +1658,46 @@ export const routeTree = rootRoute
     "/_authenticate/_ctx-org-details/organization/_layout-org/roles/$roleId/": {
       "filePath": "_authenticate/_ctx-org-details/organization/_layout-org/roles/$roleId/index.tsx",
       "parent": "/_authenticate/_ctx-org-details/organization/_layout-org"
+    },
+    "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/access/": {
+      "filePath": "_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/access/index.tsx",
+      "parent": "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager"
+    },
+    "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/allowlist/": {
+      "filePath": "_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/allowlist/index.tsx",
+      "parent": "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager"
+    },
+    "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/approval/": {
+      "filePath": "_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/approval/index.tsx",
+      "parent": "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager"
+    },
+    "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/overview/": {
+      "filePath": "_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/overview/index.tsx",
+      "parent": "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager"
+    },
+    "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secret-rotation/": {
+      "filePath": "_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/secret-rotation/index.tsx",
+      "parent": "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager"
+    },
+    "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/settings/": {
+      "filePath": "_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/settings/index.tsx",
+      "parent": "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager"
+    },
+    "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/identities/$identityId/": {
+      "filePath": "_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/identities.$identityId/index.tsx",
+      "parent": "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager"
+    },
+    "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/members/$membershipId/": {
+      "filePath": "_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/members.$membershipId/index.tsx",
+      "parent": "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager"
+    },
+    "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/roles/$roleSlug/": {
+      "filePath": "_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/roles/$roleSlug/index.tsx",
+      "parent": "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager"
+    },
+    "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secrets/$envSlug/": {
+      "filePath": "_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/secrets.$envSlug/index.tsx",
+      "parent": "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager"
     }
   }
 }

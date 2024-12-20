@@ -6,8 +6,8 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { useImportEnvKey } from "@app/hooks/api/migration/mutations";
-// TODO(rbr): Bring back this later
-// import { GenericDropzone } from "@app/views/SecretMainPage/components/SecretDropzone/GenericDropzone";
+
+import { GenericDropzone } from "./GenericDropzone";
 
 type Props = {
   id?: string;
@@ -95,15 +95,12 @@ export const EnvKeyPlatformModal = ({ onClose }: Props) => {
           </FormControl>
         )}
       />
-
-      {
-        // <GenericDropzone
-        //   ref={fileUploadRef}
-        //   text="Select Env Key export file"
-        //   onData={onImportFileDrop}
-        //   isSmaller
-        // />
-      }
+      <GenericDropzone
+        ref={fileUploadRef}
+        text="Select Env Key export file"
+        onData={onImportFileDrop}
+        isSmaller
+      />
       <div className="mt-6 flex items-center space-x-4">
         <Button
           type="submit"

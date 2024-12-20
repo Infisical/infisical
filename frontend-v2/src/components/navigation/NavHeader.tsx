@@ -1,13 +1,12 @@
-import { ParsedUrlQuery } from "querystring";
-
 import { useState } from "react";
 import { faAngleRight, faCheck, faCopy, faLock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useParams } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
 import { useOrganization, useWorkspace } from "@app/context";
 import { useToggle } from "@app/hooks";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { createNotification } from "../notifications";
 import { IconButton, Select, SelectItem, Tooltip } from "../v2";
@@ -59,7 +58,10 @@ export default function NavHeader({
   const [isCopied, { timedToggle: toggleIsCopied }] = useToggle(false);
   const [isHoveringCopyButton, setIsHoveringCopyButton] = useState(false);
 
-  const navigate = useNavigate();
+  const routerEnvSlug = useParams({
+    from: "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secrets/$envSlug/",
+    select: (el) => el.envSlug
+  });
 
   const secretPathSegments = secretPath.split("/").filter(Boolean);
 
@@ -91,10 +93,8 @@ export default function NavHeader({
       <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-3 text-sm text-gray-400" />
       {pageName === "Secrets" ? (
         <Link
-          to={{
-            pathname: "/project/$projectId/secrets/overview",
-            params: { id: currentWorkspace?.id }
-          }}
+          to={`/${ProjectType.SecretManager}/$projectId/overview` as const}
+          params={{ projectId: currentWorkspace.id }}
         >
           <a className="text-sm font-semibold text-primary/80 hover:text-primary">{pageName}</a>
         </Link>
@@ -128,10 +128,8 @@ export default function NavHeader({
         <div className="flex items-center space-x-3">
           <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-1.5 text-xs text-gray-400" />
           <Link
-            to={{
-              pathname: "/project/[id]/secrets/[env]" as const,
-              query: { id: navigate.query.id, env: navigate.query.env }
-            }}
+            to={`/${ProjectType.SecretManager}/$projectId/secrets/$envSlug` as const}
+            params={{ projectId: currentWorkspace.id, envSlug: routerEnvSlug }}
             className="text-sm font-semibold text-primary/80 hover:text-primary"
           >
             {userAvailableEnvs?.find(({ slug }) => slug === currentEnv)?.name}
@@ -140,10 +138,7 @@ export default function NavHeader({
       )}
       {isFolderMode &&
         secretPathSegments?.map((folderName, index) => {
-          const query: ParsedUrlQuery & { secretPath: string } = {
-            ...navigate.query,
-            secretPath: `/${secretPathSegments.slice(0, index + 1).join("/")}`
-          };
+          const newSecretPath = `/${secretPathSegments.slice(0, index + 1).join("/")}`;
 
           return (
             <div
@@ -174,7 +169,7 @@ export default function NavHeader({
                       onClick={() => {
                         if (isCopied) return;
 
-                        navigator.clipboard.writeText(query.secretPath);
+                        navigator.clipboard.writeText(newSecretPath);
 
                         createNotification({
                           text: "Copied secret path to clipboard",
@@ -195,9 +190,12 @@ export default function NavHeader({
                 </div>
               ) : (
                 <Link
-                  passHref
-                  legacyBehavior
-                  href={{ pathname: "/project/[id]/secrets/[env]", query }}
+                  to={`/${ProjectType.SecretManager}/$projectId/secrets/$envSlug` as const}
+                  params={{
+                    projectId: currentWorkspace.id,
+                    envSlug: routerEnvSlug
+                  }}
+                  search={(query) => ({ ...query, secretPath: newSecretPath })}
                 >
                   <a
                     className={twMerge(

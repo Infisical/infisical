@@ -78,7 +78,8 @@ const MembersPage = () => {
 };
 
 const MembersPageQuerySchema = z.object({
-  selectedTab: z.string().catch(TabSections.Member)
+  selectedTab: z.string().catch(TabSections.Member),
+  action: z.string().catch("")
 });
 
 export const Route = createFileRoute(
