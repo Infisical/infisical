@@ -320,6 +320,7 @@
             "cli/commands/run",
             "cli/commands/secrets",
             "cli/commands/dynamic-secrets",
+            "cli/commands/ssh",
             "cli/commands/export",
             "cli/commands/token",
             "cli/commands/service-token",
