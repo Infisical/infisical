@@ -342,14 +342,6 @@
       ]
     },
     {
-      "group": "App Connections",
-      "pages": [
-        "integrations/app-connections/overview",
-        "integrations/app-connections/aws",
-        "integrations/app-connections/github"
-      ]
-    },
-    {
       "group": "Infrastructure Integrations",
       "pages": [
         {
@@ -763,33 +755,6 @@
             "api-reference/endpoints/identity-specific-privilege/delete",
             "api-reference/endpoints/identity-specific-privilege/find-by-slug",
             "api-reference/endpoints/identity-specific-privilege/list"
-          ]
-        },
-        {
-          "group": "App Connections",
-          "pages": [
-            "api-reference/endpoints/app-connections/list",
-            "api-reference/endpoints/app-connections/options",
-            { "group":  "AWS",
-              "pages": [
-                "api-reference/endpoints/app-connections/aws/list",
-                "api-reference/endpoints/app-connections/aws/get-by-id",
-                "api-reference/endpoints/app-connections/aws/get-by-name",
-                "api-reference/endpoints/app-connections/aws/create",
-                "api-reference/endpoints/app-connections/aws/update",
-                "api-reference/endpoints/app-connections/aws/delete"
-              ]
-            },
-            { "group":  "GitHub",
-              "pages": [
-                "api-reference/endpoints/app-connections/github/list",
-                "api-reference/endpoints/app-connections/github/get-by-id",
-                "api-reference/endpoints/app-connections/github/get-by-name",
-                "api-reference/endpoints/app-connections/github/create",
-                "api-reference/endpoints/app-connections/github/update",
-                "api-reference/endpoints/app-connections/github/delete"
-              ]
-            }
           ]
         },
         {
