@@ -6,7 +6,7 @@ description: "Learn how to generate SSH credentials to provide secure and centra
 
 ## Concept
 
-Infisical can be used to issue SSH certificates to clients to provide short-lived, secure SSH access to infrastructure;
+Infisical can be used to issue SSH credentials to clients to provide short-lived, secure SSH access to infrastructure;
 this improves on many limitations of traditional SSH key-based authentication via mitigation of private key compromise, static key management,
 unauthorized access, and SSH key sprawl.
 
@@ -191,7 +191,9 @@ infisical login
 
     - `certificateTemplateId`: The ID of the certificate template to use for issuing the SSH certificate.
     - `principals`: The comma-delimited username(s) or hostname(s) to include in the SSH certificate.
-
+    
+    For fuller documentation on commands and flags supported by the Infisical CLI for SSH, refer to the docs [here](/cli/commands/ssh).
+ 
   </Step>
   <Step title="SSH into the host">
     Finally, SSH into the desired host; the SSH operation will be performed using the SSH certificate loaded into the SSH agent.
@@ -199,7 +201,6 @@ infisical login
     ```bash
     ssh username@hostname
     ```
-
   </Step>
 </Steps>
 
