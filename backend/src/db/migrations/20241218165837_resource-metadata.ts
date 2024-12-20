@@ -19,8 +19,22 @@ export async function up(knex: Knex): Promise<void> {
       tb.timestamps(true, true, true);
     });
   }
+
+  const hasSecretMetadataField = await knex.schema.hasColumn(TableName.SecretApprovalRequestSecretV2, "secretMetadata");
+  if (!hasSecretMetadataField) {
+    await knex.schema.alterTable(TableName.SecretApprovalRequestSecretV2, (t) => {
+      t.jsonb("secretMetadata");
+    });
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists(TableName.ResourceMetadata);
+
+  const hasSecretMetadataField = await knex.schema.hasColumn(TableName.SecretApprovalRequestSecretV2, "secretMetadata");
+  if (hasSecretMetadataField) {
+    await knex.schema.alterTable(TableName.SecretApprovalRequestSecretV2, (t) => {
+      t.dropColumn("secretMetadata");
+    });
+  }
 }

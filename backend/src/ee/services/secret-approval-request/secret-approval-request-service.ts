@@ -23,6 +23,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
+import { ResourceMetadataDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
 import {
   decryptSecretWithBot,
@@ -244,6 +245,7 @@ export const secretApprovalRequestServiceFactory = ({
         secretKey: el.key,
         id: el.id,
         version: el.version,
+        secretMetadata: el.secretMetadata as ResourceMetadataDTO,
         secretValue: el.encryptedValue ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString() : "",
         secretComment: el.encryptedComment
           ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
@@ -272,7 +274,8 @@ export const secretApprovalRequestServiceFactory = ({
               secretComment: el.secretVersion.encryptedComment
                 ? secretManagerDecryptor({ cipherTextBlob: el.secretVersion.encryptedComment }).toString()
                 : "",
-              tags: el.secretVersion.tags
+              tags: el.secretVersion.tags,
+              secretMetadata: el.oldSecretMetadata as ResourceMetadataDTO
             }
           : undefined
       }));
@@ -554,6 +557,7 @@ export const secretApprovalRequestServiceFactory = ({
                 encryptedValue: el.encryptedValue,
                 skipMultilineEncoding: el.skipMultilineEncoding,
                 key: el.key,
+                secretMetadata: el.secretMetadata as ResourceMetadataDTO,
                 references: el.encryptedValue
                   ? getAllSecretReferencesV2Bridge(
                       secretManagerDecryptor({
@@ -598,6 +602,7 @@ export const secretApprovalRequestServiceFactory = ({
                     skipMultilineEncoding: el.skipMultilineEncoding,
                     key: el.key,
                     tags: el?.tags.map(({ id }) => id),
+                    secretMetadata: el.secretMetadata as ResourceMetadataDTO,
                     ...encryptedValue
                   }
                 };
@@ -1216,6 +1221,7 @@ export const secretApprovalRequestServiceFactory = ({
           ),
           skipMultilineEncoding: createdSecret.skipMultilineEncoding,
           key: createdSecret.secretKey,
+          secretMetadata: createdSecret.secretMetadata,
           type: SecretType.Shared
         }))
       );
@@ -1271,12 +1277,14 @@ export const secretApprovalRequestServiceFactory = ({
             reminderNote,
             secretComment,
             metadata,
-            skipMultilineEncoding
+            skipMultilineEncoding,
+            secretMetadata
           }) => {
             const secretId = updatingSecretsGroupByKey[secretKey][0].id;
             if (tagIds?.length) commitTagIds[secretKey] = tagIds;
             return {
               ...latestSecretVersions[secretId],
+              secretMetadata,
               key: newSecretName || secretKey,
               encryptedComment: setKnexStringValue(
                 secretComment,
@@ -1378,7 +1386,8 @@ export const secretApprovalRequestServiceFactory = ({
             reminderRepeatDays,
             encryptedValue,
             secretId,
-            secretVersion
+            secretVersion,
+            secretMetadata
           }) => ({
             version,
             requestId: doc.id,
@@ -1391,7 +1400,8 @@ export const secretApprovalRequestServiceFactory = ({
             reminderRepeatDays,
             reminderNote,
             encryptedComment,
-            key
+            key,
+            secretMetadata: JSON.stringify(secretMetadata)
           })
         ),
         tx

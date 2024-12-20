@@ -1419,7 +1419,8 @@ export const secretServiceFactory = ({
                 secretValue,
                 tagIds,
                 reminderNote: secretReminderNote,
-                reminderRepeatDays: secretReminderRepeatDays
+                reminderRepeatDays: secretReminderRepeatDays,
+                secretMetadata
               }
             ]
           }
@@ -1562,7 +1563,8 @@ export const secretServiceFactory = ({
                 secretValue,
                 tagIds,
                 reminderNote: secretReminderNote,
-                reminderRepeatDays: secretReminderRepeatDays
+                reminderRepeatDays: secretReminderRepeatDays,
+                secretMetadata
               }
             ]
           }
@@ -1803,7 +1805,8 @@ export const secretServiceFactory = ({
               secretComment: el.secretComment,
               metadata: el.metadata,
               skipMultilineEncoding: el.skipMultilineEncoding,
-              secretKey: el.secretKey
+              secretKey: el.secretKey,
+              secretMetadata: el.secretMetadata
             }))
           }
         });

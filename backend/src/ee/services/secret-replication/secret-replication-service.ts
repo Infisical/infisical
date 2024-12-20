@@ -396,6 +396,7 @@ export const secretReplicationServiceFactory = ({
                       op: operation,
                       requestId: approvalRequestDoc.id,
                       metadata: doc.metadata,
+                      secretMetadata: JSON.stringify(doc.secretMetadata),
                       key: doc.key,
                       encryptedValue: doc.encryptedValue,
                       encryptedComment: doc.encryptedComment,
