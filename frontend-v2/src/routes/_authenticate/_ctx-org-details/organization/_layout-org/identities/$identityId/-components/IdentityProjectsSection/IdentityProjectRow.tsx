@@ -6,10 +6,10 @@ import { format } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
 import { IconButton, Tag, Td, Tooltip, Tr } from "@app/components/v2";
+import { useGetUserWorkspaces } from "@app/hooks/api";
 import { IdentityMembership } from "@app/hooks/api/identities/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
-import { useGetUserWorkspaces } from "@app/hooks/api";
 
 export enum TabSections {
   Member = "members",
@@ -59,7 +59,7 @@ export const IdentityProjectRow = ({
       onClick={() => {
         if (isAccessible) {
           navigate({
-            to: `/${project?.type}/${project.id}/members` as const,
+            to: `/${project?.type}/${project.id}/access` as const,
             search: {
               selectedTab: TabSections.Identities
             }

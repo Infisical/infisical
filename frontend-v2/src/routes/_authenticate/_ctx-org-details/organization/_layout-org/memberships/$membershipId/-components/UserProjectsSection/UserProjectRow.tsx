@@ -5,11 +5,11 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import { IconButton, Tag, Td, Tooltip, Tr } from "@app/components/v2";
+import { useGetUserWorkspaces } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { TWorkspaceUser } from "@app/hooks/api/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { TabSections } from "@app/types/org";
-import { useGetUserWorkspaces } from "@app/hooks/api";
 
 type Props = {
   membership: TWorkspaceUser;
@@ -52,7 +52,7 @@ export const UserProjectRow = ({
       onClick={() => {
         if (isAccessible) {
           navigate({
-            to: `/${project.type}/$projectId/members` as const,
+            to: `/${project.type}/$projectId/access` as const,
             params: {
               projectId: project.id
             },

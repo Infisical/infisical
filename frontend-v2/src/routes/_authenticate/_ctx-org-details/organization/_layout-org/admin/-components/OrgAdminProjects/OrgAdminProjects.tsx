@@ -59,7 +59,7 @@ export const OrgAdminProjects = withPermission(
           projectId
         });
         await navigate({
-          to: `/${type}/$projectId/secrets/overview` as const,
+          to: `/${type}/$projectId/overview` as const,
           params: {
             projectId
           }
