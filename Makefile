@@ -19,6 +19,9 @@ up-prod:
 down:
 	docker compose -f docker-compose.dev.yml down
 
+down-prod:
+	docker compose -f docker-compose.prod.yml down
+
 reviewable-ui:
 	cd frontend && \
 	npm run lint:fix && \
