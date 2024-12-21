@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -108,15 +107,18 @@ export const PreviewSection = () => {
                 Want to learn more?{" "}
               </div>
               <div className="flex w-full justify-center">
-                <Link href="https://infisical.com/schedule-demo">
-                  <span className="cursor-pointer rounded-full border border-mineshaft-500 bg-mineshaft-600 px-4 py-2 duration-200 hover:border-primary/40 hover:bg-primary/10">
-                    Book a demo{" "}
-                    <FontAwesomeIcon
-                      icon={faArrowUpRightFromSquare}
-                      className="mb-[0.06rem] ml-1 text-xs"
-                    />
-                  </span>
-                </Link>
+                <a
+                  href="https://infisical.com/schedule-demo"
+                  target="_blank"
+                  className="cursor-pointer rounded-full border border-mineshaft-500 bg-mineshaft-600 px-4 py-2 duration-200 hover:border-primary/40 hover:bg-primary/10"
+                  rel="noreferrer"
+                >
+                  Book a demo{" "}
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="mb-[0.06rem] ml-1 text-xs"
+                  />
+                </a>
               </div>
             </div>
           </div>
