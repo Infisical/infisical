@@ -1,0 +1,42 @@
+name: notify-slack
+description: notify slack
+inputs:
+  channel:
+    description: channel to send message
+    required: true
+  token:
+    description: token with chat:write and chat:write.public permissions
+    required: true
+  message:
+    description: message formatted in Markdown
+    required: true
+runs:
+  using: composite
+  steps:
+    # see https://api.slack.com/tutorials/tracks/posting-messages-with-curl#let-us-hello-then__making-your-messages-more-fantastic
+    - name: notify-slack
+      shell: bash
+      run: |
+        curl https://slack.com/api/chat.postMessage \
+        -X POST --fail --silent --show-error \
+        -H "Authorization: Bearer ${SLACK_TOKEN}" \
+        -H "Content-type: application/json; charset=utf-8" \
+        --data @<(yq -pjson -ojson '.channel = env(SLACK_CHANNEL) | .blocks[0].text.text = env(MESSAGE)' <<'EOF'
+        {
+          "channel": "<replace me>",
+          "blocks": [
+            {
+              "type": "section",
+              "text": {
+                "type": "mrkdwn",
+                "text": "<replace me>"
+              }
+            }
+          ]
+        }
+        EOF
+        ) >/dev/null
+      env:
+        SLACK_CHANNEL: ${{ inputs.channel }}
+        SLACK_TOKEN: ${{ inputs.token }}
+        MESSAGE: ${{ inputs.message }}
