@@ -1,3 +1,4 @@
+import Head from "next/head";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -9,7 +10,6 @@ import { useDeleteUserSecret } from "@app/hooks/api/userSecrets";
 import { AddUserSecretModal } from "./AddUserSecretModal/AddUserSecretModal";
 import { EditUserSecretModal } from "./EditUserSecretModal/EditUserSecretModal";
 import { UserSecretsTable } from "./UserSecretsTable/UserSecretsTable";
-
 
 export const UserSecretsSection = () => {
   const { currentOrg } = useOrganization();
@@ -34,17 +34,25 @@ export const UserSecretsSection = () => {
   };
 
   return (
-    <div className="flex flex-col">
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Button
-            onClick={() => handlePopUpToggle("createUserSecret", true)}
-            leftIcon={<FontAwesomeIcon icon={faPlus} />}
-          >
-            Add Secret
-          </Button>
-        </div>
+    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+        <Head>
+        <title>User Secrets</title>
+        <link rel="icon" href="/infisical.ico" />
+        <meta property="og:image" content="/images/message.png" />
+      </Head>
+
+
+      <div className="mb-4 flex justify-between">
+        <p className="text-xl font-semibold text-mineshaft-100">Shared Secrets</p>
+        <Button
+          colorSchema="primary"
+          leftIcon={<FontAwesomeIcon icon={faPlus} />}
+          onClick={() => handlePopUpToggle("createUserSecret", true)}
+        >
+          Add Secret
+        </Button>
       </div>
+     
 
       <UserSecretsTable handlePopUpOpen={handlePopUpOpen} />
 
