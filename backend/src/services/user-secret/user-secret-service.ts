@@ -1,181 +1,306 @@
-import crypto from "node:crypto";
-
 import { z } from "zod";
 
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
+import { KmsDataKey } from "../kms/kms-types";
 import { TUserSecretDALFactory } from "./user-secret-dal";
-import { TCreateUserSecretDTO, TDeleteUserSecretDTO, TListUserSecretsDTO } from "./user-secret-types";
-
-type TUserSecretServiceFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  userSecretDAL: TUserSecretDALFactory;
-  kmsService: TKmsServiceFactory;
-};
+import {
+  TCreateUserSecretDTO,
+  TDeleteUserSecretDTO,
+  TGetUserSecretDTO,
+  TListUserSecretsDTO,
+  TListUserSecretsResponse,
+  TUpdateUserSecretDTO,
+  TUserSecretData,
+  TUserSecretResponse,
+  UserSecretType
+} from "./user-secret-types";
 
 export type TUserSecretServiceFactory = ReturnType<typeof userSecretServiceFactory>;
 
-const isUuidV4 = (uuid: string) => z.string().uuid().safeParse(uuid).success;
-
-export const userSecretServiceFactory = ({
-  permissionService,
-  userSecretDAL,
-  kmsService
-}: TUserSecretServiceFactoryDep) => {
+export const userSecretServiceFactory = (
+  userSecretDAL: TUserSecretDALFactory,
+  kmsService: TKmsServiceFactory,
+  permissionService: TPermissionServiceFactory
+) => {
   const listUserSecrets = async ({
     actor,
     actorId,
     actorAuthMethod,
     actorOrgId,
+    orgId,
     offset,
     limit
-  }: TListUserSecretsDTO) => {
-    if (!actorOrgId) throw new ForbiddenRequestError();
+  }: TListUserSecretsDTO): Promise<TListUserSecretsResponse> => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor,
-      actorId,
-      actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    );
-
-    if (!permission) {
-      throw new ForbiddenRequestError({
-        name: "User does not belong to the specified organization"
-      });
+    if (!permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.UserSecret)) {
+      throw new ForbiddenRequestError({ message: "You do not have permission to read secrets" });
     }
 
-    const secrets = await userSecretDAL.listUserSecrets(
-      {
-        organization_id: actorOrgId,
-        created_by: actorId
-      },
-      { offset, limit, sort: [["createdAt", "desc"]] }
+    const { secrets, totalCount } = await userSecretDAL.findUserSecrets(orgId, { offset, limit });
+
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId
+    });
+
+    const decryptedSecrets = await Promise.all(
+      secrets.map(async (secret) => {
+        if (!secret.encrypted_data) {
+          return null;
+        }
+
+        // TODO: Unify decryption logic, access checks
+        const cipherTextBuffer = Buffer.from(secret.encrypted_data, "base64");
+
+        const decryptedData = decryptor({
+          cipherTextBlob: cipherTextBuffer
+        });
+
+        return {
+          id: secret.id,
+          organizationId: secret.organization_id,
+          name: secret.name,
+          type: secret.type as UserSecretType,
+          data: JSON.parse(decryptedData.toString("utf-8")) as TUserSecretData,
+          createdAt: secret.createdAt.toISOString(),
+          updatedAt: secret.updatedAt.toISOString(),
+          createdBy: secret.created_by
+        };
+      })
     );
 
-    return secrets;
+    return {
+      secrets: decryptedSecrets.filter((secret): secret is TUserSecretResponse => secret !== null),
+      totalCount
+    };
+  };
+
+  const getUserSecretById = async ({
+    secretId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    orgId
+  }: TGetUserSecretDTO): Promise<TUserSecretResponse> => {
+    // Validate UUID
+    if (!z.string().uuid().safeParse(secretId).success) {
+      throw new BadRequestError({ message: "Invalid secret ID format" });
+    }
+
+    // Check org-level read permission
+    await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+
+    // Check if actor has required permission
+    if (!permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.UserSecret)) {
+      throw new ForbiddenRequestError({ message: "You do not have permission to read secrets" });
+    }
+
+    const secret = await userSecretDAL.findUserSecretById(secretId);
+    if (!secret) {
+      throw new NotFoundError({ message: "User secret not found" });
+    }
+
+    if (secret.organization_id !== orgId) {
+      throw new ForbiddenRequestError({ message: "Access denied to this secret" });
+    }
+
+    if (!secret.encrypted_data) {
+      throw new NotFoundError({ message: "Secret data not found" });
+    }
+
+    // Create cipher pair for decryption
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId
+    });
+
+    // Decrypt data
+    const decryptedData = decryptor({
+      cipherTextBlob: Buffer.from(secret.encrypted_data, "base64")
+    });
+
+    return {
+      id: secret.id,
+      organizationId: secret.organization_id,
+      name: secret.name,
+      type: secret.type as UserSecretType,
+      data: JSON.parse(decryptedData.toString("utf-8")) as TUserSecretData,
+      createdAt: secret.createdAt.toISOString(),
+      updatedAt: secret.updatedAt.toISOString(),
+      createdBy: secret.created_by
+    };
   };
 
   const createUserSecret = async ({
     actor,
     actorId,
-    orgId,
     actorAuthMethod,
     actorOrgId,
+    orgId,
     name,
     type,
-    secretValue,
-    keyEncoding,
-    algorithm
-  }: TCreateUserSecretDTO) => {
+    data
+  }: TCreateUserSecretDTO): Promise<TUserSecretResponse> => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
 
-    if (!permission) {
-      throw new ForbiddenRequestError({
-        name: "User is not a part of the specified organization"
-      });
-    }
-
-    if (secretValue.length > 10_000) {
-      throw new BadRequestError({ message: "Secret value too long" });
+    if (!permission.can(OrgPermissionActions.Create, OrgPermissionSubjects.UserSecret)) {
+      throw new ForbiddenRequestError({ message: "You do not have permission to create secrets" });
     }
 
     const encryptWithRoot = kmsService.encryptWithRootKey();
-    const encryptedSecret = encryptWithRoot(Buffer.from(secretValue));
+    const encryptedSecret = encryptWithRoot(Buffer.from(JSON.stringify(data), "utf-8")).toString("base64");
 
-    const newUserSecret = await userSecretDAL.createUserSecret({
+    const secret = await userSecretDAL.createUserSecret({
       organization_id: orgId,
-      created_by: actorId,
       name,
       type,
       encrypted_data: encryptedSecret,
-      key_encoding: keyEncoding,
-      algorithm,
-      iv: null, // Using KMS encryption instead
-      tag: null // Using KMS encryption instead
+      created_by: actorId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      iv: "", // As we are using root key, we don't need to store iv, tag, algorithm, key_encoding for now
+      tag: "",
+      algorithm: "",
+      key_encoding: "" // TODO: Possibly remove
     });
 
-    return newUserSecret;
+    return {
+      id: secret.id,
+      organizationId: secret.organization_id,
+      name: secret.name,
+      type: secret.type as UserSecretType,
+      data,
+      createdAt: secret.createdAt.toISOString(),
+      updatedAt: secret.updatedAt.toISOString(),
+      createdBy: secret.created_by
+    };
   };
 
-  const getUserSecretById = async (secretId: string, { actor, actorId, orgId, actorAuthMethod, actorOrgId }) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
-
-    if (!permission) {
-      throw new ForbiddenRequestError({
-        name: "User does not belong to the specified organization"
-      });
+  const updateUserSecret = async ({
+    secretId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    orgId,
+    data: updates
+  }: TUpdateUserSecretDTO): Promise<TUserSecretResponse> => {
+    // Validate UUID
+    if (!z.string().uuid().safeParse(secretId).success) {
+      throw new BadRequestError({ message: "Invalid secret ID format" });
     }
 
-    const secret = isUuidV4(secretId) ? await userSecretDAL.getUserSecretById(secretId) : null;
+    // Check org-level write permission
+    await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
 
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+
+    if (!permission.can(OrgPermissionActions.Edit, OrgPermissionSubjects.UserSecret)) {
+      throw new ForbiddenRequestError({ message: "You do not have permission to update secrets" });
+    }
+
+    const secret = await userSecretDAL.findUserSecretById(secretId);
     if (!secret) {
-      throw new NotFoundError({
-        message: `User secret with ID '${secretId}' not found`
-      });
+      throw new NotFoundError({ message: "User secret not found" });
     }
 
     if (secret.organization_id !== orgId) {
-      throw new ForbiddenRequestError({
-        message: "Access denied to user secret"
-      });
+      throw new ForbiddenRequestError({ message: "Access denied to this secret" });
     }
 
-    let decryptedSecretValue: Buffer | undefined;
-    if (secret.encrypted_data) {
-      const decryptWithRoot = kmsService.decryptWithRootKey();
-      decryptedSecretValue = decryptWithRoot(secret.encrypted_data);
+    const updateData: { name?: string; data?: string } = {};
+
+    if (updates.name) {
+      updateData.name = updates.name;
     }
+
+    if (updates.data) {
+      const { encryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.Organization,
+        orgId
+      });
+
+      const { cipherTextBlob } = encryptor({
+        plainText: Buffer.from(JSON.stringify(updates.data), "utf-8")
+      });
+
+      // Convert Buffer to base64 for storage
+      updateData.data = cipherTextBlob.toString("base64");
+    }
+
+    const updatedSecret = await userSecretDAL.updateUserSecretById(secretId, updateData);
+
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId
+    });
+
+    // Convert base64 to Buffer for decryption
+    const cipherTextBuffer = Buffer.from(updatedSecret.encrypted_data, "base64");
+
+    const decryptedData = decryptor({
+      cipherTextBlob: cipherTextBuffer
+    });
 
     return {
-      ...secret,
-      ...(decryptedSecretValue && {
-        secretValue: Buffer.from(decryptedSecretValue).toString()
-      })
+      id: updatedSecret.id,
+      organizationId: updatedSecret.organization_id,
+      name: updatedSecret.name,
+      type: updatedSecret.type as UserSecretType,
+      data: JSON.parse(decryptedData.toString("utf-8")) as TUserSecretData,
+      createdAt: updatedSecret.createdAt.toISOString(),
+      updatedAt: updatedSecret.updatedAt.toISOString(),
+      createdBy: updatedSecret.created_by
     };
   };
 
   const deleteUserSecret = async ({
+    secretId,
     actor,
     actorId,
-    orgId,
     actorAuthMethod,
     actorOrgId,
-    secretId
-  }: TDeleteUserSecretDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
-
-    if (!permission) {
-      throw new ForbiddenRequestError({
-        name: "User does not belong to the specified organization"
-      });
+    orgId
+  }: TDeleteUserSecretDTO): Promise<void> => {
+    // Validate UUID
+    if (!z.string().uuid().safeParse(secretId).success) {
+      throw new BadRequestError({ message: "Invalid secret ID format" });
     }
 
-    const secret = isUuidV4(secretId) ? await userSecretDAL.getUserSecretById(secretId) : null;
+    // Check org-level write permission
+    await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
 
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+
+    if (!permission.can(OrgPermissionActions.Delete, OrgPermissionSubjects.UserSecret)) {
+      throw new ForbiddenRequestError({ message: "You do not have permission to delete secrets" });
+    }
+
+    const secret = await userSecretDAL.findUserSecretById(secretId);
     if (!secret) {
-      throw new NotFoundError({
-        message: `User secret with ID '${secretId}' not found`
-      });
+      throw new NotFoundError({ message: "User secret not found" });
     }
 
     if (secret.organization_id !== orgId) {
-      throw new ForbiddenRequestError({
-        message: "User does not have permission to delete this secret"
-      });
+      throw new ForbiddenRequestError({ message: "Access denied to this secret" });
     }
 
-    const deletedSecret = await userSecretDAL.deleteUserSecret(secretId);
-    return deletedSecret;
+    await userSecretDAL.softDeleteById(secretId);
   };
 
   return {
     listUserSecrets,
     getUserSecretById,
     createUserSecret,
+    updateUserSecret,
     deleteUserSecret
   };
 };

@@ -10,22 +10,33 @@ export type TUserSecretDALFactory = ReturnType<typeof userSecretDALFactory>;
 export const userSecretDALFactory = (db: TDbClient) => {
   const userSecretOrm = ormify<object, typeof TableName.UserSecrets>(db, TableName.UserSecrets);
 
-  const countAllUserOrgSecrets = async ({ orgId, userId }: { orgId: string; userId: string }) => {
+  const findUserSecrets = async (
+    organizationId: string,
+    options: { offset?: number; limit?: number } = {},
+    tx?: Knex
+  ): Promise<{ secrets: TUserSecrets[]; totalCount: number }> => {
     try {
-      interface CountResult {
-        count: string;
-      }
+      // Get secrets with pagination
+      const secrets = await (tx || db)(TableName.UserSecrets)
+        .where({ organization_id: organizationId })
+        .select(selectAllTableCols(TableName.UserSecrets))
+        .orderBy("created_at", "desc")
+        .offset(options.offset || 0)
+        .limit(options.limit || 10);
 
-      const count = await db
-        .replicaNode()(TableName.UserSecrets)
-        .where(`${TableName.UserSecrets}.organization_id`, orgId)
-        .where(`${TableName.UserSecrets}.created_by`, userId)
-        .count("*")
-        .first();
+      // Get total count
+      const result = await (tx || db)(TableName.UserSecrets).where({ organization_id: organizationId }).count().first();
+      const totalCount = result?.count || 0;
 
-      return parseInt((count as unknown as CountResult).count || "0", 10);
+      return {
+        secrets,
+        totalCount: typeof totalCount === "string" ? parseInt(totalCount, 10) : totalCount
+      };
     } catch (error) {
-      throw new DatabaseError({ error, name: "Count all user-org secrets" });
+      throw new DatabaseError({
+        error,
+        name: "Find User Secrets"
+      });
     }
   };
 
@@ -40,6 +51,44 @@ export const userSecretDALFactory = (db: TDbClient) => {
       throw new DatabaseError({
         error,
         name: "Find User Secret By Id"
+      });
+    }
+  };
+
+  const createUserSecret = async (
+    data: Omit<TUserSecrets, "id" | "created_at" | "updated_at">,
+    tx?: Knex
+  ): Promise<TUserSecrets> => {
+    try {
+      const [secret] = await (tx || db)(TableName.UserSecrets)
+        .insert(data)
+        .returning(selectAllTableCols(TableName.UserSecrets));
+
+      return secret;
+    } catch (error) {
+      throw new DatabaseError({
+        error,
+        name: "Create User Secret"
+      });
+    }
+  };
+
+  const updateUserSecretById = async (
+    id: string,
+    data: Partial<Omit<TUserSecrets, "id" | "created_at" | "updated_at">>,
+    tx?: Knex
+  ): Promise<TUserSecrets> => {
+    try {
+      const [secret] = await (tx || db)(TableName.UserSecrets)
+        .where({ id })
+        .update(data)
+        .returning(selectAllTableCols(TableName.UserSecrets));
+
+      return secret;
+    } catch (error) {
+      throw new DatabaseError({
+        error,
+        name: "Update User Secret"
       });
     }
   };
@@ -61,8 +110,10 @@ export const userSecretDALFactory = (db: TDbClient) => {
 
   return {
     ...userSecretOrm,
-    countAllUserOrgSecrets,
+    findUserSecrets,
     findUserSecretById,
+    createUserSecret,
+    updateUserSecretById,
     softDeleteById
   };
 };
