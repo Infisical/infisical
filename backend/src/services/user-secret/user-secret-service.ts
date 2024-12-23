@@ -146,7 +146,8 @@ export const userSecretServiceFactory = (
     actorAuthMethod,
     actorOrgId,
     orgId,
-    data: updates
+    name,
+    data
   }: TUpdateUserSecretDTO): Promise<TUserSecretResponse> => {
     await validatePermission({ actor, actorId, actorAuthMethod, actorOrgId, orgId }, OrgPermissionActions.Edit);
 
@@ -157,12 +158,12 @@ export const userSecretServiceFactory = (
 
     const updateData: { name?: string; encrypted_data?: string } = {};
 
-    if (updates.name) {
-      updateData.name = updates.name;
+    if (name) {
+      updateData.name = name;
     }
 
-    if (updates.data) {
-      updateData.encrypted_data = encryptSecretData(JSON.stringify(updates.data));
+    if (data) {
+      updateData.encrypted_data = encryptSecretData(JSON.stringify(data));
     }
 
     const updatedSecret = await userSecretDAL.updateUserSecretById(secretId, updateData);

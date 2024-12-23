@@ -48,10 +48,8 @@ export type TCreateUserSecretDTO = {
 
 export type TUpdateUserSecretDTO = {
   secretId: string;
-  data: Partial<{
-    name: string;
-    data: TUserSecretData;
-  }>;
+  name?: string;
+  data?: TUserSecretData;
 } & TUserSecretPermission;
 
 export type TGetUserSecretDTO = {

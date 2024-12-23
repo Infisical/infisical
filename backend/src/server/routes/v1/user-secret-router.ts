@@ -25,7 +25,6 @@ const SecureNoteDataSchema = z.object({
 // Request/Response schemas
 const CreateUserSecretSchema = z.object({
   name: z.string(),
-  type: z.nativeEnum(UserSecretType),
   data: z.discriminatedUnion("type", [
     z.object({ type: z.literal(UserSecretType.WEB_LOGIN), data: WebLoginDataSchema }),
     z.object({ type: z.literal(UserSecretType.CREDIT_CARD), data: CreditCardDataSchema }),
@@ -77,8 +76,6 @@ export const registerUserSecretRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { offset, limit } = req.query;
       const { organizationId } = req.params as { organizationId: string };
-
-
 
       return server.services.userSecret.listUserSecrets({
         actor: req.permission.type,
@@ -156,7 +153,9 @@ export const registerUserSecretRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         orgId: organizationId,
-        ...req.body
+        name: req.body.name,
+        type: req.body.data.type,
+        data: req.body.data.data
       });
     }
   });
@@ -192,7 +191,8 @@ export const registerUserSecretRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         orgId: organizationId,
         secretId,
-        data: req.body
+        name: req.body.name,
+        data: req.body.data?.data
       });
     }
   });
