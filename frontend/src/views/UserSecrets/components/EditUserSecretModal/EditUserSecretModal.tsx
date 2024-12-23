@@ -102,13 +102,13 @@ export const EditUserSecretModal = ({ popUp, handlePopUpToggle, secret }: Props)
           <SecretTypeSelect control={control} disabled />
 
           {selectedType === UserSecretType.WEB_LOGIN && (
-            <WebLoginForm control={control as Control<WebLoginFormData>} />
+            <WebLoginForm control={control as Control<WebLoginFormData>} isEditing />
           )}
           {selectedType === UserSecretType.CREDIT_CARD && (
-            <CreditCardForm control={control as Control<CreditCardFormData>} />
+            <CreditCardForm control={control as Control<CreditCardFormData>} isEditing />
           )}
           {selectedType === UserSecretType.SECURE_NOTE && (
-            <SecureNoteForm control={control as Control<SecureNoteFormData>} />
+            <SecureNoteForm control={control as Control<SecureNoteFormData>} isEditing />
           )}
 
           <div className="flex justify-end gap-2">
