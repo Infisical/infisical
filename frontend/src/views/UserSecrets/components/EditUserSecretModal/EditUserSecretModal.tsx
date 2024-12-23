@@ -3,106 +3,68 @@ import { Control, useForm } from "react-hook-form";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, Modal, ModalContent } from "@app/components/v2";
-import { useUpdateUserSecret } from "@app/hooks/api/userSecrets";
-import { 
+import {
   CreditCardFormData,
   SecureNoteFormData,
-  UserSecret, 
+  UserSecret,
   UserSecretType,
+  useUpdateUserSecret,
   WebLoginFormData
-} from "@app/hooks/api/userSecrets/types";
+} from "@app/hooks/api/userSecrets";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { CreditCardForm } from "../AddUserSecretModal/forms/CreditCardForm";
 import { SecureNoteForm } from "../AddUserSecretModal/forms/SecureNoteForm";
 import { WebLoginForm } from "../AddUserSecretModal/forms/WebLoginForm";
+import { SecretTypeSelect } from "../AddUserSecretModal/SecretTypeSelect";
 
 type Props = {
-  secret: UserSecret;
   popUp: UsePopUpState<["editUserSecret"]>;
   handlePopUpToggle: (
     popUpName: keyof UsePopUpState<["editUserSecret"]>,
     state?: boolean
   ) => void;
+  secret: UserSecret | null;
 };
 
 type FormData = WebLoginFormData | CreditCardFormData | SecureNoteFormData;
 
-const getDefaultValues = (secret: UserSecret): FormData => {
-    switch (secret.type) {
-      case UserSecretType.WEB_LOGIN:
-        return {
-          name: secret.name,
-          data: {
-            type: UserSecretType.WEB_LOGIN,
-            data: secret.data
-          }
-        } as WebLoginFormData;
-      case UserSecretType.CREDIT_CARD:
-        return {
-          name: secret.name,
-          data: {
-            type: UserSecretType.CREDIT_CARD,
-            data: secret.data
-          }
-        } as CreditCardFormData;
-      case UserSecretType.SECURE_NOTE:
-        return {
-          name: secret.name,
-          data: {
-            type: UserSecretType.SECURE_NOTE,
-            data: secret.data
-          }
-        } as SecureNoteFormData;
-      default:
-        throw new Error("Invalid secret type");
-    }
-  };
-
-export const EditUserSecretModal = ({ secret, popUp, handlePopUpToggle }: Props) => {
+export const EditUserSecretModal = ({ popUp, handlePopUpToggle, secret }: Props) => {
   const updateUserSecret = useUpdateUserSecret();
 
   const { control, handleSubmit, reset } = useForm<FormData>({
-    defaultValues: getDefaultValues(secret)
-  });
-
-  useEffect(() => {
-    if (popUp.editUserSecret.isOpen) {
-      switch (secret.type) {
-        case UserSecretType.WEB_LOGIN:
-          reset({
-            name: secret.name,
-            data: {
-              type: UserSecretType.WEB_LOGIN,
-              data: secret.data
-            }
-          } as WebLoginFormData);
-          break;
-        case UserSecretType.CREDIT_CARD:
-          reset({
-            name: secret.name,
-            data: {
-              type: UserSecretType.CREDIT_CARD,
-              data: secret.data
-            }
-          } as CreditCardFormData);
-          break;
-        case UserSecretType.SECURE_NOTE:
-          reset({
-            name: secret.name,
-            data: {
-              type: UserSecretType.SECURE_NOTE,
-              data: secret.data
-            }
-          } as SecureNoteFormData);
-          break;
-        default:
-          throw new Error("Invalid secret type");
+    defaultValues: {
+      name: "",
+      data: {
+        type: UserSecretType.WEB_LOGIN,
+        data: { url: "", username: "", password: "" }
       }
     }
-  }, [popUp.editUserSecret.isOpen, secret, reset]);
+  });
+
+  // Set form data when secret changes
+  useEffect(() => {
+    if (secret) {
+      reset({
+        name: secret.name,
+        data: {
+          type: secret.type,
+          data: secret.data
+        }
+      } as FormData);
+    }
+  }, [secret, reset]);
+
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!popUp.editUserSecret.isOpen) {
+      reset();
+    }
+  }, [popUp.editUserSecret.isOpen, reset]);
 
   const onSubmit = async (formData: FormData) => {
+    if (!secret) return;
+
     try {
       await updateUserSecret.mutateAsync({
         id: secret.id,
@@ -123,44 +85,42 @@ export const EditUserSecretModal = ({ secret, popUp, handlePopUpToggle }: Props)
     }
   };
 
+  const selectedType = secret?.type;
+
+  console.log({selectedType});
+
   return (
     <Modal
       isOpen={popUp.editUserSecret.isOpen}
       onOpenChange={(isOpen) => handlePopUpToggle("editUserSecret", isOpen)}
     >
       <ModalContent
-        title={`Edit ${secret.name}`}
-        subTitle="Update your secret details"
+        title="Edit User Secret"
+        subTitle="Update your stored credentials"
       >
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-          {secret.type === UserSecretType.WEB_LOGIN && (
+          <SecretTypeSelect control={control} disabled />
+
+          {selectedType === UserSecretType.WEB_LOGIN && (
             <WebLoginForm control={control as Control<WebLoginFormData>} />
           )}
-          
-          {secret.type === UserSecretType.CREDIT_CARD && (
+          {selectedType === UserSecretType.CREDIT_CARD && (
             <CreditCardForm control={control as Control<CreditCardFormData>} />
           )}
-          
-          {secret.type === UserSecretType.SECURE_NOTE && (
+          {selectedType === UserSecretType.SECURE_NOTE && (
             <SecureNoteForm control={control as Control<SecureNoteFormData>} />
           )}
 
           <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => handlePopUpToggle("editUserSecret", false)}
-            >
+            <Button variant="outline" onClick={() => handlePopUpToggle("editUserSecret", false)}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              isLoading={updateUserSecret.isLoading}
-            >
-              Save Changes
+            <Button type="submit" isLoading={updateUserSecret.isLoading}>
+              Update Secret
             </Button>
           </div>
         </form>
       </ModalContent>
     </Modal>
   );
-}; 
+};

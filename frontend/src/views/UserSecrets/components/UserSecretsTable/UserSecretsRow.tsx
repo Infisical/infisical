@@ -29,6 +29,7 @@ type Props = {
       id: string;
     }
   ) => void;
+  onEditSecret: (secret: UserSecret) => void;
 };
 
 const getSecretTypeIcon = (type: UserSecretType): IconProp => {
@@ -70,7 +71,7 @@ const getSecretValue = (secret: UserSecret): string => {
   }
 };
 
-export const UserSecretsRow = ({ secret, handlePopUpOpen }: Props) => {
+export const UserSecretsRow = ({ secret, handlePopUpOpen, onEditSecret }: Props) => {
   const [isRevealed, setIsRevealed] = useState(false);
 
   const handleCopyClick = async () => {
@@ -125,10 +126,7 @@ export const UserSecretsRow = ({ secret, handlePopUpOpen }: Props) => {
           </Tooltip>
           <Tooltip content="Edit">
             <IconButton
-              onClick={() => handlePopUpOpen("editUserSecret", { 
-                name: secret.name, 
-                id: secret.id 
-              })}
+              onClick={() => onEditSecret(secret)}
               variant="plain"
               ariaLabel="edit secret"
             >

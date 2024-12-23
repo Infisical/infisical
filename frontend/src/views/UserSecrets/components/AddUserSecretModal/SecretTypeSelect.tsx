@@ -13,6 +13,7 @@ type FormData = WebLoginFormData | CreditCardFormData | SecureNoteFormData;
 
 type Props = {
   control: Control<FormData>;
+  disabled?: boolean;
 };
 
 const secretTypeOptions = [
@@ -21,7 +22,7 @@ const secretTypeOptions = [
   { value: UserSecretType.SECURE_NOTE, label: "Secure Note", icon: faNotdef }
 ];
 
-export const SecretTypeSelect = ({ control }: Props) => (
+export const SecretTypeSelect = ({ control, disabled }: Props) => (
   <FormControl label="Secret Type">
     <Controller
       control={control}
@@ -30,6 +31,7 @@ export const SecretTypeSelect = ({ control }: Props) => (
         <Select 
           value={value}
           onValueChange={onChange}
+          isDisabled={disabled}
         >
           {secretTypeOptions.map((option) => (
             <SelectItem key={option.value} value={option.value}>

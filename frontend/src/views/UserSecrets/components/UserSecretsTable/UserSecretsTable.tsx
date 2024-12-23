@@ -12,8 +12,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { useOrganization } from "@app/context";
-import { useGetUserSecrets } from "@app/hooks/api/userSecrets";
+import { useGetUserSecrets, UserSecret } from "@app/hooks/api/userSecrets";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { UserSecretsRow } from "./UserSecretsRow";
@@ -29,15 +28,14 @@ type Props = {
       id: string;
     }
   ) => void;
+  onEditSecret: (secret: UserSecret) => void;
 };
 
-export const UserSecretsTable = ({ handlePopUpOpen }: Props) => {
-  const { currentOrg } = useOrganization();
+export const UserSecretsTable = ({ handlePopUpOpen, onEditSecret }: Props) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
   
   const { data, isLoading } = useGetUserSecrets({
-    organizationId: currentOrg?.id || "",
     offset: (page - 1) * perPage,
     limit: perPage
   });
@@ -61,7 +59,8 @@ export const UserSecretsTable = ({ handlePopUpOpen }: Props) => {
               <UserSecretsRow 
                 key={secret.id} 
                 secret={secret} 
-                handlePopUpOpen={handlePopUpOpen} 
+                handlePopUpOpen={handlePopUpOpen}
+                onEditSecret={onEditSecret}
               />
             ))}
         </TBody>

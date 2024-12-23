@@ -1,10 +1,11 @@
+import { useState } from "react";
 import Head from "next/head";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Button, DeleteActionModal } from "@app/components/v2";
 import { usePopUp } from "@app/hooks";
-import { useDeleteUserSecret } from "@app/hooks/api/userSecrets";
+import { useDeleteUserSecret, UserSecret } from "@app/hooks/api/userSecrets";
 
 import { AddUserSecretModal } from "./AddUserSecretModal/AddUserSecretModal";
 import { EditUserSecretModal } from "./EditUserSecretModal/EditUserSecretModal";
@@ -12,12 +13,23 @@ import { UserSecretsTable } from "./UserSecretsTable/UserSecretsTable";
 
 export const UserSecretsSection = () => {
   const deleteUserSecret = useDeleteUserSecret();
+  const [selectedSecret, setSelectedSecret] = useState<UserSecret | null>(null);
   
   const { popUp, handlePopUpToggle, handlePopUpClose, handlePopUpOpen } = usePopUp([
     "createUserSecret",
     "editUserSecret",
     "deleteUserSecret"
   ]);
+
+  const handleEditSecret = (secret: UserSecret) => {
+    setSelectedSecret(secret);
+    handlePopUpToggle("editUserSecret", true);
+  };
+
+  const handleEditModalClose = () => {
+    setSelectedSecret(null);
+    handlePopUpToggle("editUserSecret", false);
+  };
 
   const onDeleteApproved = async () => {
     try {
@@ -52,20 +64,21 @@ export const UserSecretsSection = () => {
       </div>
      
 
-      <UserSecretsTable handlePopUpOpen={handlePopUpOpen} />
+      <UserSecretsTable 
+        handlePopUpOpen={handlePopUpOpen}
+        onEditSecret={handleEditSecret}
+      />
 
       <AddUserSecretModal 
         popUp={popUp} 
         handlePopUpToggle={handlePopUpToggle} 
       />
 
-      {popUp.editUserSecret.isOpen && (
-        <EditUserSecretModal
-          secret={popUp.editUserSecret.data as any} // TODO: Fix type
-          popUp={popUp}
-          handlePopUpToggle={handlePopUpToggle}
-        />
-      )}
+      <EditUserSecretModal
+        secret={selectedSecret}
+        popUp={popUp}
+        handlePopUpToggle={handleEditModalClose}
+      />
 
       <DeleteActionModal
         isOpen={popUp.deleteUserSecret.isOpen}
