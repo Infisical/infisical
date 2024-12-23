@@ -21,8 +21,6 @@ export const SecureNoteForm = ({ control }: Props) => (
         render={({ field, fieldState: { error } }) => (
           <SecretField
             {...field}
-            type="textarea"
-            rows={4}
             placeholder="Enter your secure note content"
             isError={Boolean(error)}
           />

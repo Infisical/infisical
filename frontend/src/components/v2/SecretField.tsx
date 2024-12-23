@@ -2,24 +2,20 @@ import { useState } from "react";
 import { faCopy, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { Input, TextArea } from "@app/components/v2";
+import { Input } from "@app/components/v2";
 
 type SecretFieldProps = {
   value: string;
   onChange: (value: string) => void;
   isError?: boolean;
-  type?: "text" | "password" | "textarea";
   placeholder?: string;
-  rows?: number;
 };
 
 export const SecretField = ({ 
   value, 
   onChange, 
   isError, 
-  type = "text",
   placeholder,
-  rows
 }: SecretFieldProps) => {
   const [isVisible, setIsVisible] = useState(false);
 
@@ -34,7 +30,7 @@ export const SecretField = ({
 
   const inputProps = {
     value,
-    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange(e.target.value),
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.value),
     isError,
     placeholder,
     type: isVisible ? "text" : "password"
@@ -65,11 +61,7 @@ export const SecretField = ({
 
   return (
     <div className="relative">
-      {type === "textarea" ? (
-        <TextArea {...inputProps} rows={rows} />
-      ) : (
-        <Input {...inputProps} />
-      )}
+      <Input {...inputProps} />
       {renderControls()}
     </div>
   );

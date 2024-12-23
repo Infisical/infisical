@@ -40,7 +40,6 @@ export const WebLoginForm = ({ control }: Props) => (
         render={({ field, fieldState: { error } }) => (
           <SecretField 
             {...field} 
-            type="password"
             isError={Boolean(error)}
           />
         )}

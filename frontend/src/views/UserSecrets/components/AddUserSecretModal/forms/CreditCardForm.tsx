@@ -21,7 +21,6 @@ export const CreditCardForm = ({ control }: Props) => (
         render={({ field, fieldState: { error } }) => (
           <SecretField 
             {...field} 
-            type="password"
             placeholder="1234 5678 9012 3456"
             isError={Boolean(error)}
           />
@@ -37,7 +36,6 @@ export const CreditCardForm = ({ control }: Props) => (
           render={({ field, fieldState: { error } }) => (
             <SecretField 
               {...field} 
-              type="password"
               placeholder="MM/YY"
               isError={Boolean(error)}
             />
@@ -52,7 +50,6 @@ export const CreditCardForm = ({ control }: Props) => (
           render={({ field, fieldState: { error } }) => (
             <SecretField 
               {...field} 
-              type="password"
               placeholder="123"
               isError={Boolean(error)}
             />
