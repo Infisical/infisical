@@ -271,6 +271,7 @@ export type TUpdateManySecretRawDTO = Omit<TProjectPermission, "projectId"> & {
     secretComment?: string;
     skipMultilineEncoding?: boolean;
     tagIds?: string[];
+    secretMetadata?: ResourceMetadataDTO;
     secretReminderRepeatDays?: number | null;
     secretReminderNote?: string | null;
   }[];

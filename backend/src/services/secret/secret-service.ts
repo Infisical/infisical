@@ -1932,7 +1932,8 @@ export const secretServiceFactory = ({
               secretValue: el.secretValue,
               secretComment: el.secretComment,
               skipMultilineEncoding: el.skipMultilineEncoding,
-              secretKey: el.secretKey
+              secretKey: el.secretKey,
+              secretMetadata: el.secretMetadata
             }))
           }
         });
