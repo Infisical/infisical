@@ -3,7 +3,6 @@ import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Button, DeleteActionModal } from "@app/components/v2";
-import { useOrganization } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteUserSecret } from "@app/hooks/api/userSecrets";
 
@@ -12,8 +11,7 @@ import { EditUserSecretModal } from "./EditUserSecretModal/EditUserSecretModal";
 import { UserSecretsTable } from "./UserSecretsTable/UserSecretsTable";
 
 export const UserSecretsSection = () => {
-  const { currentOrg } = useOrganization();
-  const deleteUserSecret = useDeleteUserSecret(currentOrg?.id || "");
+  const deleteUserSecret = useDeleteUserSecret();
   
   const { popUp, handlePopUpToggle, handlePopUpClose, handlePopUpOpen } = usePopUp([
     "createUserSecret",

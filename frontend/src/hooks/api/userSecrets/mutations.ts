@@ -50,7 +50,7 @@ export const useDeleteUserSecret = () => {
   return useMutation({
     mutationFn: async (id: string) => {
       const { data } = await apiRequest.delete<{ success: boolean }>(
-        `/api/v1//user-secrets/${id}`
+        `/api/v1/user-secrets/${id}`
       );
       return data;
     },

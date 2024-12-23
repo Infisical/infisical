@@ -1,11 +1,16 @@
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { Control, useForm } from "react-hook-form";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, Modal, ModalContent } from "@app/components/v2";
-import { useOrganization } from "@app/context";
 import { useUpdateUserSecret } from "@app/hooks/api/userSecrets";
-import { UserSecret, UserSecretFormData,UserSecretType } from "@app/hooks/api/userSecrets/types";
+import { 
+  CreditCardFormData,
+  SecureNoteFormData,
+  UserSecret, 
+  UserSecretType,
+  WebLoginFormData
+} from "@app/hooks/api/userSecrets/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { CreditCardForm } from "../AddUserSecretModal/forms/CreditCardForm";
@@ -21,29 +26,83 @@ type Props = {
   ) => void;
 };
 
-export const EditUserSecretModal = ({ secret, popUp, handlePopUpToggle }: Props) => {
-  const { currentOrg } = useOrganization();
-  const updateUserSecret = useUpdateUserSecret(currentOrg?.id || "");
-  
-  const { control, handleSubmit, reset } = useForm<UserSecretFormData>({
-    defaultValues: {
-      name: secret.name,
-      type: secret.type,
-      data: secret.data
+type FormData = WebLoginFormData | CreditCardFormData | SecureNoteFormData;
+
+const getDefaultValues = (secret: UserSecret): FormData => {
+    switch (secret.type) {
+      case UserSecretType.WEB_LOGIN:
+        return {
+          name: secret.name,
+          data: {
+            type: UserSecretType.WEB_LOGIN,
+            data: secret.data
+          }
+        } as WebLoginFormData;
+      case UserSecretType.CREDIT_CARD:
+        return {
+          name: secret.name,
+          data: {
+            type: UserSecretType.CREDIT_CARD,
+            data: secret.data
+          }
+        } as CreditCardFormData;
+      case UserSecretType.SECURE_NOTE:
+        return {
+          name: secret.name,
+          data: {
+            type: UserSecretType.SECURE_NOTE,
+            data: secret.data
+          }
+        } as SecureNoteFormData;
+      default:
+        throw new Error("Invalid secret type");
     }
+  };
+
+export const EditUserSecretModal = ({ secret, popUp, handlePopUpToggle }: Props) => {
+  const updateUserSecret = useUpdateUserSecret();
+
+  const { control, handleSubmit, reset } = useForm<FormData>({
+    defaultValues: getDefaultValues(secret)
   });
 
   useEffect(() => {
     if (popUp.editUserSecret.isOpen) {
-      reset({
-        name: secret.name,
-        type: secret.type,
-        data: secret.data
-      });
+      switch (secret.type) {
+        case UserSecretType.WEB_LOGIN:
+          reset({
+            name: secret.name,
+            data: {
+              type: UserSecretType.WEB_LOGIN,
+              data: secret.data
+            }
+          } as WebLoginFormData);
+          break;
+        case UserSecretType.CREDIT_CARD:
+          reset({
+            name: secret.name,
+            data: {
+              type: UserSecretType.CREDIT_CARD,
+              data: secret.data
+            }
+          } as CreditCardFormData);
+          break;
+        case UserSecretType.SECURE_NOTE:
+          reset({
+            name: secret.name,
+            data: {
+              type: UserSecretType.SECURE_NOTE,
+              data: secret.data
+            }
+          } as SecureNoteFormData);
+          break;
+        default:
+          throw new Error("Invalid secret type");
+      }
     }
   }, [popUp.editUserSecret.isOpen, secret, reset]);
 
-  const onSubmit = async (formData: UserSecretFormData) => {
+  const onSubmit = async (formData: FormData) => {
     try {
       await updateUserSecret.mutateAsync({
         id: secret.id,
@@ -75,15 +134,15 @@ export const EditUserSecretModal = ({ secret, popUp, handlePopUpToggle }: Props)
       >
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           {secret.type === UserSecretType.WEB_LOGIN && (
-            <WebLoginForm control={control} />
+            <WebLoginForm control={control as Control<WebLoginFormData>} />
           )}
           
           {secret.type === UserSecretType.CREDIT_CARD && (
-            <CreditCardForm control={control} />
+            <CreditCardForm control={control as Control<CreditCardFormData>} />
           )}
           
           {secret.type === UserSecretType.SECURE_NOTE && (
-            <SecureNoteForm control={control} />
+            <SecureNoteForm control={control as Control<SecureNoteFormData>} />
           )}
 
           <div className="flex justify-end gap-2">
