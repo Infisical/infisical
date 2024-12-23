@@ -45,12 +45,14 @@ export const userSecretServiceFactory = (
 
   const encryptSecretData = (data: string): string => {
     const encryptWithRoot = kmsService.encryptWithRootKey();
-    return encryptWithRoot(Buffer.from(data)).toString();
+    const encrypted = encryptWithRoot(Buffer.from(data));
+    return encrypted.toString("base64");
   };
 
   const decryptSecretData = (data: string): string => {
     const decryptWithRoot = kmsService.decryptWithRootKey();
-    return decryptWithRoot(Buffer.from(data)).toString();
+    const buffer = Buffer.from(data, "base64");
+    return decryptWithRoot(buffer).toString();
   };
 
   // Format response helper
