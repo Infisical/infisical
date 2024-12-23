@@ -75,14 +75,12 @@ export const registerUserSecretsRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { offset, limit } = req.query;
-      const { organizationId } = req.params as { organizationId: string };
 
       return server.services.userSecret.listUserSecrets({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        orgId: organizationId,
         offset,
         limit
       });
@@ -113,15 +111,12 @@ export const registerUserSecretsRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { organizationId, secretId } = req.params as { organizationId: string; secretId: string };
-
       return server.services.userSecret.getUserSecretById({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        orgId: organizationId,
-        secretId
+        secretId: req.params.secretId
       });
     }
   });
@@ -145,14 +140,11 @@ export const registerUserSecretsRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { organizationId } = req.params as { organizationId: string };
-
       return server.services.userSecret.createUserSecret({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        orgId: organizationId,
         name: req.body.name,
         type: req.body.data.type,
         data: req.body.data.data
@@ -182,15 +174,12 @@ export const registerUserSecretsRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { organizationId, secretId } = req.params as { organizationId: string; secretId: string };
-
       return server.services.userSecret.updateUserSecret({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        orgId: organizationId,
-        secretId,
+        secretId: req.params.secretId,
         name: req.body.name,
         data: req.body.data?.data
       });
@@ -212,15 +201,12 @@ export const registerUserSecretsRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { organizationId, secretId } = req.params as { organizationId: string; secretId: string };
-
       await server.services.userSecret.deleteUserSecret({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        orgId: organizationId,
-        secretId
+        secretId: req.params.secretId
       });
 
       return { success: true };

@@ -26,10 +26,16 @@ export const userSecretServiceFactory = (
   permissionService: TPermissionServiceFactory
 ) => {
   const validatePermission = async (
-    { actor, actorId, actorAuthMethod, actorOrgId, orgId }: TUserSecretPermission,
+    { actor, actorId, actorAuthMethod, actorOrgId }: TUserSecretPermission,
     action: OrgPermissionActions
   ) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    );
 
     if (!permission.can(action, OrgPermissionSubjects.UserSecret)) {
       throw new ForbiddenRequestError({ message: `You do not have permission to ${action} secrets` });
@@ -62,13 +68,12 @@ export const userSecretServiceFactory = (
     actorId,
     actorAuthMethod,
     actorOrgId,
-    orgId,
     offset,
     limit
   }: TListUserSecretsDTO): Promise<TListUserSecretsResponse> => {
-    await validatePermission({ actor, actorId, actorAuthMethod, actorOrgId, orgId }, OrgPermissionActions.Read);
+    await validatePermission({ actor, actorId, actorAuthMethod, actorOrgId }, OrgPermissionActions.Read);
 
-    const { secrets, totalCount } = await userSecretDAL.findUserSecrets(orgId, { offset, limit });
+    const { secrets, totalCount } = await userSecretDAL.findUserSecrets({ offset, limit });
 
     const decryptedSecrets = await Promise.all(
       secrets.map(async (secret) => {
@@ -92,10 +97,9 @@ export const userSecretServiceFactory = (
     actor,
     actorId,
     actorAuthMethod,
-    actorOrgId,
-    orgId
+    actorOrgId
   }: TGetUserSecretDTO): Promise<TUserSecretResponse> => {
-    await validatePermission({ actor, actorId, actorAuthMethod, actorOrgId, orgId }, OrgPermissionActions.Read);
+    await validatePermission({ actor, actorId, actorAuthMethod, actorOrgId }, OrgPermissionActions.Read);
 
     const secret = await userSecretDAL.findUserSecretById(secretId);
     if (!secret) {
@@ -116,12 +120,11 @@ export const userSecretServiceFactory = (
     actorId,
     actorAuthMethod,
     actorOrgId,
-    orgId,
     name,
     type,
     data
   }: TCreateUserSecretDTO): Promise<TUserSecretResponse> => {
-    await validatePermission({ actor, actorId, actorAuthMethod, actorOrgId, orgId }, OrgPermissionActions.Create);
+    await validatePermission({ actor, actorId, actorAuthMethod, actorOrgId }, OrgPermissionActions.Create);
 
     const encryptedSecret = encryptSecretData(JSON.stringify(data));
 
@@ -145,11 +148,10 @@ export const userSecretServiceFactory = (
     actorId,
     actorAuthMethod,
     actorOrgId,
-    orgId,
     name,
     data
   }: TUpdateUserSecretDTO): Promise<TUserSecretResponse> => {
-    await validatePermission({ actor, actorId, actorAuthMethod, actorOrgId, orgId }, OrgPermissionActions.Edit);
+    await validatePermission({ actor, actorId, actorAuthMethod, actorOrgId }, OrgPermissionActions.Edit);
 
     const secret = await userSecretDAL.findUserSecretById(secretId);
     if (!secret) {
@@ -177,10 +179,9 @@ export const userSecretServiceFactory = (
     actor,
     actorId,
     actorAuthMethod,
-    actorOrgId,
-    orgId
+    actorOrgId
   }: TDeleteUserSecretDTO): Promise<void> => {
-    await validatePermission({ actor, actorId, actorAuthMethod, actorOrgId, orgId }, OrgPermissionActions.Delete);
+    await validatePermission({ actor, actorId, actorAuthMethod, actorOrgId }, OrgPermissionActions.Delete);
 
     const secret = await userSecretDAL.findUserSecretById(secretId);
     if (!secret) {

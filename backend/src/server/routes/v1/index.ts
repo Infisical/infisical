@@ -40,7 +40,7 @@ import { registerSsoRouter } from "./sso-router";
 import { registerUserActionRouter } from "./user-action-router";
 import { registerUserEngagementRouter } from "./user-engagement-router";
 import { registerUserRouter } from "./user-router";
-import { registerUserSecretsRouter } from "./user-secret-router";
+import { registerUserSecretsRouter } from "./user-secrets-router";
 import { registerWebhookRouter } from "./webhook-router";
 import { registerWorkflowIntegrationRouter } from "./workflow-integration-router";
 

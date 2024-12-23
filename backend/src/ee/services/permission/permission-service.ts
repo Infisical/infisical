@@ -115,7 +115,10 @@ export const permissionServiceFactory = ({
   ) => {
     // when token is scoped, ensure the passed org id is same as user org id
     if (userOrgId && userOrgId !== orgId)
-      throw new ForbiddenRequestError({ message: "Invalid user token. Scoped to different organization." });
+      throw new ForbiddenRequestError({
+        message: `Invalid user token. Scoped to different organization. ${userOrgId} !== ${orgId}`
+      });
+
     const membership = await permissionDAL.getOrgPermission(userId, orgId);
     if (!membership) throw new ForbiddenRequestError({ name: "You are not apart of this organization" });
     if (membership.role === OrgMembershipRole.Custom && !membership.permissions) {

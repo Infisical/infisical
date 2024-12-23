@@ -17,7 +17,6 @@ export type TUserSecretPermission = {
   actorId: string;
   actorAuthMethod: ActorAuthMethod;
   actorOrgId: string;
-  orgId: string;
 };
 
 // API Types (matching frontend contract)

@@ -11,7 +11,6 @@ export const userSecretDALFactory = (db: TDbClient) => {
   const userSecretOrm = ormify<object, typeof TableName.UserSecrets>(db, TableName.UserSecrets);
 
   const findUserSecrets = async (
-    organizationId: string,
     options: { offset?: number; limit?: number } = {},
     tx?: Knex
   ): Promise<{ secrets: TUserSecrets[]; totalCount: number }> => {
