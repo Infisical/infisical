@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { IconProp } from "@fortawesome/fontawesome-svg-core";
 import { 
   faCreditCard,
@@ -15,17 +14,17 @@ import { IconButton, Td, Tooltip, Tr } from "@app/components/v2";
 import { UserSecret, UserSecretType } from "@app/hooks/api/userSecrets";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { SecretDetailsView } from "../SecretDetailsView";
+
 type Props = {
   secret: UserSecret;
+  popUp: UsePopUpState<["deleteUserSecret" | "editUserSecret" | "viewUserSecret"]>;
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["deleteUserSecret" | "editUserSecret"]>,
-    {
-      name,
-      id
-    }: {
-      name: string;
-      id: string;
-    }
+    popUpName: keyof UsePopUpState<["deleteUserSecret" | "editUserSecret" | "viewUserSecret"]>,
+    data: any
+  ) => void;
+  handlePopUpClose: (
+    popUpName: keyof UsePopUpState<["deleteUserSecret" | "editUserSecret" | "viewUserSecret"]>
   ) => void;
   onEditSecret: (secret: UserSecret) => void;
 };
@@ -56,58 +55,88 @@ const getSecretTypeLabel = (type: UserSecretType): string => {
   }
 };
 
-export const UserSecretsRow = ({ secret, handlePopUpOpen, onEditSecret }: Props) => {
-  const [isRevealed, setIsRevealed] = useState(false);
+export const UserSecretsRow = ({ 
+  secret, 
+  popUp,
+  handlePopUpOpen, 
+  handlePopUpClose, 
+  onEditSecret 
+}: Props) => {
+  const isViewing = popUp.viewUserSecret.isOpen && 
+    popUp.viewUserSecret.data?.id === secret.id;
 
   return (
-    <Tr>
-      <Td>
-        <div className="flex items-center gap-2">
-          <FontAwesomeIcon 
-            icon={getSecretTypeIcon(secret.type)} 
-            className="text-bunker-300"
-          />
-          <span>{getSecretTypeLabel(secret.type)}</span>
-        </div>
-      </Td>
-      <Td>{secret.name}</Td>
-      <Td>{format(new Date(secret.updatedAt), "MMM d, yyyy")}</Td>
-      <Td>{secret.createdBy}</Td>
-      <Td>
-        <div className="flex items-center justify-end gap-2">
-          <Tooltip content={isRevealed ? "Hide" : "Show"}>
-            <IconButton
-              onClick={() => setIsRevealed(!isRevealed)}
-              variant="plain"
-              ariaLabel={isRevealed ? "hide secret" : "show secret"}
-            >
-              <FontAwesomeIcon icon={isRevealed ? faEyeSlash : faEye} />
-            </IconButton>
-          </Tooltip>
-          <Tooltip content="Edit">
-            <IconButton
-              onClick={() => onEditSecret(secret)}
-              variant="plain"
-              ariaLabel="edit secret"
-            >
-              <FontAwesomeIcon icon={faEdit} />
-            </IconButton>
-          </Tooltip>
-          <Tooltip content="Delete">
-            <IconButton
-              onClick={() => handlePopUpOpen("deleteUserSecret", { 
-                name: secret.name, 
-                id: secret.id 
-              })}
-              variant="plain"
-              ariaLabel="delete secret"
-              className="text-red"
-            >
-              <FontAwesomeIcon icon={faTrash} />
-            </IconButton>
-          </Tooltip>
-        </div>
-      </Td>
-    </Tr>
+    <>
+      <Tr>
+        <Td>
+          <div className="flex items-center gap-2">
+            <FontAwesomeIcon 
+              icon={getSecretTypeIcon(secret.type)} 
+              className="text-bunker-300"
+            />
+            <span>{getSecretTypeLabel(secret.type)}</span>
+          </div>
+        </Td>
+        <Td>{secret.name}</Td>
+        <Td>{format(new Date(secret.updatedAt), "MMM d, yyyy")}</Td>
+        <Td>{secret.createdBy}</Td>
+        <Td>
+          <div className="flex items-center justify-end gap-2">
+            <Tooltip content={isViewing ? "Hide" : "Show"}>
+              <IconButton
+                onClick={() => {
+                  if (isViewing) {
+                    handlePopUpClose("viewUserSecret");
+                  } else {
+                    handlePopUpOpen("viewUserSecret", {
+                      id: secret.id,
+                      secret
+                    });
+                  }
+                }}
+                variant="plain"
+                ariaLabel={isViewing ? "hide secret" : "show secret"}
+              >
+                <FontAwesomeIcon icon={isViewing ? faEyeSlash : faEye} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip content="Edit">
+              <IconButton
+                onClick={() => onEditSecret(secret)}
+                variant="plain"
+                ariaLabel="edit secret"
+              >
+                <FontAwesomeIcon icon={faEdit} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip content="Delete">
+              <IconButton
+                onClick={() => handlePopUpOpen("deleteUserSecret", { 
+                  name: secret.name, 
+                  id: secret.id 
+                })}
+                variant="plain"
+                ariaLabel="delete secret"
+                className="text-red"
+              >
+                <FontAwesomeIcon icon={faTrash} />
+              </IconButton>
+            </Tooltip>
+          </div>
+        </Td>
+      </Tr>
+      {isViewing && (
+        <Tr>
+          <Td colSpan={5} className="bg-mineshaft-800">
+            <div className="p-4">
+              <SecretDetailsView 
+                secret={secret} 
+                isRevealed
+              />
+            </div>
+          </Td>
+        </Tr>
+      )}
+    </>
   );
 }; 

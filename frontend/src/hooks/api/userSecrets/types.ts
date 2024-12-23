@@ -14,19 +14,19 @@ interface BaseUserSecret {
 }
 
 // Secret data types
-type WebLoginData = {
+export type WebLoginData = {
   url?: string;
   username: string;
   password: string;
 };
 
-type CreditCardData = {
+export type CreditCardData = {
   cardNumber: string;
   expiryDate: string;
   cvv: string;
 };
 
-type SecureNoteData = {
+export type SecureNoteData = {
   content: string;
 };
 
