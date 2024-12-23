@@ -1,8 +1,6 @@
-import { z } from "zod";
-
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TUserSecretDALFactory } from "./user-secret-dal";
@@ -27,7 +25,6 @@ export const userSecretServiceFactory = (
   kmsService: TKmsServiceFactory,
   permissionService: TPermissionServiceFactory
 ) => {
-  // Permission validation helper
   const validatePermission = async (
     { actor, actorId, actorAuthMethod, actorOrgId, orgId }: TUserSecretPermission,
     action: OrgPermissionActions
@@ -37,6 +34,16 @@ export const userSecretServiceFactory = (
     if (!permission.can(action, OrgPermissionSubjects.UserSecret)) {
       throw new ForbiddenRequestError({ message: `You do not have permission to ${action} secrets` });
     }
+  };
+
+  const encryptSecretData = (data: string): string => {
+    const encryptWithRoot = kmsService.encryptWithRootKey();
+    return encryptWithRoot(Buffer.from(data)).toString();
+  };
+
+  const decryptSecretData = (data: string): string => {
+    const decryptWithRoot = kmsService.decryptWithRootKey();
+    return decryptWithRoot(Buffer.from(data)).toString();
   };
 
   // Format response helper
@@ -62,7 +69,6 @@ export const userSecretServiceFactory = (
     await validatePermission({ actor, actorId, actorAuthMethod, actorOrgId, orgId }, OrgPermissionActions.Read);
 
     const { secrets, totalCount } = await userSecretDAL.findUserSecrets(orgId, { offset, limit });
-    const decryptWithRoot = kmsService.decryptWithRootKey();
 
     const decryptedSecrets = await Promise.all(
       secrets.map(async (secret) => {
@@ -70,8 +76,8 @@ export const userSecretServiceFactory = (
           return null;
         }
 
-        const decryptedData = decryptWithRoot(Buffer.from(secret.encryptedData));
-        return formatSecretResponse(secret, JSON.parse(decryptedData.toString()) as TUserSecretData);
+        const decryptedData = decryptSecretData(secret.encryptedData);
+        return formatSecretResponse(secret, JSON.parse(decryptedData) as TUserSecretData);
       })
     );
 
@@ -100,10 +106,9 @@ export const userSecretServiceFactory = (
       throw new NotFoundError({ message: "Secret data not found" });
     }
 
-    const decryptWithRoot = kmsService.decryptWithRootKey();
-    const decryptedData = decryptWithRoot(Buffer.from(secret.encryptedData, "base64"));
+    const decryptedData = decryptSecretData(secret.encryptedData);
 
-    return formatSecretResponse(secret, JSON.parse(decryptedData.toString()) as TUserSecretData);
+    return formatSecretResponse(secret, JSON.parse(decryptedData) as TUserSecretData);
   };
 
   const createUserSecret = async ({
@@ -118,8 +123,7 @@ export const userSecretServiceFactory = (
   }: TCreateUserSecretDTO): Promise<TUserSecretResponse> => {
     await validatePermission({ actor, actorId, actorAuthMethod, actorOrgId, orgId }, OrgPermissionActions.Create);
 
-    const encryptWithRoot = kmsService.encryptWithRootKey();
-    const encryptedSecret = encryptWithRoot(Buffer.from(JSON.stringify(data))).toString("base64");
+    const encryptedSecret = encryptSecretData(JSON.stringify(data));
 
     const secret = await userSecretDAL.createUserSecret({
       name,
@@ -129,7 +133,7 @@ export const userSecretServiceFactory = (
       iv: "",
       tag: "",
       createdAt: new Date(),
-      updatedAt: new Date() // TODO: Unify casing
+      updatedAt: new Date()
     });
 
     return formatSecretResponse(secret, data);
@@ -144,10 +148,6 @@ export const userSecretServiceFactory = (
     orgId,
     data: updates
   }: TUpdateUserSecretDTO): Promise<TUserSecretResponse> => {
-    if (!z.string().uuid().safeParse(secretId).success) {
-      throw new BadRequestError({ message: "Invalid secret ID format" });
-    }
-
     await validatePermission({ actor, actorId, actorAuthMethod, actorOrgId, orgId }, OrgPermissionActions.Edit);
 
     const secret = await userSecretDAL.findUserSecretById(secretId);
@@ -162,15 +162,13 @@ export const userSecretServiceFactory = (
     }
 
     if (updates.data) {
-      const encryptWithRoot = kmsService.encryptWithRootKey();
-      updateData.encrypted_data = encryptWithRoot(Buffer.from(JSON.stringify(updates.data))).toString();
+      updateData.encrypted_data = encryptSecretData(JSON.stringify(updates.data));
     }
 
     const updatedSecret = await userSecretDAL.updateUserSecretById(secretId, updateData);
-    const decryptWithRoot = kmsService.decryptWithRootKey();
-    const decryptedData = decryptWithRoot(Buffer.from(updatedSecret.encryptedData));
+    const decryptedData = decryptSecretData(updatedSecret.encryptedData);
 
-    return formatSecretResponse(updatedSecret, JSON.parse(decryptedData.toString()) as TUserSecretData);
+    return formatSecretResponse(updatedSecret, JSON.parse(decryptedData) as TUserSecretData);
   };
 
   const deleteUserSecret = async ({
@@ -181,10 +179,6 @@ export const userSecretServiceFactory = (
     actorOrgId,
     orgId
   }: TDeleteUserSecretDTO): Promise<void> => {
-    if (!z.string().uuid().safeParse(secretId).success) {
-      throw new BadRequestError({ message: "Invalid secret ID format" });
-    }
-
     await validatePermission({ actor, actorId, actorAuthMethod, actorOrgId, orgId }, OrgPermissionActions.Delete);
 
     const secret = await userSecretDAL.findUserSecretById(secretId);
