@@ -1,7 +1,7 @@
 import { Control, Controller } from "react-hook-form";
 
 import { FormControl } from "@app/components/v2";
-import { SecretField } from "@app/components/v2/SecretField";
+import { HideableField } from "@app/components/v2/HideableField";
 import { SecureNoteFormData } from "@app/hooks/api/userSecrets/types";
 
 import { NameInput } from "../NameInput";
@@ -20,7 +20,7 @@ export const SecureNoteForm = ({ control, isEditing = false }: Props) => (
         name="data.data.content"
         rules={{ required: "Content is required" }}
         render={({ field, fieldState: { error } }) => (
-          <SecretField
+          <HideableField
             {...field}
             placeholder="Enter your secure note content"
             isError={Boolean(error)}

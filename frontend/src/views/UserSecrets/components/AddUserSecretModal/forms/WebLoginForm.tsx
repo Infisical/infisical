@@ -1,7 +1,7 @@
 import { Control, Controller } from "react-hook-form";
 
 import { FormControl } from "@app/components/v2";
-import { SecretField } from "@app/components/v2/SecretField";
+import { HideableField } from "@app/components/v2/HideableField";
 import { WebLoginFormData } from "@app/hooks/api/userSecrets/types";
 
 import { NameInput } from "../NameInput";
@@ -19,10 +19,10 @@ export const WebLoginForm = ({ control, isEditing = false }: Props) => (
         control={control}
         name="data.data.url"
         render={({ field }) => (
-          <SecretField 
+          <HideableField 
             {...field} 
             placeholder="https://example.com"
-            isSecret={isEditing}
+            isSecret={false}
             value={field.value || ""}
           />
         )}
@@ -34,7 +34,7 @@ export const WebLoginForm = ({ control, isEditing = false }: Props) => (
         name="data.data.username"
         rules={{ required: "Username is required" }}
         render={({ field, fieldState: { error } }) => (
-          <SecretField 
+          <HideableField 
             {...field} 
             isError={Boolean(error)}
             isSecret={isEditing}
@@ -48,7 +48,7 @@ export const WebLoginForm = ({ control, isEditing = false }: Props) => (
         name="data.data.password"
         rules={{ required: "Password is required" }}
         render={({ field, fieldState: { error } }) => (
-          <SecretField 
+          <HideableField 
             {...field} 
             isError={Boolean(error)}
             isSecret={isEditing}

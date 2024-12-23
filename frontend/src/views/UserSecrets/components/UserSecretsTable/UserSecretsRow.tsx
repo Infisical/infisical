@@ -6,7 +6,6 @@ import {
   faNoteSticky,
   faTrash} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { format } from "date-fns";
 
 import { IconButton, Td, Tooltip, Tr } from "@app/components/v2";
 import { UserSecret, UserSecretType } from "@app/hooks/api/userSecrets";

@@ -9,6 +9,8 @@ export async function up(knex: Knex): Promise<void> {
       // Primary key
       table.uuid("id").primary().defaultTo(knex.fn.uuid());
 
+      // Add organizationId column
+      table.uuid("organizationId").notNullable().references("id").inTable(TableName.Organization).onDelete("CASCADE");
       table.uuid("createdBy").notNullable().references("id").inTable(TableName.Users).onDelete("CASCADE");
 
       // Data fields
@@ -24,6 +26,7 @@ export async function up(knex: Knex): Promise<void> {
       table.timestamps(true, true, true);
 
       // Indexes
+      table.index(["organizationId"]);
       table.index(["createdBy"]);
     });
   }

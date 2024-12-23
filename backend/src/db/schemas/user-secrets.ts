@@ -9,6 +9,7 @@ import { TImmutableDBKeys } from "./models";
 
 export const UserSecretsSchema = z.object({
   id: z.string().uuid(),
+  organizationId: z.string().uuid(),
   createdBy: z.string().uuid(),
   name: z.string(),
   type: z.string(),

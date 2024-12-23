@@ -76,7 +76,7 @@ export const userSecretServiceFactory = (
   }: TListUserSecretsDTO): Promise<TListUserSecretsResponse> => {
     await validatePermission({ actor, actorId, actorAuthMethod, actorOrgId }, OrgPermissionActions.Read);
 
-    const { secrets, totalCount } = await userSecretDAL.findUserSecrets({ offset, limit });
+    const { secrets, totalCount } = await userSecretDAL.findUserSecrets(actorOrgId, { offset, limit });
 
     const decryptedSecrets = await Promise.all(
       secrets.map(async (secret) => {
@@ -106,7 +106,7 @@ export const userSecretServiceFactory = (
   }: TGetUserSecretDTO): Promise<TUserSecretResponse> => {
     await validatePermission({ actor, actorId, actorAuthMethod, actorOrgId }, OrgPermissionActions.Read);
 
-    const secret = await userSecretDAL.findUserSecretById(secretId);
+    const secret = await userSecretDAL.findUserSecretById(secretId, actorOrgId);
     if (!secret) {
       throw new NotFoundError({ message: "User secret not found" });
     }
@@ -136,6 +136,7 @@ export const userSecretServiceFactory = (
     const secret = await userSecretDAL.createUserSecret({
       name,
       type,
+      organizationId: actorOrgId,
       encryptedData: encryptedSecret,
       createdBy: actorId,
       iv: "",
@@ -156,7 +157,8 @@ export const userSecretServiceFactory = (
   }: TUpdateUserSecretDTO): Promise<TUserSecretResponse> => {
     await validatePermission({ actor, actorId, actorAuthMethod, actorOrgId }, OrgPermissionActions.Edit);
 
-    const secret = await userSecretDAL.findUserSecretById(secretId);
+    // TODO: As transaction
+    const secret = await userSecretDAL.findUserSecretById(secretId, actorOrgId);
     if (!secret) {
       throw new NotFoundError({ message: "User secret not found" });
     }
@@ -175,7 +177,7 @@ export const userSecretServiceFactory = (
       return formatSecretResponse(secret, JSON.parse(decryptSecretData(secret.encryptedData)) as TUserSecretData);
     }
 
-    const updatedSecret = await userSecretDAL.updateUserSecretById(secretId, updateData);
+    const updatedSecret = await userSecretDAL.updateUserSecretById(secretId, actorOrgId, updateData);
     const decryptedData = decryptSecretData(updatedSecret.encryptedData);
 
     return formatSecretResponse(updatedSecret, JSON.parse(decryptedData) as TUserSecretData);
@@ -190,7 +192,7 @@ export const userSecretServiceFactory = (
   }: TDeleteUserSecretDTO): Promise<void> => {
     await validatePermission({ actor, actorId, actorAuthMethod, actorOrgId }, OrgPermissionActions.Delete);
 
-    const secret = await userSecretDAL.findUserSecretById(secretId);
+    const secret = await userSecretDAL.findUserSecretById(secretId, actorOrgId);
     if (!secret) {
       throw new NotFoundError({ message: "User secret not found" });
     }

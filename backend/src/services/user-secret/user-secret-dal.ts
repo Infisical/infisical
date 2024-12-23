@@ -11,6 +11,7 @@ export const userSecretDALFactory = (db: TDbClient) => {
   const userSecretOrm = ormify<object, typeof TableName.UserSecrets>(db, TableName.UserSecrets);
 
   const findUserSecrets = async (
+    organizationId: string,
     options: { offset?: number; limit?: number } = {},
     tx?: Knex
   ): Promise<{ secrets: TUserSecrets[]; totalCount: number }> => {
@@ -18,6 +19,7 @@ export const userSecretDALFactory = (db: TDbClient) => {
       // Get secrets with pagination
       const secrets = await (tx || db)(TableName.UserSecrets)
         .select(selectAllTableCols(TableName.UserSecrets))
+        .where({ organizationId })
         .orderBy("createdAt", "desc")
         .offset(options.offset || 0)
         .limit(options.limit || 10);
@@ -38,10 +40,14 @@ export const userSecretDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findUserSecretById = async (id: string, tx?: Knex): Promise<TUserSecrets | undefined> => {
+  const findUserSecretById = async (
+    id: string,
+    organizationId: string,
+    tx?: Knex
+  ): Promise<TUserSecrets | undefined> => {
     try {
       const [secret] = await (tx || db)(TableName.UserSecrets)
-        .where({ id })
+        .where({ id, organizationId })
         .select(selectAllTableCols(TableName.UserSecrets));
 
       return secret;
@@ -73,12 +79,13 @@ export const userSecretDALFactory = (db: TDbClient) => {
 
   const updateUserSecretById = async (
     id: string,
+    organizationId: string,
     data: Partial<Pick<TUserSecrets, "name" | "encryptedData">>,
     tx?: Knex
   ): Promise<TUserSecrets> => {
     try {
       const [secret] = await (tx || db)(TableName.UserSecrets)
-        .where({ id })
+        .where({ id, organizationId })
         .update({
           ...data
         })

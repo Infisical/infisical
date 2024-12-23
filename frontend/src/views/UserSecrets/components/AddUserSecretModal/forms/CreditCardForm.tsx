@@ -1,7 +1,7 @@
 import { Control, Controller } from "react-hook-form";
 
 import { FormControl } from "@app/components/v2";
-import { SecretField } from "@app/components/v2/SecretField";
+import { HideableField } from "@app/components/v2/HideableField";
 import { CreditCardFormData } from "@app/hooks/api/userSecrets/types";
 
 import { NameInput } from "../NameInput";
@@ -20,7 +20,7 @@ export const CreditCardForm = ({ control, isEditing = false }: Props) => (
         name="data.data.cardNumber"
         rules={{ required: "Card number is required" }}
         render={({ field, fieldState: { error } }) => (
-          <SecretField 
+          <HideableField 
             {...field} 
             placeholder="1234 5678 9012 3456"
             isError={Boolean(error)}
@@ -36,7 +36,7 @@ export const CreditCardForm = ({ control, isEditing = false }: Props) => (
           name="data.data.expiryDate"
           rules={{ required: "Expiry date is required" }}
           render={({ field, fieldState: { error } }) => (
-            <SecretField 
+            <HideableField 
               {...field} 
               placeholder="MM/YY"
               isError={Boolean(error)}
@@ -51,7 +51,7 @@ export const CreditCardForm = ({ control, isEditing = false }: Props) => (
           name="data.data.cvv"
           rules={{ required: "CVV is required" }}
           render={({ field, fieldState: { error } }) => (
-            <SecretField 
+            <HideableField 
               {...field} 
               placeholder="123"
               isError={Boolean(error)}

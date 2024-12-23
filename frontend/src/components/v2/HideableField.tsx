@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Input } from "@app/components/v2";
 
-type SecretFieldProps = {
+type HideableFieldProps = {
   value: string;
   onChange: (value: string) => void;
   isError?: boolean;
@@ -12,13 +12,13 @@ type SecretFieldProps = {
   isSecret?: boolean;
 };
 
-export const SecretField = ({ 
+export const HideableField = ({ 
   value, 
   onChange, 
   isError, 
   placeholder,
   isSecret = false,
-}: SecretFieldProps) => {
+}: HideableFieldProps) => {
   const [isVisible, setIsVisible] = useState(!isSecret);
 
   const handleCopy = async () => {
