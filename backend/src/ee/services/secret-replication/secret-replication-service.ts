@@ -342,13 +342,29 @@ export const secretReplicationServiceFactory = ({
               .map((el) => ({ ...el, operation: SecretOperations.Create })); // rewrite update ops to create
 
             const locallyUpdatedSecrets = sourceSecrets
-              .filter(
-                ({ key, secretKey, secretValue }) =>
+              .filter(({ key, secretKey, secretValue, secretMetadata }) => {
+                const sourceSecretMetadataJson = JSON.stringify(
+                  (secretMetadata ?? []).map((entry) => ({
+                    key: entry.key,
+                    value: entry.value
+                  }))
+                );
+
+                const destinationSecretMetadataJson = JSON.stringify(
+                  (destinationLocalSecretsGroupedByKey[key]?.[0]?.secretMetadata ?? []).map((entry) => ({
+                    key: entry.key,
+                    value: entry.value
+                  }))
+                );
+
+                return (
                   destinationLocalSecretsGroupedByKey[key]?.[0] &&
                   // if key or value changed
                   (destinationLocalSecretsGroupedByKey[key]?.[0]?.secretKey !== secretKey ||
-                    destinationLocalSecretsGroupedByKey[key]?.[0]?.secretValue !== secretValue)
-              )
+                    destinationLocalSecretsGroupedByKey[key]?.[0]?.secretValue !== secretValue ||
+                    sourceSecretMetadataJson !== destinationSecretMetadataJson)
+                );
+              })
               .map((el) => ({ ...el, operation: SecretOperations.Update })); // rewrite update ops to create
 
             const locallyDeletedSecrets = destinationLocalSecrets
