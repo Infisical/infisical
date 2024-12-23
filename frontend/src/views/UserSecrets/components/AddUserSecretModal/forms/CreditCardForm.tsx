@@ -1,6 +1,7 @@
 import { Control, Controller } from "react-hook-form";
 
-import { FormControl, Input } from "@app/components/v2";
+import { FormControl } from "@app/components/v2";
+import { SecretField } from "@app/components/v2/SecretField";
 import { CreditCardFormData } from "@app/hooks/api/userSecrets/types";
 
 import { NameInput } from "../NameInput";
@@ -18,8 +19,9 @@ export const CreditCardForm = ({ control }: Props) => (
         name="data.data.cardNumber"
         rules={{ required: "Card number is required" }}
         render={({ field, fieldState: { error } }) => (
-          <Input 
+          <SecretField 
             {...field} 
+            type="password"
             placeholder="1234 5678 9012 3456"
             isError={Boolean(error)}
           />
@@ -33,8 +35,9 @@ export const CreditCardForm = ({ control }: Props) => (
           name="data.data.expiryDate"
           rules={{ required: "Expiry date is required" }}
           render={({ field, fieldState: { error } }) => (
-            <Input 
+            <SecretField 
               {...field} 
+              type="password"
               placeholder="MM/YY"
               isError={Boolean(error)}
             />
@@ -47,7 +50,7 @@ export const CreditCardForm = ({ control }: Props) => (
           name="data.data.cvv"
           rules={{ required: "CVV is required" }}
           render={({ field, fieldState: { error } }) => (
-            <Input 
+            <SecretField 
               {...field} 
               type="password"
               placeholder="123"
