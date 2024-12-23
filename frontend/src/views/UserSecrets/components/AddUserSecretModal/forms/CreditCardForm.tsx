@@ -1,12 +1,12 @@
 import { Control, Controller } from "react-hook-form";
 
 import { FormControl, Input } from "@app/components/v2";
-import { UserSecretFormData } from "@app/hooks/api/userSecrets/types";
+import { CreditCardFormData } from "@app/hooks/api/userSecrets/types";
 
 import { NameInput } from "../NameInput";
 
 type Props = {
-  control: Control<UserSecretFormData>;
+  control: Control<CreditCardFormData>;
 };
 
 export const CreditCardForm = ({ control }: Props) => (
@@ -15,7 +15,7 @@ export const CreditCardForm = ({ control }: Props) => (
     <FormControl label="Card Number">
       <Controller
         control={control}
-        name="data.cardNumber"
+        name="data.data.cardNumber"
         rules={{ required: "Card number is required" }}
         render={({ field, fieldState: { error } }) => (
           <Input 
@@ -30,7 +30,7 @@ export const CreditCardForm = ({ control }: Props) => (
       <FormControl label="Expiry Date">
         <Controller
           control={control}
-          name="data.expiryDate"
+          name="data.data.expiryDate"
           rules={{ required: "Expiry date is required" }}
           render={({ field, fieldState: { error } }) => (
             <Input 
@@ -44,7 +44,7 @@ export const CreditCardForm = ({ control }: Props) => (
       <FormControl label="CVV">
         <Controller
           control={control}
-          name="data.cvv"
+          name="data.data.cvv"
           rules={{ required: "CVV is required" }}
           render={({ field, fieldState: { error } }) => (
             <Input 

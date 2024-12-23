@@ -1,18 +1,21 @@
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { Control, useForm } from "react-hook-form";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, Modal, ModalContent } from "@app/components/v2";
-import { useOrganization } from "@app/context";
-import { CreateUserSecretDTO, useCreateUserSecret, UserSecretType } from "@app/hooks/api/userSecrets";
+import {
+  CreditCardFormData,
+  SecureNoteFormData,
+  useCreateUserSecret,
+  UserSecretType,
+  WebLoginFormData
+} from "@app/hooks/api/userSecrets";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { CreditCardForm } from "./forms/CreditCardForm";
 import { SecureNoteForm } from "./forms/SecureNoteForm";
 import { WebLoginForm } from "./forms/WebLoginForm";
 import { SecretTypeSelect } from "./SecretTypeSelect";
-
-
 
 type Props = {
   popUp: UsePopUpState<["createUserSecret"]>;
@@ -22,55 +25,63 @@ type Props = {
   ) => void;
 };
 
-type FormData = {
-  type: UserSecretType;
-  name: string;
-  data: CreateUserSecretDTO["data"];
-};
+type FormData = WebLoginFormData | CreditCardFormData | SecureNoteFormData;
 
 export const AddUserSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
-  const { currentOrg } = useOrganization();
-  const createUserSecret = useCreateUserSecret(currentOrg?.id || "");
-  
+  const createUserSecret = useCreateUserSecret();
+
   const { control, handleSubmit, watch, reset } = useForm<FormData>({
     defaultValues: {
-      type: UserSecretType.WEB_LOGIN,
       name: "",
-      data: { url: "", username: "", password: "" } // Default to web login data
+      data: {
+        type: UserSecretType.WEB_LOGIN,
+        data: { url: "", username: "", password: "" }
+      }
     }
   });
 
-  const selectedType = watch("type");
+  const selectedType = watch("data.type");
 
+  // Reset form when modal closes
   useEffect(() => {
     if (!popUp.createUserSecret.isOpen) {
-      reset();
+      switch (selectedType) {
+        case UserSecretType.WEB_LOGIN:
+          reset({
+            name: "",
+            data: {
+              type: UserSecretType.WEB_LOGIN,
+              data: { url: "", username: "", password: "" }
+            }
+          });
+          break;
+        case UserSecretType.CREDIT_CARD:
+          reset({
+            name: "",
+            data: {
+              type: UserSecretType.CREDIT_CARD,
+              data: { cardNumber: "", expiryDate: "", cvv: "" }
+            }
+          });
+          break;
+        case UserSecretType.SECURE_NOTE:
+          reset({
+            name: "",
+            data: {
+              type: UserSecretType.SECURE_NOTE,
+              data: { content: "" }
+            }
+          });
+          break;
+        default:
+          throw new Error("Invalid secret type");
+      }
     }
-  }, [popUp.createUserSecret.isOpen, reset]);
-
-  // Reset data when type changes
-  useEffect(() => {
-    let newData: CreateUserSecretDTO["data"];
-    if (selectedType === UserSecretType.WEB_LOGIN) {
-      newData = { url: "", username: "", password: "" };
-    } else if (selectedType === UserSecretType.CREDIT_CARD) {
-      newData = { cardNumber: "", expiryDate: "", cvv: "" };
-    } else {
-      newData = { content: "" };
-    }
-
-    reset(values => ({
-      ...values,
-      data: newData
-    }));
-  }, [selectedType, reset]);
+  }, [popUp.createUserSecret.isOpen, reset, selectedType]);
 
   const onSubmit = async (formData: FormData) => {
     try {
-      await createUserSecret.mutateAsync({
-        ...formData,
-        organizationId: currentOrg?.id || ""
-      });
+      await createUserSecret.mutateAsync(formData);
       handlePopUpToggle("createUserSecret", false);
       createNotification({
         text: "Successfully created user secret",
@@ -96,30 +107,22 @@ export const AddUserSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
       >
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <SecretTypeSelect control={control} />
-          
+
           {selectedType === UserSecretType.WEB_LOGIN && (
-            <WebLoginForm control={control} />
+            <WebLoginForm control={control as Control<WebLoginFormData>} />
           )}
-          
           {selectedType === UserSecretType.CREDIT_CARD && (
-            <CreditCardForm control={control} />
+            <CreditCardForm control={control as Control<CreditCardFormData>} />
           )}
-          
           {selectedType === UserSecretType.SECURE_NOTE && (
-            <SecureNoteForm control={control} />
+            <SecureNoteForm control={control as Control<SecureNoteFormData>} />
           )}
 
           <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => handlePopUpToggle("createUserSecret", false)}
-            >
+            <Button variant="outline" onClick={() => handlePopUpToggle("createUserSecret", false)}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              isLoading={createUserSecret.isLoading}
-            >
+            <Button type="submit" isLoading={createUserSecret.isLoading}>
               Save Secret
             </Button>
           </div>
@@ -127,4 +130,4 @@ export const AddUserSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
       </ModalContent>
     </Modal>
   );
-}; 
+};

@@ -9,13 +9,13 @@ import {
   UserSecret 
 } from "./types";
 
-export const useCreateUserSecret = (organizationId: string) => {
+export const useCreateUserSecret = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
     mutationFn: async (data: CreateUserSecretDTO) => {
       const { data: response } = await apiRequest.post<UserSecret>(
-        `/api/v1/organizations/${organizationId}/user-secrets`,
+        "/api/v1/user-secrets",
         data
       );
       return response;
@@ -26,13 +26,13 @@ export const useCreateUserSecret = (organizationId: string) => {
   });
 };
 
-export const useUpdateUserSecret = (organizationId: string) => {
+export const useUpdateUserSecret = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
     mutationFn: async ({ id, ...data }: UpdateUserSecretDTO) => {
       const { data: response } = await apiRequest.patch<UserSecret>(
-        `/api/v1/organizations/${organizationId}/user-secrets/${id}`,
+        `/api/v1/user-secrets/${id}`,
         data
       );
       return response;
@@ -44,13 +44,13 @@ export const useUpdateUserSecret = (organizationId: string) => {
   });
 };
 
-export const useDeleteUserSecret = (organizationId: string) => {
+export const useDeleteUserSecret = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
     mutationFn: async (id: string) => {
       const { data } = await apiRequest.delete<{ success: boolean }>(
-        `/api/v1/organizations/${organizationId}/user-secrets/${id}`
+        `/api/v1//user-secrets/${id}`
       );
       return data;
     },

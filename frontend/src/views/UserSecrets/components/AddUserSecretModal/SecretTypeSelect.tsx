@@ -3,11 +3,16 @@ import { faCreditCard, faGlobe, faNotdef } from "@fortawesome/free-solid-svg-ico
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { FormControl, Select, SelectItem } from "@app/components/v2";
-import { CreateUserSecretDTO, UserSecretType } from "@app/hooks/api/userSecrets";
+import { 
+  CreditCardFormData,
+  SecureNoteFormData, 
+  UserSecretType,
+  WebLoginFormData} from "@app/hooks/api/userSecrets";
 
+type FormData = WebLoginFormData | CreditCardFormData | SecureNoteFormData;
 
 type Props = {
-  control: Control<CreateUserSecretDTO>;
+  control: Control<FormData>;
 };
 
 const secretTypeOptions = [
@@ -20,9 +25,12 @@ export const SecretTypeSelect = ({ control }: Props) => (
   <FormControl label="Secret Type">
     <Controller
       control={control}
-      name="type"
-      render={({ field }) => (
-        <Select {...field}>
+      name="data.type"
+      render={({ field: { onChange, value } }) => (
+        <Select 
+          value={value}
+          onValueChange={onChange}
+        >
           {secretTypeOptions.map((option) => (
             <SelectItem key={option.value} value={option.value}>
               <div className="flex items-center gap-2">

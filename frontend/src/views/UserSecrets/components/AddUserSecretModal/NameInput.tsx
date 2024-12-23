@@ -1,17 +1,22 @@
-import { Control, Controller } from "react-hook-form";
+import { Control, Controller, FieldValues, Path } from "react-hook-form";
 
 import { FormControl, Input } from "@app/components/v2";
-import { UserSecretFormData } from "@app/hooks/api/userSecrets/types";
 
-type Props = {
-  control: Control<UserSecretFormData>;
+// Generic type that ensures the form data has a name field
+type FormWithName = {
+  name: string;
+  [key: string]: any;
 };
 
-export const NameInput = ({ control }: Props) => (
+type Props<T extends FieldValues & FormWithName> = {
+  control: Control<T>;
+};
+
+export const NameInput = <T extends FieldValues & FormWithName>({ control }: Props<T>) => (
   <FormControl label="Name">
-    <Controller
+    <Controller<T>
       control={control}
-      name="name"
+      name={"name" as Path<T>}
       rules={{ required: "Name is required" }}
       render={({ field, fieldState: { error } }) => (
         <Input

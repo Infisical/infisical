@@ -7,7 +7,6 @@ export enum UserSecretType {
 // Base types
 interface BaseUserSecret {
   id: string;
-  organizationId: string;
   name: string;
   createdAt: string;
   updatedAt: string;
@@ -31,7 +30,32 @@ type SecureNoteData = {
   content: string;
 };
 
-// User Secret types using discriminated union
+// Form data types with discriminated unions
+export type WebLoginFormData = {
+  name: string;
+  data: {
+    type: UserSecretType.WEB_LOGIN;
+    data: WebLoginData;
+  };
+};
+
+export type CreditCardFormData = {
+  name: string;
+  data: {
+    type: UserSecretType.CREDIT_CARD;
+    data: CreditCardData;
+  };
+};
+
+export type SecureNoteFormData = {
+  name: string;
+  data: {
+    type: UserSecretType.SECURE_NOTE;
+    data: SecureNoteData;
+  };
+};
+
+// User Secret type with discriminated union
 export type UserSecret = BaseUserSecret & (
   | { type: UserSecretType.WEB_LOGIN; data: WebLoginData }
   | { type: UserSecretType.CREDIT_CARD; data: CreditCardData }
@@ -39,24 +63,27 @@ export type UserSecret = BaseUserSecret & (
 );
 
 // API DTOs
-export type CreateUserSecretDTO = Omit<UserSecret, "id" | "createdAt" | "updatedAt" | "createdBy">;
-export type UpdateUserSecretDTO = { id: string } & Partial<CreateUserSecretDTO>;
+export type CreateUserSecretDTO = 
+  | WebLoginFormData
+  | CreditCardFormData
+  | SecureNoteFormData;
 
-// API params and response
-export interface GetUserSecretsParams {
-  organizationId: string;
-  offset?: number;
-  limit?: number;
-}
+export type UpdateUserSecretDTO = {
+  id: string;
+  name?: string;
+  data?: {
+    type: UserSecretType;
+    data: WebLoginData | CreditCardData | SecureNoteData;
+  };
+};
 
+// API response types
 export interface GetUserSecretsResponse {
   secrets: UserSecret[];
   totalCount: number;
 }
 
-// Common form type for both create and edit
-export type UserSecretFormData = {
-  type: UserSecretType;
+// Common base type for form components
+export type BaseFormData = {
   name: string;
-  data: UserSecret["data"];
 }; 

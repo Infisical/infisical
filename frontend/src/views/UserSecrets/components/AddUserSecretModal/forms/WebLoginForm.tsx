@@ -1,12 +1,12 @@
 import { Control, Controller } from "react-hook-form";
 
 import { FormControl, Input } from "@app/components/v2";
-import { UserSecretFormData } from "@app/hooks/api/userSecrets/types";
+import { WebLoginFormData } from "@app/hooks/api/userSecrets/types";
 
 import { NameInput } from "../NameInput";
 
 type Props = {
-  control: Control<UserSecretFormData>;
+  control: Control<WebLoginFormData>;
 };
 
 export const WebLoginForm = ({ control }: Props) => (
@@ -15,7 +15,7 @@ export const WebLoginForm = ({ control }: Props) => (
     <FormControl label="URL">
       <Controller
         control={control}
-        name="data.url"
+        name="data.data.url"
         render={({ field }) => (
           <Input {...field} placeholder="https://example.com" />
         )}
@@ -24,7 +24,7 @@ export const WebLoginForm = ({ control }: Props) => (
     <FormControl label="Username">
       <Controller
         control={control}
-        name="data.username"
+        name="data.data.username"
         rules={{ required: "Username is required" }}
         render={({ field, fieldState: { error } }) => (
           <Input {...field} isError={Boolean(error)} />
@@ -34,7 +34,7 @@ export const WebLoginForm = ({ control }: Props) => (
     <FormControl label="Password">
       <Controller
         control={control}
-        name="data.password"
+        name="data.data.password"
         rules={{ required: "Password is required" }}
         render={({ field, fieldState: { error } }) => (
           <Input 

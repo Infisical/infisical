@@ -1,12 +1,12 @@
 import { Control, Controller } from "react-hook-form";
 
 import { FormControl, TextArea } from "@app/components/v2";
-import { UserSecretFormData } from "@app/hooks/api/userSecrets/types";
+import { SecureNoteFormData } from "@app/hooks/api/userSecrets/types";
 
 import { NameInput } from "../NameInput";
 
 type Props = {
-  control: Control<UserSecretFormData>;
+  control: Control<SecureNoteFormData>;
 };
 
 export const SecureNoteForm = ({ control }: Props) => (
@@ -15,7 +15,7 @@ export const SecureNoteForm = ({ control }: Props) => (
     <FormControl label="Content">
       <Controller
         control={control}
-        name="data.content"
+        name="data.data.content"
         rules={{ required: "Content is required" }}
         render={({ field, fieldState: { error } }) => (
           <TextArea
