@@ -8,9 +8,10 @@ import { NameInput } from "../NameInput";
 
 type Props = {
   control: Control<SecureNoteFormData>;
+  isEditing?: boolean;
 };
 
-export const SecureNoteForm = ({ control }: Props) => (
+export const SecureNoteForm = ({ control, isEditing = false }: Props) => (
   <>
     <NameInput control={control} />
     <FormControl label="Content">
@@ -23,6 +24,7 @@ export const SecureNoteForm = ({ control }: Props) => (
             {...field}
             placeholder="Enter your secure note content"
             isError={Boolean(error)}
+            isSecret={isEditing}
           />
         )}
       />

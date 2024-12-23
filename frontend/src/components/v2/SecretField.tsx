@@ -9,6 +9,7 @@ type SecretFieldProps = {
   onChange: (value: string) => void;
   isError?: boolean;
   placeholder?: string;
+  isSecret?: boolean;
 };
 
 export const SecretField = ({ 
@@ -16,8 +17,9 @@ export const SecretField = ({
   onChange, 
   isError, 
   placeholder,
+  isSecret = false,
 }: SecretFieldProps) => {
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(!isSecret);
 
   const handleCopy = async () => {
     try {
@@ -33,11 +35,11 @@ export const SecretField = ({
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.value),
     isError,
     placeholder,
-    type: isVisible ? "text" : "password"
+    type: (isSecret && !isVisible) ? "password" : "text"
   };
 
   const renderControls = () => {
-    if (!value) return null;
+    if (!value || !isSecret) return null;
 
     return (
       <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-2">

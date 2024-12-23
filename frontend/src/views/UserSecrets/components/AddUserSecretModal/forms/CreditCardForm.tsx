@@ -8,9 +8,10 @@ import { NameInput } from "../NameInput";
 
 type Props = {
   control: Control<CreditCardFormData>;
+  isEditing?: boolean;
 };
 
-export const CreditCardForm = ({ control }: Props) => (
+export const CreditCardForm = ({ control, isEditing = false }: Props) => (
   <>
     <NameInput control={control} />
     <FormControl label="Card Number">
@@ -23,6 +24,7 @@ export const CreditCardForm = ({ control }: Props) => (
             {...field} 
             placeholder="1234 5678 9012 3456"
             isError={Boolean(error)}
+            isSecret={isEditing}
           />
         )}
       />
@@ -38,6 +40,7 @@ export const CreditCardForm = ({ control }: Props) => (
               {...field} 
               placeholder="MM/YY"
               isError={Boolean(error)}
+              isSecret={isEditing}
             />
           )}
         />
@@ -52,6 +55,7 @@ export const CreditCardForm = ({ control }: Props) => (
               {...field} 
               placeholder="123"
               isError={Boolean(error)}
+              isSecret={isEditing}
             />
           )}
         />

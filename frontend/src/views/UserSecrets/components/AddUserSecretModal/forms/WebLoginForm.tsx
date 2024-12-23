@@ -8,9 +8,10 @@ import { NameInput } from "../NameInput";
 
 type Props = {
   control: Control<WebLoginFormData>;
+  isEditing?: boolean;
 };
 
-export const WebLoginForm = ({ control }: Props) => (
+export const WebLoginForm = ({ control, isEditing = false }: Props) => (
   <>
     <NameInput control={control} />
     <FormControl label="URL">
@@ -18,7 +19,12 @@ export const WebLoginForm = ({ control }: Props) => (
         control={control}
         name="data.data.url"
         render={({ field }) => (
-          <SecretField {...field} placeholder="https://example.com" value={field.value || ""} />
+          <SecretField 
+            {...field} 
+            placeholder="https://example.com"
+            isSecret={isEditing}
+            value={field.value || ""}
+          />
         )}
       />
     </FormControl>
@@ -28,7 +34,11 @@ export const WebLoginForm = ({ control }: Props) => (
         name="data.data.username"
         rules={{ required: "Username is required" }}
         render={({ field, fieldState: { error } }) => (
-          <SecretField {...field} isError={Boolean(error)} />
+          <SecretField 
+            {...field} 
+            isError={Boolean(error)}
+            isSecret={isEditing}
+          />
         )}
       />
     </FormControl>
@@ -41,6 +51,7 @@ export const WebLoginForm = ({ control }: Props) => (
           <SecretField 
             {...field} 
             isError={Boolean(error)}
+            isSecret={isEditing}
           />
         )}
       />
