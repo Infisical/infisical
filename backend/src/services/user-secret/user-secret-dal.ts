@@ -18,14 +18,13 @@ export const userSecretDALFactory = (db: TDbClient) => {
     try {
       // Get secrets with pagination
       const secrets = await (tx || db)(TableName.UserSecrets)
-        .where({ organization_id: organizationId })
         .select(selectAllTableCols(TableName.UserSecrets))
         .orderBy("created_at", "desc")
         .offset(options.offset || 0)
         .limit(options.limit || 10);
 
       // Get total count
-      const result = await (tx || db)(TableName.UserSecrets).where({ organization_id: organizationId }).count().first();
+      const result = await (tx || db)(TableName.UserSecrets).count().first();
       const totalCount = result?.count || 0;
 
       return {
@@ -93,17 +92,13 @@ export const userSecretDALFactory = (db: TDbClient) => {
     }
   };
 
-  const softDeleteById = async (id: string, tx?: Knex): Promise<void> => {
+  const deleteById = async (id: string, tx?: Knex): Promise<void> => {
     try {
-      await (tx || db)(TableName.UserSecrets).where({ id }).update({
-        encrypted_data: "",
-        iv: "",
-        tag: ""
-      });
+      await (tx || db)(TableName.UserSecrets).where({ id }).delete();
     } catch (error) {
       throw new DatabaseError({
         error,
-        name: "Soft Delete User Secret"
+        name: "Delete User Secret"
       });
     }
   };
@@ -114,6 +109,6 @@ export const userSecretDALFactory = (db: TDbClient) => {
     findUserSecretById,
     createUserSecret,
     updateUserSecretById,
-    softDeleteById
+    deleteById
   };
 };

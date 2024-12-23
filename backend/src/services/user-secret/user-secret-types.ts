@@ -70,7 +70,6 @@ export type TDeleteUserSecretDTO = {
 // Response types (matching frontend contract)
 export type TUserSecretResponse = {
   id: string;
-  organizationId: string;
   name: string;
   type: UserSecretType;
   data: TUserSecretData;
