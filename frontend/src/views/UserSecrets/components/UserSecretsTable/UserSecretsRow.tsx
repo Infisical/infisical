@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { IconProp } from "@fortawesome/fontawesome-svg-core";
 import { 
-  faCopy, 
   faCreditCard,
   faEdit, 
   faEye, 
@@ -12,7 +11,6 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
-import { createNotification } from "@app/components/notifications";
 import { IconButton, Td, Tooltip, Tr } from "@app/components/v2";
 import { UserSecret, UserSecretType } from "@app/hooks/api/userSecrets";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -58,37 +56,8 @@ const getSecretTypeLabel = (type: UserSecretType): string => {
   }
 };
 
-const getSecretValue = (secret: UserSecret): string => {
-  switch (secret.type) {
-    case UserSecretType.WEB_LOGIN:
-      return secret.data.password;
-    case UserSecretType.CREDIT_CARD:
-      return secret.data.cardNumber;
-    case UserSecretType.SECURE_NOTE:
-      return secret.data.content;
-    default:
-      throw new Error("Invalid secret type");
-  }
-};
-
 export const UserSecretsRow = ({ secret, handlePopUpOpen, onEditSecret }: Props) => {
   const [isRevealed, setIsRevealed] = useState(false);
-
-  const handleCopyClick = async () => {
-    try {
-      await navigator.clipboard.writeText(getSecretValue(secret));
-      createNotification({
-        text: "Copied to clipboard",
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to copy to clipboard",
-        type: "error"
-      });
-    }
-  };
 
   return (
     <Tr>
@@ -113,15 +82,6 @@ export const UserSecretsRow = ({ secret, handlePopUpOpen, onEditSecret }: Props)
               ariaLabel={isRevealed ? "hide secret" : "show secret"}
             >
               <FontAwesomeIcon icon={isRevealed ? faEyeSlash : faEye} />
-            </IconButton>
-          </Tooltip>
-          <Tooltip content="Copy">
-            <IconButton
-              onClick={handleCopyClick}
-              variant="plain"
-              ariaLabel="copy secret"
-            >
-              <FontAwesomeIcon icon={faCopy} />
             </IconButton>
           </Tooltip>
           <Tooltip content="Edit">
