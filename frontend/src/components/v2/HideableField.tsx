@@ -4,6 +4,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Input } from "@app/components/v2";
 
+import { createNotification } from "../notifications";
+
 type HideableFieldProps = {
   value: string;
   onChange: (value: string) => void;
@@ -24,7 +26,10 @@ export const HideableField = ({
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(value);
-      // Optional: Add a notification that the value was copied
+      createNotification({
+        type: "success",
+        text: "Copied to clipboard"
+      });
     } catch (err) {
       console.error("Failed to copy:", err);
     }
