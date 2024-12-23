@@ -43,7 +43,7 @@ const UpdateUserSecretSchema = z.object({
     .optional()
 });
 
-export const registerUserSecretRouter = async (server: FastifyZodProvider) => {
+export const registerUserSecretsRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/",
