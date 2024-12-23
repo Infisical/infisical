@@ -65,9 +65,7 @@ export const UserSecretsSection = () => {
      
 
       <UserSecretsTable 
-        popUp={popUp}
         handlePopUpOpen={handlePopUpOpen}
-        handlePopUpClose={handlePopUpClose}
         onEditSecret={handleEditSecret}
       />
 

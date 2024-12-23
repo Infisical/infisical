@@ -18,21 +18,15 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 import { UserSecretsRow } from "./UserSecretsRow";
 
 type Props = {
-  popUp: UsePopUpState<["deleteUserSecret" | "editUserSecret"]>;
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<["deleteUserSecret" | "editUserSecret"]>,
     data: any
-  ) => void;
-  handlePopUpClose: (
-    popUpName: keyof UsePopUpState<["deleteUserSecret" | "editUserSecret"]>
   ) => void;
   onEditSecret: (secret: UserSecret) => void;
 };
 
 export const UserSecretsTable = ({ 
-  popUp, 
   handlePopUpOpen, 
-  handlePopUpClose, 
   onEditSecret 
 }: Props) => {
   const [page, setPage] = useState(1);
@@ -62,9 +56,7 @@ export const UserSecretsTable = ({
               <UserSecretsRow 
                 key={secret.id} 
                 secret={secret}
-                popUp={popUp}
                 handlePopUpOpen={handlePopUpOpen}
-                handlePopUpClose={handlePopUpClose}
                 onEditSecret={onEditSecret}
               />
             ))}
