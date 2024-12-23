@@ -73,14 +73,23 @@ export const userSecretDALFactory = (db: TDbClient) => {
 
   const updateUserSecretById = async (
     id: string,
-    data: Partial<Omit<TUserSecrets, "id" | "createdAt" | "updatedAt">>,
+    data: Partial<Pick<TUserSecrets, "name" | "encryptedData">>,
     tx?: Knex
   ): Promise<TUserSecrets> => {
     try {
       const [secret] = await (tx || db)(TableName.UserSecrets)
         .where({ id })
-        .update(data)
+        .update({
+          ...data
+        })
         .returning(selectAllTableCols(TableName.UserSecrets));
+
+      if (!secret) {
+        throw new DatabaseError({
+          error: new Error("No secret found to update"),
+          name: "Update User Secret"
+        });
+      }
 
       return secret;
     } catch (error) {

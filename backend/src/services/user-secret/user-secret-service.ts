@@ -161,14 +161,18 @@ export const userSecretServiceFactory = (
       throw new NotFoundError({ message: "User secret not found" });
     }
 
-    const updateData: { name?: string; encrypted_data?: string } = {};
-
-    if (name) {
+    // Only include fields that are actually being updated
+    const updateData: { name?: string; encryptedData?: string } = {};
+    if (name !== undefined) {
       updateData.name = name;
     }
+    if (data !== undefined) {
+      updateData.encryptedData = encryptSecretData(JSON.stringify(data));
+    }
 
-    if (data) {
-      updateData.encrypted_data = encryptSecretData(JSON.stringify(data));
+    // Don't make the update call if there's nothing to update
+    if (Object.keys(updateData).length === 0) {
+      return formatSecretResponse(secret, JSON.parse(decryptSecretData(secret.encryptedData)) as TUserSecretData);
     }
 
     const updatedSecret = await userSecretDAL.updateUserSecretById(secretId, updateData);
