@@ -405,7 +405,18 @@ export default function AWSSecretManagerCreateIntegrationPage() {
                     render={({ field: { onChange, value } }) => (
                       <Switch
                         id="tag-aws"
-                        onCheckedChange={(isChecked) => onChange(isChecked)}
+                        onCheckedChange={(isChecked) => {
+                          if (
+                            isChecked &&
+                            selectedMappingBehavior === IntegrationMappingBehavior.ONE_TO_ONE
+                          ) {
+                            setValue(
+                              "metadataSyncMode",
+                              IntegrationMetadataSyncMode.SECRET_METADATA
+                            );
+                          }
+                          onChange(isChecked);
+                        }}
                         isChecked={value}
                       >
                         Tag in AWS Secrets Manager
