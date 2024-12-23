@@ -18,13 +18,13 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 import { UserSecretsRow } from "./UserSecretsRow";
 
 type Props = {
-  popUp: UsePopUpState<["deleteUserSecret" | "editUserSecret" | "viewUserSecret"]>;
+  popUp: UsePopUpState<["deleteUserSecret" | "editUserSecret"]>;
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["deleteUserSecret" | "editUserSecret" | "viewUserSecret"]>,
+    popUpName: keyof UsePopUpState<["deleteUserSecret" | "editUserSecret"]>,
     data: any
   ) => void;
   handlePopUpClose: (
-    popUpName: keyof UsePopUpState<["deleteUserSecret" | "editUserSecret" | "viewUserSecret"]>
+    popUpName: keyof UsePopUpState<["deleteUserSecret" | "editUserSecret"]>
   ) => void;
   onEditSecret: (secret: UserSecret) => void;
 };

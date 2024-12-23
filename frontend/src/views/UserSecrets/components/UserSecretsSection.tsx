@@ -18,8 +18,7 @@ export const UserSecretsSection = () => {
   const { popUp, handlePopUpToggle, handlePopUpClose, handlePopUpOpen } = usePopUp([
     "createUserSecret",
     "editUserSecret",
-    "deleteUserSecret",
-    "viewUserSecret"
+    "deleteUserSecret"
   ] as const);
 
   const handleEditSecret = (secret: UserSecret) => {
