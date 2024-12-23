@@ -18,7 +18,7 @@ export const userSecretDALFactory = (db: TDbClient) => {
       // Get secrets with pagination
       const secrets = await (tx || db)(TableName.UserSecrets)
         .select(selectAllTableCols(TableName.UserSecrets))
-        .orderBy("created_at", "desc")
+        .orderBy("createdAt", "desc")
         .offset(options.offset || 0)
         .limit(options.limit || 10);
 
@@ -54,7 +54,7 @@ export const userSecretDALFactory = (db: TDbClient) => {
   };
 
   const createUserSecret = async (
-    data: Omit<TUserSecrets, "id" | "created_at" | "updated_at">,
+    data: Omit<TUserSecrets, "id" | "createdAt" | "updatedAt">,
     tx?: Knex
   ): Promise<TUserSecrets> => {
     try {
@@ -73,7 +73,7 @@ export const userSecretDALFactory = (db: TDbClient) => {
 
   const updateUserSecretById = async (
     id: string,
-    data: Partial<Omit<TUserSecrets, "id" | "created_at" | "updated_at">>,
+    data: Partial<Omit<TUserSecrets, "id" | "createdAt" | "updatedAt">>,
     tx?: Knex
   ): Promise<TUserSecrets> => {
     try {

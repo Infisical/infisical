@@ -1,6 +1,7 @@
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TUserSecretDALFactory } from "./user-secret-dal";
@@ -81,6 +82,8 @@ export const userSecretServiceFactory = (
           return null;
         }
 
+        logger.info({ secret }, `Decrypting secret`);
+
         const decryptedData = decryptSecretData(secret.encryptedData);
         return formatSecretResponse(secret, JSON.parse(decryptedData) as TUserSecretData);
       })
@@ -134,9 +137,7 @@ export const userSecretServiceFactory = (
       encryptedData: encryptedSecret,
       createdBy: actorId,
       iv: "",
-      tag: "",
-      createdAt: new Date(),
-      updatedAt: new Date()
+      tag: ""
     });
 
     return formatSecretResponse(secret, data);
