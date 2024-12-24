@@ -11,5 +11,25 @@ export const ROUTE_PATHS = Object.freeze({
     "/_restrict-login-signup/login/provider/success"
   ),
   SignUpSsoPage: setRoute("/signup/sso", "/_restrict-login-signup/signup/sso/"),
-  PasswordResetPage: setRoute("/password-reset", "/_restrict-login-signup/password-reset")
+  PasswordResetPage: setRoute("/password-reset", "/_restrict-login-signup/password-reset"),
+  OrgGroupDetailsByIDPage: setRoute(
+    "/organization/groups/$groupId",
+    "/_authenticate/_ctx-org-details/organization/_layout-org/groups/$groupId/"
+  ),
+  OrgIdentityDetailsByIDPage: setRoute(
+    "/organization/identities/$identityId",
+    "/_authenticate/_ctx-org-details/organization/_layout-org/identities/$identityId/"
+  ),
+  OrgUserDetailsByIDPage: setRoute(
+    "/organization/memberships/$membershipId",
+    "/_authenticate/_ctx-org-details/organization/_layout-org/memberships/$membershipId/"
+  ),
+  OrgAccessControlPage: setRoute(
+    "/organization/members",
+    "/_authenticate/_ctx-org-details/organization/_layout-org/members/"
+  ),
+  OrgRoleByIDPage: setRoute(
+    "/organization/roles/$roleId",
+    "/_authenticate/_ctx-org-details/organization/_layout-org/roles/$roleId/"
+  )
 });
