@@ -1,4 +1,4 @@
-export enum TabSections {
+export enum OrgAccessControlTabSections {
   Member = "members",
   Groups = "groups",
   Roles = "roles",
