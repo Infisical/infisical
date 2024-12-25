@@ -1,1 +1,0 @@
-export { GroupsTab } from "./GroupsTab";

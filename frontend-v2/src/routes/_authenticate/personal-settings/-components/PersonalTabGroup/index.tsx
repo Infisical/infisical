@@ -1,1 +1,0 @@
-export { PersonalTabGroup } from "./PersonalTabGroup";

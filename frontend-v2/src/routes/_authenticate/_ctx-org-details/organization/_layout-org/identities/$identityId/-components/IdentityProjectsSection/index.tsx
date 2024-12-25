@@ -1,1 +1,0 @@
-export { IdentityProjectsSection } from "./IdentityProjectsSection";

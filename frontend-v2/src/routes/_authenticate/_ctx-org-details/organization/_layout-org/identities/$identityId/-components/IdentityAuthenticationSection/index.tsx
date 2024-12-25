@@ -1,1 +1,0 @@
-export { IdentityAuthenticationSection } from "./IdentityAuthenticationSection";

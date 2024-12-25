@@ -39,5 +39,8 @@ export const ROUTE_PATHS = Object.freeze({
   SecretDashboardPage: setRoute(
     "/secret-manager/$projectId/secrets/$envSlug",
     "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secrets/$envSlug/"
-  )
+  ),
+  CertAuthDetailsByIDPage: setRoute("cert-auth", "cert-auth"),
+  CertCertificatesPage: setRoute("cert-list", "cert-list"),
+  CertPkiCollectionDetailsByIDPage: setRoute("cert-pki-collection", "cert-pki-collection")
 });
