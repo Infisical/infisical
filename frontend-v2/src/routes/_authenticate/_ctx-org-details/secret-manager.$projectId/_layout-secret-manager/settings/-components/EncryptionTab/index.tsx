@@ -1,1 +1,0 @@
-export { EncryptionTab } from "./EncryptionTab";
