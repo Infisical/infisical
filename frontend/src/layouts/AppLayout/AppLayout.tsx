@@ -386,9 +386,9 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       <Link href={`/org/${currentOrg?.id}/ssh/overview`} passHref>
                         <a>
                           <MenuItem
-                            isSelected={
-                              router.asPath === `/org/${currentWorkspace?.id}/ssh/overview`
-                            }
+                            isSelected={router.asPath.includes(
+                              `/${ProjectType.SSH}/overview`
+                            )}
                             icon="system-regular-126-verified-hover-verified"
                           >
                             SSH

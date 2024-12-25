@@ -85,13 +85,25 @@ export const ProjectSidebarItem = () => {
         </Link>
       )}
       {isSsh && (
-        <Link href={`/${ProjectType.SSH}/${currentWorkspace?.id}/ssh`} passHref>
+        <Link href={`/${ProjectType.SSH}/${currentWorkspace?.id}/certificates`} passHref>
           <a>
             <MenuItem
-              isSelected={router.asPath === `/${ProjectType.SSH}/${currentWorkspace?.id}/ssh`}
+              isSelected={router.asPath === `/${ProjectType.SSH}/${currentWorkspace?.id}/certificates`}
               icon="system-outline-90-lock-closed"
             >
-              Overview
+              Certificates
+            </MenuItem>
+          </a>
+        </Link>
+      )}
+      {isSsh && (
+        <Link href={`/${ProjectType.SSH}/${currentWorkspace?.id}/cas`} passHref>
+          <a>
+            <MenuItem
+              isSelected={router.asPath === `/${ProjectType.SSH}/${currentWorkspace?.id}/cas`}
+              icon="system-outline-90-lock-closed"
+            >
+              Certificate Authorities
             </MenuItem>
           </a>
         </Link>

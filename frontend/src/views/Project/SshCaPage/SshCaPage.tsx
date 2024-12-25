@@ -21,7 +21,7 @@ import { useDeleteSshCa, useGetSshCaById } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-import { SshCaModal } from "../SshPage/components/SshCaModal";
+import { SshCaModal } from "../SshCasPage/components/SshCaModal";
 import { SshCaDetailsSection, SshCertificateTemplatesSection } from "./components";
 
 export const SshCaPage = withProjectPermission(
@@ -51,7 +51,7 @@ export const SshCaPage = withProjectPermission(
         });
 
         handlePopUpClose("deleteSshCa");
-        router.push(`/project/${projectId}/ssh`);
+        router.push(`/project/${projectId}/cas`);
       } catch (err) {
         console.error(err);
         createNotification({
@@ -69,7 +69,7 @@ export const SshCaPage = withProjectPermission(
               variant="link"
               type="submit"
               leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
-              onClick={() => router.push(`/${ProjectType.SSH}/${projectId}/ssh`)}
+              onClick={() => router.push(`/${ProjectType.SSH}/${projectId}/cas`)}
               className="mb-4"
             >
               SSH Certificate Authorities

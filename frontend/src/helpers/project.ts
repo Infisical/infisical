@@ -73,7 +73,7 @@ export const getProjectHomePage = (workspace: Workspace) => {
     return `/${workspace.type}/${workspace.id}/kms`;
   }
 
-  return `/${workspace.type}/${workspace.id}/ssh`;
+  return `/${workspace.type}/${workspace.id}/certificates`;
 };
 
 export const getProjectTitle = (type: ProjectType) => {

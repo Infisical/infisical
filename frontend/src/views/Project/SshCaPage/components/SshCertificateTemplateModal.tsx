@@ -95,8 +95,8 @@ const schema = z
     allowHostCertificates: z.boolean().optional().default(false),
     allowCustomKeyIds: z.boolean().optional().default(false)
   })
-  .refine((data) => ms(data.maxTTL) > ms(data.ttl), {
-    message: "Max TLL must be greater than TTL",
+  .refine((data) => ms(data.maxTTL) >= ms(data.ttl), {
+    message: "Max TLL must be greater than or equal to TTL",
     path: ["maxTTL"]
   });
 

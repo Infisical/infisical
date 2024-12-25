@@ -71,7 +71,7 @@ export const SshCertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentWorkspace } = useWorkspace();
   const projectId = currentWorkspace?.id || "";
   const [operation, setOperation] = useState<SshCertificateOperation>(
-    SshCertificateOperation.SIGN_SSH_KEY
+    SshCertificateOperation.ISSUE_SSH_CREDS
   );
   const [certificateDetails, setCertificateDetails] = useState<TSshCertificateDetails | null>(null);
 
@@ -315,7 +315,7 @@ export const SshCertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
                   errorText={error?.message}
                   isRequired
                 >
-                  <Input {...field} placeholder="ec2-user" />
+                  <Input {...field} placeholder="ec2-user, example.com" />
                 </FormControl>
               )}
             />

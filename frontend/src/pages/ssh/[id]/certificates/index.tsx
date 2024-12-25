@@ -1,9 +1,9 @@
 import { useTranslation } from "react-i18next";
 import Head from "next/head";
 
-import { SshPage } from "@app/views/Project/SshPage";
+import { SshCertificatesPage } from "@app/views/Project/SshCertificatesPage";
 
-const Ssh = () => {
+const SshCertificates = () => {
   const { t } = useTranslation();
 
   return (
@@ -13,11 +13,11 @@ const Ssh = () => {
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
       </Head>
-      <SshPage />
+      <SshCertificatesPage />
     </div>
   );
 };
 
-export default Ssh;
+export default SshCertificates;
 
-Ssh.requireAuth = true;
+SshCertificates.requireAuth = true;

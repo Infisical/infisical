@@ -83,62 +83,65 @@ In the following steps, we explore how to configure Infisical SSH to start issui
 as part of the SSH operation.
 
 <Steps>
-  <Step title="Configuring Infisical SSH">
+  <Step title="Configuring a SSH CA for client key signing">
     1.1. Start by creating a SSH project in the SSH tab of your organization.
     
     ![ssh project create](/images/platform/ssh/ssh-project.png)
     
-    1.2. Next, create a CA in the **Certificate Authorities** tab of the
-    project.
+    1.2. Next, create a SSH CA in the **Certificate Authorities** tab of the
+    project; this CA will be used for client key signing.
     
-    ![ssh create ca](/images/platform/ssh/ssh-create-ca-1.png)
+    ![ssh create client ca](/images/platform/ssh/ssh-client-create-ca-1.png)
     
-    ![ssh create ca popup](/images/platform/ssh/ssh-create-ca-2.png)
+    ![ssh create client ca popup](/images/platform/ssh/ssh-client-create-ca-2.png)
     
     Here's some guidance on each field:
 
     - Friendly Name: A friendly name for the CA; this is only for display.
     - Key Algorithm: The type of public key algorithm and size, in bits, of the key pair for the CA. Supported key algorithms are `RSA 2048`, `RSA 4096`, `ECDSA P-256`, and `ECDSA P-384` with the default being `RSA 2048`.
 
-    1.3. Next, create a certificate template in the **Certificate Templates** section of the newly-created CA.
+  </Step>
+  <Step title="Configuring a certificate template on the CA">
+
+    2.1. Next, create a certificate template in the **Certificate Templates** section of the newly-created CA.
 
     A certificate template is a set of policies for certificates issued under that template; each template is bound to a specific CA.
 
-    With certificate templates, you can specify, for example, that certificates issued under a template are only allowed for users with a specific username like `ec2-user` or perhaps that the max TTL requested cannot exceed 1 year.
+    With certificate templates, you can specify, for example, that certificates issued under a template are only allowed for users with a specific username like `ec2-user` or perhaps that the max TTL requested cannot exceed 1 hour.
 
-    ![ssh create template](/images/platform/ssh/ssh-create-template-1.png)
+    ![ssh client create template](/images/platform/ssh/ssh-client-create-template-1.png)
 
-    ![ssh create template popup](/images/platform/ssh/ssh-create-template-2.png)
+    ![ssh client create template popup](/images/platform/ssh/ssh-client-create-template-2.png)
 
     Here's some guidance on each field:
 
     - SSH Template Name: A name for the certificate template; this must be a valid slug.
     - Allowed Users: A comma-separated list of valid usernames (e.g. `ec2-user`) on the remote host for which a client can request a certificate for. If you wish to allow a client to request a certificate for any username, set this to `*`; alternatively, if left blank, the template will not allow issuance of certificates under any username.
     - Allowed Hosts: A comma-separated list of valid hostnames/domains on the remote host for which a client can request a certificate for. Each item in the list can be either a wildcard hostname (e.g. `*.acme.com`), a specific hostname (e.g. `example.com`), an IPv4 address (e.g. `192.168.1.1`), or an IPv6 address. If left empty, the template will not allow any hostnames; if set to `*`, the template will allow any hostname.
-    - Default TTL: The default Time-to-Live (TTL) for certificates issued under this template when a client does not explicitly specify a TTL in the certificate request.
+    - Default TTL: The default Time-to-Live (TTL) for certificates issued under this template when a client does not explicitly specify a TTL in the certificate request. We recommend setting a shorter **Default TTL** for client certificates such as `30m`.
     - Max TTL: The maximum TTL for certificates issued under this template.
-    - Allow User Certificates: Whether or not to allow issuance of user certificates.
-    - Allow Host Certificates: Whether or not to allow issuance of host certificates.
+    - Allow User Certificates: Whether or not to allow issuance of user certificates; this should be set to `true`.
+    - Allow Host Certificates: Whether or not to allow issuance of host certificates; this is not relevant for this step.
     - Allow Custom Key IDs: Whether or not to allow clients to specify a custom key ID to be included on the certificate as part of the certificate request.
 
-    1.4. Finally, add the user(s) you wish to be able to request a SSH certificate to the SSH project through the **Access Control** tab.
+    2.2. Finally, add the user(s) you wish to be able to request a SSH certificate to the SSH project through the **Access Control** tab.
 
   </Step>
-  <Step title="Configuring the remote host">
+  <Step title="Configuring the remote host to trust the client">
   
-    2.1. Begin by downloading the CA's public key from the CA's details section.
+    3.1. Begin by downloading the client CA's public key from the CA's details section.
     
-    ![ssh ca public key](/images/platform/ssh/ssh-ca-public-key.png)
+    ![ssh ca public key](/images/platform/ssh/ssh-client-ca-public-key.png)
     
     <Note>
-      The CA's public key can also be retrieved programmatically via API by making a `GET` request to the `/ssh/ca/<ca-id>/public-key` endpoint.
+      The CA's public key can also be retrieved programmatically via API by making a `GET` request to the endpoint [here](/api-reference/endpoints/ssh/ca/public-key).
     </Note>
     
-    2.2. Next, create a file containing this public key in the SSH folder of the remote host; we'll call the file `ca.pub`.
+    3.2. Next, create a file containing this public key in the SSH folder of the remote host; we'll call the file `ca.pub`.
 
     This would result in the file at the path `/etc/ssh/ca.pub`.
 
-    2.3. Next, add the following lines to the `/etc/ssh/sshd_config` file on the remote host.
+    3.3. Next, add the following lines to the `/etc/ssh/sshd_config` file on the remote host.
 
     ```bash
     TrustedUserCAKeys /etc/ssh/ca.pub
@@ -146,7 +149,7 @@ as part of the SSH operation.
     PubkeyAcceptedKeyTypes=+ssh-rsa,ssh-rsa-cert-v01@openssh.com
     ```
 
-    2.4. Finally, reload the SSH daemon on the remote host to apply the changes.
+    3.4. Finally, reload the SSH daemon on the remote host to apply the changes.
 
     ```bash
     sudo systemctl reload sshd
@@ -159,7 +162,7 @@ as part of the SSH operation.
 
 ## Guide to Using Infisical SSH to Access a Host
 
-We show how to obtain a SSH certificate and use it for a client to access a host via CLI:
+In the following steps, we show how to obtain a SSH certificate and use it for a client to access a host via CLI:
 
 <Note>
   The subsequent guide assumes the following prerequisites:
@@ -181,7 +184,7 @@ infisical login
 ```
 
   </Step>
-  <Step title="Obtain a SSH certificate and load it into the SSH agent">
+  <Step title="Obtain a SSH certificate for the client and load it into the SSH agent">
     Run the `infisical ssh issue-credentials` command, specifying the `--addToAgent` flag to automatically load the SSH certificate into the SSH agent.
     ```bash
     infisical ssh issue-credentials --certificateTemplateId=<certificate-template-id> --principals=<username> --addToAgent
@@ -208,3 +211,102 @@ infisical login
   Note that the above workflow can be executed via API or other client methods
   such as SDK.
 </Note>
+
+## Guide to Configuring Host Key Signing
+
+In the following steps, we show how to configure host key signing for clients to verify the identity of a remote host before attempting the SSH operation; this is recommended to reduce the probability of a client accessing a malicious machine.
+
+<Steps>
+  <Step title="Configuring a SSH CA for host key signing">
+    1.1. In the same SSH project, create another SSH CA in the **Certificate Authorities** tab; this CA will be used for host key signing.
+    
+    ![ssh create host ca](/images/platform/ssh/ssh-host-create-ca-1.png)
+    
+    ![ssh create host ca popup](/images/platform/ssh/ssh-host-create-ca-2.png)
+    
+    Here's some guidance on each field:
+
+    - Friendly Name: A friendly name for the CA; this is only for display.
+    - Key Algorithm: The type of public key algorithm and size, in bits, of the key pair for the CA. Supported key algorithms are `RSA 2048`, `RSA 4096`, `ECDSA P-256`, and `ECDSA P-384` with the default being `RSA 2048`.
+    
+  </Step>
+  <Step title="Configuring a certificate template on the CA">
+  
+    2.1. Next, create a certificate template in the **Certificate Templates** section of the newly-created CA.
+    
+    ![ssh host create template](/images/platform/ssh/ssh-host-create-template-1.png)
+
+    ![ssh host create template popup](/images/platform/ssh/ssh-host-create-template-2.png)
+
+    Here's some guidance on each field:
+
+    - SSH Template Name: A name for the certificate template; this must be a valid slug.
+    - Allowed Users: A comma-separated list of valid usernames (e.g. `ec2-user`) on the remote host for which a client can request a certificate for. If you wish to allow a client to request a certificate for any username, set this to `*`; alternatively, if left blank, the template will not allow issuance of certificates under any username.
+    - Allowed Hosts: A comma-separated list of valid hostnames/domains on the remote host for which a client can request a certificate for. Each item in the list can be either a wildcard hostname (e.g. `*.acme.com`), a specific hostname (e.g. `example.com`), an IPv4 address (e.g. `192.168.1.1`), or an IPv6 address. If left empty, the template will not allow any hostnames; if set to `*`, the template will allow any hostname.
+    - Default TTL: The default Time-to-Live (TTL) for certificates issued under this template when a client does not explicitly specify a TTL in the certificate request. We recommend setting a longer **Default TTL** for host certificates such as `2y`.
+    - Max TTL: The maximum TTL for certificates issued under this template.
+    - Allow User Certificates: Whether or not to allow issuance of user certificates; this is not relevant for this step.
+    - Allow Host Certificates: Whether or not to allow issuance of host certificates; this should be set to `true`.
+    - Allow Custom Key IDs: Whether or not to allow clients to specify a custom key ID to be included on the certificate as part of the certificate request.
+  </Step>
+  <Step title="Configuring the remote host with an SSH certificate">
+
+    2.1. Obtain a SSH certificate for the host by requesting one from the **Certificates** tab.
+    
+    ![ssh host issue certificate 1](/images/platform/ssh/ssh-host-issue-cert-1.png)
+    
+    ![ssh host issue certificate 2](/images/platform/ssh/ssh-host-issue-cert-2.png)
+    
+    <Note>
+      You should select **Sign SSH Key** under the **Operation** field. 
+      
+      Then input your host's public key under the **SSH Public Key** field and hostname under the **Principal(s)** field; the host's public key is likely in the `/etc/ssh` folder of the host.
+    </Note>
+    
+    ![ssh host issue certificate 3](/images/platform/ssh/ssh-host-issue-cert-3.png)
+    
+    2.2. Create a file containing the certificate in the SSH folder of the remote host; we'll call it `key-cert.pub`.
+    
+    2.2. Set permissions on the certificate to be `0640`:
+    
+    ```bash
+    sudo chmod 0640 /etc/ssh/ssh_host_key-cert.pub
+    ```
+
+    2.3. Next, add the following lines to the `/etc/ssh/sshd_config` file on the remote host.
+
+    ```bash
+    HostKey /etc/ssh/ssh_host_key
+    HostCertificate /etc/ssh/ssh_host_key-cert.pub
+    ```
+  
+    2.4. Finally, reload the SSH daemon on the remote host to apply the changes.
+
+    ```bash
+    sudo systemctl reload sshd
+    ```
+
+  </Step>
+  <Step title="Configuring the client to trust the remote host">
+    3.1. Begin by downloading the host CA's public key from the CA's details section.
+    
+    ![ssh host ca public key](/images/platform/ssh/ssh-host-ca-public-key.png)
+    
+    <Note>
+      The CA's public key can also be retrieved programmatically via API by making a `GET` request to the endpoint [here](/api-reference/endpoints/ssh/ca/public-key).
+    </Note>
+
+    3.2. Next, add the resulting public key to the `known_hosts` file on the client machine (e.g. at the path `~/.ssh/known_hosts`).
+    
+    ```bash
+    @cert-authority *.example.com ssh-rsa ...
+    ```
+  </Step>
+  <Step title="SSH into the host">
+    Finally, SSH into the desired host as usual; the SSH operation will now also include client-side host verification.
+
+    ```bash
+    ssh username@hostname
+    ```
+  </Step>
+</Steps>
