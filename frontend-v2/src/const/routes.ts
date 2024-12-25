@@ -31,5 +31,13 @@ export const ROUTE_PATHS = Object.freeze({
   OrgRoleByIDPage: setRoute(
     "/organization/roles/$roleId",
     "/_authenticate/_ctx-org-details/organization/_layout-org/roles/$roleId/"
+  ),
+  ProductAccessControlPage: setRoute(
+    "/secret-manager/$projectId/access",
+    "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/access/"
+  ),
+  SecretDashboardPage: setRoute(
+    "/secret-manager/$projectId/secrets/$envSlug",
+    "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secrets/$envSlug/"
   )
 });
