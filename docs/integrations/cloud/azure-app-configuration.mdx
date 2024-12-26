@@ -30,6 +30,27 @@ description: "How to sync secrets from Infisical to Azure App Configuration"
 
         Press create integration to start syncing secrets to Azure App Configuration.
       </Step>
+      <Step title="Additional Configuration">
+
+        #### Azure references
+          When adding secrets in Infisical that reference Azure Key Vault secrets, Infisical will automatically sets the content type to `application/vnd.microsoft.appconfig.keyvaultref+json;charset=utf-8` in Azure App Configuration. 
+          The following reference formats are automatically detected when added on Infisical's side:
+          - `{ "uri": "https://my-key-vault.vault.azure.net/secrets/my-secret" }`
+          - `https://my-key-vault.vault.azure.net/secrets/my-secret`
+
+        ### Azure Labels 
+          You can sync secrets from Infisical to Azure with custom labels by enabling the `Use Labels` option during setup:
+
+          **When enabled**: Secrets will be pushed to Azure with your specified label
+
+          **When disabled**: Secrets will be pushed with an empty (null) label
+
+        <Info>
+          If you have set the initial sync to `import` have behavior, the label selection affects which secrets are imported from Azure:
+          - With `Use Labels` disabled: Only secrets with empty labels are imported on initial sync
+          - With `Use Labels` enabled: Only secrets matching your specified label are imported on initial sync
+        </Info>
+      </Step>
     </Steps>
 
   </Tab>
