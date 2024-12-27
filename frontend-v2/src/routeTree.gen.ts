@@ -12,470 +12,317 @@ import { createFileRoute } from '@tanstack/react-router'
 
 // Import Routes
 
-import { Route as rootRoute } from './routes/__root'
-import { Route as RestrictLoginSignupImport } from './routes/_restrict-login-signup'
-import { Route as AuthenticateImport } from './routes/_authenticate'
-import { Route as IndexImport } from './routes/index'
-import { Route as RestrictLoginSignupVerifyEmailImport } from './routes/_restrict-login-signup/verify-email'
-import { Route as RestrictLoginSignupSignupinviteImport } from './routes/_restrict-login-signup/signupinvite'
-import { Route as RestrictLoginSignupRequestnewinviteImport } from './routes/_restrict-login-signup/requestnewinvite'
-import { Route as RestrictLoginSignupPasswordResetImport } from './routes/_restrict-login-signup/password-reset'
-import { Route as RestrictLoginSignupEmailNotVerifiedImport } from './routes/_restrict-login-signup/email-not-verified'
-import { Route as AuthenticateCliRedirectImport } from './routes/_authenticate/cli-redirect'
-import { Route as AuthenticateCtxOrgDetailsImport } from './routes/_authenticate/_ctx-org-details'
-import { Route as RestrictLoginSignupSignupIndexImport } from './routes/_restrict-login-signup/signup/index'
-import { Route as RestrictLoginSignupLoginIndexImport } from './routes/_restrict-login-signup/login/index'
-import { Route as authenticatePersonalSettingsLayoutImport } from './routes/_authenticate/personal-settings/layout'
-import { Route as RestrictLoginSignupSignupSsoIndexImport } from './routes/_restrict-login-signup/signup/sso/index'
-import { Route as RestrictLoginSignupLoginSsoIndexImport } from './routes/_restrict-login-signup/login/sso/index'
-import { Route as RestrictLoginSignupLoginSelectOrganizationIndexImport } from './routes/_restrict-login-signup/login/select-organization/index'
-import { Route as RestrictLoginSignupLoginLdapIndexImport } from './routes/_restrict-login-signup/login/ldap/index'
-import { Route as authenticatePersonalSettingsIndexImport } from './routes/_authenticate/personal-settings/index'
-import { Route as RestrictLoginSignupLoginProviderSuccessImport } from './routes/_restrict-login-signup/login/provider/success'
-import { Route as RestrictLoginSignupLoginProviderErrorImport } from './routes/_restrict-login-signup/login/provider/error'
-import { Route as AuthenticateCtxOrgDetailsOrganizationLayoutOrgImport } from './routes/_authenticate/_ctx-org-details/organization/_layout-org'
-import { Route as AuthenticateCtxOrgDetailsOrganizationLayoutOrgIndexImport } from './routes/_authenticate/_ctx-org-details/organization/_layout-org/index'
-import { Route as AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerImport } from './routes/_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager'
-import { Route as AuthenticateCtxOrgDetailsOrganizationLayoutOrgSettingsIndexImport } from './routes/_authenticate/_ctx-org-details/organization/_layout-org/settings/index'
-import { Route as AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretSharingIndexImport } from './routes/_authenticate/_ctx-org-details/organization/_layout-org/secret-sharing/index'
-import { Route as AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretScanningIndexImport } from './routes/_authenticate/_ctx-org-details/organization/_layout-org/secret-scanning/index'
-import { Route as AuthenticateCtxOrgDetailsOrganizationLayoutOrgOverviewIndexImport } from './routes/_authenticate/_ctx-org-details/organization/_layout-org/overview/index'
-import { Route as AuthenticateCtxOrgDetailsOrganizationLayoutOrgNoneIndexImport } from './routes/_authenticate/_ctx-org-details/organization/_layout-org/none/index'
-import { Route as AuthenticateCtxOrgDetailsOrganizationLayoutOrgMembersIndexImport } from './routes/_authenticate/_ctx-org-details/organization/_layout-org/members/index'
-import { Route as AuthenticateCtxOrgDetailsOrganizationLayoutOrgBillingIndexImport } from './routes/_authenticate/_ctx-org-details/organization/_layout-org/billing/index'
-import { Route as AuthenticateCtxOrgDetailsOrganizationLayoutOrgAuditLogsIndexImport } from './routes/_authenticate/_ctx-org-details/organization/_layout-org/audit-logs/index'
-import { Route as AuthenticateCtxOrgDetailsOrganizationLayoutOrgAdminIndexImport } from './routes/_authenticate/_ctx-org-details/organization/_layout-org/admin/index'
-import { Route as AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretManagerOverviewImport } from './routes/_authenticate/_ctx-org-details/organization/_layout-org/secret-manager/overview'
-import { Route as AuthenticateCtxOrgDetailsOrganizationLayoutOrgKmsOverviewImport } from './routes/_authenticate/_ctx-org-details/organization/_layout-org/kms/overview'
-import { Route as AuthenticateCtxOrgDetailsOrganizationLayoutOrgCertManagerOverviewImport } from './routes/_authenticate/_ctx-org-details/organization/_layout-org/cert-manager/overview'
-import { Route as AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSettingsIndexImport } from './routes/_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/settings/index'
-import { Route as AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretRotationIndexImport } from './routes/_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/secret-rotation/index'
-import { Route as AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewIndexImport } from './routes/_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/overview/index'
-import { Route as AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerApprovalIndexImport } from './routes/_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/approval/index'
-import { Route as AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAllowlistIndexImport } from './routes/_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/allowlist/index'
-import { Route as AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAccessIndexImport } from './routes/_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/access/index'
-import { Route as AuthenticateCtxOrgDetailsOrganizationLayoutOrgRolesRoleIdIndexImport } from './routes/_authenticate/_ctx-org-details/organization/_layout-org/roles/$roleId/index'
-import { Route as AuthenticateCtxOrgDetailsOrganizationLayoutOrgMembershipsMembershipIdIndexImport } from './routes/_authenticate/_ctx-org-details/organization/_layout-org/memberships/$membershipId/index'
-import { Route as AuthenticateCtxOrgDetailsOrganizationLayoutOrgIdentitiesIdentityIdIndexImport } from './routes/_authenticate/_ctx-org-details/organization/_layout-org/identities/$identityId/index'
-import { Route as AuthenticateCtxOrgDetailsOrganizationLayoutOrgGroupsGroupIdIndexImport } from './routes/_authenticate/_ctx-org-details/organization/_layout-org/groups/$groupId/index'
-import { Route as AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretsEnvSlugIndexImport } from './routes/_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/secrets.$envSlug/index'
-import { Route as AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRolesRoleSlugIndexImport } from './routes/_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/roles/$roleSlug/index'
-import { Route as AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerMembersMembershipIdIndexImport } from './routes/_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/members.$membershipId/index'
-import { Route as AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerIdentitiesIdentityIdIndexImport } from './routes/_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/identities.$identityId/index'
+import { Route as rootRoute } from './pages/root'
+import { Route as middlewaresRestrictLoginSignupImport } from './pages/middlewares/restrict-login-signup'
+import { Route as middlewaresAuthenticateImport } from './pages/middlewares/authenticate'
+import { Route as indexImport } from './pages/index'
+import { Route as middlewaresInjectOrgDetailsImport } from './pages/middlewares/inject-org-details'
+import { Route as authVerifyEmailPageRouteImport } from './pages/auth/VerifyEmailPage/route'
+import { Route as authSignUpInvitePageRouteImport } from './pages/auth/SignUpInvitePage/route'
+import { Route as authRequestNewInvitePageRouteImport } from './pages/auth/RequestNewInvitePage/route'
+import { Route as authPasswordResetPageRouteImport } from './pages/auth/PasswordResetPage/route'
+import { Route as authEmailNotVerifiedPageRouteImport } from './pages/auth/EmailNotVerifiedPage/route'
+import { Route as userLayoutImport } from './pages/user/layout'
+import { Route as authSignUpSsoPageRouteImport } from './pages/auth/SignUpSsoPage/route'
+import { Route as authLoginSsoPageRouteImport } from './pages/auth/LoginSsoPage/route'
+import { Route as authSelectOrgPageRouteImport } from './pages/auth/SelectOrgPage/route'
+import { Route as authLoginLdapPageRouteImport } from './pages/auth/LoginLdapPage/route'
+import { Route as authSignUpPageRouteImport } from './pages/auth/SignUpPage/route'
+import { Route as authLoginPageRouteImport } from './pages/auth/LoginPage/route'
+import { Route as organizationLayoutImport } from './pages/organization/layout'
+import { Route as authProviderSuccessPageRouteImport } from './pages/auth/ProviderSuccessPage/route'
+import { Route as authProviderErrorPageRouteImport } from './pages/auth/ProviderErrorPage/route'
+import { Route as userPersonalSettingsPageRouteImport } from './pages/user/PersonalSettingsPage/route'
+import { Route as organizationSettingsPageRouteImport } from './pages/organization/SettingsPage/route'
+import { Route as organizationSecretSharingPageRouteImport } from './pages/organization/SecretSharingPage/route'
+import { Route as organizationSecretScanningPageRouteImport } from './pages/organization/SecretScanningPage/route'
+import { Route as organizationNoOrgPageRouteImport } from './pages/organization/NoOrgPage/route'
+import { Route as organizationBillingPageRouteImport } from './pages/organization/BillingPage/route'
+import { Route as organizationAuditLogsPageRouteImport } from './pages/organization/AuditLogsPage/route'
+import { Route as organizationAdminPageRouteImport } from './pages/organization/AdminPage/route'
+import { Route as organizationAccessManagementPageRouteImport } from './pages/organization/AccessManagementPage/route'
+import { Route as organizationSecretManagerOverviewPageRouteImport } from './pages/organization/SecretManagerOverviewPage/route'
+import { Route as organizationRoleByIDPageRouteImport } from './pages/organization/RoleByIDPage/route'
+import { Route as organizationUserDetailsByIDPageRouteImport } from './pages/organization/UserDetailsByIDPage/route'
+import { Route as organizationKmsOverviewPageRouteImport } from './pages/organization/KmsOverviewPage/route'
+import { Route as organizationIdentityDetailsByIDPageRouteImport } from './pages/organization/IdentityDetailsByIDPage/route'
+import { Route as organizationGroupDetailsByIDPageRouteImport } from './pages/organization/GroupDetailsByIDPage/route'
+import { Route as organizationCertManagerOverviewPageRouteImport } from './pages/organization/CertManagerOverviewPage/route'
 
 // Create Virtual Routes
 
+const RestrictLoginSignupSignupImport = createFileRoute(
+  '/_restrict-login-signup/signup',
+)()
+const RestrictLoginSignupLoginImport = createFileRoute(
+  '/_restrict-login-signup/login',
+)()
 const AuthenticatePersonalSettingsImport = createFileRoute(
   '/_authenticate/personal-settings',
 )()
-const AuthenticateCtxOrgDetailsOrganizationImport = createFileRoute(
-  '/_authenticate/_ctx-org-details/organization',
-)()
-const AuthenticateCtxOrgDetailsSecretManagerProjectIdImport = createFileRoute(
-  '/_authenticate/_ctx-org-details/secret-manager/$projectId',
+const AuthenticateInjectOrgDetailsOrganizationImport = createFileRoute(
+  '/_authenticate/_inject-org-details/organization',
 )()
 
 // Create/Update Routes
 
-const RestrictLoginSignupRoute = RestrictLoginSignupImport.update({
-  id: '/_restrict-login-signup',
-  getParentRoute: () => rootRoute,
-} as any)
+const middlewaresRestrictLoginSignupRoute =
+  middlewaresRestrictLoginSignupImport.update({
+    id: '/_restrict-login-signup',
+    getParentRoute: () => rootRoute,
+  } as any)
 
-const AuthenticateRoute = AuthenticateImport.update({
+const middlewaresAuthenticateRoute = middlewaresAuthenticateImport.update({
   id: '/_authenticate',
   getParentRoute: () => rootRoute,
 } as any)
 
-const IndexRoute = IndexImport.update({
+const indexRoute = indexImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
+} as any)
+
+const RestrictLoginSignupSignupRoute = RestrictLoginSignupSignupImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => middlewaresRestrictLoginSignupRoute,
+} as any)
+
+const RestrictLoginSignupLoginRoute = RestrictLoginSignupLoginImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => middlewaresRestrictLoginSignupRoute,
 } as any)
 
 const AuthenticatePersonalSettingsRoute =
   AuthenticatePersonalSettingsImport.update({
     id: '/personal-settings',
     path: '/personal-settings',
-    getParentRoute: () => AuthenticateRoute,
+    getParentRoute: () => middlewaresAuthenticateRoute,
   } as any)
 
-const RestrictLoginSignupVerifyEmailRoute =
-  RestrictLoginSignupVerifyEmailImport.update({
-    id: '/verify-email',
-    path: '/verify-email',
-    getParentRoute: () => RestrictLoginSignupRoute,
+const middlewaresInjectOrgDetailsRoute =
+  middlewaresInjectOrgDetailsImport.update({
+    id: '/_inject-org-details',
+    getParentRoute: () => middlewaresAuthenticateRoute,
   } as any)
 
-const RestrictLoginSignupSignupinviteRoute =
-  RestrictLoginSignupSignupinviteImport.update({
-    id: '/signupinvite',
-    path: '/signupinvite',
-    getParentRoute: () => RestrictLoginSignupRoute,
-  } as any)
+const authVerifyEmailPageRouteRoute = authVerifyEmailPageRouteImport.update({
+  id: '/verify-email',
+  path: '/verify-email',
+  getParentRoute: () => middlewaresRestrictLoginSignupRoute,
+} as any)
 
-const RestrictLoginSignupRequestnewinviteRoute =
-  RestrictLoginSignupRequestnewinviteImport.update({
+const authSignUpInvitePageRouteRoute = authSignUpInvitePageRouteImport.update({
+  id: '/signupinvite',
+  path: '/signupinvite',
+  getParentRoute: () => middlewaresRestrictLoginSignupRoute,
+} as any)
+
+const authRequestNewInvitePageRouteRoute =
+  authRequestNewInvitePageRouteImport.update({
     id: '/requestnewinvite',
     path: '/requestnewinvite',
-    getParentRoute: () => RestrictLoginSignupRoute,
+    getParentRoute: () => middlewaresRestrictLoginSignupRoute,
   } as any)
 
-const RestrictLoginSignupPasswordResetRoute =
-  RestrictLoginSignupPasswordResetImport.update({
+const authPasswordResetPageRouteRoute = authPasswordResetPageRouteImport.update(
+  {
     id: '/password-reset',
     path: '/password-reset',
-    getParentRoute: () => RestrictLoginSignupRoute,
-  } as any)
+    getParentRoute: () => middlewaresRestrictLoginSignupRoute,
+  } as any,
+)
 
-const RestrictLoginSignupEmailNotVerifiedRoute =
-  RestrictLoginSignupEmailNotVerifiedImport.update({
+const authEmailNotVerifiedPageRouteRoute =
+  authEmailNotVerifiedPageRouteImport.update({
     id: '/email-not-verified',
     path: '/email-not-verified',
-    getParentRoute: () => RestrictLoginSignupRoute,
+    getParentRoute: () => middlewaresRestrictLoginSignupRoute,
   } as any)
 
-const AuthenticateCliRedirectRoute = AuthenticateCliRedirectImport.update({
-  id: '/cli-redirect',
-  path: '/cli-redirect',
-  getParentRoute: () => AuthenticateRoute,
+const userLayoutRoute = userLayoutImport.update({
+  id: '/_layout',
+  getParentRoute: () => AuthenticatePersonalSettingsRoute,
 } as any)
 
-const AuthenticateCtxOrgDetailsRoute = AuthenticateCtxOrgDetailsImport.update({
-  id: '/_ctx-org-details',
-  getParentRoute: () => AuthenticateRoute,
-} as any)
-
-const AuthenticateCtxOrgDetailsOrganizationRoute =
-  AuthenticateCtxOrgDetailsOrganizationImport.update({
+const AuthenticateInjectOrgDetailsOrganizationRoute =
+  AuthenticateInjectOrgDetailsOrganizationImport.update({
     id: '/organization',
     path: '/organization',
-    getParentRoute: () => AuthenticateCtxOrgDetailsRoute,
+    getParentRoute: () => middlewaresInjectOrgDetailsRoute,
   } as any)
 
-const RestrictLoginSignupSignupIndexRoute =
-  RestrictLoginSignupSignupIndexImport.update({
-    id: '/signup/',
-    path: '/signup/',
-    getParentRoute: () => RestrictLoginSignupRoute,
+const authSignUpSsoPageRouteRoute = authSignUpSsoPageRouteImport.update({
+  id: '/sso',
+  path: '/sso',
+  getParentRoute: () => RestrictLoginSignupSignupRoute,
+} as any)
+
+const authLoginSsoPageRouteRoute = authLoginSsoPageRouteImport.update({
+  id: '/sso',
+  path: '/sso',
+  getParentRoute: () => RestrictLoginSignupLoginRoute,
+} as any)
+
+const authSelectOrgPageRouteRoute = authSelectOrgPageRouteImport.update({
+  id: '/select-organization',
+  path: '/select-organization',
+  getParentRoute: () => RestrictLoginSignupLoginRoute,
+} as any)
+
+const authLoginLdapPageRouteRoute = authLoginLdapPageRouteImport.update({
+  id: '/ldap',
+  path: '/ldap',
+  getParentRoute: () => RestrictLoginSignupLoginRoute,
+} as any)
+
+const authSignUpPageRouteRoute = authSignUpPageRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => RestrictLoginSignupSignupRoute,
+} as any)
+
+const authLoginPageRouteRoute = authLoginPageRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => RestrictLoginSignupLoginRoute,
+} as any)
+
+const organizationLayoutRoute = organizationLayoutImport.update({
+  id: '/_layout',
+  getParentRoute: () => AuthenticateInjectOrgDetailsOrganizationRoute,
+} as any)
+
+const authProviderSuccessPageRouteRoute =
+  authProviderSuccessPageRouteImport.update({
+    id: '/provider/success',
+    path: '/provider/success',
+    getParentRoute: () => RestrictLoginSignupLoginRoute,
   } as any)
 
-const RestrictLoginSignupLoginIndexRoute =
-  RestrictLoginSignupLoginIndexImport.update({
-    id: '/login/',
-    path: '/login/',
-    getParentRoute: () => RestrictLoginSignupRoute,
-  } as any)
+const authProviderErrorPageRouteRoute = authProviderErrorPageRouteImport.update(
+  {
+    id: '/provider/error',
+    path: '/provider/error',
+    getParentRoute: () => RestrictLoginSignupLoginRoute,
+  } as any,
+)
 
-const authenticatePersonalSettingsLayoutRoute =
-  authenticatePersonalSettingsLayoutImport.update({
-    id: '/_personal-settings-layout',
-    getParentRoute: () => AuthenticatePersonalSettingsRoute,
-  } as any)
-
-const AuthenticateCtxOrgDetailsSecretManagerProjectIdRoute =
-  AuthenticateCtxOrgDetailsSecretManagerProjectIdImport.update({
-    id: '/secret-manager/$projectId',
-    path: '/secret-manager/$projectId',
-    getParentRoute: () => AuthenticateCtxOrgDetailsRoute,
-  } as any)
-
-const RestrictLoginSignupSignupSsoIndexRoute =
-  RestrictLoginSignupSignupSsoIndexImport.update({
-    id: '/signup/sso/',
-    path: '/signup/sso/',
-    getParentRoute: () => RestrictLoginSignupRoute,
-  } as any)
-
-const RestrictLoginSignupLoginSsoIndexRoute =
-  RestrictLoginSignupLoginSsoIndexImport.update({
-    id: '/login/sso/',
-    path: '/login/sso/',
-    getParentRoute: () => RestrictLoginSignupRoute,
-  } as any)
-
-const RestrictLoginSignupLoginSelectOrganizationIndexRoute =
-  RestrictLoginSignupLoginSelectOrganizationIndexImport.update({
-    id: '/login/select-organization/',
-    path: '/login/select-organization/',
-    getParentRoute: () => RestrictLoginSignupRoute,
-  } as any)
-
-const RestrictLoginSignupLoginLdapIndexRoute =
-  RestrictLoginSignupLoginLdapIndexImport.update({
-    id: '/login/ldap/',
-    path: '/login/ldap/',
-    getParentRoute: () => RestrictLoginSignupRoute,
-  } as any)
-
-const authenticatePersonalSettingsIndexRoute =
-  authenticatePersonalSettingsIndexImport.update({
+const userPersonalSettingsPageRouteRoute =
+  userPersonalSettingsPageRouteImport.update({
     id: '/',
     path: '/',
-    getParentRoute: () => authenticatePersonalSettingsLayoutRoute,
+    getParentRoute: () => userLayoutRoute,
   } as any)
 
-const RestrictLoginSignupLoginProviderSuccessRoute =
-  RestrictLoginSignupLoginProviderSuccessImport.update({
-    id: '/login/provider/success',
-    path: '/login/provider/success',
-    getParentRoute: () => RestrictLoginSignupRoute,
+const organizationSettingsPageRouteRoute =
+  organizationSettingsPageRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => organizationLayoutRoute,
   } as any)
 
-const RestrictLoginSignupLoginProviderErrorRoute =
-  RestrictLoginSignupLoginProviderErrorImport.update({
-    id: '/login/provider/error',
-    path: '/login/provider/error',
-    getParentRoute: () => RestrictLoginSignupRoute,
+const organizationSecretSharingPageRouteRoute =
+  organizationSecretSharingPageRouteImport.update({
+    id: '/secret-sharing',
+    path: '/secret-sharing',
+    getParentRoute: () => organizationLayoutRoute,
   } as any)
 
-const AuthenticateCtxOrgDetailsOrganizationLayoutOrgRoute =
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgImport.update({
-    id: '/_layout-org',
-    getParentRoute: () => AuthenticateCtxOrgDetailsOrganizationRoute,
+const organizationSecretScanningPageRouteRoute =
+  organizationSecretScanningPageRouteImport.update({
+    id: '/secret-scanning',
+    path: '/secret-scanning',
+    getParentRoute: () => organizationLayoutRoute,
   } as any)
 
-const AuthenticateCtxOrgDetailsOrganizationLayoutOrgIndexRoute =
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgIndexImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => AuthenticateCtxOrgDetailsOrganizationLayoutOrgRoute,
+const organizationNoOrgPageRouteRoute = organizationNoOrgPageRouteImport.update(
+  {
+    id: '/none',
+    path: '/none',
+    getParentRoute: () => organizationLayoutRoute,
+  } as any,
+)
+
+const organizationBillingPageRouteRoute =
+  organizationBillingPageRouteImport.update({
+    id: '/billing',
+    path: '/billing',
+    getParentRoute: () => organizationLayoutRoute,
   } as any)
 
-const AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRoute =
-  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerImport.update(
-    {
-      id: '/_layout-secret-manager',
-      getParentRoute: () =>
-        AuthenticateCtxOrgDetailsSecretManagerProjectIdRoute,
-    } as any,
-  )
-
-const AuthenticateCtxOrgDetailsOrganizationLayoutOrgSettingsIndexRoute =
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgSettingsIndexImport.update({
-    id: '/settings/',
-    path: '/settings/',
-    getParentRoute: () => AuthenticateCtxOrgDetailsOrganizationLayoutOrgRoute,
+const organizationAuditLogsPageRouteRoute =
+  organizationAuditLogsPageRouteImport.update({
+    id: '/audit-logs',
+    path: '/audit-logs',
+    getParentRoute: () => organizationLayoutRoute,
   } as any)
 
-const AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretSharingIndexRoute =
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretSharingIndexImport.update(
-    {
-      id: '/secret-sharing/',
-      path: '/secret-sharing/',
-      getParentRoute: () => AuthenticateCtxOrgDetailsOrganizationLayoutOrgRoute,
-    } as any,
-  )
+const organizationAdminPageRouteRoute = organizationAdminPageRouteImport.update(
+  {
+    id: '/admin',
+    path: '/admin',
+    getParentRoute: () => organizationLayoutRoute,
+  } as any,
+)
 
-const AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretScanningIndexRoute =
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretScanningIndexImport.update(
-    {
-      id: '/secret-scanning/',
-      path: '/secret-scanning/',
-      getParentRoute: () => AuthenticateCtxOrgDetailsOrganizationLayoutOrgRoute,
-    } as any,
-  )
-
-const AuthenticateCtxOrgDetailsOrganizationLayoutOrgOverviewIndexRoute =
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgOverviewIndexImport.update({
-    id: '/overview/',
-    path: '/overview/',
-    getParentRoute: () => AuthenticateCtxOrgDetailsOrganizationLayoutOrgRoute,
+const organizationAccessManagementPageRouteRoute =
+  organizationAccessManagementPageRouteImport.update({
+    id: '/access-management',
+    path: '/access-management',
+    getParentRoute: () => organizationLayoutRoute,
   } as any)
 
-const AuthenticateCtxOrgDetailsOrganizationLayoutOrgNoneIndexRoute =
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgNoneIndexImport.update({
-    id: '/none/',
-    path: '/none/',
-    getParentRoute: () => AuthenticateCtxOrgDetailsOrganizationLayoutOrgRoute,
+const organizationSecretManagerOverviewPageRouteRoute =
+  organizationSecretManagerOverviewPageRouteImport.update({
+    id: '/secret-manager/overview',
+    path: '/secret-manager/overview',
+    getParentRoute: () => organizationLayoutRoute,
   } as any)
 
-const AuthenticateCtxOrgDetailsOrganizationLayoutOrgMembersIndexRoute =
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgMembersIndexImport.update({
-    id: '/members/',
-    path: '/members/',
-    getParentRoute: () => AuthenticateCtxOrgDetailsOrganizationLayoutOrgRoute,
+const organizationRoleByIDPageRouteRoute =
+  organizationRoleByIDPageRouteImport.update({
+    id: '/roles/$roleId',
+    path: '/roles/$roleId',
+    getParentRoute: () => organizationLayoutRoute,
   } as any)
 
-const AuthenticateCtxOrgDetailsOrganizationLayoutOrgBillingIndexRoute =
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgBillingIndexImport.update({
-    id: '/billing/',
-    path: '/billing/',
-    getParentRoute: () => AuthenticateCtxOrgDetailsOrganizationLayoutOrgRoute,
+const organizationUserDetailsByIDPageRouteRoute =
+  organizationUserDetailsByIDPageRouteImport.update({
+    id: '/members/$membershipId',
+    path: '/members/$membershipId',
+    getParentRoute: () => organizationLayoutRoute,
   } as any)
 
-const AuthenticateCtxOrgDetailsOrganizationLayoutOrgAuditLogsIndexRoute =
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgAuditLogsIndexImport.update({
-    id: '/audit-logs/',
-    path: '/audit-logs/',
-    getParentRoute: () => AuthenticateCtxOrgDetailsOrganizationLayoutOrgRoute,
-  } as any)
-
-const AuthenticateCtxOrgDetailsOrganizationLayoutOrgAdminIndexRoute =
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgAdminIndexImport.update({
-    id: '/admin/',
-    path: '/admin/',
-    getParentRoute: () => AuthenticateCtxOrgDetailsOrganizationLayoutOrgRoute,
-  } as any)
-
-const AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretManagerOverviewRoute =
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretManagerOverviewImport.update(
-    {
-      id: '/secret-manager/overview',
-      path: '/secret-manager/overview',
-      getParentRoute: () => AuthenticateCtxOrgDetailsOrganizationLayoutOrgRoute,
-    } as any,
-  )
-
-const AuthenticateCtxOrgDetailsOrganizationLayoutOrgKmsOverviewRoute =
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgKmsOverviewImport.update({
+const organizationKmsOverviewPageRouteRoute =
+  organizationKmsOverviewPageRouteImport.update({
     id: '/kms/overview',
     path: '/kms/overview',
-    getParentRoute: () => AuthenticateCtxOrgDetailsOrganizationLayoutOrgRoute,
+    getParentRoute: () => organizationLayoutRoute,
   } as any)
 
-const AuthenticateCtxOrgDetailsOrganizationLayoutOrgCertManagerOverviewRoute =
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgCertManagerOverviewImport.update(
-    {
-      id: '/cert-manager/overview',
-      path: '/cert-manager/overview',
-      getParentRoute: () => AuthenticateCtxOrgDetailsOrganizationLayoutOrgRoute,
-    } as any,
-  )
-
-const AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSettingsIndexRoute =
-  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSettingsIndexImport.update(
-    {
-      id: '/settings/',
-      path: '/settings/',
-      getParentRoute: () =>
-        AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRoute,
-    } as any,
-  )
-
-const AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretRotationIndexRoute =
-  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretRotationIndexImport.update(
-    {
-      id: '/secret-rotation/',
-      path: '/secret-rotation/',
-      getParentRoute: () =>
-        AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRoute,
-    } as any,
-  )
-
-const AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewIndexRoute =
-  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewIndexImport.update(
-    {
-      id: '/overview/',
-      path: '/overview/',
-      getParentRoute: () =>
-        AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRoute,
-    } as any,
-  )
-
-const AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerApprovalIndexRoute =
-  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerApprovalIndexImport.update(
-    {
-      id: '/approval/',
-      path: '/approval/',
-      getParentRoute: () =>
-        AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRoute,
-    } as any,
-  )
-
-const AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAllowlistIndexRoute =
-  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAllowlistIndexImport.update(
-    {
-      id: '/allowlist/',
-      path: '/allowlist/',
-      getParentRoute: () =>
-        AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRoute,
-    } as any,
-  )
-
-const AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAccessIndexRoute =
-  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAccessIndexImport.update(
-    {
-      id: '/access/',
-      path: '/access/',
-      getParentRoute: () =>
-        AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRoute,
-    } as any,
-  )
-
-const AuthenticateCtxOrgDetailsOrganizationLayoutOrgRolesRoleIdIndexRoute =
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgRolesRoleIdIndexImport.update({
-    id: '/roles/$roleId/',
-    path: '/roles/$roleId/',
-    getParentRoute: () => AuthenticateCtxOrgDetailsOrganizationLayoutOrgRoute,
+const organizationIdentityDetailsByIDPageRouteRoute =
+  organizationIdentityDetailsByIDPageRouteImport.update({
+    id: '/identities/$identityId',
+    path: '/identities/$identityId',
+    getParentRoute: () => organizationLayoutRoute,
   } as any)
 
-const AuthenticateCtxOrgDetailsOrganizationLayoutOrgMembershipsMembershipIdIndexRoute =
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgMembershipsMembershipIdIndexImport.update(
-    {
-      id: '/memberships/$membershipId/',
-      path: '/memberships/$membershipId/',
-      getParentRoute: () => AuthenticateCtxOrgDetailsOrganizationLayoutOrgRoute,
-    } as any,
-  )
+const organizationGroupDetailsByIDPageRouteRoute =
+  organizationGroupDetailsByIDPageRouteImport.update({
+    id: '/groups/$groupId',
+    path: '/groups/$groupId',
+    getParentRoute: () => organizationLayoutRoute,
+  } as any)
 
-const AuthenticateCtxOrgDetailsOrganizationLayoutOrgIdentitiesIdentityIdIndexRoute =
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgIdentitiesIdentityIdIndexImport.update(
-    {
-      id: '/identities/$identityId/',
-      path: '/identities/$identityId/',
-      getParentRoute: () => AuthenticateCtxOrgDetailsOrganizationLayoutOrgRoute,
-    } as any,
-  )
-
-const AuthenticateCtxOrgDetailsOrganizationLayoutOrgGroupsGroupIdIndexRoute =
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgGroupsGroupIdIndexImport.update(
-    {
-      id: '/groups/$groupId/',
-      path: '/groups/$groupId/',
-      getParentRoute: () => AuthenticateCtxOrgDetailsOrganizationLayoutOrgRoute,
-    } as any,
-  )
-
-const AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretsEnvSlugIndexRoute =
-  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretsEnvSlugIndexImport.update(
-    {
-      id: '/secrets/$envSlug/',
-      path: '/secrets/$envSlug/',
-      getParentRoute: () =>
-        AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRoute,
-    } as any,
-  )
-
-const AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRolesRoleSlugIndexRoute =
-  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRolesRoleSlugIndexImport.update(
-    {
-      id: '/roles/$roleSlug/',
-      path: '/roles/$roleSlug/',
-      getParentRoute: () =>
-        AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRoute,
-    } as any,
-  )
-
-const AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerMembersMembershipIdIndexRoute =
-  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerMembersMembershipIdIndexImport.update(
-    {
-      id: '/members/$membershipId/',
-      path: '/members/$membershipId/',
-      getParentRoute: () =>
-        AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRoute,
-    } as any,
-  )
-
-const AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerIdentitiesIdentityIdIndexRoute =
-  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerIdentitiesIdentityIdIndexImport.update(
-    {
-      id: '/identities/$identityId/',
-      path: '/identities/$identityId/',
-      getParentRoute: () =>
-        AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRoute,
-    } as any,
-  )
+const organizationCertManagerOverviewPageRouteRoute =
+  organizationCertManagerOverviewPageRouteImport.update({
+    id: '/cert-manager/overview',
+    path: '/cert-manager/overview',
+    getParentRoute: () => organizationLayoutRoute,
+  } as any)
 
 // Populate the FileRoutesByPath interface
 
@@ -485,547 +332,375 @@ declare module '@tanstack/react-router' {
       id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexImport
+      preLoaderRoute: typeof indexImport
       parentRoute: typeof rootRoute
     }
     '/_authenticate': {
       id: '/_authenticate'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof AuthenticateImport
+      preLoaderRoute: typeof middlewaresAuthenticateImport
       parentRoute: typeof rootRoute
     }
     '/_restrict-login-signup': {
       id: '/_restrict-login-signup'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof RestrictLoginSignupImport
+      preLoaderRoute: typeof middlewaresRestrictLoginSignupImport
       parentRoute: typeof rootRoute
-    }
-    '/_authenticate/_ctx-org-details': {
-      id: '/_authenticate/_ctx-org-details'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsImport
-      parentRoute: typeof AuthenticateImport
-    }
-    '/_authenticate/cli-redirect': {
-      id: '/_authenticate/cli-redirect'
-      path: '/cli-redirect'
-      fullPath: '/cli-redirect'
-      preLoaderRoute: typeof AuthenticateCliRedirectImport
-      parentRoute: typeof AuthenticateImport
     }
     '/_restrict-login-signup/email-not-verified': {
       id: '/_restrict-login-signup/email-not-verified'
       path: '/email-not-verified'
       fullPath: '/email-not-verified'
-      preLoaderRoute: typeof RestrictLoginSignupEmailNotVerifiedImport
-      parentRoute: typeof RestrictLoginSignupImport
+      preLoaderRoute: typeof authEmailNotVerifiedPageRouteImport
+      parentRoute: typeof middlewaresRestrictLoginSignupImport
     }
     '/_restrict-login-signup/password-reset': {
       id: '/_restrict-login-signup/password-reset'
       path: '/password-reset'
       fullPath: '/password-reset'
-      preLoaderRoute: typeof RestrictLoginSignupPasswordResetImport
-      parentRoute: typeof RestrictLoginSignupImport
+      preLoaderRoute: typeof authPasswordResetPageRouteImport
+      parentRoute: typeof middlewaresRestrictLoginSignupImport
     }
     '/_restrict-login-signup/requestnewinvite': {
       id: '/_restrict-login-signup/requestnewinvite'
       path: '/requestnewinvite'
       fullPath: '/requestnewinvite'
-      preLoaderRoute: typeof RestrictLoginSignupRequestnewinviteImport
-      parentRoute: typeof RestrictLoginSignupImport
+      preLoaderRoute: typeof authRequestNewInvitePageRouteImport
+      parentRoute: typeof middlewaresRestrictLoginSignupImport
     }
     '/_restrict-login-signup/signupinvite': {
       id: '/_restrict-login-signup/signupinvite'
       path: '/signupinvite'
       fullPath: '/signupinvite'
-      preLoaderRoute: typeof RestrictLoginSignupSignupinviteImport
-      parentRoute: typeof RestrictLoginSignupImport
+      preLoaderRoute: typeof authSignUpInvitePageRouteImport
+      parentRoute: typeof middlewaresRestrictLoginSignupImport
     }
     '/_restrict-login-signup/verify-email': {
       id: '/_restrict-login-signup/verify-email'
       path: '/verify-email'
       fullPath: '/verify-email'
-      preLoaderRoute: typeof RestrictLoginSignupVerifyEmailImport
-      parentRoute: typeof RestrictLoginSignupImport
+      preLoaderRoute: typeof authVerifyEmailPageRouteImport
+      parentRoute: typeof middlewaresRestrictLoginSignupImport
+    }
+    '/_authenticate/_inject-org-details': {
+      id: '/_authenticate/_inject-org-details'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof middlewaresInjectOrgDetailsImport
+      parentRoute: typeof middlewaresAuthenticateImport
     }
     '/_authenticate/personal-settings': {
       id: '/_authenticate/personal-settings'
       path: '/personal-settings'
       fullPath: '/personal-settings'
       preLoaderRoute: typeof AuthenticatePersonalSettingsImport
-      parentRoute: typeof AuthenticateImport
+      parentRoute: typeof middlewaresAuthenticateImport
     }
-    '/_authenticate/personal-settings/_personal-settings-layout': {
-      id: '/_authenticate/personal-settings/_personal-settings-layout'
-      path: '/personal-settings'
-      fullPath: '/personal-settings'
-      preLoaderRoute: typeof authenticatePersonalSettingsLayoutImport
-      parentRoute: typeof AuthenticatePersonalSettingsRoute
+    '/_restrict-login-signup/login': {
+      id: '/_restrict-login-signup/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof RestrictLoginSignupLoginImport
+      parentRoute: typeof middlewaresRestrictLoginSignupImport
+    }
+    '/_restrict-login-signup/signup': {
+      id: '/_restrict-login-signup/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof RestrictLoginSignupSignupImport
+      parentRoute: typeof middlewaresRestrictLoginSignupImport
     }
     '/_restrict-login-signup/login/': {
       id: '/_restrict-login-signup/login/'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof RestrictLoginSignupLoginIndexImport
-      parentRoute: typeof RestrictLoginSignupImport
+      path: '/'
+      fullPath: '/login/'
+      preLoaderRoute: typeof authLoginPageRouteImport
+      parentRoute: typeof RestrictLoginSignupLoginImport
     }
     '/_restrict-login-signup/signup/': {
       id: '/_restrict-login-signup/signup/'
-      path: '/signup'
-      fullPath: '/signup'
-      preLoaderRoute: typeof RestrictLoginSignupSignupIndexImport
-      parentRoute: typeof RestrictLoginSignupImport
+      path: '/'
+      fullPath: '/signup/'
+      preLoaderRoute: typeof authSignUpPageRouteImport
+      parentRoute: typeof RestrictLoginSignupSignupImport
     }
-    '/_authenticate/_ctx-org-details/organization': {
-      id: '/_authenticate/_ctx-org-details/organization'
+    '/_restrict-login-signup/login/ldap': {
+      id: '/_restrict-login-signup/login/ldap'
+      path: '/ldap'
+      fullPath: '/login/ldap'
+      preLoaderRoute: typeof authLoginLdapPageRouteImport
+      parentRoute: typeof RestrictLoginSignupLoginImport
+    }
+    '/_restrict-login-signup/login/select-organization': {
+      id: '/_restrict-login-signup/login/select-organization'
+      path: '/select-organization'
+      fullPath: '/login/select-organization'
+      preLoaderRoute: typeof authSelectOrgPageRouteImport
+      parentRoute: typeof RestrictLoginSignupLoginImport
+    }
+    '/_restrict-login-signup/login/sso': {
+      id: '/_restrict-login-signup/login/sso'
+      path: '/sso'
+      fullPath: '/login/sso'
+      preLoaderRoute: typeof authLoginSsoPageRouteImport
+      parentRoute: typeof RestrictLoginSignupLoginImport
+    }
+    '/_restrict-login-signup/signup/sso': {
+      id: '/_restrict-login-signup/signup/sso'
+      path: '/sso'
+      fullPath: '/signup/sso'
+      preLoaderRoute: typeof authSignUpSsoPageRouteImport
+      parentRoute: typeof RestrictLoginSignupSignupImport
+    }
+    '/_authenticate/_inject-org-details/organization': {
+      id: '/_authenticate/_inject-org-details/organization'
       path: '/organization'
       fullPath: '/organization'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsOrganizationImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsImport
+      preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrganizationImport
+      parentRoute: typeof middlewaresInjectOrgDetailsImport
     }
-    '/_authenticate/_ctx-org-details/organization/_layout-org': {
-      id: '/_authenticate/_ctx-org-details/organization/_layout-org'
-      path: '/organization'
-      fullPath: '/organization'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsOrganizationRoute
+    '/_authenticate/personal-settings/_layout': {
+      id: '/_authenticate/personal-settings/_layout'
+      path: ''
+      fullPath: '/personal-settings'
+      preLoaderRoute: typeof userLayoutImport
+      parentRoute: typeof AuthenticatePersonalSettingsImport
+    }
+    '/_authenticate/personal-settings/_layout/': {
+      id: '/_authenticate/personal-settings/_layout/'
+      path: '/'
+      fullPath: '/personal-settings/'
+      preLoaderRoute: typeof userPersonalSettingsPageRouteImport
+      parentRoute: typeof userLayoutImport
     }
     '/_restrict-login-signup/login/provider/error': {
       id: '/_restrict-login-signup/login/provider/error'
-      path: '/login/provider/error'
+      path: '/provider/error'
       fullPath: '/login/provider/error'
-      preLoaderRoute: typeof RestrictLoginSignupLoginProviderErrorImport
-      parentRoute: typeof RestrictLoginSignupImport
+      preLoaderRoute: typeof authProviderErrorPageRouteImport
+      parentRoute: typeof RestrictLoginSignupLoginImport
     }
     '/_restrict-login-signup/login/provider/success': {
       id: '/_restrict-login-signup/login/provider/success'
-      path: '/login/provider/success'
+      path: '/provider/success'
       fullPath: '/login/provider/success'
-      preLoaderRoute: typeof RestrictLoginSignupLoginProviderSuccessImport
-      parentRoute: typeof RestrictLoginSignupImport
+      preLoaderRoute: typeof authProviderSuccessPageRouteImport
+      parentRoute: typeof RestrictLoginSignupLoginImport
     }
-    '/_authenticate/personal-settings/_personal-settings-layout/': {
-      id: '/_authenticate/personal-settings/_personal-settings-layout/'
-      path: '/'
-      fullPath: '/personal-settings/'
-      preLoaderRoute: typeof authenticatePersonalSettingsIndexImport
-      parentRoute: typeof authenticatePersonalSettingsLayoutImport
+    '/_authenticate/_inject-org-details/organization/_layout': {
+      id: '/_authenticate/_inject-org-details/organization/_layout'
+      path: ''
+      fullPath: '/organization'
+      preLoaderRoute: typeof organizationLayoutImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrganizationImport
     }
-    '/_restrict-login-signup/login/ldap/': {
-      id: '/_restrict-login-signup/login/ldap/'
-      path: '/login/ldap'
-      fullPath: '/login/ldap'
-      preLoaderRoute: typeof RestrictLoginSignupLoginLdapIndexImport
-      parentRoute: typeof RestrictLoginSignupImport
+    '/_authenticate/_inject-org-details/organization/_layout/access-management': {
+      id: '/_authenticate/_inject-org-details/organization/_layout/access-management'
+      path: '/access-management'
+      fullPath: '/organization/access-management'
+      preLoaderRoute: typeof organizationAccessManagementPageRouteImport
+      parentRoute: typeof organizationLayoutImport
     }
-    '/_restrict-login-signup/login/select-organization/': {
-      id: '/_restrict-login-signup/login/select-organization/'
-      path: '/login/select-organization'
-      fullPath: '/login/select-organization'
-      preLoaderRoute: typeof RestrictLoginSignupLoginSelectOrganizationIndexImport
-      parentRoute: typeof RestrictLoginSignupImport
-    }
-    '/_restrict-login-signup/login/sso/': {
-      id: '/_restrict-login-signup/login/sso/'
-      path: '/login/sso'
-      fullPath: '/login/sso'
-      preLoaderRoute: typeof RestrictLoginSignupLoginSsoIndexImport
-      parentRoute: typeof RestrictLoginSignupImport
-    }
-    '/_restrict-login-signup/signup/sso/': {
-      id: '/_restrict-login-signup/signup/sso/'
-      path: '/signup/sso'
-      fullPath: '/signup/sso'
-      preLoaderRoute: typeof RestrictLoginSignupSignupSsoIndexImport
-      parentRoute: typeof RestrictLoginSignupImport
-    }
-    '/_authenticate/_ctx-org-details/secret-manager/$projectId': {
-      id: '/_authenticate/_ctx-org-details/secret-manager/$projectId'
-      path: '/secret-manager/$projectId'
-      fullPath: '/secret-manager/$projectId'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsImport
-    }
-    '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager': {
-      id: '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager'
-      path: '/secret-manager/$projectId'
-      fullPath: '/secret-manager/$projectId'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdRoute
-    }
-    '/_authenticate/_ctx-org-details/organization/_layout-org/': {
-      id: '/_authenticate/_ctx-org-details/organization/_layout-org/'
-      path: '/'
-      fullPath: '/organization/'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgIndexImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgImport
-    }
-    '/_authenticate/_ctx-org-details/organization/_layout-org/cert-manager/overview': {
-      id: '/_authenticate/_ctx-org-details/organization/_layout-org/cert-manager/overview'
-      path: '/cert-manager/overview'
-      fullPath: '/organization/cert-manager/overview'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgCertManagerOverviewImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgImport
-    }
-    '/_authenticate/_ctx-org-details/organization/_layout-org/kms/overview': {
-      id: '/_authenticate/_ctx-org-details/organization/_layout-org/kms/overview'
-      path: '/kms/overview'
-      fullPath: '/organization/kms/overview'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgKmsOverviewImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgImport
-    }
-    '/_authenticate/_ctx-org-details/organization/_layout-org/secret-manager/overview': {
-      id: '/_authenticate/_ctx-org-details/organization/_layout-org/secret-manager/overview'
-      path: '/secret-manager/overview'
-      fullPath: '/organization/secret-manager/overview'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretManagerOverviewImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgImport
-    }
-    '/_authenticate/_ctx-org-details/organization/_layout-org/admin/': {
-      id: '/_authenticate/_ctx-org-details/organization/_layout-org/admin/'
+    '/_authenticate/_inject-org-details/organization/_layout/admin': {
+      id: '/_authenticate/_inject-org-details/organization/_layout/admin'
       path: '/admin'
       fullPath: '/organization/admin'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgAdminIndexImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgImport
+      preLoaderRoute: typeof organizationAdminPageRouteImport
+      parentRoute: typeof organizationLayoutImport
     }
-    '/_authenticate/_ctx-org-details/organization/_layout-org/audit-logs/': {
-      id: '/_authenticate/_ctx-org-details/organization/_layout-org/audit-logs/'
+    '/_authenticate/_inject-org-details/organization/_layout/audit-logs': {
+      id: '/_authenticate/_inject-org-details/organization/_layout/audit-logs'
       path: '/audit-logs'
       fullPath: '/organization/audit-logs'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgAuditLogsIndexImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgImport
+      preLoaderRoute: typeof organizationAuditLogsPageRouteImport
+      parentRoute: typeof organizationLayoutImport
     }
-    '/_authenticate/_ctx-org-details/organization/_layout-org/billing/': {
-      id: '/_authenticate/_ctx-org-details/organization/_layout-org/billing/'
+    '/_authenticate/_inject-org-details/organization/_layout/billing': {
+      id: '/_authenticate/_inject-org-details/organization/_layout/billing'
       path: '/billing'
       fullPath: '/organization/billing'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgBillingIndexImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgImport
+      preLoaderRoute: typeof organizationBillingPageRouteImport
+      parentRoute: typeof organizationLayoutImport
     }
-    '/_authenticate/_ctx-org-details/organization/_layout-org/members/': {
-      id: '/_authenticate/_ctx-org-details/organization/_layout-org/members/'
-      path: '/members'
-      fullPath: '/organization/members'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgMembersIndexImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgImport
-    }
-    '/_authenticate/_ctx-org-details/organization/_layout-org/none/': {
-      id: '/_authenticate/_ctx-org-details/organization/_layout-org/none/'
+    '/_authenticate/_inject-org-details/organization/_layout/none': {
+      id: '/_authenticate/_inject-org-details/organization/_layout/none'
       path: '/none'
       fullPath: '/organization/none'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgNoneIndexImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgImport
+      preLoaderRoute: typeof organizationNoOrgPageRouteImport
+      parentRoute: typeof organizationLayoutImport
     }
-    '/_authenticate/_ctx-org-details/organization/_layout-org/overview/': {
-      id: '/_authenticate/_ctx-org-details/organization/_layout-org/overview/'
-      path: '/overview'
-      fullPath: '/organization/overview'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgOverviewIndexImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgImport
-    }
-    '/_authenticate/_ctx-org-details/organization/_layout-org/secret-scanning/': {
-      id: '/_authenticate/_ctx-org-details/organization/_layout-org/secret-scanning/'
+    '/_authenticate/_inject-org-details/organization/_layout/secret-scanning': {
+      id: '/_authenticate/_inject-org-details/organization/_layout/secret-scanning'
       path: '/secret-scanning'
       fullPath: '/organization/secret-scanning'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretScanningIndexImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgImport
+      preLoaderRoute: typeof organizationSecretScanningPageRouteImport
+      parentRoute: typeof organizationLayoutImport
     }
-    '/_authenticate/_ctx-org-details/organization/_layout-org/secret-sharing/': {
-      id: '/_authenticate/_ctx-org-details/organization/_layout-org/secret-sharing/'
+    '/_authenticate/_inject-org-details/organization/_layout/secret-sharing': {
+      id: '/_authenticate/_inject-org-details/organization/_layout/secret-sharing'
       path: '/secret-sharing'
       fullPath: '/organization/secret-sharing'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretSharingIndexImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgImport
+      preLoaderRoute: typeof organizationSecretSharingPageRouteImport
+      parentRoute: typeof organizationLayoutImport
     }
-    '/_authenticate/_ctx-org-details/organization/_layout-org/settings/': {
-      id: '/_authenticate/_ctx-org-details/organization/_layout-org/settings/'
+    '/_authenticate/_inject-org-details/organization/_layout/settings': {
+      id: '/_authenticate/_inject-org-details/organization/_layout/settings'
       path: '/settings'
       fullPath: '/organization/settings'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgSettingsIndexImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgImport
+      preLoaderRoute: typeof organizationSettingsPageRouteImport
+      parentRoute: typeof organizationLayoutImport
     }
-    '/_authenticate/_ctx-org-details/organization/_layout-org/groups/$groupId/': {
-      id: '/_authenticate/_ctx-org-details/organization/_layout-org/groups/$groupId/'
+    '/_authenticate/_inject-org-details/organization/_layout/cert-manager/overview': {
+      id: '/_authenticate/_inject-org-details/organization/_layout/cert-manager/overview'
+      path: '/cert-manager/overview'
+      fullPath: '/organization/cert-manager/overview'
+      preLoaderRoute: typeof organizationCertManagerOverviewPageRouteImport
+      parentRoute: typeof organizationLayoutImport
+    }
+    '/_authenticate/_inject-org-details/organization/_layout/groups/$groupId': {
+      id: '/_authenticate/_inject-org-details/organization/_layout/groups/$groupId'
       path: '/groups/$groupId'
       fullPath: '/organization/groups/$groupId'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgGroupsGroupIdIndexImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgImport
+      preLoaderRoute: typeof organizationGroupDetailsByIDPageRouteImport
+      parentRoute: typeof organizationLayoutImport
     }
-    '/_authenticate/_ctx-org-details/organization/_layout-org/identities/$identityId/': {
-      id: '/_authenticate/_ctx-org-details/organization/_layout-org/identities/$identityId/'
+    '/_authenticate/_inject-org-details/organization/_layout/identities/$identityId': {
+      id: '/_authenticate/_inject-org-details/organization/_layout/identities/$identityId'
       path: '/identities/$identityId'
       fullPath: '/organization/identities/$identityId'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgIdentitiesIdentityIdIndexImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgImport
+      preLoaderRoute: typeof organizationIdentityDetailsByIDPageRouteImport
+      parentRoute: typeof organizationLayoutImport
     }
-    '/_authenticate/_ctx-org-details/organization/_layout-org/memberships/$membershipId/': {
-      id: '/_authenticate/_ctx-org-details/organization/_layout-org/memberships/$membershipId/'
-      path: '/memberships/$membershipId'
-      fullPath: '/organization/memberships/$membershipId'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgMembershipsMembershipIdIndexImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgImport
+    '/_authenticate/_inject-org-details/organization/_layout/kms/overview': {
+      id: '/_authenticate/_inject-org-details/organization/_layout/kms/overview'
+      path: '/kms/overview'
+      fullPath: '/organization/kms/overview'
+      preLoaderRoute: typeof organizationKmsOverviewPageRouteImport
+      parentRoute: typeof organizationLayoutImport
     }
-    '/_authenticate/_ctx-org-details/organization/_layout-org/roles/$roleId/': {
-      id: '/_authenticate/_ctx-org-details/organization/_layout-org/roles/$roleId/'
+    '/_authenticate/_inject-org-details/organization/_layout/members/$membershipId': {
+      id: '/_authenticate/_inject-org-details/organization/_layout/members/$membershipId'
+      path: '/members/$membershipId'
+      fullPath: '/organization/members/$membershipId'
+      preLoaderRoute: typeof organizationUserDetailsByIDPageRouteImport
+      parentRoute: typeof organizationLayoutImport
+    }
+    '/_authenticate/_inject-org-details/organization/_layout/roles/$roleId': {
+      id: '/_authenticate/_inject-org-details/organization/_layout/roles/$roleId'
       path: '/roles/$roleId'
       fullPath: '/organization/roles/$roleId'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgRolesRoleIdIndexImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgImport
+      preLoaderRoute: typeof organizationRoleByIDPageRouteImport
+      parentRoute: typeof organizationLayoutImport
     }
-    '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/access/': {
-      id: '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/access/'
-      path: '/access'
-      fullPath: '/secret-manager/$projectId/access'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAccessIndexImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerImport
-    }
-    '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/allowlist/': {
-      id: '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/allowlist/'
-      path: '/allowlist'
-      fullPath: '/secret-manager/$projectId/allowlist'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAllowlistIndexImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerImport
-    }
-    '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/approval/': {
-      id: '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/approval/'
-      path: '/approval'
-      fullPath: '/secret-manager/$projectId/approval'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerApprovalIndexImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerImport
-    }
-    '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/overview/': {
-      id: '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/overview/'
-      path: '/overview'
-      fullPath: '/secret-manager/$projectId/overview'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewIndexImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerImport
-    }
-    '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secret-rotation/': {
-      id: '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secret-rotation/'
-      path: '/secret-rotation'
-      fullPath: '/secret-manager/$projectId/secret-rotation'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretRotationIndexImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerImport
-    }
-    '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/settings/': {
-      id: '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/settings/'
-      path: '/settings'
-      fullPath: '/secret-manager/$projectId/settings'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSettingsIndexImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerImport
-    }
-    '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/identities/$identityId/': {
-      id: '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/identities/$identityId/'
-      path: '/identities/$identityId'
-      fullPath: '/secret-manager/$projectId/identities/$identityId'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerIdentitiesIdentityIdIndexImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerImport
-    }
-    '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/members/$membershipId/': {
-      id: '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/members/$membershipId/'
-      path: '/members/$membershipId'
-      fullPath: '/secret-manager/$projectId/members/$membershipId'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerMembersMembershipIdIndexImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerImport
-    }
-    '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/roles/$roleSlug/': {
-      id: '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/roles/$roleSlug/'
-      path: '/roles/$roleSlug'
-      fullPath: '/secret-manager/$projectId/roles/$roleSlug'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRolesRoleSlugIndexImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerImport
-    }
-    '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secrets/$envSlug/': {
-      id: '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secrets/$envSlug/'
-      path: '/secrets/$envSlug'
-      fullPath: '/secret-manager/$projectId/secrets/$envSlug'
-      preLoaderRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretsEnvSlugIndexImport
-      parentRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerImport
+    '/_authenticate/_inject-org-details/organization/_layout/secret-manager/overview': {
+      id: '/_authenticate/_inject-org-details/organization/_layout/secret-manager/overview'
+      path: '/secret-manager/overview'
+      fullPath: '/organization/secret-manager/overview'
+      preLoaderRoute: typeof organizationSecretManagerOverviewPageRouteImport
+      parentRoute: typeof organizationLayoutImport
     }
   }
 }
 
 // Create and export the route tree
 
-interface AuthenticateCtxOrgDetailsOrganizationLayoutOrgRouteChildren {
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgIndexRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgIndexRoute
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgCertManagerOverviewRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgCertManagerOverviewRoute
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgKmsOverviewRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgKmsOverviewRoute
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretManagerOverviewRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretManagerOverviewRoute
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgAdminIndexRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgAdminIndexRoute
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgAuditLogsIndexRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgAuditLogsIndexRoute
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgBillingIndexRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgBillingIndexRoute
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgMembersIndexRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgMembersIndexRoute
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgNoneIndexRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgNoneIndexRoute
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgOverviewIndexRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgOverviewIndexRoute
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretScanningIndexRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretScanningIndexRoute
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretSharingIndexRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretSharingIndexRoute
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgSettingsIndexRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgSettingsIndexRoute
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgGroupsGroupIdIndexRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgGroupsGroupIdIndexRoute
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgIdentitiesIdentityIdIndexRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgIdentitiesIdentityIdIndexRoute
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgMembershipsMembershipIdIndexRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgMembershipsMembershipIdIndexRoute
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgRolesRoleIdIndexRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgRolesRoleIdIndexRoute
+interface organizationLayoutRouteChildren {
+  organizationAccessManagementPageRouteRoute: typeof organizationAccessManagementPageRouteRoute
+  organizationAdminPageRouteRoute: typeof organizationAdminPageRouteRoute
+  organizationAuditLogsPageRouteRoute: typeof organizationAuditLogsPageRouteRoute
+  organizationBillingPageRouteRoute: typeof organizationBillingPageRouteRoute
+  organizationNoOrgPageRouteRoute: typeof organizationNoOrgPageRouteRoute
+  organizationSecretScanningPageRouteRoute: typeof organizationSecretScanningPageRouteRoute
+  organizationSecretSharingPageRouteRoute: typeof organizationSecretSharingPageRouteRoute
+  organizationSettingsPageRouteRoute: typeof organizationSettingsPageRouteRoute
+  organizationCertManagerOverviewPageRouteRoute: typeof organizationCertManagerOverviewPageRouteRoute
+  organizationGroupDetailsByIDPageRouteRoute: typeof organizationGroupDetailsByIDPageRouteRoute
+  organizationIdentityDetailsByIDPageRouteRoute: typeof organizationIdentityDetailsByIDPageRouteRoute
+  organizationKmsOverviewPageRouteRoute: typeof organizationKmsOverviewPageRouteRoute
+  organizationUserDetailsByIDPageRouteRoute: typeof organizationUserDetailsByIDPageRouteRoute
+  organizationRoleByIDPageRouteRoute: typeof organizationRoleByIDPageRouteRoute
+  organizationSecretManagerOverviewPageRouteRoute: typeof organizationSecretManagerOverviewPageRouteRoute
 }
 
-const AuthenticateCtxOrgDetailsOrganizationLayoutOrgRouteChildren: AuthenticateCtxOrgDetailsOrganizationLayoutOrgRouteChildren =
-  {
-    AuthenticateCtxOrgDetailsOrganizationLayoutOrgIndexRoute:
-      AuthenticateCtxOrgDetailsOrganizationLayoutOrgIndexRoute,
-    AuthenticateCtxOrgDetailsOrganizationLayoutOrgCertManagerOverviewRoute:
-      AuthenticateCtxOrgDetailsOrganizationLayoutOrgCertManagerOverviewRoute,
-    AuthenticateCtxOrgDetailsOrganizationLayoutOrgKmsOverviewRoute:
-      AuthenticateCtxOrgDetailsOrganizationLayoutOrgKmsOverviewRoute,
-    AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretManagerOverviewRoute:
-      AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretManagerOverviewRoute,
-    AuthenticateCtxOrgDetailsOrganizationLayoutOrgAdminIndexRoute:
-      AuthenticateCtxOrgDetailsOrganizationLayoutOrgAdminIndexRoute,
-    AuthenticateCtxOrgDetailsOrganizationLayoutOrgAuditLogsIndexRoute:
-      AuthenticateCtxOrgDetailsOrganizationLayoutOrgAuditLogsIndexRoute,
-    AuthenticateCtxOrgDetailsOrganizationLayoutOrgBillingIndexRoute:
-      AuthenticateCtxOrgDetailsOrganizationLayoutOrgBillingIndexRoute,
-    AuthenticateCtxOrgDetailsOrganizationLayoutOrgMembersIndexRoute:
-      AuthenticateCtxOrgDetailsOrganizationLayoutOrgMembersIndexRoute,
-    AuthenticateCtxOrgDetailsOrganizationLayoutOrgNoneIndexRoute:
-      AuthenticateCtxOrgDetailsOrganizationLayoutOrgNoneIndexRoute,
-    AuthenticateCtxOrgDetailsOrganizationLayoutOrgOverviewIndexRoute:
-      AuthenticateCtxOrgDetailsOrganizationLayoutOrgOverviewIndexRoute,
-    AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretScanningIndexRoute:
-      AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretScanningIndexRoute,
-    AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretSharingIndexRoute:
-      AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretSharingIndexRoute,
-    AuthenticateCtxOrgDetailsOrganizationLayoutOrgSettingsIndexRoute:
-      AuthenticateCtxOrgDetailsOrganizationLayoutOrgSettingsIndexRoute,
-    AuthenticateCtxOrgDetailsOrganizationLayoutOrgGroupsGroupIdIndexRoute:
-      AuthenticateCtxOrgDetailsOrganizationLayoutOrgGroupsGroupIdIndexRoute,
-    AuthenticateCtxOrgDetailsOrganizationLayoutOrgIdentitiesIdentityIdIndexRoute:
-      AuthenticateCtxOrgDetailsOrganizationLayoutOrgIdentitiesIdentityIdIndexRoute,
-    AuthenticateCtxOrgDetailsOrganizationLayoutOrgMembershipsMembershipIdIndexRoute:
-      AuthenticateCtxOrgDetailsOrganizationLayoutOrgMembershipsMembershipIdIndexRoute,
-    AuthenticateCtxOrgDetailsOrganizationLayoutOrgRolesRoleIdIndexRoute:
-      AuthenticateCtxOrgDetailsOrganizationLayoutOrgRolesRoleIdIndexRoute,
-  }
-
-const AuthenticateCtxOrgDetailsOrganizationLayoutOrgRouteWithChildren =
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgRoute._addFileChildren(
-    AuthenticateCtxOrgDetailsOrganizationLayoutOrgRouteChildren,
-  )
-
-interface AuthenticateCtxOrgDetailsOrganizationRouteChildren {
-  AuthenticateCtxOrgDetailsOrganizationLayoutOrgRoute: typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgRouteWithChildren
+const organizationLayoutRouteChildren: organizationLayoutRouteChildren = {
+  organizationAccessManagementPageRouteRoute:
+    organizationAccessManagementPageRouteRoute,
+  organizationAdminPageRouteRoute: organizationAdminPageRouteRoute,
+  organizationAuditLogsPageRouteRoute: organizationAuditLogsPageRouteRoute,
+  organizationBillingPageRouteRoute: organizationBillingPageRouteRoute,
+  organizationNoOrgPageRouteRoute: organizationNoOrgPageRouteRoute,
+  organizationSecretScanningPageRouteRoute:
+    organizationSecretScanningPageRouteRoute,
+  organizationSecretSharingPageRouteRoute:
+    organizationSecretSharingPageRouteRoute,
+  organizationSettingsPageRouteRoute: organizationSettingsPageRouteRoute,
+  organizationCertManagerOverviewPageRouteRoute:
+    organizationCertManagerOverviewPageRouteRoute,
+  organizationGroupDetailsByIDPageRouteRoute:
+    organizationGroupDetailsByIDPageRouteRoute,
+  organizationIdentityDetailsByIDPageRouteRoute:
+    organizationIdentityDetailsByIDPageRouteRoute,
+  organizationKmsOverviewPageRouteRoute: organizationKmsOverviewPageRouteRoute,
+  organizationUserDetailsByIDPageRouteRoute:
+    organizationUserDetailsByIDPageRouteRoute,
+  organizationRoleByIDPageRouteRoute: organizationRoleByIDPageRouteRoute,
+  organizationSecretManagerOverviewPageRouteRoute:
+    organizationSecretManagerOverviewPageRouteRoute,
 }
 
-const AuthenticateCtxOrgDetailsOrganizationRouteChildren: AuthenticateCtxOrgDetailsOrganizationRouteChildren =
-  {
-    AuthenticateCtxOrgDetailsOrganizationLayoutOrgRoute:
-      AuthenticateCtxOrgDetailsOrganizationLayoutOrgRouteWithChildren,
-  }
+const organizationLayoutRouteWithChildren =
+  organizationLayoutRoute._addFileChildren(organizationLayoutRouteChildren)
 
-const AuthenticateCtxOrgDetailsOrganizationRouteWithChildren =
-  AuthenticateCtxOrgDetailsOrganizationRoute._addFileChildren(
-    AuthenticateCtxOrgDetailsOrganizationRouteChildren,
-  )
-
-interface AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRouteChildren {
-  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAccessIndexRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAccessIndexRoute
-  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAllowlistIndexRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAllowlistIndexRoute
-  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerApprovalIndexRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerApprovalIndexRoute
-  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewIndexRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewIndexRoute
-  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretRotationIndexRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretRotationIndexRoute
-  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSettingsIndexRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSettingsIndexRoute
-  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerIdentitiesIdentityIdIndexRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerIdentitiesIdentityIdIndexRoute
-  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerMembersMembershipIdIndexRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerMembersMembershipIdIndexRoute
-  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRolesRoleSlugIndexRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRolesRoleSlugIndexRoute
-  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretsEnvSlugIndexRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretsEnvSlugIndexRoute
+interface AuthenticateInjectOrgDetailsOrganizationRouteChildren {
+  organizationLayoutRoute: typeof organizationLayoutRouteWithChildren
 }
 
-const AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRouteChildren: AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRouteChildren =
+const AuthenticateInjectOrgDetailsOrganizationRouteChildren: AuthenticateInjectOrgDetailsOrganizationRouteChildren =
   {
-    AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAccessIndexRoute:
-      AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAccessIndexRoute,
-    AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAllowlistIndexRoute:
-      AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAllowlistIndexRoute,
-    AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerApprovalIndexRoute:
-      AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerApprovalIndexRoute,
-    AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewIndexRoute:
-      AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewIndexRoute,
-    AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretRotationIndexRoute:
-      AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretRotationIndexRoute,
-    AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSettingsIndexRoute:
-      AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSettingsIndexRoute,
-    AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerIdentitiesIdentityIdIndexRoute:
-      AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerIdentitiesIdentityIdIndexRoute,
-    AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerMembersMembershipIdIndexRoute:
-      AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerMembersMembershipIdIndexRoute,
-    AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRolesRoleSlugIndexRoute:
-      AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRolesRoleSlugIndexRoute,
-    AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretsEnvSlugIndexRoute:
-      AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretsEnvSlugIndexRoute,
+    organizationLayoutRoute: organizationLayoutRouteWithChildren,
   }
 
-const AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRouteWithChildren =
-  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRoute._addFileChildren(
-    AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRouteChildren,
+const AuthenticateInjectOrgDetailsOrganizationRouteWithChildren =
+  AuthenticateInjectOrgDetailsOrganizationRoute._addFileChildren(
+    AuthenticateInjectOrgDetailsOrganizationRouteChildren,
   )
 
-interface AuthenticateCtxOrgDetailsSecretManagerProjectIdRouteChildren {
-  AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRouteWithChildren
+interface middlewaresInjectOrgDetailsRouteChildren {
+  AuthenticateInjectOrgDetailsOrganizationRoute: typeof AuthenticateInjectOrgDetailsOrganizationRouteWithChildren
 }
 
-const AuthenticateCtxOrgDetailsSecretManagerProjectIdRouteChildren: AuthenticateCtxOrgDetailsSecretManagerProjectIdRouteChildren =
+const middlewaresInjectOrgDetailsRouteChildren: middlewaresInjectOrgDetailsRouteChildren =
   {
-    AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRoute:
-      AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRouteWithChildren,
+    AuthenticateInjectOrgDetailsOrganizationRoute:
+      AuthenticateInjectOrgDetailsOrganizationRouteWithChildren,
   }
 
-const AuthenticateCtxOrgDetailsSecretManagerProjectIdRouteWithChildren =
-  AuthenticateCtxOrgDetailsSecretManagerProjectIdRoute._addFileChildren(
-    AuthenticateCtxOrgDetailsSecretManagerProjectIdRouteChildren,
+const middlewaresInjectOrgDetailsRouteWithChildren =
+  middlewaresInjectOrgDetailsRoute._addFileChildren(
+    middlewaresInjectOrgDetailsRouteChildren,
   )
 
-interface AuthenticateCtxOrgDetailsRouteChildren {
-  AuthenticateCtxOrgDetailsOrganizationRoute: typeof AuthenticateCtxOrgDetailsOrganizationRouteWithChildren
-  AuthenticateCtxOrgDetailsSecretManagerProjectIdRoute: typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdRouteWithChildren
+interface userLayoutRouteChildren {
+  userPersonalSettingsPageRouteRoute: typeof userPersonalSettingsPageRouteRoute
 }
 
-const AuthenticateCtxOrgDetailsRouteChildren: AuthenticateCtxOrgDetailsRouteChildren =
-  {
-    AuthenticateCtxOrgDetailsOrganizationRoute:
-      AuthenticateCtxOrgDetailsOrganizationRouteWithChildren,
-    AuthenticateCtxOrgDetailsSecretManagerProjectIdRoute:
-      AuthenticateCtxOrgDetailsSecretManagerProjectIdRouteWithChildren,
-  }
-
-const AuthenticateCtxOrgDetailsRouteWithChildren =
-  AuthenticateCtxOrgDetailsRoute._addFileChildren(
-    AuthenticateCtxOrgDetailsRouteChildren,
-  )
-
-interface authenticatePersonalSettingsLayoutRouteChildren {
-  authenticatePersonalSettingsIndexRoute: typeof authenticatePersonalSettingsIndexRoute
+const userLayoutRouteChildren: userLayoutRouteChildren = {
+  userPersonalSettingsPageRouteRoute: userPersonalSettingsPageRouteRoute,
 }
 
-const authenticatePersonalSettingsLayoutRouteChildren: authenticatePersonalSettingsLayoutRouteChildren =
-  {
-    authenticatePersonalSettingsIndexRoute:
-      authenticatePersonalSettingsIndexRoute,
-  }
-
-const authenticatePersonalSettingsLayoutRouteWithChildren =
-  authenticatePersonalSettingsLayoutRoute._addFileChildren(
-    authenticatePersonalSettingsLayoutRouteChildren,
-  )
+const userLayoutRouteWithChildren = userLayoutRoute._addFileChildren(
+  userLayoutRouteChildren,
+)
 
 interface AuthenticatePersonalSettingsRouteChildren {
-  authenticatePersonalSettingsLayoutRoute: typeof authenticatePersonalSettingsLayoutRouteWithChildren
+  userLayoutRoute: typeof userLayoutRouteWithChildren
 }
 
 const AuthenticatePersonalSettingsRouteChildren: AuthenticatePersonalSettingsRouteChildren =
   {
-    authenticatePersonalSettingsLayoutRoute:
-      authenticatePersonalSettingsLayoutRouteWithChildren,
+    userLayoutRoute: userLayoutRouteWithChildren,
   }
 
 const AuthenticatePersonalSettingsRouteWithChildren =
@@ -1033,217 +708,204 @@ const AuthenticatePersonalSettingsRouteWithChildren =
     AuthenticatePersonalSettingsRouteChildren,
   )
 
-interface AuthenticateRouteChildren {
-  AuthenticateCtxOrgDetailsRoute: typeof AuthenticateCtxOrgDetailsRouteWithChildren
-  AuthenticateCliRedirectRoute: typeof AuthenticateCliRedirectRoute
+interface middlewaresAuthenticateRouteChildren {
+  middlewaresInjectOrgDetailsRoute: typeof middlewaresInjectOrgDetailsRouteWithChildren
   AuthenticatePersonalSettingsRoute: typeof AuthenticatePersonalSettingsRouteWithChildren
 }
 
-const AuthenticateRouteChildren: AuthenticateRouteChildren = {
-  AuthenticateCtxOrgDetailsRoute: AuthenticateCtxOrgDetailsRouteWithChildren,
-  AuthenticateCliRedirectRoute: AuthenticateCliRedirectRoute,
-  AuthenticatePersonalSettingsRoute:
-    AuthenticatePersonalSettingsRouteWithChildren,
+const middlewaresAuthenticateRouteChildren: middlewaresAuthenticateRouteChildren =
+  {
+    middlewaresInjectOrgDetailsRoute:
+      middlewaresInjectOrgDetailsRouteWithChildren,
+    AuthenticatePersonalSettingsRoute:
+      AuthenticatePersonalSettingsRouteWithChildren,
+  }
+
+const middlewaresAuthenticateRouteWithChildren =
+  middlewaresAuthenticateRoute._addFileChildren(
+    middlewaresAuthenticateRouteChildren,
+  )
+
+interface RestrictLoginSignupLoginRouteChildren {
+  authLoginPageRouteRoute: typeof authLoginPageRouteRoute
+  authLoginLdapPageRouteRoute: typeof authLoginLdapPageRouteRoute
+  authSelectOrgPageRouteRoute: typeof authSelectOrgPageRouteRoute
+  authLoginSsoPageRouteRoute: typeof authLoginSsoPageRouteRoute
+  authProviderErrorPageRouteRoute: typeof authProviderErrorPageRouteRoute
+  authProviderSuccessPageRouteRoute: typeof authProviderSuccessPageRouteRoute
 }
 
-const AuthenticateRouteWithChildren = AuthenticateRoute._addFileChildren(
-  AuthenticateRouteChildren,
-)
+const RestrictLoginSignupLoginRouteChildren: RestrictLoginSignupLoginRouteChildren =
+  {
+    authLoginPageRouteRoute: authLoginPageRouteRoute,
+    authLoginLdapPageRouteRoute: authLoginLdapPageRouteRoute,
+    authSelectOrgPageRouteRoute: authSelectOrgPageRouteRoute,
+    authLoginSsoPageRouteRoute: authLoginSsoPageRouteRoute,
+    authProviderErrorPageRouteRoute: authProviderErrorPageRouteRoute,
+    authProviderSuccessPageRouteRoute: authProviderSuccessPageRouteRoute,
+  }
 
-interface RestrictLoginSignupRouteChildren {
-  RestrictLoginSignupEmailNotVerifiedRoute: typeof RestrictLoginSignupEmailNotVerifiedRoute
-  RestrictLoginSignupPasswordResetRoute: typeof RestrictLoginSignupPasswordResetRoute
-  RestrictLoginSignupRequestnewinviteRoute: typeof RestrictLoginSignupRequestnewinviteRoute
-  RestrictLoginSignupSignupinviteRoute: typeof RestrictLoginSignupSignupinviteRoute
-  RestrictLoginSignupVerifyEmailRoute: typeof RestrictLoginSignupVerifyEmailRoute
-  RestrictLoginSignupLoginIndexRoute: typeof RestrictLoginSignupLoginIndexRoute
-  RestrictLoginSignupSignupIndexRoute: typeof RestrictLoginSignupSignupIndexRoute
-  RestrictLoginSignupLoginProviderErrorRoute: typeof RestrictLoginSignupLoginProviderErrorRoute
-  RestrictLoginSignupLoginProviderSuccessRoute: typeof RestrictLoginSignupLoginProviderSuccessRoute
-  RestrictLoginSignupLoginLdapIndexRoute: typeof RestrictLoginSignupLoginLdapIndexRoute
-  RestrictLoginSignupLoginSelectOrganizationIndexRoute: typeof RestrictLoginSignupLoginSelectOrganizationIndexRoute
-  RestrictLoginSignupLoginSsoIndexRoute: typeof RestrictLoginSignupLoginSsoIndexRoute
-  RestrictLoginSignupSignupSsoIndexRoute: typeof RestrictLoginSignupSignupSsoIndexRoute
+const RestrictLoginSignupLoginRouteWithChildren =
+  RestrictLoginSignupLoginRoute._addFileChildren(
+    RestrictLoginSignupLoginRouteChildren,
+  )
+
+interface RestrictLoginSignupSignupRouteChildren {
+  authSignUpPageRouteRoute: typeof authSignUpPageRouteRoute
+  authSignUpSsoPageRouteRoute: typeof authSignUpSsoPageRouteRoute
 }
 
-const RestrictLoginSignupRouteChildren: RestrictLoginSignupRouteChildren = {
-  RestrictLoginSignupEmailNotVerifiedRoute:
-    RestrictLoginSignupEmailNotVerifiedRoute,
-  RestrictLoginSignupPasswordResetRoute: RestrictLoginSignupPasswordResetRoute,
-  RestrictLoginSignupRequestnewinviteRoute:
-    RestrictLoginSignupRequestnewinviteRoute,
-  RestrictLoginSignupSignupinviteRoute: RestrictLoginSignupSignupinviteRoute,
-  RestrictLoginSignupVerifyEmailRoute: RestrictLoginSignupVerifyEmailRoute,
-  RestrictLoginSignupLoginIndexRoute: RestrictLoginSignupLoginIndexRoute,
-  RestrictLoginSignupSignupIndexRoute: RestrictLoginSignupSignupIndexRoute,
-  RestrictLoginSignupLoginProviderErrorRoute:
-    RestrictLoginSignupLoginProviderErrorRoute,
-  RestrictLoginSignupLoginProviderSuccessRoute:
-    RestrictLoginSignupLoginProviderSuccessRoute,
-  RestrictLoginSignupLoginLdapIndexRoute:
-    RestrictLoginSignupLoginLdapIndexRoute,
-  RestrictLoginSignupLoginSelectOrganizationIndexRoute:
-    RestrictLoginSignupLoginSelectOrganizationIndexRoute,
-  RestrictLoginSignupLoginSsoIndexRoute: RestrictLoginSignupLoginSsoIndexRoute,
-  RestrictLoginSignupSignupSsoIndexRoute:
-    RestrictLoginSignupSignupSsoIndexRoute,
+const RestrictLoginSignupSignupRouteChildren: RestrictLoginSignupSignupRouteChildren =
+  {
+    authSignUpPageRouteRoute: authSignUpPageRouteRoute,
+    authSignUpSsoPageRouteRoute: authSignUpSsoPageRouteRoute,
+  }
+
+const RestrictLoginSignupSignupRouteWithChildren =
+  RestrictLoginSignupSignupRoute._addFileChildren(
+    RestrictLoginSignupSignupRouteChildren,
+  )
+
+interface middlewaresRestrictLoginSignupRouteChildren {
+  authEmailNotVerifiedPageRouteRoute: typeof authEmailNotVerifiedPageRouteRoute
+  authPasswordResetPageRouteRoute: typeof authPasswordResetPageRouteRoute
+  authRequestNewInvitePageRouteRoute: typeof authRequestNewInvitePageRouteRoute
+  authSignUpInvitePageRouteRoute: typeof authSignUpInvitePageRouteRoute
+  authVerifyEmailPageRouteRoute: typeof authVerifyEmailPageRouteRoute
+  RestrictLoginSignupLoginRoute: typeof RestrictLoginSignupLoginRouteWithChildren
+  RestrictLoginSignupSignupRoute: typeof RestrictLoginSignupSignupRouteWithChildren
 }
 
-const RestrictLoginSignupRouteWithChildren =
-  RestrictLoginSignupRoute._addFileChildren(RestrictLoginSignupRouteChildren)
+const middlewaresRestrictLoginSignupRouteChildren: middlewaresRestrictLoginSignupRouteChildren =
+  {
+    authEmailNotVerifiedPageRouteRoute: authEmailNotVerifiedPageRouteRoute,
+    authPasswordResetPageRouteRoute: authPasswordResetPageRouteRoute,
+    authRequestNewInvitePageRouteRoute: authRequestNewInvitePageRouteRoute,
+    authSignUpInvitePageRouteRoute: authSignUpInvitePageRouteRoute,
+    authVerifyEmailPageRouteRoute: authVerifyEmailPageRouteRoute,
+    RestrictLoginSignupLoginRoute: RestrictLoginSignupLoginRouteWithChildren,
+    RestrictLoginSignupSignupRoute: RestrictLoginSignupSignupRouteWithChildren,
+  }
+
+const middlewaresRestrictLoginSignupRouteWithChildren =
+  middlewaresRestrictLoginSignupRoute._addFileChildren(
+    middlewaresRestrictLoginSignupRouteChildren,
+  )
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '': typeof AuthenticateCtxOrgDetailsRouteWithChildren
-  '/cli-redirect': typeof AuthenticateCliRedirectRoute
-  '/email-not-verified': typeof RestrictLoginSignupEmailNotVerifiedRoute
-  '/password-reset': typeof RestrictLoginSignupPasswordResetRoute
-  '/requestnewinvite': typeof RestrictLoginSignupRequestnewinviteRoute
-  '/signupinvite': typeof RestrictLoginSignupSignupinviteRoute
-  '/verify-email': typeof RestrictLoginSignupVerifyEmailRoute
-  '/personal-settings': typeof authenticatePersonalSettingsLayoutRouteWithChildren
-  '/login': typeof RestrictLoginSignupLoginIndexRoute
-  '/signup': typeof RestrictLoginSignupSignupIndexRoute
-  '/organization': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgRouteWithChildren
-  '/login/provider/error': typeof RestrictLoginSignupLoginProviderErrorRoute
-  '/login/provider/success': typeof RestrictLoginSignupLoginProviderSuccessRoute
-  '/personal-settings/': typeof authenticatePersonalSettingsIndexRoute
-  '/login/ldap': typeof RestrictLoginSignupLoginLdapIndexRoute
-  '/login/select-organization': typeof RestrictLoginSignupLoginSelectOrganizationIndexRoute
-  '/login/sso': typeof RestrictLoginSignupLoginSsoIndexRoute
-  '/signup/sso': typeof RestrictLoginSignupSignupSsoIndexRoute
-  '/secret-manager/$projectId': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRouteWithChildren
-  '/organization/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgIndexRoute
-  '/organization/cert-manager/overview': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgCertManagerOverviewRoute
-  '/organization/kms/overview': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgKmsOverviewRoute
-  '/organization/secret-manager/overview': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretManagerOverviewRoute
-  '/organization/admin': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgAdminIndexRoute
-  '/organization/audit-logs': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgAuditLogsIndexRoute
-  '/organization/billing': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgBillingIndexRoute
-  '/organization/members': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgMembersIndexRoute
-  '/organization/none': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgNoneIndexRoute
-  '/organization/overview': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgOverviewIndexRoute
-  '/organization/secret-scanning': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretScanningIndexRoute
-  '/organization/secret-sharing': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretSharingIndexRoute
-  '/organization/settings': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgSettingsIndexRoute
-  '/organization/groups/$groupId': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgGroupsGroupIdIndexRoute
-  '/organization/identities/$identityId': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgIdentitiesIdentityIdIndexRoute
-  '/organization/memberships/$membershipId': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgMembershipsMembershipIdIndexRoute
-  '/organization/roles/$roleId': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgRolesRoleIdIndexRoute
-  '/secret-manager/$projectId/access': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAccessIndexRoute
-  '/secret-manager/$projectId/allowlist': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAllowlistIndexRoute
-  '/secret-manager/$projectId/approval': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerApprovalIndexRoute
-  '/secret-manager/$projectId/overview': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewIndexRoute
-  '/secret-manager/$projectId/secret-rotation': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretRotationIndexRoute
-  '/secret-manager/$projectId/settings': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSettingsIndexRoute
-  '/secret-manager/$projectId/identities/$identityId': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerIdentitiesIdentityIdIndexRoute
-  '/secret-manager/$projectId/members/$membershipId': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerMembersMembershipIdIndexRoute
-  '/secret-manager/$projectId/roles/$roleSlug': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRolesRoleSlugIndexRoute
-  '/secret-manager/$projectId/secrets/$envSlug': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretsEnvSlugIndexRoute
+  '/': typeof indexRoute
+  '': typeof middlewaresInjectOrgDetailsRouteWithChildren
+  '/email-not-verified': typeof authEmailNotVerifiedPageRouteRoute
+  '/password-reset': typeof authPasswordResetPageRouteRoute
+  '/requestnewinvite': typeof authRequestNewInvitePageRouteRoute
+  '/signupinvite': typeof authSignUpInvitePageRouteRoute
+  '/verify-email': typeof authVerifyEmailPageRouteRoute
+  '/personal-settings': typeof userLayoutRouteWithChildren
+  '/login': typeof RestrictLoginSignupLoginRouteWithChildren
+  '/signup': typeof RestrictLoginSignupSignupRouteWithChildren
+  '/login/': typeof authLoginPageRouteRoute
+  '/signup/': typeof authSignUpPageRouteRoute
+  '/login/ldap': typeof authLoginLdapPageRouteRoute
+  '/login/select-organization': typeof authSelectOrgPageRouteRoute
+  '/login/sso': typeof authLoginSsoPageRouteRoute
+  '/signup/sso': typeof authSignUpSsoPageRouteRoute
+  '/organization': typeof organizationLayoutRouteWithChildren
+  '/personal-settings/': typeof userPersonalSettingsPageRouteRoute
+  '/login/provider/error': typeof authProviderErrorPageRouteRoute
+  '/login/provider/success': typeof authProviderSuccessPageRouteRoute
+  '/organization/access-management': typeof organizationAccessManagementPageRouteRoute
+  '/organization/admin': typeof organizationAdminPageRouteRoute
+  '/organization/audit-logs': typeof organizationAuditLogsPageRouteRoute
+  '/organization/billing': typeof organizationBillingPageRouteRoute
+  '/organization/none': typeof organizationNoOrgPageRouteRoute
+  '/organization/secret-scanning': typeof organizationSecretScanningPageRouteRoute
+  '/organization/secret-sharing': typeof organizationSecretSharingPageRouteRoute
+  '/organization/settings': typeof organizationSettingsPageRouteRoute
+  '/organization/cert-manager/overview': typeof organizationCertManagerOverviewPageRouteRoute
+  '/organization/groups/$groupId': typeof organizationGroupDetailsByIDPageRouteRoute
+  '/organization/identities/$identityId': typeof organizationIdentityDetailsByIDPageRouteRoute
+  '/organization/kms/overview': typeof organizationKmsOverviewPageRouteRoute
+  '/organization/members/$membershipId': typeof organizationUserDetailsByIDPageRouteRoute
+  '/organization/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
+  '/organization/secret-manager/overview': typeof organizationSecretManagerOverviewPageRouteRoute
 }
 
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '': typeof AuthenticateCtxOrgDetailsRouteWithChildren
-  '/cli-redirect': typeof AuthenticateCliRedirectRoute
-  '/email-not-verified': typeof RestrictLoginSignupEmailNotVerifiedRoute
-  '/password-reset': typeof RestrictLoginSignupPasswordResetRoute
-  '/requestnewinvite': typeof RestrictLoginSignupRequestnewinviteRoute
-  '/signupinvite': typeof RestrictLoginSignupSignupinviteRoute
-  '/verify-email': typeof RestrictLoginSignupVerifyEmailRoute
-  '/personal-settings': typeof authenticatePersonalSettingsIndexRoute
-  '/login': typeof RestrictLoginSignupLoginIndexRoute
-  '/signup': typeof RestrictLoginSignupSignupIndexRoute
-  '/organization': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgIndexRoute
-  '/login/provider/error': typeof RestrictLoginSignupLoginProviderErrorRoute
-  '/login/provider/success': typeof RestrictLoginSignupLoginProviderSuccessRoute
-  '/login/ldap': typeof RestrictLoginSignupLoginLdapIndexRoute
-  '/login/select-organization': typeof RestrictLoginSignupLoginSelectOrganizationIndexRoute
-  '/login/sso': typeof RestrictLoginSignupLoginSsoIndexRoute
-  '/signup/sso': typeof RestrictLoginSignupSignupSsoIndexRoute
-  '/secret-manager/$projectId': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRouteWithChildren
-  '/organization/cert-manager/overview': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgCertManagerOverviewRoute
-  '/organization/kms/overview': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgKmsOverviewRoute
-  '/organization/secret-manager/overview': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretManagerOverviewRoute
-  '/organization/admin': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgAdminIndexRoute
-  '/organization/audit-logs': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgAuditLogsIndexRoute
-  '/organization/billing': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgBillingIndexRoute
-  '/organization/members': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgMembersIndexRoute
-  '/organization/none': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgNoneIndexRoute
-  '/organization/overview': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgOverviewIndexRoute
-  '/organization/secret-scanning': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretScanningIndexRoute
-  '/organization/secret-sharing': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretSharingIndexRoute
-  '/organization/settings': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgSettingsIndexRoute
-  '/organization/groups/$groupId': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgGroupsGroupIdIndexRoute
-  '/organization/identities/$identityId': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgIdentitiesIdentityIdIndexRoute
-  '/organization/memberships/$membershipId': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgMembershipsMembershipIdIndexRoute
-  '/organization/roles/$roleId': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgRolesRoleIdIndexRoute
-  '/secret-manager/$projectId/access': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAccessIndexRoute
-  '/secret-manager/$projectId/allowlist': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAllowlistIndexRoute
-  '/secret-manager/$projectId/approval': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerApprovalIndexRoute
-  '/secret-manager/$projectId/overview': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewIndexRoute
-  '/secret-manager/$projectId/secret-rotation': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretRotationIndexRoute
-  '/secret-manager/$projectId/settings': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSettingsIndexRoute
-  '/secret-manager/$projectId/identities/$identityId': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerIdentitiesIdentityIdIndexRoute
-  '/secret-manager/$projectId/members/$membershipId': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerMembersMembershipIdIndexRoute
-  '/secret-manager/$projectId/roles/$roleSlug': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRolesRoleSlugIndexRoute
-  '/secret-manager/$projectId/secrets/$envSlug': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretsEnvSlugIndexRoute
+  '/': typeof indexRoute
+  '': typeof middlewaresInjectOrgDetailsRouteWithChildren
+  '/email-not-verified': typeof authEmailNotVerifiedPageRouteRoute
+  '/password-reset': typeof authPasswordResetPageRouteRoute
+  '/requestnewinvite': typeof authRequestNewInvitePageRouteRoute
+  '/signupinvite': typeof authSignUpInvitePageRouteRoute
+  '/verify-email': typeof authVerifyEmailPageRouteRoute
+  '/personal-settings': typeof userPersonalSettingsPageRouteRoute
+  '/login': typeof authLoginPageRouteRoute
+  '/signup': typeof authSignUpPageRouteRoute
+  '/login/ldap': typeof authLoginLdapPageRouteRoute
+  '/login/select-organization': typeof authSelectOrgPageRouteRoute
+  '/login/sso': typeof authLoginSsoPageRouteRoute
+  '/signup/sso': typeof authSignUpSsoPageRouteRoute
+  '/organization': typeof organizationLayoutRouteWithChildren
+  '/login/provider/error': typeof authProviderErrorPageRouteRoute
+  '/login/provider/success': typeof authProviderSuccessPageRouteRoute
+  '/organization/access-management': typeof organizationAccessManagementPageRouteRoute
+  '/organization/admin': typeof organizationAdminPageRouteRoute
+  '/organization/audit-logs': typeof organizationAuditLogsPageRouteRoute
+  '/organization/billing': typeof organizationBillingPageRouteRoute
+  '/organization/none': typeof organizationNoOrgPageRouteRoute
+  '/organization/secret-scanning': typeof organizationSecretScanningPageRouteRoute
+  '/organization/secret-sharing': typeof organizationSecretSharingPageRouteRoute
+  '/organization/settings': typeof organizationSettingsPageRouteRoute
+  '/organization/cert-manager/overview': typeof organizationCertManagerOverviewPageRouteRoute
+  '/organization/groups/$groupId': typeof organizationGroupDetailsByIDPageRouteRoute
+  '/organization/identities/$identityId': typeof organizationIdentityDetailsByIDPageRouteRoute
+  '/organization/kms/overview': typeof organizationKmsOverviewPageRouteRoute
+  '/organization/members/$membershipId': typeof organizationUserDetailsByIDPageRouteRoute
+  '/organization/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
+  '/organization/secret-manager/overview': typeof organizationSecretManagerOverviewPageRouteRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
-  '/': typeof IndexRoute
-  '/_authenticate': typeof AuthenticateRouteWithChildren
-  '/_restrict-login-signup': typeof RestrictLoginSignupRouteWithChildren
-  '/_authenticate/_ctx-org-details': typeof AuthenticateCtxOrgDetailsRouteWithChildren
-  '/_authenticate/cli-redirect': typeof AuthenticateCliRedirectRoute
-  '/_restrict-login-signup/email-not-verified': typeof RestrictLoginSignupEmailNotVerifiedRoute
-  '/_restrict-login-signup/password-reset': typeof RestrictLoginSignupPasswordResetRoute
-  '/_restrict-login-signup/requestnewinvite': typeof RestrictLoginSignupRequestnewinviteRoute
-  '/_restrict-login-signup/signupinvite': typeof RestrictLoginSignupSignupinviteRoute
-  '/_restrict-login-signup/verify-email': typeof RestrictLoginSignupVerifyEmailRoute
+  '/': typeof indexRoute
+  '/_authenticate': typeof middlewaresAuthenticateRouteWithChildren
+  '/_restrict-login-signup': typeof middlewaresRestrictLoginSignupRouteWithChildren
+  '/_restrict-login-signup/email-not-verified': typeof authEmailNotVerifiedPageRouteRoute
+  '/_restrict-login-signup/password-reset': typeof authPasswordResetPageRouteRoute
+  '/_restrict-login-signup/requestnewinvite': typeof authRequestNewInvitePageRouteRoute
+  '/_restrict-login-signup/signupinvite': typeof authSignUpInvitePageRouteRoute
+  '/_restrict-login-signup/verify-email': typeof authVerifyEmailPageRouteRoute
+  '/_authenticate/_inject-org-details': typeof middlewaresInjectOrgDetailsRouteWithChildren
   '/_authenticate/personal-settings': typeof AuthenticatePersonalSettingsRouteWithChildren
-  '/_authenticate/personal-settings/_personal-settings-layout': typeof authenticatePersonalSettingsLayoutRouteWithChildren
-  '/_restrict-login-signup/login/': typeof RestrictLoginSignupLoginIndexRoute
-  '/_restrict-login-signup/signup/': typeof RestrictLoginSignupSignupIndexRoute
-  '/_authenticate/_ctx-org-details/organization': typeof AuthenticateCtxOrgDetailsOrganizationRouteWithChildren
-  '/_authenticate/_ctx-org-details/organization/_layout-org': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgRouteWithChildren
-  '/_restrict-login-signup/login/provider/error': typeof RestrictLoginSignupLoginProviderErrorRoute
-  '/_restrict-login-signup/login/provider/success': typeof RestrictLoginSignupLoginProviderSuccessRoute
-  '/_authenticate/personal-settings/_personal-settings-layout/': typeof authenticatePersonalSettingsIndexRoute
-  '/_restrict-login-signup/login/ldap/': typeof RestrictLoginSignupLoginLdapIndexRoute
-  '/_restrict-login-signup/login/select-organization/': typeof RestrictLoginSignupLoginSelectOrganizationIndexRoute
-  '/_restrict-login-signup/login/sso/': typeof RestrictLoginSignupLoginSsoIndexRoute
-  '/_restrict-login-signup/signup/sso/': typeof RestrictLoginSignupSignupSsoIndexRoute
-  '/_authenticate/_ctx-org-details/secret-manager/$projectId': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdRouteWithChildren
-  '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRouteWithChildren
-  '/_authenticate/_ctx-org-details/organization/_layout-org/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgIndexRoute
-  '/_authenticate/_ctx-org-details/organization/_layout-org/cert-manager/overview': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgCertManagerOverviewRoute
-  '/_authenticate/_ctx-org-details/organization/_layout-org/kms/overview': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgKmsOverviewRoute
-  '/_authenticate/_ctx-org-details/organization/_layout-org/secret-manager/overview': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretManagerOverviewRoute
-  '/_authenticate/_ctx-org-details/organization/_layout-org/admin/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgAdminIndexRoute
-  '/_authenticate/_ctx-org-details/organization/_layout-org/audit-logs/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgAuditLogsIndexRoute
-  '/_authenticate/_ctx-org-details/organization/_layout-org/billing/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgBillingIndexRoute
-  '/_authenticate/_ctx-org-details/organization/_layout-org/members/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgMembersIndexRoute
-  '/_authenticate/_ctx-org-details/organization/_layout-org/none/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgNoneIndexRoute
-  '/_authenticate/_ctx-org-details/organization/_layout-org/overview/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgOverviewIndexRoute
-  '/_authenticate/_ctx-org-details/organization/_layout-org/secret-scanning/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretScanningIndexRoute
-  '/_authenticate/_ctx-org-details/organization/_layout-org/secret-sharing/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretSharingIndexRoute
-  '/_authenticate/_ctx-org-details/organization/_layout-org/settings/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgSettingsIndexRoute
-  '/_authenticate/_ctx-org-details/organization/_layout-org/groups/$groupId/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgGroupsGroupIdIndexRoute
-  '/_authenticate/_ctx-org-details/organization/_layout-org/identities/$identityId/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgIdentitiesIdentityIdIndexRoute
-  '/_authenticate/_ctx-org-details/organization/_layout-org/memberships/$membershipId/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgMembershipsMembershipIdIndexRoute
-  '/_authenticate/_ctx-org-details/organization/_layout-org/roles/$roleId/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgRolesRoleIdIndexRoute
-  '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/access/': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAccessIndexRoute
-  '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/allowlist/': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAllowlistIndexRoute
-  '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/approval/': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerApprovalIndexRoute
-  '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/overview/': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewIndexRoute
-  '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secret-rotation/': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretRotationIndexRoute
-  '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/settings/': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSettingsIndexRoute
-  '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/identities/$identityId/': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerIdentitiesIdentityIdIndexRoute
-  '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/members/$membershipId/': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerMembersMembershipIdIndexRoute
-  '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/roles/$roleSlug/': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRolesRoleSlugIndexRoute
-  '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secrets/$envSlug/': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretsEnvSlugIndexRoute
+  '/_restrict-login-signup/login': typeof RestrictLoginSignupLoginRouteWithChildren
+  '/_restrict-login-signup/signup': typeof RestrictLoginSignupSignupRouteWithChildren
+  '/_restrict-login-signup/login/': typeof authLoginPageRouteRoute
+  '/_restrict-login-signup/signup/': typeof authSignUpPageRouteRoute
+  '/_restrict-login-signup/login/ldap': typeof authLoginLdapPageRouteRoute
+  '/_restrict-login-signup/login/select-organization': typeof authSelectOrgPageRouteRoute
+  '/_restrict-login-signup/login/sso': typeof authLoginSsoPageRouteRoute
+  '/_restrict-login-signup/signup/sso': typeof authSignUpSsoPageRouteRoute
+  '/_authenticate/_inject-org-details/organization': typeof AuthenticateInjectOrgDetailsOrganizationRouteWithChildren
+  '/_authenticate/personal-settings/_layout': typeof userLayoutRouteWithChildren
+  '/_authenticate/personal-settings/_layout/': typeof userPersonalSettingsPageRouteRoute
+  '/_restrict-login-signup/login/provider/error': typeof authProviderErrorPageRouteRoute
+  '/_restrict-login-signup/login/provider/success': typeof authProviderSuccessPageRouteRoute
+  '/_authenticate/_inject-org-details/organization/_layout': typeof organizationLayoutRouteWithChildren
+  '/_authenticate/_inject-org-details/organization/_layout/access-management': typeof organizationAccessManagementPageRouteRoute
+  '/_authenticate/_inject-org-details/organization/_layout/admin': typeof organizationAdminPageRouteRoute
+  '/_authenticate/_inject-org-details/organization/_layout/audit-logs': typeof organizationAuditLogsPageRouteRoute
+  '/_authenticate/_inject-org-details/organization/_layout/billing': typeof organizationBillingPageRouteRoute
+  '/_authenticate/_inject-org-details/organization/_layout/none': typeof organizationNoOrgPageRouteRoute
+  '/_authenticate/_inject-org-details/organization/_layout/secret-scanning': typeof organizationSecretScanningPageRouteRoute
+  '/_authenticate/_inject-org-details/organization/_layout/secret-sharing': typeof organizationSecretSharingPageRouteRoute
+  '/_authenticate/_inject-org-details/organization/_layout/settings': typeof organizationSettingsPageRouteRoute
+  '/_authenticate/_inject-org-details/organization/_layout/cert-manager/overview': typeof organizationCertManagerOverviewPageRouteRoute
+  '/_authenticate/_inject-org-details/organization/_layout/groups/$groupId': typeof organizationGroupDetailsByIDPageRouteRoute
+  '/_authenticate/_inject-org-details/organization/_layout/identities/$identityId': typeof organizationIdentityDetailsByIDPageRouteRoute
+  '/_authenticate/_inject-org-details/organization/_layout/kms/overview': typeof organizationKmsOverviewPageRouteRoute
+  '/_authenticate/_inject-org-details/organization/_layout/members/$membershipId': typeof organizationUserDetailsByIDPageRouteRoute
+  '/_authenticate/_inject-org-details/organization/_layout/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
+  '/_authenticate/_inject-org-details/organization/_layout/secret-manager/overview': typeof organizationSecretManagerOverviewPageRouteRoute
 }
 
 export interface FileRouteTypes {
@@ -1251,7 +913,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | ''
-    | '/cli-redirect'
     | '/email-not-verified'
     | '/password-reset'
     | '/requestnewinvite'
@@ -1260,47 +921,35 @@ export interface FileRouteTypes {
     | '/personal-settings'
     | '/login'
     | '/signup'
-    | '/organization'
-    | '/login/provider/error'
-    | '/login/provider/success'
-    | '/personal-settings/'
+    | '/login/'
+    | '/signup/'
     | '/login/ldap'
     | '/login/select-organization'
     | '/login/sso'
     | '/signup/sso'
-    | '/secret-manager/$projectId'
-    | '/organization/'
-    | '/organization/cert-manager/overview'
-    | '/organization/kms/overview'
-    | '/organization/secret-manager/overview'
+    | '/organization'
+    | '/personal-settings/'
+    | '/login/provider/error'
+    | '/login/provider/success'
+    | '/organization/access-management'
     | '/organization/admin'
     | '/organization/audit-logs'
     | '/organization/billing'
-    | '/organization/members'
     | '/organization/none'
-    | '/organization/overview'
     | '/organization/secret-scanning'
     | '/organization/secret-sharing'
     | '/organization/settings'
+    | '/organization/cert-manager/overview'
     | '/organization/groups/$groupId'
     | '/organization/identities/$identityId'
-    | '/organization/memberships/$membershipId'
+    | '/organization/kms/overview'
+    | '/organization/members/$membershipId'
     | '/organization/roles/$roleId'
-    | '/secret-manager/$projectId/access'
-    | '/secret-manager/$projectId/allowlist'
-    | '/secret-manager/$projectId/approval'
-    | '/secret-manager/$projectId/overview'
-    | '/secret-manager/$projectId/secret-rotation'
-    | '/secret-manager/$projectId/settings'
-    | '/secret-manager/$projectId/identities/$identityId'
-    | '/secret-manager/$projectId/members/$membershipId'
-    | '/secret-manager/$projectId/roles/$roleSlug'
-    | '/secret-manager/$projectId/secrets/$envSlug'
+    | '/organization/secret-manager/overview'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | ''
-    | '/cli-redirect'
     | '/email-not-verified'
     | '/password-reset'
     | '/requestnewinvite'
@@ -1309,107 +958,83 @@ export interface FileRouteTypes {
     | '/personal-settings'
     | '/login'
     | '/signup'
-    | '/organization'
-    | '/login/provider/error'
-    | '/login/provider/success'
     | '/login/ldap'
     | '/login/select-organization'
     | '/login/sso'
     | '/signup/sso'
-    | '/secret-manager/$projectId'
-    | '/organization/cert-manager/overview'
-    | '/organization/kms/overview'
-    | '/organization/secret-manager/overview'
+    | '/organization'
+    | '/login/provider/error'
+    | '/login/provider/success'
+    | '/organization/access-management'
     | '/organization/admin'
     | '/organization/audit-logs'
     | '/organization/billing'
-    | '/organization/members'
     | '/organization/none'
-    | '/organization/overview'
     | '/organization/secret-scanning'
     | '/organization/secret-sharing'
     | '/organization/settings'
+    | '/organization/cert-manager/overview'
     | '/organization/groups/$groupId'
     | '/organization/identities/$identityId'
-    | '/organization/memberships/$membershipId'
+    | '/organization/kms/overview'
+    | '/organization/members/$membershipId'
     | '/organization/roles/$roleId'
-    | '/secret-manager/$projectId/access'
-    | '/secret-manager/$projectId/allowlist'
-    | '/secret-manager/$projectId/approval'
-    | '/secret-manager/$projectId/overview'
-    | '/secret-manager/$projectId/secret-rotation'
-    | '/secret-manager/$projectId/settings'
-    | '/secret-manager/$projectId/identities/$identityId'
-    | '/secret-manager/$projectId/members/$membershipId'
-    | '/secret-manager/$projectId/roles/$roleSlug'
-    | '/secret-manager/$projectId/secrets/$envSlug'
+    | '/organization/secret-manager/overview'
   id:
     | '__root__'
     | '/'
     | '/_authenticate'
     | '/_restrict-login-signup'
-    | '/_authenticate/_ctx-org-details'
-    | '/_authenticate/cli-redirect'
     | '/_restrict-login-signup/email-not-verified'
     | '/_restrict-login-signup/password-reset'
     | '/_restrict-login-signup/requestnewinvite'
     | '/_restrict-login-signup/signupinvite'
     | '/_restrict-login-signup/verify-email'
+    | '/_authenticate/_inject-org-details'
     | '/_authenticate/personal-settings'
-    | '/_authenticate/personal-settings/_personal-settings-layout'
+    | '/_restrict-login-signup/login'
+    | '/_restrict-login-signup/signup'
     | '/_restrict-login-signup/login/'
     | '/_restrict-login-signup/signup/'
-    | '/_authenticate/_ctx-org-details/organization'
-    | '/_authenticate/_ctx-org-details/organization/_layout-org'
+    | '/_restrict-login-signup/login/ldap'
+    | '/_restrict-login-signup/login/select-organization'
+    | '/_restrict-login-signup/login/sso'
+    | '/_restrict-login-signup/signup/sso'
+    | '/_authenticate/_inject-org-details/organization'
+    | '/_authenticate/personal-settings/_layout'
+    | '/_authenticate/personal-settings/_layout/'
     | '/_restrict-login-signup/login/provider/error'
     | '/_restrict-login-signup/login/provider/success'
-    | '/_authenticate/personal-settings/_personal-settings-layout/'
-    | '/_restrict-login-signup/login/ldap/'
-    | '/_restrict-login-signup/login/select-organization/'
-    | '/_restrict-login-signup/login/sso/'
-    | '/_restrict-login-signup/signup/sso/'
-    | '/_authenticate/_ctx-org-details/secret-manager/$projectId'
-    | '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager'
-    | '/_authenticate/_ctx-org-details/organization/_layout-org/'
-    | '/_authenticate/_ctx-org-details/organization/_layout-org/cert-manager/overview'
-    | '/_authenticate/_ctx-org-details/organization/_layout-org/kms/overview'
-    | '/_authenticate/_ctx-org-details/organization/_layout-org/secret-manager/overview'
-    | '/_authenticate/_ctx-org-details/organization/_layout-org/admin/'
-    | '/_authenticate/_ctx-org-details/organization/_layout-org/audit-logs/'
-    | '/_authenticate/_ctx-org-details/organization/_layout-org/billing/'
-    | '/_authenticate/_ctx-org-details/organization/_layout-org/members/'
-    | '/_authenticate/_ctx-org-details/organization/_layout-org/none/'
-    | '/_authenticate/_ctx-org-details/organization/_layout-org/overview/'
-    | '/_authenticate/_ctx-org-details/organization/_layout-org/secret-scanning/'
-    | '/_authenticate/_ctx-org-details/organization/_layout-org/secret-sharing/'
-    | '/_authenticate/_ctx-org-details/organization/_layout-org/settings/'
-    | '/_authenticate/_ctx-org-details/organization/_layout-org/groups/$groupId/'
-    | '/_authenticate/_ctx-org-details/organization/_layout-org/identities/$identityId/'
-    | '/_authenticate/_ctx-org-details/organization/_layout-org/memberships/$membershipId/'
-    | '/_authenticate/_ctx-org-details/organization/_layout-org/roles/$roleId/'
-    | '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/access/'
-    | '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/allowlist/'
-    | '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/approval/'
-    | '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/overview/'
-    | '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secret-rotation/'
-    | '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/settings/'
-    | '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/identities/$identityId/'
-    | '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/members/$membershipId/'
-    | '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/roles/$roleSlug/'
-    | '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secrets/$envSlug/'
+    | '/_authenticate/_inject-org-details/organization/_layout'
+    | '/_authenticate/_inject-org-details/organization/_layout/access-management'
+    | '/_authenticate/_inject-org-details/organization/_layout/admin'
+    | '/_authenticate/_inject-org-details/organization/_layout/audit-logs'
+    | '/_authenticate/_inject-org-details/organization/_layout/billing'
+    | '/_authenticate/_inject-org-details/organization/_layout/none'
+    | '/_authenticate/_inject-org-details/organization/_layout/secret-scanning'
+    | '/_authenticate/_inject-org-details/organization/_layout/secret-sharing'
+    | '/_authenticate/_inject-org-details/organization/_layout/settings'
+    | '/_authenticate/_inject-org-details/organization/_layout/cert-manager/overview'
+    | '/_authenticate/_inject-org-details/organization/_layout/groups/$groupId'
+    | '/_authenticate/_inject-org-details/organization/_layout/identities/$identityId'
+    | '/_authenticate/_inject-org-details/organization/_layout/kms/overview'
+    | '/_authenticate/_inject-org-details/organization/_layout/members/$membershipId'
+    | '/_authenticate/_inject-org-details/organization/_layout/roles/$roleId'
+    | '/_authenticate/_inject-org-details/organization/_layout/secret-manager/overview'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  AuthenticateRoute: typeof AuthenticateRouteWithChildren
-  RestrictLoginSignupRoute: typeof RestrictLoginSignupRouteWithChildren
+  indexRoute: typeof indexRoute
+  middlewaresAuthenticateRoute: typeof middlewaresAuthenticateRouteWithChildren
+  middlewaresRestrictLoginSignupRoute: typeof middlewaresRestrictLoginSignupRouteWithChildren
 }
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  AuthenticateRoute: AuthenticateRouteWithChildren,
-  RestrictLoginSignupRoute: RestrictLoginSignupRouteWithChildren,
+  indexRoute: indexRoute,
+  middlewaresAuthenticateRoute: middlewaresAuthenticateRouteWithChildren,
+  middlewaresRestrictLoginSignupRoute:
+    middlewaresRestrictLoginSignupRouteWithChildren,
 }
 
 export const routeTree = rootRoute
@@ -1420,7 +1045,7 @@ export const routeTree = rootRoute
 {
   "routes": {
     "__root__": {
-      "filePath": "__root.tsx",
+      "filePath": "root.tsx",
       "children": [
         "/",
         "/_authenticate",
@@ -1431,273 +1056,208 @@ export const routeTree = rootRoute
       "filePath": "index.tsx"
     },
     "/_authenticate": {
-      "filePath": "_authenticate.tsx",
+      "filePath": "middlewares/authenticate.tsx",
       "children": [
-        "/_authenticate/_ctx-org-details",
-        "/_authenticate/cli-redirect",
+        "/_authenticate/_inject-org-details",
         "/_authenticate/personal-settings"
       ]
     },
     "/_restrict-login-signup": {
-      "filePath": "_restrict-login-signup.tsx",
+      "filePath": "middlewares/restrict-login-signup.tsx",
       "children": [
         "/_restrict-login-signup/email-not-verified",
         "/_restrict-login-signup/password-reset",
         "/_restrict-login-signup/requestnewinvite",
         "/_restrict-login-signup/signupinvite",
         "/_restrict-login-signup/verify-email",
-        "/_restrict-login-signup/login/",
-        "/_restrict-login-signup/signup/",
-        "/_restrict-login-signup/login/provider/error",
-        "/_restrict-login-signup/login/provider/success",
-        "/_restrict-login-signup/login/ldap/",
-        "/_restrict-login-signup/login/select-organization/",
-        "/_restrict-login-signup/login/sso/",
-        "/_restrict-login-signup/signup/sso/"
+        "/_restrict-login-signup/login",
+        "/_restrict-login-signup/signup"
       ]
-    },
-    "/_authenticate/_ctx-org-details": {
-      "filePath": "_authenticate/_ctx-org-details.tsx",
-      "parent": "/_authenticate",
-      "children": [
-        "/_authenticate/_ctx-org-details/organization",
-        "/_authenticate/_ctx-org-details/secret-manager/$projectId"
-      ]
-    },
-    "/_authenticate/cli-redirect": {
-      "filePath": "_authenticate/cli-redirect.tsx",
-      "parent": "/_authenticate"
     },
     "/_restrict-login-signup/email-not-verified": {
-      "filePath": "_restrict-login-signup/email-not-verified.tsx",
+      "filePath": "auth/EmailNotVerifiedPage/route.tsx",
       "parent": "/_restrict-login-signup"
     },
     "/_restrict-login-signup/password-reset": {
-      "filePath": "_restrict-login-signup/password-reset.tsx",
+      "filePath": "auth/PasswordResetPage/route.tsx",
       "parent": "/_restrict-login-signup"
     },
     "/_restrict-login-signup/requestnewinvite": {
-      "filePath": "_restrict-login-signup/requestnewinvite.tsx",
+      "filePath": "auth/RequestNewInvitePage/route.tsx",
       "parent": "/_restrict-login-signup"
     },
     "/_restrict-login-signup/signupinvite": {
-      "filePath": "_restrict-login-signup/signupinvite.tsx",
+      "filePath": "auth/SignUpInvitePage/route.tsx",
       "parent": "/_restrict-login-signup"
     },
     "/_restrict-login-signup/verify-email": {
-      "filePath": "_restrict-login-signup/verify-email.tsx",
+      "filePath": "auth/VerifyEmailPage/route.tsx",
       "parent": "/_restrict-login-signup"
     },
-    "/_authenticate/personal-settings": {
-      "filePath": "_authenticate/personal-settings",
+    "/_authenticate/_inject-org-details": {
+      "filePath": "middlewares/inject-org-details.tsx",
       "parent": "/_authenticate",
       "children": [
-        "/_authenticate/personal-settings/_personal-settings-layout"
+        "/_authenticate/_inject-org-details/organization"
       ]
     },
-    "/_authenticate/personal-settings/_personal-settings-layout": {
-      "filePath": "_authenticate/personal-settings/layout.tsx",
-      "parent": "/_authenticate/personal-settings",
+    "/_authenticate/personal-settings": {
+      "filePath": "",
+      "parent": "/_authenticate",
       "children": [
-        "/_authenticate/personal-settings/_personal-settings-layout/"
+        "/_authenticate/personal-settings/_layout"
+      ]
+    },
+    "/_restrict-login-signup/login": {
+      "filePath": "",
+      "parent": "/_restrict-login-signup",
+      "children": [
+        "/_restrict-login-signup/login/",
+        "/_restrict-login-signup/login/ldap",
+        "/_restrict-login-signup/login/select-organization",
+        "/_restrict-login-signup/login/sso",
+        "/_restrict-login-signup/login/provider/error",
+        "/_restrict-login-signup/login/provider/success"
+      ]
+    },
+    "/_restrict-login-signup/signup": {
+      "filePath": "",
+      "parent": "/_restrict-login-signup",
+      "children": [
+        "/_restrict-login-signup/signup/",
+        "/_restrict-login-signup/signup/sso"
       ]
     },
     "/_restrict-login-signup/login/": {
-      "filePath": "_restrict-login-signup/login/index.tsx",
-      "parent": "/_restrict-login-signup"
+      "filePath": "auth/LoginPage/route.tsx",
+      "parent": "/_restrict-login-signup/login"
     },
     "/_restrict-login-signup/signup/": {
-      "filePath": "_restrict-login-signup/signup/index.tsx",
-      "parent": "/_restrict-login-signup"
+      "filePath": "auth/SignUpPage/route.tsx",
+      "parent": "/_restrict-login-signup/signup"
     },
-    "/_authenticate/_ctx-org-details/organization": {
-      "filePath": "_authenticate/_ctx-org-details/organization",
-      "parent": "/_authenticate/_ctx-org-details",
+    "/_restrict-login-signup/login/ldap": {
+      "filePath": "auth/LoginLdapPage/route.tsx",
+      "parent": "/_restrict-login-signup/login"
+    },
+    "/_restrict-login-signup/login/select-organization": {
+      "filePath": "auth/SelectOrgPage/route.tsx",
+      "parent": "/_restrict-login-signup/login"
+    },
+    "/_restrict-login-signup/login/sso": {
+      "filePath": "auth/LoginSsoPage/route.tsx",
+      "parent": "/_restrict-login-signup/login"
+    },
+    "/_restrict-login-signup/signup/sso": {
+      "filePath": "auth/SignUpSsoPage/route.tsx",
+      "parent": "/_restrict-login-signup/signup"
+    },
+    "/_authenticate/_inject-org-details/organization": {
+      "filePath": "",
+      "parent": "/_authenticate/_inject-org-details",
       "children": [
-        "/_authenticate/_ctx-org-details/organization/_layout-org"
+        "/_authenticate/_inject-org-details/organization/_layout"
       ]
     },
-    "/_authenticate/_ctx-org-details/organization/_layout-org": {
-      "filePath": "_authenticate/_ctx-org-details/organization/_layout-org.tsx",
-      "parent": "/_authenticate/_ctx-org-details/organization",
+    "/_authenticate/personal-settings/_layout": {
+      "filePath": "user/layout.tsx",
+      "parent": "/_authenticate/personal-settings",
       "children": [
-        "/_authenticate/_ctx-org-details/organization/_layout-org/",
-        "/_authenticate/_ctx-org-details/organization/_layout-org/cert-manager/overview",
-        "/_authenticate/_ctx-org-details/organization/_layout-org/kms/overview",
-        "/_authenticate/_ctx-org-details/organization/_layout-org/secret-manager/overview",
-        "/_authenticate/_ctx-org-details/organization/_layout-org/admin/",
-        "/_authenticate/_ctx-org-details/organization/_layout-org/audit-logs/",
-        "/_authenticate/_ctx-org-details/organization/_layout-org/billing/",
-        "/_authenticate/_ctx-org-details/organization/_layout-org/members/",
-        "/_authenticate/_ctx-org-details/organization/_layout-org/none/",
-        "/_authenticate/_ctx-org-details/organization/_layout-org/overview/",
-        "/_authenticate/_ctx-org-details/organization/_layout-org/secret-scanning/",
-        "/_authenticate/_ctx-org-details/organization/_layout-org/secret-sharing/",
-        "/_authenticate/_ctx-org-details/organization/_layout-org/settings/",
-        "/_authenticate/_ctx-org-details/organization/_layout-org/groups/$groupId/",
-        "/_authenticate/_ctx-org-details/organization/_layout-org/identities/$identityId/",
-        "/_authenticate/_ctx-org-details/organization/_layout-org/memberships/$membershipId/",
-        "/_authenticate/_ctx-org-details/organization/_layout-org/roles/$roleId/"
+        "/_authenticate/personal-settings/_layout/"
       ]
+    },
+    "/_authenticate/personal-settings/_layout/": {
+      "filePath": "user/PersonalSettingsPage/route.tsx",
+      "parent": "/_authenticate/personal-settings/_layout"
     },
     "/_restrict-login-signup/login/provider/error": {
-      "filePath": "_restrict-login-signup/login/provider/error.tsx",
-      "parent": "/_restrict-login-signup"
+      "filePath": "auth/ProviderErrorPage/route.tsx",
+      "parent": "/_restrict-login-signup/login"
     },
     "/_restrict-login-signup/login/provider/success": {
-      "filePath": "_restrict-login-signup/login/provider/success.tsx",
-      "parent": "/_restrict-login-signup"
+      "filePath": "auth/ProviderSuccessPage/route.tsx",
+      "parent": "/_restrict-login-signup/login"
     },
-    "/_authenticate/personal-settings/_personal-settings-layout/": {
-      "filePath": "_authenticate/personal-settings/index.tsx",
-      "parent": "/_authenticate/personal-settings/_personal-settings-layout"
-    },
-    "/_restrict-login-signup/login/ldap/": {
-      "filePath": "_restrict-login-signup/login/ldap/index.tsx",
-      "parent": "/_restrict-login-signup"
-    },
-    "/_restrict-login-signup/login/select-organization/": {
-      "filePath": "_restrict-login-signup/login/select-organization/index.tsx",
-      "parent": "/_restrict-login-signup"
-    },
-    "/_restrict-login-signup/login/sso/": {
-      "filePath": "_restrict-login-signup/login/sso/index.tsx",
-      "parent": "/_restrict-login-signup"
-    },
-    "/_restrict-login-signup/signup/sso/": {
-      "filePath": "_restrict-login-signup/signup/sso/index.tsx",
-      "parent": "/_restrict-login-signup"
-    },
-    "/_authenticate/_ctx-org-details/secret-manager/$projectId": {
-      "filePath": "_authenticate/_ctx-org-details/secret-manager.$projectId",
-      "parent": "/_authenticate/_ctx-org-details",
+    "/_authenticate/_inject-org-details/organization/_layout": {
+      "filePath": "organization/layout.tsx",
+      "parent": "/_authenticate/_inject-org-details/organization",
       "children": [
-        "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager"
+        "/_authenticate/_inject-org-details/organization/_layout/access-management",
+        "/_authenticate/_inject-org-details/organization/_layout/admin",
+        "/_authenticate/_inject-org-details/organization/_layout/audit-logs",
+        "/_authenticate/_inject-org-details/organization/_layout/billing",
+        "/_authenticate/_inject-org-details/organization/_layout/none",
+        "/_authenticate/_inject-org-details/organization/_layout/secret-scanning",
+        "/_authenticate/_inject-org-details/organization/_layout/secret-sharing",
+        "/_authenticate/_inject-org-details/organization/_layout/settings",
+        "/_authenticate/_inject-org-details/organization/_layout/cert-manager/overview",
+        "/_authenticate/_inject-org-details/organization/_layout/groups/$groupId",
+        "/_authenticate/_inject-org-details/organization/_layout/identities/$identityId",
+        "/_authenticate/_inject-org-details/organization/_layout/kms/overview",
+        "/_authenticate/_inject-org-details/organization/_layout/members/$membershipId",
+        "/_authenticate/_inject-org-details/organization/_layout/roles/$roleId",
+        "/_authenticate/_inject-org-details/organization/_layout/secret-manager/overview"
       ]
     },
-    "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager": {
-      "filePath": "_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager.tsx",
-      "parent": "/_authenticate/_ctx-org-details/secret-manager/$projectId",
-      "children": [
-        "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/access/",
-        "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/allowlist/",
-        "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/approval/",
-        "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/overview/",
-        "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secret-rotation/",
-        "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/settings/",
-        "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/identities/$identityId/",
-        "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/members/$membershipId/",
-        "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/roles/$roleSlug/",
-        "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secrets/$envSlug/"
-      ]
+    "/_authenticate/_inject-org-details/organization/_layout/access-management": {
+      "filePath": "organization/AccessManagementPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/organization/_layout"
     },
-    "/_authenticate/_ctx-org-details/organization/_layout-org/": {
-      "filePath": "_authenticate/_ctx-org-details/organization/_layout-org/index.tsx",
-      "parent": "/_authenticate/_ctx-org-details/organization/_layout-org"
+    "/_authenticate/_inject-org-details/organization/_layout/admin": {
+      "filePath": "organization/AdminPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/organization/_layout"
     },
-    "/_authenticate/_ctx-org-details/organization/_layout-org/cert-manager/overview": {
-      "filePath": "_authenticate/_ctx-org-details/organization/_layout-org/cert-manager/overview.tsx",
-      "parent": "/_authenticate/_ctx-org-details/organization/_layout-org"
+    "/_authenticate/_inject-org-details/organization/_layout/audit-logs": {
+      "filePath": "organization/AuditLogsPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/organization/_layout"
     },
-    "/_authenticate/_ctx-org-details/organization/_layout-org/kms/overview": {
-      "filePath": "_authenticate/_ctx-org-details/organization/_layout-org/kms/overview.tsx",
-      "parent": "/_authenticate/_ctx-org-details/organization/_layout-org"
+    "/_authenticate/_inject-org-details/organization/_layout/billing": {
+      "filePath": "organization/BillingPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/organization/_layout"
     },
-    "/_authenticate/_ctx-org-details/organization/_layout-org/secret-manager/overview": {
-      "filePath": "_authenticate/_ctx-org-details/organization/_layout-org/secret-manager/overview.tsx",
-      "parent": "/_authenticate/_ctx-org-details/organization/_layout-org"
+    "/_authenticate/_inject-org-details/organization/_layout/none": {
+      "filePath": "organization/NoOrgPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/organization/_layout"
     },
-    "/_authenticate/_ctx-org-details/organization/_layout-org/admin/": {
-      "filePath": "_authenticate/_ctx-org-details/organization/_layout-org/admin/index.tsx",
-      "parent": "/_authenticate/_ctx-org-details/organization/_layout-org"
+    "/_authenticate/_inject-org-details/organization/_layout/secret-scanning": {
+      "filePath": "organization/SecretScanningPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/organization/_layout"
     },
-    "/_authenticate/_ctx-org-details/organization/_layout-org/audit-logs/": {
-      "filePath": "_authenticate/_ctx-org-details/organization/_layout-org/audit-logs/index.tsx",
-      "parent": "/_authenticate/_ctx-org-details/organization/_layout-org"
+    "/_authenticate/_inject-org-details/organization/_layout/secret-sharing": {
+      "filePath": "organization/SecretSharingPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/organization/_layout"
     },
-    "/_authenticate/_ctx-org-details/organization/_layout-org/billing/": {
-      "filePath": "_authenticate/_ctx-org-details/organization/_layout-org/billing/index.tsx",
-      "parent": "/_authenticate/_ctx-org-details/organization/_layout-org"
+    "/_authenticate/_inject-org-details/organization/_layout/settings": {
+      "filePath": "organization/SettingsPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/organization/_layout"
     },
-    "/_authenticate/_ctx-org-details/organization/_layout-org/members/": {
-      "filePath": "_authenticate/_ctx-org-details/organization/_layout-org/members/index.tsx",
-      "parent": "/_authenticate/_ctx-org-details/organization/_layout-org"
+    "/_authenticate/_inject-org-details/organization/_layout/cert-manager/overview": {
+      "filePath": "organization/CertManagerOverviewPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/organization/_layout"
     },
-    "/_authenticate/_ctx-org-details/organization/_layout-org/none/": {
-      "filePath": "_authenticate/_ctx-org-details/organization/_layout-org/none/index.tsx",
-      "parent": "/_authenticate/_ctx-org-details/organization/_layout-org"
+    "/_authenticate/_inject-org-details/organization/_layout/groups/$groupId": {
+      "filePath": "organization/GroupDetailsByIDPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/organization/_layout"
     },
-    "/_authenticate/_ctx-org-details/organization/_layout-org/overview/": {
-      "filePath": "_authenticate/_ctx-org-details/organization/_layout-org/overview/index.tsx",
-      "parent": "/_authenticate/_ctx-org-details/organization/_layout-org"
+    "/_authenticate/_inject-org-details/organization/_layout/identities/$identityId": {
+      "filePath": "organization/IdentityDetailsByIDPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/organization/_layout"
     },
-    "/_authenticate/_ctx-org-details/organization/_layout-org/secret-scanning/": {
-      "filePath": "_authenticate/_ctx-org-details/organization/_layout-org/secret-scanning/index.tsx",
-      "parent": "/_authenticate/_ctx-org-details/organization/_layout-org"
+    "/_authenticate/_inject-org-details/organization/_layout/kms/overview": {
+      "filePath": "organization/KmsOverviewPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/organization/_layout"
     },
-    "/_authenticate/_ctx-org-details/organization/_layout-org/secret-sharing/": {
-      "filePath": "_authenticate/_ctx-org-details/organization/_layout-org/secret-sharing/index.tsx",
-      "parent": "/_authenticate/_ctx-org-details/organization/_layout-org"
+    "/_authenticate/_inject-org-details/organization/_layout/members/$membershipId": {
+      "filePath": "organization/UserDetailsByIDPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/organization/_layout"
     },
-    "/_authenticate/_ctx-org-details/organization/_layout-org/settings/": {
-      "filePath": "_authenticate/_ctx-org-details/organization/_layout-org/settings/index.tsx",
-      "parent": "/_authenticate/_ctx-org-details/organization/_layout-org"
+    "/_authenticate/_inject-org-details/organization/_layout/roles/$roleId": {
+      "filePath": "organization/RoleByIDPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/organization/_layout"
     },
-    "/_authenticate/_ctx-org-details/organization/_layout-org/groups/$groupId/": {
-      "filePath": "_authenticate/_ctx-org-details/organization/_layout-org/groups/$groupId/index.tsx",
-      "parent": "/_authenticate/_ctx-org-details/organization/_layout-org"
-    },
-    "/_authenticate/_ctx-org-details/organization/_layout-org/identities/$identityId/": {
-      "filePath": "_authenticate/_ctx-org-details/organization/_layout-org/identities/$identityId/index.tsx",
-      "parent": "/_authenticate/_ctx-org-details/organization/_layout-org"
-    },
-    "/_authenticate/_ctx-org-details/organization/_layout-org/memberships/$membershipId/": {
-      "filePath": "_authenticate/_ctx-org-details/organization/_layout-org/memberships/$membershipId/index.tsx",
-      "parent": "/_authenticate/_ctx-org-details/organization/_layout-org"
-    },
-    "/_authenticate/_ctx-org-details/organization/_layout-org/roles/$roleId/": {
-      "filePath": "_authenticate/_ctx-org-details/organization/_layout-org/roles/$roleId/index.tsx",
-      "parent": "/_authenticate/_ctx-org-details/organization/_layout-org"
-    },
-    "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/access/": {
-      "filePath": "_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/access/index.tsx",
-      "parent": "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager"
-    },
-    "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/allowlist/": {
-      "filePath": "_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/allowlist/index.tsx",
-      "parent": "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager"
-    },
-    "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/approval/": {
-      "filePath": "_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/approval/index.tsx",
-      "parent": "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager"
-    },
-    "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/overview/": {
-      "filePath": "_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/overview/index.tsx",
-      "parent": "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager"
-    },
-    "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secret-rotation/": {
-      "filePath": "_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/secret-rotation/index.tsx",
-      "parent": "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager"
-    },
-    "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/settings/": {
-      "filePath": "_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/settings/index.tsx",
-      "parent": "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager"
-    },
-    "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/identities/$identityId/": {
-      "filePath": "_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/identities.$identityId/index.tsx",
-      "parent": "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager"
-    },
-    "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/members/$membershipId/": {
-      "filePath": "_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/members.$membershipId/index.tsx",
-      "parent": "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager"
-    },
-    "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/roles/$roleSlug/": {
-      "filePath": "_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/roles/$roleSlug/index.tsx",
-      "parent": "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager"
-    },
-    "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secrets/$envSlug/": {
-      "filePath": "_authenticate/_ctx-org-details/secret-manager.$projectId/_layout-secret-manager/secrets.$envSlug/index.tsx",
-      "parent": "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager"
+    "/_authenticate/_inject-org-details/organization/_layout/secret-manager/overview": {
+      "filePath": "organization/SecretManagerOverviewPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/organization/_layout"
     }
   }
 }
