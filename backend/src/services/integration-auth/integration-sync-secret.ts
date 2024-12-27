@@ -328,7 +328,7 @@ const syncSecretsAzureAppConfig = async ({
   const metadata = IntegrationMetadataSchema.parse(integration.metadata);
 
   const azureAppConfigValuesUrl = `${integration.app}/kv?api-version=2023-11-01&key=${metadata.secretPrefix}*${
-    metadata.azureLabel ? `&label=${metadata.azureLabel}` : ""
+    metadata.azureLabel ? `&label=${metadata.azureLabel}` : "&label=%00"
   }`;
 
   const azureAppConfigSecrets = (await getCompleteAzureAppConfigValues(azureAppConfigValuesUrl)).reduce(
