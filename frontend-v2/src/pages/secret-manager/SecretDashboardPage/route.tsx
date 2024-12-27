@@ -11,7 +11,7 @@ const SecretDashboardPageQueryParamsSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secrets/$envSlug/"
+  "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/secrets/$envSlug"
 )({
   component: SecretDashboardPage,
   validateSearch: zodValidator(SecretDashboardPageQueryParamsSchema)

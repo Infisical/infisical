@@ -10,35 +10,35 @@ export const ROUTE_PATHS = Object.freeze({
     "/login/provider/success",
     "/_restrict-login-signup/login/provider/success"
   ),
-  SignUpSsoPage: setRoute("/signup/sso", "/_restrict-login-signup/signup/sso/"),
+  SignUpSsoPage: setRoute("/signup/sso", "/_restrict-login-signup/signup/sso"),
   PasswordResetPage: setRoute("/password-reset", "/_restrict-login-signup/password-reset"),
   OrgGroupDetailsByIDPage: setRoute(
     "/organization/groups/$groupId",
-    "/_authenticate/_ctx-org-details/organization/_layout-org/groups/$groupId/"
+    "/_authenticate/_inject-org-details/organization/_layout/groups/$groupId"
   ),
   OrgIdentityDetailsByIDPage: setRoute(
     "/organization/identities/$identityId",
-    "/_authenticate/_ctx-org-details/organization/_layout-org/identities/$identityId/"
+    "/_authenticate/_inject-org-details/organization/_layout/identities/$identityId"
   ),
   OrgUserDetailsByIDPage: setRoute(
-    "/organization/memberships/$membershipId",
-    "/_authenticate/_ctx-org-details/organization/_layout-org/memberships/$membershipId/"
+    "/organization/members/$membershipId",
+    "/_authenticate/_inject-org-details/organization/_layout/members/$membershipId"
   ),
   OrgAccessControlPage: setRoute(
-    "/organization/members",
-    "/_authenticate/_ctx-org-details/organization/_layout-org/members/"
+    "/organization/access-management",
+    "/_authenticate/_inject-org-details/organization/_layout/access-management"
   ),
   OrgRoleByIDPage: setRoute(
     "/organization/roles/$roleId",
-    "/_authenticate/_ctx-org-details/organization/_layout-org/roles/$roleId/"
+    "/_authenticate/_inject-org-details/organization/_layout/roles/$roleId"
   ),
-  ProductAccessControlPage: setRoute(
-    "/secret-manager/$projectId/access",
-    "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/access/"
+  SecretOverviewPage: setRoute(
+    "/secret-manager/$projectId/overview",
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/overview"
   ),
   SecretDashboardPage: setRoute(
     "/secret-manager/$projectId/secrets/$envSlug",
-    "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secrets/$envSlug/"
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/secrets/$envSlug"
   ),
   CertAuthDetailsByIDPage: setRoute("cert-auth", "cert-auth"),
   CertCertificatesPage: setRoute("cert-list", "cert-list"),

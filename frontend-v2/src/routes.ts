@@ -47,6 +47,23 @@ export const routes = rootRoute("root.tsx", [
           route("/roles/$roleId", "organization/RoleByIDPage/route.tsx"),
           route("/identities/$identityId", "organization/IdentityDetailsByIDPage/route.tsx")
         ])
+      ]),
+      route("/secret-manager/$projectId", [
+        layout("secret-manager-layout", "secret-manager/layout.tsx", [
+          route("/overview", "secret-manager/OverviewPage/route.tsx"),
+          route("/secrets/$envSlug", "secret-manager/SecretDashboardPage/route.tsx"),
+          route("/access-management", "project/AccessControlPage/route-secret-manager.tsx"),
+          route("/allowlist", "secret-manager/IPAllowListPage/route.tsx"),
+          route("/approval", "secret-manager/SecretApprovalsPage/route.tsx"),
+          route("/secret-rotation", "secret-manager/SecretRotationPage/route.tsx"),
+          route("/settings", "secret-manager/SettingsPage/route.tsx"),
+          route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-secret-manager.tsx"),
+          route(
+            "/identities/$identityId",
+            "project/IdentityDetailsByIDPage/route-secret-manager.tsx"
+          ),
+          route("/members/$membershipId", "project/MemberDetailsByIDPage/route-secret-manager.tsx")
+        ])
       ])
     ])
   ])
