@@ -8,7 +8,7 @@ const LoginSSOQueryParamsSchema = z.object({
   token: z.string()
 });
 
-export const Route = createFileRoute("/_restrict-login-signup/login/sso/")({
+export const Route = createFileRoute("/_restrict-login-signup/login/sso")({
   component: LoginSsoPage,
   validateSearch: zodValidator(LoginSSOQueryParamsSchema)
 });

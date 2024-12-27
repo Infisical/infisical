@@ -9,7 +9,7 @@ import { OrgAccessControlTabSections } from "@app/types/org";
 
 import { OrgGroupsTab, OrgIdentityTab, OrgMembersTab, OrgRoleTabSection } from "./components";
 
-export const AccessControlPage = () => {
+export const AccessManagementPage = () => {
   const { t } = useTranslation();
   const { permission } = useOrgPermission();
   const navigate = useNavigate({

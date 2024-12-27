@@ -1,9 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from '@tanstack/react-router'
 
-import { AuditLogsPage } from "./AuditLogsPage";
+import { AuditLogsPage } from './AuditLogsPage'
 
 export const Route = createFileRoute(
-  "/_authenticate/_ctx-org-details/organization/_layout-org/audit-logs/"
+  '/_authenticate/_inject-org-details/organization/_layout/audit-logs',
 )({
-  component: AuditLogsPage
-});
+  component: AuditLogsPage,
+})

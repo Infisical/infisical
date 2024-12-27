@@ -5,7 +5,7 @@ import { setAuthToken } from "@app/hooks/api/reactQuery";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 
 export const Route = createFileRoute("/_restrict-login-signup")({
-  beforeLoad: async ({ context }) => {
+  beforeLoad: async ({ context, location }) => {
     const data = await context.queryClient
       .fetchQuery({
         queryKey: authKeys.getAuthToken,
@@ -18,6 +18,7 @@ export const Route = createFileRoute("/_restrict-login-signup")({
 
     setAuthToken(data.token);
     if (!data.organizationId) {
+      if (location.pathname.endsWith("select-organization")) return;
       throw redirect({ to: "/login/select-organization" });
     }
     throw redirect({
