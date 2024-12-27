@@ -1,9 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from '@tanstack/react-router'
 
-import { IPAllowListPage } from "./IPAllowListPage";
+import { IPAllowListPage } from './IPAllowListPage'
 
 export const Route = createFileRoute(
-  "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/allowlist/"
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/allowlist',
 )({
-  component: () => IPAllowListPage
-});
+  component: () => IPAllowListPage,
+})

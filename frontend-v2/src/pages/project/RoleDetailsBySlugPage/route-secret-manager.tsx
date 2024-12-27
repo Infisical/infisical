@@ -1,9 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from '@tanstack/react-router'
 
-import { RoleDetailsBySlugPage } from "./RoleDetailsBySlugPage";
+import { RoleDetailsBySlugPage } from './RoleDetailsBySlugPage'
 
 export const Route = createFileRoute(
-  "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/roles/$roleSlug/"
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/roles/$roleSlug',
 )({
-  component: RoleDetailsBySlugPage
-});
+  component: RoleDetailsBySlugPage,
+})

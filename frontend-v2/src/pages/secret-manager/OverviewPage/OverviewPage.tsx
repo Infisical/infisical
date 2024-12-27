@@ -46,6 +46,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -70,7 +71,7 @@ import { SecretType, SecretV3RawSanitized, TSecretFolder } from "@app/hooks/api/
 import { ProjectType, ProjectVersion } from "@app/hooks/api/workspace/types";
 import { useDynamicSecretOverview, useFolderOverview, useSecretOverview } from "@app/hooks/utils";
 
-import { FolderForm } from "../secrets.$envSlug/-components/ActionBar/FolderForm";
+import { FolderForm } from "../SecretDashboardPage/components/ActionBar/FolderForm";
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { FolderBreadCrumbs } from "./components/FolderBreadCrumbs";
 import { SecretOverviewDynamicSecretRow } from "./components/SecretOverviewDynamicSecretRow";
@@ -110,10 +111,10 @@ export const OverviewPage = () => {
 
   const router = useRouter();
   const navigate = useNavigate({
-    from: "/secret-manager/$projectId/overview"
+    from: ROUTE_PATHS.SecretOverviewPage.full
   });
   const routerSearch = useSearch({
-    from: "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/overview/",
+    from: ROUTE_PATHS.SecretOverviewPage.id,
     select: (el) => ({
       secretPath: el.secretPath,
       search: el.search
