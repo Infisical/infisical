@@ -1,9 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from '@tanstack/react-router'
 
-import { MemberDetailsByIDPage } from "./MemberDetailsByIdPage";
+import { MemberDetailsByIDPage } from './MemberDetailsByIdPage'
 
 export const Route = createFileRoute(
-  "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/members/$membershipId/"
+  '/_authenticate/_inject-org-details/kms/$projectId/_kms-layout/members/$membershipId',
 )({
-  component: MemberDetailsByIDPage
-});
+  component: MemberDetailsByIDPage,
+})

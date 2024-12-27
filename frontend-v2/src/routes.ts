@@ -3,6 +3,65 @@ import { index, layout, rootRoute, route, VirtualRouteNode } from "@tanstack/vir
 const middleware = (fileName: string, virtualRoutes: VirtualRouteNode[]) =>
   layout(`middlewares/${fileName}`, virtualRoutes);
 
+const organizationRoutes = route("/organization", [
+  layout("organization/layout.tsx", [
+    route("/secret-manager/overview", "organization/SecretManagerOverviewPage/route.tsx"),
+    route("/cert-manager/overview", "organization/CertManagerOverviewPage/route.tsx"),
+    route("/kms/overview", "organization/KmsOverviewPage/route.tsx"),
+    route("/access-management", "organization/AccessManagementPage/route.tsx"),
+    route("/admin", "organization/AdminPage/route.tsx"),
+    route("/audit-logs", "organization/AuditLogsPage/route.tsx"),
+    route("/billing", "organization/BillingPage/route.tsx"),
+    route("/none", "organization/NoOrgPage/route.tsx"),
+    route("/secret-sharing", "organization/SecretSharingPage/route.tsx"),
+    route("/settings", "organization/SettingsPage/route.tsx"),
+    route("/secret-scanning", "organization/SecretScanningPage/route.tsx"),
+    route("/groups/$groupId", "organization/GroupDetailsByIDPage/route.tsx"),
+    route("/members/$membershipId", "organization/UserDetailsByIDPage/route.tsx"),
+    route("/roles/$roleId", "organization/RoleByIDPage/route.tsx"),
+    route("/identities/$identityId", "organization/IdentityDetailsByIDPage/route.tsx")
+  ])
+]);
+
+const secretManagerRoutes = route("/secret-manager/$projectId", [
+  layout("secret-manager-layout", "secret-manager/layout.tsx", [
+    route("/overview", "secret-manager/OverviewPage/route.tsx"),
+    route("/secrets/$envSlug", "secret-manager/SecretDashboardPage/route.tsx"),
+    route("/allowlist", "secret-manager/IPAllowListPage/route.tsx"),
+    route("/approval", "secret-manager/SecretApprovalsPage/route.tsx"),
+    route("/secret-rotation", "secret-manager/SecretRotationPage/route.tsx"),
+    route("/settings", "secret-manager/SettingsPage/route.tsx"),
+    route("/access-management", "project/AccessControlPage/route-secret-manager.tsx"),
+    route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-secret-manager.tsx"),
+    route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-secret-manager.tsx"),
+    route("/members/$membershipId", "project/MemberDetailsByIDPage/route-secret-manager.tsx")
+  ])
+]);
+
+const certManagerRoutes = route("/cert-manager/$projectId", [
+  layout("cert-manager-layout", "cert-manager/layout.tsx", [
+    route("/overview", "cert-manager/CertificatesPage/route.tsx"),
+    route("/ca/$caId", "cert-manager/CertAuthDetailsByIDPage/route.tsx"),
+    route("/pki-collections/$collectionId", "cert-manager/PkiCollectionDetailsByIDPage/routes.tsx"),
+    route("/settings", "cert-manager/SettingsPage/route.tsx"),
+    route("/access-management", "project/AccessControlPage/route-cert-manager.tsx"),
+    route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-cert-manager.tsx"),
+    route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-cert-manager.tsx"),
+    route("/members/$membershipId", "project/MemberDetailsByIDPage/route-cert-manager.tsx")
+  ])
+]);
+
+const kmsRoutes = route("/kms/$projectId", [
+  layout("kms-layout", "kms/layout.tsx", [
+    route("/overview", "kms/OverviewPage/route.tsx"),
+    route("/settings", "kms/SettingsPage/route.tsx"),
+    route("/access-management", "project/AccessControlPage/route-kms.tsx"),
+    route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-kms.tsx"),
+    route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-kms.tsx"),
+    route("/members/$membershipId", "project/MemberDetailsByIDPage/route-kms.tsx")
+  ])
+]);
+
 export const routes = rootRoute("root.tsx", [
   index("index.tsx"),
   middleware("restrict-login-signup.tsx", [
@@ -29,60 +88,10 @@ export const routes = rootRoute("root.tsx", [
       layout("user/layout.tsx", [index("user/PersonalSettingsPage/route.tsx")])
     ]),
     middleware("inject-org-details.tsx", [
-      route("/organization", [
-        layout("organization/layout.tsx", [
-          route("/secret-manager/overview", "organization/SecretManagerOverviewPage/route.tsx"),
-          route("/cert-manager/overview", "organization/CertManagerOverviewPage/route.tsx"),
-          route("/kms/overview", "organization/KmsOverviewPage/route.tsx"),
-          route("/access-management", "organization/AccessManagementPage/route.tsx"),
-          route("/admin", "organization/AdminPage/route.tsx"),
-          route("/audit-logs", "organization/AuditLogsPage/route.tsx"),
-          route("/billing", "organization/BillingPage/route.tsx"),
-          route("/none", "organization/NoOrgPage/route.tsx"),
-          route("/secret-sharing", "organization/SecretSharingPage/route.tsx"),
-          route("/settings", "organization/SettingsPage/route.tsx"),
-          route("/secret-scanning", "organization/SecretScanningPage/route.tsx"),
-          route("/groups/$groupId", "organization/GroupDetailsByIDPage/route.tsx"),
-          route("/members/$membershipId", "organization/UserDetailsByIDPage/route.tsx"),
-          route("/roles/$roleId", "organization/RoleByIDPage/route.tsx"),
-          route("/identities/$identityId", "organization/IdentityDetailsByIDPage/route.tsx")
-        ])
-      ]),
-      route("/secret-manager/$projectId", [
-        layout("secret-manager-layout", "secret-manager/layout.tsx", [
-          route("/overview", "secret-manager/OverviewPage/route.tsx"),
-          route("/secrets/$envSlug", "secret-manager/SecretDashboardPage/route.tsx"),
-          route("/allowlist", "secret-manager/IPAllowListPage/route.tsx"),
-          route("/approval", "secret-manager/SecretApprovalsPage/route.tsx"),
-          route("/secret-rotation", "secret-manager/SecretRotationPage/route.tsx"),
-          route("/settings", "secret-manager/SettingsPage/route.tsx"),
-          route("/access-management", "project/AccessControlPage/route-secret-manager.tsx"),
-          route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-secret-manager.tsx"),
-          route(
-            "/identities/$identityId",
-            "project/IdentityDetailsByIDPage/route-secret-manager.tsx"
-          ),
-          route("/members/$membershipId", "project/MemberDetailsByIDPage/route-secret-manager.tsx")
-        ])
-      ]),
-      route("/cert-manager/$projectId", [
-        layout("cert-manager-layout", "cert-manager/layout.tsx", [
-          route("/overview", "cert-manager/CertificatesPage/route.tsx"),
-          route("/ca/$caId", "cert-manager/CertAuthDetailsByIDPage/route.tsx"),
-          route(
-            "/pki-collections/$collectionId",
-            "cert-manager/PkiCollectionDetailsByIDPage/routes.tsx"
-          ),
-          route("/settings", "cert-manager/SettingsPage/route.tsx"),
-          route("/access-management", "project/AccessControlPage/route-cert-manager.tsx"),
-          route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-cert-manager.tsx"),
-          route(
-            "/identities/$identityId",
-            "project/IdentityDetailsByIDPage/route-cert-manager.tsx"
-          ),
-          route("/members/$membershipId", "project/MemberDetailsByIDPage/route-cert-manager.tsx")
-        ])
-      ])
+      organizationRoutes,
+      secretManagerRoutes,
+      certManagerRoutes,
+      kmsRoutes
     ])
   ])
 ]);
