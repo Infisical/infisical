@@ -5,7 +5,7 @@ import { Button, DeleteActionModal } from "@app/components/v2";
 import { useOrganization, useOrgPermission } from "@app/context";
 import { useDeleteOrgById } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
-import { navigateUserToOrg } from "@app/routes/_restrict-login-signup/login/-components/Login.utils";
+import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
 export const OrgDeleteSection = () => {
   const navigate = useNavigate();

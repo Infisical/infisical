@@ -15,16 +15,6 @@ import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
-import { GeneralPermissionPolicies } from "@app/components/permissions/ProjectRolePermissionsSection/components/GeneralPermissionPolicies";
-import { PermissionEmptyState } from "@app/components/permissions/ProjectRolePermissionsSection/PermissionEmptyState";
-import {
-  formRolePermission2API,
-  isConditionalSubjects,
-  PROJECT_PERMISSION_OBJECT,
-  projectRoleFormSchema,
-  rolePermission2Form
-} from "@app/components/permissions/ProjectRolePermissionsSection/ProjectRoleModifySection.utils";
-import { renderConditionalComponents } from "@app/components/permissions/ProjectRolePermissionsSection/RolePermissionsSection";
 import {
   Button,
   DropdownMenu,
@@ -52,6 +42,16 @@ import {
   useUpdateProjectUserAdditionalPrivilege
 } from "@app/hooks/api";
 import { ProjectUserAdditionalPrivilegeTemporaryMode } from "@app/hooks/api/projectUserAdditionalPrivilege/types";
+import { GeneralPermissionPolicies } from "@app/pages/project/RoleDetailsBySlugPage/components/GeneralPermissionPolicies";
+import { PermissionEmptyState } from "@app/pages/project/RoleDetailsBySlugPage/components/PermissionEmptyState";
+import {
+  formRolePermission2API,
+  isConditionalSubjects,
+  PROJECT_PERMISSION_OBJECT,
+  projectRoleFormSchema,
+  rolePermission2Form
+} from "@app/pages/project/RoleDetailsBySlugPage/components/ProjectRoleModifySection.utils";
+import { renderConditionalComponents } from "@app/pages/project/RoleDetailsBySlugPage/components/RolePermissionsSection";
 
 type Props = {
   privilegeId?: string;

@@ -6,22 +6,22 @@ import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { GeneralPermissionPolicies } from "@app/components/permissions/ProjectRolePermissionsSection/components/GeneralPermissionPolicies";
-import { NewPermissionRule } from "@app/components/permissions/ProjectRolePermissionsSection/components/NewPermissionRule";
-import { PermissionEmptyState } from "@app/components/permissions/ProjectRolePermissionsSection/PermissionEmptyState";
-import {
-  formRolePermission2API,
-  PROJECT_PERMISSION_OBJECT,
-  projectRoleFormSchema,
-  rolePermission2Form
-} from "@app/components/permissions/ProjectRolePermissionsSection/ProjectRoleModifySection.utils";
-import { renderConditionalComponents } from "@app/components/permissions/ProjectRolePermissionsSection/RolePermissionsSection";
 import { Button, FormControl, Input, Modal, ModalContent, ModalTrigger } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
 import { isCustomProjectRole } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 import { TProjectTemplate, useUpdateProjectTemplate } from "@app/hooks/api/projectTemplates";
 import { slugSchema } from "@app/lib/schemas";
+import { GeneralPermissionPolicies } from "@app/pages/project/RoleDetailsBySlugPage/components/GeneralPermissionPolicies";
+import { NewPermissionRule } from "@app/pages/project/RoleDetailsBySlugPage/components/NewPermissionRule";
+import { PermissionEmptyState } from "@app/pages/project/RoleDetailsBySlugPage/components/PermissionEmptyState";
+import {
+  formRolePermission2API,
+  PROJECT_PERMISSION_OBJECT,
+  projectRoleFormSchema,
+  rolePermission2Form
+} from "@app/pages/project/RoleDetailsBySlugPage/components/ProjectRoleModifySection.utils";
+import { renderConditionalComponents } from "@app/pages/project/RoleDetailsBySlugPage/components/RolePermissionsSection";
 
 type Props = {
   projectTemplate: TProjectTemplate;

@@ -52,7 +52,7 @@ export const UserProjectRow = ({
       onClick={() => {
         if (isAccessible) {
           navigate({
-            to: `/${project.type}/$projectId/access` as const,
+            to: `/${project.type}/$projectId/access-management` as const,
             params: {
               projectId: project.id
             },

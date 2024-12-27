@@ -211,7 +211,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
         ) : (
           <div className="flex flex-col space-y-4">
             <div>All the users in your organization are already invited.</div>
-            <Link to={"/organization/members" as const}>
+            <Link to={"/organization/access-management" as const}>
               <Button variant="outline_bg">Add users to organization</Button>
             </Link>
           </div>

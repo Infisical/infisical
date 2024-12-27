@@ -306,7 +306,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
                         className="h-10 w-full cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                         onClick={() =>
                           navigate({
-                            to: "/organization/memberships/$membershipId" as const,
+                            to: "/organization/members/$membershipId" as const,
                             params: {
                               membershipId: orgMembershipId
                             }
@@ -401,7 +401,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         navigate({
-                                          to: "/organization/memberships/$membershipId" as const,
+                                          to: "/organization/members/$membershipId" as const,
                                           params: {
                                             membershipId: orgMembershipId
                                           }

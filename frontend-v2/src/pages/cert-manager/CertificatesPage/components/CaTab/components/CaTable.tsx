@@ -78,7 +78,11 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                     key={`ca-${ca.id}`}
                     onClick={() =>
                       navigate({
-                        to: `/${ProjectType.CertificateManager}/${currentWorkspace?.id}/ca/${ca.id}` as const
+                        to: `/${ProjectType.CertificateManager}/$projectId/ca/$caId` as const,
+                        params: {
+                          projectId: currentWorkspace.id,
+                          caId: ca.id
+                        }
                       })
                     }
                   >

@@ -6,8 +6,7 @@ import { IconButton, Tooltip } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
 import { withPermission } from "@app/hoc";
 import { OrgUser } from "@app/hooks/api/types";
-
-import { LogsSection } from "../../../../audit-logs/-components";
+import { LogsSection } from "@app/pages/organization/AuditLogsPage/components";
 
 type Props = {
   orgMembership: OrgUser;

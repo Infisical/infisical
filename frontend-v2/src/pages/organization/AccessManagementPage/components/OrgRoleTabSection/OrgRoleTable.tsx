@@ -34,8 +34,7 @@ import { isCustomOrgRole } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 import { useDeleteOrgRole, useGetOrgRoles, useUpdateOrg } from "@app/hooks/api";
 import { TOrgRole } from "@app/hooks/api/roles/types";
-
-import { RoleModal } from "../../../roles/$roleId/-components";
+import { RoleModal } from "@app/pages/organization/RoleByIDPage/components/RoleModal";
 
 export const OrgRoleTable = () => {
   const navigate = useNavigate();

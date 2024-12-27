@@ -1,1 +1,1 @@
-export { hasSecretReference,SecretReferenceTree } from "./SecretReferenceDetails";
+export { hasSecretReference, SecretReferenceTree } from "./SecretReferenceDetails";

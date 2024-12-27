@@ -3,6 +3,10 @@ import { index, layout, rootRoute, route, VirtualRouteNode } from "@tanstack/vir
 const middleware = (fileName: string, virtualRoutes: VirtualRouteNode[]) =>
   layout(`middlewares/${fileName}`, virtualRoutes);
 
+const adminRoute = route("/admin", [
+  layout("admin-layout", "admin/layout.tsx", [index("admin/OverviewPage/route.tsx")])
+]);
+
 const organizationRoutes = route("/organization", [
   layout("organization/layout.tsx", [
     route("/secret-manager/overview", "organization/SecretManagerOverviewPage/route.tsx"),
@@ -64,7 +68,10 @@ const kmsRoutes = route("/kms/$projectId", [
 
 export const routes = rootRoute("root.tsx", [
   index("index.tsx"),
+  route("/shared/secret/$secretId", "public/ViewSharedSecretByIDPage/route.tsx"),
+  route("/share-secret", "public/ShareSecretPage/route.tsx"),
   middleware("restrict-login-signup.tsx", [
+    route("/admin/signup", "admin/SignUpPage/route.tsx"),
     route("/login", [
       index("auth/LoginPage/route.tsx"),
       route("/select-organization", "auth/SelectOrgPage/route.tsx"),
@@ -81,12 +88,14 @@ export const routes = rootRoute("root.tsx", [
     route("/password-reset", "auth/PasswordResetPage/route.tsx"),
     route("/requestnewinvite", "auth/RequestNewInvitePage/route.tsx"),
     route("/signupinvite", "auth/SignUpInvitePage/route.tsx"),
-    route("/verify-email", "auth/VerifyEmailPage/route.tsx")
+    route("/verify-email", "auth/VerifyEmailPage/route.tsx"),
+    route("/cli-redirect", "auth/CliRedirectPage/route.tsx")
   ]),
   middleware("authenticate.tsx", [
     route("/personal-settings", [
       layout("user/layout.tsx", [index("user/PersonalSettingsPage/route.tsx")])
     ]),
+    adminRoute,
     middleware("inject-org-details.tsx", [
       organizationRoutes,
       secretManagerRoutes,

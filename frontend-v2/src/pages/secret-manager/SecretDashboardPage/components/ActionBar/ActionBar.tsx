@@ -54,15 +54,15 @@ import { usePopUp } from "@app/hooks";
 import { useCreateFolder, useDeleteSecretBatch, useMoveSecrets } from "@app/hooks/api";
 import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
 import { SecretType, WsTag } from "@app/hooks/api/types";
+import { SecretSearchInput } from "@app/pages/secret-manager/OverviewPage/components/SecretSearchInput";
 
-import { SecretSearchInput } from "../../../overview/-components/SecretSearchInput";
 import {
   PopUpNames,
   usePopUpAction,
   useSelectedSecretActions,
   useSelectedSecrets
-} from "../SecretMainPage.store";
-import { Filter, RowType } from "../SecretMainPage.types";
+} from "../../SecretMainPage.store";
+import { Filter, RowType } from "../../SecretMainPage.types";
 import { CreateDynamicSecretForm } from "./CreateDynamicSecretForm";
 import { CreateSecretImportForm } from "./CreateSecretImportForm";
 import { FolderForm } from "./FolderForm";

@@ -4,11 +4,13 @@ import { useTranslation } from "react-i18next";
 import { Link, useSearch } from "@tanstack/react-router";
 import { jwtDecode } from "jwt-decode";
 
+import { ROUTE_PATHS } from "@app/const/routes";
+
 import { PasswordStep } from "../LoginPage/components";
 
 export const LoginSsoPage = () => {
   const { t } = useTranslation();
-  const search = useSearch({ from: "/_restrict-login-signup/login/sso/" });
+  const search = useSearch({ from: ROUTE_PATHS.Auth.LoginSSO.id });
   const token = search.token as string;
   const [step, setStep] = useState(0);
   const [password, setPassword] = useState("");

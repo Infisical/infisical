@@ -15,10 +15,9 @@ import {
 import { ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
 
-import { GeneralPermissionConditions } from "./components/GeneralPermissionConditions";
-import { GeneralPermissionPolicies } from "./components/GeneralPermissionPolicies";
-import { IdentityManagementPermissionConditions } from "./components/IdentityManagementPermissionConditions";
-import { SecretPermissionConditions } from "./components/SecretPermissionConditions";
+import { GeneralPermissionConditions } from "./GeneralPermissionConditions";
+import { GeneralPermissionPolicies } from "./GeneralPermissionPolicies";
+import { IdentityManagementPermissionConditions } from "./IdentityManagementPermissionConditions";
 import { PermissionEmptyState } from "./PermissionEmptyState";
 import {
   formRolePermission2API,
@@ -28,6 +27,7 @@ import {
   rolePermission2Form,
   TFormSchema
 } from "./ProjectRoleModifySection.utils";
+import { SecretPermissionConditions } from "./SecretPermissionConditions";
 
 type Props = {
   roleSlug: string;

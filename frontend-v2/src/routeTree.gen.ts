@@ -15,6 +15,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Route as rootRoute } from './pages/root'
 import { Route as middlewaresRestrictLoginSignupImport } from './pages/middlewares/restrict-login-signup'
 import { Route as middlewaresAuthenticateImport } from './pages/middlewares/authenticate'
+import { Route as publicShareSecretPageRouteImport } from './pages/public/ShareSecretPage/route'
 import { Route as indexImport } from './pages/index'
 import { Route as middlewaresInjectOrgDetailsImport } from './pages/middlewares/inject-org-details'
 import { Route as authVerifyEmailPageRouteImport } from './pages/auth/VerifyEmailPage/route'
@@ -22,17 +23,22 @@ import { Route as authSignUpInvitePageRouteImport } from './pages/auth/SignUpInv
 import { Route as authRequestNewInvitePageRouteImport } from './pages/auth/RequestNewInvitePage/route'
 import { Route as authPasswordResetPageRouteImport } from './pages/auth/PasswordResetPage/route'
 import { Route as authEmailNotVerifiedPageRouteImport } from './pages/auth/EmailNotVerifiedPage/route'
+import { Route as authCliRedirectPageRouteImport } from './pages/auth/CliRedirectPage/route'
 import { Route as userLayoutImport } from './pages/user/layout'
+import { Route as adminLayoutImport } from './pages/admin/layout'
+import { Route as publicViewSharedSecretByIDPageRouteImport } from './pages/public/ViewSharedSecretByIDPage/route'
 import { Route as authSignUpSsoPageRouteImport } from './pages/auth/SignUpSsoPage/route'
 import { Route as authLoginSsoPageRouteImport } from './pages/auth/LoginSsoPage/route'
 import { Route as authSelectOrgPageRouteImport } from './pages/auth/SelectOrgPage/route'
 import { Route as authLoginLdapPageRouteImport } from './pages/auth/LoginLdapPage/route'
+import { Route as adminSignUpPageRouteImport } from './pages/admin/SignUpPage/route'
 import { Route as authSignUpPageRouteImport } from './pages/auth/SignUpPage/route'
 import { Route as authLoginPageRouteImport } from './pages/auth/LoginPage/route'
 import { Route as organizationLayoutImport } from './pages/organization/layout'
 import { Route as authProviderSuccessPageRouteImport } from './pages/auth/ProviderSuccessPage/route'
 import { Route as authProviderErrorPageRouteImport } from './pages/auth/ProviderErrorPage/route'
 import { Route as userPersonalSettingsPageRouteImport } from './pages/user/PersonalSettingsPage/route'
+import { Route as adminOverviewPageRouteImport } from './pages/admin/OverviewPage/route'
 import { Route as secretManagerLayoutImport } from './pages/secret-manager/layout'
 import { Route as kmsLayoutImport } from './pages/kms/layout'
 import { Route as certManagerLayoutImport } from './pages/cert-manager/layout'
@@ -87,6 +93,7 @@ const RestrictLoginSignupLoginImport = createFileRoute(
 const AuthenticatePersonalSettingsImport = createFileRoute(
   '/_authenticate/personal-settings',
 )()
+const AuthenticateAdminImport = createFileRoute('/_authenticate/admin')()
 const AuthenticateInjectOrgDetailsOrganizationImport = createFileRoute(
   '/_authenticate/_inject-org-details/organization',
 )()
@@ -114,6 +121,14 @@ const middlewaresAuthenticateRoute = middlewaresAuthenticateImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
+const publicShareSecretPageRouteRoute = publicShareSecretPageRouteImport.update(
+  {
+    id: '/share-secret',
+    path: '/share-secret',
+    getParentRoute: () => rootRoute,
+  } as any,
+)
+
 const indexRoute = indexImport.update({
   id: '/',
   path: '/',
@@ -138,6 +153,12 @@ const AuthenticatePersonalSettingsRoute =
     path: '/personal-settings',
     getParentRoute: () => middlewaresAuthenticateRoute,
   } as any)
+
+const AuthenticateAdminRoute = AuthenticateAdminImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => middlewaresAuthenticateRoute,
+} as any)
 
 const middlewaresInjectOrgDetailsRoute =
   middlewaresInjectOrgDetailsImport.update({
@@ -179,9 +200,20 @@ const authEmailNotVerifiedPageRouteRoute =
     getParentRoute: () => middlewaresRestrictLoginSignupRoute,
   } as any)
 
+const authCliRedirectPageRouteRoute = authCliRedirectPageRouteImport.update({
+  id: '/cli-redirect',
+  path: '/cli-redirect',
+  getParentRoute: () => middlewaresRestrictLoginSignupRoute,
+} as any)
+
 const userLayoutRoute = userLayoutImport.update({
   id: '/_layout',
   getParentRoute: () => AuthenticatePersonalSettingsRoute,
+} as any)
+
+const adminLayoutRoute = adminLayoutImport.update({
+  id: '/_admin-layout',
+  getParentRoute: () => AuthenticateAdminRoute,
 } as any)
 
 const AuthenticateInjectOrgDetailsOrganizationRoute =
@@ -189,6 +221,13 @@ const AuthenticateInjectOrgDetailsOrganizationRoute =
     id: '/organization',
     path: '/organization',
     getParentRoute: () => middlewaresInjectOrgDetailsRoute,
+  } as any)
+
+const publicViewSharedSecretByIDPageRouteRoute =
+  publicViewSharedSecretByIDPageRouteImport.update({
+    id: '/shared/secret/$secretId',
+    path: '/shared/secret/$secretId',
+    getParentRoute: () => rootRoute,
   } as any)
 
 const authSignUpSsoPageRouteRoute = authSignUpSsoPageRouteImport.update({
@@ -213,6 +252,12 @@ const authLoginLdapPageRouteRoute = authLoginLdapPageRouteImport.update({
   id: '/ldap',
   path: '/ldap',
   getParentRoute: () => RestrictLoginSignupLoginRoute,
+} as any)
+
+const adminSignUpPageRouteRoute = adminSignUpPageRouteImport.update({
+  id: '/admin/signup',
+  path: '/admin/signup',
+  getParentRoute: () => middlewaresRestrictLoginSignupRoute,
 } as any)
 
 const authSignUpPageRouteRoute = authSignUpPageRouteImport.update({
@@ -274,6 +319,12 @@ const userPersonalSettingsPageRouteRoute =
     path: '/',
     getParentRoute: () => userLayoutRoute,
   } as any)
+
+const adminOverviewPageRouteRoute = adminOverviewPageRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => adminLayoutRoute,
+} as any)
 
 const secretManagerLayoutRoute = secretManagerLayoutImport.update({
   id: '/_secret-manager-layout',
@@ -574,6 +625,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof indexImport
       parentRoute: typeof rootRoute
     }
+    '/share-secret': {
+      id: '/share-secret'
+      path: '/share-secret'
+      fullPath: '/share-secret'
+      preLoaderRoute: typeof publicShareSecretPageRouteImport
+      parentRoute: typeof rootRoute
+    }
     '/_authenticate': {
       id: '/_authenticate'
       path: ''
@@ -587,6 +645,13 @@ declare module '@tanstack/react-router' {
       fullPath: ''
       preLoaderRoute: typeof middlewaresRestrictLoginSignupImport
       parentRoute: typeof rootRoute
+    }
+    '/_restrict-login-signup/cli-redirect': {
+      id: '/_restrict-login-signup/cli-redirect'
+      path: '/cli-redirect'
+      fullPath: '/cli-redirect'
+      preLoaderRoute: typeof authCliRedirectPageRouteImport
+      parentRoute: typeof middlewaresRestrictLoginSignupImport
     }
     '/_restrict-login-signup/email-not-verified': {
       id: '/_restrict-login-signup/email-not-verified'
@@ -630,6 +695,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof middlewaresInjectOrgDetailsImport
       parentRoute: typeof middlewaresAuthenticateImport
     }
+    '/_authenticate/admin': {
+      id: '/_authenticate/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticateAdminImport
+      parentRoute: typeof middlewaresAuthenticateImport
+    }
     '/_authenticate/personal-settings': {
       id: '/_authenticate/personal-settings'
       path: '/personal-settings'
@@ -665,6 +737,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof authSignUpPageRouteImport
       parentRoute: typeof RestrictLoginSignupSignupImport
     }
+    '/_restrict-login-signup/admin/signup': {
+      id: '/_restrict-login-signup/admin/signup'
+      path: '/admin/signup'
+      fullPath: '/admin/signup'
+      preLoaderRoute: typeof adminSignUpPageRouteImport
+      parentRoute: typeof middlewaresRestrictLoginSignupImport
+    }
     '/_restrict-login-signup/login/ldap': {
       id: '/_restrict-login-signup/login/ldap'
       path: '/ldap'
@@ -693,6 +772,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof authSignUpSsoPageRouteImport
       parentRoute: typeof RestrictLoginSignupSignupImport
     }
+    '/shared/secret/$secretId': {
+      id: '/shared/secret/$secretId'
+      path: '/shared/secret/$secretId'
+      fullPath: '/shared/secret/$secretId'
+      preLoaderRoute: typeof publicViewSharedSecretByIDPageRouteImport
+      parentRoute: typeof rootRoute
+    }
     '/_authenticate/_inject-org-details/organization': {
       id: '/_authenticate/_inject-org-details/organization'
       path: '/organization'
@@ -700,12 +786,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrganizationImport
       parentRoute: typeof middlewaresInjectOrgDetailsImport
     }
+    '/_authenticate/admin/_admin-layout': {
+      id: '/_authenticate/admin/_admin-layout'
+      path: ''
+      fullPath: '/admin'
+      preLoaderRoute: typeof adminLayoutImport
+      parentRoute: typeof AuthenticateAdminImport
+    }
     '/_authenticate/personal-settings/_layout': {
       id: '/_authenticate/personal-settings/_layout'
       path: ''
       fullPath: '/personal-settings'
       preLoaderRoute: typeof userLayoutImport
       parentRoute: typeof AuthenticatePersonalSettingsImport
+    }
+    '/_authenticate/admin/_admin-layout/': {
+      id: '/_authenticate/admin/_admin-layout/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof adminOverviewPageRouteImport
+      parentRoute: typeof adminLayoutImport
     }
     '/_authenticate/personal-settings/_layout/': {
       id: '/_authenticate/personal-settings/_layout/'
@@ -1275,6 +1375,29 @@ const middlewaresInjectOrgDetailsRouteWithChildren =
     middlewaresInjectOrgDetailsRouteChildren,
   )
 
+interface adminLayoutRouteChildren {
+  adminOverviewPageRouteRoute: typeof adminOverviewPageRouteRoute
+}
+
+const adminLayoutRouteChildren: adminLayoutRouteChildren = {
+  adminOverviewPageRouteRoute: adminOverviewPageRouteRoute,
+}
+
+const adminLayoutRouteWithChildren = adminLayoutRoute._addFileChildren(
+  adminLayoutRouteChildren,
+)
+
+interface AuthenticateAdminRouteChildren {
+  adminLayoutRoute: typeof adminLayoutRouteWithChildren
+}
+
+const AuthenticateAdminRouteChildren: AuthenticateAdminRouteChildren = {
+  adminLayoutRoute: adminLayoutRouteWithChildren,
+}
+
+const AuthenticateAdminRouteWithChildren =
+  AuthenticateAdminRoute._addFileChildren(AuthenticateAdminRouteChildren)
+
 interface userLayoutRouteChildren {
   userPersonalSettingsPageRouteRoute: typeof userPersonalSettingsPageRouteRoute
 }
@@ -1303,6 +1426,7 @@ const AuthenticatePersonalSettingsRouteWithChildren =
 
 interface middlewaresAuthenticateRouteChildren {
   middlewaresInjectOrgDetailsRoute: typeof middlewaresInjectOrgDetailsRouteWithChildren
+  AuthenticateAdminRoute: typeof AuthenticateAdminRouteWithChildren
   AuthenticatePersonalSettingsRoute: typeof AuthenticatePersonalSettingsRouteWithChildren
 }
 
@@ -1310,6 +1434,7 @@ const middlewaresAuthenticateRouteChildren: middlewaresAuthenticateRouteChildren
   {
     middlewaresInjectOrgDetailsRoute:
       middlewaresInjectOrgDetailsRouteWithChildren,
+    AuthenticateAdminRoute: AuthenticateAdminRouteWithChildren,
     AuthenticatePersonalSettingsRoute:
       AuthenticatePersonalSettingsRouteWithChildren,
   }
@@ -1360,6 +1485,7 @@ const RestrictLoginSignupSignupRouteWithChildren =
   )
 
 interface middlewaresRestrictLoginSignupRouteChildren {
+  authCliRedirectPageRouteRoute: typeof authCliRedirectPageRouteRoute
   authEmailNotVerifiedPageRouteRoute: typeof authEmailNotVerifiedPageRouteRoute
   authPasswordResetPageRouteRoute: typeof authPasswordResetPageRouteRoute
   authRequestNewInvitePageRouteRoute: typeof authRequestNewInvitePageRouteRoute
@@ -1367,10 +1493,12 @@ interface middlewaresRestrictLoginSignupRouteChildren {
   authVerifyEmailPageRouteRoute: typeof authVerifyEmailPageRouteRoute
   RestrictLoginSignupLoginRoute: typeof RestrictLoginSignupLoginRouteWithChildren
   RestrictLoginSignupSignupRoute: typeof RestrictLoginSignupSignupRouteWithChildren
+  adminSignUpPageRouteRoute: typeof adminSignUpPageRouteRoute
 }
 
 const middlewaresRestrictLoginSignupRouteChildren: middlewaresRestrictLoginSignupRouteChildren =
   {
+    authCliRedirectPageRouteRoute: authCliRedirectPageRouteRoute,
     authEmailNotVerifiedPageRouteRoute: authEmailNotVerifiedPageRouteRoute,
     authPasswordResetPageRouteRoute: authPasswordResetPageRouteRoute,
     authRequestNewInvitePageRouteRoute: authRequestNewInvitePageRouteRoute,
@@ -1378,6 +1506,7 @@ const middlewaresRestrictLoginSignupRouteChildren: middlewaresRestrictLoginSignu
     authVerifyEmailPageRouteRoute: authVerifyEmailPageRouteRoute,
     RestrictLoginSignupLoginRoute: RestrictLoginSignupLoginRouteWithChildren,
     RestrictLoginSignupSignupRoute: RestrictLoginSignupSignupRouteWithChildren,
+    adminSignUpPageRouteRoute: adminSignUpPageRouteRoute,
   }
 
 const middlewaresRestrictLoginSignupRouteWithChildren =
@@ -1387,22 +1516,28 @@ const middlewaresRestrictLoginSignupRouteWithChildren =
 
 export interface FileRoutesByFullPath {
   '/': typeof indexRoute
+  '/share-secret': typeof publicShareSecretPageRouteRoute
   '': typeof middlewaresInjectOrgDetailsRouteWithChildren
+  '/cli-redirect': typeof authCliRedirectPageRouteRoute
   '/email-not-verified': typeof authEmailNotVerifiedPageRouteRoute
   '/password-reset': typeof authPasswordResetPageRouteRoute
   '/requestnewinvite': typeof authRequestNewInvitePageRouteRoute
   '/signupinvite': typeof authSignUpInvitePageRouteRoute
   '/verify-email': typeof authVerifyEmailPageRouteRoute
+  '/admin': typeof adminLayoutRouteWithChildren
   '/personal-settings': typeof userLayoutRouteWithChildren
   '/login': typeof RestrictLoginSignupLoginRouteWithChildren
   '/signup': typeof RestrictLoginSignupSignupRouteWithChildren
   '/login/': typeof authLoginPageRouteRoute
   '/signup/': typeof authSignUpPageRouteRoute
+  '/admin/signup': typeof adminSignUpPageRouteRoute
   '/login/ldap': typeof authLoginLdapPageRouteRoute
   '/login/select-organization': typeof authSelectOrgPageRouteRoute
   '/login/sso': typeof authLoginSsoPageRouteRoute
   '/signup/sso': typeof authSignUpSsoPageRouteRoute
+  '/shared/secret/$secretId': typeof publicViewSharedSecretByIDPageRouteRoute
   '/organization': typeof organizationLayoutRouteWithChildren
+  '/admin/': typeof adminOverviewPageRouteRoute
   '/personal-settings/': typeof userPersonalSettingsPageRouteRoute
   '/login/provider/error': typeof authProviderErrorPageRouteRoute
   '/login/provider/success': typeof authProviderSuccessPageRouteRoute
@@ -1452,19 +1587,24 @@ export interface FileRoutesByFullPath {
 
 export interface FileRoutesByTo {
   '/': typeof indexRoute
+  '/share-secret': typeof publicShareSecretPageRouteRoute
   '': typeof middlewaresInjectOrgDetailsRouteWithChildren
+  '/cli-redirect': typeof authCliRedirectPageRouteRoute
   '/email-not-verified': typeof authEmailNotVerifiedPageRouteRoute
   '/password-reset': typeof authPasswordResetPageRouteRoute
   '/requestnewinvite': typeof authRequestNewInvitePageRouteRoute
   '/signupinvite': typeof authSignUpInvitePageRouteRoute
   '/verify-email': typeof authVerifyEmailPageRouteRoute
+  '/admin': typeof adminOverviewPageRouteRoute
   '/personal-settings': typeof userPersonalSettingsPageRouteRoute
   '/login': typeof authLoginPageRouteRoute
   '/signup': typeof authSignUpPageRouteRoute
+  '/admin/signup': typeof adminSignUpPageRouteRoute
   '/login/ldap': typeof authLoginLdapPageRouteRoute
   '/login/select-organization': typeof authSelectOrgPageRouteRoute
   '/login/sso': typeof authLoginSsoPageRouteRoute
   '/signup/sso': typeof authSignUpSsoPageRouteRoute
+  '/shared/secret/$secretId': typeof publicViewSharedSecretByIDPageRouteRoute
   '/organization': typeof organizationLayoutRouteWithChildren
   '/login/provider/error': typeof authProviderErrorPageRouteRoute
   '/login/provider/success': typeof authProviderSuccessPageRouteRoute
@@ -1515,25 +1655,32 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof indexRoute
+  '/share-secret': typeof publicShareSecretPageRouteRoute
   '/_authenticate': typeof middlewaresAuthenticateRouteWithChildren
   '/_restrict-login-signup': typeof middlewaresRestrictLoginSignupRouteWithChildren
+  '/_restrict-login-signup/cli-redirect': typeof authCliRedirectPageRouteRoute
   '/_restrict-login-signup/email-not-verified': typeof authEmailNotVerifiedPageRouteRoute
   '/_restrict-login-signup/password-reset': typeof authPasswordResetPageRouteRoute
   '/_restrict-login-signup/requestnewinvite': typeof authRequestNewInvitePageRouteRoute
   '/_restrict-login-signup/signupinvite': typeof authSignUpInvitePageRouteRoute
   '/_restrict-login-signup/verify-email': typeof authVerifyEmailPageRouteRoute
   '/_authenticate/_inject-org-details': typeof middlewaresInjectOrgDetailsRouteWithChildren
+  '/_authenticate/admin': typeof AuthenticateAdminRouteWithChildren
   '/_authenticate/personal-settings': typeof AuthenticatePersonalSettingsRouteWithChildren
   '/_restrict-login-signup/login': typeof RestrictLoginSignupLoginRouteWithChildren
   '/_restrict-login-signup/signup': typeof RestrictLoginSignupSignupRouteWithChildren
   '/_restrict-login-signup/login/': typeof authLoginPageRouteRoute
   '/_restrict-login-signup/signup/': typeof authSignUpPageRouteRoute
+  '/_restrict-login-signup/admin/signup': typeof adminSignUpPageRouteRoute
   '/_restrict-login-signup/login/ldap': typeof authLoginLdapPageRouteRoute
   '/_restrict-login-signup/login/select-organization': typeof authSelectOrgPageRouteRoute
   '/_restrict-login-signup/login/sso': typeof authLoginSsoPageRouteRoute
   '/_restrict-login-signup/signup/sso': typeof authSignUpSsoPageRouteRoute
+  '/shared/secret/$secretId': typeof publicViewSharedSecretByIDPageRouteRoute
   '/_authenticate/_inject-org-details/organization': typeof AuthenticateInjectOrgDetailsOrganizationRouteWithChildren
+  '/_authenticate/admin/_admin-layout': typeof adminLayoutRouteWithChildren
   '/_authenticate/personal-settings/_layout': typeof userLayoutRouteWithChildren
+  '/_authenticate/admin/_admin-layout/': typeof adminOverviewPageRouteRoute
   '/_authenticate/personal-settings/_layout/': typeof userPersonalSettingsPageRouteRoute
   '/_restrict-login-signup/login/provider/error': typeof authProviderErrorPageRouteRoute
   '/_restrict-login-signup/login/provider/success': typeof authProviderSuccessPageRouteRoute
@@ -1589,22 +1736,28 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/share-secret'
     | ''
+    | '/cli-redirect'
     | '/email-not-verified'
     | '/password-reset'
     | '/requestnewinvite'
     | '/signupinvite'
     | '/verify-email'
+    | '/admin'
     | '/personal-settings'
     | '/login'
     | '/signup'
     | '/login/'
     | '/signup/'
+    | '/admin/signup'
     | '/login/ldap'
     | '/login/select-organization'
     | '/login/sso'
     | '/signup/sso'
+    | '/shared/secret/$secretId'
     | '/organization'
+    | '/admin/'
     | '/personal-settings/'
     | '/login/provider/error'
     | '/login/provider/success'
@@ -1653,19 +1806,24 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/share-secret'
     | ''
+    | '/cli-redirect'
     | '/email-not-verified'
     | '/password-reset'
     | '/requestnewinvite'
     | '/signupinvite'
     | '/verify-email'
+    | '/admin'
     | '/personal-settings'
     | '/login'
     | '/signup'
+    | '/admin/signup'
     | '/login/ldap'
     | '/login/select-organization'
     | '/login/sso'
     | '/signup/sso'
+    | '/shared/secret/$secretId'
     | '/organization'
     | '/login/provider/error'
     | '/login/provider/success'
@@ -1714,25 +1872,32 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/share-secret'
     | '/_authenticate'
     | '/_restrict-login-signup'
+    | '/_restrict-login-signup/cli-redirect'
     | '/_restrict-login-signup/email-not-verified'
     | '/_restrict-login-signup/password-reset'
     | '/_restrict-login-signup/requestnewinvite'
     | '/_restrict-login-signup/signupinvite'
     | '/_restrict-login-signup/verify-email'
     | '/_authenticate/_inject-org-details'
+    | '/_authenticate/admin'
     | '/_authenticate/personal-settings'
     | '/_restrict-login-signup/login'
     | '/_restrict-login-signup/signup'
     | '/_restrict-login-signup/login/'
     | '/_restrict-login-signup/signup/'
+    | '/_restrict-login-signup/admin/signup'
     | '/_restrict-login-signup/login/ldap'
     | '/_restrict-login-signup/login/select-organization'
     | '/_restrict-login-signup/login/sso'
     | '/_restrict-login-signup/signup/sso'
+    | '/shared/secret/$secretId'
     | '/_authenticate/_inject-org-details/organization'
+    | '/_authenticate/admin/_admin-layout'
     | '/_authenticate/personal-settings/_layout'
+    | '/_authenticate/admin/_admin-layout/'
     | '/_authenticate/personal-settings/_layout/'
     | '/_restrict-login-signup/login/provider/error'
     | '/_restrict-login-signup/login/provider/success'
@@ -1787,15 +1952,20 @@ export interface FileRouteTypes {
 
 export interface RootRouteChildren {
   indexRoute: typeof indexRoute
+  publicShareSecretPageRouteRoute: typeof publicShareSecretPageRouteRoute
   middlewaresAuthenticateRoute: typeof middlewaresAuthenticateRouteWithChildren
   middlewaresRestrictLoginSignupRoute: typeof middlewaresRestrictLoginSignupRouteWithChildren
+  publicViewSharedSecretByIDPageRouteRoute: typeof publicViewSharedSecretByIDPageRouteRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   indexRoute: indexRoute,
+  publicShareSecretPageRouteRoute: publicShareSecretPageRouteRoute,
   middlewaresAuthenticateRoute: middlewaresAuthenticateRouteWithChildren,
   middlewaresRestrictLoginSignupRoute:
     middlewaresRestrictLoginSignupRouteWithChildren,
+  publicViewSharedSecretByIDPageRouteRoute:
+    publicViewSharedSecretByIDPageRouteRoute,
 }
 
 export const routeTree = rootRoute
@@ -1809,31 +1979,43 @@ export const routeTree = rootRoute
       "filePath": "root.tsx",
       "children": [
         "/",
+        "/share-secret",
         "/_authenticate",
-        "/_restrict-login-signup"
+        "/_restrict-login-signup",
+        "/shared/secret/$secretId"
       ]
     },
     "/": {
       "filePath": "index.tsx"
     },
+    "/share-secret": {
+      "filePath": "public/ShareSecretPage/route.tsx"
+    },
     "/_authenticate": {
       "filePath": "middlewares/authenticate.tsx",
       "children": [
         "/_authenticate/_inject-org-details",
+        "/_authenticate/admin",
         "/_authenticate/personal-settings"
       ]
     },
     "/_restrict-login-signup": {
       "filePath": "middlewares/restrict-login-signup.tsx",
       "children": [
+        "/_restrict-login-signup/cli-redirect",
         "/_restrict-login-signup/email-not-verified",
         "/_restrict-login-signup/password-reset",
         "/_restrict-login-signup/requestnewinvite",
         "/_restrict-login-signup/signupinvite",
         "/_restrict-login-signup/verify-email",
         "/_restrict-login-signup/login",
-        "/_restrict-login-signup/signup"
+        "/_restrict-login-signup/signup",
+        "/_restrict-login-signup/admin/signup"
       ]
+    },
+    "/_restrict-login-signup/cli-redirect": {
+      "filePath": "auth/CliRedirectPage/route.tsx",
+      "parent": "/_restrict-login-signup"
     },
     "/_restrict-login-signup/email-not-verified": {
       "filePath": "auth/EmailNotVerifiedPage/route.tsx",
@@ -1863,6 +2045,13 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/cert-manager/$projectId",
         "/_authenticate/_inject-org-details/kms/$projectId",
         "/_authenticate/_inject-org-details/secret-manager/$projectId"
+      ]
+    },
+    "/_authenticate/admin": {
+      "filePath": "",
+      "parent": "/_authenticate",
+      "children": [
+        "/_authenticate/admin/_admin-layout"
       ]
     },
     "/_authenticate/personal-settings": {
@@ -1900,6 +2089,10 @@ export const routeTree = rootRoute
       "filePath": "auth/SignUpPage/route.tsx",
       "parent": "/_restrict-login-signup/signup"
     },
+    "/_restrict-login-signup/admin/signup": {
+      "filePath": "admin/SignUpPage/route.tsx",
+      "parent": "/_restrict-login-signup"
+    },
     "/_restrict-login-signup/login/ldap": {
       "filePath": "auth/LoginLdapPage/route.tsx",
       "parent": "/_restrict-login-signup/login"
@@ -1916,11 +2109,21 @@ export const routeTree = rootRoute
       "filePath": "auth/SignUpSsoPage/route.tsx",
       "parent": "/_restrict-login-signup/signup"
     },
+    "/shared/secret/$secretId": {
+      "filePath": "public/ViewSharedSecretByIDPage/route.tsx"
+    },
     "/_authenticate/_inject-org-details/organization": {
       "filePath": "",
       "parent": "/_authenticate/_inject-org-details",
       "children": [
         "/_authenticate/_inject-org-details/organization/_layout"
+      ]
+    },
+    "/_authenticate/admin/_admin-layout": {
+      "filePath": "admin/layout.tsx",
+      "parent": "/_authenticate/admin",
+      "children": [
+        "/_authenticate/admin/_admin-layout/"
       ]
     },
     "/_authenticate/personal-settings/_layout": {
@@ -1929,6 +2132,10 @@ export const routeTree = rootRoute
       "children": [
         "/_authenticate/personal-settings/_layout/"
       ]
+    },
+    "/_authenticate/admin/_admin-layout/": {
+      "filePath": "admin/OverviewPage/route.tsx",
+      "parent": "/_authenticate/admin/_admin-layout"
     },
     "/_authenticate/personal-settings/_layout/": {
       "filePath": "user/PersonalSettingsPage/route.tsx",

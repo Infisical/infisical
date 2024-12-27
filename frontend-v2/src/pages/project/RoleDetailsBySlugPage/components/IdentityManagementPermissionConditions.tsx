@@ -16,8 +16,8 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 
-import { TFormSchema } from "../ProjectRoleModifySection.utils";
 import { getConditionOperatorHelperInfo } from "./PermissionConditionHelpers";
+import { TFormSchema } from "./ProjectRoleModifySection.utils";
 
 type Props = {
   position?: number;

@@ -22,7 +22,7 @@ import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/
 import { secretKeys } from "@app/hooks/api/secrets/queries";
 import { SecretType } from "@app/hooks/api/types";
 
-import { PopUpNames, usePopUpAction } from "../SecretMainPage.store";
+import { PopUpNames, usePopUpAction } from "../../SecretMainPage.store";
 import { CopySecretsFromBoard } from "./CopySecretsFromBoard";
 import { PasteSecretEnvModal } from "./PasteSecretEnvModal";
 

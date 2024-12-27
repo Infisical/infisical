@@ -61,7 +61,11 @@ export const PkiCollectionTable = ({ handlePopUpOpen }: Props) => {
                     key={`pki-collection-${pkiCollection.id}`}
                     onClick={() =>
                       navigate({
-                        to: `/${ProjectType.CertificateManager}/${projectId}/pki-collections/${pkiCollection.id}` as const
+                        to: `/${ProjectType.CertificateManager}/$projectId/pki-collections/$collectionId` as const,
+                        params: {
+                          projectId,
+                          collectionId: pkiCollection.id
+                        }
                       })
                     }
                   >

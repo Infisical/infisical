@@ -53,7 +53,7 @@ const Page = () => {
       });
       handlePopUpClose("deleteIdentity");
       navigate({
-        to: `/${currentWorkspace.type}/$projectId/access` as const,
+        to: `/${currentWorkspace.type}/$projectId/access-management` as const,
         params: {
           projectId: workspaceId
         },
@@ -90,7 +90,7 @@ const Page = () => {
           leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
           onClick={() => {
             navigate({
-              to: `/${currentWorkspace.type}/$projectId/access` as const,
+              to: `/${currentWorkspace.type}/$projectId/access-management` as const,
               params: {
                 projectId: workspaceId
               },

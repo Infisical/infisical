@@ -13,11 +13,11 @@ import {
 } from "@app/components/v2";
 import { PermissionConditionOperators } from "@app/context/ProjectPermissionContext/types";
 
-import { TFormSchema } from "../ProjectRoleModifySection.utils";
 import {
   getConditionOperatorHelperInfo,
   renderOperatorSelectItems
 } from "./PermissionConditionHelpers";
+import { TFormSchema } from "./ProjectRoleModifySection.utils";
 
 type Props = {
   position?: number;

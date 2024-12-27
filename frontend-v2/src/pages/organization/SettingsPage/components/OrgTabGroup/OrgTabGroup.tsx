@@ -3,6 +3,7 @@ import { useSearch } from "@tanstack/react-router";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { ROUTE_PATHS } from "@app/const/routes";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 
 import { AuditLogStreamsTab } from "../AuditLogStreamTab";
@@ -24,7 +25,7 @@ const tabs = [
 ];
 export const OrgTabGroup = () => {
   const search = useSearch({
-    from: "/_authenticate/_ctx-org-details/organization/_layout-org/settings/"
+    from: ROUTE_PATHS.Organization.SettingsPage.id
   });
   const [selectedTab, setSelectedTab] = useState(search.selectedTab || tabs[0].key);
 

@@ -6,6 +6,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, IconButton, Modal, ModalContent } from "@app/components/v2";
+import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteFolder, useUpdateFolder } from "@app/hooks/api";
@@ -32,9 +33,9 @@ export const FolderListView = ({
     "updateFolder",
     "deleteFolder"
   ] as const);
-  const navigate = useNavigate({ from: "/secret-manager/$projectId/secrets/$envSlug" });
+  const navigate = useNavigate({ from: ROUTE_PATHS.SecretManager.SecretDashboardPage.full });
   const secretPathQueryparam = useSearch({
-    from: "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secrets/$envSlug/",
+    from: ROUTE_PATHS.SecretManager.SecretDashboardPage.id,
     select: (el) => el.secretPath
   });
 

@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useParams } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
+import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useWorkspace } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { ProjectType } from "@app/hooks/api/workspace/types";
@@ -59,7 +60,7 @@ export default function NavHeader({
   const [isHoveringCopyButton, setIsHoveringCopyButton] = useState(false);
 
   const routerEnvSlug = useParams({
-    from: "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secrets/$envSlug/",
+    from: ROUTE_PATHS.SecretDashboardPage.id,
     select: (el) => el.envSlug
   });
 
