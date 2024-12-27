@@ -1,9 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from '@tanstack/react-router'
 
-import { SettingsPage } from "./SettingsPage";
+import { SettingsPage } from './SettingsPage'
 
 export const Route = createFileRoute(
-  "/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/settings/"
+  '/_authenticate/_inject-org-details/cert-manager/$projectId/_cert-manager-layout/settings',
 )({
-  component: SettingsPage
-});
+  component: SettingsPage,
+})
