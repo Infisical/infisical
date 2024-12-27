@@ -18,7 +18,7 @@ type DeleteModalData = { name: string; id: string };
 export const ServiceTokenSection = withProjectPermission(
   () => {
     const { t } = useTranslation();
-    
+
     const deleteServiceToken = useDeleteServiceToken();
 
     const { popUp, handlePopUpToggle, handlePopUpClose, handlePopUpOpen } = usePopUp([

@@ -29,7 +29,7 @@ const Page = () => {
   const navigate = useNavigate();
   const roleSlug = useParams({
     strict: false,
-    select: (el) => el.roleSlug
+    select: (el) => el.roleSlug as string
   });
   const { currentWorkspace } = useWorkspace();
   const projectId = currentWorkspace?.id || "";
@@ -58,7 +58,7 @@ const Page = () => {
       });
       handlePopUpClose("deleteRole");
       navigate({
-        to: `/${currentWorkspace?.type}/$projectId/access` as const,
+        to: `/${currentWorkspace?.type}/$projectId/access-management` as const,
         params: {
           projectId
         },
@@ -90,7 +90,7 @@ const Page = () => {
             leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
             onClick={() =>
               navigate({
-                to: `/${currentWorkspace?.type}/$projectId/access` as const,
+                to: `/${currentWorkspace?.type}/$projectId/access-management` as const,
                 params: {
                   projectId
                 },

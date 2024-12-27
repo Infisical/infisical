@@ -147,7 +147,7 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
       <div className="text-sm">
         All groups in your organization have already been added to this project.
       </div>
-      <Link to={"/organization/members" as const}>
+      <Link to={"/organization/access-management" as const}>
         <Button variant="outline_bg">Create a new group</Button>
       </Link>
     </div>

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
@@ -32,6 +31,9 @@ import { Identity } from "@app/hooks/api/identities/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
+import { IdentityAuthMethodModal } from "../AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModal";
+import { IdentityModal } from "../AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityModal";
+import { IdentityUniversalAuthClientSecretModal } from "../AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityUniversalAuthClientSecretModal";
 import {
   IdentityAuthenticationSection,
   IdentityClientSecretModal,
@@ -86,7 +88,7 @@ const Page = () => {
 
       handlePopUpClose("deleteIdentity");
       navigate({
-        to: "/organization/members",
+        to: "/organization/access-management",
         search: {
           selectedTab: OrgAccessControlTabSections.Identities
         }
@@ -170,7 +172,7 @@ const Page = () => {
             leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
             onClick={() => {
               navigate({
-                to: "/organization/members",
+                to: "/organization/access-management",
                 search: {
                   selectedTab: OrgAccessControlTabSections.Identities
                 }

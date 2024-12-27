@@ -59,7 +59,10 @@ export const IdentityProjectRow = ({
       onClick={() => {
         if (isAccessible) {
           navigate({
-            to: `/${project?.type}/${project.id}/access` as const,
+            to: `/${project?.type}/$projectId/access-management` as const,
+            params: {
+              projectId: project.id
+            },
             search: {
               selectedTab: TabSections.Identities
             }

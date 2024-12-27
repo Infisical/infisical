@@ -92,7 +92,7 @@ export const OrganizationLayout = () => {
                         </MenuItem>
                       )}
                     </Link>
-                    <Link to="/organization/members">
+                    <Link to="/organization/access-management">
                       {({ isActive }) => (
                         <MenuItem isSelected={isActive} icon="system-outline-96-groups">
                           Access Control

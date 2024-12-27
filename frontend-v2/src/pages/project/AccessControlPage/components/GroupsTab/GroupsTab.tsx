@@ -15,4 +15,3 @@ export const GroupsTab = () => {
     </motion.div>
   );
 };
-

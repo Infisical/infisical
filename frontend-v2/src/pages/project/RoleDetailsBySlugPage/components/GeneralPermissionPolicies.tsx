@@ -18,7 +18,7 @@ import {
   isConditionalSubjects,
   TFormSchema,
   TProjectPermissionObject
-} from "../ProjectRoleModifySection.utils";
+} from "./ProjectRoleModifySection.utils";
 
 type Props<T extends ProjectPermissionSub> = {
   title: string;
@@ -47,7 +47,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
   return (
     <div className="border border-mineshaft-600 bg-mineshaft-800 first:rounded-t-md last:rounded-b-md">
       <div
-        className="flex cursor-pointer items-center space-x-8  px-5 py-4 text-sm text-gray-300"
+        className="flex cursor-pointer items-center space-x-8 px-5 py-4 text-sm text-gray-300"
         role="button"
         tabIndex={0}
         onClick={() => setIsOpen.toggle()}
@@ -74,7 +74,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
           {items.fields.map((el, rootIndex) => (
             <div key={el.id} className="bg-mineshaft-800 p-5 first:rounded-t-md last:rounded-b-md">
               {isConditionalSubjects(subject) && (
-                <div className="mt-4 mb-6 flex w-full items-center text-gray-300">
+                <div className="mb-6 mt-4 flex w-full items-center text-gray-300">
                   <div className="w-1/4">Permission</div>
                   <div className="mr-4 w-1/4">
                     <Controller

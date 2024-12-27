@@ -65,7 +65,7 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
         type: "success"
       });
       handlePopUpToggle("installCaCert", false);
-    } catch (err) {
+    } catch {
       createNotification({
         text: "Failed to install certificate for CA",
         type: "error"

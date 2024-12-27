@@ -6,12 +6,36 @@ const setRoute = <TFull extends FileRouteTypes["fullPaths"], TId extends FileRou
 ) => ({ full, id }) as const;
 
 export const ROUTE_PATHS = Object.freeze({
+  Auth: {
+    LoginSSO: setRoute("/login/sso", "/_restrict-login-signup/login/sso")
+  },
+  Organization: {
+    SecretScanning: setRoute(
+      "/organization/secret-scanning",
+      "/_authenticate/_inject-org-details/organization/_layout/secret-scanning"
+    ),
+    SettingsPage: setRoute(
+      "/organization/settings",
+      "/_authenticate/_inject-org-details/organization/_layout/settings"
+    )
+  },
+  SecretManager: {
+    ApprovalPage: setRoute(
+      "/secret-manager/$projectId/approval",
+      "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/approval"
+    ),
+    SecretDashboardPage: setRoute(
+      "/secret-manager/$projectId/secrets/$envSlug",
+      "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/secrets/$envSlug"
+    )
+  },
   ProviderSuccessPage: setRoute(
     "/login/provider/success",
     "/_restrict-login-signup/login/provider/success"
   ),
   SignUpSsoPage: setRoute("/signup/sso", "/_restrict-login-signup/signup/sso"),
   PasswordResetPage: setRoute("/password-reset", "/_restrict-login-signup/password-reset"),
+  ViewSharedSecretByIDPage: setRoute("/shared/secret/$secretId", "/shared/secret/$secretId"),
   OrgGroupDetailsByIDPage: setRoute(
     "/organization/groups/$groupId",
     "/_authenticate/_inject-org-details/organization/_layout/groups/$groupId"

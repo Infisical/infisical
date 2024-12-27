@@ -28,7 +28,7 @@ const Page = withProjectPermission(
 
     const updateSelectedTab = (tab: string) => {
       navigate({
-        to: `/${currentWorkspace.type}/$projectId/access` as const,
+        to: `/${currentWorkspace.type}/$projectId/access-management` as const,
         search: (prev) => ({ ...prev, selectedTab: tab }),
         params: {
           projectId: currentWorkspace.id

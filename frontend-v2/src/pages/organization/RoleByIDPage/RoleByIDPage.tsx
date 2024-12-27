@@ -56,7 +56,7 @@ export const Page = () => {
 
       handlePopUpClose("deleteOrgRole");
       navigate({
-        to: "/organization/members" as const,
+        to: "/organization/access-management" as const,
         search: {
           selectedTab: OrgAccessControlTabSections.Roles
         }
@@ -85,7 +85,7 @@ export const Page = () => {
             leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
             onClick={() => {
               navigate({
-                to: "/organization/members" as const,
+                to: "/organization/access-management" as const,
                 search: {
                   selectedTab: OrgAccessControlTabSections.Roles
                 }

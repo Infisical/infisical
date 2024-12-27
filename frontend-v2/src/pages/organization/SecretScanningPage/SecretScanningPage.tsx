@@ -4,6 +4,7 @@ import { useSearch } from "@tanstack/react-router";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, NoticeBanner } from "@app/components/v2";
+import { ROUTE_PATHS } from "@app/const/routes";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -22,7 +23,7 @@ import { SecretScanningLogsTable } from "./components";
 export const SecretScanningPage = withPermission(
   () => {
     const queryParams = useSearch({
-      from: "/_authenticate/_ctx-org-details/organization/_layout-org/secret-scanning/"
+      from: ROUTE_PATHS.Organization.SecretScanning.id
     });
     const { config } = useServerConfig();
     const { currentOrg } = useOrganization();

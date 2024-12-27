@@ -13,9 +13,9 @@ import { secretKeys } from "@app/hooks/api/secrets/queries";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { secretSnapshotKeys } from "@app/hooks/api/secretSnapshots/queries";
 import { WsTag } from "@app/hooks/api/types";
-import { AddShareSecretModal } from "@app/routes/_authenticate/_ctx-org-details/organization/_layout-org/secret-sharing/-components/AddShareSecretModal";
+import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/AddShareSecretModal";
 
-import { useSelectedSecretActions, useSelectedSecrets } from "../SecretMainPage.store";
+import { useSelectedSecretActions, useSelectedSecrets } from "../../SecretMainPage.store";
 import { SecretDetailSidebar } from "./SecretDetailSidebar";
 import { SecretItem } from "./SecretItem";
 import { FontAwesomeSpriteSymbols } from "./SecretListView.utils";

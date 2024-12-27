@@ -18,7 +18,7 @@ import {
   PROJECT_PERMISSION_OBJECT,
   projectRoleFormSchema,
   TFormSchema
-} from "../ProjectRoleModifySection.utils";
+} from "./ProjectRoleModifySection.utils";
 
 type Props = {
   onClose: () => void;

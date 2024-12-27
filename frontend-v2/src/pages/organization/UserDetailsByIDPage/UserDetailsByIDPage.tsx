@@ -99,7 +99,7 @@ const Page = withPermission(
 
         handlePopUpClose("removeMember");
         navigate({
-          to: "/organization/members" as const,
+          to: "/organization/access-management" as const,
           search: {
             selectedTab: OrgAccessControlTabSections.Member
           }
@@ -125,7 +125,7 @@ const Page = withPermission(
               leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
               onClick={() => {
                 navigate({
-                  to: "/organization/members" as const,
+                  to: "/organization/access-management" as const,
                   search: {
                     selectedTab: OrgAccessControlTabSections.Member
                   }

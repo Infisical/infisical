@@ -1,14 +1,14 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { zodValidator } from '@tanstack/zod-adapter'
-import { z } from 'zod'
+import { createFileRoute } from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
+import { z } from "zod";
 
-import { SignupSsoPage } from './SignUpSsoPage'
+import { SignupSsoPage } from "./SignUpSsoPage";
 
 const SignupSSOPageQueryParamsSchema = z.object({
-  token: z.string(),
-})
+  token: z.string()
+});
 
-export const Route = createFileRoute('/_restrict-login-signup/signup/sso')({
+export const Route = createFileRoute("/_restrict-login-signup/signup/sso")({
   component: SignupSsoPage,
-  validateSearch: zodValidator(SignupSSOPageQueryParamsSchema),
-})
+  validateSearch: zodValidator(SignupSSOPageQueryParamsSchema)
+});

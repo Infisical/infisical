@@ -134,7 +134,7 @@ export const ProjectLayout = () => {
                       </Link>
                     )}
                     <Link
-                      to={`/${currentWorkspace.type}/$projectId/access` as const}
+                      to={`/${currentWorkspace.type}/$projectId/access-management` as const}
                       params={{
                         projectId: currentWorkspace.id
                       }}

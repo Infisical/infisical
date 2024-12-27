@@ -58,7 +58,7 @@ export const Page = () => {
         type: "success"
       });
       navigate({
-        to: `/${currentWorkspace.type}/$projectId/access` as const,
+        to: `/${currentWorkspace.type}/$projectId/access-management` as const,
         params: {
           projectId: currentWorkspace.id
         }
@@ -90,7 +90,7 @@ export const Page = () => {
           leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
           onClick={() => {
             navigate({
-              to: `/${currentWorkspace.type}/$projectId/access` as const,
+              to: `/${currentWorkspace.type}/$projectId/access-management` as const,
               params: {
                 projectId: currentWorkspace.id
               }

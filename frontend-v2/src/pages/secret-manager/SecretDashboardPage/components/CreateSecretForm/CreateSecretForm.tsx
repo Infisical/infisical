@@ -14,7 +14,7 @@ import { getKeyValue } from "@app/helpers/parseEnvVar";
 import { useCreateSecretV3, useCreateWsTag, useGetWsTags } from "@app/hooks/api";
 import { SecretType } from "@app/hooks/api/types";
 
-import { PopUpNames, usePopUpAction } from "../SecretMainPage.store";
+import { PopUpNames, usePopUpAction } from "../../SecretMainPage.store";
 
 const typeSchema = z.object({
   key: z.string().trim().min(1, { message: "Secret key is required" }),

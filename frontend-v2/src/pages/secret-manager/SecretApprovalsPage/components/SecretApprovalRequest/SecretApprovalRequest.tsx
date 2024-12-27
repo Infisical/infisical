@@ -20,6 +20,7 @@ import {
   EmptyState,
   Skeleton
 } from "@app/components/v2";
+import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -33,7 +34,6 @@ import {
   useGetWorkspaceUsers
 } from "@app/hooks/api";
 import { ApprovalStatus } from "@app/hooks/api/types";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import {
   generateCommitText,
@@ -68,7 +68,7 @@ export const SecretApprovalRequest = () => {
     useGetSecretApprovalRequestCount({ workspaceId });
   const { user: userSession } = useUser();
   const search = useSearch({
-    from: `/_authenticate/_ctx-org-details/${ProjectType.SecretManager}/$projectId/_layout-secret-manager/approval/` as const
+    from: ROUTE_PATHS.SecretManager.ApprovalPage.id
   });
 
   const { permission } = useProjectPermission();

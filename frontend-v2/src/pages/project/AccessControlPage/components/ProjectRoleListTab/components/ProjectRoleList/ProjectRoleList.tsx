@@ -25,7 +25,7 @@ import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@a
 import { usePopUp } from "@app/hooks";
 import { useDeleteProjectRole, useGetProjectRoles } from "@app/hooks/api";
 import { TProjectRole } from "@app/hooks/api/roles/types";
-import { RoleModal } from "@app/routes/_authenticate/_ctx-org-details/organization/_layout-org/roles/$roleId/-components";
+import { RoleModal } from "@app/pages/organization/RoleByIDPage/components";
 
 export const ProjectRoleList = () => {
   const navigate = useNavigate();

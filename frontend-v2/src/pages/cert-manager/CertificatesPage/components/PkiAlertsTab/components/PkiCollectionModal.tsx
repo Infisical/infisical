@@ -76,14 +76,18 @@ export const PkiCollectionModal = ({ popUp, handlePopUpToggle }: Props) => {
         });
       } else {
         // create
-        const { id: createdId } = await createPkiCollection({
+        const { id: collectionId } = await createPkiCollection({
           name,
           description,
           projectId
         });
 
         navigate({
-          to: `/${ProjectType.CertificateManager}/${projectId}/pki-collections/${createdId}` as const
+          to: `/${ProjectType.CertificateManager}/$projectId/pki-collections/$collectionId` as const,
+          params: {
+            projectId,
+            collectionId
+          }
         });
       }
 

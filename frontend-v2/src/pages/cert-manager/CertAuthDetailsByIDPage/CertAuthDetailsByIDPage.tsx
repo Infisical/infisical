@@ -63,7 +63,12 @@ const Page = () => {
       });
 
       handlePopUpClose("deleteCa");
-      navigate({ to: `/${ProjectType.CertificateManager}/${projectId}/certificates` as const });
+      navigate({
+        to: `/${ProjectType.CertificateManager}/$projectId/overview` as const,
+        params: {
+          projectId
+        }
+      });
     } catch {
       createNotification({
         text: "Failed to delete CA",
@@ -82,7 +87,10 @@ const Page = () => {
             leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
             onClick={() =>
               navigate({
-                to: `/${ProjectType.CertificateManager}/${projectId}/certificates` as const
+                to: `/${ProjectType.CertificateManager}/${projectId}/overview` as const,
+                params: {
+                  projectId
+                }
               })
             }
             className="mb-4"
