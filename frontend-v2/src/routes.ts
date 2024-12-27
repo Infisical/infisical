@@ -52,11 +52,11 @@ export const routes = rootRoute("root.tsx", [
         layout("secret-manager-layout", "secret-manager/layout.tsx", [
           route("/overview", "secret-manager/OverviewPage/route.tsx"),
           route("/secrets/$envSlug", "secret-manager/SecretDashboardPage/route.tsx"),
-          route("/access-management", "project/AccessControlPage/route-secret-manager.tsx"),
           route("/allowlist", "secret-manager/IPAllowListPage/route.tsx"),
           route("/approval", "secret-manager/SecretApprovalsPage/route.tsx"),
           route("/secret-rotation", "secret-manager/SecretRotationPage/route.tsx"),
           route("/settings", "secret-manager/SettingsPage/route.tsx"),
+          route("/access-management", "project/AccessControlPage/route-secret-manager.tsx"),
           route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-secret-manager.tsx"),
           route(
             "/identities/$identityId",
@@ -64,46 +64,25 @@ export const routes = rootRoute("root.tsx", [
           ),
           route("/members/$membershipId", "project/MemberDetailsByIDPage/route-secret-manager.tsx")
         ])
+      ]),
+      route("/cert-manager/$projectId", [
+        layout("cert-manager-layout", "cert-manager/layout.tsx", [
+          route("/overview", "cert-manager/CertificatesPage/route.tsx"),
+          route("/ca/$caId", "cert-manager/CertAuthDetailsByIDPage/route.tsx"),
+          route(
+            "/pki-collections/$collectionId",
+            "cert-manager/PkiCollectionDetailsByIDPage/routes.tsx"
+          ),
+          route("/settings", "cert-manager/SettingsPage/route.tsx"),
+          route("/access-management", "project/AccessControlPage/route-cert-manager.tsx"),
+          route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-cert-manager.tsx"),
+          route(
+            "/identities/$identityId",
+            "project/IdentityDetailsByIDPage/route-cert-manager.tsx"
+          ),
+          route("/members/$membershipId", "project/MemberDetailsByIDPage/route-cert-manager.tsx")
+        ])
       ])
     ])
   ])
 ]);
-
-// '/_authenticate': typeof AuthenticateRouteWithChildren
-//   '/_authenticate/_ctx-org-details': typeof AuthenticateCtxOrgDetailsRouteWithChildren
-//   '/_authenticate/cli-redirect': typeof AuthenticateCliRedirectRoute
-//   '/_authenticate/personal-settings': typeof AuthenticatePersonalSettingsRouteWithChildren
-//   '/_authenticate/personal-settings/_personal-settings-layout': typeof authenticatePersonalSettingsLayoutRouteWithChildren
-//   '/_authenticate/_ctx-org-details/organization': typeof AuthenticateCtxOrgDetailsOrganizationRouteWithChildren
-//   '/_authenticate/_ctx-org-details/organization/_layout-org': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgRouteWithChildren
-//   '/_authenticate/personal-settings/_personal-settings-layout/': typeof authenticatePersonalSettingsIndexRoute
-//   '/_authenticate/_ctx-org-details/secret-manager/$projectId': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdRouteWithChildren
-//   '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRouteWithChildren
-//   '/_authenticate/_ctx-org-details/organization/_layout-org/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgIndexRoute
-//   '/_authenticate/_ctx-org-details/organization/_layout-org/cert-manager/overview': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgCertManagerOverviewRoute
-//   '/_authenticate/_ctx-org-details/organization/_layout-org/kms/overview': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgKmsOverviewRoute
-//   '/_authenticate/_ctx-org-details/organization/_layout-org/secret-manager/overview': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretManagerOverviewRoute
-//   '/_authenticate/_ctx-org-details/organization/_layout-org/admin/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgAdminIndexRoute
-//   '/_authenticate/_ctx-org-details/organization/_layout-org/audit-logs/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgAuditLogsIndexRoute
-//   '/_authenticate/_ctx-org-details/organization/_layout-org/billing/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgBillingIndexRoute
-//   '/_authenticate/_ctx-org-details/organization/_layout-org/members/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgMembersIndexRoute
-//   '/_authenticate/_ctx-org-details/organization/_layout-org/none/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgNoneIndexRoute
-//   '/_authenticate/_ctx-org-details/organization/_layout-org/overview/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgOverviewIndexRoute
-//   '/_authenticate/_ctx-org-details/organization/_layout-org/secret-scanning/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretScanningIndexRoute
-//   '/_authenticate/_ctx-org-details/organization/_layout-org/secret-sharing/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgSecretSharingIndexRoute
-//   '/_authenticate/_ctx-org-details/organization/_layout-org/settings/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgSettingsIndexRoute
-//   '/_authenticate/_ctx-org-details/organization/_layout-org/groups/$groupId/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgGroupsGroupIdIndexRoute
-//   '/_authenticate/_ctx-org-details/organization/_layout-org/identities/$identityId/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgIdentitiesIdentityIdIndexRoute
-//   '/_authenticate/_ctx-org-details/organization/_layout-org/memberships/$membershipId/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgMembershipsMembershipIdIndexRoute
-//   '/_authenticate/_ctx-org-details/organization/_layout-org/roles/$roleId/': typeof AuthenticateCtxOrgDetailsOrganizationLayoutOrgRolesRoleIdIndexRoute
-//   '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/access/': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAccessIndexRoute
-//   '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/allowlist/': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerAllowlistIndexRoute
-//   '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/approval/': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerApprovalIndexRoute
-//   '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/overview/': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerOverviewIndexRoute
-//   '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secret-rotation/': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretRotationIndexRoute
-//   '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/settings/': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSettingsIndexRoute
-//   '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/identities/$identityId/': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerIdentitiesIdentityIdIndexRoute
-//   '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/members/$membershipId/': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerMembersMembershipIdIndexRoute
-//   '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/roles/$roleSlug/': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerRolesRoleSlugIndexRoute
-//   '/_authenticate/_ctx-org-details/secret-manager/$projectId/_layout-secret-manager/secrets/$envSlug/': typeof AuthenticateCtxOrgDetailsSecretManagerProjectIdLayoutSecretManagerSecretsEnvSlugIndexRoute
-// }
