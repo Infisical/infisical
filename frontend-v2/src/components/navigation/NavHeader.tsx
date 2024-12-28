@@ -60,7 +60,7 @@ export default function NavHeader({
   const [isHoveringCopyButton, setIsHoveringCopyButton] = useState(false);
 
   const routerEnvSlug = useParams({
-    from: ROUTE_PATHS.SecretDashboardPage.id,
+    strict: false,
     select: (el) => el.envSlug
   });
 
@@ -125,7 +125,7 @@ export default function NavHeader({
           </div>
         </>
       )}
-      {isFolderMode && Boolean(secretPathSegments.length) && (
+      {isFolderMode && routerEnvSlug && Boolean(secretPathSegments.length) && (
         <div className="flex items-center space-x-3">
           <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-1.5 text-xs text-gray-400" />
           <Link

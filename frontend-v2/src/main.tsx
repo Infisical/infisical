@@ -27,7 +27,15 @@ const router = createRouter({
   )
 });
 
-router.subscribe("onBeforeLoad", ({ pathChanged }) => pathChanged && NProgress.start());
+router.subscribe("onBeforeLoad", ({ pathChanged }) => {
+  if (pathChanged) {
+    NProgress.start();
+    const timer = setTimeout(() => {
+      clearTimeout(timer);
+      NProgress.done();
+    }, 3000);
+  }
+});
 router.subscribe("onLoad", () => NProgress.done());
 // Register the router instance for type safety
 declare module "@tanstack/react-router" {
