@@ -57,7 +57,7 @@ import { Route as secretManagerSettingsPageRouteImport } from './pages/secret-ma
 import { Route as secretManagerSecretRotationPageRouteImport } from './pages/secret-manager/SecretRotationPage/route'
 import { Route as secretManagerOverviewPageRouteImport } from './pages/secret-manager/OverviewPage/route'
 import { Route as secretManagerSecretApprovalsPageRouteImport } from './pages/secret-manager/SecretApprovalsPage/route'
-import { Route as secretManagerIPAllowListPageRouteImport } from './pages/secret-manager/IPAllowListPage/route'
+import { Route as secretManagerIPAllowlistPageRouteImport } from './pages/secret-manager/IPAllowlistPage/route'
 import { Route as organizationSecretManagerOverviewPageRouteImport } from './pages/organization/SecretManagerOverviewPage/route'
 import { Route as organizationRoleByIDPageRouteImport } from './pages/organization/RoleByIDPage/route'
 import { Route as organizationUserDetailsByIDPageRouteImport } from './pages/organization/UserDetailsByIDPage/route'
@@ -448,8 +448,8 @@ const secretManagerSecretApprovalsPageRouteRoute =
     getParentRoute: () => secretManagerLayoutRoute,
   } as any)
 
-const secretManagerIPAllowListPageRouteRoute =
-  secretManagerIPAllowListPageRouteImport.update({
+const secretManagerIPAllowlistPageRouteRoute =
+  secretManagerIPAllowlistPageRouteImport.update({
     id: '/allowlist',
     path: '/allowlist',
     getParentRoute: () => secretManagerLayoutRoute,
@@ -1014,7 +1014,7 @@ declare module '@tanstack/react-router' {
       id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/allowlist'
       path: '/allowlist'
       fullPath: '/secret-manager/$projectId/allowlist'
-      preLoaderRoute: typeof secretManagerIPAllowListPageRouteImport
+      preLoaderRoute: typeof secretManagerIPAllowlistPageRouteImport
       parentRoute: typeof secretManagerLayoutImport
     }
     '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/approval': {
@@ -1301,7 +1301,7 @@ const AuthenticateInjectOrgDetailsKmsProjectIdRouteWithChildren =
   )
 
 interface secretManagerLayoutRouteChildren {
-  secretManagerIPAllowListPageRouteRoute: typeof secretManagerIPAllowListPageRouteRoute
+  secretManagerIPAllowlistPageRouteRoute: typeof secretManagerIPAllowlistPageRouteRoute
   secretManagerSecretApprovalsPageRouteRoute: typeof secretManagerSecretApprovalsPageRouteRoute
   secretManagerOverviewPageRouteRoute: typeof secretManagerOverviewPageRouteRoute
   secretManagerSecretRotationPageRouteRoute: typeof secretManagerSecretRotationPageRouteRoute
@@ -1314,8 +1314,8 @@ interface secretManagerLayoutRouteChildren {
 }
 
 const secretManagerLayoutRouteChildren: secretManagerLayoutRouteChildren = {
-  secretManagerIPAllowListPageRouteRoute:
-    secretManagerIPAllowListPageRouteRoute,
+  secretManagerIPAllowlistPageRouteRoute:
+    secretManagerIPAllowlistPageRouteRoute,
   secretManagerSecretApprovalsPageRouteRoute:
     secretManagerSecretApprovalsPageRouteRoute,
   secretManagerOverviewPageRouteRoute: secretManagerOverviewPageRouteRoute,
@@ -1563,7 +1563,7 @@ export interface FileRoutesByFullPath {
   '/organization/members/$membershipId': typeof organizationUserDetailsByIDPageRouteRoute
   '/organization/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
   '/organization/secret-manager/overview': typeof organizationSecretManagerOverviewPageRouteRoute
-  '/secret-manager/$projectId/allowlist': typeof secretManagerIPAllowListPageRouteRoute
+  '/secret-manager/$projectId/allowlist': typeof secretManagerIPAllowlistPageRouteRoute
   '/secret-manager/$projectId/approval': typeof secretManagerSecretApprovalsPageRouteRoute
   '/secret-manager/$projectId/overview': typeof secretManagerOverviewPageRouteRoute
   '/secret-manager/$projectId/secret-rotation': typeof secretManagerSecretRotationPageRouteRoute
@@ -1630,7 +1630,7 @@ export interface FileRoutesByTo {
   '/organization/members/$membershipId': typeof organizationUserDetailsByIDPageRouteRoute
   '/organization/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
   '/organization/secret-manager/overview': typeof organizationSecretManagerOverviewPageRouteRoute
-  '/secret-manager/$projectId/allowlist': typeof secretManagerIPAllowListPageRouteRoute
+  '/secret-manager/$projectId/allowlist': typeof secretManagerIPAllowlistPageRouteRoute
   '/secret-manager/$projectId/approval': typeof secretManagerSecretApprovalsPageRouteRoute
   '/secret-manager/$projectId/overview': typeof secretManagerOverviewPageRouteRoute
   '/secret-manager/$projectId/secret-rotation': typeof secretManagerSecretRotationPageRouteRoute
@@ -1710,7 +1710,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/organization/_layout/members/$membershipId': typeof organizationUserDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/organization/_layout/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
   '/_authenticate/_inject-org-details/organization/_layout/secret-manager/overview': typeof organizationSecretManagerOverviewPageRouteRoute
-  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/allowlist': typeof secretManagerIPAllowListPageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/allowlist': typeof secretManagerIPAllowlistPageRouteRoute
   '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/approval': typeof secretManagerSecretApprovalsPageRouteRoute
   '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/overview': typeof secretManagerOverviewPageRouteRoute
   '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/secret-rotation': typeof secretManagerSecretRotationPageRouteRoute
@@ -2310,7 +2310,7 @@ export const routeTree = rootRoute
       "parent": "/_authenticate/_inject-org-details/organization/_layout"
     },
     "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/allowlist": {
-      "filePath": "secret-manager/IPAllowListPage/route.tsx",
+      "filePath": "secret-manager/IPAllowlistPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout"
     },
     "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/approval": {
