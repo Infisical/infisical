@@ -1,0 +1,344 @@
+{
+  "activity": {
+    "title": "Audit Logs",
+    "subtitle": "Event history for this Infisical project.",
+    "event": {
+      "readSecrets": "Secrets Viewed",
+      "updateSecrets": "Secrets Updated",
+      "addSecrets": "Secrets Added",
+      "deleteSecrets": "Secrets Deleted"
+    },
+    "ip-address": "IP Address"
+  },
+  "billing": {
+    "title": "Usage & Billing",
+    "description": "View and manage your organization's subscription here",
+    "subscription": "Subscription",
+    "starter": {
+      "name": "Starter",
+      "price-explanation": "up to 5 team members",
+      "text": "Manage up to 3 project with up to 5 team members for free!",
+      "subtext": ""
+    },
+    "professional": {
+      "name": "Professional",
+      "price-explanation": "/member/month",
+      "subtext": "Includes unlimited projects & members.",
+      "text": "Keep up with key management as you grow."
+    },
+    "enterprise": {
+      "name": "Enterprise",
+      "text": "Keep up with key management as you grow."
+    },
+    "current-usage": "Current Usage",
+    "free": "Free",
+    "downgrade": "Downgrade",
+    "upgrade": "Upgrade",
+    "learn-more": "Learn More",
+    "custom-pricing": "Custom Pricing",
+    "schedule-demo": "Schedule a Demo"
+  },
+  "common": {
+    "head-title": "{{title}} | Infisical",
+    "error_project-already-exists": "A project with this name already exists.",
+    "no-mobile": " To use Infisical, please log in through a device with larger dimensions. ",
+    "email": "Email",
+    "password": "Password",
+    "first-name": "First Name",
+    "last-name": "Last Name",
+    "logout": "Log Out",
+    "validate-required": "Please input your {{name}}",
+    "maintenance-alert": "We are experiencing minor technical difficulties. We are working on solving it right now. Please come back in a few minutes.",
+    "click-to-copy": "Click to copy",
+    "project-id": "Project ID",
+    "save-changes": "Save Changes",
+    "saved": "Saved",
+    "drop-zone": "Drag and drop a .env, .json, or .yml file here.",
+    "drop-zone-keys": "Drag and drop a .env, .json, or .yml file here to add more secrets.",
+    "role": "Role",
+    "role_admin": "admin",
+    "display-name": "Display Name",
+    "environment": "Environment",
+    "expired-in": "Expires in",
+    "language": "Language",
+    "search": "Search...",
+    "note": "Note",
+    "view-more": "View More",
+    "end-of-history": "End of History",
+    "select-event": "Select an event",
+    "event": "Event",
+    "user": "User",
+    "source": "Source",
+    "time": "Time",
+    "timestamp": "Timestamp"
+  },
+  "dashboard": {
+    "title": "Secrets",
+    "og-title": "Manage your .env files in seconds",
+    "og-description": "Infisical a simple end-to-end encrypted platform that enables teams to sync and manage their .env files.",
+    "search-keys": "Search keys...",
+    "add-key": "Add Key",
+    "personal": "Personal",
+    "personal-description": "Personal keys are only visible to you",
+    "shared": "Shared",
+    "shared-description": "Shared keys are visible to your whole team",
+    "make-shared": "Make Shared",
+    "make-personal": "Make Personal",
+    "add-secret": "Add a new secret",
+    "check-docs": {
+      "button": "Check Docs",
+      "title": "Good job!",
+      "line1": "Congrats on adding more secrets.",
+      "line2": "Here is how to connect them to your codebase."
+    },
+    "sidebar": {
+      "secret": "Secret",
+      "key": "Key",
+      "value": "Value",
+      "override": "Override value with a personal value",
+      "version-history": "Version History",
+      "comments": "Comments & Notes",
+      "personal-explanation": "This secret is personal. It is not shared with any of your teammates.",
+      "generate-random-hex": "Generate Random Hex",
+      "digits": "digits",
+      "delete-key-dialog": {
+        "title": "Delete Key",
+        "confirm-delete-message": "Are you sure you want to delete this secret? This cannot be undone."
+      }
+    }
+  },
+  "approval": {
+    "title": "Admin Panel",
+    "og-title": "Manage your secret change management",
+    "og-description": "Infisical a simple end-to-end encrypted platform that enables teams to sync and manage their .env files."
+  },
+  "integrations": {
+    "title": "Project Integrations",
+    "description": "Manage your integrations of Infisical with third-party services.",
+    "no-integrations1": "You don't have any integrations set up yet. When you do, they will appear here.",
+    "no-integrations2": "To start, click on any of the options below. It takes 5 clicks to set up.",
+    "available": "Platform & Cloud Integrations",
+    "available-text1": "Click on the integration you want to connect. This will let your environment variables flow automatically into selected third-party services.",
+    "available-text2": "Note: during an integration with Heroku, for security reasons, it is impossible to maintain end-to-end encryption. In theory, this lets Infisical decrypt yor environment variables. In practice, we can assure you that this will never be done, and it allows us to protect your secrets from bad actors online. The core Infisical service will always stay end-to-end encrypted. With any questions, reach out support@infisical.com.",
+    "cloud-integrations": "Native Integrations",
+    "framework-integrations": "Framework Integrations",
+    "click-to-start": "Click on an integration to begin syncing secrets to it.",
+    "click-to-setup": "Click on a framework to get the setup instructions.",
+    "grant-access-to-secrets": "Grant Infisical access to your secrets",
+    "why-infisical-needs-access": "Most cloud integrations require Infisical to be able to decrypt your secrets so they can be forwarded over.",
+    "grant-access-button": "Grant access"
+  },
+  "login": {
+    "title": "Login",
+    "og-title": "Log In to Infisical",
+    "og-description": "Infisical a simple end-to-end encrypted platform that enables teams to sync and manage their .env files.",
+    "login": "Log In",
+    "need-account": "Need an Infisical account?",
+    "create-account": "Create an account",
+    "forgot-password": "Forgot your password?",
+    "error-login": "Wrong credentials.",
+    "continue-with-google": "Continue with Google",
+    "continue-with-email": "Continue with Email",
+    "other-option": "Log in with another option"
+  },
+  "mfa": {
+    "title": "Sign Up",
+    "og-title": "Replace .env files with 1 line of code. Sign Up for Infisical in 3 minutes.",
+    "og-description": "Infisical a simple end-to-end encrypted platform that enables teams to sync and manage API-keys and environemntal variables. Works with Node.js, Next.js, Gatsby, Nest.js...",
+    "signup": "Sign Up",
+    "already-have-account": "Have an account? Log in",
+    "forgot-password": "Forgot your password?",
+    "verify": "Verify",
+    "step1-start": "Let's get started",
+    "step1-privacy": "By creating an account, you agree to our Terms and have read and acknowledged the Privacy Policy.",
+    "step1-submit": "Get Started",
+    "step2-message": "We've sent a verification code to",
+    "step2-code-error": "Oops. Your code is wrong. Tries left:",
+    "step2-resend-alert": "Don't see the code?",
+    "step2-resend-submit": "Resend",
+    "step2-resend-progress": "Resending...",
+    "step2-spam-alert": "Make sure to check your spam inbox.",
+    "step3-message": "Almost there!",
+    "step4-message": "Save your Emergency Kit",
+    "step4-description1": "If you get locked out of your account, your Emergency Kit is the only way to sign in.",
+    "step4-description2": "We recommend you download it and keep it somewhere safe.",
+    "step4-description3": "It contains your Secret Key which we cannot access or recover for you if you lose it.",
+    "step4-download": "Download PDF",
+    "step5-send-invites": "Send Invites",
+    "step5-invite-team": "Invite your team",
+    "step5-subtitle": "Infisical is meant to be used with your teammates. Invite them to test it out.",
+    "step5-skip": "Skip"
+  },
+  "nav": {
+    "support": {
+      "slack": "Join Slack Forum",
+      "docs": "Read Docs",
+      "issue": "Open a Github Issue",
+      "email": "Send us an Email"
+    },
+    "user": {
+      "signed-in-as": "SIGNED IN AS",
+      "current-organization": "CURRENT ORGANIZATION",
+      "usage-billing": "Usage & Billing",
+      "invite": "Invite Members",
+      "other-organizations": "OTHER ORGANIZATION"
+    },
+    "menu": {
+      "project": "PROJECT",
+      "secrets": "Secrets",
+      "members": "Members",
+      "integrations": "Integrations",
+      "project-settings": "Project Settings"
+    }
+  },
+  "section": {
+    "api-key": {
+      "api-keys": "Service Tokens",
+      "api-keys-description": "Every service token is specific to you, a certain project and a certain environment within this project.",
+      "add-new": "Add New Token",
+      "add-dialog": {
+        "title": "Add an API Key",
+        "description": "Specify the name and expiry period. When an API key is generated, you will only be able to see it once before it disappears. Make sure to save it somewhere.",
+        "name": "API Key Name",
+        "add": "Add API Key",
+        "copy-service-token": "Copy your API key",
+        "copy-service-token-description": "Once you close this popup, you will never see your API key again"
+      }
+    },
+    "incident": {
+      "incident-contacts": "Incident Contacts",
+      "incident-contacts-description": "These contacts will be notified in the unlikely event of a severe incident.",
+      "no-incident-contacts": "No incident contacts found.",
+      "add-contact": "Add Contact",
+      "add-dialog": {
+        "title": "Add an Incident Contact",
+        "description": "This contact will be notified in the unlikely event of a severe incident.",
+        "add-incident": "Add Incident Contact"
+      }
+    },
+    "members": {
+      "add-member": "Add Member",
+      "org-members": "Organization Members",
+      "org-members-description": "Manage members of your organization. These users could afterwards be formed into projects.",
+      "search-members": "Search members...",
+      "add-dialog": {
+        "add-member-to-project": "Add a member to your project",
+        "already-all-invited": "All the users in your organization are already invited.",
+        "add-user-org-first": "Add more users to the organization first.",
+        "user-will-email": "The user will receive an email with the instructions.",
+        "looking-add": "<0>If you are looking to add users to your org,</0><1>click here</1>",
+        "add-user-to-org": "Add Users to Organization"
+      }
+    },
+    "password": {
+      "password": "Password",
+      "change": "Change Password",
+      "current": "Current password",
+      "current-wrong": "The current password may be wrong",
+      "new": "New password",
+      "validate-base": "Password should contain:",
+      "validate-tooShort": "at least 14 characters",
+      "validate-tooLong": "at most 100 characters",
+      "validate-noLetterChar": "at least 1 letter character",
+      "validate-noNumOrSpecialChar": "at least 1 number or special character",
+      "validate-repeatedChar": "at most 3 repeated, consecutive characters",
+      "validate-escapeChar": "No escape characters allowed.",
+      "validate-lowEntropy": "Password contains personal info.",
+      "validate-breached": "Password was found in a data breach."
+    },
+    "token": {
+      "service-tokens": "Service Tokens",
+      "service-tokens-description": "Every service token is specific to you, a certain project and a certain environment within this project.",
+      "add-new": "Add New Token",
+      "add-dialog": {
+        "title": "Add a service token for {{target}}",
+        "description": "When a token is generated, you will only be able to see it once before it disappears. Make sure to save it somewhere.",
+        "name": "Service Token Name",
+        "add": "Add Service Token",
+        "copy-service-token": "Copy your service token",
+        "copy-service-token-description": "Once you close this popup, you will never see your service token again"
+      }
+    }
+  },
+  "settings": {
+    "webhooks": {
+      "title": "Webhooks",
+      "description": "Manage webhooks to setup deployment hooks for your various integrations."
+    },
+    "members": {
+      "title": "Project Members",
+      "description": "This page shows the members of the selected project, and allows you to modify their permissions."
+    },
+    "org": {
+      "title": "Organization Settings",
+      "description": "Manage members of your organization. These users could afterwards be formed into projects."
+    },
+    "personal": {
+      "title": "Personal Settings",
+      "description": "View and manage your personal information here.",
+      "emergency": {
+        "name": "Emergency Kit",
+        "text1": "Your Emergency Kit contains the information you’ll need to sign in to your Infisical account.",
+        "text2": "Only the latest issued Emergency Kit remains valid. To get a new Emergency Kit, verify your password.",
+        "download": "Download Emergency Kit"
+      },
+      "change-language": "Change Language",
+      "api-keys": {
+        "title": "API Keys",
+        "description": "Manage your personal API Keys to access the Infisical API.",
+        "add-new": "Add new"
+      }
+    },
+    "project": {
+      "title": "Project Settings",
+      "description": "These settings only apply to the currently selected Project.",
+      "danger-zone": "Danger Zone",
+      "delete-project": "Delete Project",
+      "project-to-delete": "Project to be Deleted",
+      "danger-zone-note": "As soon as you delete this project, you will not be able to undo it. This will immediately remove all the keys. If you still want to do that, please enter the name of the project below.",
+      "delete-project-note": "Note: You can only delete a project in case you have more than one",
+      "project-id-description": "To integrate Infisical into your code base and get automatic injection of environmental variables, you should use the following Project ID.",
+      "project-id-description2": "For more guidance, including code snipets for various languages and frameworks, see ",
+      "auto-generated": "This is your project's auto-generated unique identifier. It can't be changed.",
+      "docs": "Infisical Docs",
+      "auto-capitalization": "Auto Capitalization",
+      "auto-capitalization-description": "According to standards, Infisical will automatically capitalize your keys. If you want to disable this feature, you can do so here."
+    }
+  },
+  "signup": {
+    "title": "Sign Up",
+    "og-title": "Replace .env files with 1 line of code. Sign Up for Infisical in 3 minutes.",
+    "og-description": "Infisical a simple end-to-end encrypted platform that enables teams to sync and manage API-keys and environemntal variables. Works with Node.js, Next.js, Gatsby, Nest.js...",
+    "signup": "Sign Up",
+    "already-have-account": "Have an account? Log in",
+    "forgot-password": "Forgot your password?",
+    "initial-title": "Create your Infisical account",
+    "continue-with-google": "Continue with Google",
+    "continue-with-email": "Continue with Email",
+    "create-policy": "By signing up, you agree to our Terms of Service and Privacy Policy.",
+    "verify": "Verify",
+    "step1-start": "Let's get started",
+    "step1-privacy": "By creating an account, you agree to our Terms and have read and acknowledged the Privacy Policy.",
+    "step1-submit": "Get Started",
+    "step2-message": "We've sent a verification code to",
+    "step2-code-error": "Oops. Your code is wrong. Please try again.",
+    "step2-resend-alert": "Don't see the code?",
+    "step2-resend-submit": "Resend",
+    "step2-resend-progress": "Resending...",
+    "step2-spam-alert": "Make sure to check your spam inbox.",
+    "step3-message": "Almost there!",
+    "step4-message": "Save your Emergency Kit",
+    "step4-description1": "If you get locked out of your account, your Emergency Kit is the only way to sign in.",
+    "step4-description2": "We recommend you download it and keep it somewhere safe.",
+    "step4-description3": "It contains your Secret Key which we cannot access or recover for you if you lose it.",
+    "step4-download": "Download PDF",
+    "step5-send-invites": "Send Invites",
+    "step5-invite-team": "Invite your team",
+    "step5-subtitle": "Infisical is meant to be used with your teammates. Invite them to test it out.",
+    "step5-skip": "Skip"
+  },
+  "admin": {
+    "signup-title": "Admin Sign Up",
+    "dashboard": "Admin Dashboard"
+  }
+}

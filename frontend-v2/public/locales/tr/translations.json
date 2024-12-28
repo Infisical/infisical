@@ -1,0 +1,322 @@
+{
+  "activity": {
+    "title": "Aktivite Günlükleri",
+    "subtitle": "Bu Infisical projesi için Olay Geçmişi.",
+    "event": {
+      "readSecrets": "Sırlar Görüntülendi",
+      "updateSecrets": "Sırlar Güncellendi",
+      "addSecrets": "Sırlar Eklendi",
+      "deleteSecrets": "Sırlar Silindi"
+    },
+    "ip-address": "IP Addresi"
+  },
+  "billing": {
+    "title": "Planlar & Fiyatlandırma",
+    "description": "Kuruluşunuzun aboneliğini buradan görüntüleyin ve yönetin",
+    "subscription": "Abonelik",
+    "starter": {
+      "name": "Başlangıç",
+      "price-explanation": "5 takım üyesine kadar",
+      "text": "5 kişiyle herhangi bir projeyi ücretsiz yönet!",
+      "subtext": "Sonrasında aylık her üye başına 5$."
+    },
+    "professional": {
+      "name": "Profesyonel",
+      "price-explanation": "/üye/ay",
+      "subtext": "Sınırsız miktarda üye ve proje dahildir.",
+      "text": "Anahtar yönetimine siz büyüdükçe ayak uydurun.."
+    },
+    "enterprise": {
+      "name": "Kurumsal",
+      "text": "Anahtar yönetimine siz büyüdükçe ayak uydurun."
+    },
+    "current-usage": "Mevcut Plan",
+    "free": "Ücretsiz",
+    "downgrade": "Düşürün",
+    "upgrade": "Yükseltin",
+    "learn-more": "Daha fazlasını öğrenim",
+    "custom-pricing": "Özel Fiyatlandırma",
+    "schedule-demo": "Bir Deneme Sürümü Planlayın "
+  },
+  "common": {
+    "head-title": "{{title}} | Infisical",
+    "error_project-already-exists": "Bu isimle bir proje zaten mevcut.",
+    "no-mobile": " Infisical'ı kullanmak için, lütfen daha büyük boyutlara sahip bir cihaz üzerinden giriş yapın. ",
+    "email": "Email",
+    "password": "Şifre",
+    "first-name": "Adınız",
+    "last-name": "Soyadınız",
+    "logout": "Çıkış Yap",
+    "validate-required": "Lütfen girin, sahip olduğunuz {{name}}",
+    "maintenance-alert": "Ufak teknik problemler yaşıyoruz. Sorunu çözmek üzere çalışıyoruz. Lütfen birkaç dakika içerisinde yeniden deneyin.",
+    "click-to-copy": "Kopyala",
+    "project-id": "Project ID",
+    "save-changes": "Değişiklikleri Kaydet",
+    "saved": "Kaydedildi",
+    "drop-zone": ".env yada .yaml dosyasını buraya sürükleyin",
+    "drop-zone-keys": "Daha çok anahatar eklemek için bir .env yada .yaml dosyasını sürükleyin.",
+    "role": "Rol",
+    "role_admin": "yönetici",
+    "display-name": "Ekran Adı",
+    "environment": "Environment",
+    "expired-in": "Süresi geçicek",
+    "language": "Dil",
+    "search": "Ara...",
+    "note": "Not",
+    "view-more": "Daha Fazla Göster",
+    "end-of-history": "Geçmişin Sonu",
+    "select-event": "Bir olay seçin",
+    "event": "Olay",
+    "user": "Kullanıcı",
+    "source": "Kaynak",
+    "time": "Zaman",
+    "timestamp": "Zaman Damgası"
+  },
+  "dashboard": {
+    "title": "Sırlar",
+    "og-title": "Saniyeler içerisinde .env dosyalarınızı yönetin",
+    "og-description": "Infisical takımların .env dosyalarını senkronize etmelerini ve yönetmelerini sağlayan uçtan uca şifrelenmiş basit bir platformdur",
+    "search-keys": "Anahtarları ara...",
+    "add-key": "Anahtar Ekle",
+    "personal": "Kişisel",
+    "personal-description": "Kişisel anahtarlar sadece sana görünür",
+    "shared": "Paylaşılan",
+    "shared-description": "Paylaşılan anahatarlar tüm takımına görünür",
+    "make-shared": "Paylaşılan Yap",
+    "make-personal": "Kişisel Yap",
+    "add-secret": "Yeni bir sır ekle",
+    "check-docs": {
+      "button": "Dokümanları Kontrol Et",
+      "title": "İyi iş!",
+      "line1": "Tebrikler, yeni anahtarlar eklediniz.",
+      "line2": "Bunları kendi Codebase' inize nasıl bağlarsınız, işte böyle."
+    },
+    "sidebar": {
+      "secret": "Sır",
+      "key": "Anahtar",
+      "value": "Değer",
+      "override": "Bu değerin üzerine bir kişisel değer yazın ",
+      "version-history": "Versiyon Geçmişi",
+      "comments": "Yorumlar & Notlar",
+      "personal-explanation": "Bu bir kişisel sır. Herhangi bir takım üyesi ile paylaşılmaz.",
+      "generate-random-hex": "Rastegele hex oluştur",
+      "digits": "basamak",
+      "delete-key-dialog": {
+        "title": "Anahtarı Sil",
+        "confirm-delete-message": "Bu sırrı silmek istediğinden emin misin? Bu işlem geri alınamaz."
+      }
+    }
+  },
+  "integrations": {
+    "title": "Proje Entegrasyonları",
+    "description": "Infisical'ın üçüncü taraf hizmetlerle olan entegrasyonlarınızı yönetin.",
+    "no-integrations1": "Henüz ayarlanmış bir entegrasyonunuz yok. Oluşturduğunuz zaman, burada görünecekler.",
+    "no-integrations2": "Başlamak için aşağıdaki seçeneklerden herhangi birine tıklayın. Sadece 5 tıklama ile kurulumu halledin.",
+    "available": "Platform & Cloud Entegrasyonları",
+    "available-text1": "Bağlanmak istediğiniz entegrasyona tıklayın. Bu, ortam değişkenlerinizin seçilen üçüncü taraf hizmetlere otomatik olarak akmasını sağlar.",
+    "available-text2": "Not: Heroku ile entegrasyon sırasında güvenlik nedenleriyle uçtan uca şifrelemenin sürdürülmesi mümkün değildir. Teorik olarak bu, Infisical'ın ortam değişkenlerinin şifresini çözmesine izin verir. Pratikte biz bunun asla yapılmayacağının garantisini verebiliriz ve bu durum sırlarınızı çevrimiçi kötü niyetlilerden korumamıza olanak tanır. Çekirdek Infisical hizmeti her zaman uçtan uca şifreli kalacaktır. Sorularınız için support@infisical.com adresine ulaşın.",
+    "cloud-integrations": "Cloud Entegrasyonları",
+    "framework-integrations": "Framework Entegrasyonları",
+    "click-to-start": "Sırlarınızı senkronize etmeye başlamak için bir entegrasyona tıklayın.",
+    "click-to-setup": "Kurulum talimatlarını almak için bir frameworke tıklayın.",
+    "grant-access-to-secrets": "Infisical'a sırlarınıza erişim izni verin",
+    "why-infisical-needs-access": "Çoğu cloud entegrasyonu, Infisical'ın sırlarınızı aktarabilmek için sırlarınızı deşifre etmesini gerektirir.",
+    "grant-access-button": "Erişim izni ver"
+  },
+  "login": {
+    "title": "Giriş Yap",
+    "og-title": "Infisical'a Giriş Yap",
+    "og-description": "Infisical ekiplerin .env dosyalarını senkronize etmelerini ve yönetmelerini sağlayan uçtan uca şifrelenmiş basit bir platformdur",
+    "login": "Giriş Yap",
+    "need-account": "Bir Infisical hesabına mı ihtiyacınız var?",
+    "create-account": "Hesap oluşturun",
+    "forgot-password": "Şifrenizi mi unuttunuz?",
+    "error-login": "Kimlik bilgileri yanlış."
+  },
+  "mfa": {
+    "title": "Kayıt olun",
+    "og-title": "Tek satır kodla .env dosyalarını değiştirin. 3 dakika içerinde Infisical'a kayıt olun.",
+    "og-description": "Infisical takımların API anahtarlarını ve ortam değişkenlerini yönetmelerini ve senkronize etmelerini sağlayan basit, uçtan uca şifrelenmiş bir platformdur. Node.js, Next.js, Gatsby, Nest.js ve daha fazlası ile çalışır.",
+    "signup": "Kayıt ol",
+    "already-have-account": "Hesabın var mı? Giriş yap",
+    "forgot-password": "Şifreni mi unuttun?",
+    "verify": "Doğrula",
+    "step1-start": "Hadi başlayalım",
+    "step1-privacy": "Hesap oluşturarak, Şartlarımızı ve Gizlilik Politikasını okuyup kabul etmiş olursunuz.",
+    "step1-submit": "Başla",
+    "step2-message": "Şu adrese bir doğrulama maili yolladık",
+    "step2-code-error": "Tüh. Kodun hatalı. Kalan denemeler:",
+    "step2-resend-alert": "Kodu ulaşamadı mı?",
+    "step2-resend-submit": "Tekrar Yolla",
+    "step2-resend-progress": "Tekrar yollanıyor...",
+    "step2-spam-alert": "Spam kutunuzu kontrol ettiğinizden emin olun.",
+    "step3-message": "Çok az kaldı!",
+    "step4-message": "Acil Durum Kitinizi kayıt edin",
+    "step4-description1": "Eğer hesabınıza erişemezseniz, Acil Durum Kitiniz giriş yapmanın tek yoludur.",
+    "step4-description2": "Bunu indirmenizi ve güvenli bir ortamda saklamanızı öneriyoruz.",
+    "step4-description3": "Kaybetmeniz durumunda bizim dahi erişemeyeceğimiz veya kurtaramayacağımız Gizli Anahtarınızı barındırır.",
+    "step4-download": "PDF'yi indir",
+    "step5-send-invites": "Davetleri yolla",
+    "step5-invite-team": "Takımını davet et",
+    "step5-subtitle": "Infisical takım arkadaşlarınız ile kullanılmak üzere yapılmıştır. Birlikte test etmek için onları davet edin.",
+    "step5-skip": "Atla"
+  },
+  "nav": {
+    "support": {
+      "slack": "[YENİ] Slack Foruma katılın",
+      "docs": "Dokümanları okuyun",
+      "issue": "Bir Github Issue açın",
+      "email": "Bize mail yollayın"
+    },
+    "user": {
+      "signed-in-as": "ŞU HESABA GİRİŞ YAPILDI",
+      "current-organization": "MEVZUT ORGANİZASYON",
+      "usage-billing": "Plan & Fiyatlandırma",
+      "invite": "Üyeleri Davet Et",
+      "other-organizations": "DİĞER ORGANİZASYONLAR"
+    },
+    "menu": {
+      "project": "PROJE",
+      "secrets": "Sırlar",
+      "members": "Üyeler",
+      "integrations": "Entegrasyonlar",
+      "project-settings": "Proje Ayarları"
+    }
+  },
+  "section": {
+    "api-key": {
+      "api-keys": "Servis Belirteçleri",
+      "api-keys-description": "Her servis belirteci size, belirli bir projeye ve o proje içindeki belirli bir ortama özeldir.",
+      "add-new": "Yeni Belirteç Ekleyin",
+      "add-dialog": {
+        "title": "Bir API Anahtarı Ekleyin",
+        "description": "Adını ve son kullanma süresini belirleyin. Bir API anahtarı oluşturulduğunda, kaybolmadan önce yalnızca bir kez görebileceksiniz. Bir yere kaydettiğinizden emin olun.",
+        "name": "API Anahtarı Adı",
+        "add": "API Anahtarı Ekleyin",
+        "copy-service-token": "API Anahtarızı kopyalayın",
+        "copy-service-token-description": "Bu açılır pencereyi kapattığınızda, API anahtarınızı bir daha asla görmeyeceksiniz"
+      }
+    },
+    "incident": {
+      "incident-contacts": "Özel Durum İletişim Adresleri",
+      "incident-contacts-description": "Bu adresler olası olmayan ciddi bir olay durumunda bilgilendirilecek.",
+      "no-incident-contacts": "Hiçbir Özel Durum İletişim Adresi bulunamadı.",
+      "add-contact": "İletişim Adresi Ekle",
+      "add-dialog": {
+        "title": "Bir Özel Durum İletişim Adresi Ekleyin",
+        "description": "Bu kişi, olası olmayan ciddi bir olay durumunda bilgilendirilecektir..",
+        "add-incident": "Özel Durum İletişim Adresi Ekle"
+      }
+    },
+    "members": {
+      "add-member": "Üye Ekle",
+      "org-members": "Kuruluş Üyeleri",
+      "org-members-description": "Kuruluşunuzun üyelerini yönetin. Bu kullanıcılar daha sonra projelere yönlendirilebilir..",
+      "search-members": "Üyeleri arayın...",
+      "add-dialog": {
+        "add-member-to-project": "Projenize bir üye ekleyin",
+        "already-all-invited": "Kuruluşunuzdaki tüm kullanıcılar zaten davet edildi.",
+        "add-user-org-first": "Önce kuruluşa daha fazla kullanıcı ekleyin.",
+        "user-will-email": "Kullanıcı, talimatları içeren bir e-posta alacak.",
+        "looking-add": "<0>Kuruluşunuza kullanıcı eklemek istiyorsanız,</0><1>buraya tıklayın</1>",
+        "add-user-to-org": "Kuruluşa Kullanıcı Ekleyin"
+      }
+    },
+    "password": {
+      "password": "Şifre",
+      "change": "Şifreyi değiştir",
+      "current": "Mevcut şifre",
+      "current-wrong": "Mevcut şifre yanlış olabilir",
+      "new": "Yeni şifre",
+      "validate-base": "Parola içermelidir:",
+      "validate-tooShort": "en az 14 karakter",
+      "validate-tooLong": "en fazla 100 karakter",
+      "validate-noLetterChar": "en az 1 harf karakteri",
+      "validate-noNumOrSpecialChar": "en az 1 rakam veya özel karakter",
+      "validate-repeatedChar": "en fazla 3 tekrarlanan, ardışık karakter",
+      "validate-escapeChar": "Kaçış karakterlerine izin verilmez.",
+      "validate-lowEntropy": "Parola hassas veriler içeriyor.",
+      "validate-breached": "Parola veri ihlalinde bulundu."
+    },
+    "token": {
+      "service-tokens": "Servis Belirteçleri",
+      "service-tokens-description": "Her servis belirteci size, belirli bir projeye ve o proje içindeki belirli bir ortama özeldir.",
+      "add-new": "Yeni Belirteç Ekle",
+      "add-dialog": {
+        "title": "{{target}} için bir servis belirteci ekleyin",
+        "description": "Adı, ortamı ve son kullanma süresini belirtin. Bir belirteç oluşturulduğunda, onu kaybolmadan önce yalnızca bir kez görebileceksiniz. Bir yere kaydettiğinizden emin olun.",
+        "name": "Servis Belirteci Adı",
+        "add": "Servis Belirteci Ekle",
+        "copy-service-token": "Service belirtecinizi kopyalayın",
+        "copy-service-token-description": "Bu açılır pencereyi kapattığınızda, servis belirtecinizi bir daha asla göremeyeceksiniz"
+      }
+    }
+  },
+  "settings": {
+    "members": {
+      "title": "Proje Üyeleri",
+      "description": "Bu sayfa seçilen projenin üyelerini gösterir."
+    },
+    "org": {
+      "title": "Kuruluş Ayarları",
+      "description": "Kuruluşunuzun üyelerini yönetin. Bu kullanıcılar daha sonra projelere yönlendirilebilir.."
+    },
+    "personal": {
+      "title": "Kişisel Ayarlar",
+      "description": "Kişisel bilgilerinizi burada görüntüleyin ve yönetin.",
+      "emergency": {
+        "name": "Acil Durum Kiti",
+        "text1": "Acil Durum Kitiniz, Infisical hesabınızda oturum açmak için ihtiyaç duyacağınız bilgileri içerir.",
+        "text2": "Yalnızca en son yayınlanan Acil Durum Kiti geçerliliğini korur. Yeni bir Acil Durum Kiti almak için parolanızı doğrulayın.",
+        "download": "Acil Durum Kitini İndir"
+      },
+      "change-language": "Dili Değiştir",
+      "api-keys": {
+        "title": "API Anahtarları",
+        "description": "Infisical API'ye erişmek için kişisel API Anahtarlarınızı yönetin",
+        "add-new": "Ekle yeni"
+      }
+    },
+    "project": {
+      "title": "Proje Ayarları",
+      "description": "Bu ayarlar yalnızca mevcut seçili projeye uygulanacak.",
+      "danger-zone": "Tehlikeli Bölge",
+      "delete-project": "Projeyi Sil",
+      "project-to-delete": "Silinmek Üzere Olan Proje",
+      "danger-zone-note": "Bu projeyi sildiğiniz anda geri alamayacaksınız. Bu, tüm anahtarları hemen kaldıracaktır. Bunu hala yapmak istiyorsanız, lütfen aşağıya projenin adını girin.",
+      "delete-project-note": "Not: Yalnızca birden fazla projeniz olması durumunda, bir projeyi silebilirsiniz.",
+      "project-id-description": "Infisical'ı kod tabanınıza entegre etmek ve çevresel değişkenlerin otomatik enjeksiyonunu almak için aşağıdaki Proje Kimliğini kullanmalısınız.",
+      "project-id-description2": "Çeşitli diller ve çerçeveler için kod parçaları da dahil olmak üzere daha fazla rehberlik için bkz.",
+      "auto-generated": "Bu, projenizin otomatik olarak oluşturulan benzersiz tanımlayıcısıdır. Değiştirilemez..",
+      "docs": "Infisical Dokümanları"
+    }
+  },
+  "signup": {
+    "title": "Kayıt olun",
+    "og-title": "Tek satır kodla .env dosyalarını değiştirin. 3 dakika içerinde Infisical'a kayıt olun.",
+    "og-description": "Infisical takımların API anahtarlarını ve ortam değişkenlerini yönetmelerini ve senkronize etmelerini sağlayan basit, uçtan uca şifrelenmiş bir platformdur. Node.js, Next.js, Gatsby, Nest.js ve daha fazlası ile çalışır.",
+    "signup": "Kayıt ol",
+    "already-have-account": "Hesabın var mı? Giriş yap",
+    "forgot-password": "Şifreni mi unuttun?",
+    "verify": "Doğrula",
+    "step1-start": "Hadi başlayalım",
+    "step1-privacy": "Hesap oluşturarak, Şartlarımızı ve Gizlilik Politikasını okuyup kabul etmiş olursunuz.",
+    "step1-submit": "Başla",
+    "step2-message": "Şu adrese bir doğrulama maili yolladık",
+    "step2-code-error": "Tüh. Kodun hatalı. Lütfen tekrar dene.",
+    "step2-resend-alert": "Kodu ulaşamadı mı?",
+    "step2-resend-submit": "Tekrar Yolla",
+    "step2-resend-progress": "Tekrar yollanıyor...",
+    "step2-spam-alert": "Spam kutunuzu kontrol ettiğinizden emin olun.",
+    "step3-message": "Çok az kaldı!",
+    "step4-message": "Acil Durum Kitinizi kayıt edin",
+    "step4-description1": "Eğer hesabınıza erişemezseniz, Acil Durum Kitiniz giriş yapmanın tek yoludur.",
+    "step4-description2": "Bunu indirmenizi ve güvenli bir ortamda saklamanızı öneriyoruz.",
+    "step4-description3": "Kaybetmeniz durumunda bizim dahi erişemeyeceğimiz veya kurtaramayacağımız Gizli Anahtarınızı barındırır.",
+    "step4-download": "PDF'yi indir",
+    "step5-send-invites": "Davetleri yolla",
+    "step5-invite-team": "Takımını davet et",
+    "step5-subtitle": "Infisical takım arkadaşlarınız ile kullanılmak üzere yapılmıştır. Birlikte test etmek için onları davet edin.",
+    "step5-skip": "Atla"
+  }
+}
