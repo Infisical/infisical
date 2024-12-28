@@ -12,7 +12,7 @@ export const navigateUserToOrg = async (navigate: NavigateFn, organizationId?: s
 
   if (organizationId) {
     localStorage.setItem("orgData.id", organizationId);
-    navigate({ to: `/org/${organizationId}/overview` });
+    navigate({ to: "/organization/secret-manager/overview" });
     return;
   }
 
@@ -33,18 +33,14 @@ export const useNavigateToSelectOrganization = () => {
   const navigate = useNavigate();
 
   const navigateToSelectOrganization = async (cliCallbackPort?: string) => {
-    let redirectTo = "/login/select-organization?";
-    if (config.defaultAuthOrgId) {
-      redirectTo += `org_id=${config.defaultAuthOrgId}&`;
-    } else {
+    if (!config.defaultAuthOrgId) {
       queryClient.invalidateQueries({ queryKey: userKeys.getUser });
     }
 
-    if (cliCallbackPort) {
-      redirectTo += `callback_port=${cliCallbackPort}`;
-    }
-
-    navigate({ to: redirectTo });
+    navigate({
+      to: "/login/select-organization",
+      search: { callback_port: cliCallbackPort, org_id: config.defaultAuthOrgId }
+    });
   };
 
   return { navigateToSelectOrganization };

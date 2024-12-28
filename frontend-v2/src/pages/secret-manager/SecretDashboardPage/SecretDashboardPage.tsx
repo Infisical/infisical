@@ -143,6 +143,7 @@ const Page = () => {
   const [debouncedSearchFilter, setDebouncedSearchFilter] = useDebounce(filter.searchFilter);
   const [filterHistory, setFilterHistory] = useState<Map<string, Filter>>(new Map());
 
+  // TODO(rbr): check why this fails
   const createSecretPopUp = usePopUpState(PopUpNames.CreateSecretForm);
   const { togglePopUp } = usePopUpAction();
 
