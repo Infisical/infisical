@@ -7,6 +7,10 @@ import { fetchUserDetails } from "@app/hooks/api/users/queries";
 
 export const Route = createFileRoute("/_authenticate")({
   beforeLoad: async ({ context }) => {
+    if (!context.serverConfig.initialized) {
+      throw redirect({ to: "/admin/signup" });
+    }
+
     const data = await context.queryClient
       .ensureQueryData({
         queryKey: authKeys.getAuthToken,

@@ -31,7 +31,7 @@ const secretManagerRoutes = route("/secret-manager/$projectId", [
   layout("secret-manager-layout", "secret-manager/layout.tsx", [
     route("/overview", "secret-manager/OverviewPage/route.tsx"),
     route("/secrets/$envSlug", "secret-manager/SecretDashboardPage/route.tsx"),
-    route("/allowlist", "secret-manager/IPAllowListPage/route.tsx"),
+    route("/allowlist", "secret-manager/IPAllowlistPage/route.tsx"),
     route("/approval", "secret-manager/SecretApprovalsPage/route.tsx"),
     route("/secret-rotation", "secret-manager/SecretRotationPage/route.tsx"),
     route("/settings", "secret-manager/SettingsPage/route.tsx"),
