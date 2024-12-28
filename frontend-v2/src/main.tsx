@@ -14,6 +14,11 @@ import "@fortawesome/fontawesome-svg-core/styles.css";
 import "react-day-picker/dist/style.css";
 import "./index.css";
 
+import "./translation";
+// don't want to use this?
+// have a look at the Quick start guide
+// for passing in lng and translations on init
+
 // Create a new router instance
 NProgress.configure({ showSpinner: false });
 
@@ -37,6 +42,7 @@ router.subscribe("onBeforeLoad", ({ pathChanged }) => {
   }
 });
 router.subscribe("onLoad", () => NProgress.done());
+
 // Register the router instance for type safety
 declare module "@tanstack/react-router" {
   interface Register {
