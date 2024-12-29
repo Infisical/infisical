@@ -20,7 +20,7 @@ export const SettingsPage = () => {
         <div className="my-6">
           <p className="text-3xl font-semibold text-gray-200">{t("settings.project.title")}</p>
         </div>
-        <Tabs>
+        <Tabs defaultValue={tabs[0].key}>
           <TabList>
             {tabs.map((tab) => (
               <Tab value={tab.key} key={tab.key}>
