@@ -4,7 +4,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useParams } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
-import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useWorkspace } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { ProjectType } from "@app/hooks/api/workspace/types";
@@ -194,7 +193,7 @@ export default function NavHeader({
                   to={`/${ProjectType.SecretManager}/$projectId/secrets/$envSlug` as const}
                   params={{
                     projectId: currentWorkspace.id,
-                    envSlug: routerEnvSlug
+                    envSlug: routerEnvSlug || ""
                   }}
                   search={(query) => ({ ...query, secretPath: newSecretPath })}
                 >

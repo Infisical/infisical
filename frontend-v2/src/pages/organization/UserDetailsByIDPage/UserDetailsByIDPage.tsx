@@ -41,7 +41,7 @@ const Page = withPermission(
   () => {
     const navigate = useNavigate();
     const search = useParams({
-      from: ROUTE_PATHS.OrgUserDetailsByIDPage.id
+      from: ROUTE_PATHS.Organization.UserDetailsByIDPage.id
     });
     const membershipId = search.membershipId as string;
     const { user } = useUser();

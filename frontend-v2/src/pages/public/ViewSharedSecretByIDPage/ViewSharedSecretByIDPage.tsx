@@ -28,11 +28,11 @@ const extractDetailsFromUrl = (urlEncodedKey: string) => {
 
 export const ViewSharedSecretByIDPage = () => {
   const id = useParams({
-    from: ROUTE_PATHS.ViewSharedSecretByIDPage.id,
+    from: ROUTE_PATHS.Public.ViewSharedSecretByIDPage.id,
     select: (el) => el.secretId
   });
   const urlEncodedKey = useSearch({
-    from: ROUTE_PATHS.ViewSharedSecretByIDPage.id,
+    from: ROUTE_PATHS.Public.ViewSharedSecretByIDPage.id,
     select: (el) => el.key
   });
   const [password, setPassword] = useState<string>();

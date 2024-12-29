@@ -34,7 +34,7 @@ import {
 const Page = () => {
   const navigate = useNavigate();
   const params = useParams({
-    from: ROUTE_PATHS.CertAuthDetailsByIDPage.id
+    from: ROUTE_PATHS.CertManager.CertAuthDetailsByIDPage.id
   });
   const caId = params.caId as string;
   const { data } = useGetCaById(caId);

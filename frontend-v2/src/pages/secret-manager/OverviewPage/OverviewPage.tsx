@@ -111,10 +111,10 @@ export const OverviewPage = () => {
 
   const router = useRouter();
   const navigate = useNavigate({
-    from: ROUTE_PATHS.SecretOverviewPage.full
+    from: ROUTE_PATHS.SecretManager.OverviewPage.path
   });
   const routerSearch = useSearch({
-    from: ROUTE_PATHS.SecretOverviewPage.id,
+    from: ROUTE_PATHS.SecretManager.OverviewPage.id,
     select: (el) => ({
       secretPath: el.secretPath,
       search: el.search

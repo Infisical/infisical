@@ -27,7 +27,7 @@ import { RoleDetailsSection, RoleModal, RolePermissionsSection } from "./compone
 export const Page = () => {
   const navigate = useNavigate();
   const params = useParams({
-    from: ROUTE_PATHS.OrgRoleByIDPage.id
+    from: ROUTE_PATHS.Organization.RoleByIDPage.id
   });
   const roleId = params.roleId as string;
   const { currentOrg } = useOrganization();

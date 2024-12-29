@@ -46,7 +46,7 @@ import {
 const Page = () => {
   const navigate = useNavigate();
   const params = useParams({
-    from: ROUTE_PATHS.OrgIdentityDetailsByIDPage.id
+    from: ROUTE_PATHS.Organization.IdentityDetailsByIDPage.id
   });
   const identityId = params.identityId as string;
   const { currentOrg } = useOrganization();

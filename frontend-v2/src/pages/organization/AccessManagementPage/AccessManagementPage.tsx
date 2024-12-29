@@ -13,10 +13,10 @@ export const AccessManagementPage = () => {
   const { t } = useTranslation();
   const { permission } = useOrgPermission();
   const navigate = useNavigate({
-    from: ROUTE_PATHS.OrgAccessControlPage.full
+    from: ROUTE_PATHS.Organization.AccessControlPage.path
   });
   const selectedTab = useSearch({
-    from: ROUTE_PATHS.OrgAccessControlPage.id,
+    from: ROUTE_PATHS.Organization.AccessControlPage.id,
     select: (el) => el.selectedTab,
     structuralSharing: true
   });

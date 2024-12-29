@@ -68,13 +68,13 @@ const Page = () => {
   const { t } = useTranslation();
   const { currentWorkspace } = useWorkspace();
   const navigate = useNavigate({
-    from: ROUTE_PATHS.SecretDashboardPage.full
+    from: ROUTE_PATHS.SecretManager.SecretDashboardPage.path
   });
   const routerQueryParams = useSearch({
-    from: ROUTE_PATHS.SecretDashboardPage.id
+    from: ROUTE_PATHS.SecretManager.SecretDashboardPage.id
   });
   const environment = useParams({
-    from: ROUTE_PATHS.SecretDashboardPage.id,
+    from: ROUTE_PATHS.SecretManager.SecretDashboardPage.id,
     select: (el) => el.envSlug
   });
 
