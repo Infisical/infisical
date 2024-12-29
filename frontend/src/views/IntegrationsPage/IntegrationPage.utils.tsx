@@ -69,7 +69,7 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
           createIntegrationMissingEnvVarsNotification(integrationOption.slug);
           return;
         }
-        link = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${window.location.origin}/integrations/azure-key-vault/oauth2/callback&response_mode=query&scope=https://vault.azure.net/.default openid offline_access&state=${state}`;
+        link = `${window.location.origin}/integrations/azure-key-vault/authorize?clientId=${integrationOption.clientId}&state=${state}`;
         break;
       case "azure-app-configuration":
         if (!integrationOption.clientId) {

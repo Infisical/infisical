@@ -29,6 +29,15 @@ description: "How to sync secrets from Infisical to Azure App Configuration"
         ![integrations](../../images/integrations/azure-app-configuration/create-integration-form.png)
 
         Press create integration to start syncing secrets to Azure App Configuration.
+
+        <Note>
+          The Azure App Configuration integration requires the following permissions to be set on the user / service principal
+          for Infisical to sync secrets to Azure App Configuration: `Read Key-Value`, `Write Key-Value`, `Delete Key-Value`.
+
+          Any role with these permissions would work such as the **App Configuration Data Owner** role. Alternatively, you can use the
+          **App Configuration Data Reader** role for read-only access or **App Configuration Data Contributor** role for read/write access.
+        </Note>
+
       </Step>
       <Step title="Additional Configuration">
 
