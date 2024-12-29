@@ -43,7 +43,13 @@ export const ROUTE_PATHS = Object.freeze({
     RoleByIDPage: setRoute(
       "/organization/roles/$roleId",
       "/_authenticate/_inject-org-details/organization/_layout/roles/$roleId"
-    )
+    ),
+    AppConnections: {
+      GithubOauthCallbackPage: setRoute(
+        "/organization/app-connections/github/oauth/callback",
+        "/_authenticate/_inject-org-details/organization/_layout/app-connections/github/oauth/callback"
+      )
+    }
   },
   SecretManager: {
     ApprovalPage: setRoute(

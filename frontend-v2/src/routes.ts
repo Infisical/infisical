@@ -23,7 +23,11 @@ const organizationRoutes = route("/organization", [
     route("/groups/$groupId", "organization/GroupDetailsByIDPage/route.tsx"),
     route("/members/$membershipId", "organization/UserDetailsByIDPage/route.tsx"),
     route("/roles/$roleId", "organization/RoleByIDPage/route.tsx"),
-    route("/identities/$identityId", "organization/IdentityDetailsByIDPage/route.tsx")
+    route("/identities/$identityId", "organization/IdentityDetailsByIDPage/route.tsx"),
+    route(
+      "/app-connections/github/oauth/callback",
+      "organization/AppConnections/GithubOauthCallbackPage/route.tsx"
+    )
   ])
 ]);
 

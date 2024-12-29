@@ -81,6 +81,7 @@ import { Route as projectMemberDetailsByIDPageRouteCertManagerImport } from './p
 import { Route as projectIdentityDetailsByIDPageRouteCertManagerImport } from './pages/project/IdentityDetailsByIDPage/route-cert-manager'
 import { Route as secretManagerSecretDashboardPageRouteImport } from './pages/secret-manager/SecretDashboardPage/route'
 import { Route as certManagerCertAuthDetailsByIDPageRouteImport } from './pages/cert-manager/CertAuthDetailsByIDPage/route'
+import { Route as organizationAppConnectionsGithubOauthCallbackPageRouteImport } from './pages/organization/AppConnections/GithubOauthCallbackPage/route'
 
 // Create Virtual Routes
 
@@ -612,6 +613,13 @@ const certManagerCertAuthDetailsByIDPageRouteRoute =
     id: '/ca/$caId',
     path: '/ca/$caId',
     getParentRoute: () => certManagerLayoutRoute,
+  } as any)
+
+const organizationAppConnectionsGithubOauthCallbackPageRouteRoute =
+  organizationAppConnectionsGithubOauthCallbackPageRouteImport.update({
+    id: '/app-connections/github/oauth/callback',
+    path: '/app-connections/github/oauth/callback',
+    getParentRoute: () => organizationLayoutRoute,
   } as any)
 
 // Populate the FileRoutesByPath interface
@@ -1150,6 +1158,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof projectRoleDetailsBySlugPageRouteSecretManagerImport
       parentRoute: typeof secretManagerLayoutImport
     }
+    '/_authenticate/_inject-org-details/organization/_layout/app-connections/github/oauth/callback': {
+      id: '/_authenticate/_inject-org-details/organization/_layout/app-connections/github/oauth/callback'
+      path: '/app-connections/github/oauth/callback'
+      fullPath: '/organization/app-connections/github/oauth/callback'
+      preLoaderRoute: typeof organizationAppConnectionsGithubOauthCallbackPageRouteImport
+      parentRoute: typeof organizationLayoutImport
+    }
   }
 }
 
@@ -1171,6 +1186,7 @@ interface organizationLayoutRouteChildren {
   organizationUserDetailsByIDPageRouteRoute: typeof organizationUserDetailsByIDPageRouteRoute
   organizationRoleByIDPageRouteRoute: typeof organizationRoleByIDPageRouteRoute
   organizationSecretManagerOverviewPageRouteRoute: typeof organizationSecretManagerOverviewPageRouteRoute
+  organizationAppConnectionsGithubOauthCallbackPageRouteRoute: typeof organizationAppConnectionsGithubOauthCallbackPageRouteRoute
 }
 
 const organizationLayoutRouteChildren: organizationLayoutRouteChildren = {
@@ -1197,6 +1213,8 @@ const organizationLayoutRouteChildren: organizationLayoutRouteChildren = {
   organizationRoleByIDPageRouteRoute: organizationRoleByIDPageRouteRoute,
   organizationSecretManagerOverviewPageRouteRoute:
     organizationSecretManagerOverviewPageRouteRoute,
+  organizationAppConnectionsGithubOauthCallbackPageRouteRoute:
+    organizationAppConnectionsGithubOauthCallbackPageRouteRoute,
 }
 
 const organizationLayoutRouteWithChildren =
@@ -1583,6 +1601,7 @@ export interface FileRoutesByFullPath {
   '/secret-manager/$projectId/identities/$identityId': typeof projectIdentityDetailsByIDPageRouteSecretManagerRoute
   '/secret-manager/$projectId/members/$membershipId': typeof projectMemberDetailsByIDPageRouteSecretManagerRoute
   '/secret-manager/$projectId/roles/$roleSlug': typeof projectRoleDetailsBySlugPageRouteSecretManagerRoute
+  '/organization/app-connections/github/oauth/callback': typeof organizationAppConnectionsGithubOauthCallbackPageRouteRoute
 }
 
 export interface FileRoutesByTo {
@@ -1650,6 +1669,7 @@ export interface FileRoutesByTo {
   '/secret-manager/$projectId/identities/$identityId': typeof projectIdentityDetailsByIDPageRouteSecretManagerRoute
   '/secret-manager/$projectId/members/$membershipId': typeof projectMemberDetailsByIDPageRouteSecretManagerRoute
   '/secret-manager/$projectId/roles/$roleSlug': typeof projectRoleDetailsBySlugPageRouteSecretManagerRoute
+  '/organization/app-connections/github/oauth/callback': typeof organizationAppConnectionsGithubOauthCallbackPageRouteRoute
 }
 
 export interface FileRoutesById {
@@ -1730,6 +1750,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/identities/$identityId': typeof projectIdentityDetailsByIDPageRouteSecretManagerRoute
   '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/members/$membershipId': typeof projectMemberDetailsByIDPageRouteSecretManagerRoute
   '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/roles/$roleSlug': typeof projectRoleDetailsBySlugPageRouteSecretManagerRoute
+  '/_authenticate/_inject-org-details/organization/_layout/app-connections/github/oauth/callback': typeof organizationAppConnectionsGithubOauthCallbackPageRouteRoute
 }
 
 export interface FileRouteTypes {
@@ -1803,6 +1824,7 @@ export interface FileRouteTypes {
     | '/secret-manager/$projectId/identities/$identityId'
     | '/secret-manager/$projectId/members/$membershipId'
     | '/secret-manager/$projectId/roles/$roleSlug'
+    | '/organization/app-connections/github/oauth/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -1869,6 +1891,7 @@ export interface FileRouteTypes {
     | '/secret-manager/$projectId/identities/$identityId'
     | '/secret-manager/$projectId/members/$membershipId'
     | '/secret-manager/$projectId/roles/$roleSlug'
+    | '/organization/app-connections/github/oauth/callback'
   id:
     | '__root__'
     | '/'
@@ -1947,6 +1970,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/identities/$identityId'
     | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/members/$membershipId'
     | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/roles/$roleSlug'
+    | '/_authenticate/_inject-org-details/organization/_layout/app-connections/github/oauth/callback'
   fileRoutesById: FileRoutesById
 }
 
@@ -2181,7 +2205,8 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/organization/_layout/kms/overview",
         "/_authenticate/_inject-org-details/organization/_layout/members/$membershipId",
         "/_authenticate/_inject-org-details/organization/_layout/roles/$roleId",
-        "/_authenticate/_inject-org-details/organization/_layout/secret-manager/overview"
+        "/_authenticate/_inject-org-details/organization/_layout/secret-manager/overview",
+        "/_authenticate/_inject-org-details/organization/_layout/app-connections/github/oauth/callback"
       ]
     },
     "/_authenticate/_inject-org-details/secret-manager/$projectId": {
@@ -2388,6 +2413,10 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/roles/$roleSlug": {
       "filePath": "project/RoleDetailsBySlugPage/route-secret-manager.tsx",
       "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout"
+    },
+    "/_authenticate/_inject-org-details/organization/_layout/app-connections/github/oauth/callback": {
+      "filePath": "organization/AppConnections/GithubOauthCallbackPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/organization/_layout"
     }
   }
 }
