@@ -75,10 +75,7 @@ export const AccessManagementPage = () => {
           {tabSections
             .filter((el) => !el.isHidden)
             .map(({ key, component: Component }) => (
-              <TabPanel
-                value={OrgAccessControlTabSections.Member}
-                key={`org-access-tab-panel-${key}`}
-              >
+              <TabPanel value={key} key={`org-access-tab-panel-${key}`}>
                 <Component />
               </TabPanel>
             ))}

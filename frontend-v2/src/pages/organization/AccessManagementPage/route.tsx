@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, stripSearchParams } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
@@ -15,5 +15,9 @@ export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/organization/_layout/access-management"
 )({
   component: AccessManagementPage,
-  validateSearch: zodValidator(AccessControlPageQuerySchema)
+  validateSearch: zodValidator(AccessControlPageQuerySchema),
+  search: {
+    // strip default values
+    middlewares: [stripSearchParams({ action: "" })]
+  }
 });
