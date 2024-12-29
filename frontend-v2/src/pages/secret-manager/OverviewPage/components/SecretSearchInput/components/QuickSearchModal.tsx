@@ -34,11 +34,11 @@ import { useDebounce } from "@app/hooks";
 import { useGetProjectSecretsQuickSearch } from "@app/hooks/api/dashboard";
 import { WsTag } from "@app/hooks/api/tags/types";
 import { WorkspaceEnv } from "@app/hooks/api/workspace/types";
+import { RowType } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.types";
 
 import { QuickSearchDynamicSecretItem } from "./QuickSearchDynamicSecretItem";
 import { QuickSearchFolderItem } from "./QuickSearchFolderItem";
 import { QuickSearchSecretItem } from "./QuickSearchSecretItem";
-import { RowType } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.types";
 
 export type QuickSearchModalProps = {
   environments: WorkspaceEnv[];

@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { useSearch } from "@tanstack/react-router";
 
-import { OrgPermissionCan } from "@app/components/permissions";
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 
+import { AppConnectionsTab } from "../AppConnectionsTab";
 import { AuditLogStreamsTab } from "../AuditLogStreamTab";
 import { ImportTab } from "../ImportTab";
 import { OrgAuthTab } from "../OrgAuthTab";
@@ -14,19 +13,25 @@ import { OrgGeneralTab } from "../OrgGeneralTab";
 import { OrgWorkflowIntegrationTab } from "../OrgWorkflowIntegrationTab/OrgWorkflowIntegrationTab";
 import { ProjectTemplatesTab } from "../ProjectTemplatesTab";
 
-const tabs = [
-  { name: "General", key: "tab-org-general" },
-  { name: "Security", key: "tab-org-security" },
-  { name: "Encryption", key: "tab-org-encryption" },
-  { name: "Workflow Integrations", key: "workflow-integrations" },
-  { name: "Audit Log Streams", key: "tag-audit-log-streams" },
-  { name: "Import", key: "tab-import" },
-  { name: "Project Templates", key: "project-templates" }
-];
 export const OrgTabGroup = () => {
   const search = useSearch({
     from: ROUTE_PATHS.Organization.SettingsPage.id
   });
+  const tabs = [
+    { name: "General", key: "tab-org-general", component: OrgGeneralTab },
+    { name: "Security", key: "tab-org-security", component: OrgAuthTab },
+    { name: "Encryption", key: "tab-org-encryption", component: OrgEncryptionTab },
+    {
+      name: "Workflow Integrations",
+      key: "workflow-integrations",
+      component: OrgWorkflowIntegrationTab
+    },
+    { name: "App Connections", key: "app-connections", component: AppConnectionsTab },
+    { name: "Audit Log Streams", key: "tag-audit-log-streams", component: AuditLogStreamsTab },
+    { name: "Import", key: "tab-import", component: ImportTab },
+    { name: "Project Templates", key: "project-templates", component: ProjectTemplatesTab }
+  ];
+
   const [selectedTab, setSelectedTab] = useState(search.selectedTab || tabs[0].key);
 
   return (
@@ -38,29 +43,11 @@ export const OrgTabGroup = () => {
           </Tab>
         ))}
       </TabList>
-      <TabPanel value={tabs[0].key}>
-        <OrgGeneralTab />
-      </TabPanel>
-      <TabPanel value={tabs[1].key}>
-        <OrgAuthTab />
-      </TabPanel>
-      <TabPanel value={tabs[2].key}>
-        <OrgEncryptionTab />
-      </TabPanel>
-      <TabPanel value={tabs[3].key}>
-        <OrgWorkflowIntegrationTab />
-      </TabPanel>
-      <TabPanel value={tabs[4].key}>
-        <AuditLogStreamsTab />
-      </TabPanel>
-      <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
-        <TabPanel value={tabs[5].key}>
-          <ImportTab />
+      {tabs.map(({ key, component: Component }) => (
+        <TabPanel value={key} key={`tab-panel-${key}`}>
+          <Component />
         </TabPanel>
-      </OrgPermissionCan>
-      <TabPanel value={tabs[6].key}>
-        <ProjectTemplatesTab />
-      </TabPanel>
+      ))}
     </Tabs>
   );
 };

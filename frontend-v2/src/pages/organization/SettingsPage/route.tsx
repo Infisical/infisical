@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, stripSearchParams } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
@@ -12,5 +12,8 @@ export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/organization/_layout/settings"
 )({
   component: SettingsPage,
-  validateSearch: zodValidator(SettingsPageQueryParams)
+  validateSearch: zodValidator(SettingsPageQueryParams),
+  search: {
+    middlewares: [stripSearchParams({ selectedTab: "" })]
+  }
 });
