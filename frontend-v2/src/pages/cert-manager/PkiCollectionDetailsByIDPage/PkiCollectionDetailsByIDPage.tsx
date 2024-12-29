@@ -29,7 +29,7 @@ import { PkiCollectionDetailsSection, PkiCollectionItemsSection } from "./compon
 export const PkiCollectionPage = () => {
   const navigate = useNavigate();
   const params = useParams({
-    from: ROUTE_PATHS.CertPkiCollectionDetailsByIDPage.id
+    from: ROUTE_PATHS.CertManager.PkiCollectionDetailsByIDPage.id
   });
   const collectionId = params.collectionId as string;
   const { currentWorkspace } = useWorkspace();

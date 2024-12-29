@@ -6,7 +6,7 @@ import { ROUTE_PATHS } from "@app/const/routes";
 
 export const LoginProviderSuccessPage = () => {
   const search = useSearch({
-    from: ROUTE_PATHS.ProviderSuccessPage.id
+    from: ROUTE_PATHS.Auth.ProviderSuccessPage.id
   });
 
   useEffect(() => {

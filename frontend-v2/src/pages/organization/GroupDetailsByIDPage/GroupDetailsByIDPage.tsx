@@ -38,7 +38,7 @@ export enum TabSections {
 const Page = () => {
   const navigate = useNavigate();
   const params = useParams({
-    from: ROUTE_PATHS.OrgGroupDetailsByIDPage.id
+    from: ROUTE_PATHS.Organization.GroupDetailsByIDPage.id
   });
   const groupId = params.groupId as string;
 

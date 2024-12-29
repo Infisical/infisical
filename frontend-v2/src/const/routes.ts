@@ -1,13 +1,19 @@
 import { FileRouteTypes } from "@app/routeTree.gen";
 
 const setRoute = <TFull extends FileRouteTypes["fullPaths"], TId extends FileRouteTypes["id"]>(
-  full: TFull,
+  path: TFull,
   id: TId
-) => ({ full, id }) as const;
+) => ({ path, id }) as const;
 
 export const ROUTE_PATHS = Object.freeze({
   Auth: {
-    LoginSSO: setRoute("/login/sso", "/_restrict-login-signup/login/sso")
+    LoginSSO: setRoute("/login/sso", "/_restrict-login-signup/login/sso"),
+    ProviderSuccessPage: setRoute(
+      "/login/provider/success",
+      "/_restrict-login-signup/login/provider/success"
+    ),
+    SignUpSsoPage: setRoute("/signup/sso", "/_restrict-login-signup/signup/sso"),
+    PasswordResetPage: setRoute("/password-reset", "/_restrict-login-signup/password-reset")
   },
   Organization: {
     SecretScanning: setRoute(
@@ -17,6 +23,26 @@ export const ROUTE_PATHS = Object.freeze({
     SettingsPage: setRoute(
       "/organization/settings",
       "/_authenticate/_inject-org-details/organization/_layout/settings"
+    ),
+    GroupDetailsByIDPage: setRoute(
+      "/organization/groups/$groupId",
+      "/_authenticate/_inject-org-details/organization/_layout/groups/$groupId"
+    ),
+    IdentityDetailsByIDPage: setRoute(
+      "/organization/identities/$identityId",
+      "/_authenticate/_inject-org-details/organization/_layout/identities/$identityId"
+    ),
+    UserDetailsByIDPage: setRoute(
+      "/organization/members/$membershipId",
+      "/_authenticate/_inject-org-details/organization/_layout/members/$membershipId"
+    ),
+    AccessControlPage: setRoute(
+      "/organization/access-management",
+      "/_authenticate/_inject-org-details/organization/_layout/access-management"
+    ),
+    RoleByIDPage: setRoute(
+      "/organization/roles/$roleId",
+      "/_authenticate/_inject-org-details/organization/_layout/roles/$roleId"
     )
   },
   SecretManager: {
@@ -27,53 +53,27 @@ export const ROUTE_PATHS = Object.freeze({
     SecretDashboardPage: setRoute(
       "/secret-manager/$projectId/secrets/$envSlug",
       "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/secrets/$envSlug"
+    ),
+    OverviewPage: setRoute(
+      "/secret-manager/$projectId/overview",
+      "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/overview"
     )
   },
-  ProviderSuccessPage: setRoute(
-    "/login/provider/success",
-    "/_restrict-login-signup/login/provider/success"
-  ),
-  SignUpSsoPage: setRoute("/signup/sso", "/_restrict-login-signup/signup/sso"),
-  PasswordResetPage: setRoute("/password-reset", "/_restrict-login-signup/password-reset"),
-  ViewSharedSecretByIDPage: setRoute("/shared/secret/$secretId", "/shared/secret/$secretId"),
-  OrgGroupDetailsByIDPage: setRoute(
-    "/organization/groups/$groupId",
-    "/_authenticate/_inject-org-details/organization/_layout/groups/$groupId"
-  ),
-  OrgIdentityDetailsByIDPage: setRoute(
-    "/organization/identities/$identityId",
-    "/_authenticate/_inject-org-details/organization/_layout/identities/$identityId"
-  ),
-  OrgUserDetailsByIDPage: setRoute(
-    "/organization/members/$membershipId",
-    "/_authenticate/_inject-org-details/organization/_layout/members/$membershipId"
-  ),
-  OrgAccessControlPage: setRoute(
-    "/organization/access-management",
-    "/_authenticate/_inject-org-details/organization/_layout/access-management"
-  ),
-  OrgRoleByIDPage: setRoute(
-    "/organization/roles/$roleId",
-    "/_authenticate/_inject-org-details/organization/_layout/roles/$roleId"
-  ),
-  SecretOverviewPage: setRoute(
-    "/secret-manager/$projectId/overview",
-    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/overview"
-  ),
-  SecretDashboardPage: setRoute(
-    "/secret-manager/$projectId/secrets/$envSlug",
-    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/secrets/$envSlug"
-  ),
-  CertAuthDetailsByIDPage: setRoute(
-    "/cert-manager/$projectId/ca/$caId",
-    "/_authenticate/_inject-org-details/cert-manager/$projectId/_cert-manager-layout/ca/$caId"
-  ),
-  CertCertificatesPage: setRoute(
-    "/cert-manager/$projectId/overview",
-    "/_authenticate/_inject-org-details/cert-manager/$projectId/_cert-manager-layout/overview"
-  ),
-  CertPkiCollectionDetailsByIDPage: setRoute(
-    "/cert-manager/$projectId/pki-collections/$collectionId",
-    "/_authenticate/_inject-org-details/cert-manager/$projectId/_cert-manager-layout/pki-collections/$collectionId"
-  )
+  CertManager: {
+    CertAuthDetailsByIDPage: setRoute(
+      "/cert-manager/$projectId/ca/$caId",
+      "/_authenticate/_inject-org-details/cert-manager/$projectId/_cert-manager-layout/ca/$caId"
+    ),
+    OverviewPage: setRoute(
+      "/cert-manager/$projectId/overview",
+      "/_authenticate/_inject-org-details/cert-manager/$projectId/_cert-manager-layout/overview"
+    ),
+    PkiCollectionDetailsByIDPage: setRoute(
+      "/cert-manager/$projectId/pki-collections/$collectionId",
+      "/_authenticate/_inject-org-details/cert-manager/$projectId/_cert-manager-layout/pki-collections/$collectionId"
+    )
+  },
+  Public: {
+    ViewSharedSecretByIDPage: setRoute("/shared/secret/$secretId", "/shared/secret/$secretId")
+  }
 });

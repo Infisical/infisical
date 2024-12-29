@@ -12,7 +12,7 @@ import { UserInfoSSOStep } from "./components/UserInfoSSOStep";
 
 export const SignupSsoPage = () => {
   const { t } = useTranslation();
-  const search = useSearch({ from: ROUTE_PATHS.SignUpSsoPage.id });
+  const search = useSearch({ from: ROUTE_PATHS.Auth.SignUpSsoPage.id });
   const token = search.token as string;
 
   const [step, setStep] = useState(0);

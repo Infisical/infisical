@@ -33,7 +33,7 @@ export const FolderListView = ({
     "updateFolder",
     "deleteFolder"
   ] as const);
-  const navigate = useNavigate({ from: ROUTE_PATHS.SecretManager.SecretDashboardPage.full });
+  const navigate = useNavigate({ from: ROUTE_PATHS.SecretManager.SecretDashboardPage.path });
   const secretPathQueryparam = useSearch({
     from: ROUTE_PATHS.SecretManager.SecretDashboardPage.id,
     select: (el) => el.secretPath

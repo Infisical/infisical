@@ -36,7 +36,7 @@ export const PasswordResetPage = () => {
   const [passwordErrorBreached, setPasswordErrorBreached] = useState(false);
 
   const navigate = useNavigate();
-  const search = useSearch({ from: ROUTE_PATHS.PasswordResetPage.id });
+  const search = useSearch({ from: ROUTE_PATHS.Auth.PasswordResetPage.id });
 
   const {
     mutateAsync: verifyPasswordResetCodeMutateAsync,
