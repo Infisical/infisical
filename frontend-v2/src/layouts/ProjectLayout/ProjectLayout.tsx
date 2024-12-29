@@ -78,6 +78,7 @@ export const ProjectLayout = () => {
   const isSecretManager = currentWorkspace?.type === ProjectType.SecretManager;
   const isCertManager = currentWorkspace?.type === ProjectType.CertificateManager;
   const isCmek = currentWorkspace?.type === ProjectType.KMS;
+  const isSSH = currentWorkspace?.type === ProjectType.SSH;
 
   return (
     <>
@@ -122,6 +123,20 @@ export const ProjectLayout = () => {
                     {isCmek && (
                       <Link
                         to={`/${ProjectType.KMS}/$projectId/overview` as const}
+                        params={{
+                          projectId: currentWorkspace.id
+                        }}
+                      >
+                        {({ isActive }) => (
+                          <MenuItem isSelected={isActive} icon="system-outline-90-lock-closed">
+                            Overview
+                          </MenuItem>
+                        )}
+                      </Link>
+                    )}
+                    {isSSH && (
+                      <Link
+                        to={`/${ProjectType.SSH}/$projectId/overview` as const}
                         params={{
                           projectId: currentWorkspace.id
                         }}
