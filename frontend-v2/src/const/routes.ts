@@ -79,6 +79,12 @@ export const ROUTE_PATHS = Object.freeze({
       "/_authenticate/_inject-org-details/cert-manager/$projectId/_cert-manager-layout/pki-collections/$collectionId"
     )
   },
+  Ssh: {
+    SshCaByIDPage: setRoute(
+      "/ssh/$projectId/ca/$caId",
+      "/_authenticate/_inject-org-details/ssh/$projectId/_ssh-layout/ca/$caId"
+    )
+  },
   Public: {
     ViewSharedSecretByIDPage: setRoute("/shared/secret/$secretId", "/shared/secret/$secretId")
   }

@@ -38,6 +38,8 @@ export * from "./secretSharing";
 export * from "./secretSnapshots";
 export * from "./serverDetails";
 export * from "./serviceTokens";
+export * from "./sshCa";
+export * from "./sshCertificateTemplates";
 export * from "./ssoConfig";
 export * from "./subscriptions";
 export * from "./tags";

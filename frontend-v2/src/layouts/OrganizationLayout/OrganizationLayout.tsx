@@ -92,6 +92,16 @@ export const OrganizationLayout = () => {
                         </MenuItem>
                       )}
                     </Link>
+                    <Link to={`/organization/${ProjectType.SSH}/overview` as const}>
+                      {({ isActive }) => (
+                        <MenuItem
+                          isSelected={isActive}
+                          icon="system-regular-126-verified-hover-verified"
+                        >
+                          SSH
+                        </MenuItem>
+                      )}
+                    </Link>
                     <Link to="/organization/access-management">
                       {({ isActive }) => (
                         <MenuItem isSelected={isActive} icon="system-outline-96-groups">

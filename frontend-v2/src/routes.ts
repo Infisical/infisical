@@ -11,6 +11,7 @@ const organizationRoutes = route("/organization", [
   layout("organization/layout.tsx", [
     route("/secret-manager/overview", "organization/SecretManagerOverviewPage/route.tsx"),
     route("/cert-manager/overview", "organization/CertManagerOverviewPage/route.tsx"),
+    route("/ssh/overview", "organization/SshOverviewPage/route.tsx"),
     route("/kms/overview", "organization/KmsOverviewPage/route.tsx"),
     route("/access-management", "organization/AccessManagementPage/route.tsx"),
     route("/admin", "organization/AdminPage/route.tsx"),
@@ -70,6 +71,18 @@ const kmsRoutes = route("/kms/$projectId", [
   ])
 ]);
 
+const sshRoutes = route("/ssh/$projectId", [
+  layout("ssh-layout", "ssh/layout.tsx", [
+    route("/overview", "ssh/OverviewPage/route.tsx"),
+    route("/ca/$caId", "ssh/SshCaByIDPage/route.tsx"),
+    route("/settings", "ssh/SettingsPage/route.tsx"),
+    route("/access-management", "project/AccessControlPage/route-ssh.tsx"),
+    route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-ssh.tsx"),
+    route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-ssh.tsx"),
+    route("/members/$membershipId", "project/MemberDetailsByIDPage/route-ssh.tsx")
+  ])
+]);
+
 export const routes = rootRoute("root.tsx", [
   index("index.tsx"),
   route("/shared/secret/$secretId", "public/ViewSharedSecretByIDPage/route.tsx"),
@@ -104,7 +117,8 @@ export const routes = rootRoute("root.tsx", [
       organizationRoutes,
       secretManagerRoutes,
       certManagerRoutes,
-      kmsRoutes
+      kmsRoutes,
+      sshRoutes
     ])
   ])
 ]);
