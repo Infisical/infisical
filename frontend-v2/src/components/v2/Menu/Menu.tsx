@@ -1,17 +1,7 @@
-import {
-  ComponentPropsWithRef,
-  ElementType,
-  ReactNode,
-  Ref,
-  useEffect,
-  useRef,
-  useState
-} from "react";
+import { ComponentPropsWithRef, ElementType, ReactNode, Ref, useRef } from "react";
+import { DotLottie, DotLottieReact } from "@lottiefiles/dotlottie-react";
 import { motion } from "framer-motion";
-import Lottie, { LottieRefCurrentProps } from "lottie-react";
 import { twMerge } from "tailwind-merge";
-
-import { createNotification } from "@app/components/notifications";
 
 export type MenuProps = {
   children: ReactNode;
@@ -46,23 +36,7 @@ export const MenuItem = <T extends ElementType = "button">({
   inputRef,
   ...props
 }: MenuItemProps<T> & ComponentPropsWithRef<T>): JSX.Element => {
-  const iconRef = useRef<LottieRefCurrentProps | null>(null);
-  // to trigger ref change
-  const [shouldRenderLottie, setShouldRenderLottie] = useState(false);
-  const animationData = useRef();
-  useEffect(() => {
-    if (icon) {
-      import(`../../../assets/lotties/${icon}.json`)
-        .then((el) => {
-          animationData.current = { ...el };
-          setShouldRenderLottie(true);
-        })
-        .catch(() => {
-          createNotification({ type: "error", title: "Failed to load icon", text: "Missing icon" });
-        });
-    }
-  }, [icon]);
-
+  const iconRef = useRef<DotLottie | null>(null);
   return (
     <div onMouseEnter={() => iconRef.current?.play()} onMouseLeave={() => iconRef.current?.stop()}>
       <li
@@ -86,16 +60,17 @@ export const MenuItem = <T extends ElementType = "button">({
                 isSelected ? "visisble" : "invisible"
               } absolute -left-[0.28rem] h-5 w-[0.07rem] rounded-md bg-primary`}
             />
-            {/* {icon && <span className="mr-3 ml-4 w-5 block group-hover:hidden">{icon}</span>} */}
-            {icon && shouldRenderLottie && animationData.current && (
-              <Lottie
-                lottieRef={iconRef}
-                style={{ width: 22, height: 22 }}
-                animationData={animationData.current}
-                loop={false}
-                autoplay={false}
-                className="my-auto ml-[0.1rem] mr-3"
-              />
+            {icon && (
+              <div style={{ width: "22px", height: "22px" }} className="my-auto ml-1 mr-3">
+                <DotLottieReact
+                  dotLottieRefCallback={(el) => {
+                    iconRef.current = el;
+                  }}
+                  src={`/lotties/${icon}.json`}
+                  loop
+                  className="h-full w-full"
+                />
+              </div>
             )}
             <span className="flex-grow text-left">{children}</span>
           </Item>

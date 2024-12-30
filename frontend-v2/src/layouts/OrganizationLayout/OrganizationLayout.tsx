@@ -73,7 +73,7 @@ export const OrganizationLayout = () => {
                   <Menu className="mt-4">
                     <Link to={`/organization/${ProjectType.SecretManager}/overview` as const}>
                       {({ isActive }) => (
-                        <MenuItem isSelected={isActive} icon="system-outline-165-view-carousel">
+                        <MenuItem isSelected={isActive} icon="sliding-carousel">
                           Secret Management
                         </MenuItem>
                       )}
@@ -87,38 +87,35 @@ export const OrganizationLayout = () => {
                     </Link>
                     <Link to={`/organization/${ProjectType.KMS}/overview` as const}>
                       {({ isActive }) => (
-                        <MenuItem isSelected={isActive} icon="note">
+                        <MenuItem isSelected={isActive} icon="unlock">
                           Key Management
                         </MenuItem>
                       )}
                     </Link>
                     <Link to={`/organization/${ProjectType.SSH}/overview` as const}>
                       {({ isActive }) => (
-                        <MenuItem
-                          isSelected={isActive}
-                          icon="system-regular-126-verified-hover-verified"
-                        >
+                        <MenuItem isSelected={isActive} icon="verified">
                           SSH
                         </MenuItem>
                       )}
                     </Link>
                     <Link to="/organization/access-management">
                       {({ isActive }) => (
-                        <MenuItem isSelected={isActive} icon="system-outline-96-groups">
+                        <MenuItem isSelected={isActive} icon="groups">
                           Access Control
                         </MenuItem>
                       )}
                     </Link>
                     <Link to="/organization/secret-scanning">
                       {({ isActive }) => (
-                        <MenuItem isSelected={isActive} icon="system-outline-69-document-scan">
+                        <MenuItem isSelected={isActive} icon="secret-scan" className="text-white">
                           Secret Scanning
                         </MenuItem>
                       )}
                     </Link>
                     <Link to="/organization/secret-sharing">
                       {({ isActive }) => (
-                        <MenuItem isSelected={isActive} icon="system-outline-90-lock-closed">
+                        <MenuItem isSelected={isActive} icon="lock-closed">
                           Secret Sharing
                         </MenuItem>
                       )}
@@ -128,10 +125,7 @@ export const OrganizationLayout = () => {
                       window.location.origin.includes("https://gamma.infisical.com")) && (
                       <Link to="/organization/billing">
                         {({ isActive }) => (
-                          <MenuItem
-                            isSelected={isActive}
-                            icon="system-outline-103-coin-cash-monetization"
-                          >
+                          <MenuItem isSelected={isActive} icon="spinning-coin">
                             Usage &amps; Billing
                           </MenuItem>
                         )}
@@ -139,17 +133,14 @@ export const OrganizationLayout = () => {
                     )}
                     <Link to="/organization/audit-logs">
                       {({ isActive }) => (
-                        <MenuItem isSelected={isActive} icon="system-outline-168-view-headline">
+                        <MenuItem isSelected={isActive} icon="moving-block">
                           Audit Logs
                         </MenuItem>
                       )}
                     </Link>
                     <Link to="/organization/settings">
                       {({ isActive }) => (
-                        <MenuItem
-                          isSelected={isActive}
-                          icon="system-outline-109-slider-toggle-settings"
-                        >
+                        <MenuItem isSelected={isActive} icon="toggle-settings">
                           Organization Settings
                         </MenuItem>
                       )}

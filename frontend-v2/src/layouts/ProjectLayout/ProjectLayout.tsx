@@ -100,7 +100,7 @@ export const ProjectLayout = () => {
                         }}
                       >
                         {({ isActive }) => (
-                          <MenuItem isSelected={isActive} icon="system-outline-90-lock-closed">
+                          <MenuItem isSelected={isActive} icon="lock-closed">
                             {t("nav.menu.secrets")}
                           </MenuItem>
                         )}
@@ -114,7 +114,7 @@ export const ProjectLayout = () => {
                         }}
                       >
                         {({ isActive }) => (
-                          <MenuItem isSelected={isActive} icon="system-outline-90-lock-closed">
+                          <MenuItem isSelected={isActive} icon="lock-closed">
                             Overview
                           </MenuItem>
                         )}
@@ -128,7 +128,7 @@ export const ProjectLayout = () => {
                         }}
                       >
                         {({ isActive }) => (
-                          <MenuItem isSelected={isActive} icon="system-outline-90-lock-closed">
+                          <MenuItem isSelected={isActive} icon="lock-closed">
                             Overview
                           </MenuItem>
                         )}
@@ -142,7 +142,7 @@ export const ProjectLayout = () => {
                         }}
                       >
                         {({ isActive }) => (
-                          <MenuItem isSelected={isActive} icon="system-outline-90-lock-closed">
+                          <MenuItem isSelected={isActive} icon="lock-closed">
                             Overview
                           </MenuItem>
                         )}
@@ -155,7 +155,7 @@ export const ProjectLayout = () => {
                       }}
                     >
                       {({ isActive }) => (
-                        <MenuItem isSelected={isActive} icon="system-outline-96-groups">
+                        <MenuItem isSelected={isActive} icon="groups">
                           Access Control
                         </MenuItem>
                       )}
@@ -168,7 +168,7 @@ export const ProjectLayout = () => {
                         }}
                       >
                         {({ isActive }) => (
-                          <MenuItem isSelected={isActive} icon="system-outline-82-extension">
+                          <MenuItem isSelected={isActive} icon="jigsaw-puzzle">
                             {t("nav.menu.integrations")}
                           </MenuItem>
                         )}
@@ -196,10 +196,7 @@ export const ProjectLayout = () => {
                         }}
                       >
                         {({ isActive }) => (
-                          <MenuItem
-                            isSelected={isActive}
-                            icon="system-outline-189-domain-verification"
-                          >
+                          <MenuItem isSelected={isActive} icon="circular-check">
                             Approvals
                             {Boolean(
                               secretApprovalReqCount?.open ||
@@ -220,10 +217,7 @@ export const ProjectLayout = () => {
                       }}
                     >
                       {({ isActive }) => (
-                        <MenuItem
-                          isSelected={isActive}
-                          icon="system-outline-109-slider-toggle-settings"
-                        >
+                        <MenuItem isSelected={isActive} icon="toggle-settings">
                           {t("nav.menu.project-settings")}
                         </MenuItem>
                       )}
