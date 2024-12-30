@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/Infisical/infisical-merge/packages/api"
+	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/go-resty/resty/v2"
 	"github.com/spf13/cobra"
