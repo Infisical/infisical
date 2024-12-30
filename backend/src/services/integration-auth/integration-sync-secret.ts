@@ -305,10 +305,16 @@ const syncSecretsAzureAppConfig = async ({
     value: string;
   }
 
-  const getCompleteAzureAppConfigValues = async (url: string) => {
+  if (!integration.app || !integration.app.endsWith(".azconfig.io"))
+    throw new BadRequestError({
+      message: "Invalid Azure App Configuration URL provided."
+    });
+
+  const getCompleteAzureAppConfigValues = async (baseURL: string, url: string) => {
     let result: AzureAppConfigKeyValue[] = [];
     while (url) {
       const res = await request.get(url, {
+        baseURL,
         headers: {
           Authorization: `Bearer ${accessToken}`
         },
@@ -319,7 +325,7 @@ const syncSecretsAzureAppConfig = async ({
       });
 
       result = result.concat(res.data.items);
-      url = res.data.nextLink;
+      url = res.data?.["@nextLink"];
     }
 
     return result;
@@ -327,11 +333,13 @@ const syncSecretsAzureAppConfig = async ({
 
   const metadata = IntegrationMetadataSchema.parse(integration.metadata);
 
-  const azureAppConfigValuesUrl = `${integration.app}/kv?api-version=2023-11-01&key=${metadata.secretPrefix}*${
+  const azureAppConfigValuesUrl = `/kv?api-version=2023-11-01&key=${metadata.secretPrefix}*${
     metadata.azureLabel ? `&label=${metadata.azureLabel}` : "&label=%00"
   }`;
 
-  const azureAppConfigSecrets = (await getCompleteAzureAppConfigValues(azureAppConfigValuesUrl)).reduce(
+  const azureAppConfigSecrets = (
+    await getCompleteAzureAppConfigValues(integration.app, azureAppConfigValuesUrl)
+  ).reduce(
     (accum, entry) => {
       accum[entry.key] = entry.value;
 
