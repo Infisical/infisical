@@ -12,6 +12,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { secretRawSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { ResourceMetadataSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 const approvalRequestUser = z.object({ userId: z.string().nullable().optional() }).merge(
   UsersSchema.pick({
@@ -274,6 +275,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
                 .extend({
                   op: z.string(),
                   tags: tagSchema,
+                  secretMetadata: ResourceMetadataSchema.nullish(),
                   secret: z
                     .object({
                       id: z.string(),
@@ -291,7 +293,8 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
                       secretKey: z.string(),
                       secretValue: z.string().optional(),
                       secretComment: z.string().optional(),
-                      tags: tagSchema
+                      tags: tagSchema,
+                      secretMetadata: ResourceMetadataSchema.nullish()
                     })
                     .optional()
                 })

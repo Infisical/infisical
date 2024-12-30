@@ -14,6 +14,8 @@ import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
 import { ActorType } from "../auth/auth-type";
 import { TKmsServiceFactory } from "../kms/kms-service";
+import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
+import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "../secret-v2-bridge/secret-version-tag-dal";
@@ -211,6 +213,7 @@ export type TCreateSecretRawDTO = TProjectPermission & {
   skipMultilineEncoding?: boolean;
   secretReminderRepeatDays?: number | null;
   secretReminderNote?: string | null;
+  secretMetadata?: ResourceMetadataDTO;
 };
 
 export type TUpdateSecretRawDTO = TProjectPermission & {
@@ -228,6 +231,7 @@ export type TUpdateSecretRawDTO = TProjectPermission & {
   metadata?: {
     source?: string;
   };
+  secretMetadata?: ResourceMetadataDTO;
 };
 
 export type TDeleteSecretRawDTO = TProjectPermission & {
@@ -248,6 +252,7 @@ export type TCreateManySecretRawDTO = Omit<TProjectPermission, "projectId"> & {
     secretComment?: string;
     skipMultilineEncoding?: boolean;
     tagIds?: string[];
+    secretMetadata?: ResourceMetadataDTO;
     metadata?: {
       source?: string;
     };
@@ -266,6 +271,7 @@ export type TUpdateManySecretRawDTO = Omit<TProjectPermission, "projectId"> & {
     secretComment?: string;
     skipMultilineEncoding?: boolean;
     tagIds?: string[];
+    secretMetadata?: ResourceMetadataDTO;
     secretReminderRepeatDays?: number | null;
     secretReminderNote?: string | null;
   }[];
@@ -293,7 +299,13 @@ export type TSecretReference = { environment: string; secretPath: string };
 export type TFnSecretBulkInsert = {
   folderId: string;
   tx?: Knex;
-  inputSecrets: Array<Omit<TSecretsInsert, "folderId"> & { tags?: string[]; references?: TSecretReference[] }>;
+  inputSecrets: Array<
+    Omit<TSecretsInsert, "folderId"> & {
+      tags?: string[];
+      references?: TSecretReference[];
+      secretMetadata?: ResourceMetadataDTO;
+    }
+  >;
   secretDAL: Pick<TSecretDALFactory, "insertMany" | "upsertSecretReferences">;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "insertMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecret">;
@@ -389,6 +401,7 @@ export type TCreateManySecretsRawFnFactory = {
   >;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;
 };
 
 export type TCreateManySecretsRawFn = {
@@ -425,6 +438,7 @@ export type TUpdateManySecretsRawFnFactory = {
   >;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
 };
 
 export type TUpdateManySecretsRawFn = {
@@ -460,6 +474,7 @@ export type TSyncSecretsDTO<T extends boolean = false> = {
   _depth?: number;
   secretPath: string;
   projectId: string;
+  orgId: string;
   environmentSlug: string;
   // cases for just doing sync integration and webhook
   excludeReplication?: T;
