@@ -1,6 +1,7 @@
 import { createContext, ReactNode, useContext, useEffect, useRef } from "react";
 import { useRouter } from "@tanstack/react-router";
 import { createStore, StateCreator, StoreApi, useStore } from "zustand";
+import { useShallow } from "zustand/react/shallow";
 
 import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
@@ -60,14 +61,13 @@ const createPopUpStore: StateCreator<PopUpState> = (set) => ({
 type CombinedState = SelectedSecretState & PopUpState;
 const StoreContext = createContext<StoreApi<CombinedState> | null>(null);
 export const StoreProvider = ({ children }: { children: ReactNode }) => {
-  const storeRef = useRef<StoreApi<CombinedState>>();
-  const router = useRouter();
-  if (!storeRef.current) {
-    storeRef.current = createStore<CombinedState>((...a) => ({
+  const storeRef = useRef<StoreApi<CombinedState>>(
+    createStore<CombinedState>((...a) => ({
       ...createSelectedSecretStore(...a),
       ...createPopUpStore(...a)
-    }));
-  }
+    }))
+  );
+  const router = useRouter();
 
   useEffect(() => {
     const onRouteChangeStart = () => {
@@ -91,10 +91,11 @@ const useStoreContext = <T extends object>(selector: (state: CombinedState) => T
 };
 
 // selected secret context
-export const useSelectedSecrets = () => useStoreContext((state) => state.selectedSecret);
-export const useSelectedSecretActions = () => useStoreContext((state) => state.action);
+export const useSelectedSecrets = () =>
+  useStoreContext(useShallow((state) => state.selectedSecret));
+export const useSelectedSecretActions = () => useStoreContext(useShallow((state) => state.action));
 
 // popup context
 export const usePopUpState = (id: PopUpNames) =>
-  useStoreContext((state) => state.popUp?.[id] || { isOpen: false });
-export const usePopUpAction = () => useStoreContext((state) => state.popUpActions);
+  useStoreContext(useShallow((state) => state.popUp?.[id] || { isOpen: false }));
+export const usePopUpAction = () => useStoreContext(useShallow((state) => state.popUpActions));
