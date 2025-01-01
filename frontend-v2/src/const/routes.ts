@@ -63,6 +63,10 @@ export const ROUTE_PATHS = Object.freeze({
     OverviewPage: setRoute(
       "/secret-manager/$projectId/overview",
       "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/overview"
+    ),
+    IntegrationDetailsByIDPage: setRoute(
+      "/secret-manager/$projectId/integrations/$integrationId",
+      "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/$integrationId"
     )
   },
   CertManager: {

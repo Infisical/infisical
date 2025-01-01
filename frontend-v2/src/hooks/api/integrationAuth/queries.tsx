@@ -1,6 +1,7 @@
-import { useMutation, useQuery, useQueryClient, UseQueryOptions } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { TReactQueryOptions } from "@app/types/reactQuery";
 
 import { workspaceKeys } from "../workspace";
 import {
@@ -530,11 +531,7 @@ export const useGetIntegrationAuthApps = (
     azureDevOpsOrgName?: string;
     workspaceSlug?: string;
   },
-  options?: UseQueryOptions<
-    Awaited<ReturnType<typeof fetchIntegrationAuthApps>>,
-    unknown,
-    Awaited<ReturnType<typeof fetchIntegrationAuthApps>>
-  >
+  options?: TReactQueryOptions["options"]
 ) => {
   return useQuery({
     queryKey: integrationAuthKeys.getIntegrationAuthApps(integrationAuthId, teamId, workspaceSlug),
@@ -806,11 +803,7 @@ export const useGetIntegrationAuthOctopusDeploySpaces = (integrationAuthId: stri
 
 export const useGetIntegrationAuthOctopusDeployScopeValues = (
   params: TGetIntegrationAuthOctopusDeployScopeValuesDTO,
-  options?: UseQueryOptions<
-    TOctopusDeployVariableSetScopeValues,
-    unknown,
-    TOctopusDeployVariableSetScopeValues
-  >
+  options?: TReactQueryOptions["options"]
 ) =>
   useQuery({
     queryKey: integrationAuthKeys.getIntegrationAuthOctopusDeployScopeValues(params),
@@ -828,7 +821,7 @@ export const useGetIntegrationAuthBitBucketEnvironments = (
     workspaceSlug: string;
     repoSlug: string;
   },
-  options?: UseQueryOptions<BitBucketEnvironment[]>
+  options?: TReactQueryOptions["options"]
 ) => {
   return useQuery({
     queryKey: integrationAuthKeys.getIntegrationAuthBitBucketEnvironments(
