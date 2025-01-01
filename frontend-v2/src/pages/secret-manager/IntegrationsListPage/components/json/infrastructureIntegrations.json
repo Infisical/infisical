@@ -1,0 +1,50 @@
+[
+    {
+        "name": "Docker",
+        "slug": "docker",
+        "image": "Docker",
+        "docsLink": "https://infisical.com/docs/integrations/platforms/docker"
+    },
+    {
+        "name": "Docker Compose",
+        "slug": "docker-compose",
+        "image": "Docker Compose",
+        "docsLink": "https://infisical.com/docs/integrations/platforms/docker-compose"
+    },
+    {
+        "name": "Kubernetes",
+        "slug": "kubernetes",
+        "image": "Kubernetes",
+        "docsLink": "https://infisical.com/docs/integrations/platforms/kubernetes"
+    },
+    {
+        "name": "Terraform",
+        "slug": "terraform",
+        "image": "Terraform",
+        "docsLink": "https://infisical.com/docs/integrations/frameworks/terraform"
+    },
+    {
+        "name": "Jenkins",
+        "slug": "jenkins",
+        "image": "Jenkins",
+        "docsLink": "https://infisical.com/docs/integrations/cicd/jenkins"
+    },
+    {
+        "name": "Infisical Agent",
+        "slug": "agent",
+        "image": "Agent",
+        "docsLink": "https://infisical.com/docs/integrations/platforms/infisical-agent"
+    },
+    {
+        "name": "Amazon ECS",
+        "slug": "ecs",
+        "image": "ECS",
+        "docsLink": "https://infisical.com/docs/integrations/platforms/ecs-with-agent"
+    },
+    {
+        "name": "Ansible",
+        "slug": "ansible",
+        "image": "Ansible",
+        "docsLink": "https://infisical.com/docs/integrations/platforms/ansible"
+    }
+]

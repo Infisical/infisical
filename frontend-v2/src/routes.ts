@@ -40,6 +40,10 @@ const secretManagerRoutes = route("/secret-manager/$projectId", [
     route("/approval", "secret-manager/SecretApprovalsPage/route.tsx"),
     route("/secret-rotation", "secret-manager/SecretRotationPage/route.tsx"),
     route("/settings", "secret-manager/SettingsPage/route.tsx"),
+    route("/integrations", [
+      index("secret-manager/IntegrationsListPage/route.tsx"),
+      route("/$integrationId", "secret-manager/IntegrationsDetailsByIDPage/route.tsx")
+    ]),
     route("/access-management", "project/AccessControlPage/route-secret-manager.tsx"),
     route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-secret-manager.tsx"),
     route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-secret-manager.tsx"),

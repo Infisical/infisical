@@ -1,0 +1,92 @@
+[
+    {
+        "name": "React",
+        "slug": "react",
+        "image": "React",
+        "docsLink": "https://infisical.com/docs/integrations/frameworks/react"
+    },
+    {
+        "name": "Vue",
+        "slug": "vue",
+        "image": "Vue",
+        "docsLink": "https://infisical.com/docs/integrations/frameworks/vue"
+    },
+    {
+        "name": "Express",
+        "slug": "express",
+        "image": "Express",
+        "docsLink": "https://infisical.com/docs/integrations/frameworks/express"
+    },
+    {
+        "name": "Next.js",
+        "slug": "nextjs",
+        "image": "Next.js",
+        "docsLink": "https://infisical.com/docs/integrations/frameworks/nextjs"
+    },
+    {
+        "name": "SvelteKit",
+        "slug": "sveltekit",
+        "image": "SvelteKit",
+        "docsLink": "https://infisical.com/docs/integrations/frameworks/sveltekit"
+    },
+    {
+        "name": "Django",
+        "slug": "django",
+        "image": "Django",
+        "docsLink": "https://infisical.com/docs/integrations/frameworks/django"
+    },
+    {
+        "name": "NestJS",
+        "slug": "nestjs",
+        "image": "NestJS",
+        "docsLink": "https://infisical.com/docs/integrations/frameworks/nestjs"
+    },
+    {
+        "name": "Nuxt",
+        "slug": "nuxt",
+        "image": "Nuxt",
+        "docsLink": "https://infisical.com/docs/integrations/frameworks/nuxt"
+    },
+    {
+        "name": "Gatsby",
+        "slug": "gatsby",
+        "image": "Gatsby",
+        "docsLink": "https://infisical.com/docs/integrations/frameworks/gatsby"
+    },
+    {
+        "name": "Remix",
+        "slug": "remix",
+        "image": "Remix",
+        "docsLink": "https://infisical.com/docs/integrations/frameworks/remix"
+    },
+    {
+        "name": "Vite",
+        "slug": "vite",
+        "image": "Vite",
+        "docsLink": "https://infisical.com/docs/integrations/frameworks/vite"
+    },
+    {
+        "name": "Fiber",
+        "slug": "fiber",
+        "image": "Fiber",
+        "docsLink": "https://infisical.com/docs/integrations/frameworks/fiber"
+    },
+    {
+        "name": "Flask",
+        "slug": "flask",
+        "image": "Flask",
+        "docsLink": "https://infisical.com/docs/integrations/frameworks/flask"
+    },
+    {
+        "name": "Laravel",
+        "slug": "laravel",
+        "image": "Laravel",
+        "docsLink": "https://infisical.com/docs/integrations/frameworks/laravel"
+    },
+    {
+        "name": "Rails",
+        "slug": "rails",
+        "image": "Rails",
+        "docsLink": "https://infisical.com/docs/integrations/frameworks/rails"
+    }
+]
