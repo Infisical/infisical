@@ -28,6 +28,7 @@ export const useProjectPermission = () => {
   } = useSuspenseQuery({
     queryKey: roleQueryKeys.getUserProjectPermissions({ workspaceId: projectId }),
     queryFn: () => fetchUserProjectPermissions({ workspaceId: projectId }),
+    staleTime: Infinity,
     select: (data) => {
       const rule = unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(data.permissions);
       const negatedRules = groupBy(
