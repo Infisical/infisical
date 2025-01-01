@@ -129,7 +129,7 @@ const Page = () => {
 
   const defaultFilterState = {
     tags: {},
-    searchFilter: (routerQueryParams.searchFilter as string) || "",
+    searchFilter: (routerQueryParams.search as string) || "",
     // these should always be on by default for the UI, they will be disabled for the query below based off permissions
     include: {
       [RowType.Folder]: true,
@@ -143,7 +143,6 @@ const Page = () => {
   const [debouncedSearchFilter, setDebouncedSearchFilter] = useDebounce(filter.searchFilter);
   const [filterHistory, setFilterHistory] = useState<Map<string, Filter>>(new Map());
 
-  // TODO(rbr): check why this fails
   const createSecretPopUp = usePopUpState(PopUpNames.CreateSecretForm);
   const { togglePopUp } = usePopUpAction();
 
@@ -261,8 +260,11 @@ const Page = () => {
 
   const handleEnvChange = (slug: string) => {
     navigate({
+      params: {
+        envSlug: slug
+      },
       search: (state) => {
-        const newState = { ...state, secretPath: undefined, env: slug };
+        const newState = { ...state, secretPath: undefined };
         return newState;
       }
     });
@@ -316,17 +318,6 @@ const Page = () => {
     const restore = filterHistory.get(secretPath);
     setFilter(restore ?? defaultFilterState);
     setDebouncedSearchFilter(restore?.searchFilter ?? "");
-
-    // this is a temp work around until we fully transition state to query params,
-    // setting the initial search filter by query and then moving it to internal state
-    if (routerQueryParams.searchFilter) {
-      navigate({
-        search: (state) => {
-          const { searchFilter, ...query } = state;
-          return query;
-        }
-      });
-    }
   }, [secretPath]);
 
   useEffect(() => {

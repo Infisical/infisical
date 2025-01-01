@@ -473,7 +473,7 @@ export const OverviewPage = () => {
     navigate({
       search: (prev) => ({
         ...prev,
-        secretPath: `${routerSearch?.secretPath || ""}/${path}`
+        secretPath: `${routerSearch.secretPath === "/" ? "" : routerSearch.secretPath}/${path}`
       })
     }).then(() => {
       setFilter(DEFAULT_FILTER_STATE);
@@ -504,7 +504,7 @@ export const OverviewPage = () => {
       }
     }
 
-    const query: Record<string, string> = { ...routerSearch, env: slug, searchFilter };
+    const query: Record<string, string> = { ...routerSearch, search: searchFilter };
     const envIndex = visibleEnvs.findIndex((el) => slug === el.slug);
     if (envIndex !== -1) {
       navigate({

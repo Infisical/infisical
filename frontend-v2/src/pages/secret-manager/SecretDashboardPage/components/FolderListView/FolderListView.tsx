@@ -90,7 +90,7 @@ export const FolderListView = ({
   };
 
   const handleFolderClick = (name: string) => {
-    const path = `${secretPathQueryparam || ""}/${name}`;
+    const path = `${secretPathQueryparam === "/" ? "" : secretPathQueryparam}/${name}`;
     navigate({
       search: (el) => ({ ...el, secretPath: path })
     }).then(() => onNavigateToFolder(path));
