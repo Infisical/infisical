@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { yupResolver } from "@hookform/resolvers/yup";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -21,7 +21,7 @@ export const InvoiceEmailSection = () => {
     defaultValues: {
       email: ""
     },
-    resolver: yupResolver(schema)
+    resolver: zodResolver(schema)
   });
   const { data } = useGetOrgBillingDetails(currentOrg?.id ?? "");
   const { mutateAsync, isPending } = useUpdateOrgBillingDetails();

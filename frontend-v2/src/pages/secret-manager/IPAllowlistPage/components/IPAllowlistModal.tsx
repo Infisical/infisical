@@ -25,7 +25,7 @@ type Props = {
 };
 
 export const IPAllowlistModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props) => {
-  const { data, isLoading } = useGetMyIp();
+  const { data, isPending } = useGetMyIp();
 
   const { currentWorkspace } = useWorkspace();
   const addTrustedIp = useAddTrustedIp();
@@ -123,7 +123,7 @@ export const IPAllowlistModal = ({ popUp, handlePopUpClose, handlePopUpToggle }:
               </FormControl>
             )}
           />
-          {!isLoading && data && (
+          {!isPending && data && (
             <Button
               colorSchema="secondary"
               type="button"

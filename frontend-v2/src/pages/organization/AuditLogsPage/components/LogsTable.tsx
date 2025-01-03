@@ -38,7 +38,6 @@ export const LogsTable = ({
   remappedHeaders,
   refetchInterval
 }: Props) => {
-  // TODO(rbr): check this again, there was a filter with current workspace id
   // Determine the project ID for filtering
   const filterProjectId =
     // Use the projectId from the filter if it exists

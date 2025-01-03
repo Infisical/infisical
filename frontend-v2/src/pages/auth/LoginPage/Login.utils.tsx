@@ -4,6 +4,7 @@ import { useServerConfig } from "@app/context";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { queryClient } from "@app/hooks/api/reactQuery";
 import { userKeys } from "@app/hooks/api/users";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 export const navigateUserToOrg = async (navigate: NavigateFn, organizationId?: string) => {
   const userOrgs = await fetchOrganizations();
@@ -20,7 +21,7 @@ export const navigateUserToOrg = async (navigate: NavigateFn, organizationId?: s
     // user is part of at least 1 non-auth enforced org
     const userOrg = nonAuthEnforcedOrgs[0] && nonAuthEnforcedOrgs[0].id;
     localStorage.setItem("orgData.id", userOrg);
-    navigate({ to: `/org/${userOrg}/overview` });
+    navigate({ to: `/organization/${ProjectType.SecretManager}/overview` as const });
   } else {
     // user is not part of any non-auth enforced orgs
     localStorage.removeItem("orgData.id");
@@ -45,3 +46,4 @@ export const useNavigateToSelectOrganization = () => {
 
   return { navigateToSelectOrganization };
 };
+

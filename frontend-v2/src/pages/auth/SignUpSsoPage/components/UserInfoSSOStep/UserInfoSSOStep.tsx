@@ -12,11 +12,11 @@ import { deriveArgonKey } from "@app/components/utilities/cryptography/crypto";
 import { saveTokenToLocalStorage } from "@app/components/utilities/saveTokenToLocalStorage";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, Input } from "@app/components/v2";
+import { initProjectHelper } from "@app/helpers/project";
 import { useToggle } from "@app/hooks";
 import { completeAccountSignup, useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
-import ProjectService from "@app/services/ProjectService";
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
@@ -196,11 +196,9 @@ export const UserInfoSSOStep = ({
 
                   // only create example project if not joining existing org
                   if (!providerOrganizationName) {
-                    const project = await ProjectService.initProject({
+                    await initProjectHelper({
                       projectName: "Example Project"
                     });
-
-                    localStorage.setItem("projectData.id", project.id);
                   }
 
                   localStorage.setItem("orgData.id", orgId);

@@ -57,7 +57,6 @@ export const useDeleteMe = () => {
       localStorage.removeItem("tag");
       localStorage.removeItem("PRIVATE_KEY");
       localStorage.removeItem("orgData.id");
-      localStorage.removeItem("projectData.id");
 
       queryClient.clear();
     }
@@ -297,7 +296,6 @@ export const useLogoutUser = (keepQueryClient?: boolean) => {
       localStorage.removeItem("tag");
       localStorage.removeItem("PRIVATE_KEY");
       localStorage.removeItem("orgData.id");
-      localStorage.removeItem("projectData.id");
       sessionStorage.removeItem(SessionStorageKeys.CLI_TERMINAL_TOKEN);
 
       if (!keepQueryClient) {

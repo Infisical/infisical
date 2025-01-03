@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { yupResolver } from "@hookform/resolvers/yup";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -17,7 +17,6 @@ import { IdentityAuthMethod } from "@app/hooks/api/identities";
 import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-// TODO(rbr): check these forms validation again
 const schema = z
   .object({
     accessTokenTTL: z
@@ -89,7 +88,7 @@ export const IdentityUniversalAuthForm = ({
     reset,
     formState: { isSubmitting }
   } = useForm<FormData>({
-    resolver: yupResolver(schema),
+    resolver: zodResolver(schema),
     defaultValues: {
       accessTokenTTL: "2592000",
       accessTokenMaxTTL: "2592000",
@@ -185,11 +184,8 @@ export const IdentityUniversalAuthForm = ({
       });
 
       reset();
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text =
-        error?.response?.data?.message ?? `Failed to ${isUpdate ? "update" : "configure"} identity`;
+    } catch {
+      const text = `Failed to ${isUpdate ? "update" : "configure"} identity`;
 
       createNotification({
         text,
@@ -224,7 +220,7 @@ export const IdentityUniversalAuthForm = ({
             isError={Boolean(error)}
             errorText={error?.message}
           >
-            <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
+            <Input {...field} placeholder="2592000" type="number" min="0" step="1" />
           </FormControl>
         )}
       />

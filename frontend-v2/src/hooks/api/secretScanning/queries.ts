@@ -23,10 +23,10 @@ export const useGetSecretScanningInstallationStatus = (orgId: string) =>
   });
 
 const fetchSecretScanningRisksByOrgId = async (oranizationId: string) => {
-  const { data } = await apiRequest.get<TSecretScanningGitRisks[]>(
+  const { data } = await apiRequest.get<{ risks: TSecretScanningGitRisks[] }>(
     `/api/v1/secret-scanning/organization/${oranizationId}/risks`
   );
-  return data;
+  return data.risks;
 };
 
 export const useGetSecretScanningRisks = (orgId: string) =>

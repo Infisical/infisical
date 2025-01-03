@@ -95,8 +95,9 @@ export default function NavHeader({
         <Link
           to={`/${ProjectType.SecretManager}/$projectId/overview` as const}
           params={{ projectId: currentWorkspace.id }}
+          className="text-sm font-semibold text-primary/80 hover:text-primary"
         >
-          <a className="text-sm font-semibold text-primary/80 hover:text-primary">{pageName}</a>
+          {pageName}
         </Link>
       ) : (
         <div className="text-sm text-gray-400">{pageName}</div>
@@ -196,15 +197,12 @@ export default function NavHeader({
                     envSlug: routerEnvSlug || ""
                   }}
                   search={(query) => ({ ...query, secretPath: newSecretPath })}
+                  className={twMerge(
+                    "text-sm font-semibold transition-all hover:text-primary",
+                    isHoveringCopyButton ? "text-primary" : "text-primary/80"
+                  )}
                 >
-                  <a
-                    className={twMerge(
-                      "text-sm font-semibold transition-all hover:text-primary",
-                      isHoveringCopyButton ? "text-primary" : "text-primary/80"
-                    )}
-                  >
-                    {folderName}
-                  </a>
+                  {folderName}
                 </Link>
               )}
             </div>

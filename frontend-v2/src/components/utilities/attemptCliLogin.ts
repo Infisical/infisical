@@ -1,8 +1,8 @@
 /* eslint-disable prefer-destructuring */
 import jsrp from "jsrp";
 
+import { decryptPrivateKeyHelper } from "@app/helpers/key";
 import { login1, login2 } from "@app/hooks/api/auth/queries";
-import KeyService from "@app/services/KeyService";
 
 import Telemetry from "./telemetry/Telemetry";
 import { saveTokenToLocalStorage } from "./saveTokenToLocalStorage";
@@ -101,7 +101,7 @@ const attemptLogin = async ({
             // set JWT token
             SecurityClient.setToken(token);
 
-            const privateKey = await KeyService.decryptPrivateKey({
+            const privateKey = await decryptPrivateKeyHelper({
               encryptionVersion,
               encryptedPrivateKey,
               iv,

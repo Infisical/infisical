@@ -55,7 +55,7 @@ export const renderConditionalComponents = (
 export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
   const { currentWorkspace } = useWorkspace();
   const projectId = currentWorkspace?.id || "";
-  const { data: role, isLoading } = useGetProjectRoleBySlug(
+  const { data: role, isPending } = useGetProjectRoleBySlug(
     currentWorkspace?.id ?? "",
     roleSlug as string
   );
@@ -189,7 +189,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
           </div>
         </div>
         <div className="py-4">
-          {!isLoading && <PermissionEmptyState />}
+          {!isPending && <PermissionEmptyState />}
           {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map((subject) => (
             <GeneralPermissionPolicies
               subject={subject}

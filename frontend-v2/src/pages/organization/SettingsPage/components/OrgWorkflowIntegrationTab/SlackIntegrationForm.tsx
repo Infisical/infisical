@@ -58,7 +58,6 @@ export const SlackIntegrationForm = ({ id, onClose }: Props) => {
         slug,
         description
       });
-      // TODO(rbr): check this
       if (slackInstallUrl) {
         navigate({ to: slackInstallUrl });
       }

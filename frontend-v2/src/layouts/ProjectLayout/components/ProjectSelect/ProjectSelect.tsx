@@ -191,7 +191,6 @@ export const ProjectSelect = () => {
           }
 
           const project = newValue as TWorkspaceWithFaveProp;
-          localStorage.setItem("projectData.id", project.id);
           // todo(akhi): this is not using react query because react query in overview is throwing error when envs are not exact same count
           // to reproduce change this back to router.push and switch between two projects with different env count
           // look into this on dashboard revamp

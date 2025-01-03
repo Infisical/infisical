@@ -70,7 +70,7 @@ const Content = ({
     [RowType.DynamicSecret]: true
   });
   const isEnabled = Boolean(search.trim()) || Boolean(Object.values(filterTags).length);
-  const { data, isLoading } = useGetProjectSecretsQuickSearch(
+  const { data, isPending } = useGetProjectSecretsQuickSearch(
     {
       secretPath: "/",
       environments: environments.map((env) => env.slug),
@@ -217,7 +217,7 @@ const Content = ({
         {/* eslint-disable-next-line no-nested-ternary */}
         {isEnabled ? (
           // eslint-disable-next-line no-nested-ternary
-          isLoading ? (
+          isPending ? (
             <Spinner size="lg" className="mx-auto mt-24 text-mineshaft-900" />
           ) : isEmpty ? (
             <EmptyState

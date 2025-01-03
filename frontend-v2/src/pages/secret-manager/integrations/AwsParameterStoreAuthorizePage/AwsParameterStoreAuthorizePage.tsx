@@ -55,7 +55,7 @@ export const AWSParameterStoreAuthorizeIntegrationPage = () => {
   const handleFormSubmit = async (data: TForm) => {
     try {
       const integrationAuth = await mutateAsync({
-        workspaceId: localStorage.getItem("projectData.id"),
+        workspaceId: currentWorkspace.id,
         integration: "aws-parameter-store",
         ...(data.type === AwsAuthType.AssumeRole
           ? {

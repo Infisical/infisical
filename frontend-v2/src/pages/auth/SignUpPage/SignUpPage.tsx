@@ -13,7 +13,6 @@ import UserInfoStep from "@app/components/auth/UserInfoStep";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { useServerConfig } from "@app/context";
 import { useVerifySignupEmailVerificationCode } from "@app/hooks/api";
-import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 
@@ -39,20 +38,6 @@ export const SignUpPage = () => {
       navigate({ to: "/login" });
     }
   }, [config.allowSignUp]);
-
-  useEffect(() => {
-    const tryAuth = async () => {
-      try {
-        const userOrgs = await fetchOrganizations();
-        navigate({
-          to: `/org/${userOrgs[0].id}/${ProjectType.SecretManager}/overview`
-        });
-      } catch {
-        console.log("Error - Not logged in yet");
-      }
-    };
-    tryAuth();
-  }, []);
 
   /**
    * Goes to the following step (out of 5) of the signup process.
@@ -88,9 +73,8 @@ export const SignUpPage = () => {
       }
 
       if (!serverDetails?.emailConfigured && step === 5) {
-        const userOrgs = await fetchOrganizations();
         navigate({
-          to: `/org/${userOrgs[0].id}/${ProjectType.SecretManager}/overview`
+          to: `/organization/${ProjectType.SecretManager}/overview` as const
         });
       }
     })();

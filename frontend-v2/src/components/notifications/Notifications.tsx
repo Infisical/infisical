@@ -33,7 +33,6 @@ export const NotificationContent = ({
           )}
         >
           {callToAction}
-
           {copyActions && (
             <div className="flex h-7 flex-row items-center gap-2">
               {copyActions.map((action) => (

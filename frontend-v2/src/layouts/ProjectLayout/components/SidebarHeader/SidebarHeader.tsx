@@ -164,7 +164,7 @@ export const SidebarHeader = ({ onChangeOrg }: Prop) => {
               </DropdownMenuItem>
             </Link>
           )}
-          <Link to={`/org/${currentOrg?.id}/admin`}>
+          <Link to="/organization/admin">
             <DropdownMenuItem className="mt-1 border-t border-mineshaft-600">
               Organization Admin Console
             </DropdownMenuItem>

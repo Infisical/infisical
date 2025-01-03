@@ -71,7 +71,7 @@ const IdentityTemporaryRoleForm = ({
         handlePopUpToggle("setTempRole", isOpen);
       }}
     >
-      <PopoverTrigger>
+      <PopoverTrigger asChild>
         <IconButton ariaLabel="role-temp" variant="plain" size="md">
           <Tooltip content={isExpired ? "Access Expired" : "Grant Temporary Access"}>
             <FontAwesomeIcon

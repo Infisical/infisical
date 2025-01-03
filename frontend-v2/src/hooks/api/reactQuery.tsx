@@ -27,7 +27,9 @@ export const queryClient = new QueryClient({
     onError: (error) => {
       if (axios.isAxiosError(error)) {
         const serverResponse = error.response?.data as TApiErrors;
+        console.log(serverResponse);
         if (serverResponse?.error === ApiErrorTypes.ValidationError) {
+          console.log("entered");
           createNotification(
             {
               title: "Validation Error",
@@ -35,7 +37,7 @@ export const queryClient = new QueryClient({
               text: "Please check the input and try again.",
               callToAction: (
                 <Modal>
-                  <ModalTrigger>
+                  <ModalTrigger asChild>
                     <Button variant="outline_bg" size="xs">
                       Show more
                     </Button>
@@ -82,7 +84,7 @@ export const queryClient = new QueryClient({
               text: `${serverResponse.message}.`,
               callToAction: serverResponse?.details?.length ? (
                 <Modal>
-                  <ModalTrigger>
+                  <ModalTrigger asChild>
                     <Button variant="outline_bg" size="xs">
                       Show more
                     </Button>

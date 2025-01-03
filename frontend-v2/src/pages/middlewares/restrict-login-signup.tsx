@@ -1,11 +1,21 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect, stripSearchParams } from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
+import { z } from "zod";
 
 import { authKeys, fetchAuthToken } from "@app/hooks/api/auth/queries";
 import { setAuthToken } from "@app/hooks/api/reactQuery";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 
+const QueryParamsSchema = z.object({
+  callback_port: z.coerce.number().optional().catch(undefined)
+});
+
 export const Route = createFileRoute("/_restrict-login-signup")({
-  beforeLoad: async ({ context, location }) => {
+  validateSearch: zodValidator(QueryParamsSchema),
+  search: {
+    middlewares: [stripSearchParams({ callback_port: undefined })]
+  },
+  beforeLoad: async ({ context, location, search }) => {
     const data = await context.queryClient
       .fetchQuery({
         queryKey: authKeys.getAuthToken,
@@ -17,6 +27,12 @@ export const Route = createFileRoute("/_restrict-login-signup")({
     if (!data) return;
 
     setAuthToken(data.token);
+    // to do cli login
+    if (search?.callback_port) {
+      if (location.pathname.endsWith("select-organization") || location.pathname.endsWith("login"))
+        return;
+    }
+
     if (!data.organizationId) {
       if (location.pathname.endsWith("select-organization")) return;
       throw redirect({ to: "/login/select-organization" });
