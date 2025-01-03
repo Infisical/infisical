@@ -279,8 +279,11 @@ func execBasicCmd(cmd *exec.Cmd) error {
 	}()
 
 	if err := cmd.Wait(); err != nil {
-		_ = cmd.Process.Signal(os.Kill)
-		return fmt.Errorf("failed to wait for command termination: %v", err)
+		if cmd.ProcessState != nil {
+			waitStatus := cmd.ProcessState.Sys().(syscall.WaitStatus)
+			os.Exit(waitStatus.ExitStatus()) // Exit with the command's exit code
+		}
+		return fmt.Errorf("error while waiting for command to terminate: %w", err)
 	}
 
 	waitStatus := cmd.ProcessState.Sys().(syscall.WaitStatus)
