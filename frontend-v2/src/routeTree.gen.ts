@@ -54,6 +54,15 @@ import { Route as organizationAccessManagementPageRouteImport } from './pages/or
 import { Route as projectAccessControlPageRouteSshImport } from './pages/project/AccessControlPage/route-ssh'
 import { Route as projectAccessControlPageRouteSecretManagerImport } from './pages/project/AccessControlPage/route-secret-manager'
 import { Route as projectAccessControlPageRouteKmsImport } from './pages/project/AccessControlPage/route-kms'
+import { Route as secretManagerIntegrationsRouteVercelOauthRedirectImport } from './pages/secret-manager/integrations/route-vercel-oauth-redirect'
+import { Route as secretManagerIntegrationsRouteNetlifyOauthRedirectImport } from './pages/secret-manager/integrations/route-netlify-oauth-redirect'
+import { Route as secretManagerIntegrationsRouteHerokuOauthRedirectImport } from './pages/secret-manager/integrations/route-heroku-oauth-redirect'
+import { Route as secretManagerIntegrationsRouteGitlabOauthRedirectImport } from './pages/secret-manager/integrations/route-gitlab-oauth-redirect'
+import { Route as secretManagerIntegrationsRouteGithubOauthRedirectImport } from './pages/secret-manager/integrations/route-github-oauth-redirect'
+import { Route as secretManagerIntegrationsRouteGcpOauthRedirectImport } from './pages/secret-manager/integrations/route-gcp-oauth-redirect'
+import { Route as secretManagerIntegrationsRouteBitbucketOauthRedirectImport } from './pages/secret-manager/integrations/route-bitbucket-oauth-redirect'
+import { Route as secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectImport } from './pages/secret-manager/integrations/route-azure-key-vault-oauth-redirect'
+import { Route as secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectImport } from './pages/secret-manager/integrations/route-azure-app-configurations-oauth-redirect'
 import { Route as projectAccessControlPageRouteCertManagerImport } from './pages/project/AccessControlPage/route-cert-manager'
 import { Route as sshSettingsPageRouteImport } from './pages/ssh/SettingsPage/route'
 import { Route as sshOverviewPageRouteImport } from './pages/ssh/OverviewPage/route'
@@ -89,10 +98,84 @@ import { Route as projectMemberDetailsByIDPageRouteCertManagerImport } from './p
 import { Route as projectIdentityDetailsByIDPageRouteCertManagerImport } from './pages/project/IdentityDetailsByIDPage/route-cert-manager'
 import { Route as sshSshCaByIDPageRouteImport } from './pages/ssh/SshCaByIDPage/route'
 import { Route as secretManagerSecretDashboardPageRouteImport } from './pages/secret-manager/SecretDashboardPage/route'
+import { Route as secretManagerIntegrationsSelectIntegrationAuthPageRouteImport } from './pages/secret-manager/integrations/SelectIntegrationAuthPage/route'
 import { Route as secretManagerIntegrationsDetailsByIDPageRouteImport } from './pages/secret-manager/IntegrationsDetailsByIDPage/route'
 import { Route as certManagerCertAuthDetailsByIDPageRouteImport } from './pages/cert-manager/CertAuthDetailsByIDPage/route'
 import { Route as secretManagerIntegrationsListPageRouteImport } from './pages/secret-manager/IntegrationsListPage/route'
+import { Route as secretManagerIntegrationsWindmillConfigurePageRouteImport } from './pages/secret-manager/integrations/WindmillConfigurePage/route'
+import { Route as secretManagerIntegrationsWindmillAuthorizePageRouteImport } from './pages/secret-manager/integrations/WindmillAuthorizePage/route'
+import { Route as secretManagerIntegrationsVercelConfigurePageRouteImport } from './pages/secret-manager/integrations/VercelConfigurePage/route'
+import { Route as secretManagerIntegrationsTravisCIConfigurePageRouteImport } from './pages/secret-manager/integrations/TravisCIConfigurePage/route'
+import { Route as secretManagerIntegrationsTravisCIAuthorizePageRouteImport } from './pages/secret-manager/integrations/TravisCIAuthorizePage/route'
+import { Route as secretManagerIntegrationsTerraformCloudConfigurePageRouteImport } from './pages/secret-manager/integrations/TerraformCloudConfigurePage/route'
+import { Route as secretManagerIntegrationsTerraformCloudAuthorizePageRouteImport } from './pages/secret-manager/integrations/TerraformCloudAuthorizePage/route'
+import { Route as secretManagerIntegrationsTeamcityConfigurePageRouteImport } from './pages/secret-manager/integrations/TeamcityConfigurePage/route'
+import { Route as secretManagerIntegrationsTeamcityAuthorizePageRouteImport } from './pages/secret-manager/integrations/TeamcityAuthorizePage/route'
+import { Route as secretManagerIntegrationsSupabaseConfigurePageRouteImport } from './pages/secret-manager/integrations/SupabaseConfigurePage/route'
+import { Route as secretManagerIntegrationsSupabaseAuthorizePageRouteImport } from './pages/secret-manager/integrations/SupabaseAuthorizePage/route'
+import { Route as secretManagerIntegrationsRundeckConfigurePageRouteImport } from './pages/secret-manager/integrations/RundeckConfigurePage/route'
+import { Route as secretManagerIntegrationsRundeckAuthorizePageRouteImport } from './pages/secret-manager/integrations/RundeckAuthorizePage/route'
+import { Route as secretManagerIntegrationsRenderConfigurePageRouteImport } from './pages/secret-manager/integrations/RenderConfigurePage/route'
+import { Route as secretManagerIntegrationsRenderAuthorizePageRouteImport } from './pages/secret-manager/integrations/RenderAuthorizePage/route'
+import { Route as secretManagerIntegrationsRailwayConfigurePageRouteImport } from './pages/secret-manager/integrations/RailwayConfigurePage/route'
+import { Route as secretManagerIntegrationsRailwayAuthorizePageRouteImport } from './pages/secret-manager/integrations/RailwayAuthorizePage/route'
+import { Route as secretManagerIntegrationsQoveryConfigurePageRouteImport } from './pages/secret-manager/integrations/QoveryConfigurePage/route'
+import { Route as secretManagerIntegrationsQoveryAuthorizePageRouteImport } from './pages/secret-manager/integrations/QoveryAuthorizePage/route'
+import { Route as secretManagerIntegrationsOctopusDeployConfigurePageRouteImport } from './pages/secret-manager/integrations/OctopusDeployConfigurePage/route'
+import { Route as secretManagerIntegrationsOctopusDeployAuthorizePageRouteImport } from './pages/secret-manager/integrations/OctopusDeployAuthorizePage/route'
+import { Route as secretManagerIntegrationsNorthflankConfigurePageRouteImport } from './pages/secret-manager/integrations/NorthflankConfigurePage/route'
+import { Route as secretManagerIntegrationsNorthflankAuthorizePageRouteImport } from './pages/secret-manager/integrations/NorthflankAuthorizePage/route'
+import { Route as secretManagerIntegrationsNetlifyConfigurePageRouteImport } from './pages/secret-manager/integrations/NetlifyConfigurePage/route'
+import { Route as secretManagerIntegrationsLaravelForgeConfigurePageRouteImport } from './pages/secret-manager/integrations/LaravelForgeConfigurePage/route'
+import { Route as secretManagerIntegrationsLaravelForgeAuthorizePageRouteImport } from './pages/secret-manager/integrations/LaravelForgeAuthorizePage/route'
+import { Route as secretManagerIntegrationsHerokuConfigurePageRouteImport } from './pages/secret-manager/integrations/HerokuConfigurePage/route'
+import { Route as secretManagerIntegrationsHasuraCloudConfigurePageRouteImport } from './pages/secret-manager/integrations/HasuraCloudConfigurePage/route'
+import { Route as secretManagerIntegrationsHasuraCloudAuthorizePageRouteImport } from './pages/secret-manager/integrations/HasuraCloudAuthorizePage/route'
+import { Route as secretManagerIntegrationsHashicorpVaultConfigurePageRouteImport } from './pages/secret-manager/integrations/HashicorpVaultConfigurePage/route'
+import { Route as secretManagerIntegrationsHashicorpVaultAuthorizePageRouteImport } from './pages/secret-manager/integrations/HashicorpVaultAuthorizePage/route'
+import { Route as secretManagerIntegrationsGitlabConfigurePageRouteImport } from './pages/secret-manager/integrations/GitlabConfigurePage/route'
+import { Route as secretManagerIntegrationsGitlabAuthorizePageRouteImport } from './pages/secret-manager/integrations/GitlabAuthorizePage/route'
+import { Route as secretManagerIntegrationsGithubConfigurePageRouteImport } from './pages/secret-manager/integrations/GithubConfigurePage/route'
+import { Route as secretManagerIntegrationsGithubAuthorizePageRouteImport } from './pages/secret-manager/integrations/GithubAuthorizePage/route'
+import { Route as secretManagerIntegrationsGcpSecretManagerConfigurePageRouteImport } from './pages/secret-manager/integrations/GcpSecretManagerConfigurePage/route'
+import { Route as secretManagerIntegrationsGcpSecretManagerAuthorizePageRouteImport } from './pages/secret-manager/integrations/GcpSecretManagerAuthorizePage/route'
+import { Route as secretManagerIntegrationsFlyioConfigurePageRouteImport } from './pages/secret-manager/integrations/FlyioConfigurePage/route'
+import { Route as secretManagerIntegrationsFlyioAuthorizePageRouteImport } from './pages/secret-manager/integrations/FlyioAuthorizePage/route'
+import { Route as secretManagerIntegrationsDigitalOceanAppPlatformConfigurePageRouteImport } from './pages/secret-manager/integrations/DigitalOceanAppPlatformConfigurePage/route'
+import { Route as secretManagerIntegrationsDigitalOceanAppPlatformAuthorizePageRouteImport } from './pages/secret-manager/integrations/DigitalOceanAppPlatformAuthorizePage/route'
+import { Route as secretManagerIntegrationsDatabricksConfigurePageRouteImport } from './pages/secret-manager/integrations/DatabricksConfigurePage/route'
+import { Route as secretManagerIntegrationsDatabricksAuthorizePageRouteImport } from './pages/secret-manager/integrations/DatabricksAuthorizePage/route'
+import { Route as secretManagerIntegrationsCodefreshConfigurePageRouteImport } from './pages/secret-manager/integrations/CodefreshConfigurePage/route'
+import { Route as secretManagerIntegrationsCodefreshAuthorizePageRouteImport } from './pages/secret-manager/integrations/CodefreshAuthorizePage/route'
+import { Route as secretManagerIntegrationsCloudflareWorkersConfigurePageRouteImport } from './pages/secret-manager/integrations/CloudflareWorkersConfigurePage/route'
+import { Route as secretManagerIntegrationsCloudflareWorkersAuthorizePageRouteImport } from './pages/secret-manager/integrations/CloudflareWorkersAuthorizePage/route'
+import { Route as secretManagerIntegrationsCloudflarePagesConfigurePageRouteImport } from './pages/secret-manager/integrations/CloudflarePagesConfigurePage/route'
+import { Route as secretManagerIntegrationsCloudflarePagesAuthorizePageRouteImport } from './pages/secret-manager/integrations/CloudflarePagesAuthorizePage/route'
+import { Route as secretManagerIntegrationsCloud66ConfigurePageRouteImport } from './pages/secret-manager/integrations/Cloud66ConfigurePage/route'
+import { Route as secretManagerIntegrationsCloud66AuthorizePageRouteImport } from './pages/secret-manager/integrations/Cloud66AuthorizePage/route'
+import { Route as secretManagerIntegrationsCircleCIConfigurePageRouteImport } from './pages/secret-manager/integrations/CircleCIConfigurePage/route'
+import { Route as secretManagerIntegrationsCircleCIAuthorizePageRouteImport } from './pages/secret-manager/integrations/CircleCIAuthorizePage/route'
+import { Route as secretManagerIntegrationsChecklyConfigurePageRouteImport } from './pages/secret-manager/integrations/ChecklyConfigurePage/route'
+import { Route as secretManagerIntegrationsChecklyAuthorizePageRouteImport } from './pages/secret-manager/integrations/ChecklyAuthorizePage/route'
+import { Route as secretManagerIntegrationsBitbucketConfigurePageRouteImport } from './pages/secret-manager/integrations/BitbucketConfigurePage/route'
+import { Route as secretManagerIntegrationsAzureKeyVaultConfigurePageRouteImport } from './pages/secret-manager/integrations/AzureKeyVaultConfigurePage/route'
+import { Route as secretManagerIntegrationsAzureDevopsConfigurePageRouteImport } from './pages/secret-manager/integrations/AzureDevopsConfigurePage/route'
+import { Route as secretManagerIntegrationsAzureDevopsAuthorizePageRouteImport } from './pages/secret-manager/integrations/AzureDevopsAuthorizePage/route'
+import { Route as secretManagerIntegrationsAzureAppConfigurationConfigurePageRouteImport } from './pages/secret-manager/integrations/AzureAppConfigurationConfigurePage/route'
+import { Route as secretManagerIntegrationsAwsSecretManagerConfigurePageRouteImport } from './pages/secret-manager/integrations/AwsSecretManagerConfigurePage/route'
+import { Route as secretManagerIntegrationsAwsSecretManagerAuthorizePageRouteImport } from './pages/secret-manager/integrations/AwsSecretManagerAuthorizePage/route'
+import { Route as secretManagerIntegrationsAwsParameterStoreConfigurePageRouteImport } from './pages/secret-manager/integrations/AwsParameterStoreConfigurePage/route'
+import { Route as secretManagerIntegrationsAwsParameterStoreAuthorizePageRouteImport } from './pages/secret-manager/integrations/AwsParameterStoreAuthorizePage/route'
 import { Route as organizationAppConnectionsGithubOauthCallbackPageRouteImport } from './pages/organization/AppConnections/GithubOauthCallbackPage/route'
+import { Route as secretManagerIntegrationsVercelOauthCallbackPageRouteImport } from './pages/secret-manager/integrations/VercelOauthCallbackPage/route'
+import { Route as secretManagerIntegrationsNetlifyOauthCallbackPageRouteImport } from './pages/secret-manager/integrations/NetlifyOauthCallbackPage/route'
+import { Route as secretManagerIntegrationsHerokuOauthCallbackPageRouteImport } from './pages/secret-manager/integrations/HerokuOauthCallbackPage/route'
+import { Route as secretManagerIntegrationsGitlabOauthCallbackPageRouteImport } from './pages/secret-manager/integrations/GitlabOauthCallbackPage/route'
+import { Route as secretManagerIntegrationsGithubOauthCallbackPageRouteImport } from './pages/secret-manager/integrations/GithubOauthCallbackPage/route'
+import { Route as secretManagerIntegrationsGcpSecretManagerOauthCallbackPageRouteImport } from './pages/secret-manager/integrations/GcpSecretManagerOauthCallbackPage/route'
+import { Route as secretManagerIntegrationsBitbucketOauthCallbackPageRouteImport } from './pages/secret-manager/integrations/BitbucketOauthCallbackPage/route'
+import { Route as secretManagerIntegrationsAzureKeyVaultOauthCallbackPageRouteImport } from './pages/secret-manager/integrations/AzureKeyVaultOauthCallbackPage/route'
+import { Route as secretManagerIntegrationsAzureAppConfigurationOauthCallbackPageRouteImport } from './pages/secret-manager/integrations/AzureAppConfigurationOauthCallbackPage/route'
 
 // Create Virtual Routes
 
@@ -108,6 +191,9 @@ const AuthenticatePersonalSettingsImport = createFileRoute(
 const AuthenticateAdminImport = createFileRoute('/_authenticate/admin')()
 const AuthenticateInjectOrgDetailsOrganizationImport = createFileRoute(
   '/_authenticate/_inject-org-details/organization',
+)()
+const AuthenticateInjectOrgDetailsIntegrationsImport = createFileRoute(
+  '/_authenticate/_inject-org-details/integrations',
 )()
 const AuthenticateInjectOrgDetailsSshProjectIdImport = createFileRoute(
   '/_authenticate/_inject-org-details/ssh/$projectId',
@@ -239,6 +325,13 @@ const AuthenticateInjectOrgDetailsOrganizationRoute =
   AuthenticateInjectOrgDetailsOrganizationImport.update({
     id: '/organization',
     path: '/organization',
+    getParentRoute: () => middlewaresInjectOrgDetailsRoute,
+  } as any)
+
+const AuthenticateInjectOrgDetailsIntegrationsRoute =
+  AuthenticateInjectOrgDetailsIntegrationsImport.update({
+    id: '/integrations',
+    path: '/integrations',
     getParentRoute: () => middlewaresInjectOrgDetailsRoute,
   } as any)
 
@@ -459,6 +552,71 @@ const projectAccessControlPageRouteKmsRoute =
     path: '/access-management',
     getParentRoute: () => kmsLayoutRoute,
   } as any)
+
+const secretManagerIntegrationsRouteVercelOauthRedirectRoute =
+  secretManagerIntegrationsRouteVercelOauthRedirectImport.update({
+    id: '/vercel/oauth2/callback',
+    path: '/vercel/oauth2/callback',
+    getParentRoute: () => AuthenticateInjectOrgDetailsIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsRouteNetlifyOauthRedirectRoute =
+  secretManagerIntegrationsRouteNetlifyOauthRedirectImport.update({
+    id: '/netlify/oauth2/callback',
+    path: '/netlify/oauth2/callback',
+    getParentRoute: () => AuthenticateInjectOrgDetailsIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsRouteHerokuOauthRedirectRoute =
+  secretManagerIntegrationsRouteHerokuOauthRedirectImport.update({
+    id: '/heroku/oauth2/callback',
+    path: '/heroku/oauth2/callback',
+    getParentRoute: () => AuthenticateInjectOrgDetailsIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsRouteGitlabOauthRedirectRoute =
+  secretManagerIntegrationsRouteGitlabOauthRedirectImport.update({
+    id: '/gitlab/oauth2/callback',
+    path: '/gitlab/oauth2/callback',
+    getParentRoute: () => AuthenticateInjectOrgDetailsIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsRouteGithubOauthRedirectRoute =
+  secretManagerIntegrationsRouteGithubOauthRedirectImport.update({
+    id: '/github/oauth2/callback',
+    path: '/github/oauth2/callback',
+    getParentRoute: () => AuthenticateInjectOrgDetailsIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsRouteGcpOauthRedirectRoute =
+  secretManagerIntegrationsRouteGcpOauthRedirectImport.update({
+    id: '/gcp-secret-manager/oauth2/callback',
+    path: '/gcp-secret-manager/oauth2/callback',
+    getParentRoute: () => AuthenticateInjectOrgDetailsIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsRouteBitbucketOauthRedirectRoute =
+  secretManagerIntegrationsRouteBitbucketOauthRedirectImport.update({
+    id: '/bitbucket/oauth2/callback',
+    path: '/bitbucket/oauth2/callback',
+    getParentRoute: () => AuthenticateInjectOrgDetailsIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute =
+  secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectImport.update({
+    id: '/azure-key-vault/oauth2/callback',
+    path: '/azure-key-vault/oauth2/callback',
+    getParentRoute: () => AuthenticateInjectOrgDetailsIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute =
+  secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectImport.update(
+    {
+      id: '/azure-app-configuration/oauth2/callback',
+      path: '/azure-app-configuration/oauth2/callback',
+      getParentRoute: () => AuthenticateInjectOrgDetailsIntegrationsRoute,
+    } as any,
+  )
 
 const projectAccessControlPageRouteCertManagerRoute =
   projectAccessControlPageRouteCertManagerImport.update({
@@ -700,6 +858,14 @@ const secretManagerSecretDashboardPageRouteRoute =
     getParentRoute: () => secretManagerLayoutRoute,
   } as any)
 
+const secretManagerIntegrationsSelectIntegrationAuthPageRouteRoute =
+  secretManagerIntegrationsSelectIntegrationAuthPageRouteImport.update({
+    id: '/select-integration-auth',
+    path: '/select-integration-auth',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
 const secretManagerIntegrationsDetailsByIDPageRouteRoute =
   secretManagerIntegrationsDetailsByIDPageRouteImport.update({
     id: '/$integrationId',
@@ -723,12 +889,604 @@ const secretManagerIntegrationsListPageRouteRoute =
       AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
   } as any)
 
+const secretManagerIntegrationsWindmillConfigurePageRouteRoute =
+  secretManagerIntegrationsWindmillConfigurePageRouteImport.update({
+    id: '/windmill/create',
+    path: '/windmill/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsWindmillAuthorizePageRouteRoute =
+  secretManagerIntegrationsWindmillAuthorizePageRouteImport.update({
+    id: '/windmill/authorize',
+    path: '/windmill/authorize',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsVercelConfigurePageRouteRoute =
+  secretManagerIntegrationsVercelConfigurePageRouteImport.update({
+    id: '/vercel/create',
+    path: '/vercel/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsTravisCIConfigurePageRouteRoute =
+  secretManagerIntegrationsTravisCIConfigurePageRouteImport.update({
+    id: '/travisci/create',
+    path: '/travisci/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsTravisCIAuthorizePageRouteRoute =
+  secretManagerIntegrationsTravisCIAuthorizePageRouteImport.update({
+    id: '/travisci/authorize',
+    path: '/travisci/authorize',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsTerraformCloudConfigurePageRouteRoute =
+  secretManagerIntegrationsTerraformCloudConfigurePageRouteImport.update({
+    id: '/terraform-cloud/create',
+    path: '/terraform-cloud/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsTerraformCloudAuthorizePageRouteRoute =
+  secretManagerIntegrationsTerraformCloudAuthorizePageRouteImport.update({
+    id: '/terraform-cloud/authorize',
+    path: '/terraform-cloud/authorize',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsTeamcityConfigurePageRouteRoute =
+  secretManagerIntegrationsTeamcityConfigurePageRouteImport.update({
+    id: '/teamcity/create',
+    path: '/teamcity/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsTeamcityAuthorizePageRouteRoute =
+  secretManagerIntegrationsTeamcityAuthorizePageRouteImport.update({
+    id: '/teamcity/authorize',
+    path: '/teamcity/authorize',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsSupabaseConfigurePageRouteRoute =
+  secretManagerIntegrationsSupabaseConfigurePageRouteImport.update({
+    id: '/supabase/create',
+    path: '/supabase/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsSupabaseAuthorizePageRouteRoute =
+  secretManagerIntegrationsSupabaseAuthorizePageRouteImport.update({
+    id: '/supabase/authorize',
+    path: '/supabase/authorize',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsRundeckConfigurePageRouteRoute =
+  secretManagerIntegrationsRundeckConfigurePageRouteImport.update({
+    id: '/rundeck/create',
+    path: '/rundeck/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsRundeckAuthorizePageRouteRoute =
+  secretManagerIntegrationsRundeckAuthorizePageRouteImport.update({
+    id: '/rundeck/authorize',
+    path: '/rundeck/authorize',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsRenderConfigurePageRouteRoute =
+  secretManagerIntegrationsRenderConfigurePageRouteImport.update({
+    id: '/render/create',
+    path: '/render/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsRenderAuthorizePageRouteRoute =
+  secretManagerIntegrationsRenderAuthorizePageRouteImport.update({
+    id: '/render/authorize',
+    path: '/render/authorize',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsRailwayConfigurePageRouteRoute =
+  secretManagerIntegrationsRailwayConfigurePageRouteImport.update({
+    id: '/railway/create',
+    path: '/railway/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsRailwayAuthorizePageRouteRoute =
+  secretManagerIntegrationsRailwayAuthorizePageRouteImport.update({
+    id: '/railway/authorize',
+    path: '/railway/authorize',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsQoveryConfigurePageRouteRoute =
+  secretManagerIntegrationsQoveryConfigurePageRouteImport.update({
+    id: '/qovery/create',
+    path: '/qovery/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsQoveryAuthorizePageRouteRoute =
+  secretManagerIntegrationsQoveryAuthorizePageRouteImport.update({
+    id: '/qovery/authorize',
+    path: '/qovery/authorize',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsOctopusDeployConfigurePageRouteRoute =
+  secretManagerIntegrationsOctopusDeployConfigurePageRouteImport.update({
+    id: '/octopus-deploy/create',
+    path: '/octopus-deploy/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsOctopusDeployAuthorizePageRouteRoute =
+  secretManagerIntegrationsOctopusDeployAuthorizePageRouteImport.update({
+    id: '/octopus-deploy/authorize',
+    path: '/octopus-deploy/authorize',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsNorthflankConfigurePageRouteRoute =
+  secretManagerIntegrationsNorthflankConfigurePageRouteImport.update({
+    id: '/northflank/create',
+    path: '/northflank/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsNorthflankAuthorizePageRouteRoute =
+  secretManagerIntegrationsNorthflankAuthorizePageRouteImport.update({
+    id: '/northflank/authorize',
+    path: '/northflank/authorize',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsNetlifyConfigurePageRouteRoute =
+  secretManagerIntegrationsNetlifyConfigurePageRouteImport.update({
+    id: '/netlify/create',
+    path: '/netlify/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsLaravelForgeConfigurePageRouteRoute =
+  secretManagerIntegrationsLaravelForgeConfigurePageRouteImport.update({
+    id: '/laravel-forge/create',
+    path: '/laravel-forge/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsLaravelForgeAuthorizePageRouteRoute =
+  secretManagerIntegrationsLaravelForgeAuthorizePageRouteImport.update({
+    id: '/laravel-forge/authorize',
+    path: '/laravel-forge/authorize',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsHerokuConfigurePageRouteRoute =
+  secretManagerIntegrationsHerokuConfigurePageRouteImport.update({
+    id: '/heroku/create',
+    path: '/heroku/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsHasuraCloudConfigurePageRouteRoute =
+  secretManagerIntegrationsHasuraCloudConfigurePageRouteImport.update({
+    id: '/hasura-cloud/create',
+    path: '/hasura-cloud/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsHasuraCloudAuthorizePageRouteRoute =
+  secretManagerIntegrationsHasuraCloudAuthorizePageRouteImport.update({
+    id: '/hasura-cloud/authorize',
+    path: '/hasura-cloud/authorize',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsHashicorpVaultConfigurePageRouteRoute =
+  secretManagerIntegrationsHashicorpVaultConfigurePageRouteImport.update({
+    id: '/hashicorp-vault/create',
+    path: '/hashicorp-vault/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsHashicorpVaultAuthorizePageRouteRoute =
+  secretManagerIntegrationsHashicorpVaultAuthorizePageRouteImport.update({
+    id: '/hashicorp-vault/authorize',
+    path: '/hashicorp-vault/authorize',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsGitlabConfigurePageRouteRoute =
+  secretManagerIntegrationsGitlabConfigurePageRouteImport.update({
+    id: '/gitlab/create',
+    path: '/gitlab/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsGitlabAuthorizePageRouteRoute =
+  secretManagerIntegrationsGitlabAuthorizePageRouteImport.update({
+    id: '/gitlab/authorize',
+    path: '/gitlab/authorize',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsGithubConfigurePageRouteRoute =
+  secretManagerIntegrationsGithubConfigurePageRouteImport.update({
+    id: '/github/create',
+    path: '/github/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsGithubAuthorizePageRouteRoute =
+  secretManagerIntegrationsGithubAuthorizePageRouteImport.update({
+    id: '/github/auth-mode-selection',
+    path: '/github/auth-mode-selection',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsGcpSecretManagerConfigurePageRouteRoute =
+  secretManagerIntegrationsGcpSecretManagerConfigurePageRouteImport.update({
+    id: '/gcp-secret-manager/create',
+    path: '/gcp-secret-manager/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsGcpSecretManagerAuthorizePageRouteRoute =
+  secretManagerIntegrationsGcpSecretManagerAuthorizePageRouteImport.update({
+    id: '/gcp-secret-manager/authorize',
+    path: '/gcp-secret-manager/authorize',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsFlyioConfigurePageRouteRoute =
+  secretManagerIntegrationsFlyioConfigurePageRouteImport.update({
+    id: '/flyio/create',
+    path: '/flyio/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsFlyioAuthorizePageRouteRoute =
+  secretManagerIntegrationsFlyioAuthorizePageRouteImport.update({
+    id: '/flyio/authorize',
+    path: '/flyio/authorize',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsDigitalOceanAppPlatformConfigurePageRouteRoute =
+  secretManagerIntegrationsDigitalOceanAppPlatformConfigurePageRouteImport.update(
+    {
+      id: '/digital-ocean-app-platform/create',
+      path: '/digital-ocean-app-platform/create',
+      getParentRoute: () =>
+        AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+    } as any,
+  )
+
+const secretManagerIntegrationsDigitalOceanAppPlatformAuthorizePageRouteRoute =
+  secretManagerIntegrationsDigitalOceanAppPlatformAuthorizePageRouteImport.update(
+    {
+      id: '/digital-ocean-app-platform/authorize',
+      path: '/digital-ocean-app-platform/authorize',
+      getParentRoute: () =>
+        AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+    } as any,
+  )
+
+const secretManagerIntegrationsDatabricksConfigurePageRouteRoute =
+  secretManagerIntegrationsDatabricksConfigurePageRouteImport.update({
+    id: '/databricks/create',
+    path: '/databricks/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsDatabricksAuthorizePageRouteRoute =
+  secretManagerIntegrationsDatabricksAuthorizePageRouteImport.update({
+    id: '/databricks/authorize',
+    path: '/databricks/authorize',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsCodefreshConfigurePageRouteRoute =
+  secretManagerIntegrationsCodefreshConfigurePageRouteImport.update({
+    id: '/codefresh/create',
+    path: '/codefresh/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsCodefreshAuthorizePageRouteRoute =
+  secretManagerIntegrationsCodefreshAuthorizePageRouteImport.update({
+    id: '/codefresh/authorize',
+    path: '/codefresh/authorize',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsCloudflareWorkersConfigurePageRouteRoute =
+  secretManagerIntegrationsCloudflareWorkersConfigurePageRouteImport.update({
+    id: '/cloudflare-workers/create',
+    path: '/cloudflare-workers/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsCloudflareWorkersAuthorizePageRouteRoute =
+  secretManagerIntegrationsCloudflareWorkersAuthorizePageRouteImport.update({
+    id: '/cloudflare-workers/authorize',
+    path: '/cloudflare-workers/authorize',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsCloudflarePagesConfigurePageRouteRoute =
+  secretManagerIntegrationsCloudflarePagesConfigurePageRouteImport.update({
+    id: '/cloudflare-pages/create',
+    path: '/cloudflare-pages/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsCloudflarePagesAuthorizePageRouteRoute =
+  secretManagerIntegrationsCloudflarePagesAuthorizePageRouteImport.update({
+    id: '/cloudflare-pages/authorize',
+    path: '/cloudflare-pages/authorize',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsCloud66ConfigurePageRouteRoute =
+  secretManagerIntegrationsCloud66ConfigurePageRouteImport.update({
+    id: '/cloud-66/create',
+    path: '/cloud-66/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsCloud66AuthorizePageRouteRoute =
+  secretManagerIntegrationsCloud66AuthorizePageRouteImport.update({
+    id: '/cloud-66/authorize',
+    path: '/cloud-66/authorize',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsCircleCIConfigurePageRouteRoute =
+  secretManagerIntegrationsCircleCIConfigurePageRouteImport.update({
+    id: '/circleci/create',
+    path: '/circleci/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsCircleCIAuthorizePageRouteRoute =
+  secretManagerIntegrationsCircleCIAuthorizePageRouteImport.update({
+    id: '/circleci/authorize',
+    path: '/circleci/authorize',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsChecklyConfigurePageRouteRoute =
+  secretManagerIntegrationsChecklyConfigurePageRouteImport.update({
+    id: '/checkly/create',
+    path: '/checkly/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsChecklyAuthorizePageRouteRoute =
+  secretManagerIntegrationsChecklyAuthorizePageRouteImport.update({
+    id: '/checkly/authorize',
+    path: '/checkly/authorize',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsBitbucketConfigurePageRouteRoute =
+  secretManagerIntegrationsBitbucketConfigurePageRouteImport.update({
+    id: '/bitbucket/create',
+    path: '/bitbucket/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsAzureKeyVaultConfigurePageRouteRoute =
+  secretManagerIntegrationsAzureKeyVaultConfigurePageRouteImport.update({
+    id: '/azure-key-vault/create',
+    path: '/azure-key-vault/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsAzureDevopsConfigurePageRouteRoute =
+  secretManagerIntegrationsAzureDevopsConfigurePageRouteImport.update({
+    id: '/azure-devops/create',
+    path: '/azure-devops/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsAzureDevopsAuthorizePageRouteRoute =
+  secretManagerIntegrationsAzureDevopsAuthorizePageRouteImport.update({
+    id: '/azure-devops/authorize',
+    path: '/azure-devops/authorize',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsAzureAppConfigurationConfigurePageRouteRoute =
+  secretManagerIntegrationsAzureAppConfigurationConfigurePageRouteImport.update(
+    {
+      id: '/azure-app-configuration/create',
+      path: '/azure-app-configuration/create',
+      getParentRoute: () =>
+        AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+    } as any,
+  )
+
+const secretManagerIntegrationsAwsSecretManagerConfigurePageRouteRoute =
+  secretManagerIntegrationsAwsSecretManagerConfigurePageRouteImport.update({
+    id: '/aws-secret-manager/create',
+    path: '/aws-secret-manager/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsAwsSecretManagerAuthorizePageRouteRoute =
+  secretManagerIntegrationsAwsSecretManagerAuthorizePageRouteImport.update({
+    id: '/aws-secret-manager/authorize',
+    path: '/aws-secret-manager/authorize',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsAwsParameterStoreConfigurePageRouteRoute =
+  secretManagerIntegrationsAwsParameterStoreConfigurePageRouteImport.update({
+    id: '/aws-parameter-store/create',
+    path: '/aws-parameter-store/create',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsAwsParameterStoreAuthorizePageRouteRoute =
+  secretManagerIntegrationsAwsParameterStoreAuthorizePageRouteImport.update({
+    id: '/aws-parameter-store/authorize',
+    path: '/aws-parameter-store/authorize',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
 const organizationAppConnectionsGithubOauthCallbackPageRouteRoute =
   organizationAppConnectionsGithubOauthCallbackPageRouteImport.update({
     id: '/app-connections/github/oauth/callback',
     path: '/app-connections/github/oauth/callback',
     getParentRoute: () => organizationLayoutRoute,
   } as any)
+
+const secretManagerIntegrationsVercelOauthCallbackPageRouteRoute =
+  secretManagerIntegrationsVercelOauthCallbackPageRouteImport.update({
+    id: '/vercel/oauth2/callback',
+    path: '/vercel/oauth2/callback',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsNetlifyOauthCallbackPageRouteRoute =
+  secretManagerIntegrationsNetlifyOauthCallbackPageRouteImport.update({
+    id: '/netlify/oauth2/callback',
+    path: '/netlify/oauth2/callback',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsHerokuOauthCallbackPageRouteRoute =
+  secretManagerIntegrationsHerokuOauthCallbackPageRouteImport.update({
+    id: '/heroku/oauth2/callback',
+    path: '/heroku/oauth2/callback',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsGitlabOauthCallbackPageRouteRoute =
+  secretManagerIntegrationsGitlabOauthCallbackPageRouteImport.update({
+    id: '/gitlab/oauth2/callback',
+    path: '/gitlab/oauth2/callback',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsGithubOauthCallbackPageRouteRoute =
+  secretManagerIntegrationsGithubOauthCallbackPageRouteImport.update({
+    id: '/github/oauth2/callback',
+    path: '/github/oauth2/callback',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsGcpSecretManagerOauthCallbackPageRouteRoute =
+  secretManagerIntegrationsGcpSecretManagerOauthCallbackPageRouteImport.update({
+    id: '/gcp-secret-manager/oauth2/callback',
+    path: '/gcp-secret-manager/oauth2/callback',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsBitbucketOauthCallbackPageRouteRoute =
+  secretManagerIntegrationsBitbucketOauthCallbackPageRouteImport.update({
+    id: '/bitbucket/oauth2/callback',
+    path: '/bitbucket/oauth2/callback',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsAzureKeyVaultOauthCallbackPageRouteRoute =
+  secretManagerIntegrationsAzureKeyVaultOauthCallbackPageRouteImport.update({
+    id: '/azure-key-vault/oauth2/callback',
+    path: '/azure-key-vault/oauth2/callback',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsAzureAppConfigurationOauthCallbackPageRouteRoute =
+  secretManagerIntegrationsAzureAppConfigurationOauthCallbackPageRouteImport.update(
+    {
+      id: '/azure-app-configuration/oauth2/callback',
+      path: '/azure-app-configuration/oauth2/callback',
+      getParentRoute: () =>
+        AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+    } as any,
+  )
 
 // Populate the FileRoutesByPath interface
 
@@ -894,6 +1652,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/shared/secret/$secretId'
       preLoaderRoute: typeof publicViewSharedSecretByIDPageRouteImport
       parentRoute: typeof rootRoute
+    }
+    '/_authenticate/_inject-org-details/integrations': {
+      id: '/_authenticate/_inject-org-details/integrations'
+      path: '/integrations'
+      fullPath: '/integrations'
+      preLoaderRoute: typeof AuthenticateInjectOrgDetailsIntegrationsImport
+      parentRoute: typeof middlewaresInjectOrgDetailsImport
     }
     '/_authenticate/_inject-org-details/organization': {
       id: '/_authenticate/_inject-org-details/organization'
@@ -1203,6 +1968,69 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof projectAccessControlPageRouteCertManagerImport
       parentRoute: typeof certManagerLayoutImport
     }
+    '/_authenticate/_inject-org-details/integrations/azure-app-configuration/oauth2/callback': {
+      id: '/_authenticate/_inject-org-details/integrations/azure-app-configuration/oauth2/callback'
+      path: '/azure-app-configuration/oauth2/callback'
+      fullPath: '/integrations/azure-app-configuration/oauth2/callback'
+      preLoaderRoute: typeof secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/integrations/azure-key-vault/oauth2/callback': {
+      id: '/_authenticate/_inject-org-details/integrations/azure-key-vault/oauth2/callback'
+      path: '/azure-key-vault/oauth2/callback'
+      fullPath: '/integrations/azure-key-vault/oauth2/callback'
+      preLoaderRoute: typeof secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/integrations/bitbucket/oauth2/callback': {
+      id: '/_authenticate/_inject-org-details/integrations/bitbucket/oauth2/callback'
+      path: '/bitbucket/oauth2/callback'
+      fullPath: '/integrations/bitbucket/oauth2/callback'
+      preLoaderRoute: typeof secretManagerIntegrationsRouteBitbucketOauthRedirectImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/integrations/gcp-secret-manager/oauth2/callback': {
+      id: '/_authenticate/_inject-org-details/integrations/gcp-secret-manager/oauth2/callback'
+      path: '/gcp-secret-manager/oauth2/callback'
+      fullPath: '/integrations/gcp-secret-manager/oauth2/callback'
+      preLoaderRoute: typeof secretManagerIntegrationsRouteGcpOauthRedirectImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/integrations/github/oauth2/callback': {
+      id: '/_authenticate/_inject-org-details/integrations/github/oauth2/callback'
+      path: '/github/oauth2/callback'
+      fullPath: '/integrations/github/oauth2/callback'
+      preLoaderRoute: typeof secretManagerIntegrationsRouteGithubOauthRedirectImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/integrations/gitlab/oauth2/callback': {
+      id: '/_authenticate/_inject-org-details/integrations/gitlab/oauth2/callback'
+      path: '/gitlab/oauth2/callback'
+      fullPath: '/integrations/gitlab/oauth2/callback'
+      preLoaderRoute: typeof secretManagerIntegrationsRouteGitlabOauthRedirectImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/integrations/heroku/oauth2/callback': {
+      id: '/_authenticate/_inject-org-details/integrations/heroku/oauth2/callback'
+      path: '/heroku/oauth2/callback'
+      fullPath: '/integrations/heroku/oauth2/callback'
+      preLoaderRoute: typeof secretManagerIntegrationsRouteHerokuOauthRedirectImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/integrations/netlify/oauth2/callback': {
+      id: '/_authenticate/_inject-org-details/integrations/netlify/oauth2/callback'
+      path: '/netlify/oauth2/callback'
+      fullPath: '/integrations/netlify/oauth2/callback'
+      preLoaderRoute: typeof secretManagerIntegrationsRouteNetlifyOauthRedirectImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/integrations/vercel/oauth2/callback': {
+      id: '/_authenticate/_inject-org-details/integrations/vercel/oauth2/callback'
+      path: '/vercel/oauth2/callback'
+      fullPath: '/integrations/vercel/oauth2/callback'
+      preLoaderRoute: typeof secretManagerIntegrationsRouteVercelOauthRedirectImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsIntegrationsImport
+    }
     '/_authenticate/_inject-org-details/kms/$projectId/_kms-layout/access-management': {
       id: '/_authenticate/_inject-org-details/kms/$projectId/_kms-layout/access-management'
       path: '/access-management'
@@ -1250,6 +2078,13 @@ declare module '@tanstack/react-router' {
       path: '/$integrationId'
       fullPath: '/secret-manager/$projectId/integrations/$integrationId'
       preLoaderRoute: typeof secretManagerIntegrationsDetailsByIDPageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/select-integration-auth': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/select-integration-auth'
+      path: '/select-integration-auth'
+      fullPath: '/secret-manager/$projectId/integrations/select-integration-auth'
+      preLoaderRoute: typeof secretManagerIntegrationsSelectIntegrationAuthPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
     }
     '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/secrets/$envSlug': {
@@ -1364,10 +2199,560 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof organizationAppConnectionsGithubOauthCallbackPageRouteImport
       parentRoute: typeof organizationLayoutImport
     }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/aws-parameter-store/authorize': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/aws-parameter-store/authorize'
+      path: '/aws-parameter-store/authorize'
+      fullPath: '/secret-manager/$projectId/integrations/aws-parameter-store/authorize'
+      preLoaderRoute: typeof secretManagerIntegrationsAwsParameterStoreAuthorizePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/aws-parameter-store/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/aws-parameter-store/create'
+      path: '/aws-parameter-store/create'
+      fullPath: '/secret-manager/$projectId/integrations/aws-parameter-store/create'
+      preLoaderRoute: typeof secretManagerIntegrationsAwsParameterStoreConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/aws-secret-manager/authorize': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/aws-secret-manager/authorize'
+      path: '/aws-secret-manager/authorize'
+      fullPath: '/secret-manager/$projectId/integrations/aws-secret-manager/authorize'
+      preLoaderRoute: typeof secretManagerIntegrationsAwsSecretManagerAuthorizePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/aws-secret-manager/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/aws-secret-manager/create'
+      path: '/aws-secret-manager/create'
+      fullPath: '/secret-manager/$projectId/integrations/aws-secret-manager/create'
+      preLoaderRoute: typeof secretManagerIntegrationsAwsSecretManagerConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-app-configuration/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-app-configuration/create'
+      path: '/azure-app-configuration/create'
+      fullPath: '/secret-manager/$projectId/integrations/azure-app-configuration/create'
+      preLoaderRoute: typeof secretManagerIntegrationsAzureAppConfigurationConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-devops/authorize': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-devops/authorize'
+      path: '/azure-devops/authorize'
+      fullPath: '/secret-manager/$projectId/integrations/azure-devops/authorize'
+      preLoaderRoute: typeof secretManagerIntegrationsAzureDevopsAuthorizePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-devops/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-devops/create'
+      path: '/azure-devops/create'
+      fullPath: '/secret-manager/$projectId/integrations/azure-devops/create'
+      preLoaderRoute: typeof secretManagerIntegrationsAzureDevopsConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/create'
+      path: '/azure-key-vault/create'
+      fullPath: '/secret-manager/$projectId/integrations/azure-key-vault/create'
+      preLoaderRoute: typeof secretManagerIntegrationsAzureKeyVaultConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/bitbucket/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/bitbucket/create'
+      path: '/bitbucket/create'
+      fullPath: '/secret-manager/$projectId/integrations/bitbucket/create'
+      preLoaderRoute: typeof secretManagerIntegrationsBitbucketConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/checkly/authorize': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/checkly/authorize'
+      path: '/checkly/authorize'
+      fullPath: '/secret-manager/$projectId/integrations/checkly/authorize'
+      preLoaderRoute: typeof secretManagerIntegrationsChecklyAuthorizePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/checkly/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/checkly/create'
+      path: '/checkly/create'
+      fullPath: '/secret-manager/$projectId/integrations/checkly/create'
+      preLoaderRoute: typeof secretManagerIntegrationsChecklyConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/circleci/authorize': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/circleci/authorize'
+      path: '/circleci/authorize'
+      fullPath: '/secret-manager/$projectId/integrations/circleci/authorize'
+      preLoaderRoute: typeof secretManagerIntegrationsCircleCIAuthorizePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/circleci/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/circleci/create'
+      path: '/circleci/create'
+      fullPath: '/secret-manager/$projectId/integrations/circleci/create'
+      preLoaderRoute: typeof secretManagerIntegrationsCircleCIConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloud-66/authorize': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloud-66/authorize'
+      path: '/cloud-66/authorize'
+      fullPath: '/secret-manager/$projectId/integrations/cloud-66/authorize'
+      preLoaderRoute: typeof secretManagerIntegrationsCloud66AuthorizePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloud-66/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloud-66/create'
+      path: '/cloud-66/create'
+      fullPath: '/secret-manager/$projectId/integrations/cloud-66/create'
+      preLoaderRoute: typeof secretManagerIntegrationsCloud66ConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloudflare-pages/authorize': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloudflare-pages/authorize'
+      path: '/cloudflare-pages/authorize'
+      fullPath: '/secret-manager/$projectId/integrations/cloudflare-pages/authorize'
+      preLoaderRoute: typeof secretManagerIntegrationsCloudflarePagesAuthorizePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloudflare-pages/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloudflare-pages/create'
+      path: '/cloudflare-pages/create'
+      fullPath: '/secret-manager/$projectId/integrations/cloudflare-pages/create'
+      preLoaderRoute: typeof secretManagerIntegrationsCloudflarePagesConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloudflare-workers/authorize': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloudflare-workers/authorize'
+      path: '/cloudflare-workers/authorize'
+      fullPath: '/secret-manager/$projectId/integrations/cloudflare-workers/authorize'
+      preLoaderRoute: typeof secretManagerIntegrationsCloudflareWorkersAuthorizePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloudflare-workers/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloudflare-workers/create'
+      path: '/cloudflare-workers/create'
+      fullPath: '/secret-manager/$projectId/integrations/cloudflare-workers/create'
+      preLoaderRoute: typeof secretManagerIntegrationsCloudflareWorkersConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/codefresh/authorize': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/codefresh/authorize'
+      path: '/codefresh/authorize'
+      fullPath: '/secret-manager/$projectId/integrations/codefresh/authorize'
+      preLoaderRoute: typeof secretManagerIntegrationsCodefreshAuthorizePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/codefresh/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/codefresh/create'
+      path: '/codefresh/create'
+      fullPath: '/secret-manager/$projectId/integrations/codefresh/create'
+      preLoaderRoute: typeof secretManagerIntegrationsCodefreshConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/databricks/authorize': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/databricks/authorize'
+      path: '/databricks/authorize'
+      fullPath: '/secret-manager/$projectId/integrations/databricks/authorize'
+      preLoaderRoute: typeof secretManagerIntegrationsDatabricksAuthorizePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/databricks/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/databricks/create'
+      path: '/databricks/create'
+      fullPath: '/secret-manager/$projectId/integrations/databricks/create'
+      preLoaderRoute: typeof secretManagerIntegrationsDatabricksConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/digital-ocean-app-platform/authorize': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/digital-ocean-app-platform/authorize'
+      path: '/digital-ocean-app-platform/authorize'
+      fullPath: '/secret-manager/$projectId/integrations/digital-ocean-app-platform/authorize'
+      preLoaderRoute: typeof secretManagerIntegrationsDigitalOceanAppPlatformAuthorizePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/digital-ocean-app-platform/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/digital-ocean-app-platform/create'
+      path: '/digital-ocean-app-platform/create'
+      fullPath: '/secret-manager/$projectId/integrations/digital-ocean-app-platform/create'
+      preLoaderRoute: typeof secretManagerIntegrationsDigitalOceanAppPlatformConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/flyio/authorize': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/flyio/authorize'
+      path: '/flyio/authorize'
+      fullPath: '/secret-manager/$projectId/integrations/flyio/authorize'
+      preLoaderRoute: typeof secretManagerIntegrationsFlyioAuthorizePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/flyio/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/flyio/create'
+      path: '/flyio/create'
+      fullPath: '/secret-manager/$projectId/integrations/flyio/create'
+      preLoaderRoute: typeof secretManagerIntegrationsFlyioConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gcp-secret-manager/authorize': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gcp-secret-manager/authorize'
+      path: '/gcp-secret-manager/authorize'
+      fullPath: '/secret-manager/$projectId/integrations/gcp-secret-manager/authorize'
+      preLoaderRoute: typeof secretManagerIntegrationsGcpSecretManagerAuthorizePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gcp-secret-manager/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gcp-secret-manager/create'
+      path: '/gcp-secret-manager/create'
+      fullPath: '/secret-manager/$projectId/integrations/gcp-secret-manager/create'
+      preLoaderRoute: typeof secretManagerIntegrationsGcpSecretManagerConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/github/auth-mode-selection': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/github/auth-mode-selection'
+      path: '/github/auth-mode-selection'
+      fullPath: '/secret-manager/$projectId/integrations/github/auth-mode-selection'
+      preLoaderRoute: typeof secretManagerIntegrationsGithubAuthorizePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/github/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/github/create'
+      path: '/github/create'
+      fullPath: '/secret-manager/$projectId/integrations/github/create'
+      preLoaderRoute: typeof secretManagerIntegrationsGithubConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gitlab/authorize': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gitlab/authorize'
+      path: '/gitlab/authorize'
+      fullPath: '/secret-manager/$projectId/integrations/gitlab/authorize'
+      preLoaderRoute: typeof secretManagerIntegrationsGitlabAuthorizePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gitlab/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gitlab/create'
+      path: '/gitlab/create'
+      fullPath: '/secret-manager/$projectId/integrations/gitlab/create'
+      preLoaderRoute: typeof secretManagerIntegrationsGitlabConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/hashicorp-vault/authorize': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/hashicorp-vault/authorize'
+      path: '/hashicorp-vault/authorize'
+      fullPath: '/secret-manager/$projectId/integrations/hashicorp-vault/authorize'
+      preLoaderRoute: typeof secretManagerIntegrationsHashicorpVaultAuthorizePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/hashicorp-vault/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/hashicorp-vault/create'
+      path: '/hashicorp-vault/create'
+      fullPath: '/secret-manager/$projectId/integrations/hashicorp-vault/create'
+      preLoaderRoute: typeof secretManagerIntegrationsHashicorpVaultConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/hasura-cloud/authorize': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/hasura-cloud/authorize'
+      path: '/hasura-cloud/authorize'
+      fullPath: '/secret-manager/$projectId/integrations/hasura-cloud/authorize'
+      preLoaderRoute: typeof secretManagerIntegrationsHasuraCloudAuthorizePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/hasura-cloud/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/hasura-cloud/create'
+      path: '/hasura-cloud/create'
+      fullPath: '/secret-manager/$projectId/integrations/hasura-cloud/create'
+      preLoaderRoute: typeof secretManagerIntegrationsHasuraCloudConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/heroku/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/heroku/create'
+      path: '/heroku/create'
+      fullPath: '/secret-manager/$projectId/integrations/heroku/create'
+      preLoaderRoute: typeof secretManagerIntegrationsHerokuConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/laravel-forge/authorize': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/laravel-forge/authorize'
+      path: '/laravel-forge/authorize'
+      fullPath: '/secret-manager/$projectId/integrations/laravel-forge/authorize'
+      preLoaderRoute: typeof secretManagerIntegrationsLaravelForgeAuthorizePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/laravel-forge/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/laravel-forge/create'
+      path: '/laravel-forge/create'
+      fullPath: '/secret-manager/$projectId/integrations/laravel-forge/create'
+      preLoaderRoute: typeof secretManagerIntegrationsLaravelForgeConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/netlify/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/netlify/create'
+      path: '/netlify/create'
+      fullPath: '/secret-manager/$projectId/integrations/netlify/create'
+      preLoaderRoute: typeof secretManagerIntegrationsNetlifyConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/northflank/authorize': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/northflank/authorize'
+      path: '/northflank/authorize'
+      fullPath: '/secret-manager/$projectId/integrations/northflank/authorize'
+      preLoaderRoute: typeof secretManagerIntegrationsNorthflankAuthorizePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/northflank/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/northflank/create'
+      path: '/northflank/create'
+      fullPath: '/secret-manager/$projectId/integrations/northflank/create'
+      preLoaderRoute: typeof secretManagerIntegrationsNorthflankConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/octopus-deploy/authorize': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/octopus-deploy/authorize'
+      path: '/octopus-deploy/authorize'
+      fullPath: '/secret-manager/$projectId/integrations/octopus-deploy/authorize'
+      preLoaderRoute: typeof secretManagerIntegrationsOctopusDeployAuthorizePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/octopus-deploy/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/octopus-deploy/create'
+      path: '/octopus-deploy/create'
+      fullPath: '/secret-manager/$projectId/integrations/octopus-deploy/create'
+      preLoaderRoute: typeof secretManagerIntegrationsOctopusDeployConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/qovery/authorize': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/qovery/authorize'
+      path: '/qovery/authorize'
+      fullPath: '/secret-manager/$projectId/integrations/qovery/authorize'
+      preLoaderRoute: typeof secretManagerIntegrationsQoveryAuthorizePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/qovery/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/qovery/create'
+      path: '/qovery/create'
+      fullPath: '/secret-manager/$projectId/integrations/qovery/create'
+      preLoaderRoute: typeof secretManagerIntegrationsQoveryConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/railway/authorize': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/railway/authorize'
+      path: '/railway/authorize'
+      fullPath: '/secret-manager/$projectId/integrations/railway/authorize'
+      preLoaderRoute: typeof secretManagerIntegrationsRailwayAuthorizePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/railway/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/railway/create'
+      path: '/railway/create'
+      fullPath: '/secret-manager/$projectId/integrations/railway/create'
+      preLoaderRoute: typeof secretManagerIntegrationsRailwayConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/render/authorize': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/render/authorize'
+      path: '/render/authorize'
+      fullPath: '/secret-manager/$projectId/integrations/render/authorize'
+      preLoaderRoute: typeof secretManagerIntegrationsRenderAuthorizePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/render/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/render/create'
+      path: '/render/create'
+      fullPath: '/secret-manager/$projectId/integrations/render/create'
+      preLoaderRoute: typeof secretManagerIntegrationsRenderConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/rundeck/authorize': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/rundeck/authorize'
+      path: '/rundeck/authorize'
+      fullPath: '/secret-manager/$projectId/integrations/rundeck/authorize'
+      preLoaderRoute: typeof secretManagerIntegrationsRundeckAuthorizePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/rundeck/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/rundeck/create'
+      path: '/rundeck/create'
+      fullPath: '/secret-manager/$projectId/integrations/rundeck/create'
+      preLoaderRoute: typeof secretManagerIntegrationsRundeckConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/supabase/authorize': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/supabase/authorize'
+      path: '/supabase/authorize'
+      fullPath: '/secret-manager/$projectId/integrations/supabase/authorize'
+      preLoaderRoute: typeof secretManagerIntegrationsSupabaseAuthorizePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/supabase/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/supabase/create'
+      path: '/supabase/create'
+      fullPath: '/secret-manager/$projectId/integrations/supabase/create'
+      preLoaderRoute: typeof secretManagerIntegrationsSupabaseConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/teamcity/authorize': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/teamcity/authorize'
+      path: '/teamcity/authorize'
+      fullPath: '/secret-manager/$projectId/integrations/teamcity/authorize'
+      preLoaderRoute: typeof secretManagerIntegrationsTeamcityAuthorizePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/teamcity/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/teamcity/create'
+      path: '/teamcity/create'
+      fullPath: '/secret-manager/$projectId/integrations/teamcity/create'
+      preLoaderRoute: typeof secretManagerIntegrationsTeamcityConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/terraform-cloud/authorize': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/terraform-cloud/authorize'
+      path: '/terraform-cloud/authorize'
+      fullPath: '/secret-manager/$projectId/integrations/terraform-cloud/authorize'
+      preLoaderRoute: typeof secretManagerIntegrationsTerraformCloudAuthorizePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/terraform-cloud/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/terraform-cloud/create'
+      path: '/terraform-cloud/create'
+      fullPath: '/secret-manager/$projectId/integrations/terraform-cloud/create'
+      preLoaderRoute: typeof secretManagerIntegrationsTerraformCloudConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/travisci/authorize': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/travisci/authorize'
+      path: '/travisci/authorize'
+      fullPath: '/secret-manager/$projectId/integrations/travisci/authorize'
+      preLoaderRoute: typeof secretManagerIntegrationsTravisCIAuthorizePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/travisci/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/travisci/create'
+      path: '/travisci/create'
+      fullPath: '/secret-manager/$projectId/integrations/travisci/create'
+      preLoaderRoute: typeof secretManagerIntegrationsTravisCIConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/vercel/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/vercel/create'
+      path: '/vercel/create'
+      fullPath: '/secret-manager/$projectId/integrations/vercel/create'
+      preLoaderRoute: typeof secretManagerIntegrationsVercelConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/windmill/authorize': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/windmill/authorize'
+      path: '/windmill/authorize'
+      fullPath: '/secret-manager/$projectId/integrations/windmill/authorize'
+      preLoaderRoute: typeof secretManagerIntegrationsWindmillAuthorizePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/windmill/create': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/windmill/create'
+      path: '/windmill/create'
+      fullPath: '/secret-manager/$projectId/integrations/windmill/create'
+      preLoaderRoute: typeof secretManagerIntegrationsWindmillConfigurePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-app-configuration/oauth2/callback': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-app-configuration/oauth2/callback'
+      path: '/azure-app-configuration/oauth2/callback'
+      fullPath: '/secret-manager/$projectId/integrations/azure-app-configuration/oauth2/callback'
+      preLoaderRoute: typeof secretManagerIntegrationsAzureAppConfigurationOauthCallbackPageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/oauth2/callback': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/oauth2/callback'
+      path: '/azure-key-vault/oauth2/callback'
+      fullPath: '/secret-manager/$projectId/integrations/azure-key-vault/oauth2/callback'
+      preLoaderRoute: typeof secretManagerIntegrationsAzureKeyVaultOauthCallbackPageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/bitbucket/oauth2/callback': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/bitbucket/oauth2/callback'
+      path: '/bitbucket/oauth2/callback'
+      fullPath: '/secret-manager/$projectId/integrations/bitbucket/oauth2/callback'
+      preLoaderRoute: typeof secretManagerIntegrationsBitbucketOauthCallbackPageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gcp-secret-manager/oauth2/callback': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gcp-secret-manager/oauth2/callback'
+      path: '/gcp-secret-manager/oauth2/callback'
+      fullPath: '/secret-manager/$projectId/integrations/gcp-secret-manager/oauth2/callback'
+      preLoaderRoute: typeof secretManagerIntegrationsGcpSecretManagerOauthCallbackPageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/github/oauth2/callback': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/github/oauth2/callback'
+      path: '/github/oauth2/callback'
+      fullPath: '/secret-manager/$projectId/integrations/github/oauth2/callback'
+      preLoaderRoute: typeof secretManagerIntegrationsGithubOauthCallbackPageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gitlab/oauth2/callback': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gitlab/oauth2/callback'
+      path: '/gitlab/oauth2/callback'
+      fullPath: '/secret-manager/$projectId/integrations/gitlab/oauth2/callback'
+      preLoaderRoute: typeof secretManagerIntegrationsGitlabOauthCallbackPageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/heroku/oauth2/callback': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/heroku/oauth2/callback'
+      path: '/heroku/oauth2/callback'
+      fullPath: '/secret-manager/$projectId/integrations/heroku/oauth2/callback'
+      preLoaderRoute: typeof secretManagerIntegrationsHerokuOauthCallbackPageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/netlify/oauth2/callback': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/netlify/oauth2/callback'
+      path: '/netlify/oauth2/callback'
+      fullPath: '/secret-manager/$projectId/integrations/netlify/oauth2/callback'
+      preLoaderRoute: typeof secretManagerIntegrationsNetlifyOauthCallbackPageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/vercel/oauth2/callback': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/vercel/oauth2/callback'
+      path: '/vercel/oauth2/callback'
+      fullPath: '/secret-manager/$projectId/integrations/vercel/oauth2/callback'
+      preLoaderRoute: typeof secretManagerIntegrationsVercelOauthCallbackPageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
   }
 }
 
 // Create and export the route tree
+
+interface AuthenticateInjectOrgDetailsIntegrationsRouteChildren {
+  secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute: typeof secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute
+  secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute: typeof secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute
+  secretManagerIntegrationsRouteBitbucketOauthRedirectRoute: typeof secretManagerIntegrationsRouteBitbucketOauthRedirectRoute
+  secretManagerIntegrationsRouteGcpOauthRedirectRoute: typeof secretManagerIntegrationsRouteGcpOauthRedirectRoute
+  secretManagerIntegrationsRouteGithubOauthRedirectRoute: typeof secretManagerIntegrationsRouteGithubOauthRedirectRoute
+  secretManagerIntegrationsRouteGitlabOauthRedirectRoute: typeof secretManagerIntegrationsRouteGitlabOauthRedirectRoute
+  secretManagerIntegrationsRouteHerokuOauthRedirectRoute: typeof secretManagerIntegrationsRouteHerokuOauthRedirectRoute
+  secretManagerIntegrationsRouteNetlifyOauthRedirectRoute: typeof secretManagerIntegrationsRouteNetlifyOauthRedirectRoute
+  secretManagerIntegrationsRouteVercelOauthRedirectRoute: typeof secretManagerIntegrationsRouteVercelOauthRedirectRoute
+}
+
+const AuthenticateInjectOrgDetailsIntegrationsRouteChildren: AuthenticateInjectOrgDetailsIntegrationsRouteChildren =
+  {
+    secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute:
+      secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute,
+    secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute:
+      secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute,
+    secretManagerIntegrationsRouteBitbucketOauthRedirectRoute:
+      secretManagerIntegrationsRouteBitbucketOauthRedirectRoute,
+    secretManagerIntegrationsRouteGcpOauthRedirectRoute:
+      secretManagerIntegrationsRouteGcpOauthRedirectRoute,
+    secretManagerIntegrationsRouteGithubOauthRedirectRoute:
+      secretManagerIntegrationsRouteGithubOauthRedirectRoute,
+    secretManagerIntegrationsRouteGitlabOauthRedirectRoute:
+      secretManagerIntegrationsRouteGitlabOauthRedirectRoute,
+    secretManagerIntegrationsRouteHerokuOauthRedirectRoute:
+      secretManagerIntegrationsRouteHerokuOauthRedirectRoute,
+    secretManagerIntegrationsRouteNetlifyOauthRedirectRoute:
+      secretManagerIntegrationsRouteNetlifyOauthRedirectRoute,
+    secretManagerIntegrationsRouteVercelOauthRedirectRoute:
+      secretManagerIntegrationsRouteVercelOauthRedirectRoute,
+  }
+
+const AuthenticateInjectOrgDetailsIntegrationsRouteWithChildren =
+  AuthenticateInjectOrgDetailsIntegrationsRoute._addFileChildren(
+    AuthenticateInjectOrgDetailsIntegrationsRouteChildren,
+  )
 
 interface organizationLayoutRouteChildren {
   organizationAccessManagementPageRouteRoute: typeof organizationAccessManagementPageRouteRoute
@@ -1522,6 +2907,80 @@ const AuthenticateInjectOrgDetailsKmsProjectIdRouteWithChildren =
 interface AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRouteChildren {
   secretManagerIntegrationsListPageRouteRoute: typeof secretManagerIntegrationsListPageRouteRoute
   secretManagerIntegrationsDetailsByIDPageRouteRoute: typeof secretManagerIntegrationsDetailsByIDPageRouteRoute
+  secretManagerIntegrationsSelectIntegrationAuthPageRouteRoute: typeof secretManagerIntegrationsSelectIntegrationAuthPageRouteRoute
+  secretManagerIntegrationsAwsParameterStoreAuthorizePageRouteRoute: typeof secretManagerIntegrationsAwsParameterStoreAuthorizePageRouteRoute
+  secretManagerIntegrationsAwsParameterStoreConfigurePageRouteRoute: typeof secretManagerIntegrationsAwsParameterStoreConfigurePageRouteRoute
+  secretManagerIntegrationsAwsSecretManagerAuthorizePageRouteRoute: typeof secretManagerIntegrationsAwsSecretManagerAuthorizePageRouteRoute
+  secretManagerIntegrationsAwsSecretManagerConfigurePageRouteRoute: typeof secretManagerIntegrationsAwsSecretManagerConfigurePageRouteRoute
+  secretManagerIntegrationsAzureAppConfigurationConfigurePageRouteRoute: typeof secretManagerIntegrationsAzureAppConfigurationConfigurePageRouteRoute
+  secretManagerIntegrationsAzureDevopsAuthorizePageRouteRoute: typeof secretManagerIntegrationsAzureDevopsAuthorizePageRouteRoute
+  secretManagerIntegrationsAzureDevopsConfigurePageRouteRoute: typeof secretManagerIntegrationsAzureDevopsConfigurePageRouteRoute
+  secretManagerIntegrationsAzureKeyVaultConfigurePageRouteRoute: typeof secretManagerIntegrationsAzureKeyVaultConfigurePageRouteRoute
+  secretManagerIntegrationsBitbucketConfigurePageRouteRoute: typeof secretManagerIntegrationsBitbucketConfigurePageRouteRoute
+  secretManagerIntegrationsChecklyAuthorizePageRouteRoute: typeof secretManagerIntegrationsChecklyAuthorizePageRouteRoute
+  secretManagerIntegrationsChecklyConfigurePageRouteRoute: typeof secretManagerIntegrationsChecklyConfigurePageRouteRoute
+  secretManagerIntegrationsCircleCIAuthorizePageRouteRoute: typeof secretManagerIntegrationsCircleCIAuthorizePageRouteRoute
+  secretManagerIntegrationsCircleCIConfigurePageRouteRoute: typeof secretManagerIntegrationsCircleCIConfigurePageRouteRoute
+  secretManagerIntegrationsCloud66AuthorizePageRouteRoute: typeof secretManagerIntegrationsCloud66AuthorizePageRouteRoute
+  secretManagerIntegrationsCloud66ConfigurePageRouteRoute: typeof secretManagerIntegrationsCloud66ConfigurePageRouteRoute
+  secretManagerIntegrationsCloudflarePagesAuthorizePageRouteRoute: typeof secretManagerIntegrationsCloudflarePagesAuthorizePageRouteRoute
+  secretManagerIntegrationsCloudflarePagesConfigurePageRouteRoute: typeof secretManagerIntegrationsCloudflarePagesConfigurePageRouteRoute
+  secretManagerIntegrationsCloudflareWorkersAuthorizePageRouteRoute: typeof secretManagerIntegrationsCloudflareWorkersAuthorizePageRouteRoute
+  secretManagerIntegrationsCloudflareWorkersConfigurePageRouteRoute: typeof secretManagerIntegrationsCloudflareWorkersConfigurePageRouteRoute
+  secretManagerIntegrationsCodefreshAuthorizePageRouteRoute: typeof secretManagerIntegrationsCodefreshAuthorizePageRouteRoute
+  secretManagerIntegrationsCodefreshConfigurePageRouteRoute: typeof secretManagerIntegrationsCodefreshConfigurePageRouteRoute
+  secretManagerIntegrationsDatabricksAuthorizePageRouteRoute: typeof secretManagerIntegrationsDatabricksAuthorizePageRouteRoute
+  secretManagerIntegrationsDatabricksConfigurePageRouteRoute: typeof secretManagerIntegrationsDatabricksConfigurePageRouteRoute
+  secretManagerIntegrationsDigitalOceanAppPlatformAuthorizePageRouteRoute: typeof secretManagerIntegrationsDigitalOceanAppPlatformAuthorizePageRouteRoute
+  secretManagerIntegrationsDigitalOceanAppPlatformConfigurePageRouteRoute: typeof secretManagerIntegrationsDigitalOceanAppPlatformConfigurePageRouteRoute
+  secretManagerIntegrationsFlyioAuthorizePageRouteRoute: typeof secretManagerIntegrationsFlyioAuthorizePageRouteRoute
+  secretManagerIntegrationsFlyioConfigurePageRouteRoute: typeof secretManagerIntegrationsFlyioConfigurePageRouteRoute
+  secretManagerIntegrationsGcpSecretManagerAuthorizePageRouteRoute: typeof secretManagerIntegrationsGcpSecretManagerAuthorizePageRouteRoute
+  secretManagerIntegrationsGcpSecretManagerConfigurePageRouteRoute: typeof secretManagerIntegrationsGcpSecretManagerConfigurePageRouteRoute
+  secretManagerIntegrationsGithubAuthorizePageRouteRoute: typeof secretManagerIntegrationsGithubAuthorizePageRouteRoute
+  secretManagerIntegrationsGithubConfigurePageRouteRoute: typeof secretManagerIntegrationsGithubConfigurePageRouteRoute
+  secretManagerIntegrationsGitlabAuthorizePageRouteRoute: typeof secretManagerIntegrationsGitlabAuthorizePageRouteRoute
+  secretManagerIntegrationsGitlabConfigurePageRouteRoute: typeof secretManagerIntegrationsGitlabConfigurePageRouteRoute
+  secretManagerIntegrationsHashicorpVaultAuthorizePageRouteRoute: typeof secretManagerIntegrationsHashicorpVaultAuthorizePageRouteRoute
+  secretManagerIntegrationsHashicorpVaultConfigurePageRouteRoute: typeof secretManagerIntegrationsHashicorpVaultConfigurePageRouteRoute
+  secretManagerIntegrationsHasuraCloudAuthorizePageRouteRoute: typeof secretManagerIntegrationsHasuraCloudAuthorizePageRouteRoute
+  secretManagerIntegrationsHasuraCloudConfigurePageRouteRoute: typeof secretManagerIntegrationsHasuraCloudConfigurePageRouteRoute
+  secretManagerIntegrationsHerokuConfigurePageRouteRoute: typeof secretManagerIntegrationsHerokuConfigurePageRouteRoute
+  secretManagerIntegrationsLaravelForgeAuthorizePageRouteRoute: typeof secretManagerIntegrationsLaravelForgeAuthorizePageRouteRoute
+  secretManagerIntegrationsLaravelForgeConfigurePageRouteRoute: typeof secretManagerIntegrationsLaravelForgeConfigurePageRouteRoute
+  secretManagerIntegrationsNetlifyConfigurePageRouteRoute: typeof secretManagerIntegrationsNetlifyConfigurePageRouteRoute
+  secretManagerIntegrationsNorthflankAuthorizePageRouteRoute: typeof secretManagerIntegrationsNorthflankAuthorizePageRouteRoute
+  secretManagerIntegrationsNorthflankConfigurePageRouteRoute: typeof secretManagerIntegrationsNorthflankConfigurePageRouteRoute
+  secretManagerIntegrationsOctopusDeployAuthorizePageRouteRoute: typeof secretManagerIntegrationsOctopusDeployAuthorizePageRouteRoute
+  secretManagerIntegrationsOctopusDeployConfigurePageRouteRoute: typeof secretManagerIntegrationsOctopusDeployConfigurePageRouteRoute
+  secretManagerIntegrationsQoveryAuthorizePageRouteRoute: typeof secretManagerIntegrationsQoveryAuthorizePageRouteRoute
+  secretManagerIntegrationsQoveryConfigurePageRouteRoute: typeof secretManagerIntegrationsQoveryConfigurePageRouteRoute
+  secretManagerIntegrationsRailwayAuthorizePageRouteRoute: typeof secretManagerIntegrationsRailwayAuthorizePageRouteRoute
+  secretManagerIntegrationsRailwayConfigurePageRouteRoute: typeof secretManagerIntegrationsRailwayConfigurePageRouteRoute
+  secretManagerIntegrationsRenderAuthorizePageRouteRoute: typeof secretManagerIntegrationsRenderAuthorizePageRouteRoute
+  secretManagerIntegrationsRenderConfigurePageRouteRoute: typeof secretManagerIntegrationsRenderConfigurePageRouteRoute
+  secretManagerIntegrationsRundeckAuthorizePageRouteRoute: typeof secretManagerIntegrationsRundeckAuthorizePageRouteRoute
+  secretManagerIntegrationsRundeckConfigurePageRouteRoute: typeof secretManagerIntegrationsRundeckConfigurePageRouteRoute
+  secretManagerIntegrationsSupabaseAuthorizePageRouteRoute: typeof secretManagerIntegrationsSupabaseAuthorizePageRouteRoute
+  secretManagerIntegrationsSupabaseConfigurePageRouteRoute: typeof secretManagerIntegrationsSupabaseConfigurePageRouteRoute
+  secretManagerIntegrationsTeamcityAuthorizePageRouteRoute: typeof secretManagerIntegrationsTeamcityAuthorizePageRouteRoute
+  secretManagerIntegrationsTeamcityConfigurePageRouteRoute: typeof secretManagerIntegrationsTeamcityConfigurePageRouteRoute
+  secretManagerIntegrationsTerraformCloudAuthorizePageRouteRoute: typeof secretManagerIntegrationsTerraformCloudAuthorizePageRouteRoute
+  secretManagerIntegrationsTerraformCloudConfigurePageRouteRoute: typeof secretManagerIntegrationsTerraformCloudConfigurePageRouteRoute
+  secretManagerIntegrationsTravisCIAuthorizePageRouteRoute: typeof secretManagerIntegrationsTravisCIAuthorizePageRouteRoute
+  secretManagerIntegrationsTravisCIConfigurePageRouteRoute: typeof secretManagerIntegrationsTravisCIConfigurePageRouteRoute
+  secretManagerIntegrationsVercelConfigurePageRouteRoute: typeof secretManagerIntegrationsVercelConfigurePageRouteRoute
+  secretManagerIntegrationsWindmillAuthorizePageRouteRoute: typeof secretManagerIntegrationsWindmillAuthorizePageRouteRoute
+  secretManagerIntegrationsWindmillConfigurePageRouteRoute: typeof secretManagerIntegrationsWindmillConfigurePageRouteRoute
+  secretManagerIntegrationsAzureAppConfigurationOauthCallbackPageRouteRoute: typeof secretManagerIntegrationsAzureAppConfigurationOauthCallbackPageRouteRoute
+  secretManagerIntegrationsAzureKeyVaultOauthCallbackPageRouteRoute: typeof secretManagerIntegrationsAzureKeyVaultOauthCallbackPageRouteRoute
+  secretManagerIntegrationsBitbucketOauthCallbackPageRouteRoute: typeof secretManagerIntegrationsBitbucketOauthCallbackPageRouteRoute
+  secretManagerIntegrationsGcpSecretManagerOauthCallbackPageRouteRoute: typeof secretManagerIntegrationsGcpSecretManagerOauthCallbackPageRouteRoute
+  secretManagerIntegrationsGithubOauthCallbackPageRouteRoute: typeof secretManagerIntegrationsGithubOauthCallbackPageRouteRoute
+  secretManagerIntegrationsGitlabOauthCallbackPageRouteRoute: typeof secretManagerIntegrationsGitlabOauthCallbackPageRouteRoute
+  secretManagerIntegrationsHerokuOauthCallbackPageRouteRoute: typeof secretManagerIntegrationsHerokuOauthCallbackPageRouteRoute
+  secretManagerIntegrationsNetlifyOauthCallbackPageRouteRoute: typeof secretManagerIntegrationsNetlifyOauthCallbackPageRouteRoute
+  secretManagerIntegrationsVercelOauthCallbackPageRouteRoute: typeof secretManagerIntegrationsVercelOauthCallbackPageRouteRoute
 }
 
 const AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRouteChildren: AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRouteChildren =
@@ -1530,6 +2989,154 @@ const AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutInteg
       secretManagerIntegrationsListPageRouteRoute,
     secretManagerIntegrationsDetailsByIDPageRouteRoute:
       secretManagerIntegrationsDetailsByIDPageRouteRoute,
+    secretManagerIntegrationsSelectIntegrationAuthPageRouteRoute:
+      secretManagerIntegrationsSelectIntegrationAuthPageRouteRoute,
+    secretManagerIntegrationsAwsParameterStoreAuthorizePageRouteRoute:
+      secretManagerIntegrationsAwsParameterStoreAuthorizePageRouteRoute,
+    secretManagerIntegrationsAwsParameterStoreConfigurePageRouteRoute:
+      secretManagerIntegrationsAwsParameterStoreConfigurePageRouteRoute,
+    secretManagerIntegrationsAwsSecretManagerAuthorizePageRouteRoute:
+      secretManagerIntegrationsAwsSecretManagerAuthorizePageRouteRoute,
+    secretManagerIntegrationsAwsSecretManagerConfigurePageRouteRoute:
+      secretManagerIntegrationsAwsSecretManagerConfigurePageRouteRoute,
+    secretManagerIntegrationsAzureAppConfigurationConfigurePageRouteRoute:
+      secretManagerIntegrationsAzureAppConfigurationConfigurePageRouteRoute,
+    secretManagerIntegrationsAzureDevopsAuthorizePageRouteRoute:
+      secretManagerIntegrationsAzureDevopsAuthorizePageRouteRoute,
+    secretManagerIntegrationsAzureDevopsConfigurePageRouteRoute:
+      secretManagerIntegrationsAzureDevopsConfigurePageRouteRoute,
+    secretManagerIntegrationsAzureKeyVaultConfigurePageRouteRoute:
+      secretManagerIntegrationsAzureKeyVaultConfigurePageRouteRoute,
+    secretManagerIntegrationsBitbucketConfigurePageRouteRoute:
+      secretManagerIntegrationsBitbucketConfigurePageRouteRoute,
+    secretManagerIntegrationsChecklyAuthorizePageRouteRoute:
+      secretManagerIntegrationsChecklyAuthorizePageRouteRoute,
+    secretManagerIntegrationsChecklyConfigurePageRouteRoute:
+      secretManagerIntegrationsChecklyConfigurePageRouteRoute,
+    secretManagerIntegrationsCircleCIAuthorizePageRouteRoute:
+      secretManagerIntegrationsCircleCIAuthorizePageRouteRoute,
+    secretManagerIntegrationsCircleCIConfigurePageRouteRoute:
+      secretManagerIntegrationsCircleCIConfigurePageRouteRoute,
+    secretManagerIntegrationsCloud66AuthorizePageRouteRoute:
+      secretManagerIntegrationsCloud66AuthorizePageRouteRoute,
+    secretManagerIntegrationsCloud66ConfigurePageRouteRoute:
+      secretManagerIntegrationsCloud66ConfigurePageRouteRoute,
+    secretManagerIntegrationsCloudflarePagesAuthorizePageRouteRoute:
+      secretManagerIntegrationsCloudflarePagesAuthorizePageRouteRoute,
+    secretManagerIntegrationsCloudflarePagesConfigurePageRouteRoute:
+      secretManagerIntegrationsCloudflarePagesConfigurePageRouteRoute,
+    secretManagerIntegrationsCloudflareWorkersAuthorizePageRouteRoute:
+      secretManagerIntegrationsCloudflareWorkersAuthorizePageRouteRoute,
+    secretManagerIntegrationsCloudflareWorkersConfigurePageRouteRoute:
+      secretManagerIntegrationsCloudflareWorkersConfigurePageRouteRoute,
+    secretManagerIntegrationsCodefreshAuthorizePageRouteRoute:
+      secretManagerIntegrationsCodefreshAuthorizePageRouteRoute,
+    secretManagerIntegrationsCodefreshConfigurePageRouteRoute:
+      secretManagerIntegrationsCodefreshConfigurePageRouteRoute,
+    secretManagerIntegrationsDatabricksAuthorizePageRouteRoute:
+      secretManagerIntegrationsDatabricksAuthorizePageRouteRoute,
+    secretManagerIntegrationsDatabricksConfigurePageRouteRoute:
+      secretManagerIntegrationsDatabricksConfigurePageRouteRoute,
+    secretManagerIntegrationsDigitalOceanAppPlatformAuthorizePageRouteRoute:
+      secretManagerIntegrationsDigitalOceanAppPlatformAuthorizePageRouteRoute,
+    secretManagerIntegrationsDigitalOceanAppPlatformConfigurePageRouteRoute:
+      secretManagerIntegrationsDigitalOceanAppPlatformConfigurePageRouteRoute,
+    secretManagerIntegrationsFlyioAuthorizePageRouteRoute:
+      secretManagerIntegrationsFlyioAuthorizePageRouteRoute,
+    secretManagerIntegrationsFlyioConfigurePageRouteRoute:
+      secretManagerIntegrationsFlyioConfigurePageRouteRoute,
+    secretManagerIntegrationsGcpSecretManagerAuthorizePageRouteRoute:
+      secretManagerIntegrationsGcpSecretManagerAuthorizePageRouteRoute,
+    secretManagerIntegrationsGcpSecretManagerConfigurePageRouteRoute:
+      secretManagerIntegrationsGcpSecretManagerConfigurePageRouteRoute,
+    secretManagerIntegrationsGithubAuthorizePageRouteRoute:
+      secretManagerIntegrationsGithubAuthorizePageRouteRoute,
+    secretManagerIntegrationsGithubConfigurePageRouteRoute:
+      secretManagerIntegrationsGithubConfigurePageRouteRoute,
+    secretManagerIntegrationsGitlabAuthorizePageRouteRoute:
+      secretManagerIntegrationsGitlabAuthorizePageRouteRoute,
+    secretManagerIntegrationsGitlabConfigurePageRouteRoute:
+      secretManagerIntegrationsGitlabConfigurePageRouteRoute,
+    secretManagerIntegrationsHashicorpVaultAuthorizePageRouteRoute:
+      secretManagerIntegrationsHashicorpVaultAuthorizePageRouteRoute,
+    secretManagerIntegrationsHashicorpVaultConfigurePageRouteRoute:
+      secretManagerIntegrationsHashicorpVaultConfigurePageRouteRoute,
+    secretManagerIntegrationsHasuraCloudAuthorizePageRouteRoute:
+      secretManagerIntegrationsHasuraCloudAuthorizePageRouteRoute,
+    secretManagerIntegrationsHasuraCloudConfigurePageRouteRoute:
+      secretManagerIntegrationsHasuraCloudConfigurePageRouteRoute,
+    secretManagerIntegrationsHerokuConfigurePageRouteRoute:
+      secretManagerIntegrationsHerokuConfigurePageRouteRoute,
+    secretManagerIntegrationsLaravelForgeAuthorizePageRouteRoute:
+      secretManagerIntegrationsLaravelForgeAuthorizePageRouteRoute,
+    secretManagerIntegrationsLaravelForgeConfigurePageRouteRoute:
+      secretManagerIntegrationsLaravelForgeConfigurePageRouteRoute,
+    secretManagerIntegrationsNetlifyConfigurePageRouteRoute:
+      secretManagerIntegrationsNetlifyConfigurePageRouteRoute,
+    secretManagerIntegrationsNorthflankAuthorizePageRouteRoute:
+      secretManagerIntegrationsNorthflankAuthorizePageRouteRoute,
+    secretManagerIntegrationsNorthflankConfigurePageRouteRoute:
+      secretManagerIntegrationsNorthflankConfigurePageRouteRoute,
+    secretManagerIntegrationsOctopusDeployAuthorizePageRouteRoute:
+      secretManagerIntegrationsOctopusDeployAuthorizePageRouteRoute,
+    secretManagerIntegrationsOctopusDeployConfigurePageRouteRoute:
+      secretManagerIntegrationsOctopusDeployConfigurePageRouteRoute,
+    secretManagerIntegrationsQoveryAuthorizePageRouteRoute:
+      secretManagerIntegrationsQoveryAuthorizePageRouteRoute,
+    secretManagerIntegrationsQoveryConfigurePageRouteRoute:
+      secretManagerIntegrationsQoveryConfigurePageRouteRoute,
+    secretManagerIntegrationsRailwayAuthorizePageRouteRoute:
+      secretManagerIntegrationsRailwayAuthorizePageRouteRoute,
+    secretManagerIntegrationsRailwayConfigurePageRouteRoute:
+      secretManagerIntegrationsRailwayConfigurePageRouteRoute,
+    secretManagerIntegrationsRenderAuthorizePageRouteRoute:
+      secretManagerIntegrationsRenderAuthorizePageRouteRoute,
+    secretManagerIntegrationsRenderConfigurePageRouteRoute:
+      secretManagerIntegrationsRenderConfigurePageRouteRoute,
+    secretManagerIntegrationsRundeckAuthorizePageRouteRoute:
+      secretManagerIntegrationsRundeckAuthorizePageRouteRoute,
+    secretManagerIntegrationsRundeckConfigurePageRouteRoute:
+      secretManagerIntegrationsRundeckConfigurePageRouteRoute,
+    secretManagerIntegrationsSupabaseAuthorizePageRouteRoute:
+      secretManagerIntegrationsSupabaseAuthorizePageRouteRoute,
+    secretManagerIntegrationsSupabaseConfigurePageRouteRoute:
+      secretManagerIntegrationsSupabaseConfigurePageRouteRoute,
+    secretManagerIntegrationsTeamcityAuthorizePageRouteRoute:
+      secretManagerIntegrationsTeamcityAuthorizePageRouteRoute,
+    secretManagerIntegrationsTeamcityConfigurePageRouteRoute:
+      secretManagerIntegrationsTeamcityConfigurePageRouteRoute,
+    secretManagerIntegrationsTerraformCloudAuthorizePageRouteRoute:
+      secretManagerIntegrationsTerraformCloudAuthorizePageRouteRoute,
+    secretManagerIntegrationsTerraformCloudConfigurePageRouteRoute:
+      secretManagerIntegrationsTerraformCloudConfigurePageRouteRoute,
+    secretManagerIntegrationsTravisCIAuthorizePageRouteRoute:
+      secretManagerIntegrationsTravisCIAuthorizePageRouteRoute,
+    secretManagerIntegrationsTravisCIConfigurePageRouteRoute:
+      secretManagerIntegrationsTravisCIConfigurePageRouteRoute,
+    secretManagerIntegrationsVercelConfigurePageRouteRoute:
+      secretManagerIntegrationsVercelConfigurePageRouteRoute,
+    secretManagerIntegrationsWindmillAuthorizePageRouteRoute:
+      secretManagerIntegrationsWindmillAuthorizePageRouteRoute,
+    secretManagerIntegrationsWindmillConfigurePageRouteRoute:
+      secretManagerIntegrationsWindmillConfigurePageRouteRoute,
+    secretManagerIntegrationsAzureAppConfigurationOauthCallbackPageRouteRoute:
+      secretManagerIntegrationsAzureAppConfigurationOauthCallbackPageRouteRoute,
+    secretManagerIntegrationsAzureKeyVaultOauthCallbackPageRouteRoute:
+      secretManagerIntegrationsAzureKeyVaultOauthCallbackPageRouteRoute,
+    secretManagerIntegrationsBitbucketOauthCallbackPageRouteRoute:
+      secretManagerIntegrationsBitbucketOauthCallbackPageRouteRoute,
+    secretManagerIntegrationsGcpSecretManagerOauthCallbackPageRouteRoute:
+      secretManagerIntegrationsGcpSecretManagerOauthCallbackPageRouteRoute,
+    secretManagerIntegrationsGithubOauthCallbackPageRouteRoute:
+      secretManagerIntegrationsGithubOauthCallbackPageRouteRoute,
+    secretManagerIntegrationsGitlabOauthCallbackPageRouteRoute:
+      secretManagerIntegrationsGitlabOauthCallbackPageRouteRoute,
+    secretManagerIntegrationsHerokuOauthCallbackPageRouteRoute:
+      secretManagerIntegrationsHerokuOauthCallbackPageRouteRoute,
+    secretManagerIntegrationsNetlifyOauthCallbackPageRouteRoute:
+      secretManagerIntegrationsNetlifyOauthCallbackPageRouteRoute,
+    secretManagerIntegrationsVercelOauthCallbackPageRouteRoute:
+      secretManagerIntegrationsVercelOauthCallbackPageRouteRoute,
   }
 
 const AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRouteWithChildren =
@@ -1633,6 +3240,7 @@ const AuthenticateInjectOrgDetailsSshProjectIdRouteWithChildren =
   )
 
 interface middlewaresInjectOrgDetailsRouteChildren {
+  AuthenticateInjectOrgDetailsIntegrationsRoute: typeof AuthenticateInjectOrgDetailsIntegrationsRouteWithChildren
   AuthenticateInjectOrgDetailsOrganizationRoute: typeof AuthenticateInjectOrgDetailsOrganizationRouteWithChildren
   AuthenticateInjectOrgDetailsCertManagerProjectIdRoute: typeof AuthenticateInjectOrgDetailsCertManagerProjectIdRouteWithChildren
   AuthenticateInjectOrgDetailsKmsProjectIdRoute: typeof AuthenticateInjectOrgDetailsKmsProjectIdRouteWithChildren
@@ -1642,6 +3250,8 @@ interface middlewaresInjectOrgDetailsRouteChildren {
 
 const middlewaresInjectOrgDetailsRouteChildren: middlewaresInjectOrgDetailsRouteChildren =
   {
+    AuthenticateInjectOrgDetailsIntegrationsRoute:
+      AuthenticateInjectOrgDetailsIntegrationsRouteWithChildren,
     AuthenticateInjectOrgDetailsOrganizationRoute:
       AuthenticateInjectOrgDetailsOrganizationRouteWithChildren,
     AuthenticateInjectOrgDetailsCertManagerProjectIdRoute:
@@ -1820,6 +3430,7 @@ export interface FileRoutesByFullPath {
   '/login/sso': typeof authLoginSsoPageRouteRoute
   '/signup/sso': typeof authSignUpSsoPageRouteRoute
   '/shared/secret/$secretId': typeof publicViewSharedSecretByIDPageRouteRoute
+  '/integrations': typeof AuthenticateInjectOrgDetailsIntegrationsRouteWithChildren
   '/organization': typeof organizationLayoutRouteWithChildren
   '/admin/': typeof adminOverviewPageRouteRoute
   '/personal-settings/': typeof userPersonalSettingsPageRouteRoute
@@ -1857,6 +3468,15 @@ export interface FileRoutesByFullPath {
   '/ssh/$projectId/overview': typeof sshOverviewPageRouteRoute
   '/ssh/$projectId/settings': typeof sshSettingsPageRouteRoute
   '/cert-manager/$projectId/access-management': typeof projectAccessControlPageRouteCertManagerRoute
+  '/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute
+  '/integrations/azure-key-vault/oauth2/callback': typeof secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute
+  '/integrations/bitbucket/oauth2/callback': typeof secretManagerIntegrationsRouteBitbucketOauthRedirectRoute
+  '/integrations/gcp-secret-manager/oauth2/callback': typeof secretManagerIntegrationsRouteGcpOauthRedirectRoute
+  '/integrations/github/oauth2/callback': typeof secretManagerIntegrationsRouteGithubOauthRedirectRoute
+  '/integrations/gitlab/oauth2/callback': typeof secretManagerIntegrationsRouteGitlabOauthRedirectRoute
+  '/integrations/heroku/oauth2/callback': typeof secretManagerIntegrationsRouteHerokuOauthRedirectRoute
+  '/integrations/netlify/oauth2/callback': typeof secretManagerIntegrationsRouteNetlifyOauthRedirectRoute
+  '/integrations/vercel/oauth2/callback': typeof secretManagerIntegrationsRouteVercelOauthRedirectRoute
   '/kms/$projectId/access-management': typeof projectAccessControlPageRouteKmsRoute
   '/secret-manager/$projectId/access-management': typeof projectAccessControlPageRouteSecretManagerRoute
   '/secret-manager/$projectId/integrations': typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRouteWithChildren
@@ -1864,6 +3484,7 @@ export interface FileRoutesByFullPath {
   '/secret-manager/$projectId/integrations/': typeof secretManagerIntegrationsListPageRouteRoute
   '/cert-manager/$projectId/ca/$caId': typeof certManagerCertAuthDetailsByIDPageRouteRoute
   '/secret-manager/$projectId/integrations/$integrationId': typeof secretManagerIntegrationsDetailsByIDPageRouteRoute
+  '/secret-manager/$projectId/integrations/select-integration-auth': typeof secretManagerIntegrationsSelectIntegrationAuthPageRouteRoute
   '/secret-manager/$projectId/secrets/$envSlug': typeof secretManagerSecretDashboardPageRouteRoute
   '/ssh/$projectId/ca/$caId': typeof sshSshCaByIDPageRouteRoute
   '/cert-manager/$projectId/identities/$identityId': typeof projectIdentityDetailsByIDPageRouteCertManagerRoute
@@ -1880,6 +3501,79 @@ export interface FileRoutesByFullPath {
   '/ssh/$projectId/members/$membershipId': typeof projectMemberDetailsByIDPageRouteSshRoute
   '/ssh/$projectId/roles/$roleSlug': typeof projectRoleDetailsBySlugPageRouteSshRoute
   '/organization/app-connections/github/oauth/callback': typeof organizationAppConnectionsGithubOauthCallbackPageRouteRoute
+  '/secret-manager/$projectId/integrations/aws-parameter-store/authorize': typeof secretManagerIntegrationsAwsParameterStoreAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/aws-parameter-store/create': typeof secretManagerIntegrationsAwsParameterStoreConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/aws-secret-manager/authorize': typeof secretManagerIntegrationsAwsSecretManagerAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/aws-secret-manager/create': typeof secretManagerIntegrationsAwsSecretManagerConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/azure-app-configuration/create': typeof secretManagerIntegrationsAzureAppConfigurationConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/azure-devops/authorize': typeof secretManagerIntegrationsAzureDevopsAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/azure-devops/create': typeof secretManagerIntegrationsAzureDevopsConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/azure-key-vault/create': typeof secretManagerIntegrationsAzureKeyVaultConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/bitbucket/create': typeof secretManagerIntegrationsBitbucketConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/checkly/authorize': typeof secretManagerIntegrationsChecklyAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/checkly/create': typeof secretManagerIntegrationsChecklyConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/circleci/authorize': typeof secretManagerIntegrationsCircleCIAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/circleci/create': typeof secretManagerIntegrationsCircleCIConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/cloud-66/authorize': typeof secretManagerIntegrationsCloud66AuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/cloud-66/create': typeof secretManagerIntegrationsCloud66ConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/cloudflare-pages/authorize': typeof secretManagerIntegrationsCloudflarePagesAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/cloudflare-pages/create': typeof secretManagerIntegrationsCloudflarePagesConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/cloudflare-workers/authorize': typeof secretManagerIntegrationsCloudflareWorkersAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/cloudflare-workers/create': typeof secretManagerIntegrationsCloudflareWorkersConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/codefresh/authorize': typeof secretManagerIntegrationsCodefreshAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/codefresh/create': typeof secretManagerIntegrationsCodefreshConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/databricks/authorize': typeof secretManagerIntegrationsDatabricksAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/databricks/create': typeof secretManagerIntegrationsDatabricksConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/digital-ocean-app-platform/authorize': typeof secretManagerIntegrationsDigitalOceanAppPlatformAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/digital-ocean-app-platform/create': typeof secretManagerIntegrationsDigitalOceanAppPlatformConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/flyio/authorize': typeof secretManagerIntegrationsFlyioAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/flyio/create': typeof secretManagerIntegrationsFlyioConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/gcp-secret-manager/authorize': typeof secretManagerIntegrationsGcpSecretManagerAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/gcp-secret-manager/create': typeof secretManagerIntegrationsGcpSecretManagerConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/github/auth-mode-selection': typeof secretManagerIntegrationsGithubAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/github/create': typeof secretManagerIntegrationsGithubConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/gitlab/authorize': typeof secretManagerIntegrationsGitlabAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/gitlab/create': typeof secretManagerIntegrationsGitlabConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/hashicorp-vault/authorize': typeof secretManagerIntegrationsHashicorpVaultAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/hashicorp-vault/create': typeof secretManagerIntegrationsHashicorpVaultConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/hasura-cloud/authorize': typeof secretManagerIntegrationsHasuraCloudAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/hasura-cloud/create': typeof secretManagerIntegrationsHasuraCloudConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/heroku/create': typeof secretManagerIntegrationsHerokuConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/laravel-forge/authorize': typeof secretManagerIntegrationsLaravelForgeAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/laravel-forge/create': typeof secretManagerIntegrationsLaravelForgeConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/netlify/create': typeof secretManagerIntegrationsNetlifyConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/northflank/authorize': typeof secretManagerIntegrationsNorthflankAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/northflank/create': typeof secretManagerIntegrationsNorthflankConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/octopus-deploy/authorize': typeof secretManagerIntegrationsOctopusDeployAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/octopus-deploy/create': typeof secretManagerIntegrationsOctopusDeployConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/qovery/authorize': typeof secretManagerIntegrationsQoveryAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/qovery/create': typeof secretManagerIntegrationsQoveryConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/railway/authorize': typeof secretManagerIntegrationsRailwayAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/railway/create': typeof secretManagerIntegrationsRailwayConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/render/authorize': typeof secretManagerIntegrationsRenderAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/render/create': typeof secretManagerIntegrationsRenderConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/rundeck/authorize': typeof secretManagerIntegrationsRundeckAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/rundeck/create': typeof secretManagerIntegrationsRundeckConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/supabase/authorize': typeof secretManagerIntegrationsSupabaseAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/supabase/create': typeof secretManagerIntegrationsSupabaseConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/teamcity/authorize': typeof secretManagerIntegrationsTeamcityAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/teamcity/create': typeof secretManagerIntegrationsTeamcityConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/terraform-cloud/authorize': typeof secretManagerIntegrationsTerraformCloudAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/terraform-cloud/create': typeof secretManagerIntegrationsTerraformCloudConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/travisci/authorize': typeof secretManagerIntegrationsTravisCIAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/travisci/create': typeof secretManagerIntegrationsTravisCIConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/vercel/create': typeof secretManagerIntegrationsVercelConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/windmill/authorize': typeof secretManagerIntegrationsWindmillAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/windmill/create': typeof secretManagerIntegrationsWindmillConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsAzureAppConfigurationOauthCallbackPageRouteRoute
+  '/secret-manager/$projectId/integrations/azure-key-vault/oauth2/callback': typeof secretManagerIntegrationsAzureKeyVaultOauthCallbackPageRouteRoute
+  '/secret-manager/$projectId/integrations/bitbucket/oauth2/callback': typeof secretManagerIntegrationsBitbucketOauthCallbackPageRouteRoute
+  '/secret-manager/$projectId/integrations/gcp-secret-manager/oauth2/callback': typeof secretManagerIntegrationsGcpSecretManagerOauthCallbackPageRouteRoute
+  '/secret-manager/$projectId/integrations/github/oauth2/callback': typeof secretManagerIntegrationsGithubOauthCallbackPageRouteRoute
+  '/secret-manager/$projectId/integrations/gitlab/oauth2/callback': typeof secretManagerIntegrationsGitlabOauthCallbackPageRouteRoute
+  '/secret-manager/$projectId/integrations/heroku/oauth2/callback': typeof secretManagerIntegrationsHerokuOauthCallbackPageRouteRoute
+  '/secret-manager/$projectId/integrations/netlify/oauth2/callback': typeof secretManagerIntegrationsNetlifyOauthCallbackPageRouteRoute
+  '/secret-manager/$projectId/integrations/vercel/oauth2/callback': typeof secretManagerIntegrationsVercelOauthCallbackPageRouteRoute
 }
 
 export interface FileRoutesByTo {
@@ -1902,6 +3596,7 @@ export interface FileRoutesByTo {
   '/login/sso': typeof authLoginSsoPageRouteRoute
   '/signup/sso': typeof authSignUpSsoPageRouteRoute
   '/shared/secret/$secretId': typeof publicViewSharedSecretByIDPageRouteRoute
+  '/integrations': typeof AuthenticateInjectOrgDetailsIntegrationsRouteWithChildren
   '/organization': typeof organizationLayoutRouteWithChildren
   '/login/provider/error': typeof authProviderErrorPageRouteRoute
   '/login/provider/success': typeof authProviderSuccessPageRouteRoute
@@ -1937,12 +3632,22 @@ export interface FileRoutesByTo {
   '/ssh/$projectId/overview': typeof sshOverviewPageRouteRoute
   '/ssh/$projectId/settings': typeof sshSettingsPageRouteRoute
   '/cert-manager/$projectId/access-management': typeof projectAccessControlPageRouteCertManagerRoute
+  '/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute
+  '/integrations/azure-key-vault/oauth2/callback': typeof secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute
+  '/integrations/bitbucket/oauth2/callback': typeof secretManagerIntegrationsRouteBitbucketOauthRedirectRoute
+  '/integrations/gcp-secret-manager/oauth2/callback': typeof secretManagerIntegrationsRouteGcpOauthRedirectRoute
+  '/integrations/github/oauth2/callback': typeof secretManagerIntegrationsRouteGithubOauthRedirectRoute
+  '/integrations/gitlab/oauth2/callback': typeof secretManagerIntegrationsRouteGitlabOauthRedirectRoute
+  '/integrations/heroku/oauth2/callback': typeof secretManagerIntegrationsRouteHerokuOauthRedirectRoute
+  '/integrations/netlify/oauth2/callback': typeof secretManagerIntegrationsRouteNetlifyOauthRedirectRoute
+  '/integrations/vercel/oauth2/callback': typeof secretManagerIntegrationsRouteVercelOauthRedirectRoute
   '/kms/$projectId/access-management': typeof projectAccessControlPageRouteKmsRoute
   '/secret-manager/$projectId/access-management': typeof projectAccessControlPageRouteSecretManagerRoute
   '/ssh/$projectId/access-management': typeof projectAccessControlPageRouteSshRoute
   '/secret-manager/$projectId/integrations': typeof secretManagerIntegrationsListPageRouteRoute
   '/cert-manager/$projectId/ca/$caId': typeof certManagerCertAuthDetailsByIDPageRouteRoute
   '/secret-manager/$projectId/integrations/$integrationId': typeof secretManagerIntegrationsDetailsByIDPageRouteRoute
+  '/secret-manager/$projectId/integrations/select-integration-auth': typeof secretManagerIntegrationsSelectIntegrationAuthPageRouteRoute
   '/secret-manager/$projectId/secrets/$envSlug': typeof secretManagerSecretDashboardPageRouteRoute
   '/ssh/$projectId/ca/$caId': typeof sshSshCaByIDPageRouteRoute
   '/cert-manager/$projectId/identities/$identityId': typeof projectIdentityDetailsByIDPageRouteCertManagerRoute
@@ -1959,6 +3664,79 @@ export interface FileRoutesByTo {
   '/ssh/$projectId/members/$membershipId': typeof projectMemberDetailsByIDPageRouteSshRoute
   '/ssh/$projectId/roles/$roleSlug': typeof projectRoleDetailsBySlugPageRouteSshRoute
   '/organization/app-connections/github/oauth/callback': typeof organizationAppConnectionsGithubOauthCallbackPageRouteRoute
+  '/secret-manager/$projectId/integrations/aws-parameter-store/authorize': typeof secretManagerIntegrationsAwsParameterStoreAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/aws-parameter-store/create': typeof secretManagerIntegrationsAwsParameterStoreConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/aws-secret-manager/authorize': typeof secretManagerIntegrationsAwsSecretManagerAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/aws-secret-manager/create': typeof secretManagerIntegrationsAwsSecretManagerConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/azure-app-configuration/create': typeof secretManagerIntegrationsAzureAppConfigurationConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/azure-devops/authorize': typeof secretManagerIntegrationsAzureDevopsAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/azure-devops/create': typeof secretManagerIntegrationsAzureDevopsConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/azure-key-vault/create': typeof secretManagerIntegrationsAzureKeyVaultConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/bitbucket/create': typeof secretManagerIntegrationsBitbucketConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/checkly/authorize': typeof secretManagerIntegrationsChecklyAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/checkly/create': typeof secretManagerIntegrationsChecklyConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/circleci/authorize': typeof secretManagerIntegrationsCircleCIAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/circleci/create': typeof secretManagerIntegrationsCircleCIConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/cloud-66/authorize': typeof secretManagerIntegrationsCloud66AuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/cloud-66/create': typeof secretManagerIntegrationsCloud66ConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/cloudflare-pages/authorize': typeof secretManagerIntegrationsCloudflarePagesAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/cloudflare-pages/create': typeof secretManagerIntegrationsCloudflarePagesConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/cloudflare-workers/authorize': typeof secretManagerIntegrationsCloudflareWorkersAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/cloudflare-workers/create': typeof secretManagerIntegrationsCloudflareWorkersConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/codefresh/authorize': typeof secretManagerIntegrationsCodefreshAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/codefresh/create': typeof secretManagerIntegrationsCodefreshConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/databricks/authorize': typeof secretManagerIntegrationsDatabricksAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/databricks/create': typeof secretManagerIntegrationsDatabricksConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/digital-ocean-app-platform/authorize': typeof secretManagerIntegrationsDigitalOceanAppPlatformAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/digital-ocean-app-platform/create': typeof secretManagerIntegrationsDigitalOceanAppPlatformConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/flyio/authorize': typeof secretManagerIntegrationsFlyioAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/flyio/create': typeof secretManagerIntegrationsFlyioConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/gcp-secret-manager/authorize': typeof secretManagerIntegrationsGcpSecretManagerAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/gcp-secret-manager/create': typeof secretManagerIntegrationsGcpSecretManagerConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/github/auth-mode-selection': typeof secretManagerIntegrationsGithubAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/github/create': typeof secretManagerIntegrationsGithubConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/gitlab/authorize': typeof secretManagerIntegrationsGitlabAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/gitlab/create': typeof secretManagerIntegrationsGitlabConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/hashicorp-vault/authorize': typeof secretManagerIntegrationsHashicorpVaultAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/hashicorp-vault/create': typeof secretManagerIntegrationsHashicorpVaultConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/hasura-cloud/authorize': typeof secretManagerIntegrationsHasuraCloudAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/hasura-cloud/create': typeof secretManagerIntegrationsHasuraCloudConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/heroku/create': typeof secretManagerIntegrationsHerokuConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/laravel-forge/authorize': typeof secretManagerIntegrationsLaravelForgeAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/laravel-forge/create': typeof secretManagerIntegrationsLaravelForgeConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/netlify/create': typeof secretManagerIntegrationsNetlifyConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/northflank/authorize': typeof secretManagerIntegrationsNorthflankAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/northflank/create': typeof secretManagerIntegrationsNorthflankConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/octopus-deploy/authorize': typeof secretManagerIntegrationsOctopusDeployAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/octopus-deploy/create': typeof secretManagerIntegrationsOctopusDeployConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/qovery/authorize': typeof secretManagerIntegrationsQoveryAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/qovery/create': typeof secretManagerIntegrationsQoveryConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/railway/authorize': typeof secretManagerIntegrationsRailwayAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/railway/create': typeof secretManagerIntegrationsRailwayConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/render/authorize': typeof secretManagerIntegrationsRenderAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/render/create': typeof secretManagerIntegrationsRenderConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/rundeck/authorize': typeof secretManagerIntegrationsRundeckAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/rundeck/create': typeof secretManagerIntegrationsRundeckConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/supabase/authorize': typeof secretManagerIntegrationsSupabaseAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/supabase/create': typeof secretManagerIntegrationsSupabaseConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/teamcity/authorize': typeof secretManagerIntegrationsTeamcityAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/teamcity/create': typeof secretManagerIntegrationsTeamcityConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/terraform-cloud/authorize': typeof secretManagerIntegrationsTerraformCloudAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/terraform-cloud/create': typeof secretManagerIntegrationsTerraformCloudConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/travisci/authorize': typeof secretManagerIntegrationsTravisCIAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/travisci/create': typeof secretManagerIntegrationsTravisCIConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/vercel/create': typeof secretManagerIntegrationsVercelConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/windmill/authorize': typeof secretManagerIntegrationsWindmillAuthorizePageRouteRoute
+  '/secret-manager/$projectId/integrations/windmill/create': typeof secretManagerIntegrationsWindmillConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsAzureAppConfigurationOauthCallbackPageRouteRoute
+  '/secret-manager/$projectId/integrations/azure-key-vault/oauth2/callback': typeof secretManagerIntegrationsAzureKeyVaultOauthCallbackPageRouteRoute
+  '/secret-manager/$projectId/integrations/bitbucket/oauth2/callback': typeof secretManagerIntegrationsBitbucketOauthCallbackPageRouteRoute
+  '/secret-manager/$projectId/integrations/gcp-secret-manager/oauth2/callback': typeof secretManagerIntegrationsGcpSecretManagerOauthCallbackPageRouteRoute
+  '/secret-manager/$projectId/integrations/github/oauth2/callback': typeof secretManagerIntegrationsGithubOauthCallbackPageRouteRoute
+  '/secret-manager/$projectId/integrations/gitlab/oauth2/callback': typeof secretManagerIntegrationsGitlabOauthCallbackPageRouteRoute
+  '/secret-manager/$projectId/integrations/heroku/oauth2/callback': typeof secretManagerIntegrationsHerokuOauthCallbackPageRouteRoute
+  '/secret-manager/$projectId/integrations/netlify/oauth2/callback': typeof secretManagerIntegrationsNetlifyOauthCallbackPageRouteRoute
+  '/secret-manager/$projectId/integrations/vercel/oauth2/callback': typeof secretManagerIntegrationsVercelOauthCallbackPageRouteRoute
 }
 
 export interface FileRoutesById {
@@ -1986,6 +3764,7 @@ export interface FileRoutesById {
   '/_restrict-login-signup/login/sso': typeof authLoginSsoPageRouteRoute
   '/_restrict-login-signup/signup/sso': typeof authSignUpSsoPageRouteRoute
   '/shared/secret/$secretId': typeof publicViewSharedSecretByIDPageRouteRoute
+  '/_authenticate/_inject-org-details/integrations': typeof AuthenticateInjectOrgDetailsIntegrationsRouteWithChildren
   '/_authenticate/_inject-org-details/organization': typeof AuthenticateInjectOrgDetailsOrganizationRouteWithChildren
   '/_authenticate/admin/_admin-layout': typeof adminLayoutRouteWithChildren
   '/_authenticate/personal-settings/_layout': typeof userLayoutRouteWithChildren
@@ -2030,6 +3809,15 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/ssh/$projectId/_ssh-layout/overview': typeof sshOverviewPageRouteRoute
   '/_authenticate/_inject-org-details/ssh/$projectId/_ssh-layout/settings': typeof sshSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/cert-manager/$projectId/_cert-manager-layout/access-management': typeof projectAccessControlPageRouteCertManagerRoute
+  '/_authenticate/_inject-org-details/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute
+  '/_authenticate/_inject-org-details/integrations/azure-key-vault/oauth2/callback': typeof secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute
+  '/_authenticate/_inject-org-details/integrations/bitbucket/oauth2/callback': typeof secretManagerIntegrationsRouteBitbucketOauthRedirectRoute
+  '/_authenticate/_inject-org-details/integrations/gcp-secret-manager/oauth2/callback': typeof secretManagerIntegrationsRouteGcpOauthRedirectRoute
+  '/_authenticate/_inject-org-details/integrations/github/oauth2/callback': typeof secretManagerIntegrationsRouteGithubOauthRedirectRoute
+  '/_authenticate/_inject-org-details/integrations/gitlab/oauth2/callback': typeof secretManagerIntegrationsRouteGitlabOauthRedirectRoute
+  '/_authenticate/_inject-org-details/integrations/heroku/oauth2/callback': typeof secretManagerIntegrationsRouteHerokuOauthRedirectRoute
+  '/_authenticate/_inject-org-details/integrations/netlify/oauth2/callback': typeof secretManagerIntegrationsRouteNetlifyOauthRedirectRoute
+  '/_authenticate/_inject-org-details/integrations/vercel/oauth2/callback': typeof secretManagerIntegrationsRouteVercelOauthRedirectRoute
   '/_authenticate/_inject-org-details/kms/$projectId/_kms-layout/access-management': typeof projectAccessControlPageRouteKmsRoute
   '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/access-management': typeof projectAccessControlPageRouteSecretManagerRoute
   '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations': typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRouteWithChildren
@@ -2037,6 +3825,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/': typeof secretManagerIntegrationsListPageRouteRoute
   '/_authenticate/_inject-org-details/cert-manager/$projectId/_cert-manager-layout/ca/$caId': typeof certManagerCertAuthDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/$integrationId': typeof secretManagerIntegrationsDetailsByIDPageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/select-integration-auth': typeof secretManagerIntegrationsSelectIntegrationAuthPageRouteRoute
   '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/secrets/$envSlug': typeof secretManagerSecretDashboardPageRouteRoute
   '/_authenticate/_inject-org-details/ssh/$projectId/_ssh-layout/ca/$caId': typeof sshSshCaByIDPageRouteRoute
   '/_authenticate/_inject-org-details/cert-manager/$projectId/_cert-manager-layout/identities/$identityId': typeof projectIdentityDetailsByIDPageRouteCertManagerRoute
@@ -2053,6 +3842,79 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/ssh/$projectId/_ssh-layout/members/$membershipId': typeof projectMemberDetailsByIDPageRouteSshRoute
   '/_authenticate/_inject-org-details/ssh/$projectId/_ssh-layout/roles/$roleSlug': typeof projectRoleDetailsBySlugPageRouteSshRoute
   '/_authenticate/_inject-org-details/organization/_layout/app-connections/github/oauth/callback': typeof organizationAppConnectionsGithubOauthCallbackPageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/aws-parameter-store/authorize': typeof secretManagerIntegrationsAwsParameterStoreAuthorizePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/aws-parameter-store/create': typeof secretManagerIntegrationsAwsParameterStoreConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/aws-secret-manager/authorize': typeof secretManagerIntegrationsAwsSecretManagerAuthorizePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/aws-secret-manager/create': typeof secretManagerIntegrationsAwsSecretManagerConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-app-configuration/create': typeof secretManagerIntegrationsAzureAppConfigurationConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-devops/authorize': typeof secretManagerIntegrationsAzureDevopsAuthorizePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-devops/create': typeof secretManagerIntegrationsAzureDevopsConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/create': typeof secretManagerIntegrationsAzureKeyVaultConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/bitbucket/create': typeof secretManagerIntegrationsBitbucketConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/checkly/authorize': typeof secretManagerIntegrationsChecklyAuthorizePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/checkly/create': typeof secretManagerIntegrationsChecklyConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/circleci/authorize': typeof secretManagerIntegrationsCircleCIAuthorizePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/circleci/create': typeof secretManagerIntegrationsCircleCIConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloud-66/authorize': typeof secretManagerIntegrationsCloud66AuthorizePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloud-66/create': typeof secretManagerIntegrationsCloud66ConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloudflare-pages/authorize': typeof secretManagerIntegrationsCloudflarePagesAuthorizePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloudflare-pages/create': typeof secretManagerIntegrationsCloudflarePagesConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloudflare-workers/authorize': typeof secretManagerIntegrationsCloudflareWorkersAuthorizePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloudflare-workers/create': typeof secretManagerIntegrationsCloudflareWorkersConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/codefresh/authorize': typeof secretManagerIntegrationsCodefreshAuthorizePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/codefresh/create': typeof secretManagerIntegrationsCodefreshConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/databricks/authorize': typeof secretManagerIntegrationsDatabricksAuthorizePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/databricks/create': typeof secretManagerIntegrationsDatabricksConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/digital-ocean-app-platform/authorize': typeof secretManagerIntegrationsDigitalOceanAppPlatformAuthorizePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/digital-ocean-app-platform/create': typeof secretManagerIntegrationsDigitalOceanAppPlatformConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/flyio/authorize': typeof secretManagerIntegrationsFlyioAuthorizePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/flyio/create': typeof secretManagerIntegrationsFlyioConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gcp-secret-manager/authorize': typeof secretManagerIntegrationsGcpSecretManagerAuthorizePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gcp-secret-manager/create': typeof secretManagerIntegrationsGcpSecretManagerConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/github/auth-mode-selection': typeof secretManagerIntegrationsGithubAuthorizePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/github/create': typeof secretManagerIntegrationsGithubConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gitlab/authorize': typeof secretManagerIntegrationsGitlabAuthorizePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gitlab/create': typeof secretManagerIntegrationsGitlabConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/hashicorp-vault/authorize': typeof secretManagerIntegrationsHashicorpVaultAuthorizePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/hashicorp-vault/create': typeof secretManagerIntegrationsHashicorpVaultConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/hasura-cloud/authorize': typeof secretManagerIntegrationsHasuraCloudAuthorizePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/hasura-cloud/create': typeof secretManagerIntegrationsHasuraCloudConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/heroku/create': typeof secretManagerIntegrationsHerokuConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/laravel-forge/authorize': typeof secretManagerIntegrationsLaravelForgeAuthorizePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/laravel-forge/create': typeof secretManagerIntegrationsLaravelForgeConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/netlify/create': typeof secretManagerIntegrationsNetlifyConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/northflank/authorize': typeof secretManagerIntegrationsNorthflankAuthorizePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/northflank/create': typeof secretManagerIntegrationsNorthflankConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/octopus-deploy/authorize': typeof secretManagerIntegrationsOctopusDeployAuthorizePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/octopus-deploy/create': typeof secretManagerIntegrationsOctopusDeployConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/qovery/authorize': typeof secretManagerIntegrationsQoveryAuthorizePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/qovery/create': typeof secretManagerIntegrationsQoveryConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/railway/authorize': typeof secretManagerIntegrationsRailwayAuthorizePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/railway/create': typeof secretManagerIntegrationsRailwayConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/render/authorize': typeof secretManagerIntegrationsRenderAuthorizePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/render/create': typeof secretManagerIntegrationsRenderConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/rundeck/authorize': typeof secretManagerIntegrationsRundeckAuthorizePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/rundeck/create': typeof secretManagerIntegrationsRundeckConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/supabase/authorize': typeof secretManagerIntegrationsSupabaseAuthorizePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/supabase/create': typeof secretManagerIntegrationsSupabaseConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/teamcity/authorize': typeof secretManagerIntegrationsTeamcityAuthorizePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/teamcity/create': typeof secretManagerIntegrationsTeamcityConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/terraform-cloud/authorize': typeof secretManagerIntegrationsTerraformCloudAuthorizePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/terraform-cloud/create': typeof secretManagerIntegrationsTerraformCloudConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/travisci/authorize': typeof secretManagerIntegrationsTravisCIAuthorizePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/travisci/create': typeof secretManagerIntegrationsTravisCIConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/vercel/create': typeof secretManagerIntegrationsVercelConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/windmill/authorize': typeof secretManagerIntegrationsWindmillAuthorizePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/windmill/create': typeof secretManagerIntegrationsWindmillConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsAzureAppConfigurationOauthCallbackPageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/oauth2/callback': typeof secretManagerIntegrationsAzureKeyVaultOauthCallbackPageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/bitbucket/oauth2/callback': typeof secretManagerIntegrationsBitbucketOauthCallbackPageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gcp-secret-manager/oauth2/callback': typeof secretManagerIntegrationsGcpSecretManagerOauthCallbackPageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/github/oauth2/callback': typeof secretManagerIntegrationsGithubOauthCallbackPageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gitlab/oauth2/callback': typeof secretManagerIntegrationsGitlabOauthCallbackPageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/heroku/oauth2/callback': typeof secretManagerIntegrationsHerokuOauthCallbackPageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/netlify/oauth2/callback': typeof secretManagerIntegrationsNetlifyOauthCallbackPageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/vercel/oauth2/callback': typeof secretManagerIntegrationsVercelOauthCallbackPageRouteRoute
 }
 
 export interface FileRouteTypes {
@@ -2079,6 +3941,7 @@ export interface FileRouteTypes {
     | '/login/sso'
     | '/signup/sso'
     | '/shared/secret/$secretId'
+    | '/integrations'
     | '/organization'
     | '/admin/'
     | '/personal-settings/'
@@ -2116,6 +3979,15 @@ export interface FileRouteTypes {
     | '/ssh/$projectId/overview'
     | '/ssh/$projectId/settings'
     | '/cert-manager/$projectId/access-management'
+    | '/integrations/azure-app-configuration/oauth2/callback'
+    | '/integrations/azure-key-vault/oauth2/callback'
+    | '/integrations/bitbucket/oauth2/callback'
+    | '/integrations/gcp-secret-manager/oauth2/callback'
+    | '/integrations/github/oauth2/callback'
+    | '/integrations/gitlab/oauth2/callback'
+    | '/integrations/heroku/oauth2/callback'
+    | '/integrations/netlify/oauth2/callback'
+    | '/integrations/vercel/oauth2/callback'
     | '/kms/$projectId/access-management'
     | '/secret-manager/$projectId/access-management'
     | '/secret-manager/$projectId/integrations'
@@ -2123,6 +3995,7 @@ export interface FileRouteTypes {
     | '/secret-manager/$projectId/integrations/'
     | '/cert-manager/$projectId/ca/$caId'
     | '/secret-manager/$projectId/integrations/$integrationId'
+    | '/secret-manager/$projectId/integrations/select-integration-auth'
     | '/secret-manager/$projectId/secrets/$envSlug'
     | '/ssh/$projectId/ca/$caId'
     | '/cert-manager/$projectId/identities/$identityId'
@@ -2139,6 +4012,79 @@ export interface FileRouteTypes {
     | '/ssh/$projectId/members/$membershipId'
     | '/ssh/$projectId/roles/$roleSlug'
     | '/organization/app-connections/github/oauth/callback'
+    | '/secret-manager/$projectId/integrations/aws-parameter-store/authorize'
+    | '/secret-manager/$projectId/integrations/aws-parameter-store/create'
+    | '/secret-manager/$projectId/integrations/aws-secret-manager/authorize'
+    | '/secret-manager/$projectId/integrations/aws-secret-manager/create'
+    | '/secret-manager/$projectId/integrations/azure-app-configuration/create'
+    | '/secret-manager/$projectId/integrations/azure-devops/authorize'
+    | '/secret-manager/$projectId/integrations/azure-devops/create'
+    | '/secret-manager/$projectId/integrations/azure-key-vault/create'
+    | '/secret-manager/$projectId/integrations/bitbucket/create'
+    | '/secret-manager/$projectId/integrations/checkly/authorize'
+    | '/secret-manager/$projectId/integrations/checkly/create'
+    | '/secret-manager/$projectId/integrations/circleci/authorize'
+    | '/secret-manager/$projectId/integrations/circleci/create'
+    | '/secret-manager/$projectId/integrations/cloud-66/authorize'
+    | '/secret-manager/$projectId/integrations/cloud-66/create'
+    | '/secret-manager/$projectId/integrations/cloudflare-pages/authorize'
+    | '/secret-manager/$projectId/integrations/cloudflare-pages/create'
+    | '/secret-manager/$projectId/integrations/cloudflare-workers/authorize'
+    | '/secret-manager/$projectId/integrations/cloudflare-workers/create'
+    | '/secret-manager/$projectId/integrations/codefresh/authorize'
+    | '/secret-manager/$projectId/integrations/codefresh/create'
+    | '/secret-manager/$projectId/integrations/databricks/authorize'
+    | '/secret-manager/$projectId/integrations/databricks/create'
+    | '/secret-manager/$projectId/integrations/digital-ocean-app-platform/authorize'
+    | '/secret-manager/$projectId/integrations/digital-ocean-app-platform/create'
+    | '/secret-manager/$projectId/integrations/flyio/authorize'
+    | '/secret-manager/$projectId/integrations/flyio/create'
+    | '/secret-manager/$projectId/integrations/gcp-secret-manager/authorize'
+    | '/secret-manager/$projectId/integrations/gcp-secret-manager/create'
+    | '/secret-manager/$projectId/integrations/github/auth-mode-selection'
+    | '/secret-manager/$projectId/integrations/github/create'
+    | '/secret-manager/$projectId/integrations/gitlab/authorize'
+    | '/secret-manager/$projectId/integrations/gitlab/create'
+    | '/secret-manager/$projectId/integrations/hashicorp-vault/authorize'
+    | '/secret-manager/$projectId/integrations/hashicorp-vault/create'
+    | '/secret-manager/$projectId/integrations/hasura-cloud/authorize'
+    | '/secret-manager/$projectId/integrations/hasura-cloud/create'
+    | '/secret-manager/$projectId/integrations/heroku/create'
+    | '/secret-manager/$projectId/integrations/laravel-forge/authorize'
+    | '/secret-manager/$projectId/integrations/laravel-forge/create'
+    | '/secret-manager/$projectId/integrations/netlify/create'
+    | '/secret-manager/$projectId/integrations/northflank/authorize'
+    | '/secret-manager/$projectId/integrations/northflank/create'
+    | '/secret-manager/$projectId/integrations/octopus-deploy/authorize'
+    | '/secret-manager/$projectId/integrations/octopus-deploy/create'
+    | '/secret-manager/$projectId/integrations/qovery/authorize'
+    | '/secret-manager/$projectId/integrations/qovery/create'
+    | '/secret-manager/$projectId/integrations/railway/authorize'
+    | '/secret-manager/$projectId/integrations/railway/create'
+    | '/secret-manager/$projectId/integrations/render/authorize'
+    | '/secret-manager/$projectId/integrations/render/create'
+    | '/secret-manager/$projectId/integrations/rundeck/authorize'
+    | '/secret-manager/$projectId/integrations/rundeck/create'
+    | '/secret-manager/$projectId/integrations/supabase/authorize'
+    | '/secret-manager/$projectId/integrations/supabase/create'
+    | '/secret-manager/$projectId/integrations/teamcity/authorize'
+    | '/secret-manager/$projectId/integrations/teamcity/create'
+    | '/secret-manager/$projectId/integrations/terraform-cloud/authorize'
+    | '/secret-manager/$projectId/integrations/terraform-cloud/create'
+    | '/secret-manager/$projectId/integrations/travisci/authorize'
+    | '/secret-manager/$projectId/integrations/travisci/create'
+    | '/secret-manager/$projectId/integrations/vercel/create'
+    | '/secret-manager/$projectId/integrations/windmill/authorize'
+    | '/secret-manager/$projectId/integrations/windmill/create'
+    | '/secret-manager/$projectId/integrations/azure-app-configuration/oauth2/callback'
+    | '/secret-manager/$projectId/integrations/azure-key-vault/oauth2/callback'
+    | '/secret-manager/$projectId/integrations/bitbucket/oauth2/callback'
+    | '/secret-manager/$projectId/integrations/gcp-secret-manager/oauth2/callback'
+    | '/secret-manager/$projectId/integrations/github/oauth2/callback'
+    | '/secret-manager/$projectId/integrations/gitlab/oauth2/callback'
+    | '/secret-manager/$projectId/integrations/heroku/oauth2/callback'
+    | '/secret-manager/$projectId/integrations/netlify/oauth2/callback'
+    | '/secret-manager/$projectId/integrations/vercel/oauth2/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -2160,6 +4106,7 @@ export interface FileRouteTypes {
     | '/login/sso'
     | '/signup/sso'
     | '/shared/secret/$secretId'
+    | '/integrations'
     | '/organization'
     | '/login/provider/error'
     | '/login/provider/success'
@@ -2195,12 +4142,22 @@ export interface FileRouteTypes {
     | '/ssh/$projectId/overview'
     | '/ssh/$projectId/settings'
     | '/cert-manager/$projectId/access-management'
+    | '/integrations/azure-app-configuration/oauth2/callback'
+    | '/integrations/azure-key-vault/oauth2/callback'
+    | '/integrations/bitbucket/oauth2/callback'
+    | '/integrations/gcp-secret-manager/oauth2/callback'
+    | '/integrations/github/oauth2/callback'
+    | '/integrations/gitlab/oauth2/callback'
+    | '/integrations/heroku/oauth2/callback'
+    | '/integrations/netlify/oauth2/callback'
+    | '/integrations/vercel/oauth2/callback'
     | '/kms/$projectId/access-management'
     | '/secret-manager/$projectId/access-management'
     | '/ssh/$projectId/access-management'
     | '/secret-manager/$projectId/integrations'
     | '/cert-manager/$projectId/ca/$caId'
     | '/secret-manager/$projectId/integrations/$integrationId'
+    | '/secret-manager/$projectId/integrations/select-integration-auth'
     | '/secret-manager/$projectId/secrets/$envSlug'
     | '/ssh/$projectId/ca/$caId'
     | '/cert-manager/$projectId/identities/$identityId'
@@ -2217,6 +4174,79 @@ export interface FileRouteTypes {
     | '/ssh/$projectId/members/$membershipId'
     | '/ssh/$projectId/roles/$roleSlug'
     | '/organization/app-connections/github/oauth/callback'
+    | '/secret-manager/$projectId/integrations/aws-parameter-store/authorize'
+    | '/secret-manager/$projectId/integrations/aws-parameter-store/create'
+    | '/secret-manager/$projectId/integrations/aws-secret-manager/authorize'
+    | '/secret-manager/$projectId/integrations/aws-secret-manager/create'
+    | '/secret-manager/$projectId/integrations/azure-app-configuration/create'
+    | '/secret-manager/$projectId/integrations/azure-devops/authorize'
+    | '/secret-manager/$projectId/integrations/azure-devops/create'
+    | '/secret-manager/$projectId/integrations/azure-key-vault/create'
+    | '/secret-manager/$projectId/integrations/bitbucket/create'
+    | '/secret-manager/$projectId/integrations/checkly/authorize'
+    | '/secret-manager/$projectId/integrations/checkly/create'
+    | '/secret-manager/$projectId/integrations/circleci/authorize'
+    | '/secret-manager/$projectId/integrations/circleci/create'
+    | '/secret-manager/$projectId/integrations/cloud-66/authorize'
+    | '/secret-manager/$projectId/integrations/cloud-66/create'
+    | '/secret-manager/$projectId/integrations/cloudflare-pages/authorize'
+    | '/secret-manager/$projectId/integrations/cloudflare-pages/create'
+    | '/secret-manager/$projectId/integrations/cloudflare-workers/authorize'
+    | '/secret-manager/$projectId/integrations/cloudflare-workers/create'
+    | '/secret-manager/$projectId/integrations/codefresh/authorize'
+    | '/secret-manager/$projectId/integrations/codefresh/create'
+    | '/secret-manager/$projectId/integrations/databricks/authorize'
+    | '/secret-manager/$projectId/integrations/databricks/create'
+    | '/secret-manager/$projectId/integrations/digital-ocean-app-platform/authorize'
+    | '/secret-manager/$projectId/integrations/digital-ocean-app-platform/create'
+    | '/secret-manager/$projectId/integrations/flyio/authorize'
+    | '/secret-manager/$projectId/integrations/flyio/create'
+    | '/secret-manager/$projectId/integrations/gcp-secret-manager/authorize'
+    | '/secret-manager/$projectId/integrations/gcp-secret-manager/create'
+    | '/secret-manager/$projectId/integrations/github/auth-mode-selection'
+    | '/secret-manager/$projectId/integrations/github/create'
+    | '/secret-manager/$projectId/integrations/gitlab/authorize'
+    | '/secret-manager/$projectId/integrations/gitlab/create'
+    | '/secret-manager/$projectId/integrations/hashicorp-vault/authorize'
+    | '/secret-manager/$projectId/integrations/hashicorp-vault/create'
+    | '/secret-manager/$projectId/integrations/hasura-cloud/authorize'
+    | '/secret-manager/$projectId/integrations/hasura-cloud/create'
+    | '/secret-manager/$projectId/integrations/heroku/create'
+    | '/secret-manager/$projectId/integrations/laravel-forge/authorize'
+    | '/secret-manager/$projectId/integrations/laravel-forge/create'
+    | '/secret-manager/$projectId/integrations/netlify/create'
+    | '/secret-manager/$projectId/integrations/northflank/authorize'
+    | '/secret-manager/$projectId/integrations/northflank/create'
+    | '/secret-manager/$projectId/integrations/octopus-deploy/authorize'
+    | '/secret-manager/$projectId/integrations/octopus-deploy/create'
+    | '/secret-manager/$projectId/integrations/qovery/authorize'
+    | '/secret-manager/$projectId/integrations/qovery/create'
+    | '/secret-manager/$projectId/integrations/railway/authorize'
+    | '/secret-manager/$projectId/integrations/railway/create'
+    | '/secret-manager/$projectId/integrations/render/authorize'
+    | '/secret-manager/$projectId/integrations/render/create'
+    | '/secret-manager/$projectId/integrations/rundeck/authorize'
+    | '/secret-manager/$projectId/integrations/rundeck/create'
+    | '/secret-manager/$projectId/integrations/supabase/authorize'
+    | '/secret-manager/$projectId/integrations/supabase/create'
+    | '/secret-manager/$projectId/integrations/teamcity/authorize'
+    | '/secret-manager/$projectId/integrations/teamcity/create'
+    | '/secret-manager/$projectId/integrations/terraform-cloud/authorize'
+    | '/secret-manager/$projectId/integrations/terraform-cloud/create'
+    | '/secret-manager/$projectId/integrations/travisci/authorize'
+    | '/secret-manager/$projectId/integrations/travisci/create'
+    | '/secret-manager/$projectId/integrations/vercel/create'
+    | '/secret-manager/$projectId/integrations/windmill/authorize'
+    | '/secret-manager/$projectId/integrations/windmill/create'
+    | '/secret-manager/$projectId/integrations/azure-app-configuration/oauth2/callback'
+    | '/secret-manager/$projectId/integrations/azure-key-vault/oauth2/callback'
+    | '/secret-manager/$projectId/integrations/bitbucket/oauth2/callback'
+    | '/secret-manager/$projectId/integrations/gcp-secret-manager/oauth2/callback'
+    | '/secret-manager/$projectId/integrations/github/oauth2/callback'
+    | '/secret-manager/$projectId/integrations/gitlab/oauth2/callback'
+    | '/secret-manager/$projectId/integrations/heroku/oauth2/callback'
+    | '/secret-manager/$projectId/integrations/netlify/oauth2/callback'
+    | '/secret-manager/$projectId/integrations/vercel/oauth2/callback'
   id:
     | '__root__'
     | '/'
@@ -2242,6 +4272,7 @@ export interface FileRouteTypes {
     | '/_restrict-login-signup/login/sso'
     | '/_restrict-login-signup/signup/sso'
     | '/shared/secret/$secretId'
+    | '/_authenticate/_inject-org-details/integrations'
     | '/_authenticate/_inject-org-details/organization'
     | '/_authenticate/admin/_admin-layout'
     | '/_authenticate/personal-settings/_layout'
@@ -2286,6 +4317,15 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/ssh/$projectId/_ssh-layout/overview'
     | '/_authenticate/_inject-org-details/ssh/$projectId/_ssh-layout/settings'
     | '/_authenticate/_inject-org-details/cert-manager/$projectId/_cert-manager-layout/access-management'
+    | '/_authenticate/_inject-org-details/integrations/azure-app-configuration/oauth2/callback'
+    | '/_authenticate/_inject-org-details/integrations/azure-key-vault/oauth2/callback'
+    | '/_authenticate/_inject-org-details/integrations/bitbucket/oauth2/callback'
+    | '/_authenticate/_inject-org-details/integrations/gcp-secret-manager/oauth2/callback'
+    | '/_authenticate/_inject-org-details/integrations/github/oauth2/callback'
+    | '/_authenticate/_inject-org-details/integrations/gitlab/oauth2/callback'
+    | '/_authenticate/_inject-org-details/integrations/heroku/oauth2/callback'
+    | '/_authenticate/_inject-org-details/integrations/netlify/oauth2/callback'
+    | '/_authenticate/_inject-org-details/integrations/vercel/oauth2/callback'
     | '/_authenticate/_inject-org-details/kms/$projectId/_kms-layout/access-management'
     | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/access-management'
     | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations'
@@ -2293,6 +4333,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/'
     | '/_authenticate/_inject-org-details/cert-manager/$projectId/_cert-manager-layout/ca/$caId'
     | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/$integrationId'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/select-integration-auth'
     | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/secrets/$envSlug'
     | '/_authenticate/_inject-org-details/ssh/$projectId/_ssh-layout/ca/$caId'
     | '/_authenticate/_inject-org-details/cert-manager/$projectId/_cert-manager-layout/identities/$identityId'
@@ -2309,6 +4350,79 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/ssh/$projectId/_ssh-layout/members/$membershipId'
     | '/_authenticate/_inject-org-details/ssh/$projectId/_ssh-layout/roles/$roleSlug'
     | '/_authenticate/_inject-org-details/organization/_layout/app-connections/github/oauth/callback'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/aws-parameter-store/authorize'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/aws-parameter-store/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/aws-secret-manager/authorize'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/aws-secret-manager/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-app-configuration/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-devops/authorize'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-devops/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/bitbucket/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/checkly/authorize'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/checkly/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/circleci/authorize'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/circleci/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloud-66/authorize'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloud-66/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloudflare-pages/authorize'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloudflare-pages/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloudflare-workers/authorize'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloudflare-workers/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/codefresh/authorize'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/codefresh/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/databricks/authorize'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/databricks/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/digital-ocean-app-platform/authorize'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/digital-ocean-app-platform/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/flyio/authorize'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/flyio/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gcp-secret-manager/authorize'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gcp-secret-manager/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/github/auth-mode-selection'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/github/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gitlab/authorize'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gitlab/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/hashicorp-vault/authorize'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/hashicorp-vault/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/hasura-cloud/authorize'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/hasura-cloud/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/heroku/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/laravel-forge/authorize'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/laravel-forge/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/netlify/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/northflank/authorize'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/northflank/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/octopus-deploy/authorize'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/octopus-deploy/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/qovery/authorize'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/qovery/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/railway/authorize'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/railway/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/render/authorize'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/render/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/rundeck/authorize'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/rundeck/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/supabase/authorize'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/supabase/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/teamcity/authorize'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/teamcity/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/terraform-cloud/authorize'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/terraform-cloud/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/travisci/authorize'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/travisci/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/vercel/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/windmill/authorize'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/windmill/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-app-configuration/oauth2/callback'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/oauth2/callback'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/bitbucket/oauth2/callback'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gcp-secret-manager/oauth2/callback'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/github/oauth2/callback'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gitlab/oauth2/callback'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/heroku/oauth2/callback'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/netlify/oauth2/callback'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/vercel/oauth2/callback'
   fileRoutesById: FileRoutesById
 }
 
@@ -2403,6 +4517,7 @@ export const routeTree = rootRoute
       "filePath": "middlewares/inject-org-details.tsx",
       "parent": "/_authenticate",
       "children": [
+        "/_authenticate/_inject-org-details/integrations",
         "/_authenticate/_inject-org-details/organization",
         "/_authenticate/_inject-org-details/cert-manager/$projectId",
         "/_authenticate/_inject-org-details/kms/$projectId",
@@ -2474,6 +4589,21 @@ export const routeTree = rootRoute
     },
     "/shared/secret/$secretId": {
       "filePath": "public/ViewSharedSecretByIDPage/route.tsx"
+    },
+    "/_authenticate/_inject-org-details/integrations": {
+      "filePath": "",
+      "parent": "/_authenticate/_inject-org-details",
+      "children": [
+        "/_authenticate/_inject-org-details/integrations/azure-app-configuration/oauth2/callback",
+        "/_authenticate/_inject-org-details/integrations/azure-key-vault/oauth2/callback",
+        "/_authenticate/_inject-org-details/integrations/bitbucket/oauth2/callback",
+        "/_authenticate/_inject-org-details/integrations/gcp-secret-manager/oauth2/callback",
+        "/_authenticate/_inject-org-details/integrations/github/oauth2/callback",
+        "/_authenticate/_inject-org-details/integrations/gitlab/oauth2/callback",
+        "/_authenticate/_inject-org-details/integrations/heroku/oauth2/callback",
+        "/_authenticate/_inject-org-details/integrations/netlify/oauth2/callback",
+        "/_authenticate/_inject-org-details/integrations/vercel/oauth2/callback"
+      ]
     },
     "/_authenticate/_inject-org-details/organization": {
       "filePath": "",
@@ -2731,6 +4861,42 @@ export const routeTree = rootRoute
       "filePath": "project/AccessControlPage/route-cert-manager.tsx",
       "parent": "/_authenticate/_inject-org-details/cert-manager/$projectId/_cert-manager-layout"
     },
+    "/_authenticate/_inject-org-details/integrations/azure-app-configuration/oauth2/callback": {
+      "filePath": "secret-manager/integrations/route-azure-app-configurations-oauth-redirect.tsx",
+      "parent": "/_authenticate/_inject-org-details/integrations"
+    },
+    "/_authenticate/_inject-org-details/integrations/azure-key-vault/oauth2/callback": {
+      "filePath": "secret-manager/integrations/route-azure-key-vault-oauth-redirect.tsx",
+      "parent": "/_authenticate/_inject-org-details/integrations"
+    },
+    "/_authenticate/_inject-org-details/integrations/bitbucket/oauth2/callback": {
+      "filePath": "secret-manager/integrations/route-bitbucket-oauth-redirect.tsx",
+      "parent": "/_authenticate/_inject-org-details/integrations"
+    },
+    "/_authenticate/_inject-org-details/integrations/gcp-secret-manager/oauth2/callback": {
+      "filePath": "secret-manager/integrations/route-gcp-oauth-redirect.tsx",
+      "parent": "/_authenticate/_inject-org-details/integrations"
+    },
+    "/_authenticate/_inject-org-details/integrations/github/oauth2/callback": {
+      "filePath": "secret-manager/integrations/route-github-oauth-redirect.tsx",
+      "parent": "/_authenticate/_inject-org-details/integrations"
+    },
+    "/_authenticate/_inject-org-details/integrations/gitlab/oauth2/callback": {
+      "filePath": "secret-manager/integrations/route-gitlab-oauth-redirect.tsx",
+      "parent": "/_authenticate/_inject-org-details/integrations"
+    },
+    "/_authenticate/_inject-org-details/integrations/heroku/oauth2/callback": {
+      "filePath": "secret-manager/integrations/route-heroku-oauth-redirect.tsx",
+      "parent": "/_authenticate/_inject-org-details/integrations"
+    },
+    "/_authenticate/_inject-org-details/integrations/netlify/oauth2/callback": {
+      "filePath": "secret-manager/integrations/route-netlify-oauth-redirect.tsx",
+      "parent": "/_authenticate/_inject-org-details/integrations"
+    },
+    "/_authenticate/_inject-org-details/integrations/vercel/oauth2/callback": {
+      "filePath": "secret-manager/integrations/route-vercel-oauth-redirect.tsx",
+      "parent": "/_authenticate/_inject-org-details/integrations"
+    },
     "/_authenticate/_inject-org-details/kms/$projectId/_kms-layout/access-management": {
       "filePath": "project/AccessControlPage/route-kms.tsx",
       "parent": "/_authenticate/_inject-org-details/kms/$projectId/_kms-layout"
@@ -2744,7 +4910,81 @@ export const routeTree = rootRoute
       "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout",
       "children": [
         "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/",
-        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/$integrationId"
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/$integrationId",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/select-integration-auth",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/aws-parameter-store/authorize",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/aws-parameter-store/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/aws-secret-manager/authorize",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/aws-secret-manager/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-app-configuration/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-devops/authorize",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-devops/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/bitbucket/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/checkly/authorize",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/checkly/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/circleci/authorize",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/circleci/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloud-66/authorize",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloud-66/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloudflare-pages/authorize",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloudflare-pages/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloudflare-workers/authorize",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloudflare-workers/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/codefresh/authorize",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/codefresh/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/databricks/authorize",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/databricks/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/digital-ocean-app-platform/authorize",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/digital-ocean-app-platform/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/flyio/authorize",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/flyio/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gcp-secret-manager/authorize",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gcp-secret-manager/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/github/auth-mode-selection",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/github/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gitlab/authorize",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gitlab/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/hashicorp-vault/authorize",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/hashicorp-vault/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/hasura-cloud/authorize",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/hasura-cloud/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/heroku/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/laravel-forge/authorize",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/laravel-forge/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/netlify/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/northflank/authorize",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/northflank/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/octopus-deploy/authorize",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/octopus-deploy/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/qovery/authorize",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/qovery/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/railway/authorize",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/railway/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/render/authorize",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/render/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/rundeck/authorize",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/rundeck/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/supabase/authorize",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/supabase/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/teamcity/authorize",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/teamcity/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/terraform-cloud/authorize",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/terraform-cloud/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/travisci/authorize",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/travisci/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/vercel/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/windmill/authorize",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/windmill/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-app-configuration/oauth2/callback",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/oauth2/callback",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/bitbucket/oauth2/callback",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gcp-secret-manager/oauth2/callback",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/github/oauth2/callback",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gitlab/oauth2/callback",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/heroku/oauth2/callback",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/netlify/oauth2/callback",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/vercel/oauth2/callback"
       ]
     },
     "/_authenticate/_inject-org-details/ssh/$projectId/_ssh-layout/access-management": {
@@ -2761,6 +5001,10 @@ export const routeTree = rootRoute
     },
     "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/$integrationId": {
       "filePath": "secret-manager/IntegrationsDetailsByIDPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/select-integration-auth": {
+      "filePath": "secret-manager/integrations/SelectIntegrationAuthPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
     },
     "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/secrets/$envSlug": {
@@ -2826,6 +5070,298 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/organization/_layout/app-connections/github/oauth/callback": {
       "filePath": "organization/AppConnections/GithubOauthCallbackPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/organization/_layout"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/aws-parameter-store/authorize": {
+      "filePath": "secret-manager/integrations/AwsParameterStoreAuthorizePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/aws-parameter-store/create": {
+      "filePath": "secret-manager/integrations/AwsParameterStoreConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/aws-secret-manager/authorize": {
+      "filePath": "secret-manager/integrations/AwsSecretManagerAuthorizePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/aws-secret-manager/create": {
+      "filePath": "secret-manager/integrations/AwsSecretManagerConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-app-configuration/create": {
+      "filePath": "secret-manager/integrations/AzureAppConfigurationConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-devops/authorize": {
+      "filePath": "secret-manager/integrations/AzureDevopsAuthorizePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-devops/create": {
+      "filePath": "secret-manager/integrations/AzureDevopsConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/create": {
+      "filePath": "secret-manager/integrations/AzureKeyVaultConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/bitbucket/create": {
+      "filePath": "secret-manager/integrations/BitbucketConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/checkly/authorize": {
+      "filePath": "secret-manager/integrations/ChecklyAuthorizePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/checkly/create": {
+      "filePath": "secret-manager/integrations/ChecklyConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/circleci/authorize": {
+      "filePath": "secret-manager/integrations/CircleCIAuthorizePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/circleci/create": {
+      "filePath": "secret-manager/integrations/CircleCIConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloud-66/authorize": {
+      "filePath": "secret-manager/integrations/Cloud66AuthorizePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloud-66/create": {
+      "filePath": "secret-manager/integrations/Cloud66ConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloudflare-pages/authorize": {
+      "filePath": "secret-manager/integrations/CloudflarePagesAuthorizePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloudflare-pages/create": {
+      "filePath": "secret-manager/integrations/CloudflarePagesConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloudflare-workers/authorize": {
+      "filePath": "secret-manager/integrations/CloudflareWorkersAuthorizePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloudflare-workers/create": {
+      "filePath": "secret-manager/integrations/CloudflareWorkersConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/codefresh/authorize": {
+      "filePath": "secret-manager/integrations/CodefreshAuthorizePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/codefresh/create": {
+      "filePath": "secret-manager/integrations/CodefreshConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/databricks/authorize": {
+      "filePath": "secret-manager/integrations/DatabricksAuthorizePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/databricks/create": {
+      "filePath": "secret-manager/integrations/DatabricksConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/digital-ocean-app-platform/authorize": {
+      "filePath": "secret-manager/integrations/DigitalOceanAppPlatformAuthorizePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/digital-ocean-app-platform/create": {
+      "filePath": "secret-manager/integrations/DigitalOceanAppPlatformConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/flyio/authorize": {
+      "filePath": "secret-manager/integrations/FlyioAuthorizePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/flyio/create": {
+      "filePath": "secret-manager/integrations/FlyioConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gcp-secret-manager/authorize": {
+      "filePath": "secret-manager/integrations/GcpSecretManagerAuthorizePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gcp-secret-manager/create": {
+      "filePath": "secret-manager/integrations/GcpSecretManagerConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/github/auth-mode-selection": {
+      "filePath": "secret-manager/integrations/GithubAuthorizePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/github/create": {
+      "filePath": "secret-manager/integrations/GithubConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gitlab/authorize": {
+      "filePath": "secret-manager/integrations/GitlabAuthorizePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gitlab/create": {
+      "filePath": "secret-manager/integrations/GitlabConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/hashicorp-vault/authorize": {
+      "filePath": "secret-manager/integrations/HashicorpVaultAuthorizePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/hashicorp-vault/create": {
+      "filePath": "secret-manager/integrations/HashicorpVaultConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/hasura-cloud/authorize": {
+      "filePath": "secret-manager/integrations/HasuraCloudAuthorizePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/hasura-cloud/create": {
+      "filePath": "secret-manager/integrations/HasuraCloudConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/heroku/create": {
+      "filePath": "secret-manager/integrations/HerokuConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/laravel-forge/authorize": {
+      "filePath": "secret-manager/integrations/LaravelForgeAuthorizePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/laravel-forge/create": {
+      "filePath": "secret-manager/integrations/LaravelForgeConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/netlify/create": {
+      "filePath": "secret-manager/integrations/NetlifyConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/northflank/authorize": {
+      "filePath": "secret-manager/integrations/NorthflankAuthorizePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/northflank/create": {
+      "filePath": "secret-manager/integrations/NorthflankConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/octopus-deploy/authorize": {
+      "filePath": "secret-manager/integrations/OctopusDeployAuthorizePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/octopus-deploy/create": {
+      "filePath": "secret-manager/integrations/OctopusDeployConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/qovery/authorize": {
+      "filePath": "secret-manager/integrations/QoveryAuthorizePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/qovery/create": {
+      "filePath": "secret-manager/integrations/QoveryConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/railway/authorize": {
+      "filePath": "secret-manager/integrations/RailwayAuthorizePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/railway/create": {
+      "filePath": "secret-manager/integrations/RailwayConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/render/authorize": {
+      "filePath": "secret-manager/integrations/RenderAuthorizePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/render/create": {
+      "filePath": "secret-manager/integrations/RenderConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/rundeck/authorize": {
+      "filePath": "secret-manager/integrations/RundeckAuthorizePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/rundeck/create": {
+      "filePath": "secret-manager/integrations/RundeckConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/supabase/authorize": {
+      "filePath": "secret-manager/integrations/SupabaseAuthorizePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/supabase/create": {
+      "filePath": "secret-manager/integrations/SupabaseConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/teamcity/authorize": {
+      "filePath": "secret-manager/integrations/TeamcityAuthorizePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/teamcity/create": {
+      "filePath": "secret-manager/integrations/TeamcityConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/terraform-cloud/authorize": {
+      "filePath": "secret-manager/integrations/TerraformCloudAuthorizePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/terraform-cloud/create": {
+      "filePath": "secret-manager/integrations/TerraformCloudConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/travisci/authorize": {
+      "filePath": "secret-manager/integrations/TravisCIAuthorizePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/travisci/create": {
+      "filePath": "secret-manager/integrations/TravisCIConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/vercel/create": {
+      "filePath": "secret-manager/integrations/VercelConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/windmill/authorize": {
+      "filePath": "secret-manager/integrations/WindmillAuthorizePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/windmill/create": {
+      "filePath": "secret-manager/integrations/WindmillConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-app-configuration/oauth2/callback": {
+      "filePath": "secret-manager/integrations/AzureAppConfigurationOauthCallbackPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/oauth2/callback": {
+      "filePath": "secret-manager/integrations/AzureKeyVaultOauthCallbackPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/bitbucket/oauth2/callback": {
+      "filePath": "secret-manager/integrations/BitbucketOauthCallbackPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gcp-secret-manager/oauth2/callback": {
+      "filePath": "secret-manager/integrations/GcpSecretManagerOauthCallbackPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/github/oauth2/callback": {
+      "filePath": "secret-manager/integrations/GithubOauthCallbackPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gitlab/oauth2/callback": {
+      "filePath": "secret-manager/integrations/GitlabOauthCallbackPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/heroku/oauth2/callback": {
+      "filePath": "secret-manager/integrations/HerokuOauthCallbackPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/netlify/oauth2/callback": {
+      "filePath": "secret-manager/integrations/NetlifyOauthCallbackPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/vercel/oauth2/callback": {
+      "filePath": "secret-manager/integrations/VercelOauthCallbackPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
     }
   }
 }
