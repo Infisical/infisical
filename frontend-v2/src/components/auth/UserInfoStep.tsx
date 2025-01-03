@@ -8,9 +8,9 @@ import jsrp from "jsrp";
 import nacl from "tweetnacl";
 import { encodeBase64 } from "tweetnacl-util";
 
+import { initProjectHelper } from "@app/helpers/project";
 import { completeAccountSignup, useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
-import ProjectService from "@app/services/ProjectService";
 
 import InputField from "../basic/InputField";
 import checkPassword from "../utilities/checks/password/checkPassword";
@@ -198,12 +198,11 @@ export default function UserInfoStep({
               const userOrgs = await fetchOrganizations();
 
               const orgId = userOrgs[0]?.id;
-              const project = await ProjectService.initProject({
+              await initProjectHelper({
                 projectName: "Example Project"
               });
 
               localStorage.setItem("orgData.id", orgId);
-              localStorage.setItem("projectData.id", project.id);
 
               incrementStep();
             } catch (error) {

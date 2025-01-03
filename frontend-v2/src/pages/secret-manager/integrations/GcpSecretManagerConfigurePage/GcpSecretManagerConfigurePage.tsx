@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import { faArrowUpRightFromSquare, faBookOpen, faBugs } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { yupResolver } from "@hookform/resolvers/yup";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { z } from "zod";
@@ -60,7 +60,7 @@ export const GcpSecretManagerConfigurePage = () => {
 
   const { currentWorkspace } = useWorkspace();
   const { control, handleSubmit, setValue, watch } = useForm<FormData>({
-    resolver: yupResolver(schema),
+    resolver: zodResolver(schema),
     defaultValues: {
       secretPath: "/",
       secretPrefix: "",

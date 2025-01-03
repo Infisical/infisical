@@ -332,8 +332,8 @@ export const routes = rootRoute("root.tsx", [
     route("/personal-settings", [
       layout("user/layout.tsx", [index("user/PersonalSettingsPage/route.tsx")])
     ]),
-    adminRoute,
     middleware("inject-org-details.tsx", [
+      adminRoute,
       organizationRoutes,
       secretManagerRoutes,
       secretManagerIntegrationsRedirect,

@@ -1,8 +1,8 @@
 /* eslint-disable prefer-destructuring */
 import jsrp from "jsrp";
 
+import { decryptPrivateKeyHelper } from "@app/helpers/key";
 import { login1, verifyMfaToken } from "@app/hooks/api/auth/queries";
-import KeyService from "@app/services/KeyService";
 
 import { saveTokenToLocalStorage } from "./saveTokenToLocalStorage";
 import SecurityClient from "./SecurityClient";
@@ -63,7 +63,7 @@ const attemptLoginMfa = async ({
           SecurityClient.setToken(token);
           SecurityClient.setProviderAuthToken("");
 
-          const privateKey = await KeyService.decryptPrivateKey({
+          const privateKey = await decryptPrivateKeyHelper({
             encryptionVersion,
             encryptedPrivateKey,
             iv,

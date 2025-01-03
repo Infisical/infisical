@@ -147,7 +147,7 @@ export const SecretApprovalRequest = () => {
             </div>
             <div className="flex flex-grow justify-end space-x-8">
               <DropdownMenu>
-                <DropdownMenuTrigger>
+                <DropdownMenuTrigger asChild>
                   <Button
                     variant="plain"
                     colorSchema="secondary"

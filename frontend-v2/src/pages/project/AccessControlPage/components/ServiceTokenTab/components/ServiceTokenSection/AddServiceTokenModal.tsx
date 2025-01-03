@@ -40,7 +40,6 @@ const apiTokenExpiry = [
   { label: "Never", value: null }
 ];
 
-// TODO(rbr): test this form
 const schema = z.object({
   name: z.string().max(100),
   scopes: z

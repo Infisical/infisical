@@ -8,6 +8,7 @@ import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
 import NavHeader from "@app/components/navigation/NavHeader";
+import { createNotification } from "@app/components/notifications";
 import { PermissionDeniedBanner } from "@app/components/permissions";
 import {
   Checkbox,
@@ -36,6 +37,7 @@ import {
 import { useGetProjectSecretsDetails } from "@app/hooks/api/dashboard";
 import { DashboardSecretsOrderBy } from "@app/hooks/api/dashboard/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { SecretTableResourceCount } from "../OverviewPage/components/SecretTableResourceCount";
 import { SecretV2MigrationSection } from "../OverviewPage/components/SecretV2MigrationSection";
@@ -146,16 +148,20 @@ const Page = () => {
   const createSecretPopUp = usePopUpState(PopUpNames.CreateSecretForm);
   const { togglePopUp } = usePopUpAction();
 
-  // TODO(rbr): move this to before load
-  // useEffect(() => {
-  //   if (!currentWorkspace?.environments.find((env) => env.slug === environment)) {
-  //     navigate(`/${ProjectType.SecretManager}/${workspaceId}/secrets/overview`);
-  //     createNotification({
-  //       text: "No environment found with given slug",
-  //       type: "error"
-  //     });
-  //   }
-  // }, [currentWorkspace, environment]);
+  useEffect(() => {
+    if (!currentWorkspace?.environments.find((env) => env.slug === environment)) {
+      createNotification({
+        text: "No environment found with given slug",
+        type: "error"
+      });
+      navigate({
+        to: `/${ProjectType.SecretManager}/$projectId/overview` as const,
+        params: {
+          projectId: workspaceId
+        }
+      });
+    }
+  }, [currentWorkspace, environment]);
 
   const {
     data,

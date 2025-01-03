@@ -1,6 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/router-devtools";
 
 import { NotificationContainer } from "@app/components/notifications";
 import { TooltipProvider } from "@app/components/v2";
@@ -15,15 +14,12 @@ type TRouterContext = {
 
 const RootPage = () => {
   return (
-    <>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Outlet />
-        </TooltipProvider>
-      </QueryClientProvider>
-      <NotificationContainer />
-      <TanStackRouterDevtools />
-    </>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Outlet />
+        <NotificationContainer />
+      </TooltipProvider>
+    </QueryClientProvider>
   );
 };
 

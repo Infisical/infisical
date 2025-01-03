@@ -54,18 +54,6 @@ export const SignUpPage = () => {
   const [step, setStep] = useState(SignupSteps.DetailsForm);
 
   const { config } = useServerConfig();
-
-  // TODO(rbr): do this is layout
-  // useEffect(() => {
-  //   if (config?.initialized) {
-  //     if (isLoggedIn()) {
-  //       navigate.push("/admin");
-  //     } else {
-  //       navigate.push("/login");
-  //     }
-  //   }
-  // }, []);
-
   const { mutateAsync: createAdminUser } = useCreateAdminUser();
   const { mutateAsync: selectOrganization } = useSelectOrganization();
 

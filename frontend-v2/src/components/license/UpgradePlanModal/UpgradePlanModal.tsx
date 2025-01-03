@@ -16,7 +16,7 @@ export const UpgradePlanModal = ({ text, isOpen, onOpenChange }: Props): JSX.Ele
   const { mutateAsync, isPending } = useGetOrgTrialUrl();
   const link =
     subscription && subscription.slug !== null
-      ? `/org/${currentOrg?.id}/billing`
+      ? ("/organization/billing" as const)
       : "https://infisical.com/scheduledemo";
 
   const handleUpgradeBtnClick = async () => {

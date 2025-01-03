@@ -89,11 +89,12 @@ export const EmailConfirmationStep = ({
           break;
         }
         case UserAliasType.LDAP: {
-          navigate({ to: `/login/ldap?organizationSlug=${organizationSlug}` });
+          navigate({ to: "/login/ldap", search: { organizationSlug } });
           break;
         }
         case UserAliasType.OIDC: {
-          navigate({ to: `/api/v1/sso/oidc/login?orgSlug=${organizationSlug}` });
+          window.open(`/api/v1/sso/oidc/login?orgSlug=${organizationSlug}`);
+          window.close();
           break;
         }
         default: {

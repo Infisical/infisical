@@ -42,7 +42,6 @@ export const FrameworkIntegrationSection = () => {
           </a>
         ))}
         <a
-          key="framework-integration-more"
           href="https://infisical.com/docs/cli/commands/run"
           rel="noopener noreferrer"
           target="_blank"
@@ -54,7 +53,6 @@ export const FrameworkIntegrationSection = () => {
           </div>
         </a>
         <a
-          key="framework-integration-more"
           href="https://infisical.com/docs/sdks/overview"
           rel="noopener noreferrer"
           target="_blank"

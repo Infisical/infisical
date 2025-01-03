@@ -51,7 +51,7 @@ export const BackupPDFStep = ({ email, password, name }: DownloadBackupPDFStepPr
                 });
 
                 navigate({
-                  to: `/org/${localStorage.getItem("orgData.id")}/${ProjectType.SecretManager}/overview`
+                  to: `/organization/${ProjectType.SecretManager}/overview` as const
                 });
               }}
               size="sm"

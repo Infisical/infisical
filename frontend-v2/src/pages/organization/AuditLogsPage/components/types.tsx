@@ -2,7 +2,6 @@ import { z } from "zod";
 
 import { EventType, UserAgentType } from "@app/hooks/api/auditLogs/enums";
 
-// TODO(rbr): test this schema
 export const auditLogFilterFormSchema = z
   .object({
     eventMetadata: z.object({}).optional(),

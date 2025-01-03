@@ -1,40 +1,42 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 
+import { isLoggedIn } from "@app/hooks/api/reactQuery";
+
 import { InitialStep, SSOStep } from "./components";
+import { useNavigateToSelectOrganization } from "./Login.utils";
 
 export const LoginPage = () => {
   const { t } = useTranslation();
   const [step, setStep] = useState(0);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  // TODO(rbr): move this to beforeload
-  // const { navigateToSelectOrganization } = useNavigateToSelectOrganization();
-  //
-  // const queryParams = new URLSearchParams(window.location.search);
-  //
-  // useEffect(() => {
-  //   // TODO(akhilmhdh): workspace will be controlled by a workspace context
-  //   const handleRedirects = async () => {
-  //     try {
-  //       const callbackPort = queryParams?.get("callback_port");
-  //       // case: a callback port is set, meaning it's a cli login request: redirect to select org with callback port
-  //       if (callbackPort) {
-  //         navigateToSelectOrganization(callbackPort);
-  //       } else {
-  //         // case: no callback port, meaning it's a regular login request: redirect to select org
-  //         navigateToSelectOrganization();
-  //       }
-  //     } catch (error) {
-  //       console.log("Error - Not logged in yet");
-  //     }
-  //   };
-  //   if (isLoggedIn()) {
-  //     handleRedirects();
-  //   }
-  // }, []);
+  const { navigateToSelectOrganization } = useNavigateToSelectOrganization();
+
+  const queryParams = new URLSearchParams(window.location.search);
+
+  useEffect(() => {
+    // TODO(akhilmhdh): workspace will be controlled by a workspace context
+    const handleRedirects = async () => {
+      try {
+        const callbackPort = queryParams?.get("callback_port");
+        // case: a callback port is set, meaning it's a cli login request: redirect to select org with callback port
+        if (callbackPort) {
+          navigateToSelectOrganization(callbackPort);
+        } else {
+          // case: no callback port, meaning it's a regular login request: redirect to select org
+          navigateToSelectOrganization();
+        }
+      } catch {
+        console.log("Error - Not logged in yet");
+      }
+    };
+    if (isLoggedIn()) {
+      handleRedirects();
+    }
+  }, []);
 
   const renderView = () => {
     switch (step) {

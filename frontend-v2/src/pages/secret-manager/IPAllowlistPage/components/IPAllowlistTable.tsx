@@ -42,7 +42,7 @@ type Props = {
 export const IPAllowlistTable = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Props) => {
   const { subscription } = useSubscription();
   const { currentWorkspace } = useWorkspace();
-  const { data, isLoading } = useGetTrustedIps(currentWorkspace?.id ?? "");
+  const { data, isPending } = useGetTrustedIps(currentWorkspace?.id ?? "");
 
   const formatType = (type: string, prefix?: number) => {
     return `${type.slice(0, 2).toUpperCase() + type.slice(2)} ${
@@ -64,7 +64,7 @@ export const IPAllowlistTable = ({ popUp, handlePopUpOpen, handlePopUpToggle }: 
             </Tr>
           </THead>
           <TBody>
-            {!isLoading &&
+            {!isPending &&
               data &&
               data?.length > 0 &&
               data
@@ -143,10 +143,10 @@ export const IPAllowlistTable = ({ popUp, handlePopUpOpen, handlePopUpToggle }: 
                     </Tr>
                   );
                 })}
-            {isLoading && (
+            {isPending && (
               <TableSkeleton innerKey="ip-access-table" columns={4} key="ip-access-ranges" />
             )}
-            {!isLoading && data && data?.length === 0 && (
+            {!isPending && data && data?.length === 0 && (
               <Tr>
                 <Td colSpan={5}>
                   <EmptyState title="No IP addresses added" icon={faGlobe} />

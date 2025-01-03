@@ -33,7 +33,7 @@ type Props = {
 
 export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
   const { currentWorkspace } = useWorkspace();
-  const { data, isLoading } = useGetUserWsServiceTokens({
+  const { data, isPending } = useGetUserWsServiceTokens({
     workspaceID: currentWorkspace?.id || ""
   });
 
@@ -49,8 +49,8 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
           </Tr>
         </THead>
         <TBody>
-          {isLoading && <TableSkeleton columns={4} innerKey="project-service-tokens" />}
-          {!isLoading &&
+          {isPending && <TableSkeleton columns={4} innerKey="project-service-tokens" />}
+          {!isPending &&
             data &&
             data.map((row) => (
               <Tr key={row.id}>
@@ -94,7 +94,7 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
                 </Td>
               </Tr>
             ))}
-          {!isLoading && data && data?.length === 0 && (
+          {!isPending && data && data?.length === 0 && (
             <Tr>
               <Td colSpan={4} className="bg-mineshaft-800 text-center text-bunker-400">
                 <EmptyState title="No service tokens found" icon={faKey} />

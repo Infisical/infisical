@@ -184,14 +184,12 @@ export const ProductOverviewPage = ({ type }: Props) => {
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
     <div
       onClick={() => {
-        // TODO(rbr): fix this
         navigate({
           to: getProjectHomePage(workspace),
           params: {
             projectId: workspace.id
           }
         });
-        localStorage.setItem("projectData.id", workspace.id);
       }}
       key={workspace.id}
       className="flex h-40 min-w-72 cursor-pointer flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
@@ -254,14 +252,12 @@ export const ProductOverviewPage = ({ type }: Props) => {
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
     <div
       onClick={() => {
-        // TODO(rbr): fix this
         navigate({
           to: getProjectHomePage(workspace),
           params: {
             projectId: workspace.id
           }
         });
-        localStorage.setItem("projectData.id", workspace.id);
       }}
       key={workspace.id}
       className={`group grid h-14 min-w-72 cursor-pointer grid-cols-6 border-l border-r border-t border-mineshaft-600 bg-mineshaft-800 px-6 hover:bg-mineshaft-700 ${
