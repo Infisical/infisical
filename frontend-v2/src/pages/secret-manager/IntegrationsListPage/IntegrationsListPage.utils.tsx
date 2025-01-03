@@ -1,10 +1,13 @@
 import crypto from "crypto";
 
+import { NavigateFn } from "@tanstack/react-router";
+
 import { createNotification } from "@app/components/notifications";
 import {
   decryptAssymmetric,
   encryptAssymmetric
 } from "@app/components/utilities/cryptography/crypto";
+import { localStorageService } from "@app/helpers/localStorage";
 import { TCloudIntegration, UserWsKeyPair } from "@app/hooks/api/types";
 
 export const generateBotKey = (botPublicKey: string, latestKey: UserWsKeyPair) => {
@@ -52,154 +55,309 @@ export const createIntegrationMissingEnvVarsNotification = (
     title: "Missing Environment Variables"
   });
 
-export const redirectForProviderAuth = (integrationOption: TCloudIntegration) => {
+export const redirectForProviderAuth = (
+  projectId: string,
+  navigate: NavigateFn,
+  integrationOption: TCloudIntegration
+) => {
   try {
     // generate CSRF token for OAuth2 code-token exchange integrations
     const state = crypto.randomBytes(16).toString("hex");
     localStorage.setItem("latestCSRFToken", state);
+    localStorageService.setIntegrationProjectId(projectId);
 
-    let link = "";
     switch (integrationOption.slug) {
       case "gcp-secret-manager":
-        link = `${window.location.origin}/integrations/gcp-secret-manager/authorize`;
+        navigate({
+          to: "/secret-manager/$projectId/integrations/gcp-secret-manager/authorize",
+          params: {
+            projectId
+          }
+        });
         break;
-      case "azure-key-vault":
+      case "azure-key-vault": {
         if (!integrationOption.clientId) {
           createIntegrationMissingEnvVarsNotification(integrationOption.slug);
           return;
         }
-        link = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${window.location.origin}/integrations/azure-key-vault/oauth2/callback&response_mode=query&scope=https://vault.azure.net/.default openid offline_access&state=${state}`;
+        const link = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${window.location.origin}/integrations/azure-key-vault/oauth2/callback&response_mode=query&scope=https://vault.azure.net/.default openid offline_access&state=${state}`;
+        window.location.assign(link);
         break;
-      case "azure-app-configuration":
+      }
+      case "azure-app-configuration": {
         if (!integrationOption.clientId) {
           createIntegrationMissingEnvVarsNotification(integrationOption.slug);
           return;
         }
-        link = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${window.location.origin}/integrations/azure-app-configuration/oauth2/callback&response_mode=query&scope=https://azconfig.io/.default openid offline_access&state=${state}`;
+        const link = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${window.location.origin}/integrations/azure-app-configuration/oauth2/callback&response_mode=query&scope=https://azconfig.io/.default openid offline_access&state=${state}`;
+        window.location.assign(link);
         break;
+      }
       case "aws-parameter-store":
-        link = `${window.location.origin}/integrations/aws-parameter-store/authorize`;
+        navigate({
+          to: "/secret-manager/$projectId/integrations/aws-parameter-store/authorize",
+          params: {
+            projectId
+          }
+        });
         break;
       case "aws-secret-manager":
-        link = `${window.location.origin}/integrations/aws-secret-manager/authorize`;
+        navigate({
+          to: "/secret-manager/$projectId/integrations/aws-secret-manager/authorize",
+          params: {
+            projectId
+          }
+        });
         break;
-      case "heroku":
+      case "heroku": {
         if (!integrationOption.clientId) {
           createIntegrationMissingEnvVarsNotification(integrationOption.slug);
           return;
         }
-        link = `https://id.heroku.com/oauth/authorize?client_id=${integrationOption.clientId}&response_type=code&scope=write-protected&state=${state}`;
+        const link = `https://id.heroku.com/oauth/authorize?client_id=${integrationOption.clientId}&response_type=code&scope=write-protected&state=${state}`;
+        window.location.assign(link);
         break;
-      case "vercel":
+      }
+      case "vercel": {
         if (!integrationOption.clientSlug) {
           createIntegrationMissingEnvVarsNotification(integrationOption.slug);
           return;
         }
-        link = `https://vercel.com/integrations/${integrationOption.clientSlug}/new?state=${state}`;
+        const link = `https://vercel.com/integrations/${integrationOption.clientSlug}/new?state=${state}`;
+        window.location.assign(link);
         break;
-      case "netlify":
+      }
+      case "netlify": {
         if (!integrationOption.clientId) {
           createIntegrationMissingEnvVarsNotification(integrationOption.slug);
           return;
         }
-        link = `https://app.netlify.com/authorize?client_id=${integrationOption.clientId}&response_type=code&state=${state}&redirect_uri=${window.location.origin}/integrations/netlify/oauth2/callback`;
+        const link = `https://app.netlify.com/authorize?client_id=${integrationOption.clientId}&response_type=code&state=${state}&redirect_uri=${window.location.origin}/integrations/netlify/oauth2/callback`;
+
+        window.location.assign(link);
         break;
+      }
       case "github":
-        link = `${window.location.origin}/integrations/github/auth-mode-selection`;
+        navigate({
+          to: "/secret-manager/$projectId/integrations/github/auth-mode-selection",
+          params: {
+            projectId
+          }
+        });
         break;
       case "gitlab":
-        link = `${window.location.origin}/integrations/gitlab/authorize`;
+        navigate({
+          to: "/secret-manager/$projectId/integrations/gitlab/authorize",
+          params: {
+            projectId
+          }
+        });
         break;
       case "render":
-        link = `${window.location.origin}/integrations/render/authorize`;
+        navigate({
+          to: "/secret-manager/$projectId/integrations/render/authorize",
+          params: {
+            projectId
+          }
+        });
         break;
       case "flyio":
-        link = `${window.location.origin}/integrations/flyio/authorize`;
+        navigate({
+          to: "/secret-manager/$projectId/integrations/flyio/authorize",
+          params: {
+            projectId
+          }
+        });
         break;
       case "circleci":
-        link = `${window.location.origin}/integrations/circleci/authorize`;
+        navigate({
+          to: "/secret-manager/$projectId/integrations/circleci/authorize",
+          params: {
+            projectId
+          }
+        });
         break;
       case "databricks":
-        link = `${window.location.origin}/integrations/databricks/authorize`;
+        navigate({
+          to: "/secret-manager/$projectId/integrations/databricks/authorize",
+          params: {
+            projectId
+          }
+        });
         break;
       case "laravel-forge":
-        link = `${window.location.origin}/integrations/laravel-forge/authorize`;
+        navigate({
+          to: "/secret-manager/$projectId/integrations/laravel-forge/authorize",
+          params: {
+            projectId
+          }
+        });
         break;
       case "travisci":
-        link = `${window.location.origin}/integrations/travisci/authorize`;
+        navigate({
+          to: "/secret-manager/$projectId/integrations/travisci/authorize",
+          params: {
+            projectId
+          }
+        });
         break;
       case "supabase":
-        link = `${window.location.origin}/integrations/supabase/authorize`;
+        navigate({
+          to: "/secret-manager/$projectId/integrations/supabase/authorize",
+          params: {
+            projectId
+          }
+        });
         break;
       case "checkly":
-        link = `${window.location.origin}/integrations/checkly/authorize`;
+        navigate({
+          to: "/secret-manager/$projectId/integrations/checkly/authorize",
+          params: {
+            projectId
+          }
+        });
         break;
       case "qovery":
-        link = `${window.location.origin}/integrations/qovery/authorize`;
+        navigate({
+          to: "/secret-manager/$projectId/integrations/qovery/authorize",
+          params: {
+            projectId
+          }
+        });
         break;
       case "railway":
-        link = `${window.location.origin}/integrations/railway/authorize`;
+        navigate({
+          to: "/secret-manager/$projectId/integrations/railway/authorize",
+          params: {
+            projectId
+          }
+        });
         break;
       case "terraform-cloud":
-        link = `${window.location.origin}/integrations/terraform-cloud/authorize`;
+        navigate({
+          to: "/secret-manager/$projectId/integrations/terraform-cloud/authorize",
+          params: {
+            projectId
+          }
+        });
         break;
       case "hashicorp-vault":
-        link = `${window.location.origin}/integrations/hashicorp-vault/authorize`;
+        navigate({
+          to: "/secret-manager/$projectId/integrations/hashicorp-vault/authorize",
+          params: {
+            projectId
+          }
+        });
         break;
       case "cloudflare-pages":
-        link = `${window.location.origin}/integrations/cloudflare-pages/authorize`;
+        navigate({
+          to: "/secret-manager/$projectId/integrations/cloudflare-pages/authorize",
+          params: {
+            projectId
+          }
+        });
         break;
       case "cloudflare-workers":
-        link = `${window.location.origin}/integrations/cloudflare-workers/authorize`;
+        navigate({
+          to: "/secret-manager/$projectId/integrations/cloudflare-workers/authorize",
+          params: {
+            projectId
+          }
+        });
         break;
-      case "bitbucket":
+      case "bitbucket": {
         if (!integrationOption.clientId) {
           createIntegrationMissingEnvVarsNotification(integrationOption.slug, "cicd");
           return;
         }
-        link = `https://bitbucket.org/site/oauth2/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${window.location.origin}/integrations/bitbucket/oauth2/callback&state=${state}`;
+        const link = `https://bitbucket.org/site/oauth2/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${window.location.origin}/integrations/bitbucket/oauth2/callback&state=${state}`;
+        window.location.assign(link);
         break;
+      }
       case "codefresh":
-        link = `${window.location.origin}/integrations/codefresh/authorize`;
+        navigate({
+          to: "/secret-manager/$projectId/integrations/codefresh/authorize",
+          params: {
+            projectId
+          }
+        });
         break;
       case "digital-ocean-app-platform":
-        link = `${window.location.origin}/integrations/digital-ocean-app-platform/authorize`;
+        navigate({
+          to: "/secret-manager/$projectId/integrations/digital-ocean-app-platform/authorize",
+          params: {
+            projectId
+          }
+        });
         break;
       case "cloud-66":
-        link = `${window.location.origin}/integrations/cloud-66/authorize`;
+        navigate({
+          to: "/secret-manager/$projectId/integrations/cloud-66/authorize",
+          params: {
+            projectId
+          }
+        });
         break;
       case "northflank":
-        link = `${window.location.origin}/integrations/northflank/authorize`;
+        navigate({
+          to: "/secret-manager/$projectId/integrations/northflank/authorize",
+          params: {
+            projectId
+          }
+        });
         break;
       case "windmill":
-        link = `${window.location.origin}/integrations/windmill/authorize`;
+        navigate({
+          to: "/secret-manager/$projectId/integrations/windmill/authorize",
+          params: {
+            projectId
+          }
+        });
         break;
       case "teamcity":
-        link = `${window.location.origin}/integrations/teamcity/authorize`;
+        navigate({
+          to: "/secret-manager/$projectId/integrations/teamcity/authorize",
+          params: {
+            projectId
+          }
+        });
         break;
       case "hasura-cloud":
-        link = `${window.location.origin}/integrations/hasura-cloud/authorize`;
+        navigate({
+          to: "/secret-manager/$projectId/integrations/hasura-cloud/authorize",
+          params: {
+            projectId
+          }
+        });
         break;
       case "rundeck":
-        link = `${window.location.origin}/integrations/rundeck/authorize`;
+        navigate({
+          to: "/secret-manager/$projectId/integrations/rundeck/authorize",
+          params: {
+            projectId
+          }
+        });
         break;
       case "azure-devops":
-        link = `${window.location.origin}/integrations/azure-devops/authorize`;
+        navigate({
+          to: "/secret-manager/$projectId/integrations/azure-devops/authorize",
+          params: {
+            projectId
+          }
+        });
         break;
       case "octopus-deploy":
-        link = `${window.location.origin}/integrations/octopus-deploy/authorize`;
+        navigate({
+          to: "/secret-manager/$projectId/integrations/octopus-deploy/authorize",
+          params: {
+            projectId
+          }
+        });
         break;
       default:
         break;
-    }
-
-    if (link !== "") {
-      window.location.assign(link);
     }
   } catch (err) {
     console.error(err);
   }
 };
-
-export const redirectToIntegrationAppConfigScreen = (provider: string, integrationAuthId: string) =>
-  `/integrations/${provider}/create?integrationAuthId=${integrationAuthId}`;

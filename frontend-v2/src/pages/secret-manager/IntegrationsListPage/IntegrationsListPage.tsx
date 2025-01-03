@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
 import { createNotification } from "@app/components/notifications";
@@ -29,6 +30,7 @@ enum IntegrationView {
 
 const Page = () => {
   const { currentWorkspace } = useWorkspace();
+  const navigate = useNavigate();
   const { environments, id: workspaceId } = currentWorkspace;
   const [view, setView] = useState<IntegrationView>(IntegrationView.New);
 
@@ -97,7 +99,7 @@ const Page = () => {
     if (!selectedCloudIntegration) return;
 
     try {
-      redirectForProviderAuth(selectedCloudIntegration);
+      redirectForProviderAuth(currentWorkspace.id, navigate, selectedCloudIntegration);
     } catch (error) {
       console.error(error);
     }
