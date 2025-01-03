@@ -101,4 +101,3 @@ export default function TeamInviteStep(): JSX.Element {
     </div>
   );
 }
-
