@@ -1,9 +1,7 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from "@tanstack/react-router";
 
-import { OverviewPage } from './OverviewPage'
+import { OverviewPage } from "./OverviewPage";
 
-export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/admin/_admin-layout/',
-)({
-  component: OverviewPage,
-})
+export const Route = createFileRoute("/_authenticate/_inject-org-details/admin/_admin-layout/")({
+  component: OverviewPage
+});
