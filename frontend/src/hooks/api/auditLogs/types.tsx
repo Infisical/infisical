@@ -45,10 +45,9 @@ export interface IdentityActor {
   metadata: IdentityActorMetadata;
 }
 
-export interface PlatformActorMetadata {}
 export interface PlatformActor {
   type: ActorType.PLATFORM;
-  metadata: PlatformActorMetadata;
+  metadata: object;
 }
 
 export type Actor = UserActor | ServiceActor | IdentityActor | PlatformActor;

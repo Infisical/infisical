@@ -18,7 +18,7 @@ export const useGetOIDCConfig = (orgSlug: string) => {
         );
 
         return data;
-      } catch (err) {
+      } catch {
         return null;
       }
     },

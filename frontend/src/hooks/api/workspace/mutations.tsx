@@ -27,7 +27,9 @@ export const useAddGroupToWorkspace = () => {
       return groupMembership;
     },
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceGroupMemberships(projectId));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceGroupMemberships(projectId)
+      });
     }
   });
 };
@@ -45,7 +47,9 @@ export const useUpdateGroupWorkspaceRole = () => {
       return groupMembership;
     },
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceGroupMemberships(projectId));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceGroupMemberships(projectId)
+      });
     }
   });
 };
@@ -67,10 +71,12 @@ export const useDeleteGroupFromWorkspace = () => {
       return groupMembership;
     },
     onSuccess: (_, { projectId, username }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceGroupMemberships(projectId));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceGroupMemberships(projectId)
+      });
 
       if (username) {
-        queryClient.invalidateQueries(userKeys.listUserGroupMemberships(username));
+        queryClient.invalidateQueries({ queryKey: userKeys.listUserGroupMemberships(username) });
       }
     }
   });
@@ -78,24 +84,26 @@ export const useDeleteGroupFromWorkspace = () => {
 
 export const useLeaveProject = () => {
   const queryClient = useQueryClient();
-  return useMutation<{}, {}, { workspaceId: string }>({
+  return useMutation<object, object, { workspaceId: string }>({
     mutationFn: ({ workspaceId }) => {
       return apiRequest.delete(`/api/v1/workspace/${workspaceId}/leave`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace());
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace() });
     }
   });
 };
 
 export const useMigrateProjectToV3 = () => {
   const queryClient = useQueryClient();
-  return useMutation<{}, {}, { workspaceId: string }>({
+  return useMutation<object, object, { workspaceId: string }>({
     mutationFn: ({ workspaceId }) => {
       return apiRequest.post(`/api/v1/workspace/${workspaceId}/migrate-v3`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace(ProjectType.SecretManager));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getAllUserWorkspace(ProjectType.SecretManager)
+      });
     }
   });
 };

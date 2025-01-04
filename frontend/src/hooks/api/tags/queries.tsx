@@ -27,7 +27,7 @@ export const useGetWsTags = (workspaceID: string) => {
 export const useCreateWsTag = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<WsTag, {}, CreateTagDTO>({
+  return useMutation<WsTag, object, CreateTagDTO>({
     mutationFn: async ({ workspaceID, tagColor, tagSlug }) => {
       const { data } = await apiRequest.post<{ workspaceTag: WsTag }>(
         `/api/v1/workspace/${workspaceID}/tags`,
@@ -39,7 +39,7 @@ export const useCreateWsTag = () => {
       return data.workspaceTag;
     },
     onSuccess: (tagData) => {
-      queryClient.invalidateQueries(workspaceTags.getWsTags(tagData?.projectId));
+      queryClient.invalidateQueries({ queryKey: workspaceTags.getWsTags(tagData?.projectId) });
     }
   });
 };
@@ -47,7 +47,7 @@ export const useCreateWsTag = () => {
 export const useDeleteWsTag = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<WsTag, {}, DeleteTagDTO>({
+  return useMutation<WsTag, object, DeleteTagDTO>({
     mutationFn: async ({ tagID, projectId }) => {
       const { data } = await apiRequest.delete<{ workspaceTag: WsTag }>(
         `/api/v1/workspace/${projectId}/tags/${tagID}`
@@ -55,7 +55,7 @@ export const useDeleteWsTag = () => {
       return data.workspaceTag;
     },
     onSuccess: (tagData) => {
-      queryClient.invalidateQueries(workspaceTags.getWsTags(tagData?.projectId));
+      queryClient.invalidateQueries({ queryKey: workspaceTags.getWsTags(tagData?.projectId) });
     }
   });
 };

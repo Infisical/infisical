@@ -14,7 +14,7 @@ export type DropdownMenuTriggerProps = DropdownMenuPrimitive.DropdownMenuTrigger
 export const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 
 // item container
-export type DropdownMenuContentProps = DropdownMenuPrimitive.MenuContentProps;
+export type DropdownMenuContentProps = DropdownMenuPrimitive.DropdownMenuContentProps;
 export const DropdownMenuContent = forwardRef<HTMLDivElement, DropdownMenuContentProps>(
   ({ children, className, ...props }, forwardedRef) => {
     return (
@@ -24,7 +24,7 @@ export const DropdownMenuContent = forwardRef<HTMLDivElement, DropdownMenuConten
           {...props}
           ref={forwardedRef}
           className={twMerge(
-            "z-30 min-w-[220px] overflow-y-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 text-bunker-300 shadow will-change-auto data-[side=top]:animate-slideDownAndFade data-[side=left]:animate-slideRightAndFade data-[side=right]:animate-slideLeftAndFade data-[side=bottom]:animate-slideUpAndFade",
+            "z-30 min-w-[220px] overflow-y-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 text-bunker-300 shadow will-change-auto data-[side=bottom]:animate-slideUpAndFade data-[side=left]:animate-slideRightAndFade data-[side=right]:animate-slideLeftAndFade data-[side=top]:animate-slideDownAndFade",
             className
           )}
         >
@@ -38,7 +38,7 @@ export const DropdownMenuContent = forwardRef<HTMLDivElement, DropdownMenuConten
 DropdownMenuContent.displayName = "DropdownMenuContent";
 
 // item container
-export type DropdownSubMenuContentProps = DropdownMenuPrimitive.MenuSubContentProps;
+export type DropdownSubMenuContentProps = DropdownMenuPrimitive.DropdownMenuSubContentProps;
 export const DropdownSubMenuContent = forwardRef<HTMLDivElement, DropdownSubMenuContentProps>(
   ({ children, className, ...props }, forwardedRef) => {
     return (
@@ -48,7 +48,7 @@ export const DropdownSubMenuContent = forwardRef<HTMLDivElement, DropdownSubMenu
           {...props}
           ref={forwardedRef}
           className={twMerge(
-            "z-30 min-w-[220px] rounded-md border border-mineshaft-600 bg-mineshaft-900 text-bunker-300 shadow will-change-auto data-[side=top]:animate-slideDownAndFade data-[side=left]:animate-slideRightAndFade data-[side=right]:animate-slideLeftAndFade data-[side=bottom]:animate-slideUpAndFade",
+            "z-30 min-w-[220px] rounded-md border border-mineshaft-600 bg-mineshaft-900 text-bunker-300 shadow will-change-auto data-[side=bottom]:animate-slideUpAndFade data-[side=left]:animate-slideRightAndFade data-[side=right]:animate-slideLeftAndFade data-[side=top]:animate-slideDownAndFade",
             className
           )}
         >
@@ -62,17 +62,17 @@ export const DropdownSubMenuContent = forwardRef<HTMLDivElement, DropdownSubMenu
 DropdownSubMenuContent.displayName = "DropdownMenuContent";
 
 // item label component
-export type DropdownLabelProps = DropdownMenuPrimitive.MenuLabelProps;
+export type DropdownLabelProps = DropdownMenuPrimitive.DropdownMenuLabelProps;
 export const DropdownMenuLabel = ({ className, ...props }: DropdownLabelProps) => (
   <DropdownMenuPrimitive.Label
     {...props}
-    className={twMerge("px-4 pt-2 pb-1 text-xs text-bunker-400", className)}
+    className={twMerge("px-4 pb-1 pt-2 text-xs text-bunker-400", className)}
   />
 );
 
 // dropdown items
 export type DropdownMenuItemProps<T extends ElementType> =
-  DropdownMenuPrimitive.MenuContentProps & {
+  DropdownMenuPrimitive.DropdownMenuContentProps & {
     icon?: ReactNode;
     as?: T;
     inputRef?: Ref<T>;

@@ -20,7 +20,7 @@ export const useCreateProjectTemplate = () => {
 
       return data.projectTemplate;
     },
-    onSuccess: () => queryClient.invalidateQueries(projectTemplateKeys.list())
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: projectTemplateKeys.list() })
   });
 };
 
@@ -36,8 +36,8 @@ export const useUpdateProjectTemplate = () => {
       return data.projectTemplate;
     },
     onSuccess: (_, { templateId }) => {
-      queryClient.invalidateQueries(projectTemplateKeys.list());
-      queryClient.invalidateQueries(projectTemplateKeys.byId(templateId));
+      queryClient.invalidateQueries({ queryKey: projectTemplateKeys.list() });
+      queryClient.invalidateQueries({ queryKey: projectTemplateKeys.byId(templateId) });
     }
   });
 };
@@ -51,8 +51,8 @@ export const useDeleteProjectTemplate = () => {
       return data;
     },
     onSuccess: (_, { templateId }) => {
-      queryClient.invalidateQueries(projectTemplateKeys.list());
-      queryClient.invalidateQueries(projectTemplateKeys.byId(templateId));
+      queryClient.invalidateQueries({ queryKey: projectTemplateKeys.list() });
+      queryClient.invalidateQueries({ queryKey: projectTemplateKeys.byId(templateId) });
     }
   });
 };

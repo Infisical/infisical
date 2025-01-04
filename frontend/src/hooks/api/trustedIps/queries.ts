@@ -44,7 +44,7 @@ export const useAddTrustedIp = () => {
       return data;
     },
     onSuccess(_, dto) {
-      queryClient.invalidateQueries(trustedIps.getTrustedIps(dto.workspaceId));
+      queryClient.invalidateQueries({ queryKey: trustedIps.getTrustedIps(dto.workspaceId) });
     }
   });
 };
@@ -77,7 +77,7 @@ export const useUpdateTrustedIp = () => {
       return data;
     },
     onSuccess(_, dto) {
-      queryClient.invalidateQueries(trustedIps.getTrustedIps(dto.workspaceId));
+      queryClient.invalidateQueries({ queryKey: trustedIps.getTrustedIps(dto.workspaceId) });
     }
   });
 };
@@ -99,7 +99,7 @@ export const useDeleteTrustedIp = () => {
       return data;
     },
     onSuccess(_, dto) {
-      queryClient.invalidateQueries(trustedIps.getTrustedIps(dto.workspaceId));
+      queryClient.invalidateQueries({ queryKey: trustedIps.getTrustedIps(dto.workspaceId) });
     }
   });
 };

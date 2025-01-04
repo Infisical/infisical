@@ -35,7 +35,7 @@ const glob: JsInterpreter<FieldCondition<string>> = (node, object, context) => {
   return picomatch.isMatch(secretPath, permissionSecretGlobPath, { strictSlashes: false });
 };
 
-const conditionsMatcher = buildMongoQueryMatcher({ $glob }, { glob });
+export const conditionsMatcher = buildMongoQueryMatcher({ $glob }, { glob });
 
 export const roleQueryKeys = {
   getProjectRoles: (projectId: string) => ["roles", { projectId }] as const,
@@ -107,7 +107,7 @@ export const useGetOrgRole = (orgId: string, roleId: string) =>
     enabled: Boolean(orgId && roleId)
   });
 
-const getUserOrgPermissions = async ({ orgId }: TGetUserOrgPermissionsDTO) => {
+export const fetchUserOrgPermissions = async ({ orgId }: TGetUserOrgPermissionsDTO) => {
   if (orgId === "") return { permissions: [], membership: null };
 
   const { data } = await apiRequest.get<{
@@ -121,7 +121,7 @@ const getUserOrgPermissions = async ({ orgId }: TGetUserOrgPermissionsDTO) => {
 export const useGetUserOrgPermissions = ({ orgId }: TGetUserOrgPermissionsDTO) =>
   useQuery({
     queryKey: roleQueryKeys.getUserOrgPermissions({ orgId }),
-    queryFn: () => getUserOrgPermissions({ orgId }),
+    queryFn: () => fetchUserOrgPermissions({ orgId }),
     // enabled: Boolean(orgId),
     select: (data) => {
       const rule = unpackRules<RawRuleOf<MongoAbility<OrgPermissionSet>>>(data.permissions);
@@ -130,7 +130,9 @@ export const useGetUserOrgPermissions = ({ orgId }: TGetUserOrgPermissionsDTO) =
     }
   });
 
-const getUserProjectPermissions = async ({ workspaceId }: TGetUserProjectPermissionDTO) => {
+export const fetchUserProjectPermissions = async ({
+  workspaceId
+}: TGetUserProjectPermissionDTO) => {
   const { data } = await apiRequest.get<{
     data: {
       permissions: PackRule<RawRuleOf<MongoAbility<OrgPermissionSet>>>[];
@@ -144,7 +146,7 @@ const getUserProjectPermissions = async ({ workspaceId }: TGetUserProjectPermiss
 export const useGetUserProjectPermissions = ({ workspaceId }: TGetUserProjectPermissionDTO) =>
   useQuery({
     queryKey: roleQueryKeys.getUserProjectPermissions({ workspaceId }),
-    queryFn: () => getUserProjectPermissions({ workspaceId }),
+    queryFn: () => fetchUserProjectPermissions({ workspaceId }),
     enabled: Boolean(workspaceId),
     select: (data) => {
       const rule = unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(data.permissions);

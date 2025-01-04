@@ -1,10 +1,7 @@
-import { ParsedUrlQuery } from "querystring";
-
 import { useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/router";
 import { faAngleRight, faCheck, faCopy, faLock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Link, useParams } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
 import { useOrganization, useWorkspace } from "@app/context";
@@ -61,7 +58,10 @@ export default function NavHeader({
   const [isCopied, { timedToggle: toggleIsCopied }] = useToggle(false);
   const [isHoveringCopyButton, setIsHoveringCopyButton] = useState(false);
 
-  const router = useRouter();
+  const routerEnvSlug = useParams({
+    strict: false,
+    select: (el) => el.envSlug
+  });
 
   const secretPathSegments = secretPath.split("/").filter(Boolean);
 
@@ -71,13 +71,10 @@ export default function NavHeader({
         {currentOrg?.name?.charAt(0)}
       </div>
       <Link
-        passHref
-        legacyBehavior
-        href={`/org/${currentOrg?.id}/${ProjectType.SecretManager}/overview`}
+        to="/organization/secret-manager/overview"
+        className="truncate pl-0.5 text-sm font-semibold text-primary/80 hover:text-primary"
       >
-        <a className="truncate pl-0.5 text-sm font-semibold text-primary/80 hover:text-primary">
-          {currentOrg?.name}
-        </a>
+        {currentOrg?.name}
       </Link>
       {isProjectRelated && (
         <>
@@ -96,14 +93,11 @@ export default function NavHeader({
       <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-3 text-sm text-gray-400" />
       {pageName === "Secrets" ? (
         <Link
-          passHref
-          legacyBehavior
-          href={{
-            pathname: `/${ProjectType.SecretManager}/[id]/secrets/overview`,
-            query: { id: router.query.id }
-          }}
+          to={`/${ProjectType.SecretManager}/$projectId/overview` as const}
+          params={{ projectId: currentWorkspace.id }}
+          className="text-sm font-semibold text-primary/80 hover:text-primary"
         >
-          <a className="text-sm font-semibold text-primary/80 hover:text-primary">{pageName}</a>
+          {pageName}
         </Link>
       ) : (
         <div className="text-sm text-gray-400">{pageName}</div>
@@ -131,29 +125,21 @@ export default function NavHeader({
           </div>
         </>
       )}
-      {isFolderMode && Boolean(secretPathSegments.length) && (
+      {isFolderMode && routerEnvSlug && Boolean(secretPathSegments.length) && (
         <div className="flex items-center space-x-3">
           <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-1.5 text-xs text-gray-400" />
           <Link
-            passHref
-            legacyBehavior
-            href={{
-              pathname: `/${ProjectType.SecretManager}/[id]/secrets/[env]`,
-              query: { id: router.query.id, env: router.query.env }
-            }}
+            to={`/${ProjectType.SecretManager}/$projectId/secrets/$envSlug` as const}
+            params={{ projectId: currentWorkspace.id, envSlug: routerEnvSlug }}
+            className="text-sm font-semibold text-primary/80 hover:text-primary"
           >
-            <a className="text-sm font-semibold text-primary/80 hover:text-primary">
-              {userAvailableEnvs?.find(({ slug }) => slug === currentEnv)?.name}
-            </a>
+            {userAvailableEnvs?.find(({ slug }) => slug === currentEnv)?.name}
           </Link>
         </div>
       )}
       {isFolderMode &&
         secretPathSegments?.map((folderName, index) => {
-          const query: ParsedUrlQuery & { secretPath: string } = {
-            ...router.query,
-            secretPath: `/${secretPathSegments.slice(0, index + 1).join("/")}`
-          };
+          const newSecretPath = `/${secretPathSegments.slice(0, index + 1).join("/")}`;
 
           return (
             <div
@@ -184,7 +170,7 @@ export default function NavHeader({
                       onClick={() => {
                         if (isCopied) return;
 
-                        navigator.clipboard.writeText(query.secretPath);
+                        navigator.clipboard.writeText(newSecretPath);
 
                         createNotification({
                           text: "Copied secret path to clipboard",
@@ -205,21 +191,18 @@ export default function NavHeader({
                 </div>
               ) : (
                 <Link
-                  passHref
-                  legacyBehavior
-                  href={{
-                    pathname: `/${ProjectType.SecretManager}/[id]/secrets/[env]`,
-                    query
+                  to={`/${ProjectType.SecretManager}/$projectId/secrets/$envSlug` as const}
+                  params={{
+                    projectId: currentWorkspace.id,
+                    envSlug: routerEnvSlug || ""
                   }}
+                  search={(query) => ({ ...query, secretPath: newSecretPath })}
+                  className={twMerge(
+                    "text-sm font-semibold transition-all hover:text-primary",
+                    isHoveringCopyButton ? "text-primary" : "text-primary/80"
+                  )}
                 >
-                  <a
-                    className={twMerge(
-                      "text-sm font-semibold transition-all hover:text-primary",
-                      isHoveringCopyButton ? "text-primary" : "text-primary/80"
-                    )}
-                  >
-                    {folderName}
-                  </a>
+                  {folderName}
                 </Link>
               )}
             </div>

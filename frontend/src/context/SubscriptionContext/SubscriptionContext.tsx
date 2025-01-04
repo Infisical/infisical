@@ -1,45 +1,19 @@
-import { createContext, ReactNode, useContext, useMemo } from "react";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { useRouteContext } from "@tanstack/react-router";
 
-import { useGetOrgSubscription } from "@app/hooks/api";
-import { SubscriptionPlan } from "@app/hooks/api/types";
-
-import { useOrganization } from "../OrganizationContext";
-
-type TSubscriptionContext = {
-  subscription?: SubscriptionPlan;
-  isLoading: boolean;
-};
-
-const SubscriptionContext = createContext<TSubscriptionContext | null>(null);
-
-type Props = {
-  children: ReactNode;
-};
-
-export const SubscriptionProvider = ({ children }: Props): JSX.Element => {
-  const { currentOrg } = useOrganization();
-
-  const { data, isLoading } = useGetOrgSubscription({
-    orgID: currentOrg?.id || ""
-  });
-
-  // memorize the workspace details for the context
-  const value = useMemo<TSubscriptionContext>(
-    () => ({
-      subscription: data,
-      isLoading
-    }),
-    [data, isLoading]
-  );
-
-  return <SubscriptionContext.Provider value={value}>{children}</SubscriptionContext.Provider>;
-};
+import { fetchOrgSubscription, subscriptionQueryKeys } from "@app/hooks/api/subscriptions/queries";
 
 export const useSubscription = () => {
-  const ctx = useContext(SubscriptionContext);
-  if (!ctx) {
-    throw new Error("useSubscription has to be used within <SubscriptionContext.Provider>");
-  }
+  const organizationId = useRouteContext({
+    from: "/_authenticate/_inject-org-details",
+    select: (el) => el.organizationId
+  });
 
-  return ctx;
+  const { data: subscription } = useSuspenseQuery({
+    queryKey: subscriptionQueryKeys.getOrgSubsription(organizationId),
+    queryFn: () => fetchOrgSubscription(organizationId),
+    staleTime: Infinity
+  });
+
+  return { subscription };
 };

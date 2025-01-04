@@ -59,7 +59,7 @@ export const DrawerContent = forwardRef<HTMLDivElement, DrawerContentProps>(
             <IconButton
               variant="plain"
               ariaLabel="close"
-              className="absolute top-4 right-6 rounded text-bunker-400 hover:text-bunker-50"
+              className="absolute right-6 top-4 rounded text-bunker-400 hover:text-bunker-50"
             >
               <FontAwesomeIcon icon={faTimes} size="lg" className="cursor-pointer" />
             </IconButton>

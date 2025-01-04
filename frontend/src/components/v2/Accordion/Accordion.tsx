@@ -27,7 +27,7 @@ export const AccordionTrigger = forwardRef<
   <AccordionPrimitive.Header className="flex">
     <AccordionPrimitive.Trigger
       className={twMerge(
-        "group flex h-11 flex-1 items-center justify-between py-2 px-4 outline-none hover:text-primary data-[state=open]:text-primary",
+        "group flex h-11 flex-1 items-center justify-between px-4 py-2 outline-none hover:text-primary data-[state=open]:text-primary",
         className
       )}
       {...props}
@@ -51,13 +51,13 @@ export const AccordionContent = forwardRef<
 >(({ children, className, ...props }, forwardedRef) => (
   <AccordionPrimitive.Content
     className={twMerge(
-      "overflow-hidden data-[state=open]:animate-slideDown data-[state=closed]:animate-slideUp",
+      "overflow-hidden data-[state=closed]:animate-slideUp data-[state=open]:animate-slideDown",
       className
     )}
     {...props}
     ref={forwardedRef}
   >
-    <div className="py-2 px-4 text-sm">{children}</div>
+    <div className="px-4 py-2 text-sm">{children}</div>
   </AccordionPrimitive.Content>
 ));
 
