@@ -20,7 +20,8 @@ export const useCreateSharedSecret = () => {
       );
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries(secretSharingKeys.allSharedSecrets())
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: secretSharingKeys.allSharedSecrets() })
   });
 };
 
@@ -34,7 +35,8 @@ export const useCreatePublicSharedSecret = () => {
       );
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries(secretSharingKeys.allSharedSecrets())
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: secretSharingKeys.allSharedSecrets() })
   });
 };
 
@@ -47,6 +49,7 @@ export const useDeleteSharedSecret = () => {
       );
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries(secretSharingKeys.allSharedSecrets())
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: secretSharingKeys.allSharedSecrets() })
   });
 };

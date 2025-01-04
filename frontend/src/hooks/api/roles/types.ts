@@ -56,7 +56,7 @@ export type TGetUserProjectPermissionDTO = {
 export type TCreateOrgRoleDTO = {
   orgId: string;
   name: string;
-  description?: string | null;
+  description?: string;
   slug: string;
   permissions: TPermission[];
 };
@@ -74,7 +74,7 @@ export type TDeleteOrgRoleDTO = {
 export type TCreateProjectRoleDTO = {
   projectId: string;
   name: string;
-  description?: string | null;
+  description?: string;
   slug: string;
   permissions: TProjectPermission[];
 };

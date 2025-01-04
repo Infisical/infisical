@@ -5,7 +5,7 @@ import {
   faInfoCircle
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { type VariantProps, cva } from "cva";
+import { cva, type VariantProps } from "cva";
 import { twMerge } from "tailwind-merge";
 
 const alertVariants = cva(

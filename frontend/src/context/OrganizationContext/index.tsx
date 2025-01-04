@@ -1,1 +1,1 @@
-export { OrgProvider, useOrganization } from "./OrganizationContext";
+export { useOrganization } from "./OrganizationContext";

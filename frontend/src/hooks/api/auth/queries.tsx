@@ -2,9 +2,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { apiRequest } from "@app/config/request";
-import { setAuthToken } from "@app/reactQuery";
 
 import { organizationKeys } from "../organization/queries";
+import { setAuthToken } from "../reactQuery";
 import { workspaceKeys } from "../workspace";
 import {
   ChangePasswordDTO,
@@ -31,7 +31,7 @@ import {
   VerifySignupInviteDTO
 } from "./types";
 
-const authKeys = {
+export const authKeys = {
   getAuthToken: ["token"] as const
 };
 
@@ -77,16 +77,11 @@ export const selectOrganization = async (data: {
 export const useSelectOrganization = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (details: {
-      organizationId: string;
-      userAgent?: UserAgentType;
-      forceSetCredentials?: boolean;
-    }) => {
+    mutationFn: async (details: { organizationId: string; userAgent?: UserAgentType }) => {
       const data = await selectOrganization(details);
 
       // If a custom user agent is set, then this session is meant for another consuming application, not the web application.
-      if ((!details.userAgent && !data.isMfaEnabled) || details.forceSetCredentials) {
-        localStorage.setItem("orgData.id", details.organizationId);
+      if (!details.userAgent && !data.isMfaEnabled) {
         SecurityClient.setToken(data.token);
         SecurityClient.setProviderAuthToken("");
       }
@@ -94,10 +89,9 @@ export const useSelectOrganization = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries([
-        organizationKeys.getUserOrganizations,
-        workspaceKeys.getAllUserWorkspace
-      ]);
+      queryClient.invalidateQueries({
+        queryKey: [organizationKeys.getUserOrganizations, workspaceKeys.getAllUserWorkspace]
+      });
     }
   });
 };
@@ -153,7 +147,7 @@ export const useCompleteAccountSignup = () => {
 };
 
 export const useSendMfaToken = () => {
-  return useMutation<{}, {}, SendMfaTokenDTO>({
+  return useMutation<object, object, SendMfaTokenDTO>({
     mutationFn: async ({ email }) => {
       const { data } = await apiRequest.post("/api/v2/auth/mfa/send", { email });
       return data;
@@ -180,7 +174,7 @@ export const verifyMfaToken = async ({
 };
 
 export const useVerifyMfaToken = () => {
-  return useMutation<VerifyMfaTokenRes, {}, VerifyMfaTokenDTO>({
+  return useMutation<VerifyMfaTokenRes, object, VerifyMfaTokenDTO>({
     mutationFn: async ({ email, mfaCode, mfaMethod }) => {
       return verifyMfaToken({
         email,
@@ -306,17 +300,18 @@ export const useChangePassword = () => {
 
 // Refresh token is set as cookie when logged in
 // Using that we fetch the auth bearer token needed for auth calls
-const fetchAuthToken = async () => {
+export const fetchAuthToken = async () => {
   const { data } = await apiRequest.post<GetAuthTokenAPI>("/api/v1/auth/token", undefined, {
     withCredentials: true
   });
-
+  setAuthToken(data.token);
   return data;
 };
 
 export const useGetAuthToken = () =>
-  useQuery(authKeys.getAuthToken, fetchAuthToken, {
-    onSuccess: (data) => setAuthToken(data.token),
+  useQuery({
+    queryKey: authKeys.getAuthToken,
+    queryFn: fetchAuthToken,
     retry: 0
   });
 

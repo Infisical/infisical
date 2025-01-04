@@ -18,7 +18,7 @@ export const useCreateAdminUser = () => {
 
   return useMutation<
     { user: User; token: string; organization: { id: string } },
-    {},
+    object,
     TCreateAdminUserDTO
   >({
     mutationFn: async (opt) => {
@@ -26,7 +26,7 @@ export const useCreateAdminUser = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(adminQueryKeys.serverConfig());
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.serverConfig() });
     }
   });
 };
@@ -36,7 +36,7 @@ export const useUpdateServerConfig = () => {
 
   return useMutation<
     TServerConfig,
-    {},
+    object,
     Partial<TServerConfig & { slackClientId: string; slackClientSecret: string }>
   >({
     mutationFn: async (opt) => {
@@ -48,8 +48,8 @@ export const useUpdateServerConfig = () => {
     },
     onSuccess: (data) => {
       queryClient.setQueryData(adminQueryKeys.serverConfig(), data);
-      queryClient.invalidateQueries(adminQueryKeys.serverConfig());
-      queryClient.invalidateQueries(organizationKeys.getUserOrganizations);
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.serverConfig() });
+      queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizations });
     }
   });
 };
@@ -72,7 +72,7 @@ export const useAdminDeleteUser = () => {
 
 export const useUpdateAdminSlackConfig = () => {
   const queryClient = useQueryClient();
-  return useMutation<AdminSlackConfig, {}, TUpdateAdminSlackConfigDTO>({
+  return useMutation<AdminSlackConfig, object, TUpdateAdminSlackConfigDTO>({
     mutationFn: async (dto) => {
       const { data } = await apiRequest.put<AdminSlackConfig>(
         "/api/v1/admin/integrations/slack/config",
@@ -82,7 +82,7 @@ export const useUpdateAdminSlackConfig = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(adminQueryKeys.getAdminSlackConfig());
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.getAdminSlackConfig() });
     }
   });
 };
@@ -94,7 +94,7 @@ export const useUpdateServerEncryptionStrategy = () => {
       await apiRequest.patch("/api/v1/admin/encryption-strategies", { strategy });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(adminQueryKeys.getServerEncryptionStrategies());
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.getServerEncryptionStrategies() });
     }
   });
 };

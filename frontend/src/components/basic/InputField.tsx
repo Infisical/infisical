@@ -48,7 +48,7 @@ const InputField = ({
           placeholder={placeholder}
           value={value}
           required={isRequired}
-          className="text-md min-w-16 w-full rounded-md border border-gray-600 bg-bunker-800 p-2 text-gray-400 outline-none"
+          className="text-md w-full min-w-16 rounded-md border border-gray-600 bg-bunker-800 p-2 text-gray-400 outline-none"
           name={name}
           readOnly
           autoComplete={autoComplete}
@@ -79,7 +79,7 @@ const InputField = ({
               : ""
           } ${
             error ? "focus:ring-red/50" : "focus:ring-primary/50"
-          } text-md min-w-16 peer relative w-full rounded-md bg-mineshaft-900 p-2 text-gray-400 outline-none duration-200 focus:ring-4`}
+          } text-md peer relative w-full min-w-16 rounded-md bg-mineshaft-900 p-2 text-gray-400 outline-none duration-200 focus:ring-4`}
           name={name}
           spellCheck="false"
           autoComplete={autoComplete}
@@ -121,7 +121,7 @@ const InputField = ({
 						</div>
 					)} */}
       </div>
-      {error && <p className="mx-0 mt-0.5 mb-2 max-w-xs text-xs text-red">{errorText}</p>}
+      {error && <p className="mx-0 mb-2 mt-0.5 max-w-xs text-xs text-red">{errorText}</p>}
     </div>
   );
 };
