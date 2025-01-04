@@ -69,7 +69,7 @@ export const FlyioAuthorizePage = () => {
           subTitle="After adding your access token, you will be prompted to set up an integration for a particular Infisical project and environment."
         >
           <div className="flex flex-row items-center">
-            <div className="inline flex items-center pb-0.5">
+            <div className="flex items-center pb-0.5">
               <img src="/images/integrations/Flyio.svg" height={30} width={30} alt="Fly.io logo" />
             </div>
             <span className="ml-2.5">Fly.io Integration </span>
