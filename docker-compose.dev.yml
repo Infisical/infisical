@@ -144,9 +144,6 @@ services:
       - ./frontend/src:/app/src/ # mounted whole src to avoid missing reload on new files
       - ./frontend/public:/app/public
     env_file: .env
-    environment:
-      - NEXT_PUBLIC_ENV=development
-      - INFISICAL_TELEMETRY_ENABLED=false
 
   pgadmin:
     image: dpage/pgadmin4
