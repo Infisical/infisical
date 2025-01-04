@@ -106,8 +106,6 @@ export const AccessApprovalRequest = ({
     {}
   );
 
-  console.log("membersGroupById", membersGroupById);
-
   const [statusFilter, setStatusFilter] = useState<"open" | "close">("open");
   const [requestedByFilter, setRequestedByFilter] = useState<string | undefined>(undefined);
   const [envFilter, setEnvFilter] = useState<string | undefined>(undefined);

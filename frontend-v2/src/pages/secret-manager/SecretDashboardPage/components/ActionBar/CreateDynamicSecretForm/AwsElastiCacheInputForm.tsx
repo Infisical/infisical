@@ -71,7 +71,7 @@ export const AwsElastiCacheInputForm = ({
 }: Props) => {
   const {
     control,
-    formState: { isSubmitting, errors },
+    formState: { isSubmitting },
     handleSubmit
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
@@ -93,7 +93,6 @@ export const AwsElastiCacheInputForm = ({
 
   const createDynamicSecret = useCreateDynamicSecret();
 
-  console.log("formState", errors);
   const handleCreateDynamicSecret = async ({ name, maxTTL, provider, defaultTTL }: TForm) => {
     // wait till previous request is finished
     if (createDynamicSecret.isPending) return;

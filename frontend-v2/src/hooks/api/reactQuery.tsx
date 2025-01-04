@@ -27,9 +27,7 @@ export const queryClient = new QueryClient({
     onError: (error) => {
       if (axios.isAxiosError(error)) {
         const serverResponse = error.response?.data as TApiErrors;
-        console.log(serverResponse);
         if (serverResponse?.error === ApiErrorTypes.ValidationError) {
-          console.log("entered");
           createNotification(
             {
               title: "Validation Error",

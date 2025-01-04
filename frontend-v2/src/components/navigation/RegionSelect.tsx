@@ -1,6 +1,6 @@
 import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useLocation, useNavigate } from "@tanstack/react-router";
+import { useLocation } from "@tanstack/react-router";
 
 import { Modal, ModalContent, ModalTrigger, Select, SelectItem } from "@app/components/v2";
 import { isInfisicalCloud } from "@app/helpers/platform";
@@ -73,11 +73,10 @@ const regions = [
 ];
 
 export const RegionSelect = () => {
-  const navigate = useNavigate();
   const location = useLocation();
 
   const handleRegionSelect = (value: Region) => {
-    navigate({ to: `https://${value}.infisical.com/${location.pathname}` });
+    window.location.assign(`https://${value}.infisical.com/${location.pathname}`);
   };
 
   const shouldDisplay =

@@ -58,7 +58,6 @@ export const AccessManagementPage = () => {
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       <Helmet>
         <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <div className="mx-auto mb-6 w-full max-w-7xl px-6 py-6">
         <p className="mb-4 mr-4 text-3xl font-semibold text-white">Organization Access Control</p>
