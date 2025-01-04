@@ -11,7 +11,6 @@ export const Route = createFileRoute(
 )({
   validateSearch: zodValidator(VercelOAuthCallbackPageQueryParamsSchema),
   beforeLoad: ({ search }) => {
-    console.log("reached");
     const projectId = localStorageService.getIintegrationProjectId();
     if (!projectId) {
       createNotification({

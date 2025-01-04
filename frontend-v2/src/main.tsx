@@ -5,6 +5,8 @@ import NProgress from "nprogress";
 
 import { ContentLoader } from "./components/v2";
 import { queryClient } from "./hooks/api/reactQuery";
+import { ErrorPage } from "./pages/public/ErrorPage/ErrorPage";
+import { NotFoundPage } from "./pages/public/NotFoundPage/NotFoundPage";
 // Import the generated route tree
 import { routeTree } from "./routeTree.gen";
 
@@ -29,7 +31,9 @@ const router = createRouter({
     <div className="bg-bunker-800">
       <ContentLoader />
     </div>
-  )
+  ),
+  defaultNotFoundComponent: NotFoundPage,
+  defaultErrorComponent: ErrorPage
 });
 
 router.subscribe("onBeforeLoad", ({ pathChanged }) => {

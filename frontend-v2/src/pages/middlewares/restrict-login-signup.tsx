@@ -16,6 +16,11 @@ export const Route = createFileRoute("/_restrict-login-signup")({
     middlewares: [stripSearchParams({ callback_port: undefined })]
   },
   beforeLoad: async ({ context, location, search }) => {
+    if (!context.serverConfig.initialized) {
+      if (location.pathname.endsWith("/admin/signup")) return;
+      throw redirect({ to: "/admin/signup" });
+    }
+
     const data = await context.queryClient
       .fetchQuery({
         queryKey: authKeys.getAuthToken,
