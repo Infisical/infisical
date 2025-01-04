@@ -27,7 +27,7 @@ export const BitbucketOauthCallbackPage = () => {
         });
 
         navigate({
-          to: "/secret-manager/$projectId/integrations/heroku/create",
+          to: "/secret-manager/$projectId/integrations/bitbucket/create",
           params: {
             projectId: currentWorkspace.id
           },
