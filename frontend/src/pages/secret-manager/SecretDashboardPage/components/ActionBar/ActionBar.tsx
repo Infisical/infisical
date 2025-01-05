@@ -1,4 +1,3 @@
-import { TypeOptions } from "react-toastify";
 import { subject } from "@casl/ability";
 import {
   faAngleDown,
@@ -51,7 +50,7 @@ import {
   useWorkspace
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { useCreateFolder, useDeleteSecretBatch, useMoveSecrets } from "@app/hooks/api";
+import { useCreateFolder, useDeleteSecretBatch } from "@app/hooks/api";
 import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
 import { SecretType, WsTag } from "@app/hooks/api/types";
 import { SecretSearchInput } from "@app/pages/secret-manager/OverviewPage/components/SecretSearchInput";
@@ -67,6 +66,7 @@ import { CreateDynamicSecretForm } from "./CreateDynamicSecretForm";
 import { CreateSecretImportForm } from "./CreateSecretImportForm";
 import { FolderForm } from "./FolderForm";
 import { MoveSecretsModal } from "./MoveSecretsModal";
+import { useHandleSecretsMove } from "./useHandleSecretsMove";
 
 type Props = {
   // switch the secrets type as it gets decrypted after api call
@@ -117,7 +117,10 @@ export const ActionBar = ({
 
   const { mutateAsync: createFolder } = useCreateFolder();
   const { mutateAsync: deleteBatchSecretV3 } = useDeleteSecretBatch();
-  const { mutateAsync: moveSecrets } = useMoveSecrets();
+  const { handleSecretsMove } = useHandleSecretsMove({
+    sourceEnvironment: environment,
+    sourceSecretPath: secretPath
+  });
 
   const selectedSecrets = useSelectedSecrets();
   const { reset: resetSelectedSecret } = useSelectedSecretActions();
@@ -216,55 +219,6 @@ export const ActionBar = ({
         type: "error",
         text: "Failed to delete secrets"
       });
-    }
-  };
-
-  const handleSecretsMove = async ({
-    destinationEnvironment,
-    destinationSecretPath,
-    shouldOverwrite
-  }: {
-    destinationEnvironment: string;
-    destinationSecretPath: string;
-    shouldOverwrite: boolean;
-  }) => {
-    try {
-      const secretsToMove = Object.values(selectedSecrets);
-      const { isDestinationUpdated, isSourceUpdated } = await moveSecrets({
-        projectSlug,
-        shouldOverwrite,
-        sourceEnvironment: environment,
-        sourceSecretPath: secretPath,
-        destinationEnvironment,
-        destinationSecretPath,
-        projectId: workspaceId,
-        secretIds: secretsToMove.map((sec) => sec.id)
-      });
-
-      let notificationMessage = "";
-      let notificationType: TypeOptions = "info";
-
-      if (isDestinationUpdated && isSourceUpdated) {
-        notificationMessage = "Successfully moved selected secrets";
-        notificationType = "success";
-      } else if (isDestinationUpdated) {
-        notificationMessage =
-          "Successfully created secrets in destination. A secret approval request has been generated for the source.";
-      } else if (isSourceUpdated) {
-        notificationMessage = "A secret approval request has been generated in the destination";
-      } else {
-        notificationMessage =
-          "A secret approval request has been generated in both the source and the destination.";
-      }
-
-      createNotification({
-        type: notificationType,
-        text: notificationMessage
-      });
-
-      resetSelectedSecret();
-    } catch (error) {
-      console.error(error);
     }
   };
 

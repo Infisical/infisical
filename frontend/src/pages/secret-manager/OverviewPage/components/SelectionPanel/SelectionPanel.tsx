@@ -1,5 +1,5 @@
 import { subject } from "@casl/ability";
-import { faMinusSquare, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faAnglesRight, faMinusSquare, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
@@ -19,6 +19,7 @@ import {
   TDeleteSecretBatchDTO,
   TSecretFolder
 } from "@app/hooks/api/types";
+import { MoveSecretsModal } from "@app/pages/secret-manager/SecretDashboardPage/components/ActionBar/MoveSecretsModal";
 
 export enum EntryType {
   FOLDER = "folder",
@@ -38,7 +39,8 @@ export const SelectionPanel = ({ secretPath, resetSelectedEntries, selectedEntri
   const { permission } = useProjectPermission();
 
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
-    "bulkDeleteEntries"
+    "bulkDeleteEntries",
+    "moveSecrets"
   ] as const);
 
   const selectedFolderCount = Object.keys(selectedEntries.folder).length;
@@ -54,7 +56,7 @@ export const SelectionPanel = ({ secretPath, resetSelectedEntries, selectedEntri
   const isMultiSelectActive = selectedCount > 0;
 
   // user should have the ability to delete secrets/folders in at least one of the envs
-  const shouldShowDelete = userAvailableEnvs.some((env) =>
+  const shouldShowDeleteAndMove = userAvailableEnvs.some((env) =>
     permission.can(
       ProjectPermissionActions.Delete,
       subject(ProjectPermissionSub.Secrets, {
@@ -164,6 +166,9 @@ export const SelectionPanel = ({ secretPath, resetSelectedEntries, selectedEntri
       });
     }
   };
+  // const { handleSecretsMove } = useHandleSecretsMove({
+
+  // });
 
   return (
     <>
@@ -180,20 +185,37 @@ export const SelectionPanel = ({ secretPath, resetSelectedEntries, selectedEntri
             </IconButton>
           </Tooltip>
           <div className="ml-1 flex-grow px-2 text-sm">{selectedCount} Selected</div>
-          {shouldShowDelete && (
-            <Button
-              variant="outline_bg"
-              colorSchema="danger"
-              leftIcon={<FontAwesomeIcon icon={faTrash} />}
-              className="ml-4"
-              onClick={() => handlePopUpOpen("bulkDeleteEntries")}
-              size="xs"
-            >
-              Delete
-            </Button>
+          {shouldShowDeleteAndMove && (
+            <>
+              <Button
+                variant="outline_bg"
+                leftIcon={<FontAwesomeIcon icon={faAnglesRight} />}
+                className="ml-4"
+                onClick={() => handlePopUpOpen("moveSecrets")}
+                size="xs"
+              >
+                Move
+              </Button>
+              <Button
+                variant="outline_bg"
+                colorSchema="danger"
+                leftIcon={<FontAwesomeIcon icon={faTrash} />}
+                className="ml-4"
+                onClick={() => handlePopUpOpen("bulkDeleteEntries")}
+                size="xs"
+              >
+                Delete
+              </Button>
+            </>
           )}
         </div>
       </div>
+      <MoveSecretsModal
+        popUp={popUp}
+        handlePopUpToggle={handlePopUpToggle}
+        // TODO: connect handleSecretsMove to onMoveApproved
+        onMoveApproved={() => {}}
+      />
       <DeleteActionModal
         isOpen={popUp.bulkDeleteEntries.isOpen}
         deleteKey="delete"
