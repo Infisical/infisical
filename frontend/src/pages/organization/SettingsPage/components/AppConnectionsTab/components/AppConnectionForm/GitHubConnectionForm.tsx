@@ -74,7 +74,7 @@ export const GitHubConnectionForm = ({ appConnection }: Props) => {
         break;
       case GitHubConnectionMethod.OAuth:
         window.location.assign(
-          `https://github.com/login/oauth/authorize?client_id=${oauthClientId}&response_type=code&scope=repo,admin:org&redirect_uri=${window.location.origin}/app-connections/github/oauth/callback&state=${state}`
+          `https://github.com/login/oauth/authorize?client_id=${oauthClientId}&response_type=code&scope=repo,admin:org&redirect_uri=${window.location.origin}/organization/app-connections/github/oauth/callback&state=${state}`
         );
         break;
       default:
