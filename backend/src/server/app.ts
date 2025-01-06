@@ -120,12 +120,10 @@ export const main = async ({ db, hsmModule, auditLogDb, smtp, logger, queue, key
 
     await server.register(registerRoutes, { smtp, queue, db, auditLogDb, keyStore, hsmModule });
 
-    if (appCfg.isProductionMode) {
-      await server.register(registerServeUI, {
-        standaloneMode: appCfg.STANDALONE_MODE || IS_PACKAGED,
-        dir: path.join(__dirname, IS_PACKAGED ? "../../../" : "../../")
-      });
-    }
+    await server.register(registerServeUI, {
+      standaloneMode: appCfg.STANDALONE_MODE || IS_PACKAGED,
+      dir: path.join(__dirname, IS_PACKAGED ? "../../../" : "../../")
+    });
 
     await server.ready();
     server.swagger();

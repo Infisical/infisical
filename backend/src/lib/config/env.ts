@@ -157,6 +157,8 @@ const envSchema = z
     INFISICAL_CLOUD: zodStrBool.default("false"),
     MAINTENANCE_MODE: zodStrBool.default("false"),
     CAPTCHA_SECRET: zpStr(z.string().optional()),
+    CAPTCHA_SITE_KEY: zpStr(z.string().optional()),
+    INTERCOM_ID: zpStr(z.string().optional()),
 
     // TELEMETRY
     OTEL_TELEMETRY_COLLECTION_ENABLED: zodStrBool.default("false"),
