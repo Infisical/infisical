@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { faMobile } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link, Outlet } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
+import { Link, Outlet, useNavigate, useRouter } from "@tanstack/react-router";
 
 import { Mfa } from "@app/components/auth/Mfa";
 import { CreateOrgModal } from "@app/components/organization/CreateOrgModal";
@@ -10,9 +11,11 @@ import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Menu, MenuItem } from "@app/components/v2";
 import { useUser } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
-import { useSelectOrganization } from "@app/hooks/api";
+import { useSelectOrganization, workspaceKeys } from "@app/hooks/api";
+import { authKeys } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { ProjectType } from "@app/hooks/api/workspace/types";
+import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
 import { InsecureConnectionBanner } from "./components/InsecureConnectionBanner";
 import { SidebarFooter } from "./components/SidebarFooter";
@@ -27,10 +30,15 @@ export const OrganizationLayout = () => {
 
   const { popUp, handlePopUpToggle } = usePopUp(["createOrg"] as const);
   const { mutateAsync: selectOrganization } = useSelectOrganization();
+  const navigate = useNavigate();
+  const router = useRouter();
+  const queryClient = useQueryClient();
 
   const { t } = useTranslation();
-
   const handleOrgChange = async (orgId: string) => {
+    queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
+    queryClient.removeQueries({ queryKey: workspaceKeys.getAllUserWorkspace() });
+
     const { token, isMfaEnabled, mfaMethod } = await selectOrganization({
       organizationId: orgId
     });
@@ -42,9 +50,10 @@ export const OrganizationLayout = () => {
       }
       toggleShowMfa.on();
       setMfaSuccessCallback(() => () => handleOrgChange(orgId));
+      return;
     }
-
-    // await navigateUserToOrg(router, orgId);
+    await router.invalidate();
+    await navigateUserToOrg(navigate, orgId);
   };
 
   if (shouldShowMfa) {

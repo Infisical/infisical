@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { faMobile } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link, Outlet } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
+import { Link, Outlet, useNavigate, useRouter } from "@tanstack/react-router";
 
 import { Mfa } from "@app/components/auth/Mfa";
 import SecurityClient from "@app/components/utilities/SecurityClient";
@@ -12,10 +13,13 @@ import { useToggle } from "@app/hooks";
 import {
   useGetAccessRequestsCount,
   useGetSecretApprovalRequestCount,
-  useSelectOrganization
+  useSelectOrganization,
+  workspaceKeys
 } from "@app/hooks/api";
+import { authKeys } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { ProjectType } from "@app/hooks/api/workspace/types";
+import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
 import { InsecureConnectionBanner } from "../OrganizationLayout/components/InsecureConnectionBanner";
 import { SidebarFooter } from "../OrganizationLayout/components/SidebarFooter";
@@ -26,6 +30,7 @@ import { SidebarHeader } from "./components/SidebarHeader";
 // If the product layout differs significantly, create a new layout as needed.
 export const ProjectLayout = () => {
   const { currentWorkspace } = useWorkspace();
+  const navigate = useNavigate();
 
   const [shouldShowMfa, toggleShowMfa] = useToggle(false);
   const [requiredMfaMethod, setRequiredMfaMethod] = useState(MfaMethod.EMAIL);
@@ -36,6 +41,8 @@ export const ProjectLayout = () => {
   const { mutateAsync: selectOrganization } = useSelectOrganization();
 
   const { t } = useTranslation();
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const workspaceId = currentWorkspace?.id || "";
   const projectSlug = currentWorkspace?.slug || "";
 
@@ -46,6 +53,9 @@ export const ProjectLayout = () => {
     (secretApprovalReqCount?.open || 0) + (accessApprovalRequestCount?.pendingCount || 0);
 
   const handleOrgChange = async (orgId: string) => {
+    queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
+    queryClient.removeQueries({ queryKey: workspaceKeys.getAllUserWorkspace() });
+
     const { token, isMfaEnabled, mfaMethod } = await selectOrganization({
       organizationId: orgId
     });
@@ -57,9 +67,10 @@ export const ProjectLayout = () => {
       }
       toggleShowMfa.on();
       setMfaSuccessCallback(() => () => handleOrgChange(orgId));
+      return;
     }
-
-    // await navigateUserToOrg(router, orgId);
+    await router.invalidate();
+    await navigateUserToOrg(navigate, orgId);
   };
 
   if (shouldShowMfa) {

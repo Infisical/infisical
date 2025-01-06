@@ -10,7 +10,6 @@ export const Route = createFileRoute("/_authenticate")({
     if (!context.serverConfig.initialized) {
       throw redirect({ to: "/admin/signup" });
     }
-
     const data = await context.queryClient
       .ensureQueryData({
         queryKey: authKeys.getAuthToken,
