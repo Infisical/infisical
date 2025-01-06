@@ -1,6 +1,6 @@
-import { useRouter } from "next/router";
 import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useLocation } from "@tanstack/react-router";
 
 import { Modal, ModalContent, ModalTrigger, Select, SelectItem } from "@app/components/v2";
 import { isInfisicalCloud } from "@app/helpers/platform";
@@ -73,10 +73,10 @@ const regions = [
 ];
 
 export const RegionSelect = () => {
-  const router = useRouter();
+  const location = useLocation();
 
   const handleRegionSelect = (value: Region) => {
-    router.push(`https://${value}.infisical.com/${router.pathname}`);
+    window.location.assign(`https://${value}.infisical.com/${location.pathname}`);
   };
 
   const shouldDisplay =
@@ -107,7 +107,7 @@ export const RegionSelect = () => {
         ))}
       </Select>
       <Modal>
-        <ModalTrigger>
+        <ModalTrigger asChild>
           <button type="button" className="mt-1 text-right text-xs text-mineshaft-400 underline">
             Help me pick a data region
           </button>
@@ -116,7 +116,7 @@ export const RegionSelect = () => {
           title="Infisical Cloud data regions"
           subTitle="Select the closest region to you and your team. Contact Infisical if you need to migrate regions."
         >
-          {regions.map(({ value, label, location, flag }) => (
+          {regions.map(({ value, label, location: regionLocation, flag }) => (
             <div className="mb-6" key={value}>
               <p className="font-medium">
                 <span className="mr-2 inline-block w-4">{flag}</span>
@@ -133,7 +133,7 @@ export const RegionSelect = () => {
                 </li>
                 <li>
                   <FontAwesomeIcon size="xs" className="mr-0.5 text-green" icon={faCheck} /> Hosted
-                  in {location}
+                  in {regionLocation}
                 </li>
               </ul>
             </div>

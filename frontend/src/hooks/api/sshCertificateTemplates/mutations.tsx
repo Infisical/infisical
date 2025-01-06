@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { sshCaKeys } from "../ssh-ca/queries";
+import { sshCaKeys } from "../sshCa/queries";
 import {
   TCreateSshCertificateTemplateDTO,
   TDeleteSshCertificateTemplateDTO,
@@ -12,7 +12,7 @@ import {
 
 export const useCreateSshCertTemplate = () => {
   const queryClient = useQueryClient();
-  return useMutation<TSshCertificateTemplate, {}, TCreateSshCertificateTemplateDTO>({
+  return useMutation<TSshCertificateTemplate, object, TCreateSshCertificateTemplateDTO>({
     mutationFn: async (data) => {
       const { data: certificateTemplate } = await apiRequest.post<TSshCertificateTemplate>(
         "/api/v1/ssh/certificate-templates",
@@ -21,14 +21,14 @@ export const useCreateSshCertTemplate = () => {
       return certificateTemplate;
     },
     onSuccess: ({ sshCaId }) => {
-      queryClient.invalidateQueries(sshCaKeys.getSshCaCertTemplates(sshCaId));
+      queryClient.invalidateQueries({ queryKey: sshCaKeys.getSshCaCertTemplates(sshCaId) });
     }
   });
 };
 
 export const useUpdateSshCertTemplate = () => {
   const queryClient = useQueryClient();
-  return useMutation<TSshCertificateTemplate, {}, TUpdateSshCertificateTemplateDTO>({
+  return useMutation<TSshCertificateTemplate, object, TUpdateSshCertificateTemplateDTO>({
     mutationFn: async (data) => {
       const { data: certificateTemplate } = await apiRequest.patch<TSshCertificateTemplate>(
         `/api/v1/ssh/certificate-templates/${data.id}`,
@@ -38,14 +38,14 @@ export const useUpdateSshCertTemplate = () => {
       return certificateTemplate;
     },
     onSuccess: ({ sshCaId }) => {
-      queryClient.invalidateQueries(sshCaKeys.getSshCaCertTemplates(sshCaId));
+      queryClient.invalidateQueries({ queryKey: sshCaKeys.getSshCaCertTemplates(sshCaId) });
     }
   });
 };
 
 export const useDeleteSshCertTemplate = () => {
   const queryClient = useQueryClient();
-  return useMutation<TSshCertificateTemplate, {}, TDeleteSshCertificateTemplateDTO>({
+  return useMutation<TSshCertificateTemplate, object, TDeleteSshCertificateTemplateDTO>({
     mutationFn: async (data) => {
       const { data: certificateTemplate } = await apiRequest.delete<TSshCertificateTemplate>(
         `/api/v1/ssh/certificate-templates/${data.id}`
@@ -53,7 +53,7 @@ export const useDeleteSshCertTemplate = () => {
       return certificateTemplate;
     },
     onSuccess: ({ sshCaId }) => {
-      queryClient.invalidateQueries(sshCaKeys.getSshCaCertTemplates(sshCaId));
+      queryClient.invalidateQueries({ queryKey: sshCaKeys.getSshCaCertTemplates(sshCaId) });
     }
   });
 };

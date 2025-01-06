@@ -1,6 +1,5 @@
-import { SshCaStatus } from "@app/hooks/api/ssh-ca";
-import { SshCertTemplateStatus } from "@app/hooks/api/sshCertificateTemplates";
-
+import { SshCaStatus } from "../sshCa";
+import { SshCertTemplateStatus } from "../sshCertificateTemplates";
 import { CaStatus, CaType } from "./enums";
 
 export const caTypeToNameMap: { [K in CaType]: string } = {

@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 export * from "./Accordion";
 export * from "./Alert";
 export * from "./Badge";
@@ -33,4 +34,3 @@ export * from "./Tabs";
 export * from "./Tag";
 export * from "./TextArea";
 export * from "./Tooltip";
-export * from "./UpgradePlanModal";

@@ -19,7 +19,7 @@ export const useGetLDAPConfig = (organizationId: string) => {
         );
 
         return data;
-      } catch (err) {
+      } catch {
         return null;
       }
     },

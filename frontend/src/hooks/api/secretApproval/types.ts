@@ -14,15 +14,15 @@ export type TSecretApprovalPolicy = {
   enforcementLevel: EnforcementLevel;
 };
 
-export enum ApproverType{
+export enum ApproverType {
   User = "user",
   Group = "group"
 }
 
-export type Approver ={
+export type Approver = {
   id: string;
   type: ApproverType;
-}
+};
 
 export type TGetSecretApprovalPoliciesDTO = {
   workspaceId: string;

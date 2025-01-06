@@ -49,12 +49,12 @@ export const useAppConnectionOptions = (
 };
 
 export const useGetAppConnectionOption = <T extends AppConnection>(app: T) => {
-  const { data: options = [], isLoading } = useAppConnectionOptions();
+  const { data: options = [], isPending } = useAppConnectionOptions();
 
   return useMemo(
     () => ({
       option: (options.find((opt) => opt.app === app) as TAppConnectionOptionMap[T]) ?? {},
-      isLoading
+      isLoading: isPending
     }),
     [options, app]
   );
@@ -74,9 +74,8 @@ export const useListAppConnections = (
   return useQuery({
     queryKey: appConnectionKeys.list(),
     queryFn: async () => {
-      const { data } = await apiRequest.get<TListAppConnections<TAppConnection>>(
-        "/api/v1/app-connections"
-      );
+      const { data } =
+        await apiRequest.get<TListAppConnections<TAppConnection>>("/api/v1/app-connections");
 
       return data.appConnections;
     },

@@ -134,6 +134,7 @@
     "@fastify/rate-limit": "^9.0.0",
     "@fastify/request-context": "^5.1.0",
     "@fastify/session": "^10.7.0",
+    "@fastify/static": "^7.0.4",
     "@fastify/swagger": "^8.14.0",
     "@fastify/swagger-ui": "^2.1.0",
     "@google-cloud/kms": "^4.5.0",

@@ -23,7 +23,7 @@ export const useGetWorkspaceBot = (workspaceId: string) =>
 export const useUpdateBotActiveStatus = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TSetBotActiveStatusDto>({
+  return useMutation<object, object, TSetBotActiveStatusDto>({
     mutationFn: ({ botId, isActive, botKey }) => {
       return apiRequest.patch(`/api/v1/bot/${botId}/active`, {
         isActive,
@@ -31,7 +31,7 @@ export const useUpdateBotActiveStatus = () => {
       });
     },
     onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries(queryKeys.getBot(workspaceId));
+      queryClient.invalidateQueries({ queryKey: queryKeys.getBot(workspaceId) });
     }
   });
 };

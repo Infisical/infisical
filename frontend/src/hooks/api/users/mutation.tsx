@@ -13,7 +13,7 @@ import { AddUserToWsDTOE2EE, AddUserToWsDTONonE2EE } from "./types";
 export const useAddUserToWsE2EE = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, AddUserToWsDTOE2EE>({
+  return useMutation<object, object, AddUserToWsDTOE2EE>({
     mutationFn: async ({ workspaceId, members, decryptKey, userPrivateKey }) => {
       // assymmetrically decrypt symmetric key with local private key
       const key = decryptAssymmetric({
@@ -42,7 +42,7 @@ export const useAddUserToWsE2EE = () => {
       return data;
     },
     onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(workspaceId));
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.getWorkspaceUsers(workspaceId) });
     }
   });
 };
@@ -50,7 +50,7 @@ export const useAddUserToWsE2EE = () => {
 export const useAddUserToWsNonE2EE = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, AddUserToWsDTONonE2EE>({
+  return useMutation<object, object, AddUserToWsDTONonE2EE>({
     mutationFn: async ({ projectId, usernames, roleSlugs }) => {
       const { data } = await apiRequest.post(`/api/v2/workspace/${projectId}/memberships`, {
         usernames,
@@ -59,8 +59,10 @@ export const useAddUserToWsNonE2EE = () => {
       return data;
     },
     onSuccess: (_, { orgId, projectId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(projectId));
-      queryClient.invalidateQueries(userKeys.allOrgMembershipProjectMemberships(orgId));
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.getWorkspaceUsers(projectId) });
+      queryClient.invalidateQueries({
+        queryKey: userKeys.allOrgMembershipProjectMemberships(orgId)
+      });
     }
   });
 };
@@ -110,7 +112,7 @@ export const useUpdateUserProjectFavorites = () => {
       return {};
     },
     onSuccess: (_, { orgId }) => {
-      queryClient.invalidateQueries(userKeys.userProjectFavorites(orgId));
+      queryClient.invalidateQueries({ queryKey: userKeys.userProjectFavorites(orgId) });
     }
   });
 };
@@ -136,7 +138,7 @@ export const useDeleteUserTotpConfiguration = () => {
       return {};
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(userKeys.totpConfiguration);
+      queryClient.invalidateQueries({ queryKey: userKeys.totpConfiguration });
     }
   });
 };
@@ -150,7 +152,7 @@ export const useCreateNewTotpRecoveryCodes = () => {
       return {};
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(userKeys.totpConfiguration);
+      queryClient.invalidateQueries({ queryKey: userKeys.totpConfiguration });
     }
   });
 };

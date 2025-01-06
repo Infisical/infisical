@@ -40,7 +40,7 @@ export const ContentLoader = ({ text, frequency = 2000, className }: Props) => {
         loading="lazy"
       />
       {text && isTextArray && (
-        <AnimatePresence exitBeforeEnter>
+        <AnimatePresence mode="wait">
           <motion.div
             className="text-primary"
             key={`content-loader-${pos}`}

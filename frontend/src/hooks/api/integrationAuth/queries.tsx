@@ -1,6 +1,7 @@
-import { useMutation, useQuery, useQueryClient, UseQueryOptions } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { TReactQueryOptions } from "@app/types/reactQuery";
 
 import { workspaceKeys } from "../workspace";
 import {
@@ -513,15 +514,6 @@ const fetchIntegrationAuthOctopusDeployScopeValues = async ({
   return data;
 };
 
-const fetchIntegrationAuthCircleCIOrganizations = async (integrationAuthId: string) => {
-  const {
-    data: { organizations }
-  } = await apiRequest.get<{
-    organizations: CircleCIOrganization[];
-  }>(`/api/v1/integration-auth/${integrationAuthId}/circleci/organizations`);
-  return organizations;
-};
-
 export const useGetIntegrationAuthById = (integrationAuthId: string) => {
   return useQuery({
     queryKey: integrationAuthKeys.getIntegrationAuthById(integrationAuthId),
@@ -542,11 +534,7 @@ export const useGetIntegrationAuthApps = (
     azureDevOpsOrgName?: string;
     workspaceSlug?: string;
   },
-  options?: UseQueryOptions<
-    Awaited<ReturnType<typeof fetchIntegrationAuthApps>>,
-    unknown,
-    Awaited<ReturnType<typeof fetchIntegrationAuthApps>>
-  >
+  options?: TReactQueryOptions["options"]
 ) => {
   return useQuery({
     queryKey: integrationAuthKeys.getIntegrationAuthApps(integrationAuthId, teamId, workspaceSlug),
@@ -818,11 +806,7 @@ export const useGetIntegrationAuthOctopusDeploySpaces = (integrationAuthId: stri
 
 export const useGetIntegrationAuthOctopusDeployScopeValues = (
   params: TGetIntegrationAuthOctopusDeployScopeValuesDTO,
-  options?: UseQueryOptions<
-    TOctopusDeployVariableSetScopeValues,
-    unknown,
-    TOctopusDeployVariableSetScopeValues
-  >
+  options?: TReactQueryOptions["options"]
 ) =>
   useQuery({
     queryKey: integrationAuthKeys.getIntegrationAuthOctopusDeployScopeValues(params),
@@ -840,7 +824,7 @@ export const useGetIntegrationAuthBitBucketEnvironments = (
     workspaceSlug: string;
     repoSlug: string;
   },
-  options?: UseQueryOptions<BitBucketEnvironment[]>
+  options?: TReactQueryOptions["options"]
 ) => {
   return useQuery({
     queryKey: integrationAuthKeys.getIntegrationAuthBitBucketEnvironments(
@@ -851,6 +835,21 @@ export const useGetIntegrationAuthBitBucketEnvironments = (
     queryFn: () =>
       fetchIntegrationAuthBitBucketEnvironments(integrationAuthId, workspaceSlug, repoSlug),
     ...options
+  });
+};
+
+const fetchIntegrationAuthCircleCIOrganizations = async (integrationAuthId: string) => {
+  const {
+    data: { organizations }
+  } = await apiRequest.get<{
+    organizations: CircleCIOrganization[];
+  }>(`/api/v1/integration-auth/${integrationAuthId}/circleci/organizations`);
+  return organizations;
+};
+export const useGetIntegrationAuthCircleCIOrganizations = (integrationAuthId: string) => {
+  return useQuery({
+    queryKey: integrationAuthKeys.getIntegrationAuthCircleCIOrganizations(integrationAuthId),
+    queryFn: () => fetchIntegrationAuthCircleCIOrganizations(integrationAuthId)
   });
 };
 
@@ -896,13 +895,6 @@ export const useGetIntegrationAuthTeamCityBuildConfigs = ({
   });
 };
 
-export const useGetIntegrationAuthCircleCIOrganizations = (integrationAuthId: string) => {
-  return useQuery({
-    queryKey: integrationAuthKeys.getIntegrationAuthCircleCIOrganizations(integrationAuthId),
-    queryFn: () => fetchIntegrationAuthCircleCIOrganizations(integrationAuthId)
-  });
-};
-
 export const useAuthorizeIntegration = () => {
   const queryClient = useQueryClient();
 
@@ -933,7 +925,9 @@ export const useAuthorizeIntegration = () => {
       return integrationAuth;
     },
     onSuccess: (res) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceAuthorization(res.workspace));
+      queryClient.invalidateQueries({
+        queryKey: { queryKey: workspaceKeys.getWorkspaceAuthorization(res.workspace) }
+      });
     }
   });
 };
@@ -977,7 +971,9 @@ export const useSaveIntegrationAccessToken = () => {
       return integrationAuth;
     },
     onSuccess: (res) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceAuthorization(res.workspace));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceAuthorization(res.workspace)
+      });
     }
   });
 };
@@ -985,7 +981,7 @@ export const useSaveIntegrationAccessToken = () => {
 export const useDeleteIntegrationAuths = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, { integration: string; workspaceId: string }>({
+  return useMutation<object, object, { integration: string; workspaceId: string }>({
     mutationFn: ({ integration, workspaceId }) =>
       apiRequest.delete(
         `/api/v1/integration-auth?${new URLSearchParams({
@@ -994,8 +990,12 @@ export const useDeleteIntegrationAuths = () => {
         })}`
       ),
     onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceAuthorization(workspaceId));
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceIntegrations(workspaceId));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceAuthorization(workspaceId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceIntegrations(workspaceId)
+      });
     }
   });
 };
@@ -1004,11 +1004,15 @@ export const useDeleteIntegrationAuth = () => {
   // not used
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, { id: string; workspaceId: string }>({
+  return useMutation<object, object, { id: string; workspaceId: string }>({
     mutationFn: ({ id }) => apiRequest.delete(`/api/v1/integration-auth/${id}`),
     onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceAuthorization(workspaceId));
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceIntegrations(workspaceId));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceAuthorization(workspaceId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceIntegrations(workspaceId)
+      });
     }
   });
 };

@@ -15,7 +15,7 @@ import { TIntegration } from "../integrations/types";
 import { TPkiAlert } from "../pkiAlerts/types";
 import { TPkiCollection } from "../pkiCollections/types";
 import { EncryptedSecret } from "../secrets/types";
-import { TSshCertificate, TSshCertificateAuthority } from "../ssh-ca/types";
+import { TSshCertificate, TSshCertificateAuthority } from "../sshCa/types";
 import { TSshCertificateTemplate } from "../sshCertificateTemplates/types";
 import { userKeys } from "../users/query-keys";
 import { TWorkspaceUser } from "../users/types";
@@ -41,7 +41,7 @@ import {
   Workspace
 } from "./types";
 
-const fetchWorkspaceById = async (workspaceId: string) => {
+export const fetchWorkspaceById = async (workspaceId: string) => {
   const { data } = await apiRequest.get<{ workspace: Workspace }>(
     `/api/v1/workspace/${workspaceId}`
   );
@@ -78,21 +78,22 @@ export const fetchWorkspaceSecrets = async (workspaceId: string) => {
 export const useUpgradeProject = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, { projectId: string; privateKey: string }>({
+  return useMutation<object, object, { projectId: string; privateKey: string }>({
     mutationFn: ({ projectId, privateKey }) => {
       return apiRequest.post(`/api/v2/workspace/${projectId}/upgrade`, {
         userPrivateKey: privateKey
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace(ProjectType.SecretManager));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getAllUserWorkspace()
+      });
     }
   });
 };
 
 export const useGetUpgradeProjectStatus = ({
   projectId,
-  onSuccess,
   enabled,
   refetchInterval
 }: TGetUpgradeProjectStatusDTO) => {
@@ -100,7 +101,6 @@ export const useGetUpgradeProjectStatus = ({
     queryKey: workspaceKeys.getProjectUpgradeStatus(projectId),
     queryFn: () => fetchProjectUpgradeStatus(projectId),
     enabled,
-    onSuccess,
     refetchInterval
   });
 };
@@ -150,9 +150,10 @@ export const useGetUserWorkspaces = ({
   includeRoles?: boolean;
   type?: ProjectType | "all";
 } = {}) =>
-  useQuery(workspaceKeys.getAllUserWorkspace(type || ""), () =>
-    fetchUserWorkspaces(includeRoles, type)
-  );
+  useQuery({
+    queryKey: workspaceKeys.getAllUserWorkspace(type),
+    queryFn: () => fetchUserWorkspaces(includeRoles, type)
+  });
 
 const fetchUserWorkspaceMemberships = async (orgId: string) => {
   const { data } = await apiRequest.get<Record<string, Workspace[]>>(
@@ -173,13 +174,15 @@ export const useGetUserWorkspaceMemberships = (orgId: string) =>
 export const useNameWorkspaceSecrets = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, NameWorkspaceSecretsDTO>({
+  return useMutation<object, object, NameWorkspaceSecretsDTO>({
     mutationFn: async ({ workspaceId, secretsToUpdate }) =>
       apiRequest.post(`/api/v3/workspaces/${workspaceId}/secrets/names`, {
         secretsToUpdate
       }),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceIndexStatus(variables.workspaceId));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceIndexStatus(variables.workspaceId)
+      });
     }
   });
 };
@@ -227,7 +230,7 @@ export const createWorkspace = (
 export const useCreateWorkspace = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{ data: { project: Workspace } }, {}, CreateWorkspaceDTO>({
+  return useMutation<{ data: { project: Workspace } }, object, CreateWorkspaceDTO>({
     mutationFn: async ({ projectName, projectDescription, kmsKeyId, template, type }) =>
       createWorkspace({
         projectName,
@@ -237,7 +240,9 @@ export const useCreateWorkspace = () => {
         type
       }),
     onSuccess: (dto) => {
-      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace(dto.data.project.type));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getAllUserWorkspace(dto.data.project.type)
+      });
     }
   });
 };
@@ -245,7 +250,7 @@ export const useCreateWorkspace = () => {
 export const useUpdateProject = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<Workspace, {}, UpdateProjectDTO>({
+  return useMutation<Workspace, object, UpdateProjectDTO>({
     mutationFn: async ({ projectID, newProjectName, newProjectDescription }) => {
       const { data } = await apiRequest.patch<{ workspace: Workspace }>(
         `/api/v1/workspace/${projectID}`,
@@ -256,8 +261,8 @@ export const useUpdateProject = () => {
       );
       return data.workspace;
     },
-    onSuccess: (dto) => {
-      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace(dto.type));
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace() });
     }
   });
 };
@@ -265,7 +270,7 @@ export const useUpdateProject = () => {
 export const useToggleAutoCapitalization = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<Workspace, {}, ToggleAutoCapitalizationDTO>({
+  return useMutation<Workspace, object, ToggleAutoCapitalizationDTO>({
     mutationFn: async ({ workspaceID, state }) => {
       const { data } = await apiRequest.post<{ workspace: Workspace }>(
         `/api/v1/workspace/${workspaceID}/auto-capitalization`,
@@ -275,8 +280,8 @@ export const useToggleAutoCapitalization = () => {
       );
       return data.workspace;
     },
-    onSuccess: (dto) => {
-      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace(dto.type));
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace() });
     }
   });
 };
@@ -284,15 +289,15 @@ export const useToggleAutoCapitalization = () => {
 export const useUpdateWorkspaceVersionLimit = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<Workspace, {}, UpdatePitVersionLimitDTO>({
+  return useMutation<Workspace, object, UpdatePitVersionLimitDTO>({
     mutationFn: async ({ projectSlug, pitVersionLimit }) => {
       const { data } = await apiRequest.put(`/api/v1/workspace/${projectSlug}/version-limit`, {
         pitVersionLimit
       });
       return data.workspace;
     },
-    onSuccess: (dto) => {
-      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace(dto.type));
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace() });
     }
   });
 };
@@ -300,7 +305,7 @@ export const useUpdateWorkspaceVersionLimit = () => {
 export const useUpdateWorkspaceAuditLogsRetention = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<Workspace, {}, UpdateAuditLogsRetentionDTO>({
+  return useMutation<Workspace, object, UpdateAuditLogsRetentionDTO>({
     mutationFn: async ({ projectSlug, auditLogsRetentionDays }) => {
       const { data } = await apiRequest.put(
         `/api/v1/workspace/${projectSlug}/audit-logs-retention`,
@@ -311,7 +316,7 @@ export const useUpdateWorkspaceAuditLogsRetention = () => {
       return data.workspace;
     },
     onSuccess: (dto) => {
-      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace(dto.type));
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace(dto.type) });
     }
   });
 };
@@ -319,14 +324,16 @@ export const useUpdateWorkspaceAuditLogsRetention = () => {
 export const useDeleteWorkspace = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<Workspace, {}, DeleteWorkspaceDTO>({
+  return useMutation<Workspace, object, DeleteWorkspaceDTO>({
     mutationFn: async ({ workspaceID }) => {
       const { data } = await apiRequest.delete(`/api/v1/workspace/${workspaceID}`);
       return data.workspace;
     },
     onSuccess: (dto) => {
-      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace(dto.type));
-      queryClient.invalidateQueries(["org-admin-projects"]);
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace(dto.type) });
+      queryClient.invalidateQueries({
+        queryKey: ["org-admin-projects"]
+      });
     }
   });
 };
@@ -334,7 +341,7 @@ export const useDeleteWorkspace = () => {
 export const useCreateWsEnvironment = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, CreateEnvironmentDTO>({
+  return useMutation<object, object, CreateEnvironmentDTO>({
     mutationFn: ({ workspaceId, name, slug }) => {
       return apiRequest.post(`/api/v1/workspace/${workspaceId}/environments`, {
         name,
@@ -342,7 +349,9 @@ export const useCreateWsEnvironment = () => {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace(ProjectType.SecretManager));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getAllUserWorkspace()
+      });
     }
   });
 };
@@ -350,7 +359,7 @@ export const useCreateWsEnvironment = () => {
 export const useUpdateWsEnvironment = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, UpdateEnvironmentDTO>({
+  return useMutation<object, object, UpdateEnvironmentDTO>({
     mutationFn: ({ workspaceId, id, name, slug, position }) => {
       return apiRequest.patch(`/api/v1/workspace/${workspaceId}/environments/${id}`, {
         name,
@@ -359,7 +368,9 @@ export const useUpdateWsEnvironment = () => {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace(ProjectType.SecretManager));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getAllUserWorkspace()
+      });
     }
   });
 };
@@ -367,12 +378,14 @@ export const useUpdateWsEnvironment = () => {
 export const useDeleteWsEnvironment = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, DeleteEnvironmentDTO>({
+  return useMutation<object, object, DeleteEnvironmentDTO>({
     mutationFn: ({ id, workspaceId }) => {
       return apiRequest.delete(`/api/v1/workspace/${workspaceId}/environments/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace(ProjectType.SecretManager));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getAllUserWorkspace()
+      });
     }
   });
 };
@@ -432,8 +445,10 @@ export const useDeleteUserFromWorkspace = () => {
       return deletedMembership;
     },
     onSuccess: (_, { orgId, workspaceId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(workspaceId));
-      queryClient.invalidateQueries(userKeys.allOrgMembershipProjectMemberships(orgId));
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.getWorkspaceUsers(workspaceId) });
+      queryClient.invalidateQueries({
+        queryKey: userKeys.allOrgMembershipProjectMemberships(orgId)
+      });
     }
   });
 };
@@ -453,10 +468,10 @@ export const useUpdateUserWorkspaceRole = () => {
       return membership;
     },
     onSuccess: (_, { workspaceId, membershipId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(workspaceId));
-      queryClient.invalidateQueries(
-        workspaceKeys.getWorkspaceUserDetails(workspaceId, membershipId)
-      );
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.getWorkspaceUsers(workspaceId) });
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceUserDetails(workspaceId, membershipId)
+      });
     }
   });
 };
@@ -485,8 +500,12 @@ export const useAddIdentityToWorkspace = () => {
       return identityMembership;
     },
     onSuccess: (_, { identityId, workspaceId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceIdentityMemberships(workspaceId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityProjectMemberships(identityId));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceIdentityMemberships(workspaceId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityProjectMemberships(identityId)
+      });
     }
   });
 };
@@ -507,11 +526,15 @@ export const useUpdateIdentityWorkspaceRole = () => {
       return identityMembership;
     },
     onSuccess: (_, { identityId, workspaceId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceIdentityMemberships(workspaceId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityProjectMemberships(identityId));
-      queryClient.invalidateQueries(
-        workspaceKeys.getWorkspaceIdentityMembershipDetails(workspaceId, identityId)
-      );
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceIdentityMemberships(workspaceId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityProjectMemberships(identityId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceIdentityMembershipDetails(workspaceId, identityId)
+      });
     }
   });
 };
@@ -534,8 +557,12 @@ export const useDeleteIdentityFromWorkspace = () => {
       return identityMembership;
     },
     onSuccess: (_, { identityId, workspaceId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceIdentityMemberships(workspaceId));
-      queryClient.invalidateQueries(identitiesKeys.getIdentityProjectMemberships(identityId));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceIdentityMemberships(workspaceId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityProjectMemberships(identityId)
+      });
     }
   });
 };

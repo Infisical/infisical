@@ -22,7 +22,7 @@ export const useCreateCmek = () => {
       return data;
     },
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries(cmekKeys.getCmeksByProjectId({ projectId }));
+      queryClient.invalidateQueries({ queryKey: cmekKeys.getCmeksByProjectId({ projectId }) });
     }
   });
 };
@@ -40,7 +40,7 @@ export const useUpdateCmek = () => {
       return data;
     },
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries(cmekKeys.getCmeksByProjectId({ projectId }));
+      queryClient.invalidateQueries({ queryKey: cmekKeys.getCmeksByProjectId({ projectId }) });
     }
   });
 };
@@ -54,7 +54,7 @@ export const useDeleteCmek = () => {
       return data;
     },
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries(cmekKeys.getCmeksByProjectId({ projectId }));
+      queryClient.invalidateQueries({ queryKey: cmekKeys.getCmeksByProjectId({ projectId }) });
     }
   });
 };

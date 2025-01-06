@@ -213,7 +213,7 @@ export const accessApprovalRequestServiceFactory = ({
       );
 
       const requesterFullName = `${requestedByUser.firstName} ${requestedByUser.lastName}`;
-      const approvalUrl = `${cfg.SITE_URL}/project/${project.id}/approval`;
+      const approvalUrl = `${cfg.SITE_URL}/secret-manager/${project.id}/approval`;
 
       await triggerSlackNotification({
         projectId: project.id,
