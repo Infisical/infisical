@@ -148,7 +148,7 @@ export const CreateDynamicSecretForm = ({
         subTitle="Configure dynamic secret parameters"
         className="my-4 max-w-3xl"
       >
-        <AnimatePresence exitBeforeEnter>
+        <AnimatePresence mode="wait">
           {wizardStep === WizardSteps.SelectProvider && (
             <motion.div
               key="select-type-step"

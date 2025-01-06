@@ -45,7 +45,7 @@ export const SelectImportFromPlatformModal = ({ isOpen, onToggle }: Props) => {
         }
         className="my-4"
       >
-        <AnimatePresence exitBeforeEnter>
+        <AnimatePresence mode="wait">
           {wizardStep === WizardSteps.SelectPlatform && (
             <motion.div
               key="select-type-step"
