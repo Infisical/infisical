@@ -107,7 +107,7 @@ export const RegionSelect = () => {
         ))}
       </Select>
       <Modal>
-        <ModalTrigger>
+        <ModalTrigger asChild>
           <button type="button" className="mt-1 text-right text-xs text-mineshaft-400 underline">
             Help me pick a data region
           </button>

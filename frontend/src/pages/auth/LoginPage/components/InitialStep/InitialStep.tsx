@@ -11,8 +11,8 @@ import { RegionSelect } from "@app/components/navigation/RegionSelect";
 import { createNotification } from "@app/components/notifications";
 import attemptCliLogin from "@app/components/utilities/attemptCliLogin";
 import attemptLogin from "@app/components/utilities/attemptLogin";
-import { CAPTCHA_SITE_KEY } from "@app/components/utilities/config";
 import { Button, IconButton, Input, Tooltip } from "@app/components/v2";
+import { envConfig } from "@app/config/env";
 import { useServerConfig } from "@app/context";
 import { useFetchServerStatus } from "@app/hooks/api";
 import { LoginMethod } from "@app/hooks/api/admin/types";
@@ -351,11 +351,11 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
               className="select:-webkit-autofill:focus h-10"
             />
           </div>
-          {shouldShowCaptcha && (
+          {shouldShowCaptcha && envConfig.CAPTCHA_SITE_KEY && (
             <div className="mt-4">
               <HCaptcha
                 theme="dark"
-                sitekey={CAPTCHA_SITE_KEY}
+                sitekey={envConfig.CAPTCHA_SITE_KEY}
                 onVerify={(token) => setCaptchaToken(token)}
                 ref={captchaRef}
               />

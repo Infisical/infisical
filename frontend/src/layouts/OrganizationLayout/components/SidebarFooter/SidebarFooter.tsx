@@ -17,6 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@app/components/v2";
+import { envConfig } from "@app/config/env";
 import { useOrganization, useSubscription } from "@app/context";
 import { useGetOrgTrialUrl } from "@app/hooks/api";
 
@@ -48,8 +49,6 @@ export const SidebarFooter = () => {
   const { currentOrg } = useOrganization();
 
   const { mutateAsync } = useGetOrgTrialUrl();
-
-  const infisicalPlatformVersion = import.meta.env.VITE_INFISICAL_PLATFORM_VERSION;
 
   return (
     <div
@@ -96,10 +95,10 @@ export const SidebarFooter = () => {
               </a>
             </DropdownMenuItem>
           ))}
-          {infisicalPlatformVersion && (
+          {envConfig.PLATFORM_VERSION && (
             <div className="mb-2 mt-2 w-full cursor-default pl-5 text-sm duration-200 hover:text-mineshaft-200">
               <FontAwesomeIcon icon={faInfo} className="mr-4 px-[0.1rem]" />
-              Version: {infisicalPlatformVersion}
+              Version: {envConfig.PLATFORM_VERSION}
             </div>
           )}
         </DropdownMenuContent>

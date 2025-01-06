@@ -10,6 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@app/components/v2";
+import { envConfig } from "@app/config/env";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { InsecureConnectionBanner } from "../OrganizationLayout/components/InsecureConnectionBanner";
@@ -17,8 +18,6 @@ import { INFISICAL_SUPPORT_OPTIONS } from "../OrganizationLayout/components/Side
 
 export const AdminLayout = () => {
   const { t } = useTranslation();
-
-  const infisicalPlatformVersion = import.meta.env.VITE_INFISICAL_PLATFORM_VERSION;
 
   return (
     <>
@@ -61,10 +60,10 @@ export const AdminLayout = () => {
                         </a>
                       </DropdownMenuItem>
                     ))}
-                    {infisicalPlatformVersion && (
+                    {envConfig.PLATFORM_VERSION && (
                       <div className="mb-2 mt-2 w-full cursor-default pl-5 text-sm duration-200 hover:text-mineshaft-200">
                         <FontAwesomeIcon icon={faInfo} className="mr-4 px-[0.1rem]" />
-                        Version: {infisicalPlatformVersion}
+                        Version: {envConfig.PLATFORM_VERSION}
                       </div>
                     )}
                   </DropdownMenuContent>

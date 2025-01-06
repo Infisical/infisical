@@ -10,9 +10,9 @@ import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
 import attemptCliLogin from "@app/components/utilities/attemptCliLogin";
 import attemptLogin from "@app/components/utilities/attemptLogin";
-import { CAPTCHA_SITE_KEY } from "@app/components/utilities/config";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, Input, Spinner } from "@app/components/v2";
+import { envConfig } from "@app/config/env";
 import { SessionStorageKeys } from "@app/const";
 import { useToggle } from "@app/hooks";
 import { useOauthTokenExchange, useSelectOrganization } from "@app/hooks/api";
@@ -329,11 +329,11 @@ export const PasswordStep = ({ providerAuthToken, email, password, setPassword }
           />
         </div>
       </div>
-      {shouldShowCaptcha && (
+      {shouldShowCaptcha && envConfig.CAPTCHA_SITE_KEY && (
         <div className="mx-auto mt-4 flex w-full min-w-[22rem] items-center justify-center lg:w-1/6">
           <HCaptcha
             theme="dark"
-            sitekey={CAPTCHA_SITE_KEY}
+            sitekey={envConfig.CAPTCHA_SITE_KEY}
             onVerify={(token) => setCaptchaToken(token)}
             ref={captchaRef}
           />
