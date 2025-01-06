@@ -135,7 +135,7 @@ export const OrganizationLayout = () => {
                       <Link to="/organization/billing">
                         {({ isActive }) => (
                           <MenuItem isSelected={isActive} icon="spinning-coin">
-                            Usage &amps; Billing
+                            Usage & Billing
                           </MenuItem>
                         )}
                       </Link>
