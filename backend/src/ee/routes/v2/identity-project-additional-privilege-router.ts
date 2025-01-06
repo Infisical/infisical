@@ -7,6 +7,7 @@ import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-p
 import { IDENTITY_ADDITIONAL_PRIVILEGE_V2 } from "@app/lib/api-docs";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedIdentityPrivilegeSchema } from "@app/server/routes/santizedSchemas/identitiy-additional-privilege";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -28,17 +29,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       body: z.object({
         identityId: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.CREATE.identityId),
         projectId: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.CREATE.projectId),
-        slug: z
-          .string()
-          .min(1)
-          .max(60)
-          .trim()
-          .refine((val) => val.toLowerCase() === val, "Must be lowercase")
-          .refine((v) => slugify(v) === v, {
-            message: "Slug must be a valid slug"
-          })
-          .optional()
-          .describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.CREATE.slug),
+        slug: slugSchema({ min: 1, max: 60 }).optional().describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.CREATE.slug),
         permissions: ProjectPermissionV2Schema.array().describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.CREATE.permission),
         type: z.discriminatedUnion("isTemporary", [
           z.object({
@@ -100,16 +91,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         id: z.string().trim().describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.UPDATE.id)
       }),
       body: z.object({
-        slug: z
-          .string()
-          .min(1)
-          .max(60)
-          .trim()
-          .refine((val) => val.toLowerCase() === val, "Must be lowercase")
-          .refine((v) => slugify(v) === v, {
-            message: "Slug must be a valid slug"
-          })
-          .describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.UPDATE.slug),
+        slug: slugSchema({ min: 1, max: 60 }).describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.UPDATE.slug),
         permissions: ProjectPermissionV2Schema.array()
           .optional()
           .describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.UPDATE.privilegePermission),

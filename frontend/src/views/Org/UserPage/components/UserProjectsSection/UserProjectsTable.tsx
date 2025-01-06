@@ -108,6 +108,7 @@ export const UserProjectsTable = ({ membershipId, handlePopUpOpen }: Props) => {
                   </IconButton>
                 </div>
               </Th>
+              <Th>Type</Th>
               <Th>Role</Th>
               <Th className="w-5" />
             </Tr>

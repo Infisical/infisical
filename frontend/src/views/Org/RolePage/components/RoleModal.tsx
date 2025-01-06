@@ -9,12 +9,13 @@ import { Button, FormControl, Input, Modal, ModalContent } from "@app/components
 import { useOrganization } from "@app/context";
 import { useCreateOrgRole, useGetOrgRole, useUpdateOrgRole } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { slugSchema } from "@app/lib/schemas";
 
 const schema = z
   .object({
     name: z.string(),
     description: z.string(),
-    slug: z.string()
+    slug: slugSchema({ min: 1 })
   })
   .required();
 
@@ -70,12 +71,6 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const onFormSubmit = async ({ name, description, slug }: FormData) => {
     try {
-      console.log("onFormSubmit args: ", {
-        name,
-        description,
-        slug
-      });
-
       if (!orgId) return;
 
       if (role) {

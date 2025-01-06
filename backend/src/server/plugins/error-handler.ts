@@ -1,8 +1,10 @@
 import { ForbiddenError, PureAbility } from "@casl/ability";
+import opentelemetry from "@opentelemetry/api";
 import fastifyPlugin from "fastify-plugin";
 import jwt from "jsonwebtoken";
 import { ZodError } from "zod";
 
+import { getConfig } from "@app/lib/config/env";
 import {
   BadRequestError,
   DatabaseError,
@@ -35,8 +37,30 @@ enum HttpStatusCodes {
 }
 
 export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider) => {
+  const appCfg = getConfig();
+
+  const apiMeter = opentelemetry.metrics.getMeter("API");
+  const errorHistogram = apiMeter.createHistogram("API_errors", {
+    description: "API errors by type, status code, and name",
+    unit: "1"
+  });
+
   server.setErrorHandler((error, req, res) => {
     req.log.error(error);
+    if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+      const { method } = req;
+      const route = req.routerPath;
+      const errorType =
+        error instanceof jwt.JsonWebTokenError ? "TokenError" : error.constructor.name || "UnknownError";
+
+      errorHistogram.record(1, {
+        route,
+        method,
+        type: errorType,
+        name: error.name
+      });
+    }
+
     if (error instanceof BadRequestError) {
       void res
         .status(HttpStatusCodes.BadRequest)
@@ -52,11 +76,18 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         message: error.message,
         error: error.name
       });
-    } else if (error instanceof DatabaseError || error instanceof InternalServerError) {
+    } else if (error instanceof DatabaseError) {
       void res.status(HttpStatusCodes.InternalServerError).send({
         reqId: req.id,
         statusCode: HttpStatusCodes.InternalServerError,
         message: "Something went wrong",
+        error: error.name
+      });
+    } else if (error instanceof InternalServerError) {
+      void res.status(HttpStatusCodes.InternalServerError).send({
+        reqId: req.id,
+        statusCode: HttpStatusCodes.InternalServerError,
+        message: error.message ?? "Something went wrong",
         error: error.name
       });
     } else if (error instanceof GatewayTimeoutError) {

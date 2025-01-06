@@ -6,7 +6,8 @@ import z from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
-import { useCreateOrg, useSelectOrganization } from "@app/hooks/api";
+import { useCreateOrg, useGetOrganizations, useSelectOrganization } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 const schema = z
   .object({
@@ -22,8 +23,9 @@ interface CreateOrgModalProps {
 }
 
 export const CreateOrgModal: FC<CreateOrgModalProps> = ({ isOpen, onClose }) => {
-  
   const router = useRouter();
+
+  const { refetch: refetchOrganizations } = useGetOrganizations();
 
   const {
     control,
@@ -49,18 +51,20 @@ export const CreateOrgModal: FC<CreateOrgModalProps> = ({ isOpen, onClose }) => 
       });
 
       await selectOrg({
-        organizationId: organization.id
+        organizationId: organization.id,
+        forceSetCredentials: true
       });
+
+      await refetchOrganizations();
 
       createNotification({
         text: "Successfully created organization",
         type: "success"
       });
 
-      if (router.isReady) router.push(`/org/${organization.id}/overview`);
-      else window.location.href = `/org/${organization.id}/overview`;
-
-      localStorage.setItem("orgData.id", organization.id);
+      if (router.isReady)
+        router.push(`/org/${organization.id}/${ProjectType.SecretManager}/overview`);
+      else window.location.href = `/org/${organization.id}/${ProjectType.SecretManager}/overview`;
 
       reset();
       onClose();

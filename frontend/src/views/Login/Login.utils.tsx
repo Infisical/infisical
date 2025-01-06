@@ -3,16 +3,17 @@ import { NextRouter, useRouter } from "next/router";
 import { useServerConfig } from "@app/context";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { userKeys } from "@app/hooks/api/users";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 import { queryClient } from "@app/reactQuery";
 
 export const navigateUserToOrg = async (router: NextRouter, organizationId?: string) => {
-  const userOrgs = await fetchOrganizations();
+  const userOrgs = await fetchOrganizations().catch(() => []);
 
   const nonAuthEnforcedOrgs = userOrgs.filter((org) => !org.authEnforced);
 
   if (organizationId) {
     localStorage.setItem("orgData.id", organizationId);
-    router.push(`/org/${organizationId}/overview`);
+    router.push(`/org/${organizationId}/${ProjectType.SecretManager}/overview`);
     return;
   }
 
@@ -20,7 +21,7 @@ export const navigateUserToOrg = async (router: NextRouter, organizationId?: str
     // user is part of at least 1 non-auth enforced org
     const userOrg = nonAuthEnforcedOrgs[0] && nonAuthEnforcedOrgs[0].id;
     localStorage.setItem("orgData.id", userOrg);
-    router.push(`/org/${userOrg}/overview`);
+    router.push(`/org/${userOrg}/${ProjectType.SecretManager}/overview`);
   } else {
     // user is not part of any non-auth enforced orgs
     localStorage.removeItem("orgData.id");

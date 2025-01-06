@@ -5,6 +5,7 @@ import { faBugs, faHome } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Button } from "@app/components/v2";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -62,7 +63,7 @@ const ErrorPage = ({ error }: { error: Error | null }) => {
             size="xs"
             onClick={() =>
               // we need to go to /org/${orgId}/overview, but we need to do a full page reload to ensure that the error the user is facing is properly reset.
-              window.location.assign(`/org/${orgId}/overview`)
+              window.location.assign(`/org/${orgId}/${ProjectType.SecretManager}/overview`)
             }
           >
             <FontAwesomeIcon icon={faHome} className="mr-2" />

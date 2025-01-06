@@ -15,7 +15,7 @@ import {
 
 /* eslint-disable no-bitwise */
 export const createSerialNumber = () => {
-  const randomBytes = crypto.randomBytes(20);
+  const randomBytes = crypto.randomBytes(20); // 20 bytes = 160 bits
   randomBytes[0] &= 0x7f; // ensure the first bit is 0
   return randomBytes.toString("hex");
 };

@@ -1,13 +1,13 @@
 import { Controller, useForm } from "react-hook-form";
-import { yupResolver } from "@hookform/resolvers/yup";
-import slugify from "@sindresorhus/slugify";
-import * as yup from "yup";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { useUpdateWsEnvironment } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { slugSchema } from "@app/lib/schemas";
 
 type Props = {
   popUp: UsePopUpState<["updateEnv"]>;
@@ -15,25 +15,18 @@ type Props = {
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["updateEnv"]>, state?: boolean) => void;
 };
 
-const schema = yup.object({
-  name: yup.string().label("Environment Name").required(),
-  slug: yup
-    .string()
-    .label("Environment Slug")
-    .test({
-      test: (slug) => slugify(slug as string) === slug,
-      message: "Slug must be a valid slug"
-    })
-    .required()
+const schema = z.object({
+  name: z.string(),
+  slug: slugSchema({ min: 1 })
 });
 
-export type FormData = yup.InferType<typeof schema>;
+export type FormData = z.infer<typeof schema>;
 
 export const UpdateEnvironmentModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props) => {
   const { currentWorkspace } = useWorkspace();
   const { mutateAsync, isLoading } = useUpdateWsEnvironment();
   const { control, handleSubmit, reset } = useForm<FormData>({
-    resolver: yupResolver(schema),
+    resolver: zodResolver(schema),
     values: popUp.updateEnv.data as FormData
   });
 

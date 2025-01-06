@@ -1,5 +1,7 @@
 import { useRouter } from "next/router";
 
+import { ProjectType } from "@app/hooks/api/workspace/types";
+
 import { Button } from "../v2";
 
 interface IProps {
@@ -20,7 +22,7 @@ export const NoEnvironmentsBanner = ({ projectId }: IProps) => {
         </p>
       </div>
       <div className="my-2">
-        <Button onClick={() => router.push(`/project/${projectId}/settings#environments`)}>
+        <Button onClick={() => router.push(`/${ProjectType.SecretManager}/${projectId}/settings#environments`)}>
           Add environments
         </Button>
       </div>

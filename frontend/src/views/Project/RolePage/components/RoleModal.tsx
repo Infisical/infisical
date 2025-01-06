@@ -13,12 +13,13 @@ import {
   useUpdateProjectRole
 } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { slugSchema } from "@app/lib/schemas";
 
 const schema = z
   .object({
     name: z.string(),
     description: z.string(),
-    slug: z.string()
+    slug: slugSchema({ min: 1 })
   })
   .required();
 
@@ -98,7 +99,7 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
           permissions: []
         });
 
-        router.push(`/project/${currentWorkspace?.id}/roles/${newRole.slug}`);
+        router.push(`/${currentWorkspace?.type}/${currentWorkspace?.id}/roles/${newRole.slug}`);
         handlePopUpToggle("role", false);
       }
 

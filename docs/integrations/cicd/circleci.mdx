@@ -11,21 +11,30 @@ Prerequisites:
   <Step title="Authorize Infisical for CircleCI">
     Obtain an API token in User Settings > Personal API Tokens
 
-    ![integrations circleci token](../../images/integrations/circleci/integrations-circleci-token.png)
+    ![integrations circleci token](/images/integrations/circleci/integrations-circleci-token.png)
 
     Navigate to your project's integrations tab in Infisical.
 
-    ![integrations](../../images/integrations.png)
+    ![integrations](/images/integrations.png)
 
     Press on the CircleCI tile and input your CircleCI API token to grant Infisical access to your CircleCI account.
 
-    ![integrations circleci authorization](../../images/integrations/circleci/integrations-circleci-auth.png)
+    ![integrations circleci authorization](/images/integrations/circleci/integrations-circleci-auth.png)
 
   </Step>
   <Step title="Start integration">
-    Select which Infisical environment secrets you want to sync to which CircleCI project and press create integration to start syncing secrets to CircleCI.
+    Select which Infisical environment secrets you want to sync to which CircleCI project or context.
+    <Tabs>
+      <Tab title="Project">
+        ![integrations circle ci project](/images/integrations/circleci/integrations-circleci-create-project.png)
+      </Tab>
+      <Tab title="Context">
+        ![integrations circle ci project](/images/integrations/circleci/integrations-circleci-create-context.png)
+      </Tab>
+    </Tabs>
 
-    ![create integration circleci](../../images/integrations/circleci/integrations-circleci-create.png)
-    ![integrations circleci](../../images/integrations/circleci/integrations-circleci.png)
+    Finally, press create integration to start syncing secrets to CircleCI.
+    ![integrations circleci](/images/integrations/circleci/integrations-circleci.png)
+
   </Step>
 </Steps>

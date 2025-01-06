@@ -13,6 +13,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import queryString from "query-string";
 
 import { useCreateIntegration } from "@app/hooks/api";
+import { IntegrationSyncBehavior } from "@app/hooks/api/integrations/types";
 
 import {
   Button,
@@ -36,12 +37,26 @@ const vercelEnvironments = [
   { name: "Production", slug: "production" }
 ];
 
+const initialSyncBehaviors = [
+  {
+    label: "No Import - Overwrite all values in Vercel",
+    value: IntegrationSyncBehavior.OVERWRITE_TARGET
+  },
+  {
+    label: "Import - Prefer values from Infisical",
+    value: IntegrationSyncBehavior.PREFER_SOURCE
+  }
+];
+
 export default function VercelCreateIntegrationPage() {
   const router = useRouter();
   const { mutateAsync } = useCreateIntegration();
 
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
   const [secretPath, setSecretPath] = useState("/");
+  const [initialSyncBehavior, setInitialSyncBehavior] = useState<IntegrationSyncBehavior>(
+    IntegrationSyncBehavior.PREFER_SOURCE
+  );
   const [targetAppId, setTargetAppId] = useState("");
   const [targetEnvironment, setTargetEnvironment] = useState("");
   const [targetBranch, setTargetBranch] = useState("");
@@ -104,7 +119,10 @@ export default function VercelCreateIntegrationPage() {
         sourceEnvironment: selectedSourceEnvironment,
         targetEnvironment,
         path,
-        secretPath
+        secretPath,
+        metadata: {
+          initialSyncBehavior
+        }
       });
 
       setIsLoading(false);
@@ -231,6 +249,21 @@ export default function VercelCreateIntegrationPage() {
             </Select>
           </FormControl>
         )}
+
+        <FormControl label="Initial Sync Behavior" className="px-6">
+          <Select
+            value={initialSyncBehavior}
+            onValueChange={(val) => setInitialSyncBehavior(val as IntegrationSyncBehavior)}
+            className="w-full border border-mineshaft-500 text-sm"
+          >
+            {initialSyncBehaviors.map((syncBehavior) => (
+              <SelectItem value={syncBehavior.value} key={`sync-behavior-${syncBehavior.value}`}>
+                {syncBehavior.label}
+              </SelectItem>
+            ))}
+          </Select>
+        </FormControl>
+
         <Button
           onClick={handleButtonClick}
           color="mineshaft"

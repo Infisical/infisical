@@ -1,10 +1,10 @@
-import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { ProjectEnvironmentsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ENVIRONMENTS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -124,13 +124,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         name: z.string().trim().describe(ENVIRONMENTS.CREATE.name),
         position: z.number().min(1).optional().describe(ENVIRONMENTS.CREATE.position),
-        slug: z
-          .string()
-          .trim()
-          .refine((v) => slugify(v) === v, {
-            message: "Slug must be a valid slug"
-          })
-          .describe(ENVIRONMENTS.CREATE.slug)
+        slug: slugSchema({ max: 64 }).describe(ENVIRONMENTS.CREATE.slug)
       }),
       response: {
         200: z.object({
@@ -188,14 +182,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         id: z.string().trim().describe(ENVIRONMENTS.UPDATE.id)
       }),
       body: z.object({
-        slug: z
-          .string()
-          .trim()
-          .optional()
-          .refine((v) => !v || slugify(v) === v, {
-            message: "Slug must be a valid slug"
-          })
-          .describe(ENVIRONMENTS.UPDATE.slug),
+        slug: slugSchema({ max: 64 }).optional().describe(ENVIRONMENTS.UPDATE.slug),
         name: z.string().trim().optional().describe(ENVIRONMENTS.UPDATE.name),
         position: z.number().optional().describe(ENVIRONMENTS.UPDATE.position)
       }),

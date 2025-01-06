@@ -72,7 +72,7 @@ ModalContent.displayName = "ModalContent";
 
 export type ModalProps = Omit<DialogPrimitive.DialogProps, "open"> & { isOpen?: boolean };
 export const Modal = ({ isOpen, ...props }: ModalProps) => (
-  <DialogPrimitive.Root open={isOpen} {...props} />
+  <DialogPrimitive.Root open={isOpen} {...props} modal/>
 );
 
 export const ModalTrigger = DialogPrimitive.Trigger;

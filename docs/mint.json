@@ -32,10 +32,7 @@
     "thumbsRating": true
   },
   "api": {
-    "baseUrl": [
-      "https://app.infisical.com",
-      "http://localhost:8080"
-    ]
+    "baseUrl": ["https://app.infisical.com", "http://localhost:8080"]
   },
   "topbarLinks": [
     {
@@ -76,9 +73,7 @@
         "documentation/getting-started/introduction",
         {
           "group": "Quickstart",
-          "pages": [
-            "documentation/guides/local-development"
-          ]
+          "pages": ["documentation/guides/local-development"]
         },
         {
           "group": "Guides",
@@ -119,6 +114,7 @@
             "documentation/platform/pki/alerting"
           ]
         },
+        "documentation/platform/ssh",
         {
           "group": "Key Management (KMS)",
           "pages": [
@@ -229,6 +225,7 @@
         "documentation/platform/identities/gcp-auth",
         "documentation/platform/identities/azure-auth",
         "documentation/platform/identities/aws-auth",
+        "documentation/platform/identities/jwt-auth",
         {
           "group": "OIDC Auth",
           "pages": [
@@ -323,6 +320,7 @@
             "cli/commands/run",
             "cli/commands/secrets",
             "cli/commands/dynamic-secrets",
+            "cli/commands/ssh",
             "cli/commands/export",
             "cli/commands/token",
             "cli/commands/service-token",
@@ -467,15 +465,11 @@
     },
     {
       "group": "Build Tool Integrations",
-      "pages": [
-        "integrations/build-tools/gradle"
-      ]
+      "pages": ["integrations/build-tools/gradle"]
     },
     {
       "group": "",
-      "pages": [
-        "sdks/overview"
-      ]
+      "pages": ["sdks/overview"]
     },
     {
       "group": "SDK's",
@@ -495,9 +489,7 @@
         "api-reference/overview/authentication",
         {
           "group": "Examples",
-          "pages": [
-            "api-reference/overview/examples/integration"
-          ]
+          "pages": ["api-reference/overview/examples/integration"]
         }
       ]
     },
@@ -591,6 +583,16 @@
             "api-reference/endpoints/oidc-auth/retrieve",
             "api-reference/endpoints/oidc-auth/update",
             "api-reference/endpoints/oidc-auth/revoke"
+          ]
+        },
+        {
+          "group": "JWT Auth",
+          "pages": [
+            "api-reference/endpoints/jwt-auth/login",
+            "api-reference/endpoints/jwt-auth/attach",
+            "api-reference/endpoints/jwt-auth/retrieve",
+            "api-reference/endpoints/jwt-auth/update",
+            "api-reference/endpoints/jwt-auth/revoke"
           ]
         },
         {
@@ -772,15 +774,11 @@
         },
         {
           "group": "Service Tokens",
-          "pages": [
-            "api-reference/endpoints/service-tokens/get"
-          ]
+          "pages": ["api-reference/endpoints/service-tokens/get"]
         },
         {
           "group": "Audit Logs",
-          "pages": [
-            "api-reference/endpoints/audit-logs/export-audit-log"
-          ]
+          "pages": ["api-reference/endpoints/audit-logs/export-audit-log"]
         }
       ]
     },
@@ -851,6 +849,40 @@
       ]
     },
     {
+      "group": "Infisical SSH",
+      "pages": [
+        {
+          "group": "Certificates",
+          "pages": [
+            "api-reference/endpoints/ssh/certificates/issue-credentials",
+            "api-reference/endpoints/ssh/certificates/sign-key"
+          ]
+        },
+        {
+          "group": "Certificate Authorities",
+          "pages": [
+            "api-reference/endpoints/ssh/ca/list",
+            "api-reference/endpoints/ssh/ca/create",
+            "api-reference/endpoints/ssh/ca/read",
+            "api-reference/endpoints/ssh/ca/update",
+            "api-reference/endpoints/ssh/ca/delete",
+            "api-reference/endpoints/ssh/ca/public-key",
+            "api-reference/endpoints/ssh/ca/list-certificate-templates"
+          ]
+        },
+        {
+          "group": "Certificate Templates",
+          "pages": [
+            "api-reference/endpoints/ssh/certificate-templates/list",
+            "api-reference/endpoints/ssh/certificate-templates/create",
+            "api-reference/endpoints/ssh/certificate-templates/read",
+            "api-reference/endpoints/ssh/certificate-templates/update",
+            "api-reference/endpoints/ssh/certificate-templates/delete"
+          ]
+        }
+      ]
+    },
+    {
       "group": "Infisical KMS",
       "pages": [
         {
@@ -879,9 +911,7 @@
     },
     {
       "group": "",
-      "pages": [
-        "changelog/overview"
-      ]
+      "pages": ["changelog/overview"]
     },
     {
       "group": "Contributing",
@@ -905,16 +935,11 @@
         },
         {
           "group": "Contributing to SDK",
-          "pages": [
-            "contributing/sdk/developing"
-          ]
+          "pages": ["contributing/sdk/developing"]
         }
       ]
     }
   ],
-  "integrations": {
-    "intercom": "hsg644ru"
-  },
   "analytics": {
     "koala": {
       "publicApiKey": "pk_b50d7184e0e39ddd5cdb43cf6abeadd9b97d"

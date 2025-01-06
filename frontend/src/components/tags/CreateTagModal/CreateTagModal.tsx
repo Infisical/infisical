@@ -3,7 +3,6 @@ import { Controller, useForm } from "react-hook-form";
 import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -18,6 +17,7 @@ import {
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { useCreateWsTag } from "@app/hooks/api";
+import { slugSchema } from "@app/lib/schemas";
 
 export const secretTagsColors = [
   {
@@ -88,13 +88,7 @@ type Props = {
 };
 
 const createTagSchema = z.object({
-  slug: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .refine((v) => slugify(v) === v, {
-      message: "Invalid slug. Slug can only contain alphanumeric characters and hyphens."
-    }),
+  slug: slugSchema({ min: 1, field: "Tag Slug" }),
   color: z.string().trim()
 });
 

@@ -16,10 +16,11 @@ import {
   useSubscription,
   useWorkspace
 } from "@app/context";
+import { getProjectHomePage, getProjectTitle } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
-import { Workspace } from "@app/hooks/api/workspace/types";
+import { ProjectType, Workspace } from "@app/hooks/api/workspace/types";
 
 type TWorkspaceWithFaveProp = Workspace & { isFavorite: boolean };
 
@@ -138,6 +139,7 @@ export const ProjectSelect = () => {
 
   const { options, value } = useMemo(() => {
     const projectOptions = workspaces
+      .filter((el) => el.type === currentWorkspace?.type)
       .map((w): Workspace & { isFavorite: boolean } => ({
         ...w,
         isFavorite: Boolean(projectFavorites?.includes(w.id))
@@ -164,7 +166,9 @@ export const ProjectSelect = () => {
 
   return (
     <div className="mt-5 mb-4 w-full p-3">
-      <p className="ml-1.5 mb-1 text-xs font-semibold uppercase text-gray-400">Project</p>
+      <p className="ml-1.5 mb-1 text-xs font-semibold uppercase text-gray-400">
+        {currentWorkspace?.type ? getProjectTitle(currentWorkspace?.type) : "Project"}
+      </p>
       <FilterableSelect
         className="text-sm"
         value={value}
@@ -189,7 +193,7 @@ export const ProjectSelect = () => {
           // todo(akhi): this is not using react query because react query in overview is throwing error when envs are not exact same count
           // to reproduce change this back to router.push and switch between two projects with different env count
           // look into this on dashboard revamp
-          window.location.assign(`/project/${project.id}/secrets/overview`);
+          window.location.assign(getProjectHomePage(project));
         }}
         options={options}
         components={{
@@ -206,6 +210,7 @@ export const ProjectSelect = () => {
       <NewProjectModal
         isOpen={popUp.addNewWs.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addNewWs", isOpen)}
+        projectType={currentWorkspace?.type || ProjectType.SecretManager}
       />
     </div>
   );

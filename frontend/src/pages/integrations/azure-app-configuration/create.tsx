@@ -10,6 +10,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import queryString from "query-string";
 import { z } from "zod";
 
+import { createNotification } from "@app/components/notifications";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { useCreateIntegration } from "@app/hooks/api";
 import { IntegrationSyncBehavior } from "@app/hooks/api/integrations/types";
@@ -19,9 +20,11 @@ import {
   Card,
   CardTitle,
   FormControl,
+  FormLabel,
   Input,
   Select,
-  SelectItem
+  SelectItem,
+  Switch
 } from "../../../components/v2";
 import { useGetIntegrationAuthById } from "../../../hooks/api/integrationAuth";
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
@@ -39,7 +42,9 @@ const schema = z.object({
   secretPath: z.string().trim().min(1, { message: "Secret path is required" }),
   sourceEnvironment: z.string().trim().min(1, { message: "Source environment is required" }),
   initialSyncBehavior: z.nativeEnum(IntegrationSyncBehavior),
-  secretPrefix: z.string().default("")
+  secretPrefix: z.string().default(""),
+  useLabels: z.boolean().default(false),
+  azureLabel: z.string().min(1).optional()
 });
 
 type TFormSchema = z.infer<typeof schema>;
@@ -60,6 +65,7 @@ export default function AzureAppConfigurationCreateIntegration() {
   const router = useRouter();
   const {
     control,
+    watch,
     setValue,
     handleSubmit,
     formState: { isSubmitting }
@@ -85,15 +91,27 @@ export default function AzureAppConfigurationCreateIntegration() {
     }
   }, [workspace]);
 
+  const shouldUseLabels = watch("useLabels");
+
   const handleIntegrationSubmit = async ({
     secretPath,
+    useLabels,
     sourceEnvironment,
     baseUrl,
     initialSyncBehavior,
-    secretPrefix
+    secretPrefix,
+    azureLabel
   }: TFormSchema) => {
     try {
       if (!integrationAuth?.id) return;
+
+      if (useLabels && !azureLabel) {
+        createNotification({
+          type: "error",
+          text: "Label must be provided when 'Use Labels' is enabled"
+        });
+        return;
+      }
 
       await mutateAsync({
         integrationAuthId: integrationAuth?.id,
@@ -103,7 +121,8 @@ export default function AzureAppConfigurationCreateIntegration() {
         secretPath,
         metadata: {
           initialSyncBehavior,
-          secretPrefix
+          secretPrefix,
+          ...(useLabels && { azureLabel })
         }
       });
 
@@ -155,35 +174,70 @@ export default function AzureAppConfigurationCreateIntegration() {
           </div>
         </CardTitle>
         <div className="px-6">
-          <Controller
-            control={control}
-            name="sourceEnvironment"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Project Environment"
-                errorText={error?.message}
-                isError={Boolean(error)}
-              >
-                <Select
-                  className="w-full border border-mineshaft-500"
-                  dropdownContainerClassName="max-w-full"
-                  value={field.value}
-                  onValueChange={(val) => {
-                    field.onChange(val);
-                  }}
+          <div className="">
+            <Controller
+              control={control}
+              name="sourceEnvironment"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Project Environment"
+                  errorText={error?.message}
+                  isError={Boolean(error)}
                 >
-                  {workspace?.environments.map((sourceEnvironment) => (
-                    <SelectItem
-                      value={sourceEnvironment.slug}
-                      key={`source-environment-${sourceEnvironment.slug}`}
+                  <Select
+                    className="w-full border border-mineshaft-500"
+                    dropdownContainerClassName="max-w-full"
+                    value={field.value}
+                    onValueChange={(val) => {
+                      field.onChange(val);
+                    }}
+                  >
+                    {workspace?.environments.map((sourceEnvironment) => (
+                      <SelectItem
+                        value={sourceEnvironment.slug}
+                        key={`source-environment-${sourceEnvironment.slug}`}
+                      >
+                        {sourceEnvironment.name}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+            />
+
+            <div className="mb-2 flex w-full flex-col gap-1">
+              <Controller
+                control={control}
+                name="useLabels"
+                render={({ field: { onChange, value } }) => (
+                  <Switch
+                    id="use-environment-labels"
+                    onCheckedChange={(isChecked) => onChange(isChecked)}
+                    isChecked={value}
+                  >
+                    <FormLabel label="Use Labels" />
+                  </Switch>
+                )}
+              />
+
+              {shouldUseLabels && (
+                <Controller
+                  control={control}
+                  name="azureLabel"
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      className=""
+                      // label="Label"
+                      errorText={error?.message}
+                      isError={Boolean(error)}
                     >
-                      {sourceEnvironment.name}
-                    </SelectItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-          />
+                      <Input {...field} placeholder="pre-prod" />
+                    </FormControl>
+                  )}
+                />
+              )}
+            </div>
+          </div>
           <Controller
             control={control}
             name="secretPath"

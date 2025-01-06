@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
-import { IconButton, Td, Tooltip, Tr } from "@app/components/v2";
+import { IconButton, Tag, Td, Tooltip, Tr } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { IdentityMembership } from "@app/hooks/api/identities/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
@@ -52,7 +52,9 @@ export const IdentityProjectRow = ({
       key={`identity-project-membership-${id}`}
       onClick={() => {
         if (isAccessible) {
-          router.push(`/project/${project.id}/members?selectedTab=${TabSections.Identities}`);
+          router.push(
+            `/${project?.type}/${project.id}/members?selectedTab=${TabSections.Identities}`
+          );
           return;
         }
 
@@ -63,6 +65,9 @@ export const IdentityProjectRow = ({
       }}
     >
       <Td className="max-w-0 truncate">{project.name}</Td>
+      <Td>
+        <Tag size="xs">{project.type}</Tag>
+      </Td>
       <Td>{`${formatRoleName(roles[0].role, roles[0].customRoleName)}${
         roles.length > 1 ? ` (+${roles.length - 1})` : ""
       }`}</Td>

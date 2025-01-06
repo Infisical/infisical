@@ -11,7 +11,8 @@ export const workspaceKeys = {
   getWorkspaceMemberships: (orgId: string) => [{ orgId }, "workspace-memberships"],
   getWorkspaceAuthorization: (workspaceId: string) => [{ workspaceId }, "workspace-authorizations"],
   getWorkspaceIntegrations: (workspaceId: string) => [{ workspaceId }, "workspace-integrations"],
-  getAllUserWorkspace: ["workspaces"] as const,
+  getAllUserWorkspace: (type?: string) =>
+    type ? ["workspaces", { type }] : (["workspace"] as const),
   getWorkspaceAuditLogs: (workspaceId: string) =>
     [{ workspaceId }, "workspace-audit-logs"] as const,
   getWorkspaceUsers: (workspaceId: string) => [{ workspaceId }, "workspace-users"] as const,
@@ -52,5 +53,19 @@ export const workspaceKeys = {
   getWorkspaceCertificateTemplates: (workspaceId: string) =>
     [{ workspaceId }, "workspace-certificate-templates"] as const,
   getWorkspaceSlackConfig: (workspaceId: string) =>
-    [{ workspaceId }, "workspace-slack-config"] as const
+    [{ workspaceId }, "workspace-slack-config"] as const,
+  getWorkspaceSshCas: (projectId: string) => [{ projectId }, "workspace-ssh-cas"] as const,
+  allWorkspaceSshCertificates: (projectId: string) =>
+    [{ projectId }, "workspace-ssh-certificates"] as const,
+  specificWorkspaceSshCertificates: ({
+    offset,
+    limit,
+    projectId
+  }: {
+    offset: number;
+    limit: number;
+    projectId: string;
+  }) => [...workspaceKeys.allWorkspaceSshCertificates(projectId), { offset, limit }] as const,
+  getWorkspaceSshCertificateTemplates: (projectId: string) =>
+    [{ projectId }, "workspace-ssh-certificate-templates"] as const
 };

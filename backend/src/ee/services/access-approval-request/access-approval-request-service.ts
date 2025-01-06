@@ -130,6 +130,9 @@ export const accessApprovalRequestServiceFactory = ({
         message: `No policy in environment with slug '${environment.slug}' and with secret path '${secretPath}' was found.`
       });
     }
+    if (policy.deletedAt) {
+      throw new BadRequestError({ message: "The policy linked to this request has been deleted" });
+    }
 
     const approverIds: string[] = [];
     const approverGroupIds: string[] = [];
@@ -309,6 +312,12 @@ export const accessApprovalRequestServiceFactory = ({
     }
 
     const { policy } = accessApprovalRequest;
+    if (policy.deletedAt) {
+      throw new BadRequestError({
+        message: "The policy associated with this access request has been deleted."
+      });
+    }
+
     const { membership, hasRole } = await permissionService.getProjectPermission(
       actor,
       actorId,

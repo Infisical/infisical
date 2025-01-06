@@ -4,13 +4,21 @@ import { Octokit } from "@octokit/rest";
 import { Client as OctopusClient, SpaceRepository as OctopusSpaceRepository } from "@octopusdeploy/api-client";
 import AWS from "aws-sdk";
 
-import { SecretEncryptionAlgo, SecretKeyEncoding, TIntegrationAuths, TIntegrationAuthsInsert } from "@app/db/schemas";
+import {
+  ProjectType,
+  SecretEncryptionAlgo,
+  SecretKeyEncoding,
+  TIntegrationAuths,
+  TIntegrationAuthsInsert
+} from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { decryptSymmetric128BitHexKeyUTF8, encryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
+import { groupBy } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { TGenericPermission, TProjectPermission } from "@app/lib/types";
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
@@ -18,6 +26,7 @@ import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { getApps } from "./integration-app-list";
+import { TCircleCIContext } from "./integration-app-types";
 import { TIntegrationAuthDALFactory } from "./integration-auth-dal";
 import { IntegrationAuthMetadataSchema, TIntegrationAuthMetadata } from "./integration-auth-schema";
 import {
@@ -25,6 +34,7 @@ import {
   TBitbucketEnvironment,
   TBitbucketWorkspace,
   TChecklyGroups,
+  TCircleCIOrganization,
   TDeleteIntegrationAuthByIdDTO,
   TDeleteIntegrationAuthsDTO,
   TDuplicateGithubIntegrationAuthDTO,
@@ -36,6 +46,7 @@ import {
   TIntegrationAuthBitbucketEnvironmentsDTO,
   TIntegrationAuthBitbucketWorkspaceDTO,
   TIntegrationAuthChecklyGroupsDTO,
+  TIntegrationAuthCircleCIOrganizationDTO,
   TIntegrationAuthGithubEnvsDTO,
   TIntegrationAuthGithubOrgsDTO,
   TIntegrationAuthHerokuPipelinesDTO,
@@ -55,6 +66,7 @@ import {
   TOctopusDeployVariableSet,
   TSaveIntegrationAccessTokenDTO,
   TTeamCityBuildConfig,
+  TUpdateIntegrationAuthDTO,
   TVercelBranches
 } from "./integration-auth-types";
 import { getIntegrationOptions, Integrations, IntegrationUrls } from "./integration-list";
@@ -144,13 +156,14 @@ export const integrationAuthServiceFactory = ({
     if (!Object.values(Integrations).includes(integration as Integrations))
       throw new BadRequestError({ message: "Invalid integration" });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
 
     const tokenExchange = await exchangeCode({ integration, code, url, installationId });
@@ -253,13 +266,14 @@ export const integrationAuthServiceFactory = ({
     if (!Object.values(Integrations).includes(integration as Integrations))
       throw new BadRequestError({ message: "Invalid integration" });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
 
     const updateDoc: TIntegrationAuthsInsert = {
@@ -366,6 +380,148 @@ export const integrationAuthServiceFactory = ({
       }
     }
     return integrationAuthDAL.create(updateDoc);
+  };
+
+  const updateIntegrationAuth = async ({
+    integrationAuthId,
+    refreshToken,
+    actorId,
+    integration: newIntegration,
+    url,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    accessId,
+    namespace,
+    accessToken,
+    awsAssumeIamRoleArn
+  }: TUpdateIntegrationAuthDTO) => {
+    const integrationAuth = await integrationAuthDAL.findById(integrationAuthId);
+    if (!integrationAuth) {
+      throw new NotFoundError({ message: `Integration auth with id ${integrationAuthId} not found.` });
+    }
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Integrations);
+
+    const { projectId } = integrationAuth;
+    const integration = newIntegration || integrationAuth.integration;
+
+    const updateDoc: TIntegrationAuthsInsert = {
+      projectId,
+      integration,
+      namespace,
+      url,
+      algorithm: SecretEncryptionAlgo.AES_256_GCM,
+      keyEncoding: SecretKeyEncoding.UTF8,
+      ...(integration === Integrations.GCP_SECRET_MANAGER
+        ? {
+            metadata: {
+              authMethod: "serviceAccount"
+            }
+          }
+        : {})
+    };
+
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(projectId);
+    if (shouldUseSecretV2Bridge) {
+      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+      if (refreshToken) {
+        const tokenDetails = await exchangeRefresh(
+          integration,
+          refreshToken,
+          url,
+          updateDoc.metadata as Record<string, string>
+        );
+        const refreshEncToken = secretManagerEncryptor({
+          plainText: Buffer.from(tokenDetails.refreshToken)
+        }).cipherTextBlob;
+        updateDoc.encryptedRefresh = refreshEncToken;
+
+        const accessEncToken = secretManagerEncryptor({
+          plainText: Buffer.from(tokenDetails.accessToken)
+        }).cipherTextBlob;
+        updateDoc.encryptedAccess = accessEncToken;
+        updateDoc.accessExpiresAt = tokenDetails.accessExpiresAt;
+      }
+
+      if (!refreshToken && (accessId || accessToken || awsAssumeIamRoleArn)) {
+        if (accessToken) {
+          const accessEncToken = secretManagerEncryptor({
+            plainText: Buffer.from(accessToken)
+          }).cipherTextBlob;
+          updateDoc.encryptedAccess = accessEncToken;
+          updateDoc.encryptedAwsAssumeIamRoleArn = null;
+        }
+        if (accessId) {
+          const accessEncToken = secretManagerEncryptor({
+            plainText: Buffer.from(accessId)
+          }).cipherTextBlob;
+          updateDoc.encryptedAccessId = accessEncToken;
+          updateDoc.encryptedAwsAssumeIamRoleArn = null;
+        }
+        if (awsAssumeIamRoleArn) {
+          const awsAssumeIamRoleArnEncrypted = secretManagerEncryptor({
+            plainText: Buffer.from(awsAssumeIamRoleArn)
+          }).cipherTextBlob;
+          updateDoc.encryptedAwsAssumeIamRoleArn = awsAssumeIamRoleArnEncrypted;
+          updateDoc.encryptedAccess = null;
+          updateDoc.encryptedAccessId = null;
+        }
+      }
+    } else {
+      if (!botKey) throw new NotFoundError({ message: `Project bot key for project with ID '${projectId}' not found` });
+      if (refreshToken) {
+        const tokenDetails = await exchangeRefresh(
+          integration,
+          refreshToken,
+          url,
+          updateDoc.metadata as Record<string, string>
+        );
+        const refreshEncToken = encryptSymmetric128BitHexKeyUTF8(tokenDetails.refreshToken, botKey);
+        updateDoc.refreshIV = refreshEncToken.iv;
+        updateDoc.refreshTag = refreshEncToken.tag;
+        updateDoc.refreshCiphertext = refreshEncToken.ciphertext;
+        const accessEncToken = encryptSymmetric128BitHexKeyUTF8(tokenDetails.accessToken, botKey);
+        updateDoc.accessIV = accessEncToken.iv;
+        updateDoc.accessTag = accessEncToken.tag;
+        updateDoc.accessCiphertext = accessEncToken.ciphertext;
+
+        updateDoc.accessExpiresAt = tokenDetails.accessExpiresAt;
+      }
+
+      if (!refreshToken && (accessId || accessToken || awsAssumeIamRoleArn)) {
+        if (accessToken) {
+          const accessEncToken = encryptSymmetric128BitHexKeyUTF8(accessToken, botKey);
+          updateDoc.accessIV = accessEncToken.iv;
+          updateDoc.accessTag = accessEncToken.tag;
+          updateDoc.accessCiphertext = accessEncToken.ciphertext;
+        }
+        if (accessId) {
+          const accessEncToken = encryptSymmetric128BitHexKeyUTF8(accessId, botKey);
+          updateDoc.accessIdIV = accessEncToken.iv;
+          updateDoc.accessIdTag = accessEncToken.tag;
+          updateDoc.accessIdCiphertext = accessEncToken.ciphertext;
+        }
+        if (awsAssumeIamRoleArn) {
+          const awsAssumeIamRoleArnEnc = encryptSymmetric128BitHexKeyUTF8(awsAssumeIamRoleArn, botKey);
+          updateDoc.awsAssumeIamRoleArnCipherText = awsAssumeIamRoleArnEnc.ciphertext;
+          updateDoc.awsAssumeIamRoleArnIV = awsAssumeIamRoleArnEnc.iv;
+          updateDoc.awsAssumeIamRoleArnTag = awsAssumeIamRoleArnEnc.tag;
+        }
+      }
+    }
+
+    return integrationAuthDAL.updateById(integrationAuthId, updateDoc);
   };
 
   // helper function
@@ -1427,6 +1583,120 @@ export const integrationAuthServiceFactory = ({
     return [];
   };
 
+  const getCircleCIOrganizations = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    id
+  }: TIntegrationAuthCircleCIOrganizationDTO) => {
+    const integrationAuth = await integrationAuthDAL.findById(id);
+    if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
+
+    const { data: organizations }: { data: TCircleCIOrganization[] } = await request.get(
+      `${IntegrationUrls.CIRCLECI_API_URL}/v2/me/collaborations`,
+      {
+        headers: {
+          "Circle-Token": `${accessToken}`,
+          "Accept-Encoding": "application/json"
+        }
+      }
+    );
+
+    let projects: {
+      orgName: string;
+      projectName: string;
+      projectId?: string;
+    }[] = [];
+
+    try {
+      const projectRes = (
+        await request.get<{ reponame: string; username: string; vcs_url: string }[]>(
+          `${IntegrationUrls.CIRCLECI_API_URL}/v1.1/projects`,
+          {
+            headers: {
+              "Circle-Token": accessToken,
+              "Accept-Encoding": "application/json"
+            }
+          }
+        )
+      ).data;
+
+      projects = projectRes.map((a) => ({
+        orgName: a.username, // username maps to unique organization name in CircleCI
+        projectName: a.reponame, // reponame maps to project name within an organization in CircleCI
+        projectId: a.vcs_url.split("/").pop() // vcs_url maps to the project id in CircleCI
+      }));
+    } catch (error) {
+      logger.error(error);
+    }
+
+    const projectsByOrg = groupBy(
+      projects.map((p) => ({
+        orgName: p.orgName,
+        name: p.projectName,
+        id: p.projectId as string
+      })),
+      (p) => p.orgName
+    );
+
+    const getOrgContexts = async (orgSlug: string) => {
+      type NextPageToken = string | null | undefined;
+
+      try {
+        const contexts: TCircleCIContext[] = [];
+        let nextPageToken: NextPageToken;
+
+        while (nextPageToken !== null) {
+          // eslint-disable-next-line no-await-in-loop
+          const { data } = await request.get<{
+            items: TCircleCIContext[];
+            next_page_token: NextPageToken;
+          }>(`${IntegrationUrls.CIRCLECI_API_URL}/v2/context`, {
+            headers: {
+              "Circle-Token": accessToken,
+              "Accept-Encoding": "application/json"
+            },
+            params: new URLSearchParams({
+              "owner-slug": orgSlug,
+              ...(nextPageToken ? { "page-token": nextPageToken } : {})
+            })
+          });
+
+          contexts.push(...data.items);
+          nextPageToken = data.next_page_token;
+        }
+
+        return contexts?.map((context) => ({
+          name: context.name,
+          id: context.id
+        }));
+      } catch (error) {
+        logger.error(error);
+      }
+    };
+
+    return Promise.all(
+      organizations.map(async (org) => ({
+        name: org.name,
+        slug: org.slug,
+        projects: projectsByOrg[org.name] ?? [],
+        contexts: (await getOrgContexts(org.slug)) ?? []
+      }))
+    );
+  };
+
   const deleteIntegrationAuths = async ({
     projectId,
     integration,
@@ -1615,6 +1885,7 @@ export const integrationAuthServiceFactory = ({
     getIntegrationAuth,
     oauthExchange,
     saveIntegrationToken,
+    updateIntegrationAuth,
     deleteIntegrationAuthById,
     deleteIntegrationAuths,
     getIntegrationAuthTeams,
@@ -1638,6 +1909,7 @@ export const integrationAuthServiceFactory = ({
     getTeamcityBuildConfigs,
     getBitbucketWorkspaces,
     getBitbucketEnvironments,
+    getCircleCIOrganizations,
     getIntegrationAccessToken,
     duplicateIntegrationAuth,
     getOctopusDeploySpaces,

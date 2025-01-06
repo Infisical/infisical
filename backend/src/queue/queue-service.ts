@@ -187,7 +187,10 @@ export type TQueueJobTypes = {
 };
 
 export type TQueueServiceFactory = ReturnType<typeof queueServiceFactory>;
-export const queueServiceFactory = (redisUrl: string, dbConnectionUrl: string) => {
+export const queueServiceFactory = (
+  redisUrl: string,
+  { dbConnectionUrl, dbRootCert }: { dbConnectionUrl: string; dbRootCert?: string }
+) => {
   const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
   const queueContainer = {} as Record<
     QueueName,
@@ -198,7 +201,13 @@ export const queueServiceFactory = (redisUrl: string, dbConnectionUrl: string) =
     connectionString: dbConnectionUrl,
     archiveCompletedAfterSeconds: 60,
     archiveFailedAfterSeconds: 1000, // we want to keep failed jobs for a longer time so that it can be retried
-    deleteAfterSeconds: 30
+    deleteAfterSeconds: 30,
+    ssl: dbRootCert
+      ? {
+          rejectUnauthorized: true,
+          ca: Buffer.from(dbRootCert, "base64").toString("ascii")
+        }
+      : false
   });
 
   const queueContainerPg = {} as Record<QueueJobs, boolean>;
@@ -308,6 +317,13 @@ export const queueServiceFactory = (redisUrl: string, dbConnectionUrl: string) =
     }
   };
 
+  const getRepeatableJobs = (name: QueueName, startOffset?: number, endOffset?: number) => {
+    const q = queueContainer[name];
+    if (!q) throw new Error(`Queue '${name}' not initialized`);
+
+    return q.getRepeatableJobs(startOffset, endOffset);
+  };
+
   const stopRepeatableJobByJobId = async <T extends QueueName>(name: T, jobId: string) => {
     const q = queueContainer[name];
     const job = await q.getJob(jobId);
@@ -315,6 +331,11 @@ export const queueServiceFactory = (redisUrl: string, dbConnectionUrl: string) =
     if (!job.repeatJobKey) return true;
     await job.remove();
     return q.removeRepeatableByKey(job.repeatJobKey);
+  };
+
+  const stopRepeatableJobByKey = async <T extends QueueName>(name: T, repeatJobKey: string) => {
+    const q = queueContainer[name];
+    return q.removeRepeatableByKey(repeatJobKey);
   };
 
   const stopJobById = async <T extends QueueName>(name: T, jobId: string) => {
@@ -340,8 +361,10 @@ export const queueServiceFactory = (redisUrl: string, dbConnectionUrl: string) =
     shutdown,
     stopRepeatableJob,
     stopRepeatableJobByJobId,
+    stopRepeatableJobByKey,
     clearQueue,
     stopJobById,
+    getRepeatableJobs,
     startPg,
     queuePg
   };

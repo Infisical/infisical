@@ -27,6 +27,7 @@ import {
   useGetServerRootKmsEncryptionDetails,
   useUpdateServerConfig
 } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { AuthPanel } from "./AuthPanel";
 import { EncryptionPanel } from "./EncryptionPanel";
@@ -98,7 +99,7 @@ export const AdminDashboardPage = () => {
     if (isNotAllowed && !isUserLoading) {
       if (orgs?.length) {
         localStorage.setItem("orgData.id", orgs?.[0]?.id);
-        router.push(`/org/${orgs?.[0]?.id}/overview`);
+        router.push(`/org/${orgs?.[0]?.id}/${ProjectType.SecretManager}/overview`);
       }
     }
   }, [isNotAllowed, isUserLoading]);

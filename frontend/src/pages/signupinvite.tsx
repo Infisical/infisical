@@ -31,6 +31,7 @@ import {
 } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 import { navigateUserToOrg } from "@app/views/Login/Login.utils";
 import { Mfa } from "@app/views/Login/Mfa";
 
@@ -386,7 +387,7 @@ export default function SignupInvite() {
               setBackupKeyError,
               setBackupKeyIssued
             });
-            router.push(`/org/${organizationId}/overview`);
+            router.push(`/org/${organizationId}/${ProjectType.SecretManager}/overview`);
           }}
           size="lg"
         />

@@ -1,3 +1,4 @@
+import { APP_CONNECTION_REGISTER_MAP, registerAppConnectionRouter } from "@app/server/routes/v1/app-connection-routers";
 import { registerCmekRouter } from "@app/server/routes/v1/cmek-router";
 import { registerDashboardRouter } from "@app/server/routes/v1/dashboard-router";
 
@@ -12,6 +13,7 @@ import { registerIdentityAccessTokenRouter } from "./identity-access-token-route
 import { registerIdentityAwsAuthRouter } from "./identity-aws-iam-auth-router";
 import { registerIdentityAzureAuthRouter } from "./identity-azure-auth-router";
 import { registerIdentityGcpAuthRouter } from "./identity-gcp-auth-router";
+import { registerIdentityJwtAuthRouter } from "./identity-jwt-auth-router";
 import { registerIdentityKubernetesRouter } from "./identity-kubernetes-auth-router";
 import { registerIdentityOidcAuthRouter } from "./identity-oidc-auth-router";
 import { registerIdentityRouter } from "./identity-router";
@@ -54,6 +56,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await authRouter.register(registerIdentityAwsAuthRouter);
       await authRouter.register(registerIdentityAzureAuthRouter);
       await authRouter.register(registerIdentityOidcAuthRouter);
+      await authRouter.register(registerIdentityJwtAuthRouter);
     },
     { prefix: "/auth" }
   );
@@ -108,4 +111,14 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerDashboardRouter, { prefix: "/dashboard" });
   await server.register(registerCmekRouter, { prefix: "/kms" });
   await server.register(registerExternalGroupOrgRoleMappingRouter, { prefix: "/external-group-mappings" });
+
+  await server.register(
+    async (appConnectionsRouter) => {
+      await appConnectionsRouter.register(registerAppConnectionRouter);
+      for await (const [app, router] of Object.entries(APP_CONNECTION_REGISTER_MAP)) {
+        await appConnectionsRouter.register(router, { prefix: `/${app}` });
+      }
+    },
+    { prefix: "/app-connections" }
+  );
 };

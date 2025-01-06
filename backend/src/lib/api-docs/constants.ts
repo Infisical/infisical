@@ -1,3 +1,6 @@
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
+
 export const GROUPS = {
   CREATE: {
     name: "The name of the group to create.",
@@ -19,7 +22,9 @@ export const GROUPS = {
     offset: "The offset to start from. If you enter 10, it will start from the 10th user.",
     limit: "The number of users to return.",
     username: "The username to search for.",
-    search: "The text string that user email or name will be filtered by."
+    search: "The text string that user email or name will be filtered by.",
+    filterUsers:
+      "Whether to filter the list of returned users. 'existingMembers' will only return existing users in the group, 'nonMembers' will only return users not in the group, undefined will return all users in the organization."
   },
   ADD_USER: {
     id: "The ID of the group to add the user to.",
@@ -349,6 +354,52 @@ export const OIDC_AUTH = {
   }
 } as const;
 
+export const JWT_AUTH = {
+  LOGIN: {
+    identityId: "The ID of the identity to login."
+  },
+  ATTACH: {
+    identityId: "The ID of the identity to attach the configuration onto.",
+    configurationType: "The configuration for validating JWTs. Must be one of: 'jwks', 'static'",
+    jwksUrl:
+      "The URL of the JWKS endpoint. Required if configurationType is 'jwks'. This endpoint must serve JSON Web Key Sets (JWKS) containing the public keys used to verify JWT signatures.",
+    jwksCaCert: "The PEM-encoded CA certificate for validating the TLS connection to the JWKS endpoint.",
+    publicKeys:
+      "A list of PEM-encoded public keys used to verify JWT signatures. Required if configurationType is 'static'. Each key must be in RSA or ECDSA format and properly PEM-encoded with BEGIN/END markers.",
+    boundIssuer: "The unique identifier of the JWT provider.",
+    boundAudiences: "The list of intended recipients.",
+    boundClaims: "The attributes that should be present in the JWT for it to be valid.",
+    boundSubject: "The expected principal that is the subject of the JWT.",
+    accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from.",
+    accessTokenTTL: "The lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The maximum number of times that an access token can be used."
+  },
+  UPDATE: {
+    identityId: "The ID of the identity to update the auth method for.",
+    configurationType: "The new configuration for validating JWTs. Must be one of: 'jwks', 'static'",
+    jwksUrl:
+      "The new URL of the JWKS endpoint. This endpoint must serve JSON Web Key Sets (JWKS) containing the public keys used to verify JWT signatures.",
+    jwksCaCert: "The new PEM-encoded CA certificate for validating the TLS connection to the JWKS endpoint.",
+    publicKeys:
+      "A new list of PEM-encoded public keys used to verify JWT signatures. Each key must be in RSA or ECDSA format and properly PEM-encoded with BEGIN/END markers.",
+    boundIssuer: "The new unique identifier of the JWT provider.",
+    boundAudiences: "The new list of intended recipients.",
+    boundClaims: "The new attributes that should be present in the JWT for it to be valid.",
+    boundSubject: "The new expected principal that is the subject of the JWT.",
+    accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from.",
+    accessTokenTTL: "The new lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used."
+  },
+  RETRIEVE: {
+    identityId: "The ID of the identity to retrieve the auth method for."
+  },
+  REVOKE: {
+    identityId: "The ID of the identity to revoke the auth method for."
+  }
+} as const;
+
 export const ORGANIZATIONS = {
   LIST_USER_MEMBERSHIPS: {
     organizationId: "The ID of the organization to get memberships from."
@@ -380,7 +431,8 @@ export const ORGANIZATIONS = {
     search: "The text string that identity membership names will be filtered by."
   },
   GET_PROJECTS: {
-    organizationId: "The ID of the organization to get projects from."
+    organizationId: "The ID of the organization to get projects from.",
+    type: "The type of project to filter by."
   },
   LIST_GROUPS: {
     organizationId: "The ID of the organization to list groups for."
@@ -442,6 +494,17 @@ export const PROJECTS = {
   },
   LIST_INTEGRATION_AUTHORIZATION: {
     workspaceId: "The ID of the project to list integration auths for."
+  },
+  LIST_SSH_CAS: {
+    projectId: "The ID of the project to list SSH CAs for."
+  },
+  LIST_SSH_CERTIFICATES: {
+    projectId: "The ID of the project to list SSH certificates for.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th SSH certificate.",
+    limit: "The number of SSH certificates to return."
+  },
+  LIST_SSH_CERTIFICATE_TEMPLATES: {
+    projectId: "The ID of the project to list SSH certificate templates for."
   },
   LIST_CAS: {
     slug: "The slug of the project to list CAs for.",
@@ -1032,6 +1095,9 @@ export const INTEGRATION_AUTH = {
   DELETE_BY_ID: {
     integrationAuthId: "The ID of integration authentication object to delete."
   },
+  UPDATE_BY_ID: {
+    integrationAuthId: "The ID of integration authentication object to update."
+  },
   CREATE_ACCESS_TOKEN: {
     workspaceId: "The ID of the project to create the integration auth for.",
     integration: "The slug of integration for the auth object.",
@@ -1074,6 +1140,7 @@ export const INTEGRATION = {
       shouldAutoRedeploy: "Used by Render to trigger auto deploy.",
       secretGCPLabel: "The label for GCP secrets.",
       secretAWSTag: "The tags for AWS secrets.",
+      azureLabel: "Define which label to assign to secrets created in Azure App Configuration.",
       githubVisibility:
         "Define where the secrets from the Github Integration should be visible. Option 'selected' lets you directly define which repositories to sync secrets to.",
       githubVisibilityRepoIds:
@@ -1088,11 +1155,13 @@ export const INTEGRATION = {
   },
   UPDATE: {
     integrationId: "The ID of the integration object.",
+    region: "AWS region to sync secrets to.",
     app: "The name of the external integration providers app entity that you want to sync secrets with. Used in Netlify, GitHub, Vercel integrations.",
     appId:
       "The ID of the external integration providers app entity that you want to sync secrets with. Used in Netlify, GitHub, Vercel integrations.",
     isActive: "Whether the integration should be active or disabled.",
     secretPath: "The path of the secrets to sync secrets from.",
+    path: "Path to save the synced secrets. Used by Gitlab, AWS Parameter Store, Vault.",
     owner: "External integration providers service entity owner. Used in Github.",
     targetEnvironment:
       "The target environment of the integration provider. Used in cloudflare pages, TeamCity, Gitlab integrations.",
@@ -1129,6 +1198,84 @@ export const AUDIT_LOG_STREAMS = {
   },
   GET_BY_ID: {
     id: "The ID of the audit log stream to get details."
+  }
+};
+
+export const SSH_CERTIFICATE_AUTHORITIES = {
+  CREATE: {
+    projectId: "The ID of the project to create the SSH CA in.",
+    friendlyName: "A friendly name for the SSH CA.",
+    keyAlgorithm: "The type of public key algorithm and size, in bits, of the key pair for the SSH CA."
+  },
+  GET: {
+    sshCaId: "The ID of the SSH CA to get."
+  },
+  GET_PUBLIC_KEY: {
+    sshCaId: "The ID of the SSH CA to get the public key for."
+  },
+  UPDATE: {
+    sshCaId: "The ID of the SSH CA to update.",
+    friendlyName: "A friendly name for the SSH CA to update to.",
+    status: "The status of the SSH CA to update to. This can be one of active or disabled."
+  },
+  DELETE: {
+    sshCaId: "The ID of the SSH CA to delete."
+  },
+  GET_CERTIFICATE_TEMPLATES: {
+    sshCaId: "The ID of the SSH CA to get the certificate templates for."
+  },
+  SIGN_SSH_KEY: {
+    certificateTemplateId: "The ID of the SSH certificate template to sign the SSH public key with.",
+    publicKey: "The SSH public key to sign.",
+    certType: "The type of certificate to issue. This can be one of user or host.",
+    principals: "The list of principals (usernames, hostnames) to include in the certificate.",
+    ttl: "The time to live for the certificate such as 1m, 1h, 1d, ... If not specified, the default TTL for the template will be used.",
+    keyId: "The key ID to include in the certificate. If not specified, a default key ID will be generated.",
+    serialNumber: "The serial number of the issued SSH certificate.",
+    signedKey: "The SSH certificate or signed SSH public key."
+  },
+  ISSUE_SSH_CREDENTIALS: {
+    certificateTemplateId: "The ID of the SSH certificate template to issue the SSH credentials with.",
+    keyAlgorithm: "The type of public key algorithm and size, in bits, of the key pair for the SSH CA.",
+    certType: "The type of certificate to issue. This can be one of user or host.",
+    principals: "The list of principals (usernames, hostnames) to include in the certificate.",
+    ttl: "The time to live for the certificate such as 1m, 1h, 1d, ... If not specified, the default TTL for the template will be used.",
+    keyId: "The key ID to include in the certificate. If not specified, a default key ID will be generated.",
+    serialNumber: "The serial number of the issued SSH certificate.",
+    signedKey: "The SSH certificate or signed SSH public key.",
+    privateKey: "The private key corresponding to the issued SSH certificate.",
+    publicKey: "The public key of the issued SSH certificate."
+  }
+};
+
+export const SSH_CERTIFICATE_TEMPLATES = {
+  GET: {
+    certificateTemplateId: "The ID of the SSH certificate template to get."
+  },
+  CREATE: {
+    sshCaId: "The ID of the SSH CA to associate the certificate template with.",
+    name: "The name of the certificate template.",
+    ttl: "The default time to live for issued certificates such as 1m, 1h, 1d, 1y, ...",
+    maxTTL: "The maximum time to live for issued certificates such as 1m, 1h, 1d, 1y, ...",
+    allowedUsers: "The list of allowed users for certificates issued under this template.",
+    allowedHosts: "The list of allowed hosts for certificates issued under this template.",
+    allowUserCertificates: "Whether or not to allow user certificates to be issued under this template.",
+    allowHostCertificates: "Whether or not to allow host certificates to be issued under this template.",
+    allowCustomKeyIds: "Whether or not to allow custom key IDs for certificates issued under this template."
+  },
+  UPDATE: {
+    certificateTemplateId: "The ID of the SSH certificate template to update.",
+    name: "The name of the certificate template.",
+    ttl: "The default time to live for issued certificates such as 1m, 1h, 1d, 1y, ...",
+    maxTTL: "The maximum time to live for issued certificates such as 1m, 1h, 1d, 1y, ...",
+    allowedUsers: "The list of allowed users for certificates issued under this template.",
+    allowedHosts: "The list of allowed hosts for certificates issued under this template.",
+    allowUserCertificates: "Whether or not to allow user certificates to be issued under this template.",
+    allowHostCertificates: "Whether or not to allow host certificates to be issued under this template.",
+    allowCustomKeyIds: "Whether or not to allow custom key IDs for certificates issued under this template."
+  },
+  DELETE: {
+    certificateTemplateId: "The ID of the SSH certificate template to delete."
   }
 };
 
@@ -1460,4 +1607,35 @@ export const ProjectTemplates = {
   DELETE: {
     templateId: "The ID of the project template to be deleted."
   }
+};
+
+export const AppConnections = {
+  GET_BY_ID: (app: AppConnection) => ({
+    connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[app]} Connection to retrieve.`
+  }),
+  GET_BY_NAME: (app: AppConnection) => ({
+    connectionName: `The name of the ${APP_CONNECTION_NAME_MAP[app]} Connection to retrieve.`
+  }),
+  CREATE: (app: AppConnection) => {
+    const appName = APP_CONNECTION_NAME_MAP[app];
+    return {
+      name: `The name of the ${appName} Connection to create. Must be slug-friendly.`,
+      description: `An optional description for the ${appName} Connection.`,
+      credentials: `The credentials used to connect with ${appName}.`,
+      method: `The method used to authenticate with ${appName}.`
+    };
+  },
+  UPDATE: (app: AppConnection) => {
+    const appName = APP_CONNECTION_NAME_MAP[app];
+    return {
+      connectionId: `The ID of the ${appName} Connection to be updated.`,
+      name: `The updated name of the ${appName} Connection. Must be slug-friendly.`,
+      description: `The updated description of the ${appName} Connection.`,
+      credentials: `The credentials used to connect with ${appName}.`,
+      method: `The method used to authenticate with ${appName}.`
+    };
+  },
+  DELETE: (app: AppConnection) => ({
+    connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[app]} connection to be deleted.`
+  })
 };

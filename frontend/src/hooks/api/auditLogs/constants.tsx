@@ -8,6 +8,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.DELETE_SECRET]: "Delete secret",
   [EventType.GET_WORKSPACE_KEY]: "Read project key",
   [EventType.AUTHORIZE_INTEGRATION]: "Authorize integration",
+  [EventType.UPDATE_INTEGRATION_AUTH]: "Update integration auth",
   [EventType.UNAUTHORIZE_INTEGRATION]: "Unauthorize integration",
   [EventType.CREATE_INTEGRATION]: "Create integration",
   [EventType.DELETE_INTEGRATION]: "Delete integration",

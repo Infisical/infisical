@@ -8,6 +8,7 @@ import { IDENTITY_ADDITIONAL_PRIVILEGE } from "@app/lib/api-docs";
 import { UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import {
   ProjectPermissionSchema,
@@ -33,17 +34,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       body: z.object({
         identityId: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.identityId),
         projectSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.projectSlug),
-        slug: z
-          .string()
-          .min(1)
-          .max(60)
-          .trim()
-          .refine((val) => val.toLowerCase() === val, "Must be lowercase")
-          .refine((v) => slugify(v) === v, {
-            message: "Slug must be a valid slug"
-          })
-          .optional()
-          .describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.slug),
+        slug: slugSchema({ min: 1, max: 60 }).optional().describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.slug),
         permissions: ProjectPermissionSchema.array()
           .describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.permissions)
           .optional(),
@@ -77,7 +68,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         ...req.body,
-        slug: req.body.slug ? slugify(req.body.slug) : slugify(alphaNumericNanoId(12)),
+        slug: req.body.slug ?? slugify(alphaNumericNanoId(12)),
         isTemporary: false,
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore-error this is valid ts
@@ -103,17 +94,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       body: z.object({
         identityId: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.identityId),
         projectSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.projectSlug),
-        slug: z
-          .string()
-          .min(1)
-          .max(60)
-          .trim()
-          .refine((val) => val.toLowerCase() === val, "Must be lowercase")
-          .refine((v) => slugify(v) === v, {
-            message: "Slug must be a valid slug"
-          })
-          .optional()
-          .describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.slug),
+        slug: slugSchema({ min: 1, max: 60 }).optional().describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.slug),
         permissions: ProjectPermissionSchema.array()
           .describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.permissions)
           .optional(),
@@ -159,7 +140,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         ...req.body,
-        slug: req.body.slug ? slugify(req.body.slug) : slugify(alphaNumericNanoId(12)),
+        slug: req.body.slug ?? slugify(alphaNumericNanoId(12)),
         isTemporary: true,
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore-error this is valid ts
@@ -189,16 +170,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         projectSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.projectSlug),
         privilegeDetails: z
           .object({
-            slug: z
-              .string()
-              .min(1)
-              .max(60)
-              .trim()
-              .refine((val) => val.toLowerCase() === val, "Must be lowercase")
-              .refine((v) => slugify(v) === v, {
-                message: "Slug must be a valid slug"
-              })
-              .describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.newSlug),
+            slug: slugSchema({ min: 1, max: 60 }).describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.newSlug),
             permissions: ProjectPermissionSchema.array().describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.permissions),
             privilegePermission: ProjectSpecificPrivilegePermissionSchema.describe(
               IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.privilegePermission

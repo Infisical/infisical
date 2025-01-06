@@ -8,7 +8,6 @@ import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@a
 import { useDeleteGroup } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-import { OrgGroupMembersModal } from "./OrgGroupMembersModal";
 import { OrgGroupModal } from "./OrgGroupModal";
 import { OrgGroupsTable } from "./OrgGroupsTable";
 
@@ -78,7 +77,6 @@ export const OrgGroupsSection = () => {
         handlePopUpClose={handlePopUpClose}
         handlePopUpToggle={handlePopUpToggle}
       />
-      <OrgGroupMembersModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deleteGroup.isOpen}
         title={`Are you sure want to delete the group named ${

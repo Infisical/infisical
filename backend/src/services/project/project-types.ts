@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { TProjectKeys } from "@app/db/schemas";
+import { ProjectType, TProjectKeys } from "@app/db/schemas";
 import { TProjectPermission } from "@app/lib/types";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
@@ -35,6 +35,7 @@ export type TCreateProjectDTO = {
   createDefaultEnvs?: boolean;
   template?: string;
   tx?: Knex;
+  type?: ProjectType;
 };
 
 export type TDeleteProjectBySlugDTO = {
@@ -84,6 +85,7 @@ export type TDeleteProjectDTO = {
 
 export type TListProjectsDTO = {
   includeRoles: boolean;
+  type?: ProjectType | "all";
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpgradeProjectDTO = {
@@ -129,6 +131,13 @@ export type TLoadProjectKmsBackupDTO = {
 export type TGetProjectKmsKey = TProjectPermission;
 
 export type TListProjectCertificateTemplatesDTO = TProjectPermission;
+
+export type TListProjectSshCasDTO = TProjectPermission;
+export type TListProjectSshCertificateTemplatesDTO = TProjectPermission;
+export type TListProjectSshCertificatesDTO = {
+  offset: number;
+  limit: number;
+} & TProjectPermission;
 
 export type TGetProjectSlackConfig = TProjectPermission;
 

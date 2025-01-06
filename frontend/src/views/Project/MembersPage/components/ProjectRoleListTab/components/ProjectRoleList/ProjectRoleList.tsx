@@ -92,7 +92,7 @@ export const ProjectRoleList = () => {
                 <Tr
                   key={`role-list-${id}`}
                   className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
-                  onClick={() => router.push(`/project/${projectId}/roles/${slug}`)}
+                  onClick={() => router.push(`/${currentWorkspace?.type}/${projectId}/roles/${slug}`)}
                 >
                   <Td>{name}</Td>
                   <Td>{slug}</Td>
@@ -115,7 +115,7 @@ export const ProjectRoleList = () => {
                               )}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                router.push(`/project/${projectId}/roles/${slug}`);
+                                router.push(`/${currentWorkspace?.type}/${projectId}/roles/${slug}`);
                               }}
                               disabled={!isAllowed}
                             >

@@ -8,6 +8,7 @@ import {
   IdentityAwsAuth,
   IdentityAzureAuth,
   IdentityGcpAuth,
+  IdentityJwtAuth,
   IdentityKubernetesAuth,
   IdentityMembership,
   IdentityMembershipOrg,
@@ -29,6 +30,7 @@ export const identitiesKeys = {
   getIdentityAwsAuth: (identityId: string) => [{ identityId }, "identity-aws-auth"] as const,
   getIdentityAzureAuth: (identityId: string) => [{ identityId }, "identity-azure-auth"] as const,
   getIdentityTokenAuth: (identityId: string) => [{ identityId }, "identity-token-auth"] as const,
+  getIdentityJwtAuth: (identityId: string) => [{ identityId }, "identity-jwt-auth"] as const,
   getIdentityTokensTokenAuth: (identityId: string) =>
     [{ identityId }, "identity-tokens-token-auth"] as const,
   getIdentityProjectMemberships: (identityId: string) =>
@@ -269,6 +271,33 @@ export const useGetIdentityOidcAuth = (
         `/api/v1/auth/oidc-auth/identities/${identityId}`
       );
       return identityOidcAuth;
+    },
+    staleTime: 0,
+    cacheTime: 0,
+    ...options,
+    enabled: Boolean(identityId) && (options?.enabled ?? true)
+  });
+};
+
+export const useGetIdentityJwtAuth = (
+  identityId: string,
+  options?: UseQueryOptions<
+    IdentityJwtAuth,
+    unknown,
+    IdentityJwtAuth,
+    ReturnType<typeof identitiesKeys.getIdentityJwtAuth>
+  >
+) => {
+  return useQuery({
+    queryKey: identitiesKeys.getIdentityJwtAuth(identityId),
+    queryFn: async () => {
+      const {
+        data: { identityJwtAuth }
+      } = await apiRequest.get<{ identityJwtAuth: IdentityJwtAuth }>(
+        `/api/v1/auth/jwt-auth/identities/${identityId}`
+      );
+
+      return identityJwtAuth;
     },
     staleTime: 0,
     cacheTime: 0,

@@ -32,14 +32,17 @@ import {
   useSubscription,
   useUser
 } from "@app/context";
+import { getProjectHomePage } from "@app/helpers/project";
 import {
   fetchOrgUsers,
   useAddUserToWsNonE2EE,
   useCreateWorkspace,
-  useGetExternalKmsList
+  useGetExternalKmsList,
+  useGetUserWorkspaces
 } from "@app/hooks/api";
 import { INTERNAL_KMS_KEY_ID } from "@app/hooks/api/kms/types";
 import { InfisicalProjectTemplate, useListProjectTemplates } from "@app/hooks/api/projectTemplates";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 const formSchema = z.object({
   name: z.string().trim().min(1, "Required").max(64, "Too long, maximum length is 64 characters"),
@@ -58,16 +61,18 @@ type TAddProjectFormData = z.infer<typeof formSchema>;
 interface NewProjectModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  projectType: ProjectType;
 }
 
-type NewProjectFormProps = Pick<NewProjectModalProps, "onOpenChange">;
+type NewProjectFormProps = Pick<NewProjectModalProps, "onOpenChange" | "projectType">;
 
-const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
+const NewProjectForm = ({ onOpenChange, projectType }: NewProjectFormProps) => {
   const router = useRouter();
   const { currentOrg } = useOrganization();
   const { permission } = useOrgPermission();
   const { user } = useUser();
   const createWs = useCreateWorkspace();
+  const { refetch: refetchWorkspaces } = useGetUserWorkspaces();
   const addUsersToProject = useAddUserToWsNonE2EE();
   const { subscription } = useSubscription();
 
@@ -115,15 +120,15 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
     if (!user) return;
     try {
       const {
-        data: {
-          project: { id: newProjectId }
-        }
+        data: { project }
       } = await createWs.mutateAsync({
         projectName: name,
         projectDescription: description,
         kmsKeyId: kmsKeyId !== INTERNAL_KMS_KEY_ID ? kmsKeyId : undefined,
-        template
+        template,
+        type: projectType
       });
+      const { id: newProjectId } = project;
 
       if (addMembers) {
         const orgUsers = await fetchOrgUsers(currentOrg.id);
@@ -137,13 +142,13 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
           orgId: currentOrg.id
         });
       }
-      // eslint-disable-next-line no-promise-executor-return -- We do this because the function returns too fast, which sometimes causes an error when the user is redirected.
-      await new Promise((resolve) => setTimeout(resolve, 2_000));
+
+      await refetchWorkspaces();
 
       createNotification({ text: "Project created", type: "success" });
       reset();
       onOpenChange(false);
-      router.push(`/project/${newProjectId}/secrets/overview`);
+      router.push(getProjectHomePage(project));
     } catch (err) {
       console.error(err);
       createNotification({ text: "Failed to create project", type: "error" });
@@ -314,14 +319,18 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
   );
 };
 
-export const NewProjectModal: FC<NewProjectModalProps> = ({ isOpen, onOpenChange }) => {
+export const NewProjectModal: FC<NewProjectModalProps> = ({
+  isOpen,
+  onOpenChange,
+  projectType
+}) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
         title="Create a new project"
         subTitle="This project will contain your secrets and configurations."
       >
-        <NewProjectForm onOpenChange={onOpenChange} />
+        <NewProjectForm onOpenChange={onOpenChange} projectType={projectType} />
       </ModalContent>
     </Modal>
   );

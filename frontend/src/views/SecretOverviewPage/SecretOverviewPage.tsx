@@ -68,7 +68,7 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
 import { TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
 import { SecretType, SecretV3RawSanitized, TSecretFolder } from "@app/hooks/api/types";
-import { ProjectVersion } from "@app/hooks/api/workspace/types";
+import { ProjectType, ProjectVersion } from "@app/hooks/api/workspace/types";
 import { useDynamicSecretOverview, useFolderOverview, useSecretOverview } from "@app/hooks/utils";
 import { SecretOverviewDynamicSecretRow } from "@app/views/SecretOverviewPage/components/SecretOverviewDynamicSecretRow";
 import {
@@ -170,7 +170,7 @@ export const SecretOverviewPage = () => {
 
   useEffect(() => {
     if (!isWorkspaceLoading && !workspaceId && router.isReady) {
-      router.push(`/org/${currentOrg?.id}/overview`);
+      router.push(`/org/${currentOrg?.id}/${ProjectType.SecretManager}/overview`);
     }
   }, [isWorkspaceLoading, workspaceId, router.isReady]);
 
@@ -508,7 +508,7 @@ export const SecretOverviewPage = () => {
     const envIndex = visibleEnvs.findIndex((el) => slug === el.slug);
     if (envIndex !== -1) {
       router.push({
-        pathname: "/project/[id]/secrets/[env]",
+        pathname: `/${ProjectType.SecretManager}/[id]/secrets/[env]`,
         query
       });
     }
@@ -1125,6 +1125,7 @@ export const SecretOverviewPage = () => {
           bodyClassName="overflow-visible"
           title="Create Secrets"
           subTitle="Create a secret across multiple environments"
+          onPointerDownOutside={(e) => e.preventDefault()}
         >
           <CreateSecretForm
             secretPath={secretPath}

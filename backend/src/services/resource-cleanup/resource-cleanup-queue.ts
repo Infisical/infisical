@@ -5,6 +5,7 @@ import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityUaClientSecretDALFactory } from "../identity-ua/identity-ua-client-secret-dal";
+import { TSecretDALFactory } from "../secret/secret-dal";
 import { TSecretVersionDALFactory } from "../secret/secret-version-dal";
 import { TSecretFolderVersionDALFactory } from "../secret-folder/secret-folder-version-dal";
 import { TSecretSharingDALFactory } from "../secret-sharing/secret-sharing-dal";
@@ -16,6 +17,7 @@ type TDailyResourceCleanUpQueueServiceFactoryDep = {
   identityUniversalAuthClientSecretDAL: Pick<TIdentityUaClientSecretDALFactory, "removeExpiredClientSecrets">;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "pruneExcessVersions">;
   secretVersionV2DAL: Pick<TSecretVersionV2DALFactory, "pruneExcessVersions">;
+  secretDAL: Pick<TSecretDALFactory, "pruneSecretReminders">;
   secretFolderVersionDAL: Pick<TSecretFolderVersionDALFactory, "pruneExcessVersions">;
   snapshotDAL: Pick<TSnapshotDALFactory, "pruneExcessSnapshots">;
   secretSharingDAL: Pick<TSecretSharingDALFactory, "pruneExpiredSharedSecrets">;
@@ -30,6 +32,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
   snapshotDAL,
   secretVersionDAL,
   secretFolderVersionDAL,
+  secretDAL,
   identityAccessTokenDAL,
   secretSharingDAL,
   secretVersionV2DAL,
@@ -37,6 +40,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
 }: TDailyResourceCleanUpQueueServiceFactoryDep) => {
   queueService.start(QueueName.DailyResourceCleanUp, async () => {
     logger.info(`${QueueName.DailyResourceCleanUp}: queue task started`);
+    await secretDAL.pruneSecretReminders(queueService);
     await auditLogDAL.pruneAuditLog();
     await identityAccessTokenDAL.removeExpiredTokens();
     await identityUniversalAuthClientSecretDAL.removeExpiredClientSecrets();

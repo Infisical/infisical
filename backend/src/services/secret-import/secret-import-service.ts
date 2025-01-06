@@ -2,7 +2,7 @@ import path from "node:path";
 
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { TableName } from "@app/db/schemas";
+import { ProjectType, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -73,13 +73,14 @@ export const secretImportServiceFactory = ({
     isReplication,
     path: secretPath
   }: TCreateSecretImportDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
 
     // check if user has permission to import into destination  path
     ForbiddenError.from(permission).throwUnlessCan(
@@ -189,13 +190,15 @@ export const secretImportServiceFactory = ({
     data,
     id
   }: TUpdateSecretImportDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
@@ -283,13 +286,15 @@ export const secretImportServiceFactory = ({
     actorAuthMethod,
     id
   }: TDeleteSecretImportDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
       subject(ProjectPermissionSub.SecretImports, { environment, secretPath })

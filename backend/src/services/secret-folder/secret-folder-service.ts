@@ -2,7 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import path from "path";
 import { v4 as uuidv4, validate as uuidValidate } from "uuid";
 
-import { TSecretFoldersInsert } from "@app/db/schemas";
+import { ProjectType, TSecretFoldersInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
@@ -52,13 +52,14 @@ export const secretFolderServiceFactory = ({
     environment,
     path: secretPath
   }: TCreateFolderDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
@@ -150,13 +151,14 @@ export const secretFolderServiceFactory = ({
       throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       project.id,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
 
     folders.forEach(({ environment, path: secretPath }) => {
       ForbiddenError.from(permission).throwUnlessCan(
@@ -259,13 +261,14 @@ export const secretFolderServiceFactory = ({
     path: secretPath,
     id
   }: TUpdateFolderDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
@@ -339,13 +342,14 @@ export const secretFolderServiceFactory = ({
     path: secretPath,
     idOrName
   }: TDeleteFolderDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,

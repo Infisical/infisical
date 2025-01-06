@@ -1,3 +1,4 @@
+import { ProjectType } from "@app/db/schemas";
 import { TOrgPermission } from "@app/lib/types";
 
 import { ActorAuthMethod, ActorType, MfaMethod } from "../auth/auth-type";
@@ -55,6 +56,7 @@ export type TFindAllWorkspacesDTO = {
   actorOrgId: string | undefined;
   actorAuthMethod: ActorAuthMethod;
   orgId: string;
+  type?: ProjectType;
 };
 
 export type TUpdateOrgDTO = {
