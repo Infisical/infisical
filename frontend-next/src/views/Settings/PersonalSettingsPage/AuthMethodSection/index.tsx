@@ -1,1 +1,0 @@
-export { AuthMethodSection } from "./AuthMethodSection";

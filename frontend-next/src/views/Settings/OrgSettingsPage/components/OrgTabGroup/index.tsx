@@ -1,1 +1,0 @@
-export { OrgTabGroup } from "./OrgTabGroup";

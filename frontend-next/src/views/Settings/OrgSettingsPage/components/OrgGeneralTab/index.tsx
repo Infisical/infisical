@@ -1,1 +1,0 @@
-export { OrgGeneralTab } from "./OrgGeneralTab";

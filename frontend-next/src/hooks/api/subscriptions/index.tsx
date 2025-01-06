@@ -1,1 +1,0 @@
-export { useGetOrgSubscription } from "./queries";

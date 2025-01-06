@@ -1,1 +1,0 @@
-export { TtlFormLabel } from "./TtlFormLabel";

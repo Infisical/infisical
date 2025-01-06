@@ -1,1 +1,0 @@
-export { IPAllowlistPage } from "./IPAllowlistPage";

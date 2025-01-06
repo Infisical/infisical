@@ -1,1 +1,0 @@
-export { ShareSecretForm } from "./ShareSecretForm";

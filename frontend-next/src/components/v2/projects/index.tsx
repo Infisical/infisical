@@ -1,1 +1,0 @@
-export { NewProjectModal } from "./NewProjectModal";

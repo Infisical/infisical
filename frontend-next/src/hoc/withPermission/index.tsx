@@ -1,1 +1,0 @@
-export { withPermission } from "./withPermission";

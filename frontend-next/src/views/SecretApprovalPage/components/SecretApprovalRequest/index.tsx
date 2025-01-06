@@ -1,1 +1,0 @@
-export { SecretApprovalRequest } from "./SecretApprovalRequest";
