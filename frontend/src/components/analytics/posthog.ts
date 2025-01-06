@@ -1,5 +1,6 @@
-import { envConfig } from "@app/config/env";
 import posthog from "posthog-js";
+
+import { envConfig } from "@app/config/env";
 
 export const initPostHog = () => {
   console.log("Hi there 👋");

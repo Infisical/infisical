@@ -1,7 +1,7 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from "@tanstack/react-router";
 
-import { CliRedirectPage } from './CliRedirectPage'
+import { CliRedirectPage } from "./CliRedirectPage";
 
-export const Route = createFileRoute('/cli-redirect')({
-  component: CliRedirectPage,
-})
+export const Route = createFileRoute("/cli-redirect")({
+  component: CliRedirectPage
+});
