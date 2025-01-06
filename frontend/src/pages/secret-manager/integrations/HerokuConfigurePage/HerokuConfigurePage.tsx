@@ -61,7 +61,7 @@ export const HerokuConfigurePage = () => {
   });
 
   const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
-  const { data: integrationAuthApps, isLoading: isIntegrationAuthAppsLoading } =
+  const { data: integrationAuthApps, isPending: isIntegrationAuthAppsLoading } =
     useGetIntegrationAuthApps({
       integrationAuthId: (integrationAuthId as string) ?? ""
     });

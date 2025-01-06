@@ -38,7 +38,7 @@ export const RotationOutputForm = ({ onSubmit, onCancel, outputSchema = {} }: Pr
   const secretPath = watch("secretPath");
   const selectedSecrets = watch("secrets");
 
-  const { data: secrets, isLoading: isSecretsLoading } = useGetProjectSecrets({
+  const { data: secrets, isPending: isSecretsLoading } = useGetProjectSecrets({
     workspaceId,
     environment,
     secretPath

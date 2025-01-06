@@ -192,7 +192,7 @@ export const OverviewPage = () => {
       environments: (userAvailableEnvs || []).map(({ slug }) => slug)
     });
 
-  const { isLoading: isOverviewLoading, data: overview } = useGetProjectSecretsOverview(
+  const { isPending: isOverviewLoading, data: overview } = useGetProjectSecretsOverview(
     {
       projectId: workspaceId,
       environments: visibleEnvs.map((env) => env.slug),

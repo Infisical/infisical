@@ -87,7 +87,7 @@ export const QoveryConfigurePage = () => {
   });
   const [targetEnvironmentId, setTargetEnvironmentId] = useState("");
 
-  const { data: integrationAuthApps, isLoading: isIntegrationAuthAppsLoading } =
+  const { data: integrationAuthApps, isPending: isIntegrationAuthAppsLoading } =
     useGetIntegrationAuthQoveryScopes({
       integrationAuthId: (integrationAuthId as string) ?? "",
       environmentId: targetEnvironmentId,

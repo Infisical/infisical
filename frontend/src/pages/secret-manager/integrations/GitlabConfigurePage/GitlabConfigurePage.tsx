@@ -91,12 +91,12 @@ export const GitlabConfigurePage = () => {
 
   const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
 
-  const { data: integrationAuthApps, isLoading: isIntegrationAuthAppsLoading } =
+  const { data: integrationAuthApps, isPending: isIntegrationAuthAppsLoading } =
     useGetIntegrationAuthApps({
       integrationAuthId: (integrationAuthId as string) ?? "",
       ...(targetTeamId ? { teamId: targetTeamId } : {})
     });
-  const { data: integrationAuthTeams, isLoading: isintegrationAuthTeamsLoading } =
+  const { data: integrationAuthTeams, isPending: isintegrationAuthTeamsLoading } =
     useGetIntegrationAuthTeams((integrationAuthId as string) ?? "");
 
   const [isLoading, setIsLoading] = useState(false);

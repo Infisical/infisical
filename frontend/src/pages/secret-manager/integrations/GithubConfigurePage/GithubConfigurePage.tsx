@@ -148,7 +148,7 @@ export const GithubConfigurePage = () => {
   });
   const { data: integrationAuth } = useGetIntegrationAuthById(integrationAuthId);
 
-  const { data: integrationAuthApps, isLoading: isIntegrationAuthAppsLoading } =
+  const { data: integrationAuthApps, isPending: isIntegrationAuthAppsLoading } =
     useGetIntegrationAuthApps({
       integrationAuthId
     });

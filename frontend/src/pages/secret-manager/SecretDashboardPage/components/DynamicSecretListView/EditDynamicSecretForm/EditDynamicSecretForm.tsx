@@ -35,7 +35,7 @@ export const EditDynamicSecretForm = ({
   onClose,
   secretPath
 }: Props) => {
-  const { data: dynamicSecretDetails, isLoading: isDynamicSecretLoading } =
+  const { data: dynamicSecretDetails, isPending: isDynamicSecretLoading } =
     useGetDynamicSecretDetails({
       projectSlug,
       environmentSlug: environment,

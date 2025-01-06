@@ -44,7 +44,7 @@ export const OrgWorkflowIntegrationTab = withPermission(
     ] as const);
 
     const { currentOrg } = useOrganization();
-    const { data: workflowIntegrations, isLoading: isWorkflowIntegrationsLoading } =
+    const { data: workflowIntegrations, isPending: isWorkflowIntegrationsLoading } =
       useGetWorkflowIntegrations(currentOrg?.id);
 
     const { mutateAsync: deleteSlackIntegration } = useDeleteSlackIntegration();

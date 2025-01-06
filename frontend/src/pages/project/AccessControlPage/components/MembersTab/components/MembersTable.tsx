@@ -88,7 +88,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
     toggleOrderDirection
   } = usePagination<MembersOrderBy>(MembersOrderBy.Name, { initPerPage: 20 });
 
-  const { data: members = [], isLoading: isMembersLoading } = useGetWorkspaceUsers(workspaceId);
+  const { data: members = [], isPending: isMembersLoading } = useGetWorkspaceUsers(workspaceId);
 
   const filteredUsers = useMemo(
     () =>

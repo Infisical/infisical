@@ -87,7 +87,7 @@ const Page = () => {
             leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
             onClick={() =>
               navigate({
-                to: `/${ProjectType.CertificateManager}/${projectId}/overview` as const,
+                to: `/${ProjectType.CertificateManager}/$projectId/overview` as const,
                 params: {
                   projectId
                 }

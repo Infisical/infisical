@@ -66,7 +66,7 @@ export const HashicorpVaultConfigurePage = () => {
     select: (el) => el.integrationAuthId
   });
 
-  const { data: integrationAuth, isLoading: isintegrationAuthLoading } = useGetIntegrationAuthById(
+  const { data: integrationAuth, isPending: isintegrationAuthLoading } = useGetIntegrationAuthById(
     (integrationAuthId as string) ?? ""
   );
 

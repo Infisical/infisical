@@ -50,7 +50,7 @@ export const RundeckConfigurePage = () => {
     select: (el) => el.integrationAuthId
   });
 
-  const { data: integrationAuth, isLoading: isIntegrationAuthLoading } = useGetIntegrationAuthById(
+  const { data: integrationAuth, isPending: isIntegrationAuthLoading } = useGetIntegrationAuthById(
     (integrationAuthId as string) ?? ""
   );
 

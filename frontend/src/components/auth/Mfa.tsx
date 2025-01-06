@@ -130,7 +130,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
   return (
     <div className="mx-auto w-max pb-4 pt-4 md:mb-16 md:px-8">
       {!hideLogo && (
-        <Link href="/">
+        <Link to="/">
           <div className="mb-4 flex justify-center">
             <img src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical logo" />
           </div>
@@ -193,7 +193,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
       </form>
       {method === MfaMethod.TOTP && (
         <div className="mt-2 flex flex-row justify-center text-sm text-bunker-400">
-          <Link href="/verify-email">
+          <Link to="/verify-email">
             <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
               Lost your recovery codes? Reset your account
             </span>

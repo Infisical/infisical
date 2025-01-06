@@ -145,11 +145,11 @@ export const AwsSecretManagerConfigurePage = () => {
   });
 
   const { currentWorkspace } = useWorkspace();
-  const { data: integrationAuth, isLoading: isintegrationAuthLoading } = useGetIntegrationAuthById(
+  const { data: integrationAuth, isPending: isintegrationAuthLoading } = useGetIntegrationAuthById(
     (integrationAuthId as string) ?? ""
   );
 
-  const { data: integrationAuthAwsKmsKeys, isLoading: isIntegrationAuthAwsKmsKeysLoading } =
+  const { data: integrationAuthAwsKmsKeys, isPending: isIntegrationAuthAwsKmsKeysLoading } =
     useGetIntegrationAuthAwsKmsKeys({
       integrationAuthId: String(integrationAuthId),
       region: selectedAWSRegion

@@ -357,7 +357,7 @@ export const PasswordStep = ({ providerAuthToken, email, password, setPassword }
           Infisical Master Password serves as a decryption mechanism so that even Google is not able
           to access your secrets.
         </span>
-        <Link href="/verify-email">
+        <Link to="/verify-email">
           <span className="mt-2 cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
             {t("login.forgot-password")}
           </span>

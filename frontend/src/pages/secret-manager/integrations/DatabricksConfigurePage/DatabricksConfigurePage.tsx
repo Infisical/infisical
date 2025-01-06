@@ -38,11 +38,11 @@ export const DatabricksConfigurePage = () => {
     select: (el) => el.integrationAuthId
   });
 
-  const { data: integrationAuth, isLoading: isintegrationAuthLoading } = useGetIntegrationAuthById(
+  const { data: integrationAuth, isPending: isintegrationAuthLoading } = useGetIntegrationAuthById(
     (integrationAuthId as string) ?? ""
   );
 
-  const { data: integrationAuthScopes, isLoading: isIntegrationAuthScopesLoading } =
+  const { data: integrationAuthScopes, isPending: isIntegrationAuthScopesLoading } =
     useGetIntegrationAuthApps({
       integrationAuthId: (integrationAuthId as string) ?? ""
     });

@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate } from "@tanstack/react-router";
 import axios from "axios";
 import { z } from "zod";
 
@@ -38,7 +37,6 @@ export const SlackIntegrationForm = ({ id, onClose }: Props) => {
     resolver: zodResolver(slackFormSchema)
   });
 
-  const navigate = useNavigate();
   const [isConnectLoading, setIsConnectLoading] = useToggle(false);
   const { currentOrg } = useOrganization();
   const { data: slackIntegration } = useGetSlackIntegrationById(id);

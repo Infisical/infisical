@@ -61,14 +61,14 @@ export const OctopusDeployConfigurePage = () => {
     select: (el) => el.integrationAuthId
   });
 
-  const { data: octopusDeploySpaces, isLoading: isLoadingOctopusDeploySpaces } =
+  const { data: octopusDeploySpaces, isPending: isLoadingOctopusDeploySpaces } =
     useGetIntegrationAuthOctopusDeploySpaces((integrationAuthId as string) ?? "");
 
   const currentSpace = watch("targetSpace", octopusDeploySpaces?.[0]);
   const currentScope = watch("scope");
   const sourceEnv = watch("sourceEnvironment");
 
-  const { data: octopusDeployResources, isLoading: isOctopusDeployResourcesLoading } =
+  const { data: octopusDeployResources, isPending: isOctopusDeployResourcesLoading } =
     useGetIntegrationAuthApps(
       {
         integrationAuthId,
@@ -82,7 +82,7 @@ export const OctopusDeployConfigurePage = () => {
 
   const currentResource = watch("targetResource", octopusDeployResources?.[0]);
 
-  const { data: octopusDeployScopeValues, isLoading: isOctopusDeployScopeValuesLoading } =
+  const { data: octopusDeployScopeValues, isPending: isOctopusDeployScopeValuesLoading } =
     useGetIntegrationAuthOctopusDeployScopeValues(
       {
         integrationAuthId,

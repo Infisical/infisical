@@ -40,10 +40,10 @@ export const FlyioConfigurePage = () => {
     select: (el) => el.integrationAuthId
   });
 
-  const { data: integrationAuth, isLoading: isIntegrationAuthLoading } = useGetIntegrationAuthById(
+  const { data: integrationAuth, isPending: isIntegrationAuthLoading } = useGetIntegrationAuthById(
     (integrationAuthId as string) ?? ""
   );
-  const { data: integrationAuthApps = [], isLoading: isIntegrationAuthAppsLoading } =
+  const { data: integrationAuthApps = [], isPending: isIntegrationAuthAppsLoading } =
     useGetIntegrationAuthApps({
       integrationAuthId: (integrationAuthId as string) ?? ""
     });

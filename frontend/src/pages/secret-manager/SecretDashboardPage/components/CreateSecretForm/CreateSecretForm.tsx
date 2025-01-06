@@ -56,7 +56,7 @@ export const CreateSecretForm = ({
 
   const { permission } = useProjectPermission();
   const canReadTags = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
-  const { data: projectTags, isLoading: isTagsLoading } = useGetWsTags(
+  const { data: projectTags, isPending: isTagsLoading } = useGetWsTags(
     canReadTags ? workspaceId : ""
   );
 

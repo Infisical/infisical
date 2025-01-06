@@ -58,7 +58,7 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
 
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
   const { mutateAsync: createFolder } = useCreateFolder();
-  const { data: projectTags, isLoading: isTagsLoading } = useGetWsTags(
+  const { data: projectTags, isPending: isTagsLoading } = useGetWsTags(
     canReadTags ? workspaceId : ""
   );
 

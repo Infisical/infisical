@@ -224,7 +224,7 @@ export const SelectOrganizationPage = () => {
         />
       ) : (
         <div className="mx-auto mt-20 w-fit rounded-lg border-2 border-mineshaft-500 p-10 shadow-lg">
-          <Link href="/">
+          <Link to="/">
             <div className="mb-4 flex justify-center">
               <img
                 src="/images/gradientLogo.svg"
