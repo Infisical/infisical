@@ -59,7 +59,7 @@ export const SlackIntegrationForm = ({ id, onClose }: Props) => {
         description
       });
       if (slackInstallUrl) {
-        navigate({ to: slackInstallUrl });
+        window.location.assign(slackInstallUrl);
       }
     } catch (err) {
       if (axios.isAxiosError(err)) {
