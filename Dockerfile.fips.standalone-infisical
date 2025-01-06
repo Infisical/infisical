@@ -137,7 +137,7 @@ RUN apt-get update && apt-get install -y \
     freetds-dev \
     freetds-bin \
     tdsodbc \
-    openssh \
+    openssh-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Configure ODBC in production
