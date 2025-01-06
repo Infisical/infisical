@@ -80,7 +80,14 @@ export const SignupSsoPage = () => {
         <meta name="og:description" content={t("signup.og-description") as string} />
       </Helmet>
       <div className="mb-4 mt-20 flex justify-center">
-        <img src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical Logo" />
+        <img
+          src="/images/gradientLogo.svg"
+          style={{
+            height: "90px",
+            width: "120px"
+          }}
+          alt="Infisical Logo"
+        />
       </div>
       <div>{renderView()}</div>;
     </div>

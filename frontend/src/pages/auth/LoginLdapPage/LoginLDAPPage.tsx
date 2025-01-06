@@ -72,7 +72,14 @@ export const LoginLdapPage = () => {
       </Helmet>
       <Link to="/">
         <div className="mb-4 mt-20 flex justify-center">
-          <img src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical logo" />
+          <img
+            src="/images/gradientLogo.svg"
+            style={{
+              height: "90px",
+              width: "120px"
+            }}
+            alt="Infisical logo"
+          />
         </div>
       </Link>
       <div className="mx-auto w-full max-w-md md:px-6">

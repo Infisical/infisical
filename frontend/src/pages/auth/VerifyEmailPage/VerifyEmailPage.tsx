@@ -53,7 +53,14 @@ export const VerifyEmailPage = () => {
       </Helmet>
       <Link to="/">
         <div className="mb-8 mt-20 flex cursor-pointer justify-center">
-          <img src="/images/biglogo.png" height={90} width={120} alt="long logo" />
+          <img
+            src="/images/biglogo.png"
+            style={{
+              height: "90px",
+              width: "120px"
+            }}
+            alt="long logo"
+          />
         </div>
       </Link>
       {step === 1 && (

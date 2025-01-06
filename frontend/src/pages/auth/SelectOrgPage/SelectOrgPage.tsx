@@ -226,7 +226,14 @@ export const SelectOrganizationPage = () => {
         <div className="mx-auto mt-20 w-fit rounded-lg border-2 border-mineshaft-500 p-10 shadow-lg">
           <Link href="/">
             <div className="mb-4 flex justify-center">
-              <img src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical logo" />
+              <img
+                src="/images/gradientLogo.svg"
+                style={{
+                  height: "90px",
+                  width: "120px"
+                }}
+                alt="Infisical logo"
+              />
             </div>
           </Link>
           <form className="mx-auto flex w-full flex-col items-center justify-center">

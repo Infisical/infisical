@@ -4,7 +4,7 @@ import { apiRequest } from "@app/config/request";
 
 import { userKeys } from "../users/query-keys";
 import { workspaceKeys } from "./query-keys";
-import { ProjectType, TUpdateWorkspaceGroupRoleDTO } from "./types";
+import { TUpdateWorkspaceGroupRoleDTO } from "./types";
 
 export const useAddGroupToWorkspace = () => {
   const queryClient = useQueryClient();
@@ -102,7 +102,7 @@ export const useMigrateProjectToV3 = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getAllUserWorkspace(ProjectType.SecretManager)
+        queryKey: workspaceKeys.getAllUserWorkspace()
       });
     }
   });

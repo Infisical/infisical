@@ -3,7 +3,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { workspaceKeys } from "../workspace";
-import { ProjectType } from "../workspace/types";
 
 export const useImportEnvKey = () => {
   const queryClient = useQueryClient();
@@ -35,7 +34,7 @@ export const useImportEnvKey = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getAllUserWorkspace(ProjectType.SecretManager)
+        queryKey: workspaceKeys.getAllUserWorkspace()
       });
     }
   });

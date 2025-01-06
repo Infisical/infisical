@@ -227,7 +227,11 @@ export const SignupInvitePage = () => {
       <p className="mb-6 flex justify-center text-center text-4xl font-semibold text-primary-100">
         Confirm your email
       </p>
-      <img src="/images/dragon-signupinvite.svg" height={262} width={410} alt="verify email" />
+      <img
+        src="/images/dragon-signupinvite.svg"
+        style={{ height: "262px", width: "410px" }}
+        alt="verify email"
+      />
       <div className="mx-auto mb-2 mt-10 flex max-h-24 max-w-md flex-col items-center justify-center px-4 text-lg md:p-2">
         <Button
           onClick={async () => {

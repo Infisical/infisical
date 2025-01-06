@@ -78,7 +78,7 @@ export const CopySecretsFromBoard = ({
   const selectedEnvSlug = watch("environment");
   const [debouncedEnvCopySecretPath] = useDebounce(envCopySecPath);
 
-  const { data: secrets, isLoading: isSecretsLoading } = useGetProjectSecrets({
+  const { data: secrets, isPending: isSecretsLoading } = useGetProjectSecrets({
     workspaceId,
     environment: selectedEnvSlug.slug,
     secretPath: debouncedEnvCopySecretPath,

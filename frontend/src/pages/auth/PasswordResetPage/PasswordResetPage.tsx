@@ -154,7 +154,11 @@ export const PasswordResetPage = () => {
       <p className="mb-8 flex justify-center bg-gradient-to-br from-sky-400 to-primary bg-clip-text text-center text-4xl font-semibold text-transparent">
         Confirm your email
       </p>
-      <img src="/images/envelope.svg" height={262} width={410} alt="verify email" />
+      <img
+        src="/images/envelope.svg"
+        style={{ height: "262px", width: "410px" }}
+        alt="verify email"
+      />
       <div className="mx-auto mb-2 mt-4 flex max-h-24 max-w-md flex-col items-center justify-center px-4 text-lg md:p-2">
         <Button
           onClick={async () => {

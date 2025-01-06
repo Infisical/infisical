@@ -10,7 +10,7 @@ export const AzureAppConfigurationOauthCallbackPage = () => {
   const { mutateAsync } = useAuthorizeIntegration();
 
   const { code, state } = useSearch({
-    from: ROUTE_PATHS.SecretManager.Integratons.HerokuOauthCallbackPage.id
+    from: ROUTE_PATHS.SecretManager.Integratons.AzureAppConfigurationsOauthCallbackPage.id
   });
   const { currentWorkspace } = useWorkspace();
 

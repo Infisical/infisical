@@ -42,7 +42,7 @@ export const organizationKeys = {
     [...organizationKeys.getOrgIdentityMemberships(orgId), params] as const,
   getOrgGroups: (orgId: string) => [{ orgId }, "organization-groups"] as const,
   getOrgIntegrationAuths: (orgId: string) => [{ orgId }, "integration-auths"] as const,
-  getOrgById: (orgId: string) => ["org-by-id", { orgId }]
+  getOrgById: (orgId: string) => ["organization", { orgId }]
 };
 
 export const fetchOrganizations = async () => {

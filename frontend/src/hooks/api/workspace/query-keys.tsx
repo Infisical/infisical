@@ -3,7 +3,7 @@ import { TListProjectIdentitiesDTO } from "@app/hooks/api/workspace/types";
 import type { CaStatus } from "../ca";
 
 export const workspaceKeys = {
-  getWorkspaceById: (workspaceId: string) => [{ workspaceId }, "workspace"] as const,
+  getWorkspaceById: (workspaceId: string) => ["workspaces", { workspaceId }] as const,
   getWorkspaceSecrets: (workspaceId: string) => [{ workspaceId }, "workspace-secrets"] as const,
   getWorkspaceIndexStatus: (workspaceId: string) =>
     [{ workspaceId }, "workspace-index-status"] as const,
@@ -12,7 +12,7 @@ export const workspaceKeys = {
   getWorkspaceAuthorization: (workspaceId: string) => [{ workspaceId }, "workspace-authorizations"],
   getWorkspaceIntegrations: (workspaceId: string) => [{ workspaceId }, "workspace-integrations"],
   getAllUserWorkspace: (type?: string) =>
-    type ? ["workspaces", { type }] : (["workspace"] as const),
+    type ? ["workspaces", { type }] : (["workspaces"] as const),
   getWorkspaceAuditLogs: (workspaceId: string) =>
     [{ workspaceId }, "workspace-audit-logs"] as const,
   getWorkspaceUsers: (workspaceId: string) => [{ workspaceId }, "workspace-users"] as const,

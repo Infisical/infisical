@@ -86,7 +86,7 @@ export const useUpgradeProject = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getAllUserWorkspace(ProjectType.SecretManager)
+        queryKey: workspaceKeys.getAllUserWorkspace()
       });
     }
   });
@@ -151,7 +151,7 @@ export const useGetUserWorkspaces = ({
   type?: ProjectType | "all";
 } = {}) =>
   useQuery({
-    queryKey: workspaceKeys.getAllUserWorkspace(type || ""),
+    queryKey: workspaceKeys.getAllUserWorkspace(),
     queryFn: () => fetchUserWorkspaces(includeRoles, type)
   });
 
@@ -261,8 +261,8 @@ export const useUpdateProject = () => {
       );
       return data.workspace;
     },
-    onSuccess: (dto) => {
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace(dto.type) });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace() });
     }
   });
 };
@@ -280,8 +280,8 @@ export const useToggleAutoCapitalization = () => {
       );
       return data.workspace;
     },
-    onSuccess: (dto) => {
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace(dto.type) });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace() });
     }
   });
 };
@@ -296,8 +296,8 @@ export const useUpdateWorkspaceVersionLimit = () => {
       });
       return data.workspace;
     },
-    onSuccess: (dto) => {
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace(dto.type) });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace() });
     }
   });
 };
@@ -350,7 +350,7 @@ export const useCreateWsEnvironment = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getAllUserWorkspace(ProjectType.SecretManager)
+        queryKey: workspaceKeys.getAllUserWorkspace()
       });
     }
   });
@@ -369,7 +369,7 @@ export const useUpdateWsEnvironment = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getAllUserWorkspace(ProjectType.SecretManager)
+        queryKey: workspaceKeys.getAllUserWorkspace()
       });
     }
   });
@@ -384,7 +384,7 @@ export const useDeleteWsEnvironment = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getAllUserWorkspace(ProjectType.SecretManager)
+        queryKey: workspaceKeys.getAllUserWorkspace()
       });
     }
   });

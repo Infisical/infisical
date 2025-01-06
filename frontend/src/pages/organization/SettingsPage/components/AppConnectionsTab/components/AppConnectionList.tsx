@@ -33,8 +33,10 @@ export const AppConnectionsSelect = ({ onSelect }: Props) => {
         >
           <img
             src={`/images/integrations/${APP_CONNECTION_MAP[option.app].image}`}
-            height={50}
-            width={50}
+            style={{
+              height: "50px",
+              width: "50px"
+            }}
             className="mt-auto"
             alt={`${APP_CONNECTION_MAP[option.app].name} logo`}
           />
