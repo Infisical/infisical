@@ -27,7 +27,7 @@ const organizationRoutes = route("/organization", [
     route("/identities/$identityId", "organization/IdentityDetailsByIDPage/route.tsx"),
     route(
       "/app-connections/github/oauth/callback",
-      "organization/AppConnections/GithubOauthCallbackPage/route.tsx"
+      "organization/appConnections/GithubOauthCallbackPage/route.tsx"
     )
   ])
 ]);

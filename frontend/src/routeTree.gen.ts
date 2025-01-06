@@ -166,7 +166,7 @@ import { Route as secretManagerIntegrationsAwsSecretManagerConfigurePageRouteImp
 import { Route as secretManagerIntegrationsAwsSecretManagerAuthorizePageRouteImport } from './pages/secret-manager/integrations/AwsSecretManagerAuthorizePage/route'
 import { Route as secretManagerIntegrationsAwsParameterStoreConfigurePageRouteImport } from './pages/secret-manager/integrations/AwsParameterStoreConfigurePage/route'
 import { Route as secretManagerIntegrationsAwsParameterStoreAuthorizePageRouteImport } from './pages/secret-manager/integrations/AwsParameterStoreAuthorizePage/route'
-import { Route as organizationAppConnectionsGithubOauthCallbackPageRouteImport } from './pages/organization/AppConnections/GithubOauthCallbackPage/route'
+import { Route as organizationAppConnectionsGithubOauthCallbackPageRouteImport } from './pages/organization/appConnections/GithubOauthCallbackPage/route'
 import { Route as secretManagerIntegrationsVercelOauthCallbackPageRouteImport } from './pages/secret-manager/integrations/VercelOauthCallbackPage/route'
 import { Route as secretManagerIntegrationsNetlifyOauthCallbackPageRouteImport } from './pages/secret-manager/integrations/NetlifyOauthCallbackPage/route'
 import { Route as secretManagerIntegrationsHerokuOauthCallbackPageRouteImport } from './pages/secret-manager/integrations/HerokuOauthCallbackPage/route'
@@ -5074,7 +5074,7 @@ export const routeTree = rootRoute
       "parent": "/_authenticate/_inject-org-details/ssh/$projectId/_ssh-layout"
     },
     "/_authenticate/_inject-org-details/organization/_layout/app-connections/github/oauth/callback": {
-      "filePath": "organization/AppConnections/GithubOauthCallbackPage/route.tsx",
+      "filePath": "organization/appConnections/GithubOauthCallbackPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/organization/_layout"
     },
     "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/aws-parameter-store/authorize": {
