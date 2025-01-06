@@ -63,6 +63,7 @@ const formatTitle = (type: ProjectType) => {
   if (type === ProjectType.SecretManager) return "Secret Management";
   if (type === ProjectType.CertificateManager) return "Cert Management";
   if (type === ProjectType.KMS) return "Key Management";
+  if (type === ProjectType.UserSecrets) return "User Secrets";
   return "SSH";
 };
 
@@ -73,6 +74,8 @@ const formatDescription = (type: ProjectType) => {
     return "Manage your PKI infrastructure and issue digital certificates for services, applications, and devices.";
   if (type === ProjectType.KMS)
     return "Centralize the management of keys for cryptographic operations, such as encryption and decryption.";
+  if (type === ProjectType.UserSecrets)
+    return "Securely store, manage, and access personal credentials such as website logins, credit card details, secure notes, and more, all tied to your organization";
   return "Generate SSH credentials to provide secure and centralized SSH access control for your infrastructure.";
 };
 

@@ -212,5 +212,6 @@ export enum ProjectType {
   SecretManager = "secret-manager",
   CertificateManager = "cert-manager",
   KMS = "kms",
-  SSH = "ssh"
+  SSH = "ssh",
+  UserSecrets = "user-secrets"
 }
