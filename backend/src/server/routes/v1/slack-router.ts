@@ -331,7 +331,7 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
         failureAsync: async () => {
           return res.redirect(appCfg.SITE_URL as string);
         },
-        successAsync: async (installation) => {
+        successAsync: async () => {
           return res.redirect(`${appCfg.SITE_URL}/organization/settings?selectedTab=workflow-integrations`);
         }
       });
