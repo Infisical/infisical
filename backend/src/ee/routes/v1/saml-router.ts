@@ -123,7 +123,10 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
               `email: ${email} firstName: ${profile.firstName as string}`
             );
 
-            throw new Error("Invalid saml request. Missing email or first name");
+            throw new BadRequestError({
+              message:
+                "Invalid saml request. Missing email or first name. Please double check your SAML attribute mapping."
+            });
           }
 
           const userMetadata = Object.keys(profile.attributes || {})
