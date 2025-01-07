@@ -84,7 +84,10 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
                 samlConfig.audience = `spn:${ssoConfig.issuer}`;
               }
             }
-            if (ssoConfig.authProvider === SamlProviders.GOOGLE_SAML) {
+            if (
+              ssoConfig.authProvider === SamlProviders.GOOGLE_SAML ||
+              ssoConfig.authProvider === SamlProviders.AUTH0_SAML
+            ) {
               samlConfig.wantAssertionsSigned = false;
             }
 
