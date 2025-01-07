@@ -125,7 +125,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
 
             throw new BadRequestError({
               message:
-                "Invalid saml request. Missing email or first name. Please double check your SAML attribute mapping."
+                "Missing email or first name. Please double check your SAML attribute mapping for the selected provider."
             });
           }
 
