@@ -62,6 +62,7 @@ export const CircleCIConfigurePage = () => {
 
   const selectedScope = watch("scope");
   const selectedOrg = watch("targetOrg");
+  const selectedEnvironment = watch("sourceEnvironment");
 
   const { data: circleCIOrganizations, isPending: isCircleCIOrganizationsLoading } =
     useGetIntegrationAuthCircleCIOrganizations(integrationAuthId);
@@ -186,7 +187,7 @@ export const CircleCIConfigurePage = () => {
           name="secretPath"
           render={({ field, fieldState: { error } }) => (
             <FormControl label="Secrets Path" errorText={error?.message} isError={Boolean(error)}>
-              <SecretPathInput {...field} />
+              <SecretPathInput {...field} environment={selectedEnvironment.slug}/>
             </FormControl>
           )}
         />
