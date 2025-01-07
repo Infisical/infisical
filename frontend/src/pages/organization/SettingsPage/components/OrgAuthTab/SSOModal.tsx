@@ -25,7 +25,8 @@ enum AuthProvider {
   AZURE_SAML = "azure-saml",
   JUMPCLOUD_SAML = "jumpcloud-saml",
   KEYCLOAK_SAML = "keycloak-saml",
-  GOOGLE_SAML = "google-saml"
+  GOOGLE_SAML = "google-saml",
+  AUTH0_SAML = "auth0-saml"
 }
 
 const ssoAuthProviders = [
@@ -33,7 +34,8 @@ const ssoAuthProviders = [
   { label: "Azure / Entra SAML", value: AuthProvider.AZURE_SAML },
   { label: "JumpCloud SAML", value: AuthProvider.JUMPCLOUD_SAML },
   { label: "Keycloak SAML", value: AuthProvider.KEYCLOAK_SAML },
-  { label: "Google SAML", value: AuthProvider.GOOGLE_SAML }
+  { label: "Google SAML", value: AuthProvider.GOOGLE_SAML },
+  { label: "Auth0 SAML", value: AuthProvider.AUTH0_SAML }
 ];
 
 const schema = z
@@ -190,6 +192,15 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
           entryPointPlaceholder: "https://accounts.google.com/o/saml2/idp?idpid=xxx",
           issuer: "Issuer",
           issuerPlaceholder: window.origin
+        };
+      case AuthProvider.AUTH0_SAML:
+        return {
+          acsUrl: "Application Callback URL",
+          entityId: "Audience",
+          entryPoint: "Identity Provider Login URL",
+          entryPointPlaceholder: "https://xxx.auth0.com/samlp/xxx",
+          issuer: "Issuer",
+          issuerPlaceholder: "urn:xxx-xxx.us.auth0.com"
         };
       default:
         return {
