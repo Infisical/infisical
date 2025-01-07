@@ -320,6 +320,7 @@
             "cli/commands/run",
             "cli/commands/secrets",
             "cli/commands/dynamic-secrets",
+            "cli/commands/ssh",
             "cli/commands/export",
             "cli/commands/token",
             "cli/commands/service-token",
@@ -339,14 +340,6 @@
         "cli/scanning-overview",
         "cli/project-config",
         "cli/faq"
-      ]
-    },
-    {
-      "group": "App Connections",
-      "pages": [
-        "integrations/app-connections/overview",
-        "integrations/app-connections/aws",
-        "integrations/app-connections/github"
       ]
     },
     {
@@ -766,33 +759,6 @@
           ]
         },
         {
-          "group": "App Connections",
-          "pages": [
-            "api-reference/endpoints/app-connections/list",
-            "api-reference/endpoints/app-connections/options",
-            { "group":  "AWS",
-              "pages": [
-                "api-reference/endpoints/app-connections/aws/list",
-                "api-reference/endpoints/app-connections/aws/get-by-id",
-                "api-reference/endpoints/app-connections/aws/get-by-name",
-                "api-reference/endpoints/app-connections/aws/create",
-                "api-reference/endpoints/app-connections/aws/update",
-                "api-reference/endpoints/app-connections/aws/delete"
-              ]
-            },
-            { "group":  "GitHub",
-              "pages": [
-                "api-reference/endpoints/app-connections/github/list",
-                "api-reference/endpoints/app-connections/github/get-by-id",
-                "api-reference/endpoints/app-connections/github/get-by-name",
-                "api-reference/endpoints/app-connections/github/create",
-                "api-reference/endpoints/app-connections/github/update",
-                "api-reference/endpoints/app-connections/github/delete"
-              ]
-            }
-          ]
-        },
-        {
           "group": "Integrations",
           "pages": [
             "api-reference/endpoints/integrations/create-auth",
@@ -974,9 +940,6 @@
       ]
     }
   ],
-  "integrations": {
-    "intercom": "hsg644ru"
-  },
   "analytics": {
     "koala": {
       "publicApiKey": "pk_b50d7184e0e39ddd5cdb43cf6abeadd9b97d"

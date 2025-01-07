@@ -1,1 +1,0 @@
-export { GroupsSection } from "./GroupsSection";

@@ -80,12 +80,12 @@ export const useGetDynamicSecretProviderData = ({
   tenantId: string;
   applicationId: string;
   clientSecret: string;
-  enabled: boolean
+  enabled: boolean;
 }) => {
   return useQuery({
     queryKey: ["users"],
     queryFn: async () => {
-      const { data } = await apiRequest.post<{id:string, email: string, name:string}[]>(
+      const { data } = await apiRequest.post<{ id: string; email: string; name: string }[]>(
         "/api/v1/dynamic-secrets/entra-id/users",
         {
           tenantId,

@@ -14,8 +14,8 @@ type Props = {
 };
 
 const TotpRegistration = ({ onComplete, shouldCenterQr }: Props) => {
-  const { data: registration, isLoading } = useGetUserTotpRegistration();
-  const { mutateAsync: verifyUserTotp, isLoading: isVerifyLoading } =
+  const { data: registration, isPending } = useGetUserTotpRegistration();
+  const { mutateAsync: verifyUserTotp, isPending: isVerifyLoading } =
     useVerifyUserTotpRegistration();
   const [qrCodeUrl, setQrCodeUrl] = useState("");
   const [totp, setTotp] = useState("");
@@ -47,7 +47,7 @@ const TotpRegistration = ({ onComplete, shouldCenterQr }: Props) => {
     generateQRCode();
   }, [registration]);
 
-  if (isLoading) {
+  if (isPending) {
     return <ContentLoader />;
   }
 

@@ -1,6 +1,7 @@
-import { useQuery, UseQueryOptions } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { TReactQueryOptions } from "@app/types/reactQuery";
 
 import {
   ClientSecretData,
@@ -69,12 +70,7 @@ export const useGetIdentityProjectMemberships = (identityId: string) => {
 
 export const useGetIdentityUniversalAuth = (
   identityId: string,
-  options?: UseQueryOptions<
-    IdentityUniversalAuth,
-    unknown,
-    IdentityUniversalAuth,
-    ReturnType<typeof identitiesKeys.getIdentityUniversalAuth>
-  >
+  options?: TReactQueryOptions["options"]
 ) => {
   return useQuery({
     queryKey: identitiesKeys.getIdentityUniversalAuth(identityId),
@@ -86,7 +82,7 @@ export const useGetIdentityUniversalAuth = (
       );
       return identityUniversalAuth;
     },
-    cacheTime: 0,
+    gcTime: 0,
     staleTime: 0,
     ...options,
     enabled: Boolean(identityId) && (options?.enabled ?? true)
@@ -110,12 +106,7 @@ export const useGetIdentityUniversalAuthClientSecrets = (identityId: string) => 
 
 export const useGetIdentityGcpAuth = (
   identityId: string,
-  options?: UseQueryOptions<
-    IdentityGcpAuth,
-    unknown,
-    IdentityGcpAuth,
-    ReturnType<typeof identitiesKeys.getIdentityGcpAuth>
-  >
+  options?: TReactQueryOptions["options"]
 ) => {
   return useQuery({
     queryKey: identitiesKeys.getIdentityGcpAuth(identityId),
@@ -128,7 +119,7 @@ export const useGetIdentityGcpAuth = (
       return identityGcpAuth;
     },
     staleTime: 0,
-    cacheTime: 0,
+    gcTime: 0,
     ...options,
     enabled: Boolean(identityId) && (options?.enabled ?? true)
   });
@@ -136,12 +127,7 @@ export const useGetIdentityGcpAuth = (
 
 export const useGetIdentityAwsAuth = (
   identityId: string,
-  options?: UseQueryOptions<
-    IdentityAwsAuth,
-    unknown,
-    IdentityAwsAuth,
-    ReturnType<typeof identitiesKeys.getIdentityAwsAuth>
-  >
+  options?: TReactQueryOptions["options"]
 ) => {
   return useQuery({
     queryKey: identitiesKeys.getIdentityAwsAuth(identityId),
@@ -154,7 +140,7 @@ export const useGetIdentityAwsAuth = (
       return identityAwsAuth;
     },
     staleTime: 0,
-    cacheTime: 0,
+    gcTime: 0,
     ...options,
     enabled: Boolean(identityId) && (options?.enabled ?? true)
   });
@@ -162,12 +148,7 @@ export const useGetIdentityAwsAuth = (
 
 export const useGetIdentityAzureAuth = (
   identityId: string,
-  options?: UseQueryOptions<
-    IdentityAzureAuth,
-    unknown,
-    IdentityAzureAuth,
-    ReturnType<typeof identitiesKeys.getIdentityAzureAuth>
-  >
+  options?: TReactQueryOptions["options"]
 ) => {
   return useQuery({
     queryKey: identitiesKeys.getIdentityAzureAuth(identityId),
@@ -180,7 +161,7 @@ export const useGetIdentityAzureAuth = (
       return identityAzureAuth;
     },
     staleTime: 0,
-    cacheTime: 0,
+    gcTime: 0,
     ...options,
     enabled: Boolean(identityId) && (options?.enabled ?? true)
   });
@@ -188,12 +169,7 @@ export const useGetIdentityAzureAuth = (
 
 export const useGetIdentityKubernetesAuth = (
   identityId: string,
-  options?: UseQueryOptions<
-    IdentityKubernetesAuth,
-    unknown,
-    IdentityKubernetesAuth,
-    ReturnType<typeof identitiesKeys.getIdentityKubernetesAuth>
-  >
+  options?: TReactQueryOptions["options"]
 ) => {
   return useQuery({
     queryKey: identitiesKeys.getIdentityKubernetesAuth(identityId),
@@ -206,7 +182,7 @@ export const useGetIdentityKubernetesAuth = (
       return identityKubernetesAuth;
     },
     staleTime: 0,
-    cacheTime: 0,
+    gcTime: 0,
     ...options,
     enabled: Boolean(identityId) && (options?.enabled ?? true)
   });
@@ -214,12 +190,7 @@ export const useGetIdentityKubernetesAuth = (
 
 export const useGetIdentityTokenAuth = (
   identityId: string,
-  options?: UseQueryOptions<
-    IdentityTokenAuth,
-    unknown,
-    IdentityTokenAuth,
-    ReturnType<typeof identitiesKeys.getIdentityTokenAuth>
-  >
+  options?: TReactQueryOptions["options"]
 ) => {
   return useQuery({
     queryKey: identitiesKeys.getIdentityTokenAuth(identityId),
@@ -232,7 +203,7 @@ export const useGetIdentityTokenAuth = (
       return identityTokenAuth;
     },
     staleTime: 0,
-    cacheTime: 0,
+    gcTime: 0,
     ...options,
     enabled: Boolean(identityId) && (options?.enabled ?? true)
   });
@@ -255,12 +226,7 @@ export const useGetIdentityTokensTokenAuth = (identityId: string) => {
 
 export const useGetIdentityOidcAuth = (
   identityId: string,
-  options?: UseQueryOptions<
-    IdentityOidcAuth,
-    unknown,
-    IdentityOidcAuth,
-    ReturnType<typeof identitiesKeys.getIdentityOidcAuth>
-  >
+  options?: TReactQueryOptions["options"]
 ) => {
   return useQuery({
     queryKey: identitiesKeys.getIdentityOidcAuth(identityId),
@@ -273,7 +239,7 @@ export const useGetIdentityOidcAuth = (
       return identityOidcAuth;
     },
     staleTime: 0,
-    cacheTime: 0,
+    gcTime: 0,
     ...options,
     enabled: Boolean(identityId) && (options?.enabled ?? true)
   });
@@ -281,12 +247,7 @@ export const useGetIdentityOidcAuth = (
 
 export const useGetIdentityJwtAuth = (
   identityId: string,
-  options?: UseQueryOptions<
-    IdentityJwtAuth,
-    unknown,
-    IdentityJwtAuth,
-    ReturnType<typeof identitiesKeys.getIdentityJwtAuth>
-  >
+  options?: TReactQueryOptions["options"]
 ) => {
   return useQuery({
     queryKey: identitiesKeys.getIdentityJwtAuth(identityId),
@@ -300,7 +261,7 @@ export const useGetIdentityJwtAuth = (
       return identityJwtAuth;
     },
     staleTime: 0,
-    cacheTime: 0,
+    gcTime: 0,
     ...options,
     enabled: Boolean(identityId) && (options?.enabled ?? true)
   });

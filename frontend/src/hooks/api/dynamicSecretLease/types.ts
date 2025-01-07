@@ -46,4 +46,3 @@ export type TRevokeDynamicSecretLeaseDTO = {
   environmentSlug: string;
   isForced?: boolean;
 };
-

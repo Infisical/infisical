@@ -1,58 +1,32 @@
-import { createContext, ReactNode, useContext } from "react";
+import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
+import { unpackRules } from "@casl/ability/extra";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { useRouteContext } from "@tanstack/react-router";
 
-import { useGetUserOrgPermissions } from "@app/hooks/api";
-import { OrgUser } from "@app/hooks/api/types";
+import {
+  conditionsMatcher,
+  fetchUserOrgPermissions,
+  roleQueryKeys
+} from "@app/hooks/api/roles/queries";
 
-import { useOrganization } from "../OrganizationContext";
-import { TOrgPermission } from "./types";
-
-type Props = {
-  children: ReactNode;
-};
-
-const OrgPermissionContext = createContext<null | {
-  permission: TOrgPermission;
-  membership: OrgUser | null;
-}>(null);
-
-export const OrgPermissionProvider = ({ children }: Props): JSX.Element => {
-  const { currentOrg } = useOrganization();
-  const orgId = currentOrg?.id || "";
-  const { data: permission, isLoading } = useGetUserOrgPermissions({ orgId });
-
-  if (isLoading) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-bunker-800">
-        <img
-          src="/images/loading/loading.gif"
-          height={70}
-          width={120}
-          decoding="async"
-          loading="lazy"
-          alt="infisical loading indicator"
-        />
-      </div>
-    );
-  }
-
-  if (!permission) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-bunker-800">
-        Failed to load user permissions
-      </div>
-    );
-  }
-
-  return (
-    <OrgPermissionContext.Provider value={permission}>{children}</OrgPermissionContext.Provider>
-  );
-};
+import { OrgPermissionSet } from "./types";
 
 export const useOrgPermission = () => {
-  const ctx = useContext(OrgPermissionContext);
-  if (!ctx) {
-    throw new Error("useOrgPermission to be used within <OrgPermissionProvider>");
-  }
+  const organizationId = useRouteContext({
+    from: "/_authenticate/_inject-org-details",
+    select: (el) => el.organizationId
+  });
 
-  return ctx;
+  const { data } = useSuspenseQuery({
+    queryKey: roleQueryKeys.getUserOrgPermissions({ orgId: organizationId }),
+    queryFn: () => fetchUserOrgPermissions({ orgId: organizationId }),
+    select: (res) => {
+      const rule = unpackRules<RawRuleOf<MongoAbility<OrgPermissionSet>>>(res.permissions);
+      const ability = createMongoAbility<OrgPermissionSet>(rule, { conditionsMatcher });
+      return { permission: ability, membership: res.membership };
+    },
+    staleTime: Infinity
+  });
+
+  return data;
 };

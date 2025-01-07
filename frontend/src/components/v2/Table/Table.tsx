@@ -101,7 +101,7 @@ export type ThProps = {
 export const Th = ({ children, className }: ThProps): JSX.Element => (
   <th
     className={twMerge(
-      "border-b-2 border-mineshaft-600 bg-mineshaft-800 px-5 pt-4 pb-3.5 font-semibold",
+      "border-b-2 border-mineshaft-600 bg-mineshaft-800 px-5 pb-3.5 pt-4 font-semibold",
       className
     )}
   >

@@ -7,12 +7,15 @@ export const groupBy = <T, Key extends string | number | symbol>(
   array: readonly T[],
   getGroupId: (item: T) => Key
 ): Record<Key, T[]> =>
-  array.reduce((acc, item) => {
-    const groupId = getGroupId(item);
-    if (!acc[groupId]) acc[groupId] = [];
-    acc[groupId].push(item);
-    return acc;
-  }, {} as Record<Key, T[]>);
+  array.reduce(
+    (acc, item) => {
+      const groupId = getGroupId(item);
+      if (!acc[groupId]) acc[groupId] = [];
+      acc[groupId].push(item);
+      return acc;
+    },
+    {} as Record<Key, T[]>
+  );
 
 /**
  * Given a list of items returns a new list with only
@@ -24,11 +27,14 @@ export const unique = <T, K extends string | number | symbol>(
   array: readonly T[],
   toKey?: (item: T) => K
 ): T[] => {
-  const valueMap = array.reduce((acc, item) => {
-    const key = toKey ? toKey(item) : (item as unknown as string | number | symbol);
-    if (acc[key]) return acc;
-    acc[key] = item;
-    return acc;
-  }, {} as Record<string | number | symbol, T>);
+  const valueMap = array.reduce(
+    (acc, item) => {
+      const key = toKey ? toKey(item) : (item as unknown as string | number | symbol);
+      if (acc[key]) return acc;
+      acc[key] = item;
+      return acc;
+    },
+    {} as Record<string | number | symbol, T>
+  );
   return Object.values(valueMap);
 };

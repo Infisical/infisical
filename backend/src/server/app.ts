@@ -27,10 +27,10 @@ import { globalRateLimiterCfg } from "./config/rateLimiter";
 import { addErrorsToResponseSchemas } from "./plugins/add-errors-to-response-schemas";
 import { apiMetrics } from "./plugins/api-metrics";
 import { fastifyErrHandler } from "./plugins/error-handler";
-import { registerExternalNextjs } from "./plugins/external-nextjs";
 import { serializerCompiler, validatorCompiler, ZodTypeProvider } from "./plugins/fastify-zod";
 import { fastifyIp } from "./plugins/ip";
 import { maintenanceMode } from "./plugins/maintenanceMode";
+import { registerServeUI } from "./plugins/serve-ui";
 import { fastifySwagger } from "./plugins/swagger";
 import { registerRoutes } from "./routes";
 
@@ -120,13 +120,10 @@ export const main = async ({ db, hsmModule, auditLogDb, smtp, logger, queue, key
 
     await server.register(registerRoutes, { smtp, queue, db, auditLogDb, keyStore, hsmModule });
 
-    if (appCfg.isProductionMode) {
-      await server.register(registerExternalNextjs, {
-        standaloneMode: appCfg.STANDALONE_MODE || IS_PACKAGED,
-        dir: path.join(__dirname, IS_PACKAGED ? "../../../" : "../../"),
-        port: appCfg.PORT
-      });
-    }
+    await server.register(registerServeUI, {
+      standaloneMode: appCfg.STANDALONE_MODE || IS_PACKAGED,
+      dir: path.join(__dirname, IS_PACKAGED ? "../../../" : "../../")
+    });
 
     await server.ready();
     server.swagger();

@@ -3,7 +3,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { workspaceKeys } from "../workspace";
-import { ProjectType } from "../workspace/types";
 
 export const useImportEnvKey = () => {
   const queryClient = useQueryClient();
@@ -21,7 +20,9 @@ export const useImportEnvKey = () => {
             "Content-Type": "multipart/form-data"
           },
           onUploadProgress: (progressEvent) => {
-            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            const percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / (progressEvent?.total || 1)
+            );
             console.log(`Upload Progress: ${percentCompleted}%`);
           }
         });
@@ -32,7 +33,9 @@ export const useImportEnvKey = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace(ProjectType.SecretManager));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getAllUserWorkspace()
+      });
     }
   });
 };

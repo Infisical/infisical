@@ -3,5 +3,6 @@ export {
   useCreateLDAPGroupMapping,
   useDeleteLDAPGroupMapping,
   useTestLDAPConnection,
-  useUpdateLDAPConfig} from "./mutations";
+  useUpdateLDAPConfig
+} from "./mutations";
 export { useGetLDAPConfig, useGetLDAPGroupMaps } from "./queries";

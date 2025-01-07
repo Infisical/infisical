@@ -116,26 +116,6 @@ export const useGetProjectSecrets = ({
     enabled: Boolean(workspaceId && environment) && (options?.enabled ?? true),
     queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath }),
     queryFn: () => fetchProjectSecrets({ workspaceId, environment, secretPath }),
-    onError: (error) => {
-      if (axios.isAxiosError(error)) {
-        const { message, requestId } = error.response?.data as {
-          message: string;
-          requestId: string;
-        };
-        createNotification({
-          title: "Error fetching secrets",
-          type: "error",
-          text: message,
-          copyActions: [
-            {
-              value: requestId,
-              name: "Request ID",
-              label: `Request ID: ${requestId}`
-            }
-          ]
-        });
-      }
-    },
     select: useCallback(
       (data: Awaited<ReturnType<typeof fetchProjectSecrets>>) => mergePersonalSecrets(data.secrets),
       []

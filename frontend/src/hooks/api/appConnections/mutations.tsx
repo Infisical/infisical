@@ -20,7 +20,7 @@ export const useCreateAppConnection = () => {
 
       return data.appConnection;
     },
-    onSuccess: () => queryClient.invalidateQueries(appConnectionKeys.list())
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: appConnectionKeys.list() })
   });
 };
 
@@ -36,8 +36,8 @@ export const useUpdateAppConnection = () => {
       return data.appConnection;
     },
     onSuccess: (_, { connectionId, app }) => {
-      queryClient.invalidateQueries(appConnectionKeys.list());
-      queryClient.invalidateQueries(appConnectionKeys.byId(app, connectionId));
+      queryClient.invalidateQueries({ queryKey: appConnectionKeys.list() });
+      queryClient.invalidateQueries({ queryKey: appConnectionKeys.byId(app, connectionId) });
     }
   });
 };
@@ -51,8 +51,8 @@ export const useDeleteAppConnection = () => {
       return data;
     },
     onSuccess: (_, { connectionId, app }) => {
-      queryClient.invalidateQueries(appConnectionKeys.list());
-      queryClient.invalidateQueries(appConnectionKeys.byId(app, connectionId));
+      queryClient.invalidateQueries({ queryKey: appConnectionKeys.list() });
+      queryClient.invalidateQueries({ queryKey: appConnectionKeys.byId(app, connectionId) });
     }
   });
 };

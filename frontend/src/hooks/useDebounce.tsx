@@ -1,7 +1,7 @@
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
 
 // Ref: https://usehooks.com/useDebounce/
-export const useDebounce = <T extends unknown>(
+export const useDebounce = <T extends string | number | object>(
   value: T,
   delay = 500
 ): [T, Dispatch<SetStateAction<T>>] => {

@@ -1,6 +1,7 @@
-import { useQuery, UseQueryOptions } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { TReactQueryOptions } from "@app/types/reactQuery";
 
 import {
   TGetSecretApprovalPoliciesDTO,
@@ -28,14 +29,7 @@ const fetchApprovalPolicies = async (workspaceId: string) => {
 export const useGetSecretApprovalPolicies = ({
   workspaceId,
   options = {}
-}: TGetSecretApprovalPoliciesDTO & {
-  options?: UseQueryOptions<
-    TSecretApprovalPolicy[],
-    unknown,
-    TSecretApprovalPolicy[],
-    ReturnType<typeof secretApprovalKeys.getApprovalPolicies>
-  >;
-}) =>
+}: TGetSecretApprovalPoliciesDTO & TReactQueryOptions) =>
   useQuery({
     queryKey: secretApprovalKeys.getApprovalPolicies(workspaceId),
     queryFn: () => fetchApprovalPolicies(workspaceId),
@@ -60,14 +54,7 @@ export const useGetSecretApprovalPolicyOfABoard = ({
   secretPath = "/",
   environment,
   options = {}
-}: TGetSecretApprovalPolicyOfBoardDTO & {
-  options?: UseQueryOptions<
-    TSecretApprovalPolicy,
-    unknown,
-    TSecretApprovalPolicy,
-    ReturnType<typeof secretApprovalKeys.getApprovalPolicyOfABoard>
-  >;
-}) =>
+}: TGetSecretApprovalPolicyOfBoardDTO & TReactQueryOptions) =>
   useQuery({
     queryKey: secretApprovalKeys.getApprovalPolicyOfABoard(workspaceId, environment, secretPath),
     queryFn: () => fetchApprovalPolicyOfABoard(workspaceId, environment, secretPath),

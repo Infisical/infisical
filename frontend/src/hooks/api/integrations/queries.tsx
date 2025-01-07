@@ -85,7 +85,6 @@ export const useCreateIntegration = () => {
           key: string;
           value: string;
         }[];
-        azureLabel?: string;
         githubVisibility?: string;
         githubVisibilityRepoIds?: string[];
         kmsKeyId?: string;
@@ -121,7 +120,9 @@ export const useCreateIntegration = () => {
       return integration;
     },
     onSuccess: (res) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceIntegrations(res.workspace));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceIntegrations(res.workspace)
+      });
     }
   });
 };
@@ -130,8 +131,8 @@ export const useDeleteIntegration = () => {
   const queryClient = useQueryClient();
 
   return useMutation<
-    {},
-    {},
+    object,
+    object,
     { id: string; workspaceId: string; shouldDeleteIntegrationSecrets: boolean }
   >({
     mutationFn: ({ id, shouldDeleteIntegrationSecrets }) =>
@@ -139,8 +140,12 @@ export const useDeleteIntegration = () => {
         `/api/v1/integration/${id}?shouldDeleteIntegrationSecrets=${shouldDeleteIntegrationSecrets}`
       ),
     onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceIntegrations(workspaceId));
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceAuthorization(workspaceId));
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceIntegrations(workspaceId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceAuthorization(workspaceId)
+      });
     }
   });
 };
@@ -166,7 +171,7 @@ export const useGetIntegration = (
 };
 
 export const useSyncIntegration = () => {
-  return useMutation<{}, {}, { id: string; workspaceId: string; lastUsed: string }>({
+  return useMutation<object, object, { id: string; workspaceId: string; lastUsed: string }>({
     mutationFn: ({ id }) => apiRequest.post(`/api/v1/integration/${id}/sync`),
     onSuccess: () => {
       createNotification({

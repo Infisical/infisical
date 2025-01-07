@@ -74,7 +74,7 @@ const decryptPrivateKeyHelper = async ({
     } else {
       throw new Error("Insufficient details to decrypt private key");
     }
-  } catch (err) {
+  } catch {
     throw new Error("Failed to decrypt private key");
   }
 
