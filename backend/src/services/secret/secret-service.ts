@@ -69,6 +69,7 @@ import {
   TDeleteSecretRawDTO,
   TGetASecretDTO,
   TGetASecretRawDTO,
+  TGetSecretAccessListDTO,
   TGetSecretsDTO,
   TGetSecretsRawDTO,
   TGetSecretVersionsDTO,
@@ -94,7 +95,7 @@ type TSecretServiceFactoryDep = {
   >;
   secretV2BridgeService: TSecretV2BridgeServiceFactory;
   secretBlindIndexDAL: TSecretBlindIndexDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissions">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   secretQueueService: Pick<
     TSecretQueueFactory,
@@ -1145,6 +1146,64 @@ export const secretServiceFactory = ({
       });
 
     return secretV2BridgeService.getSecretReferenceTree(dto);
+  };
+
+  const getSecretAccessList = async (dto: TGetSecretAccessListDTO) => {
+    const { environment, secretPath, secretName, projectId } = dto;
+    const secret = await secretV2BridgeService.getSecretByName({
+      actor: dto.actor,
+      actorId: dto.actorId,
+      actorOrgId: dto.actorOrgId,
+      actorAuthMethod: dto.actorAuthMethod,
+      projectId,
+      secretName,
+      path: secretPath,
+      environment,
+      type: "shared"
+    });
+
+    const { userPermissions, identityPermissions, groupPermissions } = await permissionService.getProjectPermissions(
+      dto.projectId
+    );
+
+    const attachAllowedActions = (
+      entityPermission:
+        | (typeof userPermissions)[number]
+        | (typeof identityPermissions)[number]
+        | (typeof groupPermissions)[number]
+    ) => {
+      const allowedActions = [
+        ProjectPermissionActions.Read,
+        ProjectPermissionActions.Delete,
+        ProjectPermissionActions.Create,
+        ProjectPermissionActions.Edit
+      ].filter((action) =>
+        entityPermission.permission.can(
+          action,
+          subject(ProjectPermissionSub.Secrets, {
+            environment,
+            secretPath,
+            secretName,
+            secretTags: secret?.tags?.map((el) => el.slug)
+          })
+        )
+      );
+
+      return {
+        ...entityPermission,
+        allowedActions
+      };
+    };
+
+    const usersWithAccess = userPermissions.map(attachAllowedActions).filter((user) => user.allowedActions.length > 0);
+    const identitiesWithAccess = identityPermissions
+      .map(attachAllowedActions)
+      .filter((identity) => identity.allowedActions.length > 0);
+    const groupsWithAccess = groupPermissions
+      .map(attachAllowedActions)
+      .filter((group) => group.allowedActions.length > 0);
+
+    return { users: usersWithAccess, identities: identitiesWithAccess, groups: groupsWithAccess };
   };
 
   const getSecretsRaw = async ({
@@ -2928,6 +2987,7 @@ export const secretServiceFactory = ({
     getSecretsCountMultiEnv,
     getSecretsRawMultiEnv,
     getSecretReferenceTree,
-    getSecretsRawByFolderMappings
+    getSecretsRawByFolderMappings,
+    getSecretAccessList
   };
 };

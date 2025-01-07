@@ -188,6 +188,12 @@ export type TGetSecretsRawDTO = {
   keys?: string[];
 } & TProjectPermission;
 
+export type TGetSecretAccessListDTO = {
+  environment: string;
+  secretPath: string;
+  secretName: string;
+} & TProjectPermission;
+
 export type TGetASecretRawDTO = {
   secretName: string;
   path: string;

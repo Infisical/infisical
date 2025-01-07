@@ -405,6 +405,126 @@ export const permissionServiceFactory = ({
         ForbidOnInvalidProjectType: (type: ProjectType) => void;
       };
 
+  const getProjectPermissions = async (projectId: string) => {
+    // fetch user permissions
+    const rawUserProjectPermissions = await permissionDAL.getProjectUserPermissions(projectId);
+    const userPermissions = rawUserProjectPermissions.map((userProjectPermission) => {
+      const rolePermissions =
+        userProjectPermission.roles?.map(({ role, permissions }) => ({ role, permissions })) || [];
+      const additionalPrivileges =
+        userProjectPermission.additionalPrivileges?.map(({ permissions }) => ({
+          role: ProjectMembershipRole.Custom,
+          permissions
+        })) || [];
+
+      const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
+      const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false });
+      const metadataKeyValuePair = escapeHandlebarsMissingMetadata(
+        objectify(
+          userProjectPermission.metadata,
+          (i) => i.key,
+          (i) => i.value
+        )
+      );
+      const interpolateRules = templatedRules(
+        {
+          identity: {
+            id: userProjectPermission.userId,
+            username: userProjectPermission.username,
+            metadata: metadataKeyValuePair
+          }
+        },
+        { data: false }
+      );
+      const permission = createMongoAbility<ProjectPermissionSet>(
+        JSON.parse(interpolateRules) as RawRuleOf<MongoAbility<ProjectPermissionSet>>[],
+        {
+          conditionsMatcher
+        }
+      );
+
+      return {
+        permission,
+        id: userProjectPermission.userId,
+        name: userProjectPermission.username,
+        membershipId: userProjectPermission.id
+      };
+    });
+
+    // fetch identity permissions
+    const rawIdentityProjectPermissions = await permissionDAL.getProjectIdentityPermissions(projectId);
+    const identityPermissions = rawIdentityProjectPermissions.map((identityProjectPermission) => {
+      const rolePermissions =
+        identityProjectPermission.roles?.map(({ role, permissions }) => ({ role, permissions })) || [];
+      const additionalPrivileges =
+        identityProjectPermission.additionalPrivileges?.map(({ permissions }) => ({
+          role: ProjectMembershipRole.Custom,
+          permissions
+        })) || [];
+
+      const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
+      const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false });
+      const metadataKeyValuePair = escapeHandlebarsMissingMetadata(
+        objectify(
+          identityProjectPermission.metadata,
+          (i) => i.key,
+          (i) => i.value
+        )
+      );
+
+      const interpolateRules = templatedRules(
+        {
+          identity: {
+            id: identityProjectPermission.identityId,
+            username: identityProjectPermission.username,
+            metadata: metadataKeyValuePair
+          }
+        },
+        { data: false }
+      );
+      const permission = createMongoAbility<ProjectPermissionSet>(
+        JSON.parse(interpolateRules) as RawRuleOf<MongoAbility<ProjectPermissionSet>>[],
+        {
+          conditionsMatcher
+        }
+      );
+
+      return {
+        permission,
+        id: identityProjectPermission.identityId,
+        name: identityProjectPermission.username,
+        membershipId: identityProjectPermission.id
+      };
+    });
+
+    // fetch group permissions
+    const rawGroupProjectPermissions = await permissionDAL.getProjectGroupPermissions(projectId);
+    const groupPermissions = rawGroupProjectPermissions.map((groupProjectPermission) => {
+      const rolePermissions =
+        groupProjectPermission.roles?.map(({ role, permissions }) => ({ role, permissions })) || [];
+      const rules = buildProjectPermissionRules(rolePermissions);
+      const permission = createMongoAbility<ProjectPermissionSet>(
+        rules as RawRuleOf<MongoAbility<ProjectPermissionSet>>[],
+        {
+          conditionsMatcher
+        }
+      );
+
+      return {
+        permission,
+        id: groupProjectPermission.groupId,
+        name: groupProjectPermission.username,
+        membershipId: groupProjectPermission.id
+      };
+    });
+
+    return {
+      userPermissions,
+      identityPermissions,
+      groupPermissions
+    };
+  };
+
   const getProjectPermission = async <T extends ActorType>(
     type: T,
     id: string,
@@ -455,6 +575,7 @@ export const permissionServiceFactory = ({
     getOrgPermission,
     getUserProjectPermission,
     getProjectPermission,
+    getProjectPermissions,
     getOrgPermissionByRole,
     getProjectPermissionByRole,
     buildOrgPermission,
