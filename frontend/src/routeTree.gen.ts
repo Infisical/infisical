@@ -159,6 +159,7 @@ import { Route as secretManagerIntegrationsChecklyConfigurePageRouteImport } fro
 import { Route as secretManagerIntegrationsChecklyAuthorizePageRouteImport } from './pages/secret-manager/integrations/ChecklyAuthorizePage/route'
 import { Route as secretManagerIntegrationsBitbucketConfigurePageRouteImport } from './pages/secret-manager/integrations/BitbucketConfigurePage/route'
 import { Route as secretManagerIntegrationsAzureKeyVaultConfigurePageRouteImport } from './pages/secret-manager/integrations/AzureKeyVaultConfigurePage/route'
+import { Route as secretManagerIntegrationsAzureKeyVaultAuthorizePageRouteImport } from './pages/secret-manager/integrations/AzureKeyVaultAuthorizePage/route'
 import { Route as secretManagerIntegrationsAzureDevopsConfigurePageRouteImport } from './pages/secret-manager/integrations/AzureDevopsConfigurePage/route'
 import { Route as secretManagerIntegrationsAzureDevopsAuthorizePageRouteImport } from './pages/secret-manager/integrations/AzureDevopsAuthorizePage/route'
 import { Route as secretManagerIntegrationsAzureAppConfigurationConfigurePageRouteImport } from './pages/secret-manager/integrations/AzureAppConfigurationConfigurePage/route'
@@ -1352,6 +1353,14 @@ const secretManagerIntegrationsAzureKeyVaultConfigurePageRouteRoute =
       AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
   } as any)
 
+const secretManagerIntegrationsAzureKeyVaultAuthorizePageRouteRoute =
+  secretManagerIntegrationsAzureKeyVaultAuthorizePageRouteImport.update({
+    id: '/azure-key-vault/authorize',
+    path: '/azure-key-vault/authorize',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
 const secretManagerIntegrationsAzureDevopsConfigurePageRouteRoute =
   secretManagerIntegrationsAzureDevopsConfigurePageRouteImport.update({
     id: '/azure-devops/create',
@@ -2251,6 +2260,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof secretManagerIntegrationsAzureDevopsConfigurePageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
     }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/authorize': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/authorize'
+      path: '/azure-key-vault/authorize'
+      fullPath: '/secret-manager/$projectId/integrations/azure-key-vault/authorize'
+      preLoaderRoute: typeof secretManagerIntegrationsAzureKeyVaultAuthorizePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
     '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/create': {
       id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/create'
       path: '/azure-key-vault/create'
@@ -2944,6 +2960,7 @@ interface AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutI
   secretManagerIntegrationsAzureAppConfigurationConfigurePageRouteRoute: typeof secretManagerIntegrationsAzureAppConfigurationConfigurePageRouteRoute
   secretManagerIntegrationsAzureDevopsAuthorizePageRouteRoute: typeof secretManagerIntegrationsAzureDevopsAuthorizePageRouteRoute
   secretManagerIntegrationsAzureDevopsConfigurePageRouteRoute: typeof secretManagerIntegrationsAzureDevopsConfigurePageRouteRoute
+  secretManagerIntegrationsAzureKeyVaultAuthorizePageRouteRoute: typeof secretManagerIntegrationsAzureKeyVaultAuthorizePageRouteRoute
   secretManagerIntegrationsAzureKeyVaultConfigurePageRouteRoute: typeof secretManagerIntegrationsAzureKeyVaultConfigurePageRouteRoute
   secretManagerIntegrationsBitbucketConfigurePageRouteRoute: typeof secretManagerIntegrationsBitbucketConfigurePageRouteRoute
   secretManagerIntegrationsChecklyAuthorizePageRouteRoute: typeof secretManagerIntegrationsChecklyAuthorizePageRouteRoute
@@ -3034,6 +3051,8 @@ const AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutInteg
       secretManagerIntegrationsAzureDevopsAuthorizePageRouteRoute,
     secretManagerIntegrationsAzureDevopsConfigurePageRouteRoute:
       secretManagerIntegrationsAzureDevopsConfigurePageRouteRoute,
+    secretManagerIntegrationsAzureKeyVaultAuthorizePageRouteRoute:
+      secretManagerIntegrationsAzureKeyVaultAuthorizePageRouteRoute,
     secretManagerIntegrationsAzureKeyVaultConfigurePageRouteRoute:
       secretManagerIntegrationsAzureKeyVaultConfigurePageRouteRoute,
     secretManagerIntegrationsBitbucketConfigurePageRouteRoute:
@@ -3513,6 +3532,7 @@ export interface FileRoutesByFullPath {
   '/secret-manager/$projectId/integrations/azure-app-configuration/create': typeof secretManagerIntegrationsAzureAppConfigurationConfigurePageRouteRoute
   '/secret-manager/$projectId/integrations/azure-devops/authorize': typeof secretManagerIntegrationsAzureDevopsAuthorizePageRouteRoute
   '/secret-manager/$projectId/integrations/azure-devops/create': typeof secretManagerIntegrationsAzureDevopsConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/azure-key-vault/authorize': typeof secretManagerIntegrationsAzureKeyVaultAuthorizePageRouteRoute
   '/secret-manager/$projectId/integrations/azure-key-vault/create': typeof secretManagerIntegrationsAzureKeyVaultConfigurePageRouteRoute
   '/secret-manager/$projectId/integrations/bitbucket/create': typeof secretManagerIntegrationsBitbucketConfigurePageRouteRoute
   '/secret-manager/$projectId/integrations/checkly/authorize': typeof secretManagerIntegrationsChecklyAuthorizePageRouteRoute
@@ -3676,6 +3696,7 @@ export interface FileRoutesByTo {
   '/secret-manager/$projectId/integrations/azure-app-configuration/create': typeof secretManagerIntegrationsAzureAppConfigurationConfigurePageRouteRoute
   '/secret-manager/$projectId/integrations/azure-devops/authorize': typeof secretManagerIntegrationsAzureDevopsAuthorizePageRouteRoute
   '/secret-manager/$projectId/integrations/azure-devops/create': typeof secretManagerIntegrationsAzureDevopsConfigurePageRouteRoute
+  '/secret-manager/$projectId/integrations/azure-key-vault/authorize': typeof secretManagerIntegrationsAzureKeyVaultAuthorizePageRouteRoute
   '/secret-manager/$projectId/integrations/azure-key-vault/create': typeof secretManagerIntegrationsAzureKeyVaultConfigurePageRouteRoute
   '/secret-manager/$projectId/integrations/bitbucket/create': typeof secretManagerIntegrationsBitbucketConfigurePageRouteRoute
   '/secret-manager/$projectId/integrations/checkly/authorize': typeof secretManagerIntegrationsChecklyAuthorizePageRouteRoute
@@ -3854,6 +3875,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-app-configuration/create': typeof secretManagerIntegrationsAzureAppConfigurationConfigurePageRouteRoute
   '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-devops/authorize': typeof secretManagerIntegrationsAzureDevopsAuthorizePageRouteRoute
   '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-devops/create': typeof secretManagerIntegrationsAzureDevopsConfigurePageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/authorize': typeof secretManagerIntegrationsAzureKeyVaultAuthorizePageRouteRoute
   '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/create': typeof secretManagerIntegrationsAzureKeyVaultConfigurePageRouteRoute
   '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/bitbucket/create': typeof secretManagerIntegrationsBitbucketConfigurePageRouteRoute
   '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/checkly/authorize': typeof secretManagerIntegrationsChecklyAuthorizePageRouteRoute
@@ -4024,6 +4046,7 @@ export interface FileRouteTypes {
     | '/secret-manager/$projectId/integrations/azure-app-configuration/create'
     | '/secret-manager/$projectId/integrations/azure-devops/authorize'
     | '/secret-manager/$projectId/integrations/azure-devops/create'
+    | '/secret-manager/$projectId/integrations/azure-key-vault/authorize'
     | '/secret-manager/$projectId/integrations/azure-key-vault/create'
     | '/secret-manager/$projectId/integrations/bitbucket/create'
     | '/secret-manager/$projectId/integrations/checkly/authorize'
@@ -4186,6 +4209,7 @@ export interface FileRouteTypes {
     | '/secret-manager/$projectId/integrations/azure-app-configuration/create'
     | '/secret-manager/$projectId/integrations/azure-devops/authorize'
     | '/secret-manager/$projectId/integrations/azure-devops/create'
+    | '/secret-manager/$projectId/integrations/azure-key-vault/authorize'
     | '/secret-manager/$projectId/integrations/azure-key-vault/create'
     | '/secret-manager/$projectId/integrations/bitbucket/create'
     | '/secret-manager/$projectId/integrations/checkly/authorize'
@@ -4362,6 +4386,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-app-configuration/create'
     | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-devops/authorize'
     | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-devops/create'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/authorize'
     | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/create'
     | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/bitbucket/create'
     | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/checkly/authorize'
@@ -4925,6 +4950,7 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-app-configuration/create",
         "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-devops/authorize",
         "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-devops/create",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/authorize",
         "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/create",
         "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/bitbucket/create",
         "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/checkly/authorize",
@@ -5103,6 +5129,10 @@ export const routeTree = rootRoute
     },
     "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-devops/create": {
       "filePath": "secret-manager/integrations/AzureDevopsConfigurePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/authorize": {
+      "filePath": "secret-manager/integrations/AzureKeyVaultAuthorizePage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
     },
     "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/create": {

@@ -80,8 +80,16 @@ export const redirectForProviderAuth = (
           createIntegrationMissingEnvVarsNotification(integrationOption.slug);
           return;
         }
-        const link = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${window.location.origin}/integrations/azure-key-vault/oauth2/callback&response_mode=query&scope=https://vault.azure.net/.default openid offline_access&state=${state}`;
-        window.location.assign(link);
+        navigate({
+          to: "/secret-manager/$projectId/integrations/azure-key-vault/authorize",
+          params: {
+            projectId
+          },
+          search: {
+            clientId: integrationOption.clientId,
+            state,
+          }
+        });
         break;
       }
       case "azure-app-configuration": {

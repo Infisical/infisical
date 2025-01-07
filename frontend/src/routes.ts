@@ -76,6 +76,10 @@ const secretManagerRoutes = route("/secret-manager/$projectId", [
         "secret-manager/integrations/AzureDevopsConfigurePage/route.tsx"
       ),
       route(
+        "/azure-key-vault/authorize",
+        "secret-manager/integrations/AzureKeyVaultAuthorizePage/route.tsx"
+      ),
+      route(
         "/azure-key-vault/oauth2/callback",
         "secret-manager/integrations/AzureKeyVaultOauthCallbackPage/route.tsx"
       ),

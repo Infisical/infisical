@@ -101,6 +101,10 @@ export const ROUTE_PATHS = Object.freeze({
         "/secret-manager/$projectId/integrations/azure-devops/create",
         "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-devops/create"
       ),
+      AzureKeyVaultAuthorizePage: setRoute(
+        "/secret-manager/$projectId/integrations/azure-key-vault/authorize",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/authorize"
+      ),
       AzureKeyVaultOauthCallbackPage: setRoute(
         "/secret-manager/$projectId/integrations/azure-key-vault/oauth2/callback",
         "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/oauth2/callback"
