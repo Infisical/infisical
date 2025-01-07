@@ -1167,7 +1167,8 @@ const syncSecretsAWSSecretManager = async ({
         } else {
           await secretsManager.send(
             new DeleteSecretCommand({
-              SecretId: secretId
+              SecretId: secretId,
+              ForceDeleteWithoutRecovery: true
             })
           );
         }
