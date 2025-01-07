@@ -296,7 +296,7 @@ export const AwsSecretManagerConfigurePage = () => {
                       errorText={error?.message}
                       isError={Boolean(error)}
                     >
-                      <SecretPathInput {...field} />
+                      <SecretPathInput {...field} environment={selectedSourceEnvironment} />
                     </FormControl>
                   )}
                 />

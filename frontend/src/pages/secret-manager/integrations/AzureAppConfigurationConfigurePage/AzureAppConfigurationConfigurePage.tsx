@@ -76,6 +76,7 @@ export const AzureAppConfigurationConfigurePage = () => {
     }
   });
 
+  const selectedEnvironment = watch("sourceEnvironment");
   const { mutateAsync } = useCreateIntegration();
 
   const integrationAuthId = useSearch({
@@ -248,7 +249,7 @@ export const AzureAppConfigurationConfigurePage = () => {
             name="secretPath"
             render={({ field, fieldState: { error } }) => (
               <FormControl label="Secrets Path" errorText={error?.message} isError={Boolean(error)}>
-                <SecretPathInput {...field} />
+                <SecretPathInput {...field} environment={selectedEnvironment} />
               </FormControl>
             )}
           />
