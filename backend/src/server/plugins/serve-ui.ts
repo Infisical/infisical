@@ -21,6 +21,9 @@ export const registerServeUI = async (
   server.route({
     method: "GET",
     url: "/runtime-ui-env.js",
+    schema: {
+      hide: true
+    },
     handler: (_req, res) => {
       const appCfg = getConfig();
       void res.type("application/javascript");
@@ -43,12 +46,19 @@ export const registerServeUI = async (
       wildcard: false
     });
 
-    server.get("/*", (request, reply) => {
-      if (request.url.startsWith("/api")) {
-        reply.callNotFound();
-        return;
+    server.route({
+      method: "GET",
+      url: "/*",
+      schema: {
+        hide: true
+      },
+      handler: (request, reply) => {
+        if (request.url.startsWith("/api")) {
+          reply.callNotFound();
+          return;
+        }
+        void reply.sendFile("index.html");
       }
-      void reply.sendFile("index.html");
     });
   }
 };
