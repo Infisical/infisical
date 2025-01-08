@@ -97,7 +97,7 @@ jobs:
           image: infisical/staging_infisical:${{ steps.commit.outputs.short }}
           environment-variables: "LOG_LEVEL=info"
       - name: Deploy to Amazon ECS service
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
           task-definition: ${{ steps.render-web-container.outputs.task-definition }}
           service: infisical-core-gamma-stage
@@ -153,7 +153,7 @@ jobs:
           image: infisical/staging_infisical:${{ steps.commit.outputs.short }}
           environment-variables: "LOG_LEVEL=info"
       - name: Deploy to Amazon ECS service
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
           task-definition: ${{ steps.render-web-container.outputs.task-definition }}
           service: infisical-core-platform
@@ -204,7 +204,7 @@ jobs:
             image: infisical/staging_infisical:${{ steps.commit.outputs.short }}
             environment-variables: "LOG_LEVEL=info"
         - name: Deploy to Amazon ECS service
-          uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+          uses: aws-actions/amazon-ecs-deploy-task-definition@v2
           with:
             task-definition: ${{ steps.render-web-container.outputs.task-definition }}
             service: infisical-core-platform
