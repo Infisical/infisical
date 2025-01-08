@@ -503,12 +503,9 @@ export const permissionServiceFactory = ({
       const rolePermissions =
         groupProjectPermission.roles?.map(({ role, permissions }) => ({ role, permissions })) || [];
       const rules = buildProjectPermissionRules(rolePermissions);
-      const permission = createMongoAbility<ProjectPermissionSet>(
-        rules as RawRuleOf<MongoAbility<ProjectPermissionSet>>[],
-        {
-          conditionsMatcher
-        }
-      );
+      const permission = createMongoAbility<ProjectPermissionSet>(rules, {
+        conditionsMatcher
+      });
 
       return {
         permission,
