@@ -12,6 +12,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
@@ -34,10 +35,17 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
-import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useProjectPermission,
+  useWorkspace
+} from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useGetSecretVersion } from "@app/hooks/api";
+import { useGetSecretAccessList } from "@app/hooks/api/secrets/queries";
 import { SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { CreateReminderForm } from "./CreateReminderForm";
 import { formSchema, SecretActionType, TFormSchema } from "./SecretListView.utils";
@@ -86,6 +94,7 @@ export const SecretDetailSidebar = ({
   });
 
   const { permission } = useProjectPermission();
+  const { currentWorkspace } = useWorkspace();
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -128,6 +137,13 @@ export const SecretDetailSidebar = ({
     limit: 10,
     offset: 0,
     secretId: secret?.id
+  });
+
+  const { data: secretAccessList, isPending } = useGetSecretAccessList({
+    workspaceId: currentWorkspace.id,
+    environment,
+    secretPath,
+    secretKey
   });
 
   const handleOverrideClick = () => {
@@ -482,8 +498,116 @@ export const SecretDetailSidebar = ({
                   ))}
                 </div>
               </div>
+              <div className="dark mb-4 flex-grow text-sm text-bunker-300">
+                <div className="mb-2">Access List</div>
+                {!isPending && secretAccessList === undefined && (
+                  <Button className="w-full px-2 py-1" variant="outline_bg">
+                    Analyze Access
+                  </Button>
+                )}
+                {!isPending && secretAccessList && (
+                  <div className="flex max-h-72 flex-col space-y-2 overflow-y-auto overflow-x-hidden rounded-md border border-mineshaft-600 bg-bunker-800 p-2 dark:[color-scheme:dark]">
+                    {secretAccessList.users.length > 0 && (
+                      <div className="pb-3">
+                        <div className="mb-2 font-bold">Users</div>
+                        <div className="flex flex-wrap gap-2">
+                          {secretAccessList.users.map((user) => (
+                            <div className="rounded-md bg-bunker-500 px-1">
+                              <Link
+                                to={
+                                  `/${ProjectType.SecretManager}/$projectId/members/$membershipId` as const
+                                }
+                                params={{
+                                  projectId: currentWorkspace.id,
+                                  membershipId: user.membershipId
+                                }}
+                                className="text-secondary/80 text-sm hover:text-primary"
+                              >
+                                {user.name}
+                                <Tooltip
+                                  content={user.allowedActions.join(", ")}
+                                  className="z-[100]"
+                                >
+                                  <FontAwesomeIcon
+                                    icon={faCircleQuestion}
+                                    className="ml-1"
+                                    size="sm"
+                                  />
+                                </Tooltip>
+                              </Link>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {secretAccessList.identities.length > 0 && (
+                      <div className="pb-3">
+                        <div className="mb-2 font-bold">Identities</div>
+                        <div className="flex flex-wrap gap-2">
+                          {secretAccessList.identities.map((identity) => (
+                            <div className="rounded-md bg-bunker-500 px-1">
+                              <Link
+                                to={
+                                  `/${ProjectType.SecretManager}/$projectId/identities/$identityId` as const
+                                }
+                                params={{
+                                  projectId: currentWorkspace.id,
+                                  identityId: identity.id
+                                }}
+                                className="text-secondary/80 text-sm hover:text-primary"
+                              >
+                                {identity.name}
+                                <Tooltip
+                                  content={identity.allowedActions.join(", ")}
+                                  className="z-[100]"
+                                >
+                                  <FontAwesomeIcon
+                                    icon={faCircleQuestion}
+                                    className="ml-1"
+                                    size="sm"
+                                  />
+                                </Tooltip>
+                              </Link>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {secretAccessList.groups.length > 0 && (
+                      <div className="pb-3">
+                        <div className="mb-2 font-bold">Groups</div>
+                        <div className="flex flex-wrap gap-2">
+                          {secretAccessList.groups.map((group) => (
+                            <div className="rounded-md bg-bunker-500 px-1">
+                              <Link
+                                to={"/organization/groups/$groupId" as const}
+                                params={{
+                                  groupId: group.id
+                                }}
+                                className="text-secondary/80 text-sm hover:text-primary"
+                              >
+                                {group.name}
+                                <Tooltip
+                                  content={group.allowedActions.join(", ")}
+                                  className="z-[100]"
+                                >
+                                  <FontAwesomeIcon
+                                    icon={faCircleQuestion}
+                                    className="ml-1"
+                                    size="sm"
+                                  />
+                                </Tooltip>
+                              </Link>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
               <div className="flex flex-col space-y-4">
-                <div className="flex items-center space-x-4">
+                <div className="mb-2 flex items-center space-x-4">
                   <ProjectPermissionCan
                     I={ProjectPermissionActions.Edit}
                     a={subject(ProjectPermissionSub.Secrets, {
