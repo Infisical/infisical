@@ -24,6 +24,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   rbac: false,
   customRateLimits: false,
   customAlerts: false,
+  secretAccessInsights: false,
   auditLogs: false,
   auditLogsRetentionDays: 0,
   auditLogStreams: false,
