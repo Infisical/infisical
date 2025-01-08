@@ -6,7 +6,7 @@ import { AzureKeyVaultOauthCallbackPage } from "./AzureKeyVaultOauthCallback";
 
 export const AzureKeyVaultOauthCallbackQueryParamsSchema = z.object({
   state: z.string().catch(""),
-  code: z.string().catch("")
+  code: z.coerce.string().catch("")
 });
 
 export const Route = createFileRoute(
