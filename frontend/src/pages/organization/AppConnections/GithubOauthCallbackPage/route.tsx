@@ -7,7 +7,7 @@ import { GitHubOAuthCallbackPage } from "./GithubOauthCallbackPage";
 const GitHubOAuthCallbackPageQueryParamsSchema = z.object({
   code: z.coerce.string().catch(""),
   state: z.string().catch(""),
-  installation_id: z.coerce.string().catch("")
+  installation_id: z.coerce.string().optional().catch("")
 });
 
 export const Route = createFileRoute(

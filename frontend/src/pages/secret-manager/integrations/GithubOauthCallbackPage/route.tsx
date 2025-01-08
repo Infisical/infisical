@@ -6,7 +6,7 @@ import { GithubOauthCallbackPage } from "./GithubOauthCallbackPage";
 
 export const GithubOAuthCallbackPageQueryParamsSchema = z.object({
   state: z.string().catch(""),
-  installation_id: z.coerce.string().catch(""),
+  installation_id: z.coerce.string().optional().catch(""),
   code: z.coerce.string().catch("")
 });
 
