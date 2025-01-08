@@ -153,19 +153,17 @@ export const AwsParameterStoreSyncFns = {
       });
     }
 
-    // TODO (scott): option to delete, I don't think this should be default?
+    const parametersToDelete: AWS.SSM.Parameter[] = [];
 
-    // const parametersToDelete: AWS.SSM.Parameter[] = [];
-    //
-    // for (const entry of Object.entries(awsParameterStoreSecretsRecord)) {
-    //   const [key, parameter] = entry;
-    //
-    //   if (!(key in secrets) || !secrets[key].value) {
-    //     parametersToDelete.push(parameter);
-    //   }
-    // }
-    //
-    // await deleteParametersBatch(ssm, parametersToDelete);
+    for (const entry of Object.entries(awsParameterStoreSecretsRecord)) {
+      const [key, parameter] = entry;
+
+      if (!(key in secrets) || !secrets[key].value) {
+        parametersToDelete.push(parameter);
+      }
+    }
+
+    await deleteParametersBatch(ssm, parametersToDelete);
   },
   import: async (secretSync: TAwsParameterStoreSyncWithConnection): Promise<TSecretMap> => {
     const { destinationConfig } = secretSync;
