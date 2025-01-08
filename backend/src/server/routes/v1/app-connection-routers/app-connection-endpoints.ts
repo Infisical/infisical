@@ -15,7 +15,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
   app,
   createSchema,
   updateSchema,
-  responseSchema
+  sanitizedResponseSchema
 }: {
   app: AppConnection;
   server: FastifyZodProvider;
@@ -26,7 +26,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     description?: string | null;
   }>;
   updateSchema: z.ZodType<{ name?: string; credentials?: I["credentials"]; description?: string | null }>;
-  responseSchema: z.ZodTypeAny;
+  sanitizedResponseSchema: z.ZodTypeAny;
 }) => {
   const appName = APP_CONNECTION_NAME_MAP[app];
 
@@ -39,7 +39,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     schema: {
       description: `List the ${appName} Connections for the current organization.`,
       response: {
-        200: z.object({ appConnections: responseSchema.array() })
+        200: z.object({ appConnections: sanitizedResponseSchema.array() })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -65,6 +65,44 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
 
   server.route({
     method: "GET",
+    url: "/available",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: `List the ${appName} Connections the current user has permission to establish connections with.`,
+      response: {
+        200: z.object({
+          appConnections: z.object({ app: z.literal(app), name: z.string(), id: z.string().uuid() }).array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const appConnections = await server.services.appConnection.listAvailableAppConnectionsForUser(
+        app,
+        req.permission
+      );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.GET_AVAILABLE_APP_CONNECTIONS_DETAILS,
+          metadata: {
+            app,
+            count: appConnections.length,
+            connectionIds: appConnections.map((connection) => connection.id)
+          }
+        }
+      });
+
+      return { appConnections };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/:connectionId",
     config: {
       rateLimit: readLimit
@@ -75,7 +113,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         connectionId: z.string().uuid().describe(AppConnections.GET_BY_ID(app).connectionId)
       }),
       response: {
-        200: z.object({ appConnection: responseSchema })
+        200: z.object({ appConnection: sanitizedResponseSchema })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -114,11 +152,12 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       params: z.object({
         connectionName: z
           .string()
-          .min(0, "Connection name required")
+          .trim()
+          .min(1, "Connection name required")
           .describe(AppConnections.GET_BY_NAME(app).connectionName)
       }),
       response: {
-        200: z.object({ appConnection: responseSchema })
+        200: z.object({ appConnection: sanitizedResponseSchema })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -158,7 +197,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       } ${appName} Connection for the current organization.`,
       body: createSchema,
       response: {
-        200: z.object({ appConnection: responseSchema })
+        200: z.object({ appConnection: sanitizedResponseSchema })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -168,7 +207,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       const appConnection = (await server.services.appConnection.createAppConnection(
         { name, method, app, credentials, description },
         req.permission
-      )) as TAppConnection;
+      )) as T;
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -201,7 +240,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       }),
       body: updateSchema,
       response: {
-        200: z.object({ appConnection: responseSchema })
+        200: z.object({ appConnection: sanitizedResponseSchema })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -244,7 +283,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         connectionId: z.string().uuid().describe(AppConnections.DELETE(app).connectionId)
       }),
       response: {
-        200: z.object({ appConnection: responseSchema })
+        200: z.object({ appConnection: sanitizedResponseSchema })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),

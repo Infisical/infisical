@@ -195,6 +195,9 @@ import { secretImportDALFactory } from "@app/services/secret-import/secret-impor
 import { secretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
 import { secretSharingDALFactory } from "@app/services/secret-sharing/secret-sharing-dal";
 import { secretSharingServiceFactory } from "@app/services/secret-sharing/secret-sharing-service";
+import { secretSyncDALFactory } from "@app/services/secret-sync/secret-sync-dal";
+import { secretSyncQueueFactory } from "@app/services/secret-sync/secret-sync-queue";
+import { secretSyncServiceFactory } from "@app/services/secret-sync/secret-sync-service";
 import { secretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { secretTagServiceFactory } from "@app/services/secret-tag/secret-tag-service";
 import { secretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
@@ -317,6 +320,7 @@ export const registerRoutes = async (
   const trustedIpDAL = trustedIpDALFactory(db);
   const telemetryDAL = telemetryDALFactory(db);
   const appConnectionDAL = appConnectionDALFactory(db);
+  const secretSyncDAL = secretSyncDALFactory(db);
 
   // ee db layer ops
   const permissionDAL = permissionDALFactory(db);
@@ -821,6 +825,29 @@ export const registerRoutes = async (
     kmsService
   });
 
+  const secretSyncQueue = secretSyncQueueFactory({
+    queueService,
+    secretSyncDAL,
+    folderDAL,
+    secretImportDAL,
+    secretV2BridgeDAL,
+    kmsService,
+    keyStore,
+    projectEnvDAL,
+    auditLogService,
+    smtpService,
+    projectDAL,
+    projectMembershipDAL,
+    projectBotDAL,
+    secretDAL,
+    secretBlindIndexDAL,
+    secretVersionDAL,
+    secretTagDAL,
+    secretVersionTagDAL,
+    secretVersionV2BridgeDAL,
+    secretVersionTagV2BridgeDAL
+  });
+
   const secretQueueService = secretQueueFactory({
     keyStore,
     queueService,
@@ -854,7 +881,8 @@ export const registerRoutes = async (
     secretApprovalRequestDAL,
     projectKeyDAL,
     projectUserMembershipRoleDAL,
-    orgService
+    orgService,
+    secretSyncQueue
   });
 
   const projectService = projectServiceFactory({
@@ -1362,6 +1390,17 @@ export const registerRoutes = async (
     licenseService
   });
 
+  const secretSyncService = secretSyncServiceFactory({
+    secretSyncDAL,
+    permissionService,
+    appConnectionService,
+    licenseService,
+    folderDAL,
+    projectEnvDAL,
+    secretSyncQueue,
+    projectBotService
+  });
+
   await superAdminService.initServerCfg();
 
   // setup the communication with license key server
@@ -1459,7 +1498,8 @@ export const registerRoutes = async (
     externalGroupOrgRoleMapping: externalGroupOrgRoleMappingService,
     projectTemplate: projectTemplateService,
     totp: totpService,
-    appConnection: appConnectionService
+    appConnection: appConnectionService,
+    secretSync: secretSyncService
   });
 
   const cronJobs: CronJob[] = [];

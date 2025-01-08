@@ -79,7 +79,8 @@ export const auditLogServiceFactory = ({
     }
     // add all cases in which project id or org id cannot be added
     if (data.event.type !== EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH) {
-      if (!data.projectId && !data.orgId) throw new BadRequestError({ message: "Must either project id or org id" });
+      if (!data.projectId && !data.orgId)
+        throw new BadRequestError({ message: "Must specify either project id or org id" });
     }
 
     return auditLogQueue.pushToLog(data);

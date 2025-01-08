@@ -80,6 +80,7 @@ import { TSecretFolderServiceFactory } from "@app/services/secret-folder/secret-
 import { TSecretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
 import { TSecretReplicationServiceFactory } from "@app/services/secret-replication/secret-replication-service";
 import { TSecretSharingServiceFactory } from "@app/services/secret-sharing/secret-sharing-service";
+import { TSecretSyncServiceFactory } from "@app/services/secret-sync/secret-sync-service";
 import { TSecretTagServiceFactory } from "@app/services/secret-tag/secret-tag-service";
 import { TServiceTokenServiceFactory } from "@app/services/service-token/service-token-service";
 import { TSlackServiceFactory } from "@app/services/slack/slack-service";
@@ -210,6 +211,7 @@ declare module "fastify" {
       projectTemplate: TProjectTemplateServiceFactory;
       totp: TTotpServiceFactory;
       appConnection: TAppConnectionServiceFactory;
+      secretSync: TSecretSyncServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

@@ -75,7 +75,7 @@ export const UpdateAwsConnectionSchema = z
 export const AwsConnectionListItemSchema = z.object({
   name: z.literal("AWS"),
   app: z.literal(AppConnection.AWS),
-  // the below is preferable but currently breaks mintlify
+  // the below is preferable but currently breaks with our zod to json schema parser
   // methods: z.tuple([z.literal(AwsConnectionMethod.AssumeRole), z.literal(AwsConnectionMethod.AccessKey)]),
   methods: z.nativeEnum(AwsConnectionMethod).array(),
   accessKeyId: z.string().optional()

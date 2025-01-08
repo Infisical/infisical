@@ -29,6 +29,7 @@ import { createManySecretsRawFnFactory, updateManySecretsRawFnFactory } from "@a
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
 import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
 import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
+import { TSecretSyncQueueFactory } from "@app/services/secret-sync/secret-sync-queue";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
 import { ActorType } from "../auth/auth-type";
@@ -104,6 +105,7 @@ type TSecretQueueFactoryDep = {
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create">;
+  secretSyncQueue: Pick<TSecretSyncQueueFactory, "queueSecretSyncsByPath">;
 };
 
 export type TGetSecrets = {
@@ -157,7 +159,8 @@ export const secretQueueFactory = ({
   auditLogService,
   orgService,
   projectUserMembershipRoleDAL,
-  projectKeyDAL
+  projectKeyDAL,
+  secretSyncQueue
 }: TSecretQueueFactoryDep) => {
   const integrationMeter = opentelemetry.metrics.getMeter("Integrations");
   const errorHistogram = integrationMeter.createHistogram("integration_secret_sync_errors", {
@@ -619,6 +622,9 @@ export const secretQueueFactory = ({
         }
       }
     );
+
+    await secretSyncQueue.queueSecretSyncsByPath({ projectId, environmentSlug: environment, secretPath });
+
     await syncIntegrations({ secretPath, projectId, environment, deDupeQueue, isManual: false });
     if (!excludeReplication) {
       await replicateSecrets({

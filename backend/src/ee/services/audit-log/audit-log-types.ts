@@ -1,3 +1,4 @@
+import { TSecretSyncs } from "@app/db/schemas/secret-syncs";
 import {
   TCreateProjectTemplateDTO,
   TUpdateProjectTemplateDTO
@@ -13,6 +14,12 @@ import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-types";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
+import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
+import {
+  TCreateSecretSyncDTO,
+  TDeleteSecretSyncDTO,
+  TUpdateSecretSyncDTO
+} from "@app/services/secret-sync/secret-sync-types";
 
 export type TListProjectAuditLogDTO = {
   filter: {
@@ -226,10 +233,19 @@ export enum EventType {
   DELETE_PROJECT_TEMPLATE = "delete-project-template",
   APPLY_PROJECT_TEMPLATE = "apply-project-template",
   GET_APP_CONNECTIONS = "get-app-connections",
+  GET_AVAILABLE_APP_CONNECTIONS_DETAILS = "get-available-app-connections-details",
   GET_APP_CONNECTION = "get-app-connection",
   CREATE_APP_CONNECTION = "create-app-connection",
   UPDATE_APP_CONNECTION = "update-app-connection",
-  DELETE_APP_CONNECTION = "delete-app-connection"
+  DELETE_APP_CONNECTION = "delete-app-connection",
+  GET_SECRET_SYNCS = "get-secret-syncs",
+  GET_SECRET_SYNC = "get-secret-sync",
+  CREATE_SECRET_SYNC = "create-secret-sync",
+  UPDATE_SECRET_SYNC = "update-secret-sync",
+  DELETE_SECRET_SYNC = "delete-secret-sync",
+  SYNC_SECRET_SYNC = "sync-secret-sync",
+  IMPORT_SECRET_SYNC = "import-secret-sync",
+  ERASE_SECRET_SYNC = "erase-secret-sync"
 }
 
 interface UserActorMetadata {
@@ -1883,6 +1899,15 @@ interface GetAppConnectionsEvent {
   };
 }
 
+interface GetAvailableAppConnectionsDetailsEvent {
+  type: EventType.GET_AVAILABLE_APP_CONNECTIONS_DETAILS;
+  metadata: {
+    app?: AppConnection;
+    count: number;
+    connectionIds: string[];
+  };
+}
+
 interface GetAppConnectionEvent {
   type: EventType.GET_APP_CONNECTION;
   metadata: {
@@ -1904,6 +1929,77 @@ interface DeleteAppConnectionEvent {
   type: EventType.DELETE_APP_CONNECTION;
   metadata: {
     connectionId: string;
+  };
+}
+
+interface GetSecretSyncsEvent {
+  type: EventType.GET_SECRET_SYNCS;
+  metadata: {
+    destination?: SecretSync;
+    count: number;
+    syncIds: string[];
+  };
+}
+
+interface GetSecretSyncEvent {
+  type: EventType.GET_SECRET_SYNC;
+  metadata: {
+    destination: SecretSync;
+    syncId: string;
+  };
+}
+
+interface CreateSecretSyncEvent {
+  type: EventType.CREATE_SECRET_SYNC;
+  metadata: TCreateSecretSyncDTO & { syncId: string };
+}
+
+interface UpdateSecretSyncEvent {
+  type: EventType.UPDATE_SECRET_SYNC;
+  metadata: TUpdateSecretSyncDTO;
+}
+
+interface DeleteSecretSyncEvent {
+  type: EventType.DELETE_SECRET_SYNC;
+  metadata: TDeleteSecretSyncDTO;
+}
+
+interface SyncSecretSyncEvent {
+  type: EventType.SYNC_SECRET_SYNC;
+  metadata: Pick<
+    TSecretSyncs,
+    "syncOptions" | "destinationConfig" | "destination" | "syncStatus" | "envId" | "secretPath" | "connectionId"
+  > & {
+    syncId: string;
+    syncMessage: string | null;
+    jobId: string;
+    jobRanAt: Date;
+  };
+}
+
+interface ImportSecretSyncEvent {
+  type: EventType.IMPORT_SECRET_SYNC;
+  metadata: Pick<
+    TSecretSyncs,
+    "syncOptions" | "destinationConfig" | "destination" | "importStatus" | "envId" | "secretPath" | "connectionId"
+  > & {
+    syncId: string;
+    importMessage: string | null;
+    jobId: string;
+    jobRanAt: Date;
+  };
+}
+
+interface EraseSecretSyncEvent {
+  type: EventType.ERASE_SECRET_SYNC;
+  metadata: Pick<
+    TSecretSyncs,
+    "syncOptions" | "destinationConfig" | "destination" | "eraseStatus" | "envId" | "secretPath" | "connectionId"
+  > & {
+    syncId: string;
+    eraseMessage: string | null;
+    jobId: string;
+    jobRanAt: Date;
   };
 }
 
@@ -2080,7 +2176,16 @@ export type Event =
   | DeleteProjectTemplateEvent
   | ApplyProjectTemplateEvent
   | GetAppConnectionsEvent
+  | GetAvailableAppConnectionsDetailsEvent
   | GetAppConnectionEvent
   | CreateAppConnectionEvent
   | UpdateAppConnectionEvent
-  | DeleteAppConnectionEvent;
+  | DeleteAppConnectionEvent
+  | GetSecretSyncsEvent
+  | GetSecretSyncEvent
+  | CreateSecretSyncEvent
+  | UpdateSecretSyncEvent
+  | DeleteSecretSyncEvent
+  | SyncSecretSyncEvent
+  | ImportSecretSyncEvent
+  | EraseSecretSyncEvent;

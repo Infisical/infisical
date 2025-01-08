@@ -15,6 +15,12 @@ import {
   TIntegrationSyncPayload,
   TSyncSecretsDTO
 } from "@app/services/secret/secret-types";
+import {
+  TQueueSecretSyncByIdDTO,
+  TQueueSecretSyncEraseByIdDTO,
+  TQueueSecretSyncImportByIdDTO,
+  TQueueSendSecretSyncActionFailedNotificationsDTO
+} from "@app/services/secret-sync/secret-sync-types";
 
 export enum QueueName {
   SecretRotation = "secret-rotation",
@@ -36,7 +42,8 @@ export enum QueueName {
   SecretSync = "secret-sync", // parent queue to push integration sync, webhook, and secret replication
   ProjectV3Migration = "project-v3-migration",
   AccessTokenStatusUpdate = "access-token-status-update",
-  ImportSecretsFromExternalSource = "import-secrets-from-external-source"
+  ImportSecretsFromExternalSource = "import-secrets-from-external-source",
+  AppConnectionSecretSync = "app-connection-secret-sync"
 }
 
 export enum QueueJobs {
@@ -61,7 +68,11 @@ export enum QueueJobs {
   ProjectV3Migration = "project-v3-migration",
   IdentityAccessTokenStatusUpdate = "identity-access-token-status-update",
   ServiceTokenStatusUpdate = "service-token-status-update",
-  ImportSecretsFromExternalSource = "import-secrets-from-external-source"
+  ImportSecretsFromExternalSource = "import-secrets-from-external-source",
+  AppConnectionSecretSync = "app-connection-secret-sync",
+  AppConnectionSecretSyncImport = "app-connection-secret-sync-import",
+  AppConnectionSecretSyncErase = "app-connection-secret-sync-erase",
+  AppConnectionSendSecretSyncActionFailedNotifications = "app-connection-send-secret-sync-action-failed-notifications"
 }
 
 export type TQueueJobTypes = {
@@ -184,6 +195,23 @@ export type TQueueJobTypes = {
       };
     };
   };
+  [QueueName.AppConnectionSecretSync]:
+    | {
+        name: QueueJobs.AppConnectionSecretSync;
+        payload: TQueueSecretSyncByIdDTO;
+      }
+    | {
+        name: QueueJobs.AppConnectionSecretSyncImport;
+        payload: TQueueSecretSyncImportByIdDTO;
+      }
+    | {
+        name: QueueJobs.AppConnectionSecretSyncErase;
+        payload: TQueueSecretSyncEraseByIdDTO;
+      }
+    | {
+        name: QueueJobs.AppConnectionSendSecretSyncActionFailedNotifications;
+        payload: TQueueSendSecretSyncActionFailedNotificationsDTO;
+      };
 };
 
 export type TQueueServiceFactory = ReturnType<typeof queueServiceFactory>;

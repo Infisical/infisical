@@ -369,6 +369,7 @@ import {
   TExternalGroupOrgRoleMappingsInsert,
   TExternalGroupOrgRoleMappingsUpdate
 } from "@app/db/schemas/external-group-org-role-mappings";
+import { TSecretSyncs, TSecretSyncsInsert, TSecretSyncsUpdate } from "@app/db/schemas/secret-syncs";
 import {
   TSecretV2TagJunction,
   TSecretV2TagJunctionInsert,
@@ -892,5 +893,6 @@ declare module "knex/types/tables" {
       TAppConnectionsInsert,
       TAppConnectionsUpdate
     >;
+    [TableName.SecretSync]: KnexOriginal.CompositeTableType<TSecretSyncs, TSecretSyncsInsert, TSecretSyncsUpdate>;
   }
 }

@@ -1,13 +1,14 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
+import { DatabaseError as PgError } from "pg";
 
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { OrgPermissionAppConnectionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { DiscriminativePick, OrgServiceActor } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
-  decryptAppConnectionCredentials,
+  decryptAppConnection,
   encryptAppConnectionCredentials,
   getAppConnectionMethodName,
   listAppConnectionOptions,
@@ -65,7 +66,10 @@ export const appConnectionServiceFactory = ({
       actor.orgId
     );
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.AppConnections);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionAppConnectionActions.Read,
+      OrgPermissionSubjects.AppConnections
+    );
 
     const appConnections = await appConnectionDAL.find(
       app
@@ -78,18 +82,7 @@ export const appConnectionServiceFactory = ({
     return Promise.all(
       appConnections
         .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
-        .map(async ({ encryptedCredentials, ...connection }) => {
-          const credentials = await decryptAppConnectionCredentials({
-            encryptedCredentials,
-            kmsService,
-            orgId: connection.orgId
-          });
-
-          return {
-            ...connection,
-            credentials
-          } as TAppConnection;
-        })
+        .map((appConnection) => decryptAppConnection(appConnection, kmsService))
     );
   };
 
@@ -108,19 +101,15 @@ export const appConnectionServiceFactory = ({
       appConnection.orgId
     );
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.AppConnections);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionAppConnectionActions.Read,
+      OrgPermissionSubjects.AppConnections
+    );
 
     if (appConnection.app !== app)
       throw new BadRequestError({ message: `App Connection with ID ${connectionId} is not for App "${app}"` });
 
-    return {
-      ...appConnection,
-      credentials: await decryptAppConnectionCredentials({
-        encryptedCredentials: appConnection.encryptedCredentials,
-        orgId: appConnection.orgId,
-        kmsService
-      })
-    } as TAppConnection;
+    return decryptAppConnection(appConnection, kmsService);
   };
 
   const findAppConnectionByName = async (app: AppConnection, connectionName: string, actor: OrgServiceActor) => {
@@ -139,19 +128,15 @@ export const appConnectionServiceFactory = ({
       appConnection.orgId
     );
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.AppConnections);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionAppConnectionActions.Read,
+      OrgPermissionSubjects.AppConnections
+    );
 
     if (appConnection.app !== app)
       throw new BadRequestError({ message: `App Connection with name ${connectionName} is not for App "${app}"` });
 
-    return {
-      ...appConnection,
-      credentials: await decryptAppConnectionCredentials({
-        encryptedCredentials: appConnection.encryptedCredentials,
-        orgId: appConnection.orgId,
-        kmsService
-      })
-    } as TAppConnection;
+    return decryptAppConnection(appConnection, kmsService);
   };
 
   const createAppConnection = async (
@@ -168,7 +153,10 @@ export const appConnectionServiceFactory = ({
       actor.orgId
     );
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.AppConnections);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionAppConnectionActions.Create,
+      OrgPermissionSubjects.AppConnections
+    );
 
     const appConnection = await appConnectionDAL.transaction(async (tx) => {
       const isConflictingName = Boolean(
@@ -216,7 +204,7 @@ export const appConnectionServiceFactory = ({
       };
     });
 
-    return appConnection;
+    return appConnection as TAppConnection;
   };
 
   const updateAppConnection = async (
@@ -237,7 +225,10 @@ export const appConnectionServiceFactory = ({
       appConnection.orgId
     );
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.AppConnections);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionAppConnectionActions.Edit,
+      OrgPermissionSubjects.AppConnections
+    );
 
     const updatedAppConnection = await appConnectionDAL.transaction(async (tx) => {
       if (params.name && appConnection.name !== params.name) {
@@ -304,14 +295,7 @@ export const appConnectionServiceFactory = ({
       return updatedConnection;
     });
 
-    return {
-      ...updatedAppConnection,
-      credentials: await decryptAppConnectionCredentials({
-        encryptedCredentials: updatedAppConnection.encryptedCredentials,
-        orgId: updatedAppConnection.orgId,
-        kmsService
-      })
-    } as TAppConnection;
+    return decryptAppConnection(updatedAppConnection, kmsService);
   };
 
   const deleteAppConnection = async (app: AppConnection, connectionId: string, actor: OrgServiceActor) => {
@@ -329,23 +313,74 @@ export const appConnectionServiceFactory = ({
       appConnection.orgId
     );
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.AppConnections);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionAppConnectionActions.Delete,
+      OrgPermissionSubjects.AppConnections
+    );
 
     if (appConnection.app !== app)
       throw new BadRequestError({ message: `App Connection with ID ${connectionId} is not for App "${app}"` });
 
-    // TODO: specify delete error message if due to existing dependencies
+    // TODO (scott): add option to delete all dependencies
 
-    const deletedAppConnection = await appConnectionDAL.deleteById(connectionId);
+    try {
+      const deletedAppConnection = await appConnectionDAL.deleteById(connectionId);
 
-    return {
-      ...deletedAppConnection,
-      credentials: await decryptAppConnectionCredentials({
-        encryptedCredentials: deletedAppConnection.encryptedCredentials,
-        orgId: deletedAppConnection.orgId,
-        kmsService
-      })
-    } as TAppConnection;
+      return await decryptAppConnection(deletedAppConnection, kmsService);
+    } catch (err) {
+      if (err instanceof DatabaseError && err.error instanceof PgError && err.error.code === "23503") {
+        throw new BadRequestError({
+          message:
+            "Cannot delete App Connection with existing connections. Remove all existing connections and try again."
+        });
+      }
+
+      throw err;
+    }
+  };
+
+  const connectAppConnectionById = async (connectionId: string, actor: OrgServiceActor) => {
+    const appConnection = await appConnectionDAL.findById(connectionId);
+
+    if (!appConnection) throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
+
+    const { permission: orgPermission } = await permissionService.getOrgPermission(
+      actor.type,
+      actor.id,
+      appConnection.orgId,
+      actor.authMethod,
+      actor.orgId
+    );
+
+    ForbiddenError.from(orgPermission).throwUnlessCan(
+      OrgPermissionAppConnectionActions.Connect,
+      subject(OrgPermissionSubjects.AppConnections, { connectionId: appConnection.id })
+    );
+
+    return decryptAppConnection(appConnection, kmsService);
+  };
+
+  const listAvailableAppConnectionsForUser = async (app: AppConnection, actor: OrgServiceActor) => {
+    await checkAppServicesAvailability(actor.orgId);
+
+    const { permission: orgPermission } = await permissionService.getOrgPermission(
+      actor.type,
+      actor.id,
+      actor.orgId,
+      actor.authMethod,
+      actor.orgId
+    );
+
+    const appConnections = await appConnectionDAL.find({ app, orgId: actor.orgId });
+
+    const availableConnections = appConnections.filter((connection) =>
+      orgPermission.can(
+        OrgPermissionAppConnectionActions.Connect,
+        subject(OrgPermissionSubjects.AppConnections, { connectionId: connection.id })
+      )
+    );
+
+    return availableConnections as Omit<TAppConnection, "credentials">[];
   };
 
   return {
@@ -355,6 +390,8 @@ export const appConnectionServiceFactory = ({
     findAppConnectionByName,
     createAppConnection,
     updateAppConnection,
-    deleteAppConnection
+    deleteAppConnection,
+    connectAppConnectionById,
+    listAvailableAppConnectionsForUser
   };
 };

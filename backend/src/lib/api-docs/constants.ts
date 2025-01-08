@@ -1,5 +1,7 @@
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
+import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
+import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 
 export const GROUPS = {
   CREATE: {
@@ -1636,6 +1638,68 @@ export const AppConnections = {
     };
   },
   DELETE: (app: AppConnection) => ({
-    connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[app]} connection to be deleted.`
+    connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[app]} Connection to be deleted.`
   })
+};
+
+export const SecretSyncs = {
+  LIST: (destination?: SecretSync) => ({
+    projectId: `The ID of the project to list ${destination ? SECRET_SYNC_NAME_MAP[destination] : "Secret"} Syncs from.`
+  }),
+  GET_BY_ID: (destination: SecretSync) => ({
+    syncId: `The ID of the ${SECRET_SYNC_NAME_MAP[destination]} Sync to retrieve.`
+  }),
+  GET_BY_NAME: (destination: SecretSync) => ({
+    syncName: `The name of the ${SECRET_SYNC_NAME_MAP[destination]} Sync to retrieve.`,
+    projectId: `The ID of the project the ${SECRET_SYNC_NAME_MAP[destination]} Sync is associated with.`
+  }),
+  CREATE: (destination: SecretSync) => {
+    const destinationName = SECRET_SYNC_NAME_MAP[destination];
+    return {
+      name: `The name of the ${destinationName} Sync to create. Must be slug-friendly.`,
+      description: `An optional description for the ${destinationName} Sync.`,
+      secretPath: `The path to sync secrets from.`,
+      envId: `The ID of the project environment to sync secrets from.`,
+      connectionId: `The ID of the ${
+        APP_CONNECTION_NAME_MAP[SECRET_SYNC_CONNECTION_MAP[destination]]
+      } Connection to use for syncing.`,
+      isEnabled: `Whether secrets should be synced automatically or not.`,
+      syncOptions: "Optional parameters to modify how secrets are synced."
+    };
+  },
+  UPDATE: (destination: SecretSync) => {
+    const destinationName = SECRET_SYNC_NAME_MAP[destination];
+    return {
+      syncId: `The ID of the ${destinationName} Sync to be updated.`,
+      name: `The updated name of the ${destinationName} Sync. Must be slug-friendly.`,
+      envId: `The updated project environment ID to sync secrets from.`,
+      secretPath: `The updated path to sync secrets from.`,
+      description: `The updated description of the ${destinationName} Sync.`,
+      isEnabled: `Whether secrets should be synced automatically or not.`,
+      syncOptions: "Optional parameters to modify how secrets are synced."
+    };
+  },
+  DELETE: (destination: SecretSync) => ({
+    syncId: `The ID of the ${SECRET_SYNC_NAME_MAP[destination]} Sync to be deleted.`
+  }),
+  SYNC: (destination: SecretSync) => ({
+    syncId: `The ID of the ${SECRET_SYNC_NAME_MAP[destination]} Sync to trigger a sync for.`
+  }),
+  IMPORT: (destination: SecretSync) => ({
+    syncId: `The ID of the ${SECRET_SYNC_NAME_MAP[destination]} Sync to trigger an import for.`,
+    shouldOverwrite: `Specify whether newly imported secrets should override existing secrets with matching names in Infisical.`
+  }),
+  ERASE: (destination: SecretSync) => ({
+    syncId: `The ID of the ${SECRET_SYNC_NAME_MAP[destination]} Sync to trigger an erase for.`
+  }),
+  SYNC_OPTIONS: {
+    PREPEND_PREFIX: "Optionally prepend a prefix to your secrets' keys when syncing.",
+    APPEND_SUFFIX: "Optionally append a suffix to your secrets' keys when syncing."
+  },
+  DESTINATION_CONFIG: {
+    AWS_PARAMETER_STORE: {
+      REGION: "The AWS region to sync secrets to.",
+      PATH: "The Parameter Store path to sync secrets to."
+    }
+  }
 };

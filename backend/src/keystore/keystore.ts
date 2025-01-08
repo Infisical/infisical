@@ -23,6 +23,8 @@ export const KeyStorePrefixes = {
     `sync-integration-mutex-${projectId}-${environmentSlug}-${secretPath}` as const,
   SyncSecretIntegrationLastRunTimestamp: (projectId: string, environmentSlug: string, secretPath: string) =>
     `sync-integration-last-run-${projectId}-${environmentSlug}-${secretPath}` as const,
+  SecretSyncLock: (syncId: string) => `secret-sync-mutex-${syncId}` as const,
+  SecretSyncLastRunTimestamp: (syncId: string) => `secret-sync-last-run-${syncId}` as const,
   IdentityAccessTokenStatusUpdate: (identityAccessTokenId: string) =>
     `identity-access-token-status:${identityAccessTokenId}`,
   ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`
@@ -30,6 +32,7 @@ export const KeyStorePrefixes = {
 
 export const KeyStoreTtls = {
   SetSyncSecretIntegrationLastRunTimestampInSeconds: 60,
+  SetSecretSyncLastRunTimestampInSeconds: 60,
   AccessTokenStatusUpdateInSeconds: 120
 };
 

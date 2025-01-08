@@ -1,6 +1,10 @@
 import { AbilityBuilder, createMongoAbility, ForcedSubject, MongoAbility } from "@casl/ability";
 import { z } from "zod";
 
+import {
+  CASL_ACTION_SCHEMA_ENUM,
+  CASL_ACTION_SCHEMA_NATIVE_ENUM
+} from "@app/ee/services/permission/permission-schemas";
 import { conditionsMatcher, PermissionConditionOperators } from "@app/lib/casl";
 import { UnpackedPermissionSchema } from "@app/server/routes/santizedSchemas/permission";
 
@@ -60,7 +64,8 @@ export enum ProjectPermissionSub {
   PkiAlerts = "pki-alerts",
   PkiCollections = "pki-collections",
   Kms = "kms",
-  Cmek = "cmek"
+  Cmek = "cmek",
+  SecretSyncs = "secret-syncs"
 }
 
 export type SecretSubjectFields = {
@@ -140,20 +145,13 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateTemplates]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
+  | [ProjectPermissionActions, ProjectPermissionSub.SecretSyncs]
   | [ProjectPermissionCmekActions, ProjectPermissionSub.Cmek]
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]
   | [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Kms];
-
-const CASL_ACTION_SCHEMA_NATIVE_ENUM = <ACTION extends z.EnumLike>(actions: ACTION) =>
-  z
-    .union([z.nativeEnum(actions), z.nativeEnum(actions).array().min(1)])
-    .transform((el) => (typeof el === "string" ? [el] : el));
-
-const CASL_ACTION_SCHEMA_ENUM = <ACTION extends z.EnumValues>(actions: ACTION) =>
-  z.union([z.enum(actions), z.enum(actions).array().min(1)]).transform((el) => (typeof el === "string" ? [el] : el));
 
 // akhilmhdh: don't modify this for v2
 // if you want to update create a new schema
@@ -392,8 +390,13 @@ const GeneralPermissionSchema = [
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.Cmek).describe("The entity this permission pertains to."),
-    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionCmekActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.SecretSyncs).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     )
   })
@@ -511,7 +514,8 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.PkiCollections,
     ProjectPermissionSub.SshCertificateAuthorities,
     ProjectPermissionSub.SshCertificates,
-    ProjectPermissionSub.SshCertificateTemplates
+    ProjectPermissionSub.SshCertificateTemplates,
+    ProjectPermissionSub.SecretSyncs
   ].forEach((el) => {
     can(
       [
@@ -713,6 +717,16 @@ const buildMemberPermissionRules = () => {
     ProjectPermissionSub.Cmek
   );
 
+  can(
+    [
+      ProjectPermissionActions.Read,
+      ProjectPermissionActions.Edit,
+      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Delete
+    ],
+    ProjectPermissionSub.SecretSyncs
+  );
+
   return rules;
 };
 
@@ -746,6 +760,7 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificateAuthorities);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificates);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificateTemplates);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretSyncs);
 
   return rules;
 };

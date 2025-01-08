@@ -11,7 +11,7 @@ export const registerGitHubConnectionRouter = async (server: FastifyZodProvider)
   registerAppConnectionEndpoints({
     app: AppConnection.GitHub,
     server,
-    responseSchema: SanitizedGitHubConnectionSchema,
+    sanitizedResponseSchema: SanitizedGitHubConnectionSchema,
     createSchema: CreateGitHubConnectionSchema,
     updateSchema: UpdateGitHubConnectionSchema
   });

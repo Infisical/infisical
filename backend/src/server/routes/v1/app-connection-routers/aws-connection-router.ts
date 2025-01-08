@@ -11,7 +11,7 @@ export const registerAwsConnectionRouter = async (server: FastifyZodProvider) =>
   registerAppConnectionEndpoints({
     app: AppConnection.AWS,
     server,
-    responseSchema: SanitizedAwsConnectionSchema,
+    sanitizedResponseSchema: SanitizedAwsConnectionSchema,
     createSchema: CreateAwsConnectionSchema,
     updateSchema: UpdateAwsConnectionSchema
   });
