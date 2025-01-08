@@ -72,7 +72,7 @@ export const GitlabAuthorizePage = () => {
         >
           <div className="flex flex-row items-center">
             <div className="flex items-center pb-0.5">
-              <img src="/images/integrations/Gitlab.png" height={28} width={28} alt="Gitlab logo" />
+              <img src="/images/integrations/GitLab.png" height={28} width={28} alt="Gitlab logo" />
             </div>
             <span className="ml-2.5">GitLab Integration </span>
             <a

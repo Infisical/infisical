@@ -246,8 +246,7 @@ export const licenseServiceFactory = ({
   };
 
   const getOrgPlan = async ({ orgId, actor, actorId, actorOrgId, actorAuthMethod, projectId }: TOrgPlanDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Billing);
+    await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     const plan = await getPlan(orgId, projectId);
     return plan;
   };

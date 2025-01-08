@@ -48,7 +48,8 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
     const redirectUrl = `/api/v1/sso/redirect/saml2/organizations/${orgSlug}${
       callbackPort ? `?callback_port=${callbackPort}` : ""
     }`;
-    navigate({ to: redirectUrl });
+
+    window.location.assign(redirectUrl);
   };
 
   const redirectToOidc = (orgSlug: string) => {
@@ -56,7 +57,8 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
     const redirectUrl = `/api/v1/sso/oidc/login?orgSlug=${orgSlug}${
       callbackPort ? `&callbackPort=${callbackPort}` : ""
     }`;
-    navigate({ to: redirectUrl });
+
+    window.location.assign(redirectUrl);
   };
 
   useEffect(() => {

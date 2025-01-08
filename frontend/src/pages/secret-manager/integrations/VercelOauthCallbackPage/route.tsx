@@ -6,7 +6,7 @@ import { VercelOauthCallbackPage } from "./VercelOauthCallbackPage";
 
 export const VercelOAuthCallbackPageQueryParamsSchema = z.object({
   state: z.string().catch(""),
-  code: z.string()
+  code: z.coerce.string().catch("")
 });
 
 export const Route = createFileRoute(

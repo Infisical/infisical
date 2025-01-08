@@ -25,7 +25,7 @@ import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@a
 import { usePopUp } from "@app/hooks";
 import { useDeleteProjectRole, useGetProjectRoles } from "@app/hooks/api";
 import { TProjectRole } from "@app/hooks/api/roles/types";
-import { RoleModal } from "@app/pages/organization/RoleByIDPage/components";
+import { RoleModal } from "@app/pages/project/RoleDetailsBySlugPage/components/RoleModal";
 
 export const ProjectRoleList = () => {
   const navigate = useNavigate();
