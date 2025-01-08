@@ -47,7 +47,13 @@ export const formSchema = z.object({
     .nullable()
     .optional(),
   reminderNote: z.string().trim().nullable().optional(),
-
+  secretMetadata: z
+    .object({
+      key: z.string().trim().min(1),
+      value: z.string().trim().default("")
+    })
+    .array()
+    .optional(),
   tags: z
     .object({
       id: z.string(),

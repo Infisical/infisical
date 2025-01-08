@@ -1150,7 +1150,8 @@ export const INTEGRATION = {
       shouldMaskSecrets: "Specifies if the secrets synced from Infisical to Gitlab should be marked as 'Masked'.",
       shouldProtectSecrets: "Specifies if the secrets synced from Infisical to Gitlab should be marked as 'Protected'.",
       shouldEnableDelete: "The flag to enable deletion of secrets.",
-      octopusDeployScopeValues: "Specifies the scope values to set on synced secrets to Octopus Deploy."
+      octopusDeployScopeValues: "Specifies the scope values to set on synced secrets to Octopus Deploy.",
+      metadataSyncMode: "The mode for syncing metadata to external system"
     }
   },
   UPDATE: {

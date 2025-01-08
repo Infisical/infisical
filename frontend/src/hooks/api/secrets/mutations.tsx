@@ -84,7 +84,8 @@ export const useUpdateSecretV3 = ({
       secretReminderRepeatDays,
       secretReminderNote,
       newSecretName,
-      skipMultilineEncoding
+      skipMultilineEncoding,
+      secretMetadata
     }) => {
       const { data } = await apiRequest.patch(`/api/v3/secrets/raw/${secretKey}`, {
         workspaceId,
@@ -97,7 +98,8 @@ export const useUpdateSecretV3 = ({
         newSecretName,
         secretComment,
         tagIds,
-        secretValue
+        secretValue,
+        secretMetadata
       });
       return data;
     },

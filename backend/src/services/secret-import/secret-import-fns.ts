@@ -1,6 +1,7 @@
 import { SecretType, TSecretImports, TSecrets, TSecretsV2 } from "@app/db/schemas";
 import { groupBy, unique } from "@app/lib/fn";
 
+import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
@@ -39,6 +40,7 @@ type TSecretImportSecretsV2 = {
     // But for somereason ts consider ? and undefined explicit as different just ts things
     secretValue: string;
     secretComment: string;
+    secretMetadata?: ResourceMetadataDTO;
   })[];
 };
 
