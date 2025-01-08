@@ -112,16 +112,16 @@ export const secretSyncQueueFactory = ({
   const appCfg = getConfig();
 
   const integrationMeter = opentelemetry.metrics.getMeter("SecretSyncs");
-  const syncErrorHistogram = integrationMeter.createHistogram("secret_sync_sync_errors", {
-    description: "Secret Sync sync errors",
+  const syncErrorHistogram = integrationMeter.createHistogram("secret_sync_errors", {
+    description: "Secret Sync - sync errors",
     unit: "1"
   });
   const importErrorHistogram = integrationMeter.createHistogram("secret_sync_import_errors", {
-    description: "Secret Sync import errors",
+    description: "Secret Sync - import errors",
     unit: "1"
   });
   const eraseErrorHistogram = integrationMeter.createHistogram("secret_sync_erase_errors", {
-    description: "Secret Sync erase errors",
+    description: "Secret Sync - erase errors",
     unit: "1"
   });
 
