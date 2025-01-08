@@ -131,7 +131,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         app: z.string().trim().optional().describe(INTEGRATION.UPDATE.app),
         appId: z.string().trim().optional().describe(INTEGRATION.UPDATE.appId),
-        isActive: z.boolean().describe(INTEGRATION.UPDATE.isActive),
+        isActive: z.boolean().optional().describe(INTEGRATION.UPDATE.isActive),
         secretPath: z
           .string()
           .trim()
