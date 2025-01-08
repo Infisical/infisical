@@ -1,5 +1,4 @@
 import { ForbiddenError, subject } from "@casl/ability";
-import { DatabaseError as PgError } from "pg";
 
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionAppConnectionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
@@ -328,7 +327,7 @@ export const appConnectionServiceFactory = ({
 
       return await decryptAppConnection(deletedAppConnection, kmsService);
     } catch (err) {
-      if (err instanceof DatabaseError && err.error instanceof PgError && err.error.code === "23503") {
+      if (err instanceof DatabaseError && (err.error as { code: string })?.code === "23503") {
         throw new BadRequestError({
           message:
             "Cannot delete App Connection with existing connections. Remove all existing connections and try again."
