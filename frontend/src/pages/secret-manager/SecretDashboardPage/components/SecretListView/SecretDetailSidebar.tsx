@@ -511,7 +511,15 @@ export const SecretDetailSidebar = ({
                 </div>
               </div>
               <div className="dark mb-4 flex-grow text-sm text-bunker-300">
-                <div className="mb-2">Access List</div>
+                <div className="mb-2">
+                  Access List
+                  <Tooltip
+                    content="Lists all users, machine identities, and groups that have been granted any permission level (read, create, edit, or delete) for this secret."
+                    className="z-[100]"
+                  >
+                    <FontAwesomeIcon icon={faCircleQuestion} className="ml-1" size="sm" />
+                  </Tooltip>
+                </div>
                 {isPending && (
                   <Button className="w-full px-2 py-1" variant="outline_bg" isDisabled>
                     Analyze Access
@@ -536,28 +544,20 @@ export const SecretDetailSidebar = ({
                         <div className="flex flex-wrap gap-2">
                           {secretAccessList.users.map((user) => (
                             <div className="rounded-md bg-bunker-500 px-1">
-                              <Link
-                                to={
-                                  `/${ProjectType.SecretManager}/$projectId/members/$membershipId` as const
-                                }
-                                params={{
-                                  projectId: currentWorkspace.id,
-                                  membershipId: user.membershipId
-                                }}
-                                className="text-secondary/80 text-sm hover:text-primary"
-                              >
-                                {user.name}
-                                <Tooltip
-                                  content={user.allowedActions.join(", ")}
-                                  className="z-[100]"
+                              <Tooltip content={user.allowedActions.join(", ")} className="z-[100]">
+                                <Link
+                                  to={
+                                    `/${ProjectType.SecretManager}/$projectId/members/$membershipId` as const
+                                  }
+                                  params={{
+                                    projectId: currentWorkspace.id,
+                                    membershipId: user.membershipId
+                                  }}
+                                  className="text-secondary/80 text-sm hover:text-primary"
                                 >
-                                  <FontAwesomeIcon
-                                    icon={faCircleQuestion}
-                                    className="ml-1"
-                                    size="sm"
-                                  />
-                                </Tooltip>
-                              </Link>
+                                  {user.name}
+                                </Link>
+                              </Tooltip>
                             </div>
                           ))}
                         </div>
@@ -569,28 +569,23 @@ export const SecretDetailSidebar = ({
                         <div className="flex flex-wrap gap-2">
                           {secretAccessList.identities.map((identity) => (
                             <div className="rounded-md bg-bunker-500 px-1">
-                              <Link
-                                to={
-                                  `/${ProjectType.SecretManager}/$projectId/identities/$identityId` as const
-                                }
-                                params={{
-                                  projectId: currentWorkspace.id,
-                                  identityId: identity.id
-                                }}
-                                className="text-secondary/80 text-sm hover:text-primary"
+                              <Tooltip
+                                content={identity.allowedActions.join(", ")}
+                                className="z-[100]"
                               >
-                                {identity.name}
-                                <Tooltip
-                                  content={identity.allowedActions.join(", ")}
-                                  className="z-[100]"
+                                <Link
+                                  to={
+                                    `/${ProjectType.SecretManager}/$projectId/identities/$identityId` as const
+                                  }
+                                  params={{
+                                    projectId: currentWorkspace.id,
+                                    identityId: identity.id
+                                  }}
+                                  className="text-secondary/80 text-sm hover:text-primary"
                                 >
-                                  <FontAwesomeIcon
-                                    icon={faCircleQuestion}
-                                    className="ml-1"
-                                    size="sm"
-                                  />
-                                </Tooltip>
-                              </Link>
+                                  {identity.name}
+                                </Link>
+                              </Tooltip>
                             </div>
                           ))}
                         </div>
@@ -602,25 +597,20 @@ export const SecretDetailSidebar = ({
                         <div className="flex flex-wrap gap-2">
                           {secretAccessList.groups.map((group) => (
                             <div className="rounded-md bg-bunker-500 px-1">
-                              <Link
-                                to={"/organization/groups/$groupId" as const}
-                                params={{
-                                  groupId: group.id
-                                }}
-                                className="text-secondary/80 text-sm hover:text-primary"
+                              <Tooltip
+                                content={group.allowedActions.join(", ")}
+                                className="z-[100]"
                               >
-                                {group.name}
-                                <Tooltip
-                                  content={group.allowedActions.join(", ")}
-                                  className="z-[100]"
+                                <Link
+                                  to={"/organization/groups/$groupId" as const}
+                                  params={{
+                                    groupId: group.id
+                                  }}
+                                  className="text-secondary/80 text-sm hover:text-primary"
                                 >
-                                  <FontAwesomeIcon
-                                    icon={faCircleQuestion}
-                                    className="ml-1"
-                                    size="sm"
-                                  />
-                                </Tooltip>
-                              </Link>
+                                  {group.name}
+                                </Link>
+                              </Tooltip>
                             </div>
                           ))}
                         </div>
