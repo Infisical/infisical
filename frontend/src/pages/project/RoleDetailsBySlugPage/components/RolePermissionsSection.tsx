@@ -98,7 +98,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
         `permissions.${selectedSubject}`,
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore-error akhilmhdh: this is because of ts collision with both
-        [...rootPolicyValue, ...[]],
+        [...rootPolicyValue, {}],
         { shouldDirty: true, shouldTouch: true }
       );
     } else {
