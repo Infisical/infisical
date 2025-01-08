@@ -15,6 +15,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -41,7 +42,7 @@ import {
   useProjectPermission,
   useWorkspace
 } from "@app/context";
-import { useToggle } from "@app/hooks";
+import { usePopUp, useToggle } from "@app/hooks";
 import { useGetSecretVersion } from "@app/hooks/api";
 import { useGetSecretAccessList } from "@app/hooks/api/secrets/queries";
 import { SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
@@ -92,6 +93,10 @@ export const SecretDetailSidebar = ({
     resolver: zodResolver(formSchema),
     values: secret
   });
+
+  const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp([
+    "secretAccessUpgradePlan"
+  ] as const);
 
   const { permission } = useProjectPermission();
   const { currentWorkspace } = useWorkspace();
@@ -199,6 +204,13 @@ export const SecretDetailSidebar = ({
             setValue("reminderNote", data.note, { shouldDirty: true });
           }
         }}
+      />
+      <UpgradePlanModal
+        isOpen={popUp.secretAccessUpgradePlan.isOpen}
+        onOpenChange={(isUpgradeModalOpen) =>
+          handlePopUpToggle("secretAccessUpgradePlan", isUpgradeModalOpen)
+        }
+        text="Secret access analysis is only available on Infisical's Pro plan and above."
       />
       <Drawer
         onOpenChange={(state) => {
@@ -500,8 +512,19 @@ export const SecretDetailSidebar = ({
               </div>
               <div className="dark mb-4 flex-grow text-sm text-bunker-300">
                 <div className="mb-2">Access List</div>
+                {isPending && (
+                  <Button className="w-full px-2 py-1" variant="outline_bg" isDisabled>
+                    Analyze Access
+                  </Button>
+                )}
                 {!isPending && secretAccessList === undefined && (
-                  <Button className="w-full px-2 py-1" variant="outline_bg">
+                  <Button
+                    className="w-full px-2 py-1"
+                    variant="outline_bg"
+                    onClick={() => {
+                      handlePopUpOpen("secretAccessUpgradePlan");
+                    }}
+                  >
                     Analyze Access
                   </Button>
                 )}

@@ -11,6 +11,7 @@ import {
   SecretsSchema,
   SecretType
 } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
@@ -114,6 +115,7 @@ type TSecretServiceFactoryDep = {
     TSecretApprovalRequestSecretDALFactory,
     "insertMany" | "insertApprovalSecretTags"
   >;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TSecretServiceFactory = ReturnType<typeof secretServiceFactory>;
@@ -135,7 +137,8 @@ export const secretServiceFactory = ({
   secretApprovalRequestDAL,
   secretApprovalRequestSecretDAL,
   secretV2BridgeService,
-  secretApprovalRequestService
+  secretApprovalRequestService,
+  licenseService
 }: TSecretServiceFactoryDep) => {
   const getSecretReference = async (projectId: string) => {
     // if bot key missing means e2e still exist
@@ -1150,6 +1153,13 @@ export const secretServiceFactory = ({
 
   const getSecretAccessList = async (dto: TGetSecretAccessListDTO) => {
     const { environment, secretPath, secretName, projectId } = dto;
+    const plan = await licenseService.getPlan(dto.actorOrgId);
+    if (!plan.secretAccessInsights) {
+      throw new BadRequestError({
+        message: "Failed to fetch secret access list due to plan restriction. Upgrade your plan."
+      });
+    }
+
     const secret = await secretV2BridgeService.getSecretByName({
       actor: dto.actor,
       actorId: dto.actorId,
