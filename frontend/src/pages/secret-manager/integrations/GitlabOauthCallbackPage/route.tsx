@@ -6,7 +6,7 @@ import { GitLabOAuthCallbackPage } from "./GitlabOauthCallbackPage";
 
 export const GitlabOAuthCallbackPageQueryParamsSchema = z.object({
   state: z.string().catch(""),
-  code: z.string()
+  code: z.coerce.string().catch("")
 });
 
 export const Route = createFileRoute(

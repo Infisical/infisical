@@ -6,7 +6,7 @@ import { BitbucketOauthCallbackPage } from "./BitbucketOauthCallbackPage";
 
 export const BitbucketOauthCallbackQueryParamsSchema = z.object({
   state: z.string().catch(""),
-  code: z.string()
+  code: z.coerce.string().catch("")
 });
 
 export const Route = createFileRoute(
