@@ -34,6 +34,7 @@ import {
   useGetIntegrationAuthById,
   useGetIntegrationAuthTeams
 } from "@app/hooks/api/integrationAuth";
+import { IntegrationSyncBehavior } from "@app/hooks/api/integrations/types";
 
 const gitLabEntities = [
   { name: "Individual", value: "individual" },
@@ -45,6 +46,14 @@ enum TabSections {
   Options = "options"
 }
 
+const initialSyncBehaviors = [
+  {
+    label: "No Import - Overwrite all values in GitLab",
+    value: IntegrationSyncBehavior.OVERWRITE_TARGET
+  },
+  { label: "Import - Prefer values from Infisical", value: IntegrationSyncBehavior.PREFER_SOURCE }
+];
+
 const schema = z.object({
   targetEntity: z.enum([gitLabEntities[0].value, gitLabEntities[1].value]),
   targetTeamId: z.string().optional(),
@@ -55,7 +64,8 @@ const schema = z.object({
   secretPrefix: z.string().optional(),
   secretSuffix: z.string().optional(),
   shouldMaskSecrets: z.boolean().optional(),
-  shouldProtectSecrets: z.boolean()
+  shouldProtectSecrets: z.boolean().default(false),
+  initialSyncBehavior: z.nativeEnum(IntegrationSyncBehavior)
 });
 
 type FormData = z.infer<typeof schema>;
@@ -74,7 +84,8 @@ export const GitlabConfigurePage = () => {
       secretPath: "/",
       secretPrefix: "",
       secretSuffix: "",
-      selectedSourceEnvironment: currentWorkspace.environments[0].slug
+      selectedSourceEnvironment: currentWorkspace.environments[0].slug,
+      initialSyncBehavior: IntegrationSyncBehavior.PREFER_SOURCE
     }
   });
   const selectedSourceEnvironment = watch("selectedSourceEnvironment");
@@ -135,7 +146,8 @@ export const GitlabConfigurePage = () => {
     secretPrefix,
     secretSuffix,
     shouldMaskSecrets,
-    shouldProtectSecrets
+    shouldProtectSecrets,
+    initialSyncBehavior
   }: FormData) => {
     try {
       setIsLoading(true);
@@ -155,7 +167,8 @@ export const GitlabConfigurePage = () => {
           secretPrefix,
           secretSuffix,
           shouldMaskSecrets,
-          shouldProtectSecrets
+          shouldProtectSecrets,
+          initialSyncBehavior
         }
       });
 
@@ -178,7 +191,11 @@ export const GitlabConfigurePage = () => {
     integrationAuthTeams ? (
     <form
       onSubmit={handleSubmit((data: FormData) => {
-        if (!data.secretPrefix && !data.secretSuffix) {
+        if (
+          !data.secretPrefix &&
+          !data.secretSuffix &&
+          data.initialSyncBehavior === IntegrationSyncBehavior.OVERWRITE_TARGET
+        ) {
           handlePopUpOpen("confirmIntegration", data);
           return;
         }
@@ -378,6 +395,36 @@ export const GitlabConfigurePage = () => {
                   </FormControl>
                 )}
               />
+              <Controller
+                control={control}
+                name="initialSyncBehavior"
+                render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                  <FormControl
+                    label="Initial Sync Behavior"
+                    errorText={error?.message}
+                    isError={Boolean(error)}
+                  >
+                    <Select
+                      defaultValue={field.value}
+                      onValueChange={(e) => onChange(e)}
+                      className="w-full border border-mineshaft-500"
+                      dropdownContainerClassName="max-w-full"
+                    >
+                      {initialSyncBehaviors.map((b) => {
+                        return (
+                          <SelectItem
+                            value={b.value}
+                            key={`sync-behavior-${b.value}`}
+                            className="w-full"
+                          >
+                            {b.label}
+                          </SelectItem>
+                        );
+                      })}
+                    </Select>
+                  </FormControl>
+                )}
+              />
             </motion.div>
           </TabPanel>
           <TabPanel value={TabSections.Options}>
@@ -462,11 +509,6 @@ export const GitlabConfigurePage = () => {
           Create Integration
         </Button>
       </Card>
-      {/* <div className="border-t border-mineshaft-800 w-full max-w-md mt-6"/>
-      <div className="flex flex-col bg-mineshaft-800 border border-mineshaft-600 w-full p-4 max-w-lg mt-6 rounded-md">
-        <div className="flex flex-row items-center"><FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-200 text-xl"/> <span className="ml-3 text-md text-mineshaft-100">Pro Tip</span></div>
-        <span className="text-mineshaft-300 text-sm mt-4">After creating an integration, your secrets will start syncing immediately. This might cause an unexpected override of current secrets in GitLab with secrets from Infisical.</span>
-      </div> */}
       <Modal
         isOpen={popUp.confirmIntegration?.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("confirmIntegration", isOpen)}
