@@ -2903,8 +2903,7 @@ const syncSecretsGitLab = async ({
         secrets: Object.keys(secretsToAddToInfisical).map((key) => ({
           secretName: key,
           secretValue: secretsToAddToInfisical[key].value,
-          type: SecretType.Shared,
-          secretComment: ""
+          type: SecretType.Shared
         }))
       });
     }
