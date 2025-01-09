@@ -249,7 +249,7 @@ export const useGetSecretAccessList = (dto: TGetSecretAccessListDTO) =>
         groups: SecretAccessListEntry[];
         identities: SecretAccessListEntry[];
         users: SecretAccessListEntry[];
-      }>(`/api/v1/secrets/raw/${dto.secretKey}/access-list`, {
+      }>(`/api/v1/secrets/${dto.secretKey}/access-list`, {
         params: {
           workspaceId: dto.workspaceId,
           environment: dto.environment,

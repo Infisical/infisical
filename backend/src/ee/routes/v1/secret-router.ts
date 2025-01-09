@@ -19,7 +19,7 @@ const AccessListEntrySchema = z
 export const registerSecretRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
-    url: "/raw/:secretName/access-list",
+    url: "/:secretName/access-list",
     config: {
       rateLimit: readLimit
     },
