@@ -48,6 +48,7 @@ export type TFeatureSet = {
   samlSSO: false;
   hsm: false;
   oidcSSO: false;
+  secretAccessInsights: false;
   scim: false;
   ldap: false;
   groups: false;

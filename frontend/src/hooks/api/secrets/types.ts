@@ -1,3 +1,5 @@
+import { ProjectPermissionActions } from "@app/context";
+
 import type { WsTag } from "../tags/types";
 
 export enum SecretType {
@@ -125,6 +127,13 @@ export type GetSecretVersionsDTO = {
   offset: number;
 };
 
+export type TGetSecretAccessListDTO = {
+  workspaceId: string;
+  environment: string;
+  secretPath: string;
+  secretKey: string;
+};
+
 export type TCreateSecretsV3DTO = {
   secretKey: string;
   secretValue: string;
@@ -230,4 +239,11 @@ export type TSecretReferenceTraceNode = {
   environment: string;
   secretPath: string;
   children: TSecretReferenceTraceNode[];
+};
+
+export type SecretAccessListEntry = {
+  allowedActions: ProjectPermissionActions[];
+  id: string;
+  membershipId: string;
+  name: string;
 };
