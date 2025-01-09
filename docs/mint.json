@@ -349,7 +349,15 @@
         {
           "group": "Container orchestrators",
           "pages": [
-            "integrations/platforms/kubernetes",
+            {
+              "group": "Kubernetes",
+              "pages": [
+                "integrations/platforms/kubernetes/overview",
+                "integrations/platforms/kubernetes/infisical-secret-crd",
+                "integrations/platforms/kubernetes/infisical-push-secret-crd",
+                "integrations/platforms/kubernetes/infisical-dynamic-secret-crd"
+              ]
+            },
             "integrations/platforms/kubernetes-csi",
             "integrations/platforms/docker-swarm-with-agent",
             "integrations/platforms/ecs-with-agent"

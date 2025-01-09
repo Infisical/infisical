@@ -116,43 +116,6 @@ type MachineIdentityScopeInWorkspace struct {
 	Recursive bool `json:"recursive"`
 }
 
-type KubeSecretReference struct {
-	// The name of the Kubernetes Secret
-	// +kubebuilder:validation:Required
-	SecretName string `json:"secretName"`
-
-	// The name space where the Kubernetes Secret is located
-	// +kubebuilder:validation:Required
-	SecretNamespace string `json:"secretNamespace"`
-}
-
-type MangedKubeSecretConfig struct {
-	// The name of the Kubernetes Secret
-	// +kubebuilder:validation:Required
-	SecretName string `json:"secretName"`
-
-	// The name space where the Kubernetes Secret is located
-	// +kubebuilder:validation:Required
-	SecretNamespace string `json:"secretNamespace"`
-
-	// The Kubernetes Secret type (experimental feature). More info: https://kubernetes.io/docs/concepts/configuration/secret/#secret-types
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default:=Opaque
-	SecretType string `json:"secretType"`
-
-	// The Kubernetes Secret creation policy.
-	// Enum with values: 'Owner', 'Orphan'.
-	// Owner creates the secret and sets .metadata.ownerReferences of the InfisicalSecret CRD that created it.
-	// Orphan will not set the secret owner. This will result in the secret being orphaned and not deleted when the resource is deleted.
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default:=Orphan
-	CreationPolicy string `json:"creationPolicy"`
-
-	// The template to transform the secret data
-	// +kubebuilder:validation:Optional
-	Template *InfisicalSecretTemplate `json:"template,omitempty"`
-}
-
 type InfisicalSecretTemplate struct {
 	// This injects all retrieved secrets into the top level of your template.
 	// Secrets defined in the template will take precedence over the injected ones.
@@ -161,26 +124,6 @@ type InfisicalSecretTemplate struct {
 	// The template key values
 	// +kubebuilder:validation:Optional
 	Data map[string]string `json:"data,omitempty"`
-}
-
-type CaReference struct {
-	// The name of the Kubernetes Secret
-	// +kubebuilder:validation:Required
-	SecretName string `json:"secretName"`
-
-	// The namespace where the Kubernetes Secret is located
-	// +kubebuilder:validation:Required
-	SecretNamespace string `json:"secretNamespace"`
-
-	// +kubebuilder:validation:Required
-	// The name of the secret property with the CA certificate value
-	SecretKey string `json:"key"`
-}
-
-type TLSConfig struct {
-	// Reference to secret containing CA cert
-	// +kubebuilder:validation:Optional
-	CaRef CaReference `json:"caRef,omitempty"`
 }
 
 // InfisicalSecretSpec defines the desired state of InfisicalSecret
@@ -192,7 +135,7 @@ type InfisicalSecretSpec struct {
 	Authentication Authentication `json:"authentication"`
 
 	// +kubebuilder:validation:Required
-	ManagedSecretReference MangedKubeSecretConfig `json:"managedSecretReference"`
+	ManagedSecretReference ManagedKubeSecretConfig `json:"managedSecretReference"`
 
 	// +kubebuilder:default:=60
 	ResyncInterval int `json:"resyncInterval"`
