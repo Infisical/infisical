@@ -2772,13 +2772,23 @@ const syncSecretsAzureDevops = async ({
  * Sync/push [secrets] to GitLab repo with name [integration.app]
  */
 const syncSecretsGitLab = async ({
+  createManySecretsRawFn,
   integrationAuth,
   integration,
   secrets,
   accessToken
 }: {
+  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<{ id: string }>>;
   integrationAuth: TIntegrationAuths;
-  integration: TIntegrations;
+  integration: TIntegrations & {
+    projectId: string;
+    environment: {
+      id: string;
+      name: string;
+      slug: string;
+    };
+    secretPath: string;
+  };
   secrets: Record<string, { value: string; comment?: string }>;
   accessToken: string;
 }) => {
@@ -2834,6 +2844,81 @@ const syncSecretsGitLab = async ({
 
       return isValid;
     });
+
+  if (!integration.lastUsed) {
+    const secretsToAddToInfisical: { [key: string]: GitLabSecret } = {};
+    const secretsToRemoveInGitlab: GitLabSecret[] = [];
+
+    if (!metadata.initialSyncBehavior) {
+      metadata.initialSyncBehavior = IntegrationInitialSyncBehavior.OVERWRITE_TARGET;
+    }
+
+    getSecretsRes.forEach((gitlabSecret) => {
+      // first time using integration
+      // -> apply initial sync behavior
+      switch (metadata.initialSyncBehavior) {
+        // Override all the secrets in GitLab
+        case IntegrationInitialSyncBehavior.OVERWRITE_TARGET: {
+          if (!(gitlabSecret.key in secrets)) {
+            secretsToRemoveInGitlab.push(gitlabSecret);
+          }
+          break;
+        }
+        case IntegrationInitialSyncBehavior.PREFER_SOURCE: {
+          // if the secret is not in infisical, we need to add it to infisical
+          if (!(gitlabSecret.key in secrets)) {
+            secrets[gitlabSecret.key] = {
+              value: gitlabSecret.value
+            };
+            // need to remove prefix and suffix from what we're saving to Infisical
+            const prefix = metadata?.secretPrefix || "";
+            const suffix = metadata?.secretSuffix || "";
+            let processedKey = gitlabSecret.key;
+
+            // Remove prefix if it exists at the start
+            if (prefix && processedKey.startsWith(prefix)) {
+              processedKey = processedKey.slice(prefix.length);
+            }
+
+            // Remove suffix if it exists at the end
+            if (suffix && processedKey.endsWith(suffix)) {
+              processedKey = processedKey.slice(0, -suffix.length);
+            }
+
+            secretsToAddToInfisical[processedKey] = gitlabSecret;
+          }
+          break;
+        }
+        default: {
+          throw new Error(`Invalid initial sync behavior: ${metadata.initialSyncBehavior}`);
+        }
+      }
+    });
+
+    if (Object.keys(secretsToAddToInfisical).length) {
+      await createManySecretsRawFn({
+        projectId: integration.projectId,
+        environment: integration.environment.slug,
+        path: integration.secretPath,
+        secrets: Object.keys(secretsToAddToInfisical).map((key) => ({
+          secretName: key,
+          secretValue: secretsToAddToInfisical[key].value,
+          type: SecretType.Shared
+        }))
+      });
+    }
+
+    for await (const gitlabSecret of secretsToRemoveInGitlab) {
+      await request.delete(
+        `${gitLabApiUrl}/v4/projects/${integration?.appId}/variables/${gitlabSecret.key}?filter[environment_scope]=${integration.targetEnvironment}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        }
+      );
+    }
+  }
 
   for await (const key of Object.keys(secrets)) {
     const existingSecret = getSecretsRes.find((s) => s.key === key);
@@ -4554,7 +4639,8 @@ export const syncIntegrationSecrets = async ({
         integrationAuth,
         integration,
         secrets,
-        accessToken
+        accessToken,
+        createManySecretsRawFn
       });
       break;
     case Integrations.RENDER:
