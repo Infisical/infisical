@@ -38,7 +38,7 @@ export type TFindSecretSyncByNameDTO = {
 
 export type TCreateSecretSyncDTO = Pick<
   TSecretSync,
-  "syncOptions" | "destinationConfig" | "secretPath" | "envId" | "name" | "connectionId"
+  "syncOptions" | "destinationConfig" | "folderId" | "name" | "connectionId"
 > & { destination: SecretSync };
 
 export type TUpdateSecretSyncDTO = Partial<Omit<TCreateSecretSyncDTO, "connectionId">> & {
@@ -65,7 +65,7 @@ export enum SecretSyncAction {
   Erase = "erase"
 }
 
-type TSecretSyncRaw = NonNullable<Awaited<ReturnType<TSecretSyncDALFactory["findById"]>>>;
+export type TSecretSyncRaw = NonNullable<Awaited<ReturnType<TSecretSyncDALFactory["findById"]>>>;
 
 export type TQueueSecretSyncsByPathDTO = {
   secretPath: string;
@@ -124,7 +124,8 @@ export type TSecretMap = Record<
 
 export type TSecretSyncGetSecrets = {
   projectId: string;
-  environmentSlug: string;
+  folderId: string;
   secretPath: string;
+  environmentSlug: string;
   includeImports?: boolean;
 };

@@ -1658,8 +1658,7 @@ export const SecretSyncs = {
     return {
       name: `The name of the ${destinationName} Sync to create. Must be slug-friendly.`,
       description: `An optional description for the ${destinationName} Sync.`,
-      secretPath: `The path to sync secrets from.`,
-      envId: `The ID of the project environment to sync secrets from.`,
+      folderId: `The ID of the project folder to sync secrets from.`,
       connectionId: `The ID of the ${
         APP_CONNECTION_NAME_MAP[SECRET_SYNC_CONNECTION_MAP[destination]]
       } Connection to use for syncing.`,
@@ -1672,8 +1671,7 @@ export const SecretSyncs = {
     return {
       syncId: `The ID of the ${destinationName} Sync to be updated.`,
       name: `The updated name of the ${destinationName} Sync. Must be slug-friendly.`,
-      envId: `The updated project environment ID to sync secrets from.`,
-      secretPath: `The updated path to sync secrets from.`,
+      folderId: `The updated project folder ID to sync secrets from.`,
       description: `The updated description of the ${destinationName} Sync.`,
       isEnabled: `Whether secrets should be synced automatically or not.`,
       syncOptions: "Optional parameters to modify how secrets are synced."

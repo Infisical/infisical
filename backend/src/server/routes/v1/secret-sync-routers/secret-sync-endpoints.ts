@@ -21,8 +21,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
   server: FastifyZodProvider;
   createSchema: z.ZodType<{
     name: string;
-    envId: string;
-    secretPath: string;
+    folderId: string;
     connectionId: string;
     destinationConfig: I["destinationConfig"];
     syncOptions?: I["syncOptions"];
@@ -30,8 +29,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
   }>;
   updateSchema: z.ZodType<{
     name?: string;
-    envId?: string;
-    secretPath?: string;
+    folderId?: string;
     destinationConfig?: I["destinationConfig"];
     syncOptions?: I["syncOptions"];
     description?: string | null;

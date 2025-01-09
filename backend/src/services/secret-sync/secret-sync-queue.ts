@@ -4,10 +4,9 @@ import { AxiosError } from "axios";
 import { ProjectMembershipRole, SecretType } from "@app/db/schemas";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { InternalServerError } from "@app/lib/errors";
-import { getTimeDifferenceInSeconds } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
@@ -16,7 +15,6 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
-import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
 import { createManySecretsRawFnFactory, updateManySecretsRawFnFactory } from "@app/services/secret/secret-fns";
@@ -41,8 +39,8 @@ import {
   TSecretMap,
   TSecretSyncDTO,
   TSecretSyncEraseDTO,
-  TSecretSyncGetSecrets,
   TSecretSyncImportDTO,
+  TSecretSyncRaw,
   TSecretSyncWithConnection,
   TSendSecretSyncFailedNotificationsJobDTO
 } from "@app/services/secret-sync/secret-sync-types";
@@ -72,7 +70,6 @@ type TSecretSyncQueueFactoryDep = {
   >;
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds">;
   secretSyncDAL: Pick<TSecretSyncDALFactory, "findById" | "find" | "updateById">;
-  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   projectDAL: TProjectDALFactory;
@@ -95,7 +92,6 @@ export const secretSyncQueueFactory = ({
   secretV2BridgeDAL,
   secretImportDAL,
   secretSyncDAL,
-  projectEnvDAL,
   auditLogService,
   projectMembershipDAL,
   projectDAL,
@@ -155,12 +151,14 @@ export const secretSyncQueueFactory = ({
     secretVersionTagV2BridgeDAL
   });
 
-  const $getSecrets = async ({
-    projectId,
-    environmentSlug,
-    secretPath,
-    includeImports = true
-  }: TSecretSyncGetSecrets) => {
+  const $getSecrets = async (secretSync: TSecretSyncRaw, includeImports = true) => {
+    const {
+      projectId,
+      folderId,
+      environment: { slug: environmentSlug },
+      folder: { path: secretPath }
+    } = secretSync;
+
     const secretMap: TSecretMap = {};
 
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
@@ -171,11 +169,6 @@ export const secretSyncQueueFactory = ({
     const decryptSecretValue = (value?: Buffer | undefined | null) =>
       value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : "";
 
-    const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, secretPath);
-    if (!folder) {
-      throw new Error(`Secret path not found for environment "${environmentSlug}" in project with ID "${projectId}"`);
-    }
-
     const { expandSecretReferences } = expandSecretReferencesFactory({
       decryptSecretValue,
       secretDAL: secretV2BridgeDAL,
@@ -184,7 +177,7 @@ export const secretSyncQueueFactory = ({
       canExpandValue: () => true
     });
 
-    const secrets = await secretV2BridgeDAL.findByFolderId(folder.id);
+    const secrets = await secretV2BridgeDAL.findByFolderId(folderId);
 
     await Promise.allSettled(
       secrets.map(async (secret) => {
@@ -209,7 +202,7 @@ export const secretSyncQueueFactory = ({
 
     if (!includeImports) return secretMap;
 
-    const secretImports = await secretImportDAL.find({ folderId: folder.id, isReplication: false });
+    const secretImports = await secretImportDAL.find({ folderId, isReplication: false });
 
     if (secretImports.length) {
       const importedSecrets = await fnSecretsV2FromImports({
@@ -306,7 +299,7 @@ export const secretSyncQueueFactory = ({
     if (!secretSync) throw new Error(`Cannot find secret sync with ID ${syncId}`);
 
     logger.info(
-      `SecretSync Sync [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [secretPath=${secretSync.secretPath}] [envId=${secretSync.envId}] [connectionId=${secretSync.connectionId}]`
+      `SecretSync Sync [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [folderId=${secretSync.folderId}] [connectionId=${secretSync.connectionId}]`
     );
 
     let isSynced = false;
@@ -315,10 +308,7 @@ export const secretSyncQueueFactory = ({
 
     try {
       const {
-        connection: { orgId, encryptedCredentials },
-        projectId,
-        secretPath,
-        environment
+        connection: { orgId, encryptedCredentials }
       } = secretSync;
 
       const credentials = await decryptAppConnectionCredentials({
@@ -327,11 +317,7 @@ export const secretSyncQueueFactory = ({
         kmsService
       });
 
-      const secrets = await $getSecrets({
-        projectId,
-        secretPath,
-        environmentSlug: environment.slug
-      });
+      const secretMap = await $getSecrets(secretSync);
 
       await SecretSyncFns.sync(
         {
@@ -341,14 +327,14 @@ export const secretSyncQueueFactory = ({
             credentials
           }
         } as TSecretSyncWithConnection,
-        secrets
+        secretMap
       );
 
       isSynced = true;
     } catch (err) {
       logger.error(
         err,
-        `SecretSync Sync Error [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [secretPath=${secretSync.secretPath}] [envId=${secretSync.envId}] [connectionId=${secretSync.connectionId}]`
+        `SecretSync Sync Error [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [folderId=${secretSync.folderId}] [connectionId=${secretSync.connectionId}]`
       );
 
       if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
@@ -390,10 +376,10 @@ export const secretSyncQueueFactory = ({
           metadata: {
             syncId: secretSync.id,
             syncOptions: secretSync.syncOptions,
-            envId: secretSync.envId,
+            environment: secretSync.environment,
             destination: secretSync.destination,
             destinationConfig: secretSync.destinationConfig,
-            secretPath: secretSync.secretPath,
+            folderId: secretSync.folderId,
             connectionId: secretSync.connectionId,
             jobRanAt: ranAt,
             jobId: job.id!,
@@ -433,7 +419,7 @@ export const secretSyncQueueFactory = ({
     if (!secretSync) throw new Error(`Cannot find secret sync with ID ${syncId}`);
 
     logger.info(
-      `SecretSync Import [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [secretPath=${secretSync.secretPath}] [envId=${secretSync.envId}] [connectionId=${secretSync.connectionId}]`
+      `SecretSync Import [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [folderId=${secretSync.folderId}] [connectionId=${secretSync.connectionId}]`
     );
 
     let isImported = false;
@@ -444,7 +430,6 @@ export const secretSyncQueueFactory = ({
       const {
         connection: { orgId, encryptedCredentials },
         projectId,
-        secretPath,
         environment
       } = secretSync;
 
@@ -463,12 +448,7 @@ export const secretSyncQueueFactory = ({
       } as TSecretSyncWithConnection);
 
       if (Object.keys(importedSecrets).length) {
-        const currentSecrets = await $getSecrets({
-          projectId,
-          secretPath,
-          environmentSlug: environment.slug,
-          includeImports: false
-        });
+        const secretMap = await $getSecrets(secretSync, false);
 
         const secretsToCreate: Parameters<typeof $createManySecretsRawFn>[0]["secrets"] = [];
         const secretsToUpdate: Parameters<typeof $updateManySecretsRawFn>[0]["secrets"] = [];
@@ -481,7 +461,7 @@ export const secretSyncQueueFactory = ({
             secretComment: ""
           };
 
-          if (Object.hasOwn(currentSecrets, key)) {
+          if (Object.hasOwn(secretMap, key)) {
             secretsToUpdate.push(secret);
           } else {
             secretsToCreate.push(secret);
@@ -491,7 +471,7 @@ export const secretSyncQueueFactory = ({
         if (secretsToCreate.length) {
           await $createManySecretsRawFn({
             projectId,
-            path: secretPath,
+            path: secretSync.folder.path,
             environment: environment.slug,
             secrets: secretsToCreate
           });
@@ -500,7 +480,7 @@ export const secretSyncQueueFactory = ({
         if (shouldOverwrite && secretsToUpdate.length) {
           await $updateManySecretsRawFn({
             projectId,
-            path: secretPath,
+            path: secretSync.folder.path,
             environment: environment.slug,
             secrets: secretsToUpdate
           });
@@ -511,7 +491,7 @@ export const secretSyncQueueFactory = ({
     } catch (err) {
       logger.error(
         err,
-        `SecretSync Import Error [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [secretPath=${secretSync.secretPath}] [envId=${secretSync.envId}] [connectionId=${secretSync.connectionId}]`
+        `SecretSync Import Error [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [folderId=${secretSync.folderId}] [connectionId=${secretSync.connectionId}]`
       );
 
       if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
@@ -553,10 +533,10 @@ export const secretSyncQueueFactory = ({
           metadata: {
             syncId: secretSync.id,
             syncOptions: secretSync.syncOptions,
-            envId: secretSync.envId,
+            environment: secretSync.environment,
             destination: secretSync.destination,
             destinationConfig: secretSync.destinationConfig,
-            secretPath: secretSync.secretPath,
+            folderId: secretSync.folderId,
             connectionId: secretSync.connectionId,
             jobRanAt: ranAt,
             jobId: job.id!,
@@ -596,7 +576,7 @@ export const secretSyncQueueFactory = ({
     if (!secretSync) throw new Error(`Cannot find secret sync with ID ${syncId}`);
 
     logger.info(
-      `SecretSync Erase [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [secretPath=${secretSync.secretPath}] [envId=${secretSync.envId}] [connectionId=${secretSync.connectionId}]`
+      `SecretSync Erase [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [folderId=${secretSync.folderId}] [connectionId=${secretSync.connectionId}]`
     );
 
     let isErased = false;
@@ -605,10 +585,7 @@ export const secretSyncQueueFactory = ({
 
     try {
       const {
-        connection: { orgId, encryptedCredentials },
-        projectId,
-        secretPath,
-        environment
+        connection: { orgId, encryptedCredentials }
       } = secretSync;
 
       const credentials = await decryptAppConnectionCredentials({
@@ -617,11 +594,7 @@ export const secretSyncQueueFactory = ({
         kmsService
       });
 
-      const secretsToErase = await $getSecrets({
-        projectId,
-        secretPath,
-        environmentSlug: environment.slug
-      });
+      const secretMap = await $getSecrets(secretSync);
 
       await SecretSyncFns.erase(
         {
@@ -631,14 +604,14 @@ export const secretSyncQueueFactory = ({
             credentials
           }
         } as TSecretSyncWithConnection,
-        secretsToErase
+        secretMap
       );
 
       isErased = true;
     } catch (err) {
       logger.error(
         err,
-        `SecretSync Erase Error [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [secretPath=${secretSync.secretPath}] [envId=${secretSync.envId}] [connectionId=${secretSync.connectionId}]`
+        `SecretSync Erase Error [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [folderId=${secretSync.folderId}] [connectionId=${secretSync.connectionId}]`
       );
 
       if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
@@ -680,10 +653,10 @@ export const secretSyncQueueFactory = ({
           metadata: {
             syncId: secretSync.id,
             syncOptions: secretSync.syncOptions,
-            envId: secretSync.envId,
+            environment: secretSync.environment,
             destination: secretSync.destination,
             destinationConfig: secretSync.destinationConfig,
-            secretPath: secretSync.secretPath,
+            folderId: secretSync.folderId,
             connectionId: secretSync.connectionId,
             jobRanAt: ranAt,
             jobId: job.id!,
@@ -718,16 +691,8 @@ export const secretSyncQueueFactory = ({
       data: { secretSync, auditLogInfo, action }
     } = job;
 
-    const {
-      projectId,
-      destination,
-      name,
-      secretPath,
-      lastSyncMessage,
-      lastEraseMessage,
-      lastImportMessage,
-      environment
-    } = secretSync;
+    const { projectId, destination, name, folder, lastSyncMessage, lastEraseMessage, lastImportMessage, environment } =
+      secretSync;
 
     const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
     const project = await projectDAL.findById(projectId);
@@ -778,7 +743,7 @@ export const secretSyncQueueFactory = ({
         syncDestination,
         content,
         failureMessage,
-        secretPath,
+        secretPath: folder.path,
         environment: environment.name,
         projectName: project.name,
         // TODO (scott): verify this is still the URL after bare react change
@@ -788,12 +753,14 @@ export const secretSyncQueueFactory = ({
   };
 
   const queueSecretSyncsByPath = async ({ secretPath, projectId, environmentSlug }: TQueueSecretSyncsByPathDTO) => {
-    const environment = await projectEnvDAL.findOne({ slug: environmentSlug, projectId });
+    const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, secretPath);
 
-    if (!environment)
-      throw new Error(`Cannot find environment with slug "${environmentSlug}" for project with ID "${projectId}"`);
+    if (!folder)
+      throw new Error(
+        `Could not find folder at path "${secretPath}" for environment with slug "${environmentSlug}" in project with ID "${projectId}"`
+      );
 
-    const secretSyncs = await secretSyncDAL.find({ envId: environment.id, secretPath, isEnabled: true });
+    const secretSyncs = await secretSyncDAL.find({ folderId: folder.id, isEnabled: true });
 
     await Promise.all(secretSyncs.map((secretSync) => queueSecretSyncById({ syncId: secretSync.id })));
   };
@@ -809,28 +776,7 @@ export const secretSyncQueueFactory = ({
       | TQueueSecretSyncImportByIdDTO
       | TQueueSecretSyncEraseByIdDTO;
 
-    // TODO (scott): re-queue job if fails to acquire lock? maybe don't even sleep, just re-queue with backoff?
-
-    const lock = await keyStore.acquireLock([KeyStorePrefixes.SecretSyncLock(syncId)], 60000, {
-      retryCount: 10,
-      retryDelay: 3000,
-      retryJitter: 500
-    });
-
-    const lockAcquiredTime = new Date();
-
-    const lastSyncAt = await keyStore.getItem(KeyStorePrefixes.SecretSyncLastRunTimestamp(syncId));
-
-    if (lastSyncAt) {
-      const SYNC_INTERVAL = 2000;
-
-      const timeSinceLastSync = getTimeDifferenceInSeconds(lockAcquiredTime.toISOString(), lastSyncAt);
-
-      if (timeSinceLastSync < SYNC_INTERVAL)
-        await new Promise((resolve) => {
-          setTimeout(resolve, SYNC_INTERVAL);
-        });
-    }
+    const lock = await keyStore.acquireLock([KeyStorePrefixes.SecretSyncLock(syncId)], 5 * 60 * 1000);
 
     try {
       switch (job.name) {
@@ -851,14 +797,13 @@ export const secretSyncQueueFactory = ({
       }
     } finally {
       await lock.release();
-
-      await keyStore.setItemWithExpiry(
-        KeyStorePrefixes.SecretSyncLastRunTimestamp(syncId),
-        KeyStoreTtls.SetSecretSyncLastRunTimestampInSeconds,
-        lockAcquiredTime.toISOString()
-      );
     }
   });
 
-  return { queueSecretSyncById, queueSecretSyncImportById, queueSecretSyncEraseById, queueSecretSyncsByPath };
+  return {
+    queueSecretSyncById,
+    queueSecretSyncImportById,
+    queueSecretSyncEraseById,
+    queueSecretSyncsByPath
+  };
 };

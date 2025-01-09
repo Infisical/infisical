@@ -320,7 +320,7 @@ export const registerRoutes = async (
   const trustedIpDAL = trustedIpDALFactory(db);
   const telemetryDAL = telemetryDALFactory(db);
   const appConnectionDAL = appConnectionDALFactory(db);
-  const secretSyncDAL = secretSyncDALFactory(db);
+  const secretSyncDAL = secretSyncDALFactory(db, folderDAL);
 
   // ee db layer ops
   const permissionDAL = permissionDALFactory(db);
@@ -833,7 +833,6 @@ export const registerRoutes = async (
     secretV2BridgeDAL,
     kmsService,
     keyStore,
-    projectEnvDAL,
     auditLogService,
     smtpService,
     projectDAL,
@@ -1396,9 +1395,9 @@ export const registerRoutes = async (
     appConnectionService,
     licenseService,
     folderDAL,
-    projectEnvDAL,
     secretSyncQueue,
-    projectBotService
+    projectBotService,
+    keyStore
   });
 
   await superAdminService.initServerCfg();

@@ -1,4 +1,3 @@
-import { TSecretSyncs } from "@app/db/schemas/secret-syncs";
 import {
   TCreateProjectTemplateDTO,
   TUpdateProjectTemplateDTO
@@ -18,6 +17,7 @@ import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import {
   TCreateSecretSyncDTO,
   TDeleteSecretSyncDTO,
+  TSecretSyncRaw,
   TUpdateSecretSyncDTO
 } from "@app/services/secret-sync/secret-sync-types";
 
@@ -1967,8 +1967,8 @@ interface DeleteSecretSyncEvent {
 interface SyncSecretSyncEvent {
   type: EventType.SYNC_SECRET_SYNC;
   metadata: Pick<
-    TSecretSyncs,
-    "syncOptions" | "destinationConfig" | "destination" | "syncStatus" | "envId" | "secretPath" | "connectionId"
+    TSecretSyncRaw,
+    "syncOptions" | "destinationConfig" | "destination" | "syncStatus" | "environment" | "connectionId" | "folderId"
   > & {
     syncId: string;
     syncMessage: string | null;
@@ -1980,8 +1980,8 @@ interface SyncSecretSyncEvent {
 interface ImportSecretSyncEvent {
   type: EventType.IMPORT_SECRET_SYNC;
   metadata: Pick<
-    TSecretSyncs,
-    "syncOptions" | "destinationConfig" | "destination" | "importStatus" | "envId" | "secretPath" | "connectionId"
+    TSecretSyncRaw,
+    "syncOptions" | "destinationConfig" | "destination" | "importStatus" | "environment" | "connectionId" | "folderId"
   > & {
     syncId: string;
     importMessage: string | null;
@@ -1993,8 +1993,8 @@ interface ImportSecretSyncEvent {
 interface EraseSecretSyncEvent {
   type: EventType.ERASE_SECRET_SYNC;
   metadata: Pick<
-    TSecretSyncs,
-    "syncOptions" | "destinationConfig" | "destination" | "eraseStatus" | "envId" | "secretPath" | "connectionId"
+    TSecretSyncRaw,
+    "syncOptions" | "destinationConfig" | "destination" | "eraseStatus" | "environment" | "connectionId" | "folderId"
   > & {
     syncId: string;
     eraseMessage: string | null;

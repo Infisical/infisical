@@ -118,7 +118,10 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
 
   await server.register(
     async (appConnectionRouter) => {
+      // register generic app connection endpoints
       await appConnectionRouter.register(registerAppConnectionRouter);
+
+      // register service specific endpoints (app-connections/aws, app-connections/github, etc.)
       for await (const [app, router] of Object.entries(APP_CONNECTION_REGISTER_ROUTER_MAP)) {
         await appConnectionRouter.register(router, { prefix: `/${app}` });
       }
@@ -128,7 +131,10 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
 
   await server.register(
     async (secretSyncRouter) => {
+      // register generic secret sync endpoints
       await secretSyncRouter.register(registerSecretSyncRouter);
+
+      // register service specific secret sync endpoints (secret-syncs/aws-parameter-store, secret-syncs/github, etc.)
       for await (const [destination, router] of Object.entries(SECRET_SYNC_REGISTER_ROUTER_MAP)) {
         await secretSyncRouter.register(router, { prefix: `/${destination}` });
       }

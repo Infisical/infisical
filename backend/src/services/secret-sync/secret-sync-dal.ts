@@ -5,6 +5,7 @@ import { TableName } from "@app/db/schemas";
 import { TSecretSyncs } from "@app/db/schemas/secret-syncs";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols } from "@app/lib/knex";
+import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
 export type TSecretSyncDALFactory = ReturnType<typeof secretSyncDALFactory>;
 
@@ -12,10 +13,12 @@ type SecretSyncFindFilter = Parameters<typeof buildFindFilter<TSecretSyncs>>[0];
 
 const baseSecretSyncQuery = ({ filter, db, tx }: { db: TDbClient; filter?: SecretSyncFindFilter; tx?: Knex }) => {
   const query = (tx || db.replicaNode())(TableName.SecretSync)
-    .join(TableName.Environment, `${TableName.SecretSync}.envId`, `${TableName.Environment}.id`)
+    .join(TableName.SecretFolder, `${TableName.SecretSync}.folderId`, `${TableName.SecretFolder}.id`)
+    .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
     .join(TableName.AppConnection, `${TableName.SecretSync}.connectionId`, `${TableName.AppConnection}.id`)
     .select(selectAllTableCols(TableName.SecretSync))
     .select(
+      // evironment
       db.ref("name").withSchema(TableName.Environment).as("envName"),
       db.ref("id").withSchema(TableName.Environment).as("envId"),
       db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
@@ -32,22 +35,26 @@ const baseSecretSyncQuery = ({ filter, db, tx }: { db: TDbClient; filter?: Secre
       db.ref("updatedAt").withSchema(TableName.AppConnection).as("connectionUpdatedAt")
     );
 
-  const appendTableName = (filterObj: object): SecretSyncFindFilter =>
+  // prepends table name to filter keys to avoid ambiguous col references, skipping utility filters like $in, etc.
+  const prependTableName = (filterObj: object): SecretSyncFindFilter =>
     Object.fromEntries(
       Object.entries(filterObj).map(([key, value]) =>
-        key.startsWith("$") ? [key, appendTableName(value as object)] : [`${TableName.SecretSync}.${key}`, value]
+        key.startsWith("$") ? [key, prependTableName(value as object)] : [`${TableName.SecretSync}.${key}`, value]
       )
     );
 
   if (filter) {
     /* eslint-disable @typescript-eslint/no-misused-promises */
-    void query.where(buildFindFilter(appendTableName(filter)));
+    void query.where(buildFindFilter(prependTableName(filter)));
   }
 
   return query;
 };
 
-const expandSecretSync = (secretSync: Awaited<ReturnType<typeof baseSecretSyncQuery>>[number]) => {
+const expandSecretSync = (
+  secretSync: Awaited<ReturnType<typeof baseSecretSyncQuery>>[number],
+  folder: Awaited<ReturnType<TSecretFolderDALFactory["findSecretPathByFolderIds"]>>[number]
+) => {
   const {
     envId,
     envName,
@@ -64,9 +71,9 @@ const expandSecretSync = (secretSync: Awaited<ReturnType<typeof baseSecretSyncQu
     connectionVersion,
     ...el
   } = secretSync;
+
   return {
     ...el,
-    envId,
     connectionId,
     environment: { id: envId, name: envName, slug: envSlug },
     connection: {
@@ -80,11 +87,18 @@ const expandSecretSync = (secretSync: Awaited<ReturnType<typeof baseSecretSyncQu
       createdAt: connectionCreatedAt,
       updatedAt: connectionUpdatedAt,
       version: connectionVersion
+    },
+    folder: {
+      id: folder!.id,
+      path: folder!.path
     }
   };
 };
 
-export const secretSyncDALFactory = (db: TDbClient) => {
+export const secretSyncDALFactory = (
+  db: TDbClient,
+  folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">
+) => {
   const secretSyncOrm = ormify(db, TableName.SecretSync);
 
   const findById = async (id: string, tx?: Knex) => {
@@ -96,7 +110,9 @@ export const secretSyncDALFactory = (db: TDbClient) => {
       }).first();
 
       if (secretSync) {
-        return expandSecretSync(secretSync);
+        // TODO (scott): replace with cached folder path once implemented
+        const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(secretSync.projectId, [secretSync.folderId]);
+        return expandSecretSync(secretSync, folderWithPath);
       }
     } catch (error) {
       throw new DatabaseError({ error, name: "Find by ID - Secret Sync" });
@@ -105,7 +121,7 @@ export const secretSyncDALFactory = (db: TDbClient) => {
 
   const create = async (data: Parameters<(typeof secretSyncOrm)["create"]>[0]) => {
     try {
-      const secretSync = await secretSyncOrm.transaction(async (tx) => {
+      const secretSync = (await secretSyncOrm.transaction(async (tx) => {
         const sync = await secretSyncOrm.create(data, tx);
 
         return baseSecretSyncQuery({
@@ -113,9 +129,11 @@ export const secretSyncDALFactory = (db: TDbClient) => {
           db,
           tx
         }).first();
-      });
+      }))!;
 
-      return expandSecretSync(secretSync!);
+      // TODO (scott): replace with cached folder path once implemented
+      const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(secretSync.projectId, [secretSync.folderId]);
+      return expandSecretSync(secretSync, folderWithPath);
     } catch (error) {
       throw new DatabaseError({ error, name: "Create - Secret Sync" });
     }
@@ -123,7 +141,7 @@ export const secretSyncDALFactory = (db: TDbClient) => {
 
   const updateById = async (syncId: string, data: Parameters<(typeof secretSyncOrm)["updateById"]>[1]) => {
     try {
-      const secretSync = await secretSyncOrm.transaction(async (tx) => {
+      const secretSync = (await secretSyncOrm.transaction(async (tx) => {
         const sync = await secretSyncOrm.updateById(syncId, data, tx);
 
         return baseSecretSyncQuery({
@@ -131,9 +149,11 @@ export const secretSyncDALFactory = (db: TDbClient) => {
           db,
           tx
         }).first();
-      });
+      }))!;
 
-      return expandSecretSync(secretSync!);
+      // TODO (scott): replace with cached folder path once implemented
+      const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(secretSync.projectId, [secretSync.folderId]);
+      return expandSecretSync(secretSync, folderWithPath);
     } catch (error) {
       throw new DatabaseError({ error, name: "Update by ID - Secret Sync" });
     }
@@ -144,7 +164,9 @@ export const secretSyncDALFactory = (db: TDbClient) => {
       const secretSync = await baseSecretSyncQuery({ filter, db, tx }).first();
 
       if (secretSync) {
-        return expandSecretSync(secretSync);
+        // TODO (scott): replace with cached folder path once implemented
+        const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(secretSync.projectId, [secretSync.folderId]);
+        return expandSecretSync(secretSync, folderWithPath);
       }
     } catch (error) {
       throw new DatabaseError({ error, name: "Find One - Secret Sync" });
@@ -155,7 +177,21 @@ export const secretSyncDALFactory = (db: TDbClient) => {
     try {
       const secretSyncs = await baseSecretSyncQuery({ filter, db, tx });
 
-      return secretSyncs.map(expandSecretSync);
+      if (!secretSyncs.length) return [];
+
+      const foldersWithPath = await folderDAL.findSecretPathByFolderIds(
+        secretSyncs[0].projectId,
+        secretSyncs.map((sync) => sync.folderId)
+      );
+
+      // TODO (scott): replace with cached folder path once implemented
+      const folderRecord: Record<string, (typeof foldersWithPath)[number]> = {};
+
+      foldersWithPath.forEach((folder) => {
+        if (folder) folderRecord[folder.id] = folder;
+      });
+
+      return secretSyncs.map((secretSync) => expandSecretSync(secretSync, folderRecord[secretSync.folderId]));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find - Secret Sync" });
     }

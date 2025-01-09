@@ -4,17 +4,16 @@ import { ProjectType } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { startsWithVowel } from "@app/lib/fn";
 import { OrgServiceActor } from "@app/lib/types";
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
-import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { listSecretSyncOptions } from "@app/services/secret-sync/secret-sync-fns";
 import {
-  SecretSyncStatus,
   TCreateSecretSyncDTO,
   TDeleteSecretSyncDTO,
   TFindSecretSyncByIdDTO,
@@ -35,9 +34,9 @@ type TSecretSyncServiceFactoryDep = {
   secretSyncDAL: TSecretSyncDALFactory;
   appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findById">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
-  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId" | "findById">;
+  keyStore: Pick<TKeyStoreFactory, "getItem">;
   secretSyncQueue: Pick<
     TSecretSyncQueueFactory,
     "queueSecretSyncById" | "queueSecretSyncImportById" | "queueSecretSyncEraseById"
@@ -49,13 +48,13 @@ export type TSecretSyncServiceFactory = ReturnType<typeof secretSyncServiceFacto
 
 export const secretSyncServiceFactory = ({
   secretSyncDAL,
-  projectEnvDAL,
   folderDAL,
   licenseService,
   permissionService,
   appConnectionService,
   projectBotService,
-  secretSyncQueue
+  secretSyncQueue,
+  keyStore
 }: TSecretSyncServiceFactoryDep) => {
   // secret syncs are disabled for public until launch
   const checkSecretSyncAvailability = async (orgId: string) => {
@@ -82,12 +81,12 @@ export const secretSyncServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretSyncs);
 
-    const environments = await projectEnvDAL.find({ projectId });
+    const folders = await folderDAL.findByProjectId(projectId);
 
     const secretSyncs = await secretSyncDAL.find({
       ...(destination && { destination }),
       $in: {
-        envId: environments.map((env) => env.id)
+        folderId: folders.map((folder) => folder.id)
       }
     });
 
@@ -130,13 +129,13 @@ export const secretSyncServiceFactory = ({
   ) => {
     await checkSecretSyncAvailability(actor.orgId);
 
-    const environments = await projectEnvDAL.find({ projectId });
+    const folders = await folderDAL.findByProjectId(projectId);
 
     // we prevent conflicting names within a project so this will only return one at most
     const [secretSync] = await secretSyncDAL.find({
       name: syncName,
       $in: {
-        envId: environments.map((env) => env.id)
+        folderId: folders.map((folder) => folder.id)
       }
     });
 
@@ -168,19 +167,19 @@ export const secretSyncServiceFactory = ({
   const createSecretSync = async (params: TCreateSecretSyncDTO, actor: OrgServiceActor) => {
     await checkSecretSyncAvailability(actor.orgId);
 
-    const environment = await projectEnvDAL.findById(params.envId);
+    const folder = await folderDAL.findById(params.folderId);
 
-    if (!environment) throw new BadRequestError({ message: `Could not find Environment with ID "${params.envId}"` });
+    if (!folder) throw new BadRequestError({ message: `Could not find Folder with ID "${params.folderId}"` });
 
     const { permission: projectPermission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor.type,
       actor.id,
-      environment.projectId,
+      folder.projectId,
       actor.authMethod,
       actor.orgId
     );
 
-    const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(environment.projectId);
+    const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(folder.projectId);
 
     if (!shouldUseSecretV2Bridge)
       throw new BadRequestError({ message: "Project version does not support Secret Syncs" });
@@ -205,16 +204,7 @@ export const secretSyncServiceFactory = ({
       });
     }
 
-    const folder = await folderDAL.findBySecretPath(environment.projectId, environment.slug, params.secretPath);
-
-    if (!folder)
-      throw new BadRequestError({
-        message: `Secret path "${params.secretPath}" does not exist for project with ID "${environment.projectId}"`
-      });
-
-    const projectEnvironments = await projectEnvDAL.find({
-      projectId: environment.projectId
-    });
+    const projectFolders = await folderDAL.findByProjectId(folder.projectId);
 
     const secretSync = await secretSyncDAL.transaction(async (tx) => {
       const isConflictingName = Boolean(
@@ -223,7 +213,7 @@ export const secretSyncServiceFactory = ({
             {
               name: params.name,
               $in: {
-                envId: projectEnvironments.map((env) => env.id)
+                folderId: projectFolders.map((f) => f.id)
               }
             },
             tx
@@ -233,7 +223,7 @@ export const secretSyncServiceFactory = ({
 
       if (isConflictingName)
         throw new BadRequestError({
-          message: `A Secret Sync with the name "${params.name}" already exists for the project with ID "${environment.projectId}"`
+          message: `A Secret Sync with the name "${params.name}" already exists for the project with ID "${folder.projectId}"`
         });
 
       const sync = await secretSyncDAL.create(params);
@@ -274,38 +264,21 @@ export const secretSyncServiceFactory = ({
       });
 
     const updatedSecretSync = await secretSyncDAL.transaction(async (tx) => {
-      const isUpdatedEnv = Boolean(params.envId && secretSync.envId !== params.envId);
-      const isUpdatedSecretPath = Boolean(params.secretPath && secretSync.secretPath !== params.secretPath);
+      if (params.folderId) {
+        const newFolder = await folderDAL.findById(params.folderId);
 
-      if (isUpdatedEnv || isUpdatedSecretPath) {
-        const environment = await projectEnvDAL.findById(params.envId ?? secretSync.envId);
-
-        if (!environment)
-          throw new BadRequestError({ message: `Could not find environment with ID "${params.envId}"` });
+        if (!newFolder) throw new BadRequestError({ message: `Could not find folder with ID "${params.folderId}"` });
 
         // TODO (scott): I don't think there's a reason we can't allow moving syncs across projects
         //  but not supporting this initially
-        if (environment.projectId !== secretSync.projectId)
+        if (newFolder.projectId !== secretSync.projectId)
           throw new BadRequestError({
-            message: `Environment with ID "${params.envId}" is not within project with ID "${secretSync.projectId}"`
-          });
-
-        const folder = await folderDAL.findBySecretPath(
-          secretSync.projectId,
-          environment.slug,
-          params.secretPath ?? secretSync.secretPath
-        );
-
-        if (!folder)
-          throw new BadRequestError({
-            message: `Secret path "${params.secretPath}" does not exist for project with ID "${secretSync.projectId}" in environment with ID "${environment.id}"`
+            message: `Cannot move Secret Sync to different project`
           });
       }
 
       if (params.name && secretSync.name !== params.name) {
-        const projectEnvironments = await projectEnvDAL.find({
-          projectId: secretSync.projectId
-        });
+        const projectFolders = await folderDAL.findByProjectId(secretSync.projectId);
 
         const isConflictingName = Boolean(
           (
@@ -313,7 +286,7 @@ export const secretSyncServiceFactory = ({
               {
                 name: params.name,
                 $in: {
-                  envId: projectEnvironments.map((env) => env.id)
+                  folderId: projectFolders.map((f) => f.id)
                 }
               },
               tx
@@ -401,11 +374,7 @@ export const secretSyncServiceFactory = ({
 
     await secretSyncQueue.queueSecretSyncById({ syncId, ...params });
 
-    const updatedSecretSync = await secretSyncDAL.updateById(syncId, {
-      syncStatus: SecretSyncStatus.Pending
-    });
-
-    return updatedSecretSync as TSecretSync;
+    return secretSync as TSecretSync;
   };
 
   const triggerSecretSyncImportById = async (
@@ -438,13 +407,14 @@ export const secretSyncServiceFactory = ({
         message: `Secret sync with ID "${secretSync.id}" is not configured for ${SECRET_SYNC_NAME_MAP[destination]}`
       });
 
+    const isSyncJobRunning = Boolean(await keyStore.getItem(KeyStorePrefixes.SecretSyncLock(syncId)));
+
+    if (isSyncJobRunning)
+      throw new BadRequestError({ message: `A job for this sync is already in progress. Please try again shortly.` });
+
     await secretSyncQueue.queueSecretSyncImportById({ syncId, ...params });
 
-    const updatedSecretSync = await secretSyncDAL.updateById(syncId, {
-      importStatus: SecretSyncStatus.Pending
-    });
-
-    return updatedSecretSync as TSecretSync;
+    return secretSync as TSecretSync;
   };
 
   const triggerSecretSyncEraseById = async (
@@ -477,13 +447,14 @@ export const secretSyncServiceFactory = ({
         message: `Secret sync with ID "${secretSync.id}" is not configured for ${SECRET_SYNC_NAME_MAP[destination]}`
       });
 
+    const isSyncJobRunning = Boolean(await keyStore.getItem(KeyStorePrefixes.SecretSyncLock(syncId)));
+
+    if (isSyncJobRunning)
+      throw new BadRequestError({ message: `A job for this sync is already in progress. Please try again shortly.` });
+
     await secretSyncQueue.queueSecretSyncEraseById({ syncId, ...params });
 
-    const updatedSecretSync = await secretSyncDAL.updateById(syncId, {
-      eraseStatus: SecretSyncStatus.Pending
-    });
-
-    return updatedSecretSync as TSecretSync;
+    return secretSync as TSecretSync;
   };
 
   return {
