@@ -51,9 +51,9 @@ var exportCmd = &cobra.Command{
 			util.HandleError(err)
 		}
 
-		projectId, err := cmd.Flags().GetString("projectId")
+		projectId, err := util.GetProjectId(cmd)
 		if err != nil {
-			util.HandleError(err)
+			util.HandleError(err, "Unable to parse flag")
 		}
 
 		token, err := util.GetInfisicalToken(cmd)

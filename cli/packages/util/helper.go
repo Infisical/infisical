@@ -119,6 +119,19 @@ func GetInfisicalToken(cmd *cobra.Command) (token *models.TokenDetails, err erro
 
 }
 
+func GetProjectId(cmd *cobra.Command) (string, error) {
+	projectId, err := cmd.Flags().GetString("projectId")
+	if err != nil {
+		return "", err
+	}
+
+	if projectId == "" {
+		projectId = os.Getenv("INFISICAL_PROJECT_ID")
+	}
+
+	return projectId, nil
+}
+
 func UniversalAuthLogin(clientId string, clientSecret string) (api.UniversalAuthLoginResponse, error) {
 	httpClient := resty.New()
 	httpClient.SetRetryCount(10000).

@@ -77,7 +77,7 @@ var runCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		projectId, err := cmd.Flags().GetString("projectId")
+		projectId, err := util.GetProjectId(cmd)
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}

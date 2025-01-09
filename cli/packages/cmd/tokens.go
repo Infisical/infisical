@@ -56,7 +56,7 @@ var tokensCreateCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		workspaceId, err := cmd.Flags().GetString("projectId")
+		workspaceId, err := util.GetProjectId(cmd)
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
