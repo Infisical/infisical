@@ -298,6 +298,10 @@ export const secretSyncQueueFactory = ({
 
     if (!secretSync) throw new Error(`Cannot find secret sync with ID ${syncId}`);
 
+    await secretSyncDAL.updateById(syncId, {
+      syncStatus: SecretSyncStatus.Pending
+    });
+
     logger.info(
       `SecretSync Sync [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [folderId=${secretSync.folderId}] [connectionId=${secretSync.connectionId}]`
     );
@@ -417,6 +421,10 @@ export const secretSyncQueueFactory = ({
     const secretSync = await secretSyncDAL.findById(syncId);
 
     if (!secretSync) throw new Error(`Cannot find secret sync with ID ${syncId}`);
+
+    await secretSyncDAL.updateById(syncId, {
+      importStatus: SecretSyncStatus.Pending
+    });
 
     logger.info(
       `SecretSync Import [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [folderId=${secretSync.folderId}] [connectionId=${secretSync.connectionId}]`
@@ -574,6 +582,10 @@ export const secretSyncQueueFactory = ({
     const secretSync = await secretSyncDAL.findById(syncId);
 
     if (!secretSync) throw new Error(`Cannot find secret sync with ID ${syncId}`);
+
+    await secretSyncDAL.updateById(syncId, {
+      eraseStatus: SecretSyncStatus.Pending
+    });
 
     logger.info(
       `SecretSync Erase [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [folderId=${secretSync.folderId}] [connectionId=${secretSync.connectionId}]`
