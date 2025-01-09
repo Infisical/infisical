@@ -340,7 +340,14 @@ export const OverviewPage = () => {
         const pathSegment = secretPath.split("/").filter(Boolean);
         const parentPath = `/${pathSegment.slice(0, -1).join("/")}`;
         const folderName = pathSegment.at(-1);
-        if (folderName && parentPath) {
+        const canCreateFolder = permission.can(
+          ProjectPermissionActions.Create,
+          subject(ProjectPermissionSub.SecretFolders, {
+            environment: env,
+            secretPath: parentPath
+          })
+        );
+        if (folderName && parentPath && canCreateFolder) {
           await createFolder({
             projectId: workspaceId,
             path: parentPath,
