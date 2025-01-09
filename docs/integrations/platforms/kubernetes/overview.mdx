@@ -1,0 +1,202 @@
+---
+title: "Kubernetes Operator"
+sidebarTitle: "Overview"
+description: "How to use Infisical to inject secrets into Kubernetes clusters."
+---
+
+![title](../../../images/k8-diagram.png)
+
+The Infisical Secrets Operator is a Kubernetes controller that retrieves secrets from Infisical and stores them in a designated cluster.
+It uses an `InfisicalSecret` resource to specify authentication and storage methods.
+The operator continuously updates secrets and can also reload dependent deployments automatically.
+
+<Note>
+  If you are already using the External Secrets operator, you can view the
+  integration documentation for it
+  [here](https://external-secrets.io/latest/provider/infisical/).
+</Note>
+
+## Install Operator
+
+The operator can be install via [Helm](https://helm.sh). Helm is a package manager for Kubernetes that allows you to define, install, and upgrade Kubernetes applications.
+
+
+**Install the latest Infisical Helm repository**
+```bash
+helm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/' 
+  
+helm repo update
+```
+
+**Install the Helm chart**
+
+To select a specific version, view the  application versions [here](https://hub.docker.com/r/infisical/kubernetes-operator/tags) and chart versions [here](https://cloudsmith.io/~infisical/repos/helm-charts/packages/detail/helm/secrets-operator/#versions)
+
+```bash
+helm install --generate-name infisical-helm-charts/secrets-operator
+```
+
+```bash
+# Example installing app version v0.2.0 and chart version 0.1.4
+helm install --generate-name infisical-helm-charts/secrets-operator --version=0.1.4 --set controllerManager.manager.image.tag=v0.2.0
+```
+
+**Namespace-scoped Installation**
+
+The operator can be configured to watch and manage secrets in a specific namespace instead of having cluster-wide access. This is useful for:
+
+- **Enhanced Security**: Limit the operator's permissions to only specific namespaces instead of cluster-wide access
+- **Multi-tenant Clusters**: Run separate operator instances for different teams or applications
+- **Resource Isolation**: Ensure operators in different namespaces don't interfere with each other
+- **Development & Testing**: Run development and production operators side by side in isolated namespaces
+
+**Note**: For multiple namespace-scoped installations, only the first installation should install CRDs. Subsequent installations should set `installCRDs: false` to avoid conflicts.
+
+```bash
+# First namespace installation (with CRDs)
+helm install operator-namespace1 infisical-helm-charts/secrets-operator \
+  --namespace first-namespace \
+  --set scopedNamespace=first-namespace \
+  --set scopedRBAC=true
+
+# Subsequent namespace installations
+helm install operator-namespace2 infisical-helm-charts/secrets-operator \
+  --namespace another-namespace \
+  --set scopedNamespace=another-namespace \
+  --set scopedRBAC=true \
+  --set installCRDs=false
+```
+
+When scoped to a namespace, the operator will:
+
+- Only watch InfisicalSecrets in the specified namespace
+- Only create/update Kubernetes secrets in that namespace
+- Only access deployments in that namespace
+
+The default configuration gives cluster-wide access:
+
+```yaml
+installCRDs: true # Install CRDs (set to false for additional namespace installations)
+scopedNamespace: "" # Empty for cluster-wide access
+scopedRBAC: false # Cluster-wide permissions
+```
+
+If you want to install operators in multiple namespaces simultaneously:
+- Make sure to set `installCRDs: false` for all but one of the installations to avoid conflicts, as CRDs are cluster-wide resources.
+- Use unique release names for each installation (e.g., operator-namespace1, operator-namespace2).
+
+
+## Custom Resource Definitions (CRD's)
+
+Currently the operator supports the following CRD's. We are constantly expanding the functionality of the operator, and this list will be updated as new CRD's are added.
+
+1. [InfisicalSecret](/integrations/platforms/kubernetes/infisical-secret-crd): Sync secrets from Infisical to a Kubernetes secret.
+2. [InfisicalPushSecret](/integrations/platforms/kubernetes/infisical-push-secret-crd): Push secrets from a Kubernetes secret to Infisical.
+3. [InfisicalDynamicSecret](/integrations/platforms/kubernetes/infisical-dynamic-secret-crd): Sync dynamic secrets and create leases automatically in Kubernetes.
+
+## Connecting to instances with private/self-signed certificate
+
+To connect to Infisical instances behind a private/self-signed certificate, you can configure the TLS settings in the CRD
+to point to a CA certificate stored in a Kubernetes secret resource.
+
+```yaml
+---
+spec:
+  hostAPI: https://app.infisical.com/api
+  tls:
+    caRef:
+      secretName: custom-ca-certificate
+      secretNamespace: default
+      key: ca.crt
+---
+```
+
+
+## Global configuration
+
+To configure global settings that will apply to all instances of `InfisicalSecret`, you can define these configurations in a Kubernetes ConfigMap.
+For example, you can configure all `InfisicalSecret` instances to fetch secrets from a single backend API without specifying the `hostAPI` parameter for each instance.
+
+### Available global properties
+
+| Property | Description                                                                       | Default value                 |
+| -------- | --------------------------------------------------------------------------------- | ----------------------------- |
+| hostAPI  | If `hostAPI` in `InfisicalSecret` instance is left empty, this value will be used | https://app.infisical.com/api |
+
+### Applying global configurations
+
+All global configurations must reside in a Kubernetes ConfigMap named `infisical-config` in the namespace `infisical-operator-system`.
+To apply global configuration to the operator, copy the following yaml into `infisical-config.yaml` file.
+
+```yaml infisical-config.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: infisical-operator-system
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: infisical-config
+  namespace: infisical-operator-system
+data:
+  hostAPI: https://example.com/api # <-- global hostAPI
+```
+
+Then apply this change via kubectl by running the following
+
+```bash
+kubectl apply -f infisical-config.yaml
+```
+
+## Troubleshoot operator
+
+If the operator is unable to fetch secrets from the API, it will not affect the managed Kubernetes secret.
+It will continue attempting to reconnect to the API indefinitely.
+The InfisicalSecret resource uses the `status.conditions` field to report its current state and any errors encountered.
+
+```yaml
+$ kubectl get infisicalSecrets
+NAME                     AGE
+infisicalsecret-sample   12s
+
+$ kubectl describe infisicalSecret infisicalsecret-sample
+...
+Spec:
+...
+Status:
+  Conditions:
+    Last Transition Time:  2022-12-18T04:29:09Z
+    Message:               Infisical controller has located the Infisical token in provided Kubernetes secret
+    Reason:                OK
+    Status:                True
+    Type:                  secrets.infisical.com/LoadedInfisicalToken
+    Last Transition Time:  2022-12-18T04:29:10Z
+    Message:               Failed to update secret because: 400 Bad Request
+    Reason:                Error
+    Status:                False
+    Type:                  secrets.infisical.com/ReadyToSyncSecrets
+Events:                    <none>
+```
+
+## Uninstall Operator
+
+The managed secret created by the operator will not be deleted when the operator is uninstalled.
+
+<Tabs>
+	 <Tab title="Helm">
+		Install Infisical Helm repository 
+    ```bash
+    helm uninstall <release name>
+    ```
+   </Tab>
+	 <Tab title="Kubectl">
+		```
+    kubectl delete -f https://raw.githubusercontent.com/Infisical/infisical/main/k8-operator/kubectl-install/install-secrets-operator.yaml
+		```
+   </Tab>
+</Tabs>
+
+## Useful Articles
+
+- [Managing secrets in OpenShift with Infisical](https://xphyr.net/post/infisical_ocp/)
