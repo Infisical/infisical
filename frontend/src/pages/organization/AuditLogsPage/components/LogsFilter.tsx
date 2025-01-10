@@ -1,5 +1,5 @@
 /* eslint-disable no-nested-ternary */
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Control, Controller, UseFormReset, UseFormSetValue, UseFormWatch } from "react-hook-form";
 import { faCaretDown, faCheckCircle, faFilterCircleXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -49,7 +49,6 @@ export const LogsFilter = ({
   isOrgAuditLogs,
   className,
   control,
-  setValue,
   reset,
   watch
 }: Props) => {
@@ -62,12 +61,6 @@ export const LogsFilter = ({
   const workspacesInOrg = workspaces.filter((ws) => ws.orgId === currentOrg?.id);
 
   const { data, isPending } = useGetAuditLogActorFilterOpts(workspaces?.[0]?.id ?? "");
-
-  useEffect(() => {
-    if (workspacesInOrg.length) {
-      setValue("project", workspacesInOrg[0]);
-    }
-  }, [workspaces]);
 
   const renderActorSelectItem = (actor: Actor) => {
     switch (actor.type) {
@@ -129,6 +122,7 @@ export const LogsFilter = ({
             >
               <FilterableSelect
                 value={value}
+                isClearable
                 onChange={onChange}
                 placeholder="Select a project..."
                 options={workspacesInOrg.map(({ name, id }) => ({ name, id }))}

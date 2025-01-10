@@ -2,7 +2,8 @@ export enum ActorType {
   PLATFORM = "platform",
   USER = "user",
   SERVICE = "service",
-  IDENTITY = "identity"
+  IDENTITY = "identity",
+  UNKNOWN_USER = "unknownUser"
 }
 
 export enum UserAgentType {
@@ -95,5 +96,8 @@ export enum EventType {
   GET_CERTIFICATE_TEMPLATE_EST_CONFIG = "get-certificate-template-est-config",
   UPDATE_PROJECT_SLACK_CONFIG = "update-project-slack-config",
   GET_PROJECT_SLACK_CONFIG = "get-project-slack-config",
-  INTEGRATION_SYNCED = "integration-synced"
+  INTEGRATION_SYNCED = "integration-synced",
+  CREATE_SHARED_SECRET = "create-shared-secret",
+  DELETE_SHARED_SECRET = "delete-shared-secret",
+  READ_SHARED_SECRET = "read-shared-secret"
 }

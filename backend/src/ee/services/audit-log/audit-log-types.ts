@@ -31,7 +31,7 @@ export type TListProjectAuditLogDTO = {
 
 export type TCreateAuditLogDTO = {
   event: Event;
-  actor: UserActor | IdentityActor | ServiceActor | ScimClientActor | PlatformActor;
+  actor: UserActor | IdentityActor | ServiceActor | ScimClientActor | PlatformActor | UnknownUserActor;
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;
@@ -229,7 +229,10 @@ export enum EventType {
   GET_APP_CONNECTION = "get-app-connection",
   CREATE_APP_CONNECTION = "create-app-connection",
   UPDATE_APP_CONNECTION = "update-app-connection",
-  DELETE_APP_CONNECTION = "delete-app-connection"
+  DELETE_APP_CONNECTION = "delete-app-connection",
+  CREATE_SHARED_SECRET = "create-shared-secret",
+  DELETE_SHARED_SECRET = "delete-shared-secret",
+  READ_SHARED_SECRET = "read-shared-secret"
 }
 
 interface UserActorMetadata {
@@ -252,6 +255,8 @@ interface ScimClientActorMetadata {}
 
 interface PlatformActorMetadata {}
 
+interface UnknownUserActorMetadata {}
+
 export interface UserActor {
   type: ActorType.USER;
   metadata: UserActorMetadata;
@@ -265,6 +270,11 @@ export interface ServiceActor {
 export interface PlatformActor {
   type: ActorType.PLATFORM;
   metadata: PlatformActorMetadata;
+}
+
+export interface UnknownUserActor {
+  type: ActorType.UNKNOWN_USER;
+  metadata: UnknownUserActorMetadata;
 }
 
 export interface IdentityActor {
@@ -1907,6 +1917,35 @@ interface DeleteAppConnectionEvent {
   };
 }
 
+interface CreateSharedSecretEvent {
+  type: EventType.CREATE_SHARED_SECRET;
+  metadata: {
+    id: string;
+    accessType: string;
+    name?: string;
+    expiresAfterViews?: number;
+    usingPassword: boolean;
+    expiresAt: string;
+  };
+}
+
+interface DeleteSharedSecretEvent {
+  type: EventType.DELETE_SHARED_SECRET;
+  metadata: {
+    id: string;
+    name?: string;
+  };
+}
+
+interface ReadSharedSecretEvent {
+  type: EventType.READ_SHARED_SECRET;
+  metadata: {
+    id: string;
+    name?: string;
+    accessType: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -2083,4 +2122,7 @@ export type Event =
   | GetAppConnectionEvent
   | CreateAppConnectionEvent
   | UpdateAppConnectionEvent
-  | DeleteAppConnectionEvent;
+  | DeleteAppConnectionEvent
+  | CreateSharedSecretEvent
+  | DeleteSharedSecretEvent
+  | ReadSharedSecretEvent;

@@ -50,7 +50,11 @@ export interface PlatformActor {
   metadata: object;
 }
 
-export type Actor = UserActor | ServiceActor | IdentityActor | PlatformActor;
+export interface UnknownUserActor {
+  type: ActorType.UNKNOWN_USER;
+}
+
+export type Actor = UserActor | ServiceActor | IdentityActor | PlatformActor | UnknownUserActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
