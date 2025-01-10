@@ -13,7 +13,7 @@ const getTeamsGitLab = async ({ url, accessToken }: { url: string; accessToken: 
   const gitLabApiUrl = url ? `${url}/api` : IntegrationUrls.GITLAB_API_URL;
 
   let teams: Team[] = [];
-  let page: number | undefined = 1;
+  let page: number = 1;
   while (page > 0) {
     // eslint-disable-next-line no-await-in-loop
     const { data, headers }: AxiosResponse<{ name: string; id: string }[]> = await request.get(
@@ -26,7 +26,7 @@ const getTeamsGitLab = async ({ url, accessToken }: { url: string; accessToken: 
       }
     );
 
-    page = Number(headers["x-next-page"]);
+    page = Number(headers["x-next-page"] ?? "");
     teams = teams.concat(
       data.map((t) => ({
         name: t.name,
