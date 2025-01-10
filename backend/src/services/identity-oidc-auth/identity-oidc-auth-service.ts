@@ -27,7 +27,7 @@ import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identit
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
 import { TOrgBotDALFactory } from "../org/org-bot-dal";
 import { TIdentityOidcAuthDALFactory } from "./identity-oidc-auth-dal";
-import { doesFieldValueMatchOidcPolicy } from "./identity-oidc-auth-fns";
+import { doesAudValueMatchOidcPolicy, doesFieldValueMatchOidcPolicy } from "./identity-oidc-auth-fns";
 import {
   TAttachOidcAuthDTO,
   TGetOidcAuthDTO,
@@ -148,7 +148,7 @@ export const identityOidcAuthServiceFactory = ({
       if (
         !identityOidcAuth.boundAudiences
           .split(", ")
-          .some((policyValue) => doesFieldValueMatchOidcPolicy(tokenData.aud, policyValue))
+          .some((policyValue) => doesAudValueMatchOidcPolicy(tokenData.aud, policyValue))
       ) {
         throw new UnauthorizedError({
           message: "Access denied: OIDC audience not allowed."
