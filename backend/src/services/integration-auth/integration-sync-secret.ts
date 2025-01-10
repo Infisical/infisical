@@ -1289,7 +1289,10 @@ const syncSecretsAWSSecretManager = async ({
 
   if (metadata.mappingBehavior === IntegrationMappingBehavior.ONE_TO_ONE) {
     for await (const [key, value] of Object.entries(secrets)) {
-      await processAwsSecret(key, value.value, value.secretMetadata);
+      await processAwsSecret(key, value.value, value.secretMetadata).catch((error) => {
+        error.secretKey = key;
+        throw error;
+      });
     }
   } else {
     await processAwsSecret(integration.app as string, getSecretKeyValuePair(secrets));

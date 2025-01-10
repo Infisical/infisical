@@ -971,6 +971,8 @@ export const secretQueueFactory = ({
               });
             }
 
+            const { secretKey } = (err as { secretKey: string }) || {};
+
             const message =
               // eslint-disable-next-line no-nested-ternary
               (err instanceof AxiosError
@@ -978,6 +980,8 @@ export const secretQueueFactory = ({
                   ? JSON.stringify(err?.response?.data)
                   : err?.message
                 : (err as Error)?.message) || "Unknown error occurred.";
+
+            const errorLog = `${secretKey ? `[Secret Key: ${secretKey}] ` : ""}${message}`;
 
             await auditLogService.createAuditLog({
               projectId,
@@ -989,7 +993,7 @@ export const secretQueueFactory = ({
                   isSynced: false,
                   lastSyncJobId: job?.id ?? "",
                   lastUsed: new Date(),
-                  syncMessage: message
+                  syncMessage: errorLog
                 }
               }
             });
@@ -1001,13 +1005,13 @@ export const secretQueueFactory = ({
 
             await integrationDAL.updateById(integration.id, {
               lastSyncJobId: job.id,
-              syncMessage: message,
+              syncMessage: errorLog,
               isSynced: false
             });
 
             integrationsFailedToSync.push({
               integrationId: integration.id,
-              syncMessage: message
+              syncMessage: errorLog
             });
           }
         }
