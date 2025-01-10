@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useParams, useSearch } from "@tanstack/react-router";
+import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { AxiosError } from "axios";
+import { addSeconds, formatISO } from "date-fns";
 
+import { createNotification } from "@app/components/notifications";
+import { SessionStorageKeys } from "@app/const";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useGetActiveSharedSecretById } from "@app/hooks/api/secretSharing";
 
@@ -36,7 +39,6 @@ export const ViewSharedSecretByIDPage = () => {
     select: (el) => el.key
   });
   const [password, setPassword] = useState<string>();
-
   const { hashedHex, key } = extractDetailsFromUrl(urlEncodedKey);
 
   const {
@@ -50,9 +52,46 @@ export const ViewSharedSecretByIDPage = () => {
     password
   });
 
+  const navigate = useNavigate();
+
+  const isUnauthorized =
+    ((error as AxiosError)?.response?.data as { statusCode: number })?.statusCode === 401;
+
+  const isForbidden =
+    ((error as AxiosError)?.response?.data as { statusCode: number })?.statusCode === 403;
+
   const isInvalidCredential =
     ((error as AxiosError)?.response?.data as { message: string })?.message ===
     "Invalid credentials";
+
+  useEffect(() => {
+    if (isUnauthorized && !isInvalidCredential) {
+      // persist current URL in session storage so that we can come back to this after successful login
+      sessionStorage.setItem(
+        SessionStorageKeys.ORG_LOGIN_SUCCESS_REDIRECT_URL,
+        JSON.stringify({
+          expiry: formatISO(addSeconds(new Date(), 60)),
+          data: window.location.href
+        })
+      );
+
+      createNotification({
+        type: "info",
+        text: "Login is required in order to access the shared secret."
+      });
+
+      navigate({
+        to: "/login"
+      });
+    }
+
+    if (isForbidden) {
+      createNotification({
+        type: "error",
+        text: "You do not have access to this shared secret."
+      });
+    }
+  }, [error]);
 
   const shouldShowPasswordPrompt =
     isInvalidCredential || (fetchSecret?.isPasswordProtected && !fetchSecret.secret);
@@ -111,7 +150,7 @@ export const ViewSharedSecretByIDPage = () => {
               {!error && fetchSecret?.secret && (
                 <SecretContainer secret={fetchSecret.secret} secretKey={key} />
               )}
-              {error && !isInvalidCredential && <SecretErrorContainer />}
+              {error && !isInvalidCredential && !isUnauthorized && <SecretErrorContainer />}
             </>
           )}
           <div className="m-auto my-8 flex w-full">

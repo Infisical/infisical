@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { apiRequest } from "@app/config/request";
+import { SessionStorageKeys } from "@app/const";
 
 import { organizationKeys } from "../organization/queries";
 import { setAuthToken } from "../reactQuery";
@@ -84,6 +85,21 @@ export const useSelectOrganization = () => {
       if (!details.userAgent && !data.isMfaEnabled) {
         SecurityClient.setToken(data.token);
         SecurityClient.setProviderAuthToken("");
+      }
+
+      if (data.token && !data.isMfaEnabled) {
+        // We check if there is a pending callback after organization login success and redirect to it if valid
+        const loginRedirectInfo = sessionStorage.getItem(
+          SessionStorageKeys.ORG_LOGIN_SUCCESS_REDIRECT_URL
+        );
+        sessionStorage.removeItem(SessionStorageKeys.ORG_LOGIN_SUCCESS_REDIRECT_URL);
+
+        if (loginRedirectInfo) {
+          const { expiry, data: redirectUrl } = JSON.parse(loginRedirectInfo);
+          if (new Date() < new Date(expiry)) {
+            window.location.assign(redirectUrl);
+          }
+        }
       }
 
       return data;

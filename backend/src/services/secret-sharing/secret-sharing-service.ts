@@ -206,8 +206,13 @@ export const secretSharingServiceFactory = ({
 
     const orgName = sharedSecret.orgId ? (await orgDAL.findOrgById(sharedSecret.orgId))?.name : "";
 
-    if (accessType === SecretSharingAccessType.Organization && orgId !== sharedSecret.orgId)
+    if (accessType === SecretSharingAccessType.Organization && orgId === undefined) {
+      throw new UnauthorizedError();
+    }
+
+    if (accessType === SecretSharingAccessType.Organization && orgId !== sharedSecret.orgId) {
       throw new ForbiddenRequestError();
+    }
 
     // all secrets pass through here, meaning we check if its expired first and then check if it needs verification
     // or can be safely sent to the client.
