@@ -39,7 +39,8 @@ export enum ActorType { // would extend to AWS, Azure, ...
   SERVICE = "service",
   IDENTITY = "identity",
   Machine = "machine",
-  SCIM_CLIENT = "scimClient"
+  SCIM_CLIENT = "scimClient",
+  UNKNOWN_USER = "unknownUser"
 }
 
 // This will be null unless the token-type is JWT

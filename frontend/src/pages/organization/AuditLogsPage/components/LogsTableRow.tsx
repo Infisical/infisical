@@ -1,4 +1,7 @@
-import { Td, Tr } from "@app/components/v2";
+import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
+import { Td, Tooltip, Tr } from "@app/components/v2";
 import { eventToNameMap, userAgentTTypeoNameMap } from "@app/hooks/api/auditLogs/constants";
 import { ActorType, EventType } from "@app/hooks/api/auditLogs/enums";
 import { Actor, AuditLog } from "@app/hooks/api/auditLogs/types";
@@ -35,6 +38,17 @@ export const LogsTableRow = ({ auditLog, isOrgAuditLogs, showActorColumn }: Prop
           <Td>
             <p>{`${actor.metadata.name}`}</p>
             <p>Machine Identity</p>
+          </Td>
+        );
+      case ActorType.UNKNOWN_USER:
+        return (
+          <Td>
+            <div className="flex items-center gap-2">
+              <p>Unknown User</p>
+              <Tooltip content="This action was performed by a user who was not authenticated at the time.">
+                <FontAwesomeIcon className="text-mineshaft-400" icon={faQuestionCircle} />
+              </Tooltip>
+            </div>
           </Td>
         );
       default:
