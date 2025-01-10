@@ -180,6 +180,8 @@ export const secretRotationQueueFactory = ({
           provider.template.client === TDbProviderClients.MsSqlServer
             ? ({
                 encrypt: appCfg.ENABLE_MSSQL_SECRET_ROTATION_ENCRYPT,
+                // when ca is provided use that
+                trustServerCertificate: ca ? false : true,
                 cryptoCredentialsDetails: ca ? { ca } : {}
               } as Record<string, unknown>)
             : undefined;
