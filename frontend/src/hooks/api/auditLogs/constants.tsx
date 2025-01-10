@@ -3,6 +3,7 @@ import { EventType, UserAgentType } from "./enums";
 export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.GET_SECRETS]: "List secrets",
   [EventType.GET_SECRET]: "Read secret",
+  [EventType.DELETE_SECRETS]: "Delete secrets",
   [EventType.CREATE_SECRET]: "Create secret",
   [EventType.UPDATE_SECRET]: "Update secret",
   [EventType.DELETE_SECRET]: "Delete secret",

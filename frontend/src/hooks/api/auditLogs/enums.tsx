@@ -17,6 +17,7 @@ export enum UserAgentType {
 
 export enum EventType {
   GET_SECRETS = "get-secrets",
+  DELETE_SECRETS = "delete-secrets",
   GET_SECRET = "get-secret",
   CREATE_SECRET = "create-secret",
   UPDATE_SECRET = "update-secret",
