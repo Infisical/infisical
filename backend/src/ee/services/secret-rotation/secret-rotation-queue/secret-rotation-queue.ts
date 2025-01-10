@@ -181,7 +181,7 @@ export const secretRotationQueueFactory = ({
             ? ({
                 encrypt: appCfg.ENABLE_MSSQL_SECRET_ROTATION_ENCRYPT,
                 // when ca is provided use that
-                trustServerCertificate: ca ? false : true,
+                trustServerCertificate: !ca,
                 cryptoCredentialsDetails: ca ? { ca } : {}
               } as Record<string, unknown>)
             : undefined;

@@ -34,6 +34,8 @@ export const SqlDatabaseProvider = (): TDynamicProviderFns => {
 
   const $getClient = async (providerInputs: z.infer<typeof DynamicSecretSqlDBSchema>) => {
     const ssl = providerInputs.ca ? { rejectUnauthorized: false, ca: providerInputs.ca } : undefined;
+    const isMsSQLClient = providerInputs.client === SqlProviders.MsSQL;
+
     const db = knex({
       client: providerInputs.client,
       connection: {
@@ -43,7 +45,16 @@ export const SqlDatabaseProvider = (): TDynamicProviderFns => {
         user: providerInputs.username,
         password: providerInputs.password,
         ssl,
-        pool: { min: 0, max: 1 }
+        pool: { min: 0, max: 1 },
+        // @ts-expect-error this is because of knexjs type signature issue. This is directly passed to driver
+        // https://github.com/knex/knex/blob/b6507a7129d2b9fafebf5f831494431e64c6a8a0/lib/dialects/mssql/index.js#L66
+        // https://github.com/tediousjs/tedious/blob/ebb023ed90969a7ec0e4b036533ad52739d921f7/test/config.ci.ts#L19
+        options: isMsSQLClient
+          ? {
+              trustServerCertificate: !providerInputs.ca,
+              cryptoCredentialsDetails: providerInputs.ca ? { ca: providerInputs.ca } : {}
+            }
+          : undefined
       },
       acquireConnectionTimeout: EXTERNAL_REQUEST_TIMEOUT
     });
