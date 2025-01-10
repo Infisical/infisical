@@ -100,10 +100,10 @@ export const auditLogDALFactory = (db: TDbClient) => {
 
       // Filter by date range
       if (startDate) {
-        void sqlQuery.where(`${TableName.AuditLog}.createdAt`, ">=", startDate);
+        void sqlQuery.whereRaw(`"${TableName.AuditLog}"."createdAt" >= ?::timestamptz`, [startDate]);
       }
       if (endDate) {
-        void sqlQuery.where(`${TableName.AuditLog}.createdAt`, "<=", endDate);
+        void sqlQuery.whereRaw(`"${TableName.AuditLog}"."createdAt" <= ?::timestamptz`, [endDate]);
       }
 
       // we timeout long running queries to prevent DB resource issues (2 minutes)
