@@ -69,6 +69,12 @@ type TokenDetails struct {
 	Source string
 }
 
+// ProjectDetails contains the project ID and its source
+type ProjectDetails struct {
+	ID     string
+	Source string
+}
+
 type SingleFolder struct {
 	ID   string `json:"_id"`
 	Name string `json:"name"`

@@ -38,9 +38,19 @@ var secretsCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
+		// Using GetProjectID utility function
+		projectDetails, err := util.GetProjectID(cmd)
+		if err != nil {
+			util.HandleError(err, "Unable to determine project ID")
+		}
+
 		projectId, err := cmd.Flags().GetString("projectId")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
+		}
+
+		if projectDetails != nil {
+			projectId = projectDetails.ID
 		}
 
 		secretsPath, err := cmd.Flags().GetString("path")
