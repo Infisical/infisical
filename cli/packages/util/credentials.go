@@ -6,10 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/Infisical/infisical-merge/packages/models"
-	"github.com/go-resty/resty/v2"
 	"github.com/zalando/go-keyring"
 )
 
@@ -77,36 +75,16 @@ func GetCurrentLoggedInUserDetails(setConfigVariables bool) (LoggedInUserDetails
 
 		if setConfigVariables {
 			config.INFISICAL_URL_MANUAL_OVERRIDE = config.INFISICAL_URL
-			//configFile.LoggedInUserDomain
-			//if not empty set as infisical url
 			if configFile.LoggedInUserDomain != "" {
 				config.INFISICAL_URL = AppendAPIEndpoint(configFile.LoggedInUserDomain)
 			}
 		}
 
-		// check to to see if the JWT is still valid
-		httpClient := resty.New().
-			SetAuthToken(userCreds.JTWToken).
-			SetHeader("Accept", "application/json")
-
-		isAuthenticated := api.CallIsAuthenticated(httpClient)
-		// TODO: add refresh token
-		// if !isAuthenticated {
-		// 	accessTokenResponse, err := api.CallGetNewAccessTokenWithRefreshToken(httpClient, userCreds.RefreshToken)
-		// 	if err == nil && accessTokenResponse.Token != "" {
-		// 		isAuthenticated = true
-		// 		userCreds.JTWToken = accessTokenResponse.Token
-		// 	}
-		// }
-
-		// err = StoreUserCredsInKeyRing(&userCreds)
-		// if err != nil {
-		// 	log.Debug().Msg("unable to store your user credentials with new access token")
-		// }
-
-		if !isAuthenticated {
+		// Attempt to refresh token if needed
+		err = HandleTokenRefresh(&userCreds)
+		if err != nil {
 			return LoggedInUserDetails{
-				IsUserLoggedIn:  true, // was logged in
+				IsUserLoggedIn:  true,
 				LoginExpired:    true,
 				UserCredentials: userCreds,
 			}, nil
@@ -117,7 +95,7 @@ func GetCurrentLoggedInUserDetails(setConfigVariables bool) (LoggedInUserDetails
 			LoginExpired:    false,
 			UserCredentials: userCreds,
 		}, nil
-	} else {
-		return LoggedInUserDetails{}, nil
 	}
+	
+	return LoggedInUserDetails{}, nil
 }
