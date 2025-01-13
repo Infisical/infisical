@@ -12,18 +12,18 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { useOrganization } from "@app/context";
-import { useGetSecretScanningRisks } from "@app/hooks/api/secretScanning";
+import { TSecretScanningGitRisks } from "@app/hooks/api/secretScanning/types";
 
 import { RiskStatusSelection } from "./RiskStatusSelection";
 
-export const SecretScanningLogsTable = () => {
-  const { currentOrg } = useOrganization();
-  const organizationId = currentOrg.id;
-  const { isPending, data: gitRisks } = useGetSecretScanningRisks(organizationId);
+type Props = {
+  gitRisks?: TSecretScanningGitRisks[];
+  isPending: boolean;
+};
 
+export const SecretScanningLogsTable = ({ gitRisks, isPending }: Props) => {
   return (
-    <TableContainer className="mt-8">
+    <TableContainer>
       <Table>
         <THead>
           <Tr>
