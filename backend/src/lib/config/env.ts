@@ -199,7 +199,29 @@ const envSchema = z
     INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET: zpStr(z.string().optional()),
     INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY: zpStr(z.string().optional()),
     INF_APP_CONNECTION_GITHUB_APP_SLUG: zpStr(z.string().optional()),
-    INF_APP_CONNECTION_GITHUB_APP_ID: zpStr(z.string().optional())
+    INF_APP_CONNECTION_GITHUB_APP_ID: zpStr(z.string().optional()),
+
+    /* CORS ----------------------------------------------------------------------------- */
+
+    CORS_ALLOWED_ORIGINS: zpStr(
+      z
+        .string()
+        .optional()
+        .transform((val) => {
+          if (!val) return undefined;
+          return JSON.parse(val) as string[];
+        })
+    ),
+
+    CORS_ALLOWED_HEADERS: zpStr(
+      z
+        .string()
+        .optional()
+        .transform((val) => {
+          if (!val) return undefined;
+          return JSON.parse(val) as string[];
+        })
+    )
   })
   // To ensure that basic encryption is always possible.
   .refine(
