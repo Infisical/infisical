@@ -1,3 +1,5 @@
+import { KMSServiceException } from "@aws-sdk/client-kms";
+import { STSServiceException } from "@aws-sdk/client-sts";
 import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
@@ -71,10 +73,14 @@ export const externalKmsServiceFactory = ({
     switch (provider.type) {
       case KmsProviders.Aws:
         {
-          const externalKms = await AwsKmsProviderFactory({ inputs: provider.inputs }).catch((error: Error) => {
-            throw new InternalServerError({
-              message: error.message ? `AWS error: ${error.message}` : ""
-            });
+          const externalKms = await AwsKmsProviderFactory({ inputs: provider.inputs }).catch((error) => {
+            if (error instanceof STSServiceException || error instanceof KMSServiceException) {
+              throw new InternalServerError({
+                message: error.message ? `AWS error: ${error.message}` : ""
+              });
+            }
+
+            throw error;
           });
 
           // if missing kms key this generate a new kms key id and returns new provider input
