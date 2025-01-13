@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import ms from "ms";
 
-import { ProjectMembershipRole } from "@app/db/schemas";
+import { ProjectMembershipRole, ProjectOperationType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
@@ -54,13 +54,14 @@ export const identityProjectServiceFactory = ({
     projectId,
     roles
   }: TCreateProjectIdentityDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      projectOperationType: ProjectOperationType.Global
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       subject(ProjectPermissionSub.Identity, {
@@ -159,13 +160,14 @@ export const identityProjectServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TUpdateProjectIdentityDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      projectOperationType: ProjectOperationType.Global
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.Identity, { identityId })
@@ -254,25 +256,27 @@ export const identityProjectServiceFactory = ({
       throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      identityProjectMembership.projectId,
+      projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      projectOperationType: ProjectOperationType.Global
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
       subject(ProjectPermissionSub.Identity, { identityId })
     );
 
-    const { permission: identityRolePermission } = await permissionService.getProjectPermission(
-      ActorType.IDENTITY,
-      identityId,
-      identityProjectMembership.projectId,
+    const { permission: identityRolePermission } = await permissionService.getProjectPermission({
+      actor: ActorType.IDENTITY,
+      actorId: identityId,
+      projectId: identityProjectMembership.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      projectOperationType: ProjectOperationType.Global
+    });
     if (!isAtLeastAsPrivileged(permission, identityRolePermission))
       throw new ForbiddenRequestError({ message: "Failed to delete more privileged identity" });
 
@@ -292,13 +296,14 @@ export const identityProjectServiceFactory = ({
     orderDirection,
     search
   }: TListProjectIdentityDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      projectOperationType: ProjectOperationType.Global
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Identity);
 
     const identityMemberships = await identityProjectDAL.findByProjectId(projectId, {
@@ -322,13 +327,14 @@ export const identityProjectServiceFactory = ({
     actorOrgId,
     identityId
   }: TGetProjectIdentityByIdentityIdDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      projectOperationType: ProjectOperationType.Global
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,

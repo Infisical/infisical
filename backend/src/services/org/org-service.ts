@@ -8,6 +8,7 @@ import {
   OrgMembershipRole,
   OrgMembershipStatus,
   ProjectMembershipRole,
+  ProjectOperationType,
   ProjectVersion,
   SecretKeyEncoding,
   TableName,
@@ -773,13 +774,14 @@ export const orgServiceFactory = ({
       // if there exist no project membership we set is as given by the request
       for await (const project of projectsToInvite) {
         const projectId = project.id;
-        const { permission: projectPermission } = await permissionService.getProjectPermission(
+        const { permission: projectPermission } = await permissionService.getProjectPermission({
           actor,
           actorId,
           projectId,
           actorAuthMethod,
-          actorOrgId
-        );
+          actorOrgId,
+          projectOperationType: ProjectOperationType.Global
+        });
         ForbiddenError.from(projectPermission).throwUnlessCan(
           ProjectPermissionActions.Create,
           ProjectPermissionSub.Member

@@ -2,7 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 
 import {
   ProjectMembershipRole,
-  ProjectType,
+  ProjectOperationType,
   SecretEncryptionAlgo,
   SecretKeyEncoding,
   SecretType,
@@ -147,13 +147,14 @@ export const secretApprovalRequestServiceFactory = ({
   const requestCount = async ({ projectId, actor, actorId, actorOrgId, actorAuthMethod }: TApprovalRequestCountDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
-    await permissionService.getProjectPermission(
-      actor as ActorType.USER,
+    await permissionService.getProjectPermission({
+      actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      projectOperationType: ProjectOperationType.SecretManager
+    });
 
     const count = await secretApprovalRequestDAL.findProjectRequestCount(projectId, actorId);
     return count;
@@ -173,7 +174,14 @@ export const secretApprovalRequestServiceFactory = ({
   }: TListApprovalsDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
-    await permissionService.getProjectPermission(actor, actorId, projectId, actorAuthMethod, actorOrgId);
+    await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      projectOperationType: ProjectOperationType.SecretManager
+    });
 
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
@@ -216,13 +224,14 @@ export const secretApprovalRequestServiceFactory = ({
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
 
     const { policy } = secretApprovalRequest;
-    const { hasRole } = await permissionService.getProjectPermission(
+    const { hasRole } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      projectOperationType: ProjectOperationType.SecretManager
+    });
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
       secretApprovalRequest.committerUserId !== actorId &&
@@ -336,13 +345,14 @@ export const secretApprovalRequestServiceFactory = ({
       });
     }
 
-    const { hasRole } = await permissionService.getProjectPermission(
-      ActorType.USER,
+    const { hasRole } = await permissionService.getProjectPermission({
+      actor: ActorType.USER,
       actorId,
-      secretApprovalRequest.projectId,
+      projectId: secretApprovalRequest.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      projectOperationType: ProjectOperationType.SecretManager
+    });
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
       secretApprovalRequest.committerUserId !== actorId &&
@@ -402,13 +412,14 @@ export const secretApprovalRequestServiceFactory = ({
       });
     }
 
-    const { hasRole } = await permissionService.getProjectPermission(
-      ActorType.USER,
+    const { hasRole } = await permissionService.getProjectPermission({
+      actor: ActorType.USER,
       actorId,
-      secretApprovalRequest.projectId,
+      projectId: secretApprovalRequest.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      projectOperationType: ProjectOperationType.SecretManager
+    });
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
       secretApprovalRequest.committerUserId !== actorId &&
@@ -458,13 +469,14 @@ export const secretApprovalRequestServiceFactory = ({
       });
     }
 
-    const { hasRole } = await permissionService.getProjectPermission(
-      ActorType.USER,
+    const { hasRole } = await permissionService.getProjectPermission({
+      actor: ActorType.USER,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      projectOperationType: ProjectOperationType.SecretManager
+    });
 
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
@@ -889,14 +901,14 @@ export const secretApprovalRequestServiceFactory = ({
   }: TGenerateSecretApprovalRequestDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.SecretManager);
+      actorOrgId,
+      projectOperationType: ProjectOperationType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })
@@ -1170,14 +1182,14 @@ export const secretApprovalRequestServiceFactory = ({
     if (actor === ActorType.SERVICE || actor === ActorType.Machine)
       throw new BadRequestError({ message: "Cannot use service token or machine token over protected branches" });
 
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.SecretManager);
+      actorOrgId,
+      projectOperationType: ProjectOperationType.SecretManager
+    });
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
       throw new NotFoundError({

@@ -3,6 +3,7 @@ import { subject } from "@casl/ability";
 import path from "path";
 
 import {
+  ProjectOperationType,
   SecretEncryptionAlgo,
   SecretKeyEncoding,
   SecretType,
@@ -176,13 +177,14 @@ export const recursivelyGetSecretPaths = ({
       folderId: p.folderId
     }));
 
-    const { permission } = await permissionService.getProjectPermission(
-      auth.actor,
-      auth.actorId,
+    const { permission } = await permissionService.getProjectPermission({
+      actor: auth.actor,
+      actorId: auth.actorId,
       projectId,
-      auth.actorAuthMethod,
-      auth.actorOrgId
-    );
+      actorAuthMethod: auth.actorAuthMethod,
+      actorOrgId: auth.actorOrgId,
+      projectOperationType: ProjectOperationType.SecretManager
+    });
 
     // Filter out paths that the user does not have permission to access, and paths that are not in the current path
     const allowedPaths = paths.filter(

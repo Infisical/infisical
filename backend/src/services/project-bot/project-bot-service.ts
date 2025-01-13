@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ProjectVersion } from "@app/db/schemas";
+import { ProjectOperationType, ProjectVersion } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { generateAsymmetricKeyPair } from "@app/lib/crypto";
@@ -41,13 +41,14 @@ export const projectBotServiceFactory = ({
     botKey,
     publicKey
   }: TFindBotByProjectIdDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      projectOperationType: ProjectOperationType.Global
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
 
     const bot = await projectBotDAL.transaction(async (tx) => {
@@ -107,13 +108,14 @@ export const projectBotServiceFactory = ({
     const bot = await projectBotDAL.findById(botId);
     if (!bot) throw new NotFoundError({ message: `Project bot with ID '${botId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      bot.projectId,
+      projectId: bot.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      projectOperationType: ProjectOperationType.Global
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Integrations);
 
     const project = await projectBotDAL.findProjectByBotId(botId);

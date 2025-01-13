@@ -1,4 +1,4 @@
-import { ProjectMembershipRole } from "@app/db/schemas";
+import { ProjectMembershipRole, ProjectOperationType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
@@ -31,7 +31,14 @@ export const secretBlindIndexServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TGetProjectBlindIndexStatusDTO) => {
-    await permissionService.getProjectPermission(actor, actorId, projectId, actorAuthMethod, actorOrgId);
+    await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      projectOperationType: ProjectOperationType.SecretManager
+    });
 
     const secretCount = await secretBlindIndexDAL.countOfSecretsWithNullSecretBlindIndex(projectId);
     return Number(secretCount);
@@ -44,13 +51,14 @@ export const secretBlindIndexServiceFactory = ({
     actorOrgId,
     actor
   }: TGetProjectSecretsDTO) => {
-    const { hasRole } = await permissionService.getProjectPermission(
+    const { hasRole } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      projectOperationType: ProjectOperationType.SecretManager
+    });
     if (!hasRole(ProjectMembershipRole.Admin)) {
       throw new ForbiddenRequestError({ message: "Insufficient privileges, user must be admin" });
     }
@@ -67,13 +75,14 @@ export const secretBlindIndexServiceFactory = ({
     actorOrgId,
     secretsToUpdate
   }: TUpdateProjectSecretNameDTO) => {
-    const { hasRole } = await permissionService.getProjectPermission(
+    const { hasRole } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      projectOperationType: ProjectOperationType.SecretManager
+    });
     if (!hasRole(ProjectMembershipRole.Admin)) {
       throw new ForbiddenRequestError({ message: "Insufficient privileges, user must be admin" });
     }

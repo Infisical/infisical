@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import bcrypt from "bcrypt";
 
-import { ProjectType, TCertificateTemplateEstConfigsUpdate } from "@app/db/schemas";
+import { ProjectOperationType, TCertificateTemplateEstConfigsUpdate } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -67,14 +67,14 @@ export const certificateTemplateServiceFactory = ({
         message: `CA with ID ${caId} not found`
       });
     }
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      ca.projectId,
+      projectId: ca.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.CertificateManager);
+      actorOrgId,
+      projectOperationType: ProjectOperationType.CertificateManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
@@ -129,14 +129,14 @@ export const certificateTemplateServiceFactory = ({
       });
     }
 
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      certTemplate.projectId,
+      projectId: certTemplate.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.CertificateManager);
+      actorOrgId,
+      projectOperationType: ProjectOperationType.CertificateManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
@@ -187,14 +187,14 @@ export const certificateTemplateServiceFactory = ({
       });
     }
 
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      certTemplate.projectId,
+      projectId: certTemplate.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.CertificateManager);
+      actorOrgId,
+      projectOperationType: ProjectOperationType.CertificateManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
@@ -214,13 +214,14 @@ export const certificateTemplateServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      certTemplate.projectId,
+      projectId: certTemplate.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      projectOperationType: ProjectOperationType.CertificateManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
@@ -255,14 +256,14 @@ export const certificateTemplateServiceFactory = ({
       });
     }
 
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      certTemplate.projectId,
+      projectId: certTemplate.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.CertificateManager);
+      actorOrgId,
+      projectOperationType: ProjectOperationType.CertificateManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
@@ -340,14 +341,14 @@ export const certificateTemplateServiceFactory = ({
       });
     }
 
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      certTemplate.projectId,
+      projectId: certTemplate.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.CertificateManager);
+      actorOrgId,
+      projectOperationType: ProjectOperationType.CertificateManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
@@ -422,13 +423,14 @@ export const certificateTemplateServiceFactory = ({
     }
 
     if (!dto.isInternal) {
-      const { permission } = await permissionService.getProjectPermission(
-        dto.actor,
-        dto.actorId,
-        certTemplate.projectId,
-        dto.actorAuthMethod,
-        dto.actorOrgId
-      );
+      const { permission } = await permissionService.getProjectPermission({
+        actor: dto.actor,
+        actorId: dto.actorId,
+        projectId: certTemplate.projectId,
+        actorAuthMethod: dto.actorAuthMethod,
+        actorOrgId: dto.actorOrgId,
+        projectOperationType: ProjectOperationType.CertificateManager
+      });
 
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionActions.Edit,

@@ -1,7 +1,7 @@
 import slugify from "@sindresorhus/slugify";
 import ms from "ms";
 
-import { ProjectMembershipRole } from "@app/db/schemas";
+import { ProjectMembershipRole, ProjectOperationType } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -100,13 +100,14 @@ export const accessApprovalRequestServiceFactory = ({
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     // Anyone can create an access approval request.
-    const { membership } = await permissionService.getProjectPermission(
+    const { membership } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      project.id,
+      projectId: project.id,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      projectOperationType: ProjectOperationType.SecretManager
+    });
     if (!membership) {
       throw new ForbiddenRequestError({ message: "You are not a member of this project" });
     }
@@ -273,13 +274,14 @@ export const accessApprovalRequestServiceFactory = ({
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
-    const { membership } = await permissionService.getProjectPermission(
+    const { membership } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      project.id,
+      projectId: project.id,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      projectOperationType: ProjectOperationType.SecretManager
+    });
     if (!membership) {
       throw new ForbiddenRequestError({ message: "You are not a member of this project" });
     }
@@ -318,13 +320,14 @@ export const accessApprovalRequestServiceFactory = ({
       });
     }
 
-    const { membership, hasRole } = await permissionService.getProjectPermission(
+    const { membership, hasRole } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      accessApprovalRequest.projectId,
+      projectId: accessApprovalRequest.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      projectOperationType: ProjectOperationType.SecretManager
+    });
 
     if (!membership) {
       throw new ForbiddenRequestError({ message: "You are not a member of this project" });
@@ -422,13 +425,14 @@ export const accessApprovalRequestServiceFactory = ({
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
-    const { membership } = await permissionService.getProjectPermission(
+    const { membership } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      project.id,
+      projectId: project.id,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      projectOperationType: ProjectOperationType.SecretManager
+    });
     if (!membership) {
       throw new ForbiddenRequestError({ message: "You are not a member of this project" });
     }

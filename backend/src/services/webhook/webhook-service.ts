@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { TWebhooksInsert } from "@app/db/schemas";
+import { ProjectOperationType, TWebhooksInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
@@ -45,13 +45,14 @@ export const webhookServiceFactory = ({
     webhookSecretKey,
     type
   }: TCreateWebhookDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      projectOperationType: ProjectOperationType.Global
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Webhooks);
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
     if (!env)
@@ -93,13 +94,14 @@ export const webhookServiceFactory = ({
     const webhook = await webhookDAL.findById(id);
     if (!webhook) throw new NotFoundError({ message: `Webhook with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      webhook.projectId,
+      projectId: webhook.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      projectOperationType: ProjectOperationType.Global
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Webhooks);
 
     const updatedWebhook = await webhookDAL.updateById(id, { isDisabled });
@@ -110,13 +112,14 @@ export const webhookServiceFactory = ({
     const webhook = await webhookDAL.findById(id);
     if (!webhook) throw new NotFoundError({ message: `Webhook with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      webhook.projectId,
+      projectId: webhook.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      projectOperationType: ProjectOperationType.Global
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Webhooks);
 
     const deletedWebhook = await webhookDAL.deleteById(id);
@@ -127,13 +130,14 @@ export const webhookServiceFactory = ({
     const webhook = await webhookDAL.findById(id);
     if (!webhook) throw new NotFoundError({ message: `Webhook with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      webhook.projectId,
+      projectId: webhook.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      projectOperationType: ProjectOperationType.Global
+    });
 
     const project = await projectDAL.findById(webhook.projectId);
 
@@ -170,13 +174,14 @@ export const webhookServiceFactory = ({
     secretPath,
     environment
   }: TListWebhookDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      projectOperationType: ProjectOperationType.Global
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
 
     const webhooks = await webhookDAL.findAllWebhooks(projectId, environment, secretPath);
