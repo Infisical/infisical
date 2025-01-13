@@ -39,6 +39,12 @@ export const SignUpPage = () => {
     }
   }, [config.allowSignUp]);
 
+  useEffect(() => {
+    if (code !== '123456' && code.length === 6) {
+      incrementStep();
+    }
+  }, [code])
+
   /**
    * Goes to the following step (out of 5) of the signup process.
    * Step 1 is submitting your email
