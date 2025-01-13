@@ -3714,7 +3714,8 @@ const syncSecretsCloudflarePages = async ({
     }>(`${IntegrationUrls.CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accessId}/pages/projects/${integration.app}`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        Accept: "application/json"
+        Accept: "application/json",
+        "Cache-Control": "no-cache"
       }
     })
   ).data.result.deployment_configs[integration.targetEnvironment as string].env_vars;
