@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TKmsKeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -71,7 +71,12 @@ export const externalKmsServiceFactory = ({
     switch (provider.type) {
       case KmsProviders.Aws:
         {
-          const externalKms = await AwsKmsProviderFactory({ inputs: provider.inputs });
+          const externalKms = await AwsKmsProviderFactory({ inputs: provider.inputs }).catch((error: Error) => {
+            throw new InternalServerError({
+              message: error.message ? `AWS error: ${error.message}` : ""
+            });
+          });
+
           // if missing kms key this generate a new kms key id and returns new provider input
           const newProviderInput = await externalKms.generateInputKmsKey();
           sanitizedProviderInput = JSON.stringify(newProviderInput);
