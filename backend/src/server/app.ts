@@ -89,7 +89,7 @@ export const main = async ({ db, hsmModule, auditLogDb, smtp, logger, queue, key
       credentials: true,
       ...(appCfg.CORS_ALLOWED_ORIGINS?.length
         ? {
-            origin: appCfg.CORS_ALLOWED_ORIGINS
+            origin: [...appCfg.CORS_ALLOWED_ORIGINS, ...(appCfg.SITE_URL ? [appCfg.SITE_URL] : [])]
           }
         : {
             origin: appCfg.SITE_URL || true
