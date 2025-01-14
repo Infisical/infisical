@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { ProjectType } from "@app/db/schemas";
+import { ActionProjectType } from "@app/db/schemas";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -50,14 +50,14 @@ export const certificateServiceFactory = ({
     const cert = await certificateDAL.findOne({ serialNumber });
     const ca = await certificateAuthorityDAL.findById(cert.caId);
 
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      ca.projectId,
+      projectId: ca.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.CertificateManager);
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
 
@@ -74,14 +74,14 @@ export const certificateServiceFactory = ({
     const cert = await certificateDAL.findOne({ serialNumber });
     const ca = await certificateAuthorityDAL.findById(cert.caId);
 
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      ca.projectId,
+      projectId: ca.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.CertificateManager);
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Certificates);
 
@@ -109,14 +109,14 @@ export const certificateServiceFactory = ({
     const cert = await certificateDAL.findOne({ serialNumber });
     const ca = await certificateAuthorityDAL.findById(cert.caId);
 
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      ca.projectId,
+      projectId: ca.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.CertificateManager);
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Certificates);
 
@@ -156,13 +156,14 @@ export const certificateServiceFactory = ({
     const cert = await certificateDAL.findOne({ serialNumber });
     const ca = await certificateAuthorityDAL.findById(cert.caId);
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      ca.projectId,
+      projectId: ca.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
 

@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { z } from "zod";
 
-import { SecretFoldersSchema, SecretImportsSchema, SecretTagsSchema } from "@app/db/schemas";
+import { ActionProjectType, SecretFoldersSchema, SecretImportsSchema, SecretTagsSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import {
   ProjectPermissionDynamicSecretActions,
@@ -220,13 +220,14 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           totalCount: totalFolderCount ?? 0
         };
 
-      const { permission } = await server.services.permission.getProjectPermission(
-        req.permission.type,
-        req.permission.id,
+      const { permission } = await server.services.permission.getProjectPermission({
+        actor: req.permission.type,
+        actorId: req.permission.id,
         projectId,
-        req.permission.authMethod,
-        req.permission.orgId
-      );
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        actionProjectType: ActionProjectType.SecretManager
+      });
 
       const allowedDynamicSecretEnvironments = // filter envs user has access to
         environments.filter((environment) =>

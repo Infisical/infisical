@@ -2,7 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import path from "path";
 import { v4 as uuidv4, validate as uuidValidate } from "uuid";
 
-import { ProjectType, TSecretFoldersInsert } from "@app/db/schemas";
+import { ActionProjectType, TSecretFoldersInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
@@ -52,14 +52,14 @@ export const secretFolderServiceFactory = ({
     environment,
     path: secretPath
   }: TCreateFolderDTO) => {
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.SecretManager);
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
@@ -151,14 +151,14 @@ export const secretFolderServiceFactory = ({
       throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
     }
 
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      project.id,
+      projectId: project.id,
       actorAuthMethod,
-      actorOrgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.SecretManager);
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     folders.forEach(({ environment, path: secretPath }) => {
       ForbiddenError.from(permission).throwUnlessCan(
@@ -261,14 +261,14 @@ export const secretFolderServiceFactory = ({
     path: secretPath,
     id
   }: TUpdateFolderDTO) => {
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.SecretManager);
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
@@ -342,14 +342,14 @@ export const secretFolderServiceFactory = ({
     path: secretPath,
     idOrName
   }: TDeleteFolderDTO) => {
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.SecretManager);
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
@@ -399,7 +399,14 @@ export const secretFolderServiceFactory = ({
   }: TGetFolderDTO) => {
     // folder list is allowed to be read by anyone
     // permission to check does user has access
-    await permissionService.getProjectPermission(actor, actorId, projectId, actorAuthMethod, actorOrgId);
+    await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
     if (!env) throw new NotFoundError({ message: `Environment with slug '${environment}' not found` });
@@ -436,7 +443,14 @@ export const secretFolderServiceFactory = ({
   }: Omit<TGetFolderDTO, "environment"> & { environments: string[] }) => {
     // folder list is allowed to be read by anyone
     // permission to check does user has access
-    await permissionService.getProjectPermission(actor, actorId, projectId, actorAuthMethod, actorOrgId);
+    await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     const envs = await projectEnvDAL.findBySlugs(projectId, environments);
 
@@ -471,7 +485,14 @@ export const secretFolderServiceFactory = ({
   }: Omit<TGetFolderDTO, "environment"> & { environments: string[] }) => {
     // folder list is allowed to be read by anyone
     // permission to check does user has access
-    await permissionService.getProjectPermission(actor, actorId, projectId, actorAuthMethod, actorOrgId);
+    await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     const envs = await projectEnvDAL.findBySlugs(projectId, environments);
 
@@ -500,7 +521,14 @@ export const secretFolderServiceFactory = ({
     if (!folder) throw new NotFoundError({ message: `Folder with ID '${id}' not found` });
     // folder list is allowed to be read by anyone
     // permission to check does user has access
-    await permissionService.getProjectPermission(actor, actorId, folder.projectId, actorAuthMethod, actorOrgId);
+    await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: folder.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(folder.projectId, [folder.id]);
 
@@ -522,7 +550,14 @@ export const secretFolderServiceFactory = ({
   ) => {
     // folder list is allowed to be read by anyone
     // permission to check does user have access
-    await permissionService.getProjectPermission(actor.type, actor.id, projectId, actor.authMethod, actor.orgId);
+    await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     const envs = await projectEnvDAL.findBySlugs(projectId, environments);
 

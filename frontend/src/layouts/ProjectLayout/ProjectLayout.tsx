@@ -46,8 +46,19 @@ export const ProjectLayout = () => {
   const workspaceId = currentWorkspace?.id || "";
   const projectSlug = currentWorkspace?.slug || "";
 
-  const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({ workspaceId });
-  const { data: accessApprovalRequestCount } = useGetAccessRequestsCount({ projectSlug });
+  const isSecretManager = currentWorkspace?.type === ProjectType.SecretManager;
+  const isCertManager = currentWorkspace?.type === ProjectType.CertificateManager;
+  const isCmek = currentWorkspace?.type === ProjectType.KMS;
+  const isSSH = currentWorkspace?.type === ProjectType.SSH;
+
+  const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({
+    workspaceId,
+    options: { enabled: isSecretManager }
+  });
+  const { data: accessApprovalRequestCount } = useGetAccessRequestsCount({
+    projectSlug,
+    options: { enabled: isSecretManager }
+  });
 
   const pendingRequestsCount =
     (secretApprovalReqCount?.open || 0) + (accessApprovalRequestCount?.pendingCount || 0);
@@ -85,11 +96,6 @@ export const ProjectLayout = () => {
       </div>
     );
   }
-
-  const isSecretManager = currentWorkspace?.type === ProjectType.SecretManager;
-  const isCertManager = currentWorkspace?.type === ProjectType.CertificateManager;
-  const isCmek = currentWorkspace?.type === ProjectType.KMS;
-  const isSSH = currentWorkspace?.type === ProjectType.SSH;
 
   return (
     <>

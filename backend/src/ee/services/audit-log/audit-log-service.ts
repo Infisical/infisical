@@ -1,5 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
+import { ActionProjectType } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 
@@ -26,13 +27,14 @@ export const auditLogServiceFactory = ({
   const listAuditLogs = async ({ actorAuthMethod, actorId, actorOrgId, actor, filter }: TListProjectAuditLogDTO) => {
     // Filter logs for specific project
     if (filter.projectId) {
-      const { permission } = await permissionService.getProjectPermission(
+      const { permission } = await permissionService.getProjectPermission({
         actor,
         actorId,
-        filter.projectId,
+        projectId: filter.projectId,
         actorAuthMethod,
-        actorOrgId
-      );
+        actorOrgId,
+        actionProjectType: ActionProjectType.Any
+      });
       ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
     } else {
       // Organization-wide logs

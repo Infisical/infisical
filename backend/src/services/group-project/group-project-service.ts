@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import ms from "ms";
 
-import { ProjectMembershipRole, SecretKeyEncoding } from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole, SecretKeyEncoding } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
@@ -69,13 +69,14 @@ export const groupProjectServiceFactory = ({
     if (!project) throw new NotFoundError({ message: `Failed to find project with ID ${projectId}` });
     if (project.version < 2) throw new BadRequestError({ message: `Failed to add group to E2EE project` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      project.id,
+      projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Groups);
 
     const group = await groupDAL.findOne({ orgId: actorOrgId, id: groupId });
@@ -237,13 +238,14 @@ export const groupProjectServiceFactory = ({
 
     if (!project) throw new NotFoundError({ message: `Failed to find project with ID ${projectId}` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      project.id,
+      projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Groups);
 
     const group = await groupDAL.findOne({ orgId: actorOrgId, id: groupId });
@@ -339,13 +341,14 @@ export const groupProjectServiceFactory = ({
     const groupProjectMembership = await groupProjectDAL.findOne({ groupId: group.id, projectId: project.id });
     if (!groupProjectMembership) throw new NotFoundError({ message: `Failed to find group with ID ${groupId}` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      project.id,
+      projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Groups);
 
     const deletedProjectGroup = await groupProjectDAL.transaction(async (tx) => {
@@ -383,13 +386,14 @@ export const groupProjectServiceFactory = ({
       throw new NotFoundError({ message: `Failed to find project with ID ${projectId}` });
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      project.id,
+      projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Groups);
 
     const groupMemberships = await groupProjectDAL.findByProjectId(project.id);
@@ -410,13 +414,14 @@ export const groupProjectServiceFactory = ({
       throw new NotFoundError({ message: `Failed to find project with ID ${projectId}` });
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      project.id,
+      projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Groups);
 
     const [groupMembership] = await groupProjectDAL.findByProjectId(project.id, {

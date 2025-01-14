@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import ms from "ms";
 
-import { ProjectType } from "@app/db/schemas";
+import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -54,15 +54,15 @@ export const sshCertificateTemplateServiceFactory = ({
       });
     }
 
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      ca.projectId,
+      projectId: ca.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SSH
+    });
 
-    ForbidOnInvalidProjectType(ProjectType.SSH);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       ProjectPermissionSub.SshCertificateTemplates
@@ -127,15 +127,15 @@ export const sshCertificateTemplateServiceFactory = ({
       });
     }
 
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      certTemplate.projectId,
+      projectId: certTemplate.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SSH
+    });
 
-    ForbidOnInvalidProjectType(ProjectType.SSH);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
       ProjectPermissionSub.SshCertificateTemplates
@@ -196,15 +196,15 @@ export const sshCertificateTemplateServiceFactory = ({
       });
     }
 
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      certificateTemplate.projectId,
+      projectId: certificateTemplate.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SSH
+    });
 
-    ForbidOnInvalidProjectType(ProjectType.SSH);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
       ProjectPermissionSub.SshCertificateTemplates
@@ -223,15 +223,15 @@ export const sshCertificateTemplateServiceFactory = ({
       });
     }
 
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      certTemplate.projectId,
+      projectId: certTemplate.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SSH
+    });
 
-    ForbidOnInvalidProjectType(ProjectType.SSH);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
       ProjectPermissionSub.SshCertificateTemplates
