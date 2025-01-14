@@ -32,10 +32,10 @@ type SingleEnvironmentVariable struct {
 	ID          string `json:"_id"`
 	SecretPath  string `json:"secretPath"`
 	Tags        []struct {
-		ID        string `json:"_id"`
-		Name      string `json:"name"`
-		Slug      string `json:"slug"`
-		Workspace string `json:"workspace"`
+		ID    string `json:"id"`
+		Name  string `json:"name"`
+		Slug  string `json:"slug"`
+		Color string `json:"color"`
 	} `json:"tags"`
 	Comment string `json:"comment"`
 	Etag    string `json:"Etag"`

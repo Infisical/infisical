@@ -486,10 +486,10 @@ func generateExampleEnv(cmd *cobra.Command, args []string) {
 	type TagsAndSecrets struct {
 		Secrets []models.SingleEnvironmentVariable
 		Tags    []struct {
-			ID        string `json:"_id"`
-			Name      string `json:"name"`
-			Slug      string `json:"slug"`
-			Workspace string `json:"workspace"`
+			ID    string `json:"id"`
+			Name  string `json:"name"`
+			Slug  string `json:"slug"`
+			Color string `json:"color"`
 		}
 	}
 
@@ -500,10 +500,10 @@ func generateExampleEnv(cmd *cobra.Command, args []string) {
 
 	for i, secret := range secrets {
 		filteredTag := []struct {
-			ID        string "json:\"_id\""
-			Name      string "json:\"name\""
-			Slug      string "json:\"slug\""
-			Workspace string "json:\"workspace\""
+			ID    string "json:\"id\""
+			Name  string "json:\"name\""
+			Slug  string "json:\"slug\""
+			Color string "json:\"color\""
 		}{}
 
 		for _, secretTag := range secret.Tags {
