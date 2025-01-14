@@ -115,6 +115,8 @@ export const superAdminServiceFactory = ({
         })
       );
 
+      // We do this because we do not store SAML and OIDC auth values in the user
+      // authMethods field and so we infer this from the user aliases
       const isUserSamlAccessEnabled = isSamlConfiguredForUser && data.enabledLoginMethods.includes(LoginMethod.SAML);
       const isOidcConfiguredForUser = Boolean(
         await userAliasDAL.findOne({
