@@ -7,7 +7,7 @@ import { Link, Outlet, useNavigate, useRouter } from "@tanstack/react-router";
 
 import { Mfa } from "@app/components/auth/Mfa";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Menu, MenuItem } from "@app/components/v2";
+import { Menu, MenuGroup, MenuItem } from "@app/components/v2";
 import { useUser, useWorkspace } from "@app/context";
 import { useToggle } from "@app/hooks";
 import {
@@ -22,7 +22,6 @@ import { ProjectType } from "@app/hooks/api/workspace/types";
 import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
 import { InsecureConnectionBanner } from "../OrganizationLayout/components/InsecureConnectionBanner";
-import { SidebarFooter } from "../OrganizationLayout/components/SidebarFooter";
 import { ProjectSelect } from "./components/ProjectSelect";
 import { SidebarHeader } from "./components/SidebarHeader";
 
@@ -105,144 +104,146 @@ export const ProjectLayout = () => {
           <aside className="dark w-full border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60">
             <nav className="items-between flex h-full flex-col justify-between overflow-y-auto dark:[color-scheme:dark]">
               <div>
-                <SidebarHeader onChangeOrg={handleOrgChange} />
                 <ProjectSelect />
                 <div className="px-1">
                   <Menu>
-                    {isSecretManager && (
-                      <Link
-                        to={`/${ProjectType.SecretManager}/$projectId/overview` as const}
-                        params={{
-                          projectId: currentWorkspace.id
-                        }}
-                      >
-                        {({ isActive }) => (
-                          <MenuItem isSelected={isActive} icon="lock-closed">
-                            {t("nav.menu.secrets")}
-                          </MenuItem>
-                        )}
-                      </Link>
-                    )}
-                    {isCertManager && (
-                      <Link
-                        to={`/${ProjectType.CertificateManager}/$projectId/overview` as const}
-                        params={{
-                          projectId: currentWorkspace.id
-                        }}
-                      >
-                        {({ isActive }) => (
-                          <MenuItem isSelected={isActive} icon="lock-closed">
-                            Overview
-                          </MenuItem>
-                        )}
-                      </Link>
-                    )}
-                    {isCmek && (
-                      <Link
-                        to={`/${ProjectType.KMS}/$projectId/overview` as const}
-                        params={{
-                          projectId: currentWorkspace.id
-                        }}
-                      >
-                        {({ isActive }) => (
-                          <MenuItem isSelected={isActive} icon="lock-closed">
-                            Overview
-                          </MenuItem>
-                        )}
-                      </Link>
-                    )}
-                    {isSSH && (
-                      <Link
-                        to={`/${ProjectType.SSH}/$projectId/overview` as const}
-                        params={{
-                          projectId: currentWorkspace.id
-                        }}
-                      >
-                        {({ isActive }) => (
-                          <MenuItem isSelected={isActive} icon="lock-closed">
-                            Overview
-                          </MenuItem>
-                        )}
-                      </Link>
-                    )}
-                    <Link
-                      to={`/${currentWorkspace.type}/$projectId/access-management` as const}
-                      params={{
-                        projectId: currentWorkspace.id
-                      }}
-                    >
-                      {({ isActive }) => (
-                        <MenuItem isSelected={isActive} icon="groups">
-                          Access Control
-                        </MenuItem>
+                    <MenuGroup title="Main Menu">
+                      {isSecretManager && (
+                        <Link
+                          to={`/${ProjectType.SecretManager}/$projectId/overview` as const}
+                          params={{
+                            projectId: currentWorkspace.id
+                          }}
+                        >
+                          {({ isActive }) => (
+                            <MenuItem isSelected={isActive} icon="lock-closed">
+                              {t("nav.menu.secrets")}
+                            </MenuItem>
+                          )}
+                        </Link>
                       )}
-                    </Link>
-                    {isSecretManager && (
-                      <Link
-                        to={`/${ProjectType.SecretManager}/$projectId/integrations` as const}
-                        params={{
-                          projectId: currentWorkspace.id
-                        }}
-                      >
-                        {({ isActive }) => (
-                          <MenuItem isSelected={isActive} icon="jigsaw-puzzle">
-                            {t("nav.menu.integrations")}
-                          </MenuItem>
-                        )}
-                      </Link>
-                    )}
-                    {isSecretManager && (
-                      <Link
-                        to={`/${ProjectType.SecretManager}/$projectId/secret-rotation` as const}
-                        params={{
-                          projectId: currentWorkspace.id
-                        }}
-                      >
-                        {({ isActive }) => (
-                          <MenuItem isSelected={isActive} icon="rotation">
-                            Secret Rotation
-                          </MenuItem>
-                        )}
-                      </Link>
-                    )}
-                    {isSecretManager && (
-                      <Link
-                        to={`/${ProjectType.SecretManager}/$projectId/approval` as const}
-                        params={{
-                          projectId: currentWorkspace.id
-                        }}
-                      >
-                        {({ isActive }) => (
-                          <MenuItem isSelected={isActive} icon="circular-check">
-                            Approvals
-                            {Boolean(
-                              secretApprovalReqCount?.open ||
-                                accessApprovalRequestCount?.pendingCount
-                            ) && (
-                              <span className="ml-2 rounded border border-primary-400 bg-primary-600 px-1 py-0.5 text-xs font-semibold text-black">
-                                {pendingRequestsCount}
-                              </span>
-                            )}
-                          </MenuItem>
-                        )}
-                      </Link>
-                    )}
-                    <Link
-                      to={`/${currentWorkspace.type}/$projectId/settings` as const}
-                      params={{
-                        projectId: currentWorkspace.id
-                      }}
-                    >
-                      {({ isActive }) => (
-                        <MenuItem isSelected={isActive} icon="toggle-settings">
-                          {t("nav.menu.project-settings")}
-                        </MenuItem>
+                      {isCertManager && (
+                        <Link
+                          to={`/${ProjectType.CertificateManager}/$projectId/overview` as const}
+                          params={{
+                            projectId: currentWorkspace.id
+                          }}
+                        >
+                          {({ isActive }) => (
+                            <MenuItem isSelected={isActive} icon="lock-closed">
+                              Overview
+                            </MenuItem>
+                          )}
+                        </Link>
                       )}
-                    </Link>
+                      {isCmek && (
+                        <Link
+                          to={`/${ProjectType.KMS}/$projectId/overview` as const}
+                          params={{
+                            projectId: currentWorkspace.id
+                          }}
+                        >
+                          {({ isActive }) => (
+                            <MenuItem isSelected={isActive} icon="lock-closed">
+                              Overview
+                            </MenuItem>
+                          )}
+                        </Link>
+                      )}
+                      {isSSH && (
+                        <Link
+                          to={`/${ProjectType.SSH}/$projectId/overview` as const}
+                          params={{
+                            projectId: currentWorkspace.id
+                          }}
+                        >
+                          {({ isActive }) => (
+                            <MenuItem isSelected={isActive} icon="lock-closed">
+                              Overview
+                            </MenuItem>
+                          )}
+                        </Link>
+                      )}
+                      {isSecretManager && (
+                        <Link
+                          to={`/${ProjectType.SecretManager}/$projectId/integrations` as const}
+                          params={{
+                            projectId: currentWorkspace.id
+                          }}
+                        >
+                          {({ isActive }) => (
+                            <MenuItem isSelected={isActive} icon="jigsaw-puzzle">
+                              {t("nav.menu.integrations")}
+                            </MenuItem>
+                          )}
+                        </Link>
+                      )}
+                      {isSecretManager && (
+                        <Link
+                          to={`/${ProjectType.SecretManager}/$projectId/secret-rotation` as const}
+                          params={{
+                            projectId: currentWorkspace.id
+                          }}
+                        >
+                          {({ isActive }) => (
+                            <MenuItem isSelected={isActive} icon="rotation">
+                              Secret Rotation
+                            </MenuItem>
+                          )}
+                        </Link>
+                      )}
+                      {isSecretManager && (
+                        <Link
+                          to={`/${ProjectType.SecretManager}/$projectId/approval` as const}
+                          params={{
+                            projectId: currentWorkspace.id
+                          }}
+                        >
+                          {({ isActive }) => (
+                            <MenuItem isSelected={isActive} icon="circular-check">
+                              Approvals
+                              {Boolean(
+                                secretApprovalReqCount?.open ||
+                                  accessApprovalRequestCount?.pendingCount
+                              ) && (
+                                <span className="ml-2 rounded border border-primary-400 bg-primary-600 px-1 py-0.5 text-xs font-semibold text-black">
+                                  {pendingRequestsCount}
+                                </span>
+                              )}
+                            </MenuItem>
+                          )}
+                        </Link>
+                      )}
+                    </MenuGroup>
+                    <MenuGroup title="Others">
+                      <Link
+                        to={`/${currentWorkspace.type}/$projectId/access-management` as const}
+                        params={{
+                          projectId: currentWorkspace.id
+                        }}
+                      >
+                        {({ isActive }) => (
+                          <MenuItem isSelected={isActive} icon="groups">
+                            Access Control
+                          </MenuItem>
+                        )}
+                      </Link>
+                      <Link
+                        to={`/${currentWorkspace.type}/$projectId/settings` as const}
+                        params={{
+                          projectId: currentWorkspace.id
+                        }}
+                      >
+                        {({ isActive }) => (
+                          <MenuItem isSelected={isActive} icon="toggle-settings">
+                            {t("nav.menu.project-settings")}
+                          </MenuItem>
+                        )}
+                      </Link>
+                    </MenuGroup>
                   </Menu>
                 </div>
               </div>
-              <SidebarFooter />
             </nav>
           </aside>
           <main className="flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800 dark:[color-scheme:dark]">

@@ -3,12 +3,17 @@ import { createFileRoute } from "@tanstack/react-router";
 import { workspaceKeys } from "@app/hooks/api";
 import { fetchUserProjectPermissions, roleQueryKeys } from "@app/hooks/api/roles/queries";
 import { fetchWorkspaceById } from "@app/hooks/api/workspace/queries";
+import { OrganizationLayout } from "@app/layouts/OrganizationLayout";
 import { ProjectLayout } from "@app/layouts/ProjectLayout";
 
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/kms/$projectId/_kms-layout"
 )({
-  component: ProjectLayout,
+  component: () => (
+    <OrganizationLayout>
+      <ProjectLayout />
+    </OrganizationLayout>
+  ),
   beforeLoad: async ({ params, context }) => {
     await context.queryClient.ensureQueryData({
       queryKey: workspaceKeys.getWorkspaceById(params.projectId),

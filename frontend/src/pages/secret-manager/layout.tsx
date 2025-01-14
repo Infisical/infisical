@@ -4,11 +4,16 @@ import { workspaceKeys } from "@app/hooks/api";
 import { fetchUserProjectPermissions, roleQueryKeys } from "@app/hooks/api/roles/queries";
 import { fetchWorkspaceById } from "@app/hooks/api/workspace/queries";
 import { ProjectLayout } from "@app/layouts/ProjectLayout";
+import { OrganizationLayout } from "@app/layouts/OrganizationLayout";
 
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout"
 )({
-  component: ProjectLayout,
+  component: () => (
+    <OrganizationLayout>
+      <ProjectLayout />
+    </OrganizationLayout>
+  ),
   beforeLoad: async ({ params, context }) => {
     await context.queryClient.ensureQueryData({
       queryKey: workspaceKeys.getWorkspaceById(params.projectId),
