@@ -3764,7 +3764,9 @@ const syncSecretsCloudflarePages = async ({
       )
       .catch((error) => {
         if (error instanceof AxiosError && error.response?.status === 304) {
-          logger.info("CF pages redeployment returned status code 304");
+          logger.info(
+            `syncSecretsCloudflarePages: CF pages redeployment returned status code 304 for integration [id=${integration.id}]`
+          );
           return;
         }
 
