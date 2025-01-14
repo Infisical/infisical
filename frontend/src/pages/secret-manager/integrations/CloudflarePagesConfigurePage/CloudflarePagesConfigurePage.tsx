@@ -192,15 +192,17 @@ export const CloudflarePagesConfigurePage = () => {
             ))}
           </Select>
         </FormControl>
-        <div className="mb-[2.36rem] ml-1 px-6">
-          <Switch
-            id="redeploy-cloudflare-pages"
-            onCheckedChange={(isChecked: boolean) => setShouldAutoRedeploy(isChecked)}
-            isChecked={shouldAutoRedeploy}
-          >
-            Auto-redeploy service upon secret change
-          </Switch>
-        </div>
+        {targetEnvironment === "production" && (
+          <div className="mb-[2.36rem] ml-1 px-6">
+            <Switch
+              id="redeploy-cloudflare-pages"
+              onCheckedChange={(isChecked: boolean) => setShouldAutoRedeploy(isChecked)}
+              isChecked={shouldAutoRedeploy}
+            >
+              Auto-redeploy service upon secret change
+            </Switch>
+          </div>
+        )}
         <Button
           onClick={handleButtonClick}
           color="mineshaft"

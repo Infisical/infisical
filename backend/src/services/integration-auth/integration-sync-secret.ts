@@ -3711,11 +3711,10 @@ const syncSecretsCloudflarePages = async ({
   const getSecretsRes = (
     await request.get<{
       result: { deployment_configs: Record<string, { env_vars: Record<string, unknown> }> };
-    }>(`${IntegrationUrls.CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accessId}/pages/projects/${integration.app}?_=${Date.now()}`, {
+    }>(`${IntegrationUrls.CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accessId}/pages/projects/${integration.app}`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        Accept: "application/json",
-        "Cache-Control": "no-store"
+        Accept: "application/json"
       }
     })
   ).data.result.deployment_configs[integration.targetEnvironment as string].env_vars;
@@ -3751,17 +3750,28 @@ const syncSecretsCloudflarePages = async ({
   );
 
   const metadata = z.record(z.any()).parse(integration.metadata);
-  if (metadata.shouldAutoRedeploy) {
-    await request.post(
-      `${IntegrationUrls.CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accessId}/pages/projects/${integration.app}/deployments`,
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json"
+  if (metadata.shouldAutoRedeploy && integration.targetEnvironment === "production") {
+    await request
+      .post(
+        `${IntegrationUrls.CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accessId}/pages/projects/${integration.app}/deployments`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json"
+          }
         }
-      }
-    );
+      )
+      .catch((error) => {
+        if (error instanceof AxiosError && error.response?.status === 304) {
+          logger.info(
+            `syncSecretsCloudflarePages: CF pages redeployment returned status code 304 for integration [id=${integration.id}]`
+          );
+          return;
+        }
+
+        throw error;
+      });
   }
 };
 
