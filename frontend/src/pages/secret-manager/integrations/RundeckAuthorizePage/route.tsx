@@ -1,9 +1,9 @@
-import { createFileRoute, linkOptions } from "@tanstack/react-router";
+import { createFileRoute, linkOptions } from '@tanstack/react-router'
 
-import { RundeckAuthorizePage } from "./RundeckAuthorizePage";
+import { RundeckAuthorizePage } from './RundeckAuthorizePage'
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/rundeck/authorize"
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/rundeck/authorize',
 )({
   component: RundeckAuthorizePage,
   beforeLoad: ({ context, params }) => {
@@ -11,16 +11,16 @@ export const Route = createFileRoute(
       breadcrumbs: [
         ...context.breadcrumbs,
         {
-          label: "Integrations",
+          label: 'Integrations',
           link: linkOptions({
-            to: "/secret-manager/$projectId/integrations",
-            params
-          })
+            to: '/secret-manager/$projectId/integrations',
+            params,
+          }),
         },
         {
-          label: "Rundeck"
-        }
-      ]
-    };
-  }
-});
+          label: 'Rundeck',
+        },
+      ],
+    }
+  },
+})

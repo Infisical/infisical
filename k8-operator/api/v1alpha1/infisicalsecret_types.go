@@ -134,8 +134,11 @@ type InfisicalSecretSpec struct {
 	// +kubebuilder:validation:Optional
 	Authentication Authentication `json:"authentication"`
 
-	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Optional
 	ManagedSecretReference ManagedKubeSecretConfig `json:"managedSecretReference"`
+
+	// +kubebuilder:validation:Optional
+	ManagedSecretReferences []ManagedKubeSecretConfig `json:"managedSecretReferences"`
 
 	// +kubebuilder:default:=60
 	ResyncInterval int `json:"resyncInterval"`

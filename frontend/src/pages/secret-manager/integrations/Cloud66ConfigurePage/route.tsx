@@ -1,15 +1,15 @@
-import { createFileRoute, linkOptions } from "@tanstack/react-router";
-import { zodValidator } from "@tanstack/zod-adapter";
-import { z } from "zod";
+import { createFileRoute, linkOptions } from '@tanstack/react-router'
+import { zodValidator } from '@tanstack/zod-adapter'
+import { z } from 'zod'
 
-import { Cloud66ConfigurePage } from "./Cloud66ConfigurePage";
+import { Cloud66ConfigurePage } from './Cloud66ConfigurePage'
 
 const Cloud66ConfigurePageQueryParamsSchema = z.object({
-  integrationAuthId: z.string()
-});
+  integrationAuthId: z.string(),
+})
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/cloud-66/create"
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloud-66/create',
 )({
   component: Cloud66ConfigurePage,
   validateSearch: zodValidator(Cloud66ConfigurePageQueryParamsSchema),
@@ -18,16 +18,16 @@ export const Route = createFileRoute(
       breadcrumbs: [
         ...context.breadcrumbs,
         {
-          label: "Integrations",
+          label: 'Integrations',
           link: linkOptions({
-            to: "/secret-manager/$projectId/integrations",
-            params
-          })
+            to: '/secret-manager/$projectId/integrations',
+            params,
+          }),
         },
         {
-          label: "Cloud 66"
-        }
-      ]
-    };
-  }
-});
+          label: 'Cloud 66',
+        },
+      ],
+    }
+  },
+})

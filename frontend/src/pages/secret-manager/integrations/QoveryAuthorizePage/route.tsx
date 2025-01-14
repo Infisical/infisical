@@ -1,9 +1,9 @@
-import { createFileRoute, linkOptions } from "@tanstack/react-router";
+import { createFileRoute, linkOptions } from '@tanstack/react-router'
 
-import { QoveryAuthorizePage } from "./QoveryAuthorizePage";
+import { QoveryAuthorizePage } from './QoveryAuthorizePage'
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/qovery/authorize"
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/qovery/authorize',
 )({
   component: QoveryAuthorizePage,
   beforeLoad: ({ context, params }) => {
@@ -11,16 +11,16 @@ export const Route = createFileRoute(
       breadcrumbs: [
         ...context.breadcrumbs,
         {
-          label: "Integrations",
+          label: 'Integrations',
           link: linkOptions({
-            to: "/secret-manager/$projectId/integrations",
-            params
-          })
+            to: '/secret-manager/$projectId/integrations',
+            params,
+          }),
         },
         {
-          label: "Qovery"
-        }
-      ]
-    };
-  }
-});
+          label: 'Qovery',
+        },
+      ],
+    }
+  },
+})

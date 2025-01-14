@@ -13,6 +13,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
+	defaultErrors "errors"
+
 	secretsv1alpha1 "github.com/Infisical/infisical/k8-operator/api/v1alpha1"
 	"github.com/Infisical/infisical/k8-operator/packages/api"
 	controllerhelpers "github.com/Infisical/infisical/k8-operator/packages/controllerhelpers"
@@ -34,8 +36,6 @@ var infisicalSecretResourceVariablesMap map[string]util.ResourceVariables = make
 func (r *InfisicalSecretReconciler) GetLogger(req ctrl.Request) logr.Logger {
 	return r.BaseLogger.WithValues("infisicalsecret", req.NamespacedName)
 }
-
-var resourceVariablesMap map[string]util.ResourceVariables = make(map[string]util.ResourceVariables)
 
 //+kubebuilder:rbac:groups=secrets.infisical.com,resources=infisicalsecrets,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=secrets.infisical.com,resources=infisicalsecrets/status,verbs=get;update;patch
@@ -69,6 +69,24 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 				RequeueAfter: requeueTime,
 			}, nil
 		}
+	}
+
+	// It's important we don't directly modify the CRD object, so we create a copy of it and move existing data into it.
+	managedSecretReferences := infisicalSecretCRD.Spec.ManagedSecretReferences
+
+	if infisicalSecretCRD.Spec.ManagedSecretReference.SecretName != "" && managedSecretReferences != nil && len(managedSecretReferences) > 0 {
+		errMessage := "InfisicalSecret CRD cannot have both managedSecretReference and managedSecretReferences"
+		logger.Error(defaultErrors.New(errMessage), errMessage)
+		return ctrl.Result{}, defaultErrors.New(errMessage)
+	}
+
+	if infisicalSecretCRD.Spec.ManagedSecretReference.SecretName != "" {
+		logger.Info("\n\n\nThe field `managedSecretReference` will be deprecated in the near future, please use `managedSecretReferences` instead.\n\nRefer to the documentation for more information: https://infisical.com/docs/integrations/platforms/kubernetes/infisical-secret-crd\n\n\n")
+
+		if managedSecretReferences == nil {
+			managedSecretReferences = []secretsv1alpha1.ManagedKubeSecretConfig{}
+		}
+		managedSecretReferences = append(managedSecretReferences, infisicalSecretCRD.Spec.ManagedSecretReference)
 	}
 
 	// Remove finalizers if they exist. This is to support previous InfisicalSecret CRD's that have finalizers on them.
@@ -127,7 +145,7 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		api.API_CA_CERTIFICATE = ""
 	}
 
-	err = r.ReconcileInfisicalSecret(ctx, logger, infisicalSecretCRD)
+	err = r.ReconcileInfisicalSecret(ctx, logger, infisicalSecretCRD, managedSecretReferences)
 	r.SetReadyToSyncSecretsConditions(ctx, &infisicalSecretCRD, err)
 
 	if err != nil {
@@ -138,7 +156,7 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}, nil
 	}
 
-	numDeployments, err := controllerhelpers.ReconcileDeploymentsWithManagedSecrets(ctx, r.Client, logger, infisicalSecretCRD.Spec.ManagedSecretReference)
+	numDeployments, err := controllerhelpers.ReconcileDeploymentsWithMultipleManagedSecrets(ctx, r.Client, logger, managedSecretReferences)
 	r.SetInfisicalAutoRedeploymentReady(ctx, logger, &infisicalSecretCRD, numDeployments, err)
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("unable to reconcile auto redeployment. Will requeue after [requeueTime=%v]", requeueTime))

@@ -1,15 +1,15 @@
-import { createFileRoute, linkOptions } from "@tanstack/react-router";
-import z from "zod";
+import { createFileRoute, linkOptions } from '@tanstack/react-router'
+import z from 'zod'
 
-import { AzureKeyVaultAuthorizePage } from "./AzureKeyVaultAuthorizePage";
+import { AzureKeyVaultAuthorizePage } from './AzureKeyVaultAuthorizePage'
 
 const PageQueryParamsSchema = z.object({
   state: z.string(),
-  clientId: z.string().optional()
-});
+  clientId: z.string().optional(),
+})
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/authorize"
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/authorize',
 )({
   component: AzureKeyVaultAuthorizePage,
   validateSearch: PageQueryParamsSchema,
@@ -18,16 +18,16 @@ export const Route = createFileRoute(
       breadcrumbs: [
         ...context.breadcrumbs,
         {
-          label: "Integrations",
+          label: 'Integrations',
           link: linkOptions({
-            to: "/secret-manager/$projectId/integrations",
-            params
-          })
+            to: '/secret-manager/$projectId/integrations',
+            params,
+          }),
         },
         {
-          label: "Azure Key Vault"
-        }
-      ]
-    };
-  }
-});
+          label: 'Azure Key Vault',
+        },
+      ],
+    }
+  },
+})

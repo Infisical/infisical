@@ -1,15 +1,15 @@
-import { createFileRoute, linkOptions } from "@tanstack/react-router";
-import { zodValidator } from "@tanstack/zod-adapter";
-import { z } from "zod";
+import { createFileRoute, linkOptions } from '@tanstack/react-router'
+import { zodValidator } from '@tanstack/zod-adapter'
+import { z } from 'zod'
 
-import { AzureDevopsConfigurePage } from "./AzureDevopsConfigurePage";
+import { AzureDevopsConfigurePage } from './AzureDevopsConfigurePage'
 
 const AzureDevopsConfigurePageQueryParamsSchema = z.object({
-  integrationAuthId: z.string()
-});
+  integrationAuthId: z.string(),
+})
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/azure-devops/create"
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-devops/create',
 )({
   component: AzureDevopsConfigurePage,
   validateSearch: zodValidator(AzureDevopsConfigurePageQueryParamsSchema),
@@ -18,16 +18,16 @@ export const Route = createFileRoute(
       breadcrumbs: [
         ...context.breadcrumbs,
         {
-          label: "Integrations",
+          label: 'Integrations',
           link: linkOptions({
-            to: "/secret-manager/$projectId/integrations",
-            params
-          })
+            to: '/secret-manager/$projectId/integrations',
+            params,
+          }),
         },
         {
-          label: "Azure Devops"
-        }
-      ]
-    };
-  }
-});
+          label: 'Azure Devops',
+        },
+      ],
+    }
+  },
+})

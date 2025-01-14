@@ -1,16 +1,16 @@
-import { createFileRoute, linkOptions } from "@tanstack/react-router";
-import { zodValidator } from "@tanstack/zod-adapter";
-import { z } from "zod";
+import { createFileRoute, linkOptions } from '@tanstack/react-router'
+import { zodValidator } from '@tanstack/zod-adapter'
+import { z } from 'zod'
 
-import { GitLabOAuthCallbackPage } from "./GitlabOauthCallbackPage";
+import { GitLabOAuthCallbackPage } from './GitlabOauthCallbackPage'
 
 export const GitlabOAuthCallbackPageQueryParamsSchema = z.object({
-  state: z.string().catch(""),
-  code: z.coerce.string().catch("")
-});
+  state: z.string().catch(''),
+  code: z.coerce.string().catch(''),
+})
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/gitlab/oauth2/callback"
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gitlab/oauth2/callback',
 )({
   component: GitLabOAuthCallbackPage,
   validateSearch: zodValidator(GitlabOAuthCallbackPageQueryParamsSchema),
@@ -19,16 +19,16 @@ export const Route = createFileRoute(
       breadcrumbs: [
         ...context.breadcrumbs,
         {
-          label: "Integrations",
+          label: 'Integrations',
           link: linkOptions({
-            to: "/secret-manager/$projectId/integrations",
-            params
-          })
+            to: '/secret-manager/$projectId/integrations',
+            params,
+          }),
         },
         {
-          label: "GitLab"
-        }
-      ]
-    };
-  }
-});
+          label: 'GitLab',
+        },
+      ],
+    }
+  },
+})
