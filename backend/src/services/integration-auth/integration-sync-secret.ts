@@ -3711,7 +3711,7 @@ const syncSecretsCloudflarePages = async ({
   const getSecretsRes = (
     await request.get<{
       result: { deployment_configs: Record<string, { env_vars: Record<string, unknown> }> };
-    }>(`${IntegrationUrls.CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accessId}/pages/projects/${integration.app}`, {
+    }>(`${IntegrationUrls.CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accessId}/pages/projects/${integration.app}?_=${Date.now()}`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         Accept: "application/json",
