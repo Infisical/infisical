@@ -3,7 +3,7 @@ import { subject } from "@casl/ability";
 import path from "path";
 
 import {
-  ProjectOperationType,
+  ActionProjectType,
   SecretEncryptionAlgo,
   SecretKeyEncoding,
   SecretType,
@@ -183,7 +183,7 @@ export const recursivelyGetSecretPaths = ({
       projectId,
       actorAuthMethod: auth.actorAuthMethod,
       actorOrgId: auth.actorOrgId,
-      projectOperationType: ProjectOperationType.SecretManager
+      projectOperationType: ActionProjectType.SecretManager
     });
 
     // Filter out paths that the user does not have permission to access, and paths that are not in the current path

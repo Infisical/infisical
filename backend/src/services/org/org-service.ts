@@ -5,10 +5,10 @@ import jwt from "jsonwebtoken";
 import { Knex } from "knex";
 
 import {
+  ActionProjectType,
   OrgMembershipRole,
   OrgMembershipStatus,
   ProjectMembershipRole,
-  ProjectOperationType,
   ProjectVersion,
   SecretKeyEncoding,
   TableName,
@@ -780,7 +780,7 @@ export const orgServiceFactory = ({
           projectId,
           actorAuthMethod,
           actorOrgId,
-          projectOperationType: ProjectOperationType.Global
+          projectOperationType: ActionProjectType.Any
         });
         ForbiddenError.from(projectPermission).throwUnlessCan(
           ProjectPermissionActions.Create,

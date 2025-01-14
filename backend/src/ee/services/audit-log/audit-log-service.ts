@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ProjectOperationType } from "@app/db/schemas";
+import { ActionProjectType } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 
@@ -33,7 +33,7 @@ export const auditLogServiceFactory = ({
         projectId: filter.projectId,
         actorAuthMethod,
         actorOrgId,
-        projectOperationType: ProjectOperationType.Global
+        projectOperationType: ActionProjectType.Any
       });
       ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
     } else {

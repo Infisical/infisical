@@ -216,11 +216,11 @@ export enum ProjectType {
   SSH = "ssh"
 }
 
-export enum ProjectOperationType {
+export enum ActionProjectType {
   SecretManager = ProjectType.SecretManager,
   CertificateManager = ProjectType.CertificateManager,
   KMS = ProjectType.KMS,
   SSH = ProjectType.SSH,
   // project operations that happen on all types
-  Global = "global"
+  Any = "any"
 }

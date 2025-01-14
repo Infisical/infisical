@@ -1,4 +1,4 @@
-import { ProjectMembershipRole, ProjectOperationType } from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
@@ -37,7 +37,7 @@ export const secretBlindIndexServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.SecretManager
+      projectOperationType: ActionProjectType.SecretManager
     });
 
     const secretCount = await secretBlindIndexDAL.countOfSecretsWithNullSecretBlindIndex(projectId);
@@ -57,7 +57,7 @@ export const secretBlindIndexServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.SecretManager
+      projectOperationType: ActionProjectType.SecretManager
     });
     if (!hasRole(ProjectMembershipRole.Admin)) {
       throw new ForbiddenRequestError({ message: "Insufficient privileges, user must be admin" });
@@ -81,7 +81,7 @@ export const secretBlindIndexServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.SecretManager
+      projectOperationType: ActionProjectType.SecretManager
     });
     if (!hasRole(ProjectMembershipRole.Admin)) {
       throw new ForbiddenRequestError({ message: "Insufficient privileges, user must be admin" });

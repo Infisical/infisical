@@ -1,7 +1,7 @@
 import slugify from "@sindresorhus/slugify";
 import ms from "ms";
 
-import { ProjectMembershipRole, ProjectOperationType } from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -106,7 +106,7 @@ export const accessApprovalRequestServiceFactory = ({
       projectId: project.id,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.SecretManager
+      projectOperationType: ActionProjectType.SecretManager
     });
     if (!membership) {
       throw new ForbiddenRequestError({ message: "You are not a member of this project" });
@@ -280,7 +280,7 @@ export const accessApprovalRequestServiceFactory = ({
       projectId: project.id,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.SecretManager
+      projectOperationType: ActionProjectType.SecretManager
     });
     if (!membership) {
       throw new ForbiddenRequestError({ message: "You are not a member of this project" });
@@ -326,7 +326,7 @@ export const accessApprovalRequestServiceFactory = ({
       projectId: accessApprovalRequest.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.SecretManager
+      projectOperationType: ActionProjectType.SecretManager
     });
 
     if (!membership) {
@@ -431,7 +431,7 @@ export const accessApprovalRequestServiceFactory = ({
       projectId: project.id,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.SecretManager
+      projectOperationType: ActionProjectType.SecretManager
     });
     if (!membership) {
       throw new ForbiddenRequestError({ message: "You are not a member of this project" });

@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ProjectOperationType, TWebhooksInsert } from "@app/db/schemas";
+import { ActionProjectType, TWebhooksInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
@@ -51,7 +51,7 @@ export const webhookServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Webhooks);
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
@@ -100,7 +100,7 @@ export const webhookServiceFactory = ({
       projectId: webhook.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Webhooks);
 
@@ -118,7 +118,7 @@ export const webhookServiceFactory = ({
       projectId: webhook.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Webhooks);
 
@@ -136,7 +136,7 @@ export const webhookServiceFactory = ({
       projectId: webhook.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.Any
     });
 
     const project = await projectDAL.findById(webhook.projectId);
@@ -180,7 +180,7 @@ export const webhookServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
 

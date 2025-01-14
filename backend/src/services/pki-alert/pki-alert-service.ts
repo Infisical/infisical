@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ProjectOperationType, ProjectType } from "@app/db/schemas";
+import { ActionProjectType, ProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -92,7 +92,7 @@ export const pkiAlertServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.CertificateManager
+      projectOperationType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.PkiAlerts);
@@ -122,7 +122,7 @@ export const pkiAlertServiceFactory = ({
       projectId: alert.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.CertificateManager
+      projectOperationType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PkiAlerts);
@@ -149,7 +149,7 @@ export const pkiAlertServiceFactory = ({
       projectId: alert.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.Any
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.PkiAlerts);
@@ -182,7 +182,7 @@ export const pkiAlertServiceFactory = ({
       projectId: alert.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.CertificateManager
+      projectOperationType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.PkiAlerts);

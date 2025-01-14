@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ProjectOperationType } from "@app/db/schemas";
+import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -30,7 +30,7 @@ export const secretTagServiceFactory = ({ secretTagDAL, permissionService }: TSe
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.SecretManager
+      projectOperationType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Tags);
 
@@ -62,7 +62,7 @@ export const secretTagServiceFactory = ({ secretTagDAL, permissionService }: TSe
       projectId: tag.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.SecretManager
+      projectOperationType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Tags);
 
@@ -80,7 +80,7 @@ export const secretTagServiceFactory = ({ secretTagDAL, permissionService }: TSe
       projectId: tag.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.SecretManager
+      projectOperationType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Tags);
 
@@ -98,7 +98,7 @@ export const secretTagServiceFactory = ({ secretTagDAL, permissionService }: TSe
       projectId: tag.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.SecretManager
+      projectOperationType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
 
@@ -115,7 +115,7 @@ export const secretTagServiceFactory = ({ secretTagDAL, permissionService }: TSe
       projectId: tag.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.SecretManager
+      projectOperationType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
 
@@ -129,7 +129,7 @@ export const secretTagServiceFactory = ({ secretTagDAL, permissionService }: TSe
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.SecretManager
+      projectOperationType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
 

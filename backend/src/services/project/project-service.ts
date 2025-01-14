@@ -2,8 +2,8 @@ import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
 import {
+  ActionProjectType,
   ProjectMembershipRole,
-  ProjectOperationType,
   ProjectType,
   ProjectVersion,
   TProjectEnvironments
@@ -439,7 +439,7 @@ export const projectServiceFactory = ({
       projectId: project.id,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Project);
 
@@ -523,7 +523,7 @@ export const projectServiceFactory = ({
       projectId: project.id,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.Any
     });
     return project;
   };
@@ -537,7 +537,7 @@ export const projectServiceFactory = ({
       projectId: project.id,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
 
@@ -563,7 +563,7 @@ export const projectServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
 
@@ -592,7 +592,7 @@ export const projectServiceFactory = ({
       projectId: project.id,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.Any
     });
 
     if (!hasRole(ProjectMembershipRole.Admin))
@@ -624,7 +624,7 @@ export const projectServiceFactory = ({
       projectId: project.id,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.Any
     });
 
     if (!hasRole(ProjectMembershipRole.Admin)) {
@@ -657,7 +657,7 @@ export const projectServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
 
@@ -679,7 +679,7 @@ export const projectServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.Any
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Project);
@@ -717,7 +717,7 @@ export const projectServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets);
 
@@ -763,7 +763,7 @@ export const projectServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -814,7 +814,7 @@ export const projectServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
@@ -869,7 +869,7 @@ export const projectServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PkiAlerts);
@@ -905,7 +905,7 @@ export const projectServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PkiCollections);
@@ -942,7 +942,7 @@ export const projectServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -973,7 +973,7 @@ export const projectServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.SSH
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -1009,7 +1009,7 @@ export const projectServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.SSH
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificates);
@@ -1048,7 +1048,7 @@ export const projectServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.SSH
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -1083,7 +1083,7 @@ export const projectServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.Any
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
@@ -1111,7 +1111,7 @@ export const projectServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.Any
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
@@ -1141,7 +1141,7 @@ export const projectServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.Any
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
@@ -1164,7 +1164,7 @@ export const projectServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.Any
     });
 
     if (!membership) {
@@ -1197,7 +1197,7 @@ export const projectServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.Any
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
@@ -1246,7 +1246,7 @@ export const projectServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.Any
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);

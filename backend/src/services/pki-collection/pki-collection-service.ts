@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ProjectOperationType, ProjectType, TPkiCollectionItems } from "@app/db/schemas";
+import { ActionProjectType, ProjectType, TPkiCollectionItems } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -68,7 +68,7 @@ export const pkiCollectionServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.CertificateManager
+      projectOperationType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -101,7 +101,7 @@ export const pkiCollectionServiceFactory = ({
       projectId: pkiCollection.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.CertificateManager
+      projectOperationType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PkiCollections);
@@ -126,7 +126,7 @@ export const pkiCollectionServiceFactory = ({
       projectId: pkiCollection.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.CertificateManager
+      projectOperationType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.PkiCollections);
@@ -154,7 +154,7 @@ export const pkiCollectionServiceFactory = ({
       projectId: pkiCollection.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.CertificateManager
+      projectOperationType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -184,7 +184,7 @@ export const pkiCollectionServiceFactory = ({
       projectId: pkiCollection.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.CertificateManager
+      projectOperationType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PkiCollections);
@@ -228,7 +228,7 @@ export const pkiCollectionServiceFactory = ({
       projectId: pkiCollection.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.CertificateManager
+      projectOperationType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -322,7 +322,7 @@ export const pkiCollectionServiceFactory = ({
       projectId: pkiCollection.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.CertificateManager
+      projectOperationType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(

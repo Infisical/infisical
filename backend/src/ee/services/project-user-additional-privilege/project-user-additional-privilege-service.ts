@@ -2,7 +2,7 @@ import { ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
 import { PackRule, packRules, unpackRules } from "@casl/ability/extra";
 import ms from "ms";
 
-import { ProjectOperationType, TableName } from "@app/db/schemas";
+import { ActionProjectType, TableName } from "@app/db/schemas";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { UnpackedPermissionSchema } from "@app/server/routes/santizedSchemas/permission";
@@ -61,7 +61,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       projectId: projectMembership.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Member);
     const { permission: targetUserPermission } = await permissionService.getProjectPermission({
@@ -70,7 +70,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       projectId: projectMembership.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.Any
     });
 
     // we need to validate that the privilege given is not higher than the assigning users permission
@@ -148,7 +148,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       projectId: projectMembership.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Member);
     const { permission: targetUserPermission } = await permissionService.getProjectPermission({
@@ -157,7 +157,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       projectId: projectMembership.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.Any
     });
 
     // we need to validate that the privilege given is not higher than the assigning users permission
@@ -234,7 +234,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       projectId: projectMembership.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Member);
 
@@ -271,7 +271,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       projectId: projectMembership.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
 
@@ -298,7 +298,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       projectId: projectMembership.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.Global
+      projectOperationType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
 

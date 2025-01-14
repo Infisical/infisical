@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import bcrypt from "bcrypt";
 
-import { ProjectOperationType, TCertificateTemplateEstConfigsUpdate } from "@app/db/schemas";
+import { ActionProjectType, TCertificateTemplateEstConfigsUpdate } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -73,7 +73,7 @@ export const certificateTemplateServiceFactory = ({
       projectId: ca.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.CertificateManager
+      projectOperationType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -135,7 +135,7 @@ export const certificateTemplateServiceFactory = ({
       projectId: certTemplate.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.CertificateManager
+      projectOperationType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -193,7 +193,7 @@ export const certificateTemplateServiceFactory = ({
       projectId: certTemplate.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.CertificateManager
+      projectOperationType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -220,7 +220,7 @@ export const certificateTemplateServiceFactory = ({
       projectId: certTemplate.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.CertificateManager
+      projectOperationType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -262,7 +262,7 @@ export const certificateTemplateServiceFactory = ({
       projectId: certTemplate.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.CertificateManager
+      projectOperationType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -347,7 +347,7 @@ export const certificateTemplateServiceFactory = ({
       projectId: certTemplate.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ProjectOperationType.CertificateManager
+      projectOperationType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -429,7 +429,7 @@ export const certificateTemplateServiceFactory = ({
         projectId: certTemplate.projectId,
         actorAuthMethod: dto.actorAuthMethod,
         actorOrgId: dto.actorOrgId,
-        projectOperationType: ProjectOperationType.CertificateManager
+        projectOperationType: ActionProjectType.CertificateManager
       });
 
       ForbiddenError.from(permission).throwUnlessCan(

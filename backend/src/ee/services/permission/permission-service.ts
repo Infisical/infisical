@@ -4,9 +4,9 @@ import { MongoQuery } from "@ucast/mongo2js";
 import handlebars from "handlebars";
 
 import {
+  ActionProjectType,
   OrgMembershipRole,
   ProjectMembershipRole,
-  ProjectOperationType,
   ServiceTokenScopes,
   TIdentityProjectMemberships,
   TProjectMemberships
@@ -227,10 +227,7 @@ export const permissionServiceFactory = ({
 
     validateOrgSSO(authMethod, userProjectPermission.orgAuthEnforced);
 
-    if (
-      projectOperationType !== ProjectOperationType.Global &&
-      projectOperationType !== userProjectPermission.projectType
-    ) {
+    if (projectOperationType !== ActionProjectType.Any && projectOperationType !== userProjectPermission.projectType) {
       throw new BadRequestError({
         message: `The project is of type ${userProjectPermission.projectType}. Operations of type ${projectOperationType} are not allowed.`
       });
@@ -305,7 +302,7 @@ export const permissionServiceFactory = ({
     }
 
     if (
-      projectOperationType !== ProjectOperationType.Global &&
+      projectOperationType !== ActionProjectType.Any &&
       projectOperationType !== identityProjectPermission.projectType
     ) {
       throw new BadRequestError({
@@ -387,7 +384,7 @@ export const permissionServiceFactory = ({
       });
     }
 
-    if (projectOperationType !== ProjectOperationType.Global && projectOperationType !== serviceTokenProject.type) {
+    if (projectOperationType !== ActionProjectType.Any && projectOperationType !== serviceTokenProject.type) {
       throw new BadRequestError({
         message: `The project is of type ${serviceTokenProject.type}. Operations of type ${projectOperationType} are not allowed.`
       });
