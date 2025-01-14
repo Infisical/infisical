@@ -89,6 +89,12 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		managedSecretReferences = append(managedSecretReferences, infisicalSecretCRD.Spec.ManagedSecretReference)
 	}
 
+	if len(managedSecretReferences) == 0 {
+		errMessage := "InfisicalSecret CRD must have at least one managed secret reference set in the `managedSecretReferences` field"
+		logger.Error(defaultErrors.New(errMessage), errMessage)
+		return ctrl.Result{}, defaultErrors.New(errMessage)
+	}
+
 	// Remove finalizers if they exist. This is to support previous InfisicalSecret CRD's that have finalizers on them.
 	// In order to delete secrets with finalizers, we first remove the finalizers so we can use the simplified and improved deletion process
 	if !infisicalSecretCRD.ObjectMeta.DeletionTimestamp.IsZero() && len(infisicalSecretCRD.ObjectMeta.Finalizers) > 0 {
