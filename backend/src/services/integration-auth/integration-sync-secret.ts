@@ -3715,7 +3715,7 @@ const syncSecretsCloudflarePages = async ({
       headers: {
         Authorization: `Bearer ${accessToken}`,
         Accept: "application/json",
-        "Cache-Control": "no-cache"
+        "Cache-Control": "no-store"
       }
     })
   ).data.result.deployment_configs[integration.targetEnvironment as string].env_vars;
