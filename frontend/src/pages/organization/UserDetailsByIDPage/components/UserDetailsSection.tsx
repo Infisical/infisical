@@ -133,7 +133,7 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
                   variant="plain"
                   className="group relative ml-2"
                   onClick={() => {
-                    navigator.clipboard.writeText("");
+                    navigator.clipboard.writeText(membership.user.username);
                     setCopyTextUsername("Copied");
                   }}
                 >
