@@ -59,7 +59,7 @@ export const secretRotationServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRotation);
 
@@ -88,7 +88,7 @@ export const secretRotationServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
@@ -197,7 +197,7 @@ export const secretRotationServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRotation);
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
@@ -243,7 +243,7 @@ export const secretRotationServiceFactory = ({
       projectId: project.id,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretRotation);
     await secretRotationQueue.removeFromQueue(doc.id, doc.interval);
@@ -261,7 +261,7 @@ export const secretRotationServiceFactory = ({
       projectId: doc.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,

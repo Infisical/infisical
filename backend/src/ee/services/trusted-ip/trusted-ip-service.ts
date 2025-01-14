@@ -34,7 +34,7 @@ export const trustedIpServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.Any
+      actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
     const trustedIps = await trustedIpDAL.find({
@@ -59,7 +59,7 @@ export const trustedIpServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.Any
+      actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.IpAllowList);
 
@@ -105,7 +105,7 @@ export const trustedIpServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.Any
+      actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.IpAllowList);
 
@@ -151,7 +151,7 @@ export const trustedIpServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.Any
+      actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.IpAllowList);
 

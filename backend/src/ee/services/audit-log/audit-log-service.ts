@@ -33,7 +33,7 @@ export const auditLogServiceFactory = ({
         projectId: filter.projectId,
         actorAuthMethod,
         actorOrgId,
-        projectOperationType: ActionProjectType.Any
+        actionProjectType: ActionProjectType.Any
       });
       ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
     } else {

@@ -198,7 +198,7 @@ export const secretV2BridgeServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
@@ -326,7 +326,7 @@ export const secretV2BridgeServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     if (inputSecret.newSecretName === "") {
@@ -515,7 +515,7 @@ export const secretV2BridgeServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
@@ -617,7 +617,7 @@ export const secretV2BridgeServiceFactory = ({
         projectId,
         actorAuthMethod,
         actorOrgId,
-        projectOperationType: ActionProjectType.SecretManager
+        actionProjectType: ActionProjectType.SecretManager
       });
 
       ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets);
@@ -664,7 +664,7 @@ export const secretV2BridgeServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets);
@@ -748,7 +748,7 @@ export const secretV2BridgeServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
     if (!isInternal) {
       ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets);
@@ -798,7 +798,7 @@ export const secretV2BridgeServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets);
@@ -952,7 +952,7 @@ export const secretV2BridgeServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
@@ -1109,7 +1109,7 @@ export const secretV2BridgeServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
@@ -1254,7 +1254,7 @@ export const secretV2BridgeServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
@@ -1465,7 +1465,7 @@ export const secretV2BridgeServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
@@ -1577,7 +1577,7 @@ export const secretV2BridgeServiceFactory = ({
       projectId: folder.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
@@ -1610,7 +1610,7 @@ export const secretV2BridgeServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     if (!hasRole(ProjectMembershipRole.Admin))
@@ -1658,7 +1658,7 @@ export const secretV2BridgeServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     const sourceFolder = await folderDAL.findBySecretPath(projectId, sourceEnvironment, sourceSecretPath);
@@ -2016,7 +2016,7 @@ export const secretV2BridgeServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(

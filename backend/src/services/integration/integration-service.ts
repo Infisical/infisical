@@ -87,7 +87,7 @@ export const integrationServiceFactory = ({
       projectId: integrationAuth.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
 
@@ -166,7 +166,7 @@ export const integrationServiceFactory = ({
       projectId: integration.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Integrations);
 
@@ -233,7 +233,7 @@ export const integrationServiceFactory = ({
       projectId: integration.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
 
@@ -261,7 +261,7 @@ export const integrationServiceFactory = ({
       projectId: integration.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
 
@@ -304,7 +304,7 @@ export const integrationServiceFactory = ({
       projectId: integration.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Integrations);
 
@@ -341,7 +341,7 @@ export const integrationServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
 
@@ -361,7 +361,7 @@ export const integrationServiceFactory = ({
       projectId: integration.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
 

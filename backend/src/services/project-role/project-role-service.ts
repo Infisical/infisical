@@ -64,7 +64,7 @@ export const projectRoleServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.Any
+      actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Role);
     const existingRole = await projectRoleDAL.findOne({ slug: data.slug, projectId });
@@ -102,7 +102,7 @@ export const projectRoleServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.Any
+      actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
     if (roleSlug !== "custom" && Object.values(ProjectMembershipRole).includes(roleSlug as ProjectMembershipRole)) {
@@ -125,7 +125,7 @@ export const projectRoleServiceFactory = ({
       projectId: projectRole.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.Any
+      actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Role);
 
@@ -153,7 +153,7 @@ export const projectRoleServiceFactory = ({
       projectId: projectRole.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.Any
+      actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Role);
 
@@ -195,7 +195,7 @@ export const projectRoleServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.Any
+      actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
     const customRoles = await projectRoleDAL.find(
@@ -218,7 +218,7 @@ export const projectRoleServiceFactory = ({
       projectId,
       authMethod: actorAuthMethod,
       userOrgId: actorOrgId,
-      projectOperationType: ActionProjectType.Any
+      actionProjectType: ActionProjectType.Any
     });
     return { permissions: packRules(permission.rules), membership };
   };

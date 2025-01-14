@@ -15,7 +15,7 @@ export type TGetUserProjectPermissionArg = {
   userId: string;
   projectId: string;
   authMethod: ActorAuthMethod;
-  projectOperationType: ActionProjectType;
+  actionProjectType: ActionProjectType;
   userOrgId?: string;
 };
 
@@ -23,14 +23,14 @@ export type TGetIdentityProjectPermissionArg = {
   identityId: string;
   projectId: string;
   identityOrgId?: string;
-  projectOperationType: ActionProjectType;
+  actionProjectType: ActionProjectType;
 };
 
 export type TGetServiceTokenProjectPermissionArg = {
   serviceTokenId: string;
   projectId: string;
   actorOrgId?: string;
-  projectOperationType: ActionProjectType;
+  actionProjectType: ActionProjectType;
 };
 
 export type TGetProjectPermissionArg = {
@@ -39,5 +39,5 @@ export type TGetProjectPermissionArg = {
   projectId: string;
   actorAuthMethod: ActorAuthMethod;
   actorOrgId?: string;
-  projectOperationType: ActionProjectType;
+  actionProjectType: ActionProjectType;
 };

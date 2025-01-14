@@ -73,7 +73,7 @@ export const certificateAuthorityCrlServiceFactory = ({
       projectId: ca.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.CertificateManager
+      actionProjectType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(

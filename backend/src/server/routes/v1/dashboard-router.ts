@@ -226,7 +226,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         projectId,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectOperationType: ActionProjectType.SecretManager
+        actionProjectType: ActionProjectType.SecretManager
       });
 
       const allowedDynamicSecretEnvironments = // filter envs user has access to

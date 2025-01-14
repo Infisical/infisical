@@ -58,7 +58,7 @@ export const secretFolderServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -157,7 +157,7 @@ export const secretFolderServiceFactory = ({
       projectId: project.id,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     folders.forEach(({ environment, path: secretPath }) => {
@@ -267,7 +267,7 @@ export const secretFolderServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -348,7 +348,7 @@ export const secretFolderServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -405,7 +405,7 @@ export const secretFolderServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
@@ -449,7 +449,7 @@ export const secretFolderServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     const envs = await projectEnvDAL.findBySlugs(projectId, environments);
@@ -491,7 +491,7 @@ export const secretFolderServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     const envs = await projectEnvDAL.findBySlugs(projectId, environments);
@@ -527,7 +527,7 @@ export const secretFolderServiceFactory = ({
       projectId: folder.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(folder.projectId, [folder.id]);
@@ -556,7 +556,7 @@ export const secretFolderServiceFactory = ({
       projectId,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     const envs = await projectEnvDAL.findBySlugs(projectId, environments);

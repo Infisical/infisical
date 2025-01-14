@@ -89,7 +89,7 @@ export const secretSnapshotServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
 
@@ -126,7 +126,7 @@ export const secretSnapshotServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
 
@@ -155,7 +155,7 @@ export const secretSnapshotServiceFactory = ({
       projectId: snapshot.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
@@ -331,7 +331,7 @@ export const secretSnapshotServiceFactory = ({
       projectId: snapshot.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,

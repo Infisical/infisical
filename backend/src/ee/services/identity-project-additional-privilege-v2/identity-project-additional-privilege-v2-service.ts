@@ -61,7 +61,7 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       projectId: identityProjectMembership.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.Any
+      actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
@@ -73,7 +73,7 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       projectId: identityProjectMembership.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.Any
+      actionProjectType: ActionProjectType.Any
     });
 
     // we need to validate that the privilege given is not higher than the assigning users permission
@@ -143,7 +143,7 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       projectId: identityProjectMembership.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.Any
+      actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
@@ -155,7 +155,7 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       projectId: identityProjectMembership.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.Any
+      actionProjectType: ActionProjectType.Any
     });
 
     // we need to validate that the privilege given is not higher than the assigning users permission
@@ -225,7 +225,7 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       projectId: identityProjectMembership.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.Any
+      actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
@@ -237,7 +237,7 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       projectId: identityProjectMembership.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.Any
+      actionProjectType: ActionProjectType.Any
     });
     const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, identityRolePermission);
     if (!hasRequiredPriviledges)
@@ -272,7 +272,7 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       projectId: identityProjectMembership.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.Any
+      actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
@@ -307,7 +307,7 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       projectId: identityProjectMembership.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.Any
+      actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
@@ -343,7 +343,7 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       projectId: identityProjectMembership.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.Any
+      actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,

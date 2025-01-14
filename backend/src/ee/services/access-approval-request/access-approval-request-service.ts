@@ -106,7 +106,7 @@ export const accessApprovalRequestServiceFactory = ({
       projectId: project.id,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
     if (!membership) {
       throw new ForbiddenRequestError({ message: "You are not a member of this project" });
@@ -280,7 +280,7 @@ export const accessApprovalRequestServiceFactory = ({
       projectId: project.id,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
     if (!membership) {
       throw new ForbiddenRequestError({ message: "You are not a member of this project" });
@@ -326,7 +326,7 @@ export const accessApprovalRequestServiceFactory = ({
       projectId: accessApprovalRequest.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     if (!membership) {
@@ -431,7 +431,7 @@ export const accessApprovalRequestServiceFactory = ({
       projectId: project.id,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
     if (!membership) {
       throw new ForbiddenRequestError({ message: "You are not a member of this project" });

@@ -60,7 +60,7 @@ export const sshCertificateTemplateServiceFactory = ({
       projectId: ca.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SSH
+      actionProjectType: ActionProjectType.SSH
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -133,7 +133,7 @@ export const sshCertificateTemplateServiceFactory = ({
       projectId: certTemplate.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SSH
+      actionProjectType: ActionProjectType.SSH
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -202,7 +202,7 @@ export const sshCertificateTemplateServiceFactory = ({
       projectId: certificateTemplate.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SSH
+      actionProjectType: ActionProjectType.SSH
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -229,7 +229,7 @@ export const sshCertificateTemplateServiceFactory = ({
       projectId: certTemplate.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SSH
+      actionProjectType: ActionProjectType.SSH
     });
 
     ForbiddenError.from(permission).throwUnlessCan(

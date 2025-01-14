@@ -780,7 +780,7 @@ export const orgServiceFactory = ({
           projectId,
           actorAuthMethod,
           actorOrgId,
-          projectOperationType: ActionProjectType.Any
+          actionProjectType: ActionProjectType.Any
         });
         ForbiddenError.from(projectPermission).throwUnlessCan(
           ProjectPermissionActions.Create,

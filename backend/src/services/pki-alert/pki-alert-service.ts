@@ -92,7 +92,7 @@ export const pkiAlertServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.CertificateManager
+      actionProjectType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.PkiAlerts);
@@ -122,7 +122,7 @@ export const pkiAlertServiceFactory = ({
       projectId: alert.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.CertificateManager
+      actionProjectType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PkiAlerts);
@@ -149,7 +149,7 @@ export const pkiAlertServiceFactory = ({
       projectId: alert.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.Any
+      actionProjectType: ActionProjectType.Any
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.PkiAlerts);
@@ -182,7 +182,7 @@ export const pkiAlertServiceFactory = ({
       projectId: alert.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.CertificateManager
+      actionProjectType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.PkiAlerts);

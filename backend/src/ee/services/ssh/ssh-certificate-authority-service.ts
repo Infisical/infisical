@@ -71,7 +71,7 @@ export const sshCertificateAuthorityServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SSH
+      actionProjectType: ActionProjectType.SSH
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -124,7 +124,7 @@ export const sshCertificateAuthorityServiceFactory = ({
       projectId: ca.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SSH
+      actionProjectType: ActionProjectType.SSH
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -193,7 +193,7 @@ export const sshCertificateAuthorityServiceFactory = ({
       projectId: ca.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SSH
+      actionProjectType: ActionProjectType.SSH
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -232,7 +232,7 @@ export const sshCertificateAuthorityServiceFactory = ({
       projectId: ca.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SSH
+      actionProjectType: ActionProjectType.SSH
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -274,7 +274,7 @@ export const sshCertificateAuthorityServiceFactory = ({
       projectId: sshCertificateTemplate.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SSH
+      actionProjectType: ActionProjectType.SSH
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -396,7 +396,7 @@ export const sshCertificateAuthorityServiceFactory = ({
       projectId: sshCertificateTemplate.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SSH
+      actionProjectType: ActionProjectType.SSH
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -494,7 +494,7 @@ export const sshCertificateAuthorityServiceFactory = ({
       projectId: ca.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SSH
+      actionProjectType: ActionProjectType.SSH
     });
 
     ForbiddenError.from(permission).throwUnlessCan(

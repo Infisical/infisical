@@ -205,7 +205,7 @@ export const permissionServiceFactory = ({
     projectId,
     authMethod,
     userOrgId,
-    projectOperationType
+    actionProjectType
   }: TGetUserProjectPermissionArg): Promise<TProjectPermissionRT<ActorType.USER>> => {
     const userProjectPermission = await permissionDAL.getProjectPermission(userId, projectId);
     if (!userProjectPermission) throw new ForbiddenRequestError({ name: "User not a part of the specified project" });
@@ -227,9 +227,9 @@ export const permissionServiceFactory = ({
 
     validateOrgSSO(authMethod, userProjectPermission.orgAuthEnforced);
 
-    if (projectOperationType !== ActionProjectType.Any && projectOperationType !== userProjectPermission.projectType) {
+    if (actionProjectType !== ActionProjectType.Any && actionProjectType !== userProjectPermission.projectType) {
       throw new BadRequestError({
-        message: `The project is of type ${userProjectPermission.projectType}. Operations of type ${projectOperationType} are not allowed.`
+        message: `The project is of type ${userProjectPermission.projectType}. Operations of type ${actionProjectType} are not allowed.`
       });
     }
 
@@ -281,7 +281,7 @@ export const permissionServiceFactory = ({
     identityId,
     projectId,
     identityOrgId,
-    projectOperationType
+    actionProjectType
   }: TGetIdentityProjectPermissionArg): Promise<TProjectPermissionRT<ActorType.IDENTITY>> => {
     const identityProjectPermission = await permissionDAL.getProjectIdentityPermission(identityId, projectId);
     if (!identityProjectPermission)
@@ -301,12 +301,9 @@ export const permissionServiceFactory = ({
       throw new ForbiddenRequestError({ name: "Identity is not a member of the specified organization" });
     }
 
-    if (
-      projectOperationType !== ActionProjectType.Any &&
-      projectOperationType !== identityProjectPermission.projectType
-    ) {
+    if (actionProjectType !== ActionProjectType.Any && actionProjectType !== identityProjectPermission.projectType) {
       throw new BadRequestError({
-        message: `The project is of type ${identityProjectPermission.projectType}. Operations of type ${projectOperationType} are not allowed.`
+        message: `The project is of type ${identityProjectPermission.projectType}. Operations of type ${actionProjectType} are not allowed.`
       });
     }
 
@@ -359,7 +356,7 @@ export const permissionServiceFactory = ({
     serviceTokenId,
     projectId,
     actorOrgId,
-    projectOperationType
+    actionProjectType
   }: TGetServiceTokenProjectPermissionArg) => {
     const serviceToken = await serviceTokenDAL.findById(serviceTokenId);
     if (!serviceToken) throw new NotFoundError({ message: `Service token with ID '${serviceTokenId}' not found` });
@@ -384,9 +381,9 @@ export const permissionServiceFactory = ({
       });
     }
 
-    if (projectOperationType !== ActionProjectType.Any && projectOperationType !== serviceTokenProject.type) {
+    if (actionProjectType !== ActionProjectType.Any && actionProjectType !== serviceTokenProject.type) {
       throw new BadRequestError({
-        message: `The project is of type ${serviceTokenProject.type}. Operations of type ${projectOperationType} are not allowed.`
+        message: `The project is of type ${serviceTokenProject.type}. Operations of type ${actionProjectType} are not allowed.`
       });
     }
 
@@ -536,7 +533,7 @@ export const permissionServiceFactory = ({
     projectId,
     actorAuthMethod,
     actorOrgId,
-    projectOperationType
+    actionProjectType
   }: TGetProjectPermissionArg): Promise<TProjectPermissionRT<T>> => {
     switch (actor) {
       case ActorType.USER:
@@ -545,21 +542,21 @@ export const permissionServiceFactory = ({
           projectId,
           authMethod: actorAuthMethod,
           userOrgId: actorOrgId,
-          projectOperationType
+          actionProjectType
         }) as Promise<TProjectPermissionRT<T>>;
       case ActorType.SERVICE:
         return getServiceTokenProjectPermission({
           serviceTokenId: actorId,
           projectId,
           actorOrgId,
-          projectOperationType
+          actionProjectType
         }) as Promise<TProjectPermissionRT<T>>;
       case ActorType.IDENTITY:
         return getIdentityProjectPermission({
           identityId: actorId,
           projectId,
           identityOrgId: actorOrgId,
-          projectOperationType
+          actionProjectType
         }) as Promise<TProjectPermissionRT<T>>;
       default:
         throw new BadRequestError({

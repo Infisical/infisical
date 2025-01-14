@@ -153,7 +153,7 @@ export const secretApprovalRequestServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     const count = await secretApprovalRequestDAL.findProjectRequestCount(projectId, actorId);
@@ -180,7 +180,7 @@ export const secretApprovalRequestServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
@@ -230,7 +230,7 @@ export const secretApprovalRequestServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
@@ -351,7 +351,7 @@ export const secretApprovalRequestServiceFactory = ({
       projectId: secretApprovalRequest.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
@@ -418,7 +418,7 @@ export const secretApprovalRequestServiceFactory = ({
       projectId: secretApprovalRequest.projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
@@ -475,7 +475,7 @@ export const secretApprovalRequestServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     if (
@@ -907,7 +907,7 @@ export const secretApprovalRequestServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
@@ -1188,7 +1188,7 @@ export const secretApprovalRequestServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)

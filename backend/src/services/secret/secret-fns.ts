@@ -183,7 +183,7 @@ export const recursivelyGetSecretPaths = ({
       projectId,
       actorAuthMethod: auth.actorAuthMethod,
       actorOrgId: auth.actorOrgId,
-      projectOperationType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     // Filter out paths that the user does not have permission to access, and paths that are not in the current path
