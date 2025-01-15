@@ -27,7 +27,7 @@ export const SecretScanningPage = withPermission(
   () => {
     const queryParams = useSearch({
       from: ROUTE_PATHS.Organization.SecretScanning.id
-    }) as Record<string, string>;
+    });
 
     const { config } = useServerConfig();
     const { currentOrg } = useOrganization();
