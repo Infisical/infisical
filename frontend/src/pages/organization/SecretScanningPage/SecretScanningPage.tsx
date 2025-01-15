@@ -20,7 +20,7 @@ import {
   useLinkGitAppInstallationWithOrg
 } from "@app/hooks/api/secretScanning";
 
-import { ExportSecretScansModal } from "./components/ExportResultsModal";
+import { ExportSecretScansModal } from "./components/ExportSecretScansModal";
 import { SecretScanningLogsTable } from "./components";
 
 export const SecretScanningPage = withPermission(
@@ -68,7 +68,7 @@ export const SecretScanningPage = withPermission(
 
     const generateNewIntegrationSession = async () => {
       const session = await createNewIntegrationSession({ organizationId });
-      window.location.href = `https://github.com/apps/infisical-radar-dev-2/installations/new?state=${session.sessionId}`;
+      window.location.href = `https://github.com/apps/infisical-radar/installations/new?state=${session.sessionId}`;
     };
 
     return (

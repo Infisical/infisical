@@ -6,7 +6,7 @@ import { SecretScanningPage } from "./SecretScanningPage";
 
 const SecretScanningQueryParams = z.object({
   state: z.string().catch(""),
-  installation_id: z.coerce.number().optional()
+  installation_id: z.coerce.string().optional()
 });
 
 export const Route = createFileRoute(
@@ -17,7 +17,7 @@ export const Route = createFileRoute(
   search: {
     middlewares: [
       stripSearchParams({
-        installation_id: 0,
+        installation_id: "",
         state: ""
       })
     ]

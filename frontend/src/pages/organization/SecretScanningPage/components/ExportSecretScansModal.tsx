@@ -44,7 +44,7 @@ export const ExportSecretScansModal = ({ popUp, handlePopUpToggle, gitRisks }: P
     handleSubmit,
     watch,
 
-    formState: { errors, isSubmitting }
+    formState: { isSubmitting }
   } = useForm<TFormSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -72,7 +72,6 @@ export const ExportSecretScansModal = ({ popUp, handlePopUpToggle, gitRisks }: P
   }, [gitRisks, selectedOrganization]);
 
   const onFormSubmit = async (data: TFormSchema) => {
-    console.log(data);
     const filteredRisks = gitRisks
       .filter((risk) =>
         // eslint-disable-next-line no-nested-ternary
@@ -119,7 +118,6 @@ export const ExportSecretScansModal = ({ popUp, handlePopUpToggle, gitRisks }: P
     }
   };
 
-  console.log("errors", errors);
   return (
     <form onSubmit={handleSubmit(onFormSubmit)}>
       <Modal
