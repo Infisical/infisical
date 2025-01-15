@@ -85,13 +85,11 @@ Your Audit Logs are now ready to be streamed.
 
 Each log entry sent to the external logging provider will follow the same structure.
 
-### Example
-
-Below is an example of a log entry:
+### Example Log Entry
 
 ```created-secret.json
 {
-  "id": "7dc1713b-d787-4147-9e21-770be01cc992 ",
+  "id": "7dc1713b-d787-4147-9e21-770be01cc992",
   "actor": "user",
   "actorMetadata": {
     "email": "example@infisical.com",
@@ -109,7 +107,7 @@ Below is an example of a log entry:
   },
   "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
   "userAgentType": "web",
-   "expiresAt": "2025-01-18T01:11:25.552Z",
+  "expiresAt": "2025-01-18T01:11:25.552Z",
   "createdAt": "2025-01-15T01:11:25.552Z",
   "updatedAt": "2025-01-15T01:11:25.552Z",
   "orgId": "785649f1-ff4b-4ef9-a40a-9b9878e46e57",
@@ -128,7 +126,7 @@ Below is an example of a log entry:
 </ParamField>
 
 <ParamField path="actorMetadata" type="object" required>
-  The metadata associated with the actor. This differs based on the actor type.
+  The metadata associated with the actor. This varies based on the actor type.
 
   <Accordion title="User Metadata">
     This metadata is present when the `actor` field is set to `user`.
@@ -184,7 +182,7 @@ Below is an example of a log entry:
 </ParamField>
 
 <ParamField path="eventMetadata" type="object" required>
-  The metadata associated with the event. This differs based on the event type.
+  The metadata associated with the event. This varies based on the event type.
 </ParamField>
 
 <ParamField path="userAgent" type="string">
@@ -204,7 +202,7 @@ Below is an example of a log entry:
 </ParamField>
 
 <ParamField path="updatedAt" type="string" required>
-  The last update date of the log entry. This is an unlikely to be out of sync with the `createdAt` field, as we do not update log entries after they've been created.
+  The last update date of the log entry. This is unlikely to be out of sync with the `createdAt` field, as we do not update log entries after they've been created.
 </ParamField>
 
 <ParamField path="orgId" type="string" required>
