@@ -122,7 +122,6 @@ export const secretScanningServiceFactory = ({
   const getRisksByOrg = async ({ actor, orgId, actorId, actorAuthMethod, actorOrgId, filter }: TGetOrgRisksDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.SecretScanning);
-    // const risks = await secretScanningDAL.find({ orgId }, { sort: [["createdAt", "desc"]] });
 
     const results = await secretScanningDAL.findByOrgId(orgId, filter);
 
