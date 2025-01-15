@@ -79,7 +79,7 @@ export const secretScanningDALFactory = (db: TDbClient) => {
       if (error instanceof knex.KnexTimeoutError) {
         throw new GatewayTimeoutError({
           error,
-          message: "Failed to fetch audit logs due to timeout. Add more search filters."
+          message: "Failed to fetch secret leaks due to timeout. Add more search filters."
         });
       }
 

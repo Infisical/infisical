@@ -173,13 +173,15 @@ export const SecretScanningPage = withPermission(
               )}
             </div>
             <div className="mt-8 space-y-3">
-              <div className="flex w-full items-center justify-end">
-                <SecretScanningFilter
-                  repositories={risksData?.repos || []}
-                  handlePopUpToggle={handlePopUpToggle}
-                  control={control}
-                />
-              </div>
+              {integrationEnabled && (
+                <div className="flex w-full items-center justify-end">
+                  <SecretScanningFilter
+                    repositories={risksData?.repos || []}
+                    handlePopUpToggle={handlePopUpToggle}
+                    control={control}
+                  />
+                </div>
+              )}
               <SecretScanningLogsTable gitRisks={risksData?.risks} isPending={isPending} />
               {!isPending &&
                 risksData?.totalCount !== undefined &&
