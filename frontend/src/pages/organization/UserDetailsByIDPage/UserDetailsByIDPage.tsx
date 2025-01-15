@@ -1,7 +1,5 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { faChevronLeft, faEllipsis } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
@@ -15,6 +13,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  PageHeader,
   Tooltip
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
@@ -118,143 +117,132 @@ const Page = withPermission(
     return (
       <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
         {membership && (
-          <div className="mx-auto mb-6 w-full max-w-7xl px-6 py-6">
-            <Button
-              variant="link"
-              type="submit"
-              leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
-              onClick={() => {
-                navigate({
-                  to: "/organization/access-management" as const,
-                  search: {
-                    selectedTab: OrgAccessControlTabSections.Member
-                  }
-                });
-              }}
-              className="mb-4"
-            >
-              Users
-            </Button>
-            <div className="mb-4 flex items-center justify-between">
-              <p className="text-3xl font-semibold text-white">
-                {membership.user.firstName || membership.user.lastName
+          <div className="mx-auto mb-6 w-full max-w-7xl">
+            <PageHeader
+              title={
+                membership.user.firstName || membership.user.lastName
                   ? `${membership.user.firstName} ${membership.user.lastName ?? ""}`.trim()
-                  : "-"}
-              </p>
-              {userId !== membership.user.id && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild className="rounded-lg">
-                    <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
-                      <Tooltip content="More options">
-                        <FontAwesomeIcon size="sm" icon={faEllipsis} />
-                      </Tooltip>
-                    </div>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="p-1">
-                    <OrgPermissionCan
-                      I={OrgPermissionActions.Edit}
-                      a={OrgPermissionSubjects.Identity}
-                    >
-                      {(isAllowed) => (
-                        <DropdownMenuItem
-                          className={twMerge(
-                            !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                          )}
-                          onClick={() =>
-                            handlePopUpOpen("orgMembership", {
-                              membershipId: membership.id,
-                              role: membership.role,
-                              roleId: membership.roleId
-                            })
-                          }
-                          disabled={!isAllowed}
-                        >
-                          Edit User
-                        </DropdownMenuItem>
-                      )}
-                    </OrgPermissionCan>
-                    <OrgPermissionCan
-                      I={OrgPermissionActions.Delete}
-                      a={OrgPermissionSubjects.Member}
-                    >
-                      {(isAllowed) => (
-                        <DropdownMenuItem
-                          className={
-                            membership.isActive
-                              ? twMerge(
-                                  isAllowed
-                                    ? "hover:!bg-red-500 hover:!text-white"
-                                    : "pointer-events-none cursor-not-allowed opacity-50"
-                                )
-                              : ""
-                          }
-                          onClick={async () => {
-                            if (currentOrg?.scimEnabled) {
-                              createNotification({
-                                text: "You cannot manage users from Infisical when SCIM is enabled for your organization",
-                                type: "error"
-                              });
-                              return;
+                  : "-"
+              }
+            >
+              <div>
+                {userId !== membership.user.id && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild className="rounded-lg">
+                      <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
+                        <Tooltip content="More options">
+                          <Button variant="outline_bg" size="sm">
+                            More
+                          </Button>
+                        </Tooltip>
+                      </div>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="p-1">
+                      <OrgPermissionCan
+                        I={OrgPermissionActions.Edit}
+                        a={OrgPermissionSubjects.Identity}
+                      >
+                        {(isAllowed) => (
+                          <DropdownMenuItem
+                            className={twMerge(
+                              !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                            )}
+                            onClick={() =>
+                              handlePopUpOpen("orgMembership", {
+                                membershipId: membership.id,
+                                role: membership.role,
+                                roleId: membership.roleId
+                              })
                             }
-
-                            if (!membership.isActive) {
-                              // activate user
-                              await updateOrgMembership({
-                                organizationId: orgId,
-                                membershipId,
-                                isActive: true
-                              });
-
-                              return;
+                            disabled={!isAllowed}
+                          >
+                            Edit User
+                          </DropdownMenuItem>
+                        )}
+                      </OrgPermissionCan>
+                      <OrgPermissionCan
+                        I={OrgPermissionActions.Delete}
+                        a={OrgPermissionSubjects.Member}
+                      >
+                        {(isAllowed) => (
+                          <DropdownMenuItem
+                            className={
+                              membership.isActive
+                                ? twMerge(
+                                    isAllowed
+                                      ? "hover:!bg-red-500 hover:!text-white"
+                                      : "pointer-events-none cursor-not-allowed opacity-50"
+                                  )
+                                : ""
                             }
+                            onClick={async () => {
+                              if (currentOrg?.scimEnabled) {
+                                createNotification({
+                                  text: "You cannot manage users from Infisical when SCIM is enabled for your organization",
+                                  type: "error"
+                                });
+                                return;
+                              }
 
-                            // deactivate user
-                            handlePopUpOpen("deactivateMember", {
-                              orgMembershipId: membershipId,
-                              username: membership.user.username
-                            });
-                          }}
-                          disabled={!isAllowed}
-                        >
-                          {`${membership.isActive ? "Deactivate" : "Activate"} User`}
-                        </DropdownMenuItem>
-                      )}
-                    </OrgPermissionCan>
-                    <OrgPermissionCan
-                      I={OrgPermissionActions.Delete}
-                      a={OrgPermissionSubjects.Member}
-                    >
-                      {(isAllowed) => (
-                        <DropdownMenuItem
-                          className={twMerge(
-                            isAllowed
-                              ? "hover:!bg-red-500 hover:!text-white"
-                              : "pointer-events-none cursor-not-allowed opacity-50"
-                          )}
-                          onClick={() => {
-                            if (currentOrg?.scimEnabled) {
-                              createNotification({
-                                text: "You cannot manage users from Infisical when SCIM is enabled for your organization",
-                                type: "error"
+                              if (!membership.isActive) {
+                                // activate user
+                                await updateOrgMembership({
+                                  organizationId: orgId,
+                                  membershipId,
+                                  isActive: true
+                                });
+
+                                return;
+                              }
+
+                              // deactivate user
+                              handlePopUpOpen("deactivateMember", {
+                                orgMembershipId: membershipId,
+                                username: membership.user.username
                               });
-                              return;
-                            }
+                            }}
+                            disabled={!isAllowed}
+                          >
+                            {`${membership.isActive ? "Deactivate" : "Activate"} User`}
+                          </DropdownMenuItem>
+                        )}
+                      </OrgPermissionCan>
+                      <OrgPermissionCan
+                        I={OrgPermissionActions.Delete}
+                        a={OrgPermissionSubjects.Member}
+                      >
+                        {(isAllowed) => (
+                          <DropdownMenuItem
+                            className={twMerge(
+                              isAllowed
+                                ? "hover:!bg-red-500 hover:!text-white"
+                                : "pointer-events-none cursor-not-allowed opacity-50"
+                            )}
+                            onClick={() => {
+                              if (currentOrg?.scimEnabled) {
+                                createNotification({
+                                  text: "You cannot manage users from Infisical when SCIM is enabled for your organization",
+                                  type: "error"
+                                });
+                                return;
+                              }
 
-                            handlePopUpOpen("removeMember", {
-                              orgMembershipId: membershipId,
-                              username: membership.user.username
-                            });
-                          }}
-                          disabled={!isAllowed}
-                        >
-                          Remove User
-                        </DropdownMenuItem>
-                      )}
-                    </OrgPermissionCan>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
+                              handlePopUpOpen("removeMember", {
+                                orgMembershipId: membershipId,
+                                username: membership.user.username
+                              });
+                            }}
+                            disabled={!isAllowed}
+                          >
+                            Remove User
+                          </DropdownMenuItem>
+                        )}
+                      </OrgPermissionCan>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+            </PageHeader>
             <div className="flex">
               <div className="mr-4 w-96">
                 <UserDetailsSection membershipId={membershipId} handlePopUpOpen={handlePopUpOpen} />

@@ -1,6 +1,7 @@
 import { Helmet } from "react-helmet";
 
 import { LogsSection } from "./components";
+import { PageHeader } from "@app/components/v2";
 
 export const AuditLogsPage = () => {
   return (
@@ -11,11 +12,11 @@ export const AuditLogsPage = () => {
         <meta property="og:image" content="/images/message.png" />
       </Helmet>
       <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
-        <div className="w-full max-w-7xl px-6">
-          <div className="bg-bunker-800 py-6">
-            <p className="text-3xl font-semibold text-gray-200">Audit Logs</p>
-            <div />
-          </div>
+        <div className="w-full max-w-7xl">
+          <PageHeader
+            title="Audit logs"
+            description="Audit logs for security and compliance teams to monitor information access."
+          />
           <LogsSection filterClassName="static py-2" showFilters isOrgAuditLogs showActorColumn />
         </div>
       </div>

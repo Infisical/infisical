@@ -3,14 +3,24 @@ import { useTranslation } from "react-i18next";
 import { faMobile } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQueryClient } from "@tanstack/react-query";
-import { Link, Outlet, useNavigate, useRouter } from "@tanstack/react-router";
+import { Link, Outlet, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
 import { twMerge } from "tailwind-merge";
 
 import { Mfa } from "@app/components/auth/Mfa";
 import { CreateOrgModal } from "@app/components/organization/CreateOrgModal";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Menu, MenuGroup, MenuItem } from "@app/components/v2";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+  Menu,
+  MenuGroup,
+  MenuItem
+} from "@app/components/v2";
 import { useUser } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
 import { useSelectOrganization, workspaceKeys } from "@app/hooks/api";
@@ -32,6 +42,8 @@ export const OrganizationLayout = ({ children }: Props) => {
   const [shouldShowMfa, toggleShowMfa] = useToggle(false);
   const [requiredMfaMethod, setRequiredMfaMethod] = useState(MfaMethod.EMAIL);
   const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
+  const matches = useRouterState({ select: (s) => s.matches.at(-1)?.context });
+  const breadcrumbs = matches && "breadcrumbs" in matches ? matches.breadcrumbs : undefined;
 
   const { user } = useUser();
 
@@ -252,7 +264,34 @@ export const OrganizationLayout = ({ children }: Props) => {
             isOpen={popUp?.createOrg?.isOpen}
             onClose={() => handlePopUpToggle("createOrg", false)}
           />
-          <main className="flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800 dark:[color-scheme:dark]">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800 px-4 pb-4 dark:[color-scheme:dark]">
+            {breadcrumbs && (
+              <div className="mx-auto max-w-7xl py-4 capitalize text-white">
+                <Breadcrumb>
+                  <BreadcrumbList>
+                    {breadcrumbs.map((el, index) => {
+                      const isNotLastCrumb = index + 1 !== breadcrumbs.length;
+                      return (
+                        <>
+                          {el.link && isNotLastCrumb && !("disabled" in el.link) ? (
+                            <Link {...el.link}>
+                              <BreadcrumbItem>
+                                <BreadcrumbLink>{el.label}</BreadcrumbLink>
+                              </BreadcrumbItem>
+                            </Link>
+                          ) : (
+                            <BreadcrumbItem>
+                              <BreadcrumbPage>{el.label}</BreadcrumbPage>
+                            </BreadcrumbItem>
+                          )}
+                          {isNotLastCrumb && <BreadcrumbSeparator />}
+                        </>
+                      );
+                    })}
+                  </BreadcrumbList>
+                </Breadcrumb>
+              </div>
+            )}
             {children || <Outlet />}
           </main>
         </div>

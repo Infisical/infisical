@@ -1,4 +1,4 @@
-import { createFileRoute, stripSearchParams } from "@tanstack/react-router";
+import { createFileRoute, linkOptions, stripSearchParams } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
@@ -19,5 +19,16 @@ export const Route = createFileRoute(
   search: {
     // strip default values
     middlewares: [stripSearchParams({ action: "" })]
-  }
+  },
+  context: () => ({
+    breadcrumbs: [
+      {
+        label: "home",
+        link: linkOptions({ to: "/" })
+      },
+      {
+        label: "access control"
+      }
+    ]
+  })
 });

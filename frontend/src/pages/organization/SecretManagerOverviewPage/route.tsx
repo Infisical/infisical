@@ -13,7 +13,7 @@ export const Route = createFileRoute(
         link: linkOptions({ disabled: true, to: "/" })
       },
       {
-        label: "Secret Managers",
+        label: "Secret Management",
         link: linkOptions({ to: "/organization/secret-manager/overview" })
       }
     ]

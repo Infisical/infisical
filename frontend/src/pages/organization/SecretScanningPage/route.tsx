@@ -1,4 +1,4 @@
-import { createFileRoute, stripSearchParams } from "@tanstack/react-router";
+import { createFileRoute, linkOptions, stripSearchParams } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
@@ -12,8 +12,8 @@ const SecretScanningQueryParams = z.object({
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/organization/_layout/secret-scanning"
 )({
-  component: SecretScanningPage,
   validateSearch: zodValidator(SecretScanningQueryParams),
+  component: SecretScanningPage,
   search: {
     middlewares: [
       stripSearchParams({
@@ -21,5 +21,16 @@ export const Route = createFileRoute(
         state: ""
       })
     ]
-  }
+  },
+  context: () => ({
+    breadcrumbs: [
+      {
+        label: "home",
+        link: linkOptions({ to: "/" })
+      },
+      {
+        label: "secret scanning"
+      }
+    ]
+  })
 });
