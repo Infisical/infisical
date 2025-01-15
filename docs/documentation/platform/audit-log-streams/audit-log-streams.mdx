@@ -80,3 +80,145 @@ Your Audit Logs are now ready to be streamed.
 				3. Create a new header with key **DD-API-KEY** and set the value as **API Key**.
 		</Step>
 </Steps>
+
+## Audit Log Stream Data
+
+Each log entry sent to the external logging provider will follow the same structure.
+
+### Example
+
+Below is an example of a log entry:
+
+```created-secret.json
+{
+  "id": "7dc1713b-d787-4147-9e21-770be01cc992 ",
+  "actor": "user",
+  "actorMetadata": {
+    "email": "example@infisical.com",
+    "userId": "7383b701-d83f-45c0-acb4-04e138b987ab",
+    "username": "example@infisical.com"
+  },
+  "ipAddress": "127.0.0.1",
+  "eventType": "create-secret",
+  "eventMetadata": {
+    "secretId": "3e5c796e-6599-4181-8dca-51133bb3acd0",
+    "secretKey": "TEST-SECRET",
+    "secretPath": "/",
+    "environment": "dev",
+    "secretVersion": 1
+  },
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "userAgentType": "web",
+   "expiresAt": "2025-01-18T01:11:25.552Z",
+  "createdAt": "2025-01-15T01:11:25.552Z",
+  "updatedAt": "2025-01-15T01:11:25.552Z",
+  "orgId": "785649f1-ff4b-4ef9-a40a-9b9878e46e57",
+  "projectId": "09bfcc01-0917-4bea-9c7a-2d320584d5b1",
+  "projectName": "example-project"
+}
+```
+
+### Audit Logs Structure
+<ParamField path="id" type="string" required>
+  The unique identifier for the log entry. 
+</ParamField>
+
+<ParamField path="actor" type="platform | user | service | identity | scimClient | unknownUser" required>
+  The entity responsible for performing or causing the event; this can be a user or service.
+</ParamField>
+
+<ParamField path="actorMetadata" type="object" required>
+  The metadata associated with the actor. This differs based on the actor type.
+
+  <Accordion title="User Metadata">
+    This metadata is present when the `actor` field is set to `user`.
+
+    <ParamField path="userId" type="string" required>
+      The unique identifier for the actor.
+    </ParamField>
+    <ParamField path="email" type="string" required>
+      The email address of the actor.
+    </ParamField>
+     <ParamField path="username" type="string" required>
+      The username of the actor.
+    </ParamField>
+  </Accordion>
+
+  <Accordion title="Identity Metadata">
+    This metadata is present when the `actor` field is set to `identity`.
+
+    <ParamField path="identityId" type="string" required>
+      The unique identifier for the identity.
+    </ParamField>
+    <ParamField path="name" type="string" required>
+      The name of the identity.
+    </ParamField>
+  </Accordion>
+
+  <Accordion title="Service Token Metadata">
+    This metadata is present when the `actor` field is set to `service`.
+
+    <ParamField path="serviceId" type="string" required>
+      The unique identifier for the service.
+    </ParamField>
+    <ParamField path="name" type="string" required>
+      The name of the service.
+    </ParamField>
+  </Accordion>
+
+
+  <Note>
+    If the `actor` field is set to `platform`, `scimClient`, or `unknownUser`, the `actorMetadata` field will be an empty object.
+  </Note>
+    
+</ParamField>
+
+<ParamField path="ipAddress" type="string" required>
+  The IP address of the actor.
+</ParamField>
+
+<ParamField path="eventType" type="string" required>
+  The type of event that occurred. Below you can see a list of possible event types. More event types will be added in the future as we expand our audit logs further.
+
+  `get-secrets`, `delete-secrets`, `get-secret`, `create-secret`, `update-secret`, `delete-secret`, `get-workspace-key`, `authorize-integration`, `update-integration-auth`, `unauthorize-integration`, `create-integration`, `delete-integration`, `add-trusted-ip`, `update-trusted-ip`, `delete-trusted-ip`, `create-service-token`, `delete-service-token`, `create-identity`, `update-identity`, `delete-identity`, `login-identity-universal-auth`, `add-identity-universal-auth`, `update-identity-universal-auth`, `get-identity-universal-auth`, `create-identity-universal-auth-client-secret`, `revoke-identity-universal-auth-client-secret`, `get-identity-universal-auth-client-secret`, `create-environment`, `update-environment`, `delete-environment`, `add-workspace-member`, `remove-workspace-member`, `create-folder`, `update-folder`, `delete-folder`, `create-webhook`, `update-webhook-status`, `delete-webhook`, `get-secret-imports`, `create-secret-import`, `update-secret-import`, `delete-secret-import`, `update-user-workspace-role`, `update-user-workspace-denied-permissions`, `create-certificate-authority`, `get-certificate-authority`, `update-certificate-authority`, `delete-certificate-authority`, `get-certificate-authority-csr`, `get-certificate-authority-cert`, `sign-intermediate`, `import-certificate-authority-cert`, `get-certificate-authority-crl`, `issue-cert`, `get-cert`, `delete-cert`, `revoke-cert`, `get-cert-body`, `create-pki-alert`, `get-pki-alert`, `update-pki-alert`, `delete-pki-alert`, `create-pki-collection`, `get-pki-collection`, `update-pki-collection`, `delete-pki-collection`, `get-pki-collection-items`, `add-pki-collection-item`, `delete-pki-collection-item`, `org-admin-accessed-project`, `create-certificate-template`, `update-certificate-template`, `delete-certificate-template`, `get-certificate-template`, `create-certificate-template-est-config`, `update-certificate-template-est-config`, `get-certificate-template-est-config`, `update-project-slack-config`, `get-project-slack-config`, `integration-synced`, `create-shared-secret`, `delete-shared-secret`, `read-shared-secret`.
+</ParamField>
+
+<ParamField path="eventMetadata" type="object" required>
+  The metadata associated with the event. This differs based on the event type.
+</ParamField>
+
+<ParamField path="userAgent" type="string">
+  The user agent of the actor, if applicable.
+</ParamField>
+
+<ParamField path="userAgentType" type="web | cli | k8-operator | terraform | other | InfisicalPythonSDK | InfisicalNodeSDK">
+  The type of user agent.
+</ParamField>
+
+<ParamField path="expiresAt" type="string" required>
+  The expiration date of the log entry. When this date is reached, the log entry will be deleted from Infisical.
+</ParamField>
+
+<ParamField path="createdAt" type="string" required>
+  The creation date of the log entry.
+</ParamField>
+
+<ParamField path="updatedAt" type="string" required>
+  The last update date of the log entry. This is an unlikely to be out of sync with the `createdAt` field, as we do not update log entries after they've been created.
+</ParamField>
+
+<ParamField path="orgId" type="string" required>
+  The unique identifier for the organization where the event occurred.
+</ParamField>
+
+<ParamField path="projectId" type="string">
+  The unique identifier for the project where the event occurred.
+
+  The `projectId` field will only be present if the event occurred at the project level, not the organization level.
+</ParamField>
+
+<ParamField path="projectName" type="string">
+  The name of the project where the event occurred.
+
+  The `projectName` field will only be present if the event occurred at the project level, not the organization level.
+</ParamField>
