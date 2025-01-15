@@ -1,9 +1,11 @@
 import { useEffect } from "react";
 import { Helmet } from "react-helmet";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearch } from "@tanstack/react-router";
 
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, NoticeBanner } from "@app/components/v2";
+import { Button, NoticeBanner, Pagination } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   OrgPermissionActions,
@@ -12,16 +14,21 @@ import {
   useServerConfig
 } from "@app/context";
 import { withPermission } from "@app/hoc";
-import { usePopUp } from "@app/hooks";
+import { usePagination, usePopUp } from "@app/hooks";
 import {
   useCreateNewInstallationSession,
   useGetSecretScanningInstallationStatus,
   useGetSecretScanningRisks,
   useLinkGitAppInstallationWithOrg
 } from "@app/hooks/api/secretScanning";
+import { SecretScanningOrderBy } from "@app/hooks/api/secretScanning/types";
 
 import { ExportSecretScansModal } from "./components/ExportSecretScansModal";
+import { SecretScanningFilter } from "./components/SecretScanningFilters";
+import { SecretScanningFilterFormData, secretScanningFilterFormSchema } from "./components/types";
 import { SecretScanningLogsTable } from "./components";
+
+const PER_PAGE_INIT = 25;
 
 export const SecretScanningPage = withPermission(
   () => {
@@ -29,11 +36,36 @@ export const SecretScanningPage = withPermission(
       from: ROUTE_PATHS.Organization.SecretScanning.id
     });
 
+    const { control, watch } = useForm<SecretScanningFilterFormData>({
+      resolver: zodResolver(secretScanningFilterFormSchema),
+      defaultValues: {}
+    });
+
     const { config } = useServerConfig();
     const { currentOrg } = useOrganization();
     const organizationId = currentOrg.id;
 
-    const { isPending, data: gitRisks } = useGetSecretScanningRisks(organizationId);
+    const { offset, limit, orderBy, setPage, perPage, page, setPerPage } = usePagination(
+      SecretScanningOrderBy.CreatedAt,
+      { initPerPage: PER_PAGE_INIT }
+    );
+
+    const repositoryNames = watch("repositoryNames");
+    const resolvedStatus = watch("resolved");
+
+    const { isPending, data: risksData } = useGetSecretScanningRisks(
+      organizationId,
+      {
+        offset,
+        limit,
+        orderBy
+      },
+      {
+        repositoryNames:
+          repositoryNames?.length > 0 ? repositoryNames.map((repo) => repo.name) : undefined,
+        resolvedStatus
+      }
+    );
 
     const { mutateAsync: linkGitAppInstallationWithOrganization } =
       useLinkGitAppInstallationWithOrg();
@@ -72,7 +104,7 @@ export const SecretScanningPage = withPermission(
     };
 
     return (
-      <div>
+      <div className="py-2">
         <Helmet>
           <title>Secret scanning</title>
           <link rel="icon" href="/infisical.ico" />
@@ -141,21 +173,31 @@ export const SecretScanningPage = withPermission(
               )}
             </div>
             <div className="mt-8 space-y-3">
-              <div className="flex w-full justify-end">
-                <Button
-                  onClick={() => handlePopUpToggle("exportSecretScans", true)}
-                  variant="solid"
-                  colorSchema="secondary"
-                >
-                  Export
-                </Button>
+              <div className="flex w-full items-center justify-end">
+                <SecretScanningFilter
+                  repositories={risksData?.repos || []}
+                  handlePopUpToggle={handlePopUpToggle}
+                  control={control}
+                />
               </div>
-              <SecretScanningLogsTable gitRisks={gitRisks} isPending={isPending} />
+              <SecretScanningLogsTable gitRisks={risksData?.risks} isPending={isPending} />
+              {!isPending &&
+                risksData?.totalCount !== undefined &&
+                risksData.totalCount >= PER_PAGE_INIT && (
+                  <Pagination
+                    className="rounded-md"
+                    count={risksData.totalCount}
+                    page={page}
+                    perPage={perPage}
+                    onChangePage={(newPage) => setPage(newPage)}
+                    onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
+                  />
+                )}
             </div>
           </div>
         </div>
         <ExportSecretScansModal
-          gitRisks={gitRisks || []}
+          repositories={risksData?.repos || []}
           handlePopUpToggle={handlePopUpToggle}
           popUp={popUp}
         />

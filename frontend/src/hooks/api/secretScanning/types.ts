@@ -5,6 +5,21 @@ export enum RiskStatus {
   UNRESOLVED = "UNRESOLVED"
 }
 
+export enum SecretScanningOrderBy {
+  CreatedAt = "createdAt"
+}
+
+export enum SecretScanningResolvedStatus {
+  All = "all",
+  Resolved = "resolved",
+  Unresolved = "unresolved"
+}
+
+export type SecretScanningRiskFilter = {
+  repositoryNames?: string[];
+  resolvedStatus?: SecretScanningResolvedStatus;
+};
+
 export type TSecretScanningGitRisks = {
   id: string;
   description: string;
