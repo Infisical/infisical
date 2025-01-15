@@ -1,4 +1,4 @@
-import { Knex, KnexTimeoutError } from "knex";
+import knex, { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName, TSecretScanningGitRisksInsert } from "@app/db/schemas";
@@ -76,7 +76,7 @@ export const secretScanningDALFactory = (db: TDbClient) => {
           .sort((a, b) => a.localeCompare(b))
       };
     } catch (error) {
-      if (error instanceof KnexTimeoutError) {
+      if (error instanceof knex.KnexTimeoutError) {
         throw new GatewayTimeoutError({
           error,
           message: "Failed to fetch audit logs due to timeout. Add more search filters."
