@@ -74,7 +74,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/signup/resend",
+    url: "/signup-resend",
     config: {
       rateLimit: inviteUserRateLimit
     },

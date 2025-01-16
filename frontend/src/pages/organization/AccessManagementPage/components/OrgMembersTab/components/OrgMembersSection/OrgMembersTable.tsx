@@ -83,7 +83,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
   const { data: serverDetails } = useFetchServerStatus();
   const { data: members = [], isPending: isMembersLoading } = useGetOrgUsers(orgId);
 
-  const { mutateAsync: resendOrgMemberInvitation, isPending } = useResendOrgMemberInvitation();
+  const { mutateAsync: resendOrgMemberInvitation } = useResendOrgMemberInvitation();
   const { mutateAsync: updateOrgMembership } = useUpdateOrgMembership();
 
   const onRoleChange = async (membershipId: string, role: string) => {
@@ -369,8 +369,10 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
                                       className="w-48"
                                       colorSchema="primary"
                                       variant="outline_bg"
-                                      isLoading={isPending}
-                                      onClick={() => onResendInvite(orgMembershipId)}
+                                      onClick={(e) => {
+                                        onResendInvite(orgMembershipId);
+                                        e.stopPropagation();
+                                      }}
                                     >
                                       Resend invite
                                     </Button>

@@ -165,7 +165,7 @@ export const useResendOrgMemberInvitation = () => {
           email: string;
           link: string;
         };
-      }>("/api/v1/invite-org/signup/resend", dto);
+      }>("/api/v1/invite-org/signup-resend", dto);
 
       return data.signupToken;
     }
