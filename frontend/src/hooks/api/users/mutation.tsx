@@ -156,3 +156,18 @@ export const useCreateNewTotpRecoveryCodes = () => {
     }
   });
 };
+
+export const useResendOrgMemberInvitation = () => {
+  return useMutation({
+    mutationFn: async (dto: { membershipId: string }) => {
+      const { data } = await apiRequest.post<{
+        signupToken?: {
+          email: string;
+          link: string;
+        };
+      }>("/api/v1/invite-org/signup/resend", dto);
+
+      return data.signupToken;
+    }
+  });
+};

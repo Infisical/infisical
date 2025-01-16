@@ -44,13 +44,13 @@ import {
 } from "@app/context";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import {
-  useAddUsersToOrg,
   useFetchServerStatus,
   useGetOrgRoles,
   useGetOrgUsers,
   useUpdateOrgMembership
 } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { useResendOrgMemberInvitation } from "@app/hooks/api/users/mutation";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -83,7 +83,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
   const { data: serverDetails } = useFetchServerStatus();
   const { data: members = [], isPending: isMembersLoading } = useGetOrgUsers(orgId);
 
-  const { mutateAsync: addUsersMutateAsync } = useAddUsersToOrg();
+  const { mutateAsync: resendOrgMemberInvitation, isPending } = useResendOrgMemberInvitation();
   const { mutateAsync: updateOrgMembership } = useUpdateOrgMembership();
 
   const onRoleChange = async (membershipId: string, role: string) => {
@@ -119,26 +119,25 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
     }
   };
 
-  const onResendInvite = async (email: string) => {
+  const onResendInvite = async (membershipId: string) => {
     try {
-      const { data } = await addUsersMutateAsync({
-        organizationId: orgId,
-        inviteeEmails: [email],
-        organizationRoleSlug: "member"
+      const signupToken = await resendOrgMemberInvitation({
+        membershipId
       });
 
-      setCompleteInviteLinks(data?.completeInviteLinks || null);
-
-      if (!data.completeInviteLinks) {
-        createNotification({
-          text: `Successfully resent invite to ${email}`,
-          type: "success"
-        });
+      if (signupToken) {
+        setCompleteInviteLinks([signupToken]);
+        return;
       }
+
+      createNotification({
+        text: "Successfully resent org invitation",
+        type: "success"
+      });
     } catch (err) {
       console.error(err);
       createNotification({
-        text: `Failed to resend invite to ${email}`,
+        text: "Failed to resend org invitation",
         type: "error"
       });
     }
@@ -370,7 +369,8 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
                                       className="w-48"
                                       colorSchema="primary"
                                       variant="outline_bg"
-                                      onClick={() => onResendInvite(email)}
+                                      isLoading={isPending}
+                                      onClick={() => onResendInvite(orgMembershipId)}
                                     >
                                       Resend invite
                                     </Button>

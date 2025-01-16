@@ -74,6 +74,40 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    url: "/signup/resend",
+    config: {
+      rateLimit: inviteUserRateLimit
+    },
+    method: "POST",
+    schema: {
+      body: z.object({
+        membershipId: z.string()
+      }),
+      response: {
+        200: z.object({
+          signupToken: z
+            .object({
+              email: z.string(),
+              link: z.string()
+            })
+            .optional()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      return server.services.org.resendOrgMemberInvitation({
+        orgId: req.permission.orgId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        membershipId: req.body.membershipId
+      });
+    }
+  });
+
+  server.route({
     url: "/verify",
     method: "POST",
     config: {
