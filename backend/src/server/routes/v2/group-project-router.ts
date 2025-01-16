@@ -30,7 +30,7 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
       ],
       params: z.object({
         projectId: z.string().trim().describe(PROJECTS.ADD_GROUP_TO_PROJECT.projectId),
-        groupIdOrName: z.string().trim().describe(PROJECTS.ADD_GROUP_TO_PROJECT.groupId)
+        groupIdOrName: z.string().trim().describe(PROJECTS.ADD_GROUP_TO_PROJECT.groupIdOrName)
       }),
       body: z
         .object({

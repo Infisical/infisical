@@ -790,10 +790,13 @@ export const scimServiceFactory = ({
       });
 
     const newGroup = await groupDAL.transaction(async (tx) => {
-      const conflictingGroup = await groupDAL.findOne({
-        name: displayName,
-        orgId
-      });
+      const conflictingGroup = await groupDAL.findOne(
+        {
+          name: displayName,
+          orgId
+        },
+        tx
+      );
 
       if (conflictingGroup) {
         throw new ScimRequestError({

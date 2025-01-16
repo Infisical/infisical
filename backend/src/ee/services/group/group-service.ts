@@ -32,7 +32,7 @@ type TGroupServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "find" | "findUserEncKeyByUserIdsBatch" | "transaction" | "findOne">;
   groupDAL: Pick<
     TGroupDALFactory,
-    "create" | "findOne" | "update" | "delete" | "findAllGroupPossibleMembers" | "findById"
+    "create" | "findOne" | "update" | "delete" | "findAllGroupPossibleMembers" | "findById" | "transaction"
   >;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findMembership" | "countAllOrgMembers">;
@@ -88,19 +88,26 @@ export const groupServiceFactory = ({
     if (!hasRequiredPriviledges)
       throw new ForbiddenRequestError({ message: "Failed to create a more privileged group" });
 
-    const existingGroup = await groupDAL.findOne({ orgId: actorOrgId, name });
-    if (existingGroup) {
-      throw new BadRequestError({
-        message: `Failed to create group with name '${name}'. Group with the same name already exists`
-      });
-    }
+    const group = await groupDAL.transaction(async (tx) => {
+      const existingGroup = await groupDAL.findOne({ orgId: actorOrgId, name }, tx);
+      if (existingGroup) {
+        throw new BadRequestError({
+          message: `Failed to create group with name '${name}'. Group with the same name already exists`
+        });
+      }
 
-    const group = await groupDAL.create({
-      name,
-      slug: slug || slugify(`${name}-${alphaNumericNanoId(4)}`),
-      orgId: actorOrgId,
-      role: isCustomRole ? OrgMembershipRole.Custom : role,
-      roleId: customRole?.id
+      const newGroup = await groupDAL.create(
+        {
+          name,
+          slug: slug || slugify(`${name}-${alphaNumericNanoId(4)}`),
+          orgId: actorOrgId,
+          role: isCustomRole ? OrgMembershipRole.Custom : role,
+          roleId: customRole?.id
+        },
+        tx
+      );
+
+      return newGroup;
     });
 
     return group;
@@ -152,31 +159,36 @@ export const groupServiceFactory = ({
       if (isCustomRole) customRole = customOrgRole;
     }
 
-    if (name) {
-      const existingGroup = await groupDAL.findOne({ orgId: actorOrgId, name });
+    const updatedGroup = await groupDAL.transaction(async (tx) => {
+      if (name) {
+        const existingGroup = await groupDAL.findOne({ orgId: actorOrgId, name }, tx);
 
-      if (existingGroup && existingGroup.id !== id) {
-        throw new BadRequestError({
-          message: `Failed to update group with name '${name}'. Group with the same name already exists`
-        });
+        if (existingGroup && existingGroup.id !== id) {
+          throw new BadRequestError({
+            message: `Failed to update group with name '${name}'. Group with the same name already exists`
+          });
+        }
       }
-    }
 
-    const [updatedGroup] = await groupDAL.update(
-      {
-        id: group.id
-      },
-      {
-        name,
-        slug: slug ? slugify(slug) : undefined,
-        ...(role
-          ? {
-              role: customRole ? OrgMembershipRole.Custom : role,
-              roleId: customRole?.id ?? null
-            }
-          : {})
-      }
-    );
+      const [updated] = await groupDAL.update(
+        {
+          id: group.id
+        },
+        {
+          name,
+          slug: slug ? slugify(slug) : undefined,
+          ...(role
+            ? {
+                role: customRole ? OrgMembershipRole.Custom : role,
+                roleId: customRole?.id ?? null
+              }
+            : {})
+        },
+        tx
+      );
+
+      return updated;
+    });
 
     return updatedGroup;
   };

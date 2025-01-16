@@ -80,10 +80,8 @@ export const groupProjectServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Groups);
 
-    const isUuid = isUuidV4(groupIdOrName);
-
     let group: TGroups | null = null;
-    if (isUuid) {
+    if (isUuidV4(groupIdOrName)) {
       group = await groupDAL.findOne({ orgId: actorOrgId, id: groupIdOrName });
     }
     if (!group) {
