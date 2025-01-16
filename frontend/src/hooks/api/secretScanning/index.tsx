@@ -1,5 +1,6 @@
 export {
   useCreateNewInstallationSession,
+  useExportSecretScanningRisks,
   useLinkGitAppInstallationWithOrg,
   useUpdateRiskStatus
 } from "./mutation";

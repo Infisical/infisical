@@ -2,7 +2,12 @@ import { useMutation } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { RiskStatus, TGitAppOrg, TSecretScanningGitRisks } from "./types";
+import {
+  RiskStatus,
+  SecretScanningResolvedStatus,
+  TGitAppOrg,
+  TSecretScanningGitRisks
+} from "./types";
 
 export const useCreateNewInstallationSession = () => {
   return useMutation<{ sessionId: string }, object, { organizationId: string }>({
@@ -40,6 +45,34 @@ export const useLinkGitAppInstallationWithOrg = () => {
         opt
       );
       return data;
+    }
+  });
+};
+
+export const useExportSecretScanningRisks = () => {
+  return useMutation<
+    TSecretScanningGitRisks[],
+    object,
+    {
+      orgId: string;
+      filter: {
+        repositoryNames?: string[];
+        resolvedStatus?: SecretScanningResolvedStatus;
+      };
+    }
+  >({
+    mutationFn: async ({ filter, orgId }) => {
+      const params = new URLSearchParams({
+        ...(filter.resolvedStatus && { resolvedStatus: filter.resolvedStatus }),
+        ...(filter.repositoryNames && { repositoryNames: filter.repositoryNames.join(",") })
+      });
+
+      const { data } = await apiRequest.get<{
+        risks: TSecretScanningGitRisks[];
+      }>(`/api/v1/secret-scanning/organization/${orgId}/risks/export`, {
+        params
+      });
+      return data.risks;
     }
   });
 };

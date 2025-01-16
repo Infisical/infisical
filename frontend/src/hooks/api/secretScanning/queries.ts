@@ -2,11 +2,19 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { TSecretScanningGitRisks } from "./types";
+import { SecretScanningOrderBy, SecretScanningRiskFilter, TSecretScanningGitRisks } from "./types";
 
 export const secretScanningQueryKeys = {
   getInstallationStatus: (orgId: string) => ["secret-scanning-installation-status", { orgId }],
-  getRisksByOrganizatio: (orgId: string) => ["secret-scanning-risks", { orgId }]
+  getRisksByOrganization: (
+    orgId: string,
+    sort: {
+      offset: number;
+      limit: number;
+      orderBy: SecretScanningOrderBy;
+    },
+    filter: SecretScanningRiskFilter
+  ) => ["secret-scanning-risks", { orgId, sort, filter }]
 };
 
 const fetchSecretScanningInstallationStatus = async (organizationId: string) => {
@@ -22,15 +30,43 @@ export const useGetSecretScanningInstallationStatus = (orgId: string) =>
     queryFn: () => fetchSecretScanningInstallationStatus(orgId)
   });
 
-const fetchSecretScanningRisksByOrgId = async (oranizationId: string) => {
-  const { data } = await apiRequest.get<{ risks: TSecretScanningGitRisks[] }>(
-    `/api/v1/secret-scanning/organization/${oranizationId}/risks`
-  );
-  return data.risks;
+const fetchSecretScanningRisksByOrgId = async (
+  organizationId: string,
+  sort: {
+    offset: number;
+    limit: number;
+    orderBy: SecretScanningOrderBy;
+  },
+  filter: SecretScanningRiskFilter
+) => {
+  const params = new URLSearchParams({
+    offset: String(sort.offset),
+    limit: String(sort.limit),
+    orderBy: sort.orderBy,
+    ...(filter.resolvedStatus && { resolvedStatus: filter.resolvedStatus }),
+    ...(filter.repositoryNames && { repositoryNames: filter.repositoryNames.join(",") })
+  });
+
+  const { data } = await apiRequest.get<{
+    risks: TSecretScanningGitRisks[];
+    totalCount: number;
+    repos: string[];
+  }>(`/api/v1/secret-scanning/organization/${organizationId}/risks`, {
+    params
+  });
+  return data;
 };
 
-export const useGetSecretScanningRisks = (orgId: string) =>
+export const useGetSecretScanningRisks = (
+  orgId: string,
+  sort: {
+    offset: number;
+    limit: number;
+    orderBy: SecretScanningOrderBy;
+  },
+  filter: SecretScanningRiskFilter
+) =>
   useQuery({
-    queryKey: secretScanningQueryKeys.getRisksByOrganizatio(orgId),
-    queryFn: () => fetchSecretScanningRisksByOrgId(orgId)
+    queryKey: secretScanningQueryKeys.getRisksByOrganization(orgId, sort, filter),
+    queryFn: () => fetchSecretScanningRisksByOrgId(orgId, sort, filter)
   });
