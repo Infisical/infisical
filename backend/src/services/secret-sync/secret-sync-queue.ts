@@ -305,50 +305,62 @@ export const secretSyncQueueFactory = ({
     );
   };
 
-  const $importSecrets = async (secretSync: TSecretSyncWithCredentials, importBehavior: SecretSyncImportBehavior) => {
+  const $importSecrets = async (
+    secretSync: TSecretSyncWithCredentials,
+    importBehavior: SecretSyncImportBehavior
+  ): Promise<TSecretMap> => {
     const { projectId, environment } = secretSync;
 
     const importedSecrets = await SecretSyncFns.importSecrets(secretSync);
 
-    if (Object.keys(importedSecrets).length) {
-      const secretMap = await $getSecrets(secretSync, false);
+    if (!Object.keys(importedSecrets).length) return {};
 
-      const secretsToCreate: Parameters<typeof $createManySecretsRawFn>[0]["secrets"] = [];
-      const secretsToUpdate: Parameters<typeof $updateManySecretsRawFn>[0]["secrets"] = [];
+    const importedSecretMap: TSecretMap = {};
 
-      Object.entries(importedSecrets).forEach(([key, { value }]) => {
-        const secret = {
-          secretName: key,
-          secretValue: value,
-          type: SecretType.Shared,
-          secretComment: ""
-        };
+    const secretMap = await $getSecrets(secretSync, false);
 
-        if (Object.hasOwn(secretMap, key)) {
-          secretsToUpdate.push(secret);
-        } else {
-          secretsToCreate.push(secret);
-        }
+    const secretsToCreate: Parameters<typeof $createManySecretsRawFn>[0]["secrets"] = [];
+    const secretsToUpdate: Parameters<typeof $updateManySecretsRawFn>[0]["secrets"] = [];
+
+    Object.entries(importedSecrets).forEach(([key, secretData]) => {
+      const { value, comment = "", skipMultilineEncoding } = secretData;
+
+      const secret = {
+        secretName: key,
+        secretValue: value,
+        type: SecretType.Shared,
+        secretComment: comment,
+        skipMultilineEncoding: skipMultilineEncoding ?? undefined
+      };
+
+      if (Object.hasOwn(secretMap, key)) {
+        secretsToUpdate.push(secret);
+        if (importBehavior === SecretSyncImportBehavior.PrioritizeDestination) importedSecretMap[key] = secretData;
+      } else {
+        secretsToCreate.push(secret);
+        importedSecretMap[key] = secretData;
+      }
+    });
+
+    if (secretsToCreate.length) {
+      await $createManySecretsRawFn({
+        projectId,
+        path: secretSync.folder.path,
+        environment: environment.slug,
+        secrets: secretsToCreate
       });
-
-      if (secretsToCreate.length) {
-        await $createManySecretsRawFn({
-          projectId,
-          path: secretSync.folder.path,
-          environment: environment.slug,
-          secrets: secretsToCreate
-        });
-      }
-
-      if (importBehavior === SecretSyncImportBehavior.PrioritizeDestination && secretsToUpdate.length) {
-        await $updateManySecretsRawFn({
-          projectId,
-          path: secretSync.folder.path,
-          environment: environment.slug,
-          secrets: secretsToUpdate
-        });
-      }
     }
+
+    if (importBehavior === SecretSyncImportBehavior.PrioritizeDestination && secretsToUpdate.length) {
+      await $updateManySecretsRawFn({
+        projectId,
+        path: secretSync.folder.path,
+        environment: environment.slug,
+        secrets: secretsToUpdate
+      });
+    }
+
+    return importedSecretMap;
   };
 
   const $handleSyncSecretsJob = async (job: TSecretSyncSyncSecretsDTO) => {
@@ -396,16 +408,20 @@ export const secretSyncQueueFactory = ({
         syncOptions: { initialSyncBehavior }
       } = secretSyncWithCredentials;
 
+      const secretMap = await $getSecrets(secretSync);
+
       if (!lastSyncedAt && initialSyncBehavior !== SecretSyncInitialSyncBehavior.OverwriteDestination) {
-        await $importSecrets(
+        const importedSecretMap = await $importSecrets(
           secretSyncWithCredentials,
           initialSyncBehavior === SecretSyncInitialSyncBehavior.ImportPrioritizeSource
             ? SecretSyncImportBehavior.PrioritizeSource
             : SecretSyncImportBehavior.PrioritizeDestination
         );
-      }
 
-      const secretMap = await $getSecrets(secretSync);
+        Object.entries(importedSecretMap).forEach(([key, secretData]) => {
+          secretMap[key] = secretData;
+        });
+      }
 
       await SecretSyncFns.syncSecrets(secretSyncWithCredentials, secretMap);
 
