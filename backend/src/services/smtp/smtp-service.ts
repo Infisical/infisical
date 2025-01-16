@@ -35,6 +35,7 @@ export enum SmtpTemplates {
   ScimUserProvisioned = "scimUserProvisioned.handlebars",
   PkiExpirationAlert = "pkiExpirationAlert.handlebars",
   IntegrationSyncFailed = "integrationSyncFailed.handlebars",
+  SecretSyncFailed = "secretSyncFailed.handlebars",
   ExternalImportSuccessful = "externalImportSuccessful.handlebars",
   ExternalImportFailed = "externalImportFailed.handlebars",
   ExternalImportStarted = "externalImportStarted.handlebars"

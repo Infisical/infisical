@@ -1,10 +1,26 @@
-import { AbilityBuilder, createMongoAbility, MongoAbility } from "@casl/ability";
+import { AbilityBuilder, createMongoAbility, ForcedSubject, MongoAbility } from "@casl/ability";
+import { z } from "zod";
+
+import {
+  CASL_ACTION_SCHEMA_ENUM,
+  CASL_ACTION_SCHEMA_NATIVE_ENUM
+} from "@app/ee/services/permission/permission-schemas";
+import { PermissionConditionSchema } from "@app/ee/services/permission/permission-types";
+import { PermissionConditionOperators } from "@app/lib/casl";
 
 export enum OrgPermissionActions {
   Read = "read",
   Create = "create",
   Edit = "edit",
   Delete = "delete"
+}
+
+export enum OrgPermissionAppConnectionActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  Connect = "connect"
 }
 
 export enum OrgPermissionAdminConsoleAction {
@@ -31,6 +47,10 @@ export enum OrgPermissionSubjects {
   AppConnections = "app-connections"
 }
 
+export type AppConnectionSubjectFields = {
+  connectionId: string;
+};
+
 export type OrgPermissionSet =
   | [OrgPermissionActions.Create, OrgPermissionSubjects.Workspace]
   | [OrgPermissionActions, OrgPermissionSubjects.Role]
@@ -47,8 +67,108 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.Kms]
   | [OrgPermissionActions, OrgPermissionSubjects.AuditLogs]
   | [OrgPermissionActions, OrgPermissionSubjects.ProjectTemplates]
-  | [OrgPermissionActions, OrgPermissionSubjects.AppConnections]
+  | [
+      OrgPermissionAppConnectionActions,
+      (
+        | OrgPermissionSubjects.AppConnections
+        | (ForcedSubject<OrgPermissionSubjects.AppConnections> & AppConnectionSubjectFields)
+      )
+    ]
   | [OrgPermissionAdminConsoleAction, OrgPermissionSubjects.AdminConsole];
+
+const AppConnectionConditionSchema = z
+  .object({
+    connectionId: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+        })
+        .partial()
+    ])
+  })
+  .partial();
+
+export const OrgPermissionSchema = z.discriminatedUnion("subject", [
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.Workspace).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_ENUM([OrgPermissionActions.Create]).describe("Describe what action an entity can take.")
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.Role).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.Member).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.Settings).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.IncidentAccount).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.Sso).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.Scim).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.Ldap).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.Groups).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.SecretScanning).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.Billing).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.Identity).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.Kms).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.AuditLogs).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.ProjectTemplates).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.AppConnections).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionAppConnectionActions).describe(
+      "Describe what action an entity can take."
+    ),
+    conditions: AppConnectionConditionSchema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.AdminConsole).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionAdminConsoleAction).describe(
+      "Describe what action an entity can take."
+    )
+  })
+]);
 
 const buildAdminPermission = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
@@ -125,10 +245,11 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.ProjectTemplates);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.ProjectTemplates);
 
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.AppConnections);
-  can(OrgPermissionActions.Create, OrgPermissionSubjects.AppConnections);
-  can(OrgPermissionActions.Edit, OrgPermissionSubjects.AppConnections);
-  can(OrgPermissionActions.Delete, OrgPermissionSubjects.AppConnections);
+  can(OrgPermissionAppConnectionActions.Read, OrgPermissionSubjects.AppConnections);
+  can(OrgPermissionAppConnectionActions.Create, OrgPermissionSubjects.AppConnections);
+  can(OrgPermissionAppConnectionActions.Edit, OrgPermissionSubjects.AppConnections);
+  can(OrgPermissionAppConnectionActions.Delete, OrgPermissionSubjects.AppConnections);
+  can(OrgPermissionAppConnectionActions.Connect, OrgPermissionSubjects.AppConnections);
 
   can(OrgPermissionAdminConsoleAction.AccessAllProjects, OrgPermissionSubjects.AdminConsole);
 
@@ -160,7 +281,7 @@ const buildMemberPermission = () => {
 
   can(OrgPermissionActions.Read, OrgPermissionSubjects.AuditLogs);
 
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.AppConnections);
+  can(OrgPermissionAppConnectionActions.Connect, OrgPermissionSubjects.AppConnections);
 
   return rules;
 };

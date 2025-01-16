@@ -44,6 +44,10 @@ const secretManagerRoutes = route("/secret-manager/$projectId", [
       index("secret-manager/IntegrationsListPage/route.tsx"),
       route("/$integrationId", "secret-manager/IntegrationsDetailsByIDPage/route.tsx"),
       route(
+        "/secret-syncs/$destination/$syncId",
+        "secret-manager/SecretSyncDetailsByIDPage/route.tsx"
+      ),
+      route(
         "/aws-parameter-store/authorize",
         "secret-manager/integrations/AwsParameterStoreAuthorizePage/route.tsx"
       ),

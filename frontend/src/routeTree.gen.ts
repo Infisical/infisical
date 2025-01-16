@@ -169,6 +169,7 @@ import { Route as secretManagerIntegrationsAwsParameterStoreConfigurePageRouteIm
 import { Route as secretManagerIntegrationsAwsParameterStoreAuthorizePageRouteImport } from './pages/secret-manager/integrations/AwsParameterStoreAuthorizePage/route'
 import { Route as organizationAppConnectionsGithubOauthCallbackPageRouteImport } from './pages/organization/AppConnections/GithubOauthCallbackPage/route'
 import { Route as secretManagerIntegrationsVercelOauthCallbackPageRouteImport } from './pages/secret-manager/integrations/VercelOauthCallbackPage/route'
+import { Route as secretManagerSecretSyncDetailsByIDPageRouteImport } from './pages/secret-manager/SecretSyncDetailsByIDPage/route'
 import { Route as secretManagerIntegrationsNetlifyOauthCallbackPageRouteImport } from './pages/secret-manager/integrations/NetlifyOauthCallbackPage/route'
 import { Route as secretManagerIntegrationsHerokuOauthCallbackPageRouteImport } from './pages/secret-manager/integrations/HerokuOauthCallbackPage/route'
 import { Route as secretManagerIntegrationsGitlabOauthCallbackPageRouteImport } from './pages/secret-manager/integrations/GitlabOauthCallbackPage/route'
@@ -1430,6 +1431,14 @@ const secretManagerIntegrationsVercelOauthCallbackPageRouteRoute =
   secretManagerIntegrationsVercelOauthCallbackPageRouteImport.update({
     id: '/vercel/oauth2/callback',
     path: '/vercel/oauth2/callback',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerSecretSyncDetailsByIDPageRouteRoute =
+  secretManagerSecretSyncDetailsByIDPageRouteImport.update({
+    id: '/secret-syncs/$destination/$syncId',
+    path: '/secret-syncs/$destination/$syncId',
     getParentRoute: () =>
       AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
   } as any)
@@ -2722,6 +2731,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof secretManagerIntegrationsNetlifyOauthCallbackPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
     }
+    '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/secret-syncs/$destination/$syncId': {
+      id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/secret-syncs/$destination/$syncId'
+      path: '/secret-syncs/$destination/$syncId'
+      fullPath: '/secret-manager/$projectId/integrations/secret-syncs/$destination/$syncId'
+      preLoaderRoute: typeof secretManagerSecretSyncDetailsByIDPageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutIntegrationsImport
+    }
     '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/vercel/oauth2/callback': {
       id: '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/vercel/oauth2/callback'
       path: '/vercel/oauth2/callback'
@@ -3026,6 +3042,7 @@ interface AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutI
   secretManagerIntegrationsGitlabOauthCallbackPageRouteRoute: typeof secretManagerIntegrationsGitlabOauthCallbackPageRouteRoute
   secretManagerIntegrationsHerokuOauthCallbackPageRouteRoute: typeof secretManagerIntegrationsHerokuOauthCallbackPageRouteRoute
   secretManagerIntegrationsNetlifyOauthCallbackPageRouteRoute: typeof secretManagerIntegrationsNetlifyOauthCallbackPageRouteRoute
+  secretManagerSecretSyncDetailsByIDPageRouteRoute: typeof secretManagerSecretSyncDetailsByIDPageRouteRoute
   secretManagerIntegrationsVercelOauthCallbackPageRouteRoute: typeof secretManagerIntegrationsVercelOauthCallbackPageRouteRoute
 }
 
@@ -3183,6 +3200,8 @@ const AuthenticateInjectOrgDetailsSecretManagerProjectIdSecretManagerLayoutInteg
       secretManagerIntegrationsHerokuOauthCallbackPageRouteRoute,
     secretManagerIntegrationsNetlifyOauthCallbackPageRouteRoute:
       secretManagerIntegrationsNetlifyOauthCallbackPageRouteRoute,
+    secretManagerSecretSyncDetailsByIDPageRouteRoute:
+      secretManagerSecretSyncDetailsByIDPageRouteRoute,
     secretManagerIntegrationsVercelOauthCallbackPageRouteRoute:
       secretManagerIntegrationsVercelOauthCallbackPageRouteRoute,
   }
@@ -3598,6 +3617,7 @@ export interface FileRoutesByFullPath {
   '/secret-manager/$projectId/integrations/gitlab/oauth2/callback': typeof secretManagerIntegrationsGitlabOauthCallbackPageRouteRoute
   '/secret-manager/$projectId/integrations/heroku/oauth2/callback': typeof secretManagerIntegrationsHerokuOauthCallbackPageRouteRoute
   '/secret-manager/$projectId/integrations/netlify/oauth2/callback': typeof secretManagerIntegrationsNetlifyOauthCallbackPageRouteRoute
+  '/secret-manager/$projectId/integrations/secret-syncs/$destination/$syncId': typeof secretManagerSecretSyncDetailsByIDPageRouteRoute
   '/secret-manager/$projectId/integrations/vercel/oauth2/callback': typeof secretManagerIntegrationsVercelOauthCallbackPageRouteRoute
 }
 
@@ -3762,6 +3782,7 @@ export interface FileRoutesByTo {
   '/secret-manager/$projectId/integrations/gitlab/oauth2/callback': typeof secretManagerIntegrationsGitlabOauthCallbackPageRouteRoute
   '/secret-manager/$projectId/integrations/heroku/oauth2/callback': typeof secretManagerIntegrationsHerokuOauthCallbackPageRouteRoute
   '/secret-manager/$projectId/integrations/netlify/oauth2/callback': typeof secretManagerIntegrationsNetlifyOauthCallbackPageRouteRoute
+  '/secret-manager/$projectId/integrations/secret-syncs/$destination/$syncId': typeof secretManagerSecretSyncDetailsByIDPageRouteRoute
   '/secret-manager/$projectId/integrations/vercel/oauth2/callback': typeof secretManagerIntegrationsVercelOauthCallbackPageRouteRoute
 }
 
@@ -3941,6 +3962,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gitlab/oauth2/callback': typeof secretManagerIntegrationsGitlabOauthCallbackPageRouteRoute
   '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/heroku/oauth2/callback': typeof secretManagerIntegrationsHerokuOauthCallbackPageRouteRoute
   '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/netlify/oauth2/callback': typeof secretManagerIntegrationsNetlifyOauthCallbackPageRouteRoute
+  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/secret-syncs/$destination/$syncId': typeof secretManagerSecretSyncDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/vercel/oauth2/callback': typeof secretManagerIntegrationsVercelOauthCallbackPageRouteRoute
 }
 
@@ -4112,6 +4134,7 @@ export interface FileRouteTypes {
     | '/secret-manager/$projectId/integrations/gitlab/oauth2/callback'
     | '/secret-manager/$projectId/integrations/heroku/oauth2/callback'
     | '/secret-manager/$projectId/integrations/netlify/oauth2/callback'
+    | '/secret-manager/$projectId/integrations/secret-syncs/$destination/$syncId'
     | '/secret-manager/$projectId/integrations/vercel/oauth2/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -4275,6 +4298,7 @@ export interface FileRouteTypes {
     | '/secret-manager/$projectId/integrations/gitlab/oauth2/callback'
     | '/secret-manager/$projectId/integrations/heroku/oauth2/callback'
     | '/secret-manager/$projectId/integrations/netlify/oauth2/callback'
+    | '/secret-manager/$projectId/integrations/secret-syncs/$destination/$syncId'
     | '/secret-manager/$projectId/integrations/vercel/oauth2/callback'
   id:
     | '__root__'
@@ -4452,6 +4476,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gitlab/oauth2/callback'
     | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/heroku/oauth2/callback'
     | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/netlify/oauth2/callback'
+    | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/secret-syncs/$destination/$syncId'
     | '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/vercel/oauth2/callback'
   fileRoutesById: FileRoutesById
 }
@@ -5016,6 +5041,7 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gitlab/oauth2/callback",
         "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/heroku/oauth2/callback",
         "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/netlify/oauth2/callback",
+        "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/secret-syncs/$destination/$syncId",
         "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/vercel/oauth2/callback"
       ]
     },
@@ -5393,6 +5419,10 @@ export const routeTree = rootRoute
     },
     "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/netlify/oauth2/callback": {
       "filePath": "secret-manager/integrations/NetlifyOauthCallbackPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/secret-syncs/$destination/$syncId": {
+      "filePath": "secret-manager/SecretSyncDetailsByIDPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations"
     },
     "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/vercel/oauth2/callback": {

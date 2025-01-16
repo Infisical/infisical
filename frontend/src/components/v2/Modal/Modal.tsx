@@ -7,7 +7,7 @@ import { twMerge } from "tailwind-merge";
 import { Card, CardBody, CardFooter, CardTitle } from "../Card";
 import { IconButton } from "../IconButton";
 
-export type ModalContentProps = DialogPrimitive.DialogContentProps & {
+export type ModalContentProps = Omit<DialogPrimitive.DialogContentProps, "title"> & {
   title?: ReactNode;
   subTitle?: ReactNode;
   footerContent?: ReactNode;

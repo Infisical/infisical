@@ -87,7 +87,7 @@ export const redirectForProviderAuth = (
           },
           search: {
             clientId: integrationOption.clientId,
-            state,
+            state
           }
         });
         break;

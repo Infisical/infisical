@@ -64,9 +64,17 @@ export const ROUTE_PATHS = Object.freeze({
       "/secret-manager/$projectId/overview",
       "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/overview"
     ),
+    IntegrationsListPage: setRoute(
+      "/secret-manager/$projectId/integrations",
+      "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/"
+    ),
     IntegrationDetailsByIDPage: setRoute(
       "/secret-manager/$projectId/integrations/$integrationId",
       "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/$integrationId"
+    ),
+    SecretSyncDetailsByIDPage: setRoute(
+      "/secret-manager/$projectId/integrations/secret-syncs/$destination/$syncId",
+      "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/secret-syncs/$destination/$syncId"
     ),
     Integratons: {
       SelectIntegrationAuth: setRoute(

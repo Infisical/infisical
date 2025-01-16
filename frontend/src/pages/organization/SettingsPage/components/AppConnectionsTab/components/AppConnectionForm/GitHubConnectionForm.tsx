@@ -132,7 +132,7 @@ export const GitHubConnectionForm = ({ appConnection }: Props) => {
                 {Object.values(GitHubConnectionMethod).map((method) => {
                   return (
                     <SelectItem value={method} key={method}>
-                      {methodDetails.name}{" "}
+                      {getAppConnectionMethodDetails(method).name}{" "}
                       {method === GitHubConnectionMethod.App ? " (Recommended)" : ""}
                     </SelectItem>
                   );

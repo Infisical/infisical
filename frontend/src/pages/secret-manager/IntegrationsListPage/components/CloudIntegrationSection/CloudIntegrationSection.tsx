@@ -75,12 +75,12 @@ export const CloudIntegrationSection = ({
 
   return (
     <div>
-      <div className="px-5">
-        {currentWorkspace?.environments.length === 0 && (
+      {currentWorkspace?.environments.length === 0 && (
+        <div className="px-5">
           <NoEnvironmentsBanner projectId={currentWorkspace.id} />
-        )}
-      </div>
-      <div className="m-4 mt-7 flex flex-col items-start justify-between px-2 text-xl">
+        </div>
+      )}
+      <div className="m-4 mt-0 flex flex-col items-start justify-between px-2 text-xl">
         {onViewActiveIntegrations && (
           <Button
             variant="link"

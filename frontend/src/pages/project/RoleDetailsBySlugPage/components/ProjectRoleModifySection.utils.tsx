@@ -137,7 +137,8 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.Tags]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SecretRotation]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Kms]: GeneralPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.Cmek]: CmekPolicyActionSchema.array().default([])
+      [ProjectPermissionSub.Cmek]: CmekPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.SecretSyncs]: GeneralPolicyActionSchema.array().default([])
     })
     .partial()
     .optional()
@@ -218,7 +219,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.SecretApproval,
         ProjectPermissionSub.Tags,
         ProjectPermissionSub.SecretRotation,
-        ProjectPermissionSub.Kms
+        ProjectPermissionSub.Kms,
+        ProjectPermissionSub.SecretSyncs
       ].includes(subject)
     ) {
       // from above statement we are sure it won't be undefined
@@ -669,6 +671,15 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
     actions: [
       { label: "Perform rollback", value: "create" },
       { label: "View", value: "read" }
+    ]
+  },
+  [ProjectPermissionSub.SecretSyncs]: {
+    title: "Secret Syncs",
+    actions: [
+      { label: "Read", value: "read" },
+      { label: "Create", value: "create" },
+      { label: "Modify", value: "edit" },
+      { label: "Remove", value: "delete" }
     ]
   }
 };

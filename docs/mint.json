@@ -1,6 +1,6 @@
 {
   "name": "Infisical",
-  "openapi": "https://app.infisical.com/api/docs/json",
+  "openapi": "http://localhost:8080/api/docs/json",
   "logo": {
     "dark": "/logo/dark.svg",
     "light": "/logo/light.svg",
@@ -341,6 +341,22 @@
         "cli/scanning-overview",
         "cli/project-config",
         "cli/faq"
+      ]
+    },
+    {
+      "group": "App Connections",
+      "pages": [
+        "integrations/app-connections/overview",
+        "integrations/app-connections/aws",
+        "integrations/app-connections/github"
+      ]
+    },
+    {
+      "group": "Secret Syncs",
+      "pages": [
+        "integrations/secret-syncs/overview",
+        "integrations/secret-syncs/aws-parameter-store",
+        "integrations/secret-syncs/github"
       ]
     },
     {
@@ -765,6 +781,67 @@
             "api-reference/endpoints/identity-specific-privilege/delete",
             "api-reference/endpoints/identity-specific-privilege/find-by-slug",
             "api-reference/endpoints/identity-specific-privilege/list"
+          ]
+        },
+        {
+          "group": "App Connections",
+          "pages": [
+            "api-reference/endpoints/app-connections/list",
+            "api-reference/endpoints/app-connections/options",
+            { "group":  "AWS",
+              "pages": [
+                "api-reference/endpoints/app-connections/aws/list",
+                "api-reference/endpoints/app-connections/aws/available",
+                "api-reference/endpoints/app-connections/aws/get-by-id",
+                "api-reference/endpoints/app-connections/aws/get-by-name",
+                "api-reference/endpoints/app-connections/aws/create",
+                "api-reference/endpoints/app-connections/aws/update",
+                "api-reference/endpoints/app-connections/aws/delete"
+              ]
+            },
+            { "group":  "GitHub",
+              "pages": [
+                "api-reference/endpoints/app-connections/github/list",
+                "api-reference/endpoints/app-connections/github/available",
+                "api-reference/endpoints/app-connections/github/get-by-id",
+                "api-reference/endpoints/app-connections/github/get-by-name",
+                "api-reference/endpoints/app-connections/github/create",
+                "api-reference/endpoints/app-connections/github/update",
+                "api-reference/endpoints/app-connections/github/delete"
+              ]
+            }
+          ]
+        },
+        {
+          "group": "Secret Syncs",
+          "pages": [
+            "api-reference/endpoints/secret-syncs/list",
+            "api-reference/endpoints/secret-syncs/options",
+            { "group":  "AWS Parameter Store",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/aws-parameter-store/list",
+                "api-reference/endpoints/secret-syncs/aws-parameter-store/get-by-id",
+                "api-reference/endpoints/secret-syncs/aws-parameter-store/get-by-name",
+                "api-reference/endpoints/secret-syncs/aws-parameter-store/create",
+                "api-reference/endpoints/secret-syncs/aws-parameter-store/update",
+                "api-reference/endpoints/secret-syncs/aws-parameter-store/delete",
+                "api-reference/endpoints/secret-syncs/aws-parameter-store/sync-secrets",
+                "api-reference/endpoints/secret-syncs/aws-parameter-store/import-secrets",
+                "api-reference/endpoints/secret-syncs/aws-parameter-store/remove-secrets"
+              ]
+            },
+            { "group":  "GitHub",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/github/list",
+                "api-reference/endpoints/secret-syncs/github/get-by-id",
+                "api-reference/endpoints/secret-syncs/github/get-by-name",
+                "api-reference/endpoints/secret-syncs/github/create",
+                "api-reference/endpoints/secret-syncs/github/update",
+                "api-reference/endpoints/secret-syncs/github/delete",
+                "api-reference/endpoints/secret-syncs/github/sync-secrets",
+                "api-reference/endpoints/secret-syncs/github/remove-secrets"
+              ]
+            }
           ]
         },
         {
