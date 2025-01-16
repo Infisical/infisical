@@ -107,7 +107,7 @@ const Content = ({ secretSync, onComplete }: ContentProps) => {
             }
             errorText={error?.message}
             isError={Boolean(error?.message)}
-            label="Initial Sync Behavior"
+            label="Import Behavior"
           >
             <Select
               value={value}

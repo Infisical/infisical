@@ -2,7 +2,7 @@ import { Octokit } from "@octokit/rest";
 import sodium from "libsodium-wrappers";
 
 import { getGitHubClient } from "@app/services/app-connection/github";
-import { GitHubSyncScope } from "@app/services/secret-sync/github/github-sync-enums";
+import { GitHubSyncScope, GitHubSyncVisibility } from "@app/services/secret-sync/github/github-sync-enums";
 import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
@@ -149,7 +149,9 @@ const putSecret = async (client: Octokit, secretSync: TGitHubSyncWithCredentials
         org: destinationConfig.org,
         ...payload,
         visibility,
-        selected_repository_ids: selectedRepositoryIds
+        ...(visibility === GitHubSyncVisibility.Selected && {
+          selected_repository_ids: selectedRepositoryIds
+        })
       });
       break;
     }

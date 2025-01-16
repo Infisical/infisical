@@ -58,7 +58,7 @@ export const SecretSyncDetailsSection = ({ secretSync, onEditDetails }: Props) =
           )}
           {syncStatus === SecretSyncStatus.Failed && lastSyncMessage && (
             <SecretSyncLabel labelClassName="text-red" label="Last Sync Error">
-              <p className="rounded bg-mineshaft-600 p-2 text-xs">{lastSyncMessage}</p>
+              <p className="break-words rounded bg-mineshaft-600 p-2 text-xs">{lastSyncMessage}</p>
             </SecretSyncLabel>
           )}
         </div>

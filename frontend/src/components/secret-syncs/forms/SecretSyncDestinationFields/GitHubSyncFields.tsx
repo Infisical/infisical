@@ -20,18 +20,13 @@ import {
 import { TSecretSyncForm } from "../schemas";
 
 export const GitHubSyncFields = () => {
-  const {
-    control,
-    formState: { errors },
-    watch,
-    setValue
-  } = useFormContext<TSecretSyncForm & { destination: SecretSync.GitHub }>();
-
-  console.log("errors", errors, watch());
+  const { control, watch, setValue } = useFormContext<
+    TSecretSyncForm & { destination: SecretSync.GitHub }
+  >();
 
   const connectionId = useWatch({ name: "connection.id", control });
   const currentScope = watch("destinationConfig.scope");
-  const currentVisibility = watch("destinationConfig.visibility", GitHubSyncVisibility.All);
+  const currentVisibility = watch("destinationConfig.visibility");
   const currentOrg = watch("destinationConfig.org");
   const currentRepo = watch("destinationConfig.repo");
   const currentOwner = watch("destinationConfig.owner");
@@ -70,7 +65,7 @@ export const GitHubSyncFields = () => {
           setValue("destinationConfig.org", "");
           setValue("destinationConfig.repo", "");
           setValue("destinationConfig.owner", "");
-          setValue("destinationConfig.selectedRepositoryIds", []);
+          setValue("destinationConfig.selectedRepositoryIds", undefined);
         }}
       />
       <Controller
@@ -134,6 +129,7 @@ export const GitHubSyncFields = () => {
                   value={value}
                   onValueChange={(val) => {
                     onChange(val);
+                    setValue("destinationConfig.selectedRepositoryIds", undefined);
                   }}
                   className="w-full border border-mineshaft-500 capitalize"
                   position="popper"
@@ -194,6 +190,7 @@ export const GitHubSyncFields = () => {
 
                   onChange(repo?.name);
                   setValue("destinationConfig.owner", repo?.owner.login ?? "");
+                  setValue("destinationConfig.env", "");
                 }}
                 options={repositories}
                 placeholder="Select a repository..."
