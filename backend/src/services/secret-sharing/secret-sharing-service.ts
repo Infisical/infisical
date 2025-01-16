@@ -1,12 +1,12 @@
 import crypto from "node:crypto";
 
 import bcrypt from "bcrypt";
-import { z } from "zod";
 
 import { TSecretSharing } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { SecretSharingAccessType } from "@app/lib/types";
+import { isUuidV4 } from "@app/lib/validator";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -27,8 +27,6 @@ type TSecretSharingServiceFactoryDep = {
 };
 
 export type TSecretSharingServiceFactory = ReturnType<typeof secretSharingServiceFactory>;
-
-const isUuidV4 = (uuid: string) => z.string().uuid().safeParse(uuid).success;
 
 export const secretSharingServiceFactory = ({
   permissionService,

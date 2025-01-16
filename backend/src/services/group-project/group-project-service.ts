@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import ms from "ms";
 
-import { ActionProjectType, ProjectMembershipRole, SecretKeyEncoding } from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole, SecretKeyEncoding, TGroups } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
@@ -9,6 +9,7 @@ import { decryptAsymmetric, encryptAsymmetric } from "@app/lib/crypto";
 import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
+import { isUuidV4 } from "@app/lib/validator";
 
 import { TGroupDALFactory } from "../../ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "../../ee/services/group/user-group-membership-dal";
@@ -62,7 +63,7 @@ export const groupProjectServiceFactory = ({
     actorAuthMethod,
     roles,
     projectId,
-    groupId
+    groupIdOrName
   }: TCreateProjectGroupDTO) => {
     const project = await projectDAL.findById(projectId);
 
@@ -79,13 +80,20 @@ export const groupProjectServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Groups);
 
-    const group = await groupDAL.findOne({ orgId: actorOrgId, id: groupId });
-    if (!group) throw new NotFoundError({ message: `Failed to find group with ID ${groupId}` });
+    let group: TGroups | null = null;
+    if (isUuidV4(groupIdOrName)) {
+      group = await groupDAL.findOne({ orgId: actorOrgId, id: groupIdOrName });
+    }
+    if (!group) {
+      group = await groupDAL.findOne({ orgId: actorOrgId, name: groupIdOrName });
+    }
+
+    if (!group) throw new NotFoundError({ message: `Failed to find group with ID or name ${groupIdOrName}` });
 
     const existingGroup = await groupProjectDAL.findOne({ groupId: group.id, projectId: project.id });
     if (existingGroup)
       throw new BadRequestError({
-        message: `Group with ID ${groupId} already exists in project with id ${project.id}`
+        message: `Group with ID ${group.id} already exists in project with id ${project.id}`
       });
 
     for await (const { role: requestedRoleChange } of roles) {
@@ -128,7 +136,7 @@ export const groupProjectServiceFactory = ({
     const projectGroup = await groupProjectDAL.transaction(async (tx) => {
       const groupProjectMembership = await groupProjectDAL.create(
         {
-          groupId: group.id,
+          groupId: group!.id,
           projectId: project.id
         },
         tx
@@ -163,7 +171,7 @@ export const groupProjectServiceFactory = ({
       // share project key with users in group that have not
       // individually been added to the project and that are not part of
       // other groups that are in the project
-      const groupMembers = await userGroupMembershipDAL.findGroupMembersNotInProject(group.id, project.id, tx);
+      const groupMembers = await userGroupMembershipDAL.findGroupMembersNotInProject(group!.id, project.id, tx);
 
       if (groupMembers.length) {
         const ghostUser = await projectDAL.findProjectGhostUser(project.id, tx);
