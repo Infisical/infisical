@@ -7,7 +7,6 @@ import { EventType } from "@app/hooks/api/auditLogs/enums";
 import { TSecretSync } from "@app/hooks/api/secretSyncs";
 import { LogsSection } from "@app/pages/organization/AuditLogsPage/components/LogsSection";
 
-// Add more events if needed
 const INTEGRATION_EVENTS = [
   EventType.SECRET_SYNC_SYNC_SECRETS,
   EventType.SECRET_SYNC_REMOVE_SECRETS,
