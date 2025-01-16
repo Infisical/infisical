@@ -4,11 +4,11 @@ import { subject } from "@casl/ability";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { format } from "date-fns";
+import { format, formatRelative } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal, EmptyState, Spinner } from "@app/components/v2";
+import { Button, DeleteActionModal, EmptyState, PageHeader, Spinner } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { getProjectTitle } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
@@ -82,78 +82,37 @@ const Page = () => {
   }
 
   return (
-    <div className="container mx-auto flex max-w-7xl flex-col justify-between bg-bunker-800 p-6 text-white">
-      <div className="mb-4">
-        <Button
-          variant="link"
-          type="submit"
-          leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
-          onClick={() => {
-            navigate({
-              to: `/${currentWorkspace.type}/$projectId/access-management` as const,
-              params: {
-                projectId: workspaceId
-              },
-              search: {
-                selectedTab: "identities"
-              }
-            });
-          }}
-          className="mb-4"
-        >
-          {currentWorkspace?.type ? getProjectTitle(currentWorkspace?.type) : "Project"} Access
-          Control
-        </Button>
-      </div>
+    <div className="container mx-auto flex max-w-7xl flex-col justify-between bg-bunker-800 text-white">
       {identityMembershipDetails ? (
         <>
-          <div className="mb-4">
-            <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-mineshaft-100">
-                  Project Identity Access
-                </h3>
-                <div>
-                  <ProjectPermissionCan
-                    I={ProjectPermissionActions.Delete}
-                    a={subject(ProjectPermissionSub.Identity, {
-                      identityId: identityMembershipDetails?.identity?.id
-                    })}
-                    renderTooltip
-                    allowedLabel="Remove from project"
+          <PageHeader
+            title={identityMembershipDetails?.identity?.name}
+            description={`Identity joined on ${identityMembershipDetails?.createdAt && formatRelative(new Date(identityMembershipDetails?.createdAt || ""), new Date())}`}
+          >
+            <div>
+              <ProjectPermissionCan
+                I={ProjectPermissionActions.Delete}
+                a={subject(ProjectPermissionSub.Identity, {
+                  identityId: identityMembershipDetails?.identity?.id
+                })}
+                renderTooltip
+                allowedLabel="Remove from project"
+              >
+                {(isAllowed) => (
+                  <Button
+                    colorSchema="danger"
+                    variant="outline_bg"
+                    size="xs"
+                    isDisabled={!isAllowed}
+                    isLoading={isDeletingIdentity}
+                    onClick={() => handlePopUpOpen("deleteIdentity")}
                   >
-                    {(isAllowed) => (
-                      <Button
-                        colorSchema="danger"
-                        variant="outline_bg"
-                        size="xs"
-                        isDisabled={!isAllowed}
-                        isLoading={isDeletingIdentity}
-                        onClick={() => handlePopUpOpen("deleteIdentity")}
-                      >
-                        Remove Identity
-                      </Button>
-                    )}
-                  </ProjectPermissionCan>
-                </div>
-              </div>
-              <div className="flex gap-12">
-                <div>
-                  <span className="text-xs font-semibold text-gray-400">Name</span>
-                  {identityMembershipDetails && (
-                    <p className="text-lg capitalize">
-                      {identityMembershipDetails?.identity?.name}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <div className="mt-4 text-sm text-gray-400">
-                Joined on{" "}
-                {identityMembershipDetails?.createdAt &&
-                  format(new Date(identityMembershipDetails?.createdAt || ""), "yyyy-MM-dd")}
-              </div>
+                    Remove Identity
+                  </Button>
+                )}
+              </ProjectPermissionCan>
             </div>
-          </div>
+          </PageHeader>
           <IdentityRoleDetailsSection
             identityMembershipDetails={identityMembershipDetails}
             isMembershipDetailsLoading={isMembershipDetailsLoading}

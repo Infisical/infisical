@@ -1,47 +1,34 @@
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { faMobile } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useQueryClient } from "@tanstack/react-query";
-import { Link, Outlet, useNavigate, useRouter } from "@tanstack/react-router";
+import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 
-import { Mfa } from "@app/components/auth/Mfa";
-import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Menu, MenuGroup, MenuItem } from "@app/components/v2";
-import { useUser, useWorkspace } from "@app/context";
-import { useToggle } from "@app/hooks";
 import {
-  useGetAccessRequestsCount,
-  useGetSecretApprovalRequestCount,
-  useSelectOrganization,
-  workspaceKeys
-} from "@app/hooks/api";
-import { authKeys } from "@app/hooks/api/auth/queries";
-import { MfaMethod } from "@app/hooks/api/auth/types";
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+  Menu,
+  MenuGroup,
+  MenuItem
+} from "@app/components/v2";
+import { useWorkspace } from "@app/context";
+import { useGetAccessRequestsCount, useGetSecretApprovalRequestCount } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/workspace/types";
-import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
 import { InsecureConnectionBanner } from "../OrganizationLayout/components/InsecureConnectionBanner";
 import { ProjectSelect } from "./components/ProjectSelect";
-import { SidebarHeader } from "./components/SidebarHeader";
 
 // This is a generic layout shared by all types of projects.
 // If the product layout differs significantly, create a new layout as needed.
 export const ProjectLayout = () => {
   const { currentWorkspace } = useWorkspace();
-  const navigate = useNavigate();
-
-  const [shouldShowMfa, toggleShowMfa] = useToggle(false);
-  const [requiredMfaMethod, setRequiredMfaMethod] = useState(MfaMethod.EMAIL);
-  const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
-
-  const { user } = useUser();
-
-  const { mutateAsync: selectOrganization } = useSelectOrganization();
+  const matches = useRouterState({ select: (s) => s.matches.at(-1)?.context });
+  const breadcrumbs = matches && "breadcrumbs" in matches ? matches.breadcrumbs : undefined;
 
   const { t } = useTranslation();
-  const router = useRouter();
-  const queryClient = useQueryClient();
   const workspaceId = currentWorkspace?.id || "";
   const projectSlug = currentWorkspace?.slug || "";
 
@@ -61,40 +48,6 @@ export const ProjectLayout = () => {
 
   const pendingRequestsCount =
     (secretApprovalReqCount?.open || 0) + (accessApprovalRequestCount?.pendingCount || 0);
-
-  const handleOrgChange = async (orgId: string) => {
-    queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
-    queryClient.removeQueries({ queryKey: workspaceKeys.getAllUserWorkspace() });
-
-    const { token, isMfaEnabled, mfaMethod } = await selectOrganization({
-      organizationId: orgId
-    });
-
-    if (isMfaEnabled) {
-      SecurityClient.setMfaToken(token);
-      if (mfaMethod) {
-        setRequiredMfaMethod(mfaMethod);
-      }
-      toggleShowMfa.on();
-      setMfaSuccessCallback(() => () => handleOrgChange(orgId));
-      return;
-    }
-    await router.invalidate();
-    await navigateUserToOrg(navigate, orgId);
-  };
-
-  if (shouldShowMfa) {
-    return (
-      <div className="flex max-h-screen min-h-screen flex-col items-center justify-center gap-2 overflow-y-auto bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
-        <Mfa
-          email={user.email as string}
-          method={requiredMfaMethod}
-          successCallback={mfaSuccessCallback}
-          closeMfa={() => toggleShowMfa.off()}
-        />
-      </div>
-    );
-  }
 
   return (
     <>
@@ -247,6 +200,33 @@ export const ProjectLayout = () => {
             </nav>
           </aside>
           <main className="flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800 dark:[color-scheme:dark]">
+            {breadcrumbs && (
+              <div className="mx-auto max-w-7xl py-4 capitalize text-white">
+                <Breadcrumb>
+                  <BreadcrumbList>
+                    {breadcrumbs.map((el, index) => {
+                      const isNotLastCrumb = index + 1 !== breadcrumbs.length;
+                      return (
+                        <>
+                          {el.link && isNotLastCrumb && !("disabled" in el.link) ? (
+                            <Link {...el.link}>
+                              <BreadcrumbItem>
+                                <BreadcrumbLink>{el.label}</BreadcrumbLink>
+                              </BreadcrumbItem>
+                            </Link>
+                          ) : (
+                            <BreadcrumbItem>
+                              <BreadcrumbPage>{el.label}</BreadcrumbPage>
+                            </BreadcrumbItem>
+                          )}
+                          {isNotLastCrumb && <BreadcrumbSeparator />}
+                        </>
+                      );
+                    })}
+                  </BreadcrumbList>
+                </Breadcrumb>
+              </div>
+            )}
             <Outlet />
           </main>
         </div>

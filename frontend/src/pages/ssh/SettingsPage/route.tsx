@@ -5,5 +5,15 @@ import { SettingsPage } from "./SettingsPage";
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/ssh/$projectId/_ssh-layout/settings"
 )({
-  component: SettingsPage
+  component: SettingsPage,
+  beforeLoad: ({ context }) => {
+    return {
+      breadcrumbs: [
+        ...context.breadcrumbs,
+        {
+          label: "Settings"
+        }
+      ]
+    };
+  }
 });

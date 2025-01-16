@@ -1,21 +1,18 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { format } from "date-fns";
+import { formatRelative } from "date-fns";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal, EmptyState, Spinner } from "@app/components/v2";
+import { Button, DeleteActionModal, EmptyState, PageHeader, Spinner } from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   useOrganization,
   useWorkspace
 } from "@app/context";
-import { getProjectTitle } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useDeleteUserFromWorkspace, useGetWorkspaceUserDetails } from "@app/hooks/api";
 
@@ -83,76 +80,36 @@ export const Page = () => {
 
   return (
     <div className="container mx-auto flex max-w-7xl flex-col justify-between bg-bunker-800 p-6 text-white">
-      <div className="mb-4">
-        <Button
-          variant="link"
-          type="submit"
-          leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
-          onClick={() => {
-            navigate({
-              to: `/${currentWorkspace.type}/$projectId/access-management` as const,
-              params: {
-                projectId: currentWorkspace.id
-              }
-            });
-          }}
-          className="mb-4"
-        >
-          {currentWorkspace?.type ? getProjectTitle(currentWorkspace?.type) : "Project"} Access
-          Control
-        </Button>
-      </div>
       {membershipDetails ? (
         <>
-          <div className="mb-4">
-            <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-mineshaft-100">Project User Access</h3>
-                <div>
-                  <ProjectPermissionCan
-                    I={ProjectPermissionActions.Delete}
-                    a={ProjectPermissionSub.Member}
-                    renderTooltip
-                    allowedLabel="Remove from project"
-                  >
-                    {(isAllowed) => (
-                      <Button
-                        colorSchema="danger"
-                        variant="outline_bg"
-                        size="xs"
-                        isDisabled={!isAllowed}
-                        isLoading={isRemovingUserFromWorkspace}
-                        onClick={() => handlePopUpOpen("removeMember")}
-                      >
-                        Remove User
-                      </Button>
-                    )}
-                  </ProjectPermissionCan>
-                </div>
-              </div>
-              <div className="flex gap-12">
-                <div>
-                  <span className="text-xs font-semibold text-gray-400">Name</span>
-                  {membershipDetails && (
-                    <p className="text-lg capitalize">
-                      {membershipDetails.user.firstName || membershipDetails.user.lastName
-                        ? `${membershipDetails.user.firstName} ${membershipDetails.user.lastName}`
-                        : "-"}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <span className="text-xs font-semibold text-gray-400">Email</span>
-                  {membershipDetails && <p className="text-lg">{membershipDetails?.user?.email}</p>}
-                </div>
-              </div>
-              <div className="mt-4 text-sm text-gray-400">
-                Joined on{" "}
-                {membershipDetails?.createdAt &&
-                  format(new Date(membershipDetails?.createdAt || ""), "yyyy-MM-dd")}
-              </div>
-            </div>
-          </div>
+          <PageHeader
+            title={
+              membershipDetails.user.firstName || membershipDetails.user.lastName
+                ? `${membershipDetails.user.firstName} ${membershipDetails.user.lastName}`
+                : "-"
+            }
+            description={`User joined on ${membershipDetails?.createdAt && formatRelative(new Date(membershipDetails?.createdAt || ""), new Date())}`}
+          >
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Delete}
+              a={ProjectPermissionSub.Member}
+              renderTooltip
+              allowedLabel="Remove from project"
+            >
+              {(isAllowed) => (
+                <Button
+                  colorSchema="danger"
+                  variant="outline_bg"
+                  size="xs"
+                  isDisabled={!isAllowed}
+                  isLoading={isRemovingUserFromWorkspace}
+                  onClick={() => handlePopUpOpen("removeMember")}
+                >
+                  Remove User
+                </Button>
+              )}
+            </ProjectPermissionCan>
+          </PageHeader>
           <MemberRoleDetailsSection
             membershipDetails={membershipDetails}
             isMembershipDetailsLoading={isMembershipDetailsLoading}

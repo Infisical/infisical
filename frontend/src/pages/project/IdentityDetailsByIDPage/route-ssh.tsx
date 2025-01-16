@@ -1,9 +1,28 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, linkOptions } from "@tanstack/react-router";
 
 import { IdentityDetailsByIDPage } from "./IdentityDetailsByIDPage";
 
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/ssh/$projectId/_ssh-layout/identities/$identityId"
 )({
-  component: IdentityDetailsByIDPage
+  component: IdentityDetailsByIDPage,
+  beforeLoad: ({ context, params }) => {
+    return {
+      breadcrumbs: [
+        ...context.breadcrumbs,
+        {
+          label: "Access Control",
+          link: linkOptions({
+            to: "/ssh/$projectId/access-management",
+            params: {
+              projectId: params.projectId
+            }
+          })
+        },
+        {
+          label: "Identities"
+        }
+      ]
+    };
+  }
 });

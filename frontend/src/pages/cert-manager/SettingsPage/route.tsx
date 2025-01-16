@@ -5,5 +5,15 @@ import { SettingsPage } from "./SettingsPage";
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/cert-manager/$projectId/_cert-manager-layout/settings"
 )({
-  component: SettingsPage
+  component: SettingsPage,
+  beforeLoad: ({ context }) => {
+    return {
+      breadcrumbs: [
+        ...context.breadcrumbs,
+        {
+          label: "Settings"
+        }
+      ]
+    };
+  }
 });

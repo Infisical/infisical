@@ -1,21 +1,16 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, linkOptions } from "@tanstack/react-router";
 
 import { workspaceKeys } from "@app/hooks/api";
 import { fetchUserProjectPermissions, roleQueryKeys } from "@app/hooks/api/roles/queries";
 import { fetchWorkspaceById } from "@app/hooks/api/workspace/queries";
-import { OrganizationLayout } from "@app/layouts/OrganizationLayout";
 import { ProjectLayout } from "@app/layouts/ProjectLayout";
 
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/kms/$projectId/_kms-layout"
 )({
-  component: () => (
-    <OrganizationLayout>
-      <ProjectLayout />
-    </OrganizationLayout>
-  ),
+  component: ProjectLayout,
   beforeLoad: async ({ params, context }) => {
-    await context.queryClient.ensureQueryData({
+    const project = await context.queryClient.ensureQueryData({
       queryKey: workspaceKeys.getWorkspaceById(params.projectId),
       queryFn: () => fetchWorkspaceById(params.projectId)
     });
@@ -26,5 +21,21 @@ export const Route = createFileRoute(
       }),
       queryFn: () => fetchUserProjectPermissions({ workspaceId: params.projectId })
     });
+
+    return {
+      breadcrumbs: [
+        {
+          label: "KMS",
+          link: linkOptions({ to: "/organization/kms/overview" })
+        },
+        {
+          label: project.name,
+          link: linkOptions({
+            to: "/kms/$projectId/overview",
+            params: { projectId: project.id }
+          })
+        }
+      ]
+    };
   }
 });
