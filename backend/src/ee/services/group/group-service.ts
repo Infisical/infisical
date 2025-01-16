@@ -88,6 +88,13 @@ export const groupServiceFactory = ({
     if (!hasRequiredPriviledges)
       throw new ForbiddenRequestError({ message: "Failed to create a more privileged group" });
 
+    const existingGroup = await groupDAL.findOne({ orgId: actorOrgId, name });
+    if (existingGroup) {
+      throw new BadRequestError({
+        message: `Failed to create group with name '${name}'. Group with the same name already exists`
+      });
+    }
+
     const group = await groupDAL.create({
       name,
       slug: slug || slugify(`${name}-${alphaNumericNanoId(4)}`),
@@ -143,6 +150,16 @@ export const groupServiceFactory = ({
       if (!hasRequiredNewRolePermission)
         throw new ForbiddenRequestError({ message: "Failed to create a more privileged group" });
       if (isCustomRole) customRole = customOrgRole;
+    }
+
+    if (name) {
+      const existingGroup = await groupDAL.findOne({ orgId: actorOrgId, name });
+
+      if (existingGroup && existingGroup.id !== id) {
+        throw new BadRequestError({
+          message: `Failed to update group with name '${name}'. Group with the same name already exists`
+        });
+      }
     }
 
     const [updatedGroup] = await groupDAL.update(
