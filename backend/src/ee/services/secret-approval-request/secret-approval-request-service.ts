@@ -1267,9 +1267,10 @@ export const secretApprovalRequestServiceFactory = ({
             type: SecretType.Shared
           }))
         );
-        if (secrets.length)
+
+        if (secrets.length !== secretsWithNewName.length)
           throw new NotFoundError({
-            message: `Secret does not exist: ${secretsToUpdateStoredInDB.map((el) => el.key).join(",")}`
+            message: `Secret does not exist: ${secrets.map((el) => el.key).join(",")}`
           });
       }
 

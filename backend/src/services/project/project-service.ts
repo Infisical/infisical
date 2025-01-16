@@ -544,8 +544,10 @@ export const projectServiceFactory = ({
     const updatedProject = await projectDAL.updateById(project.id, {
       name: update.name,
       description: update.description,
-      autoCapitalization: update.autoCapitalization
+      autoCapitalization: update.autoCapitalization,
+      enforceCapitalization: update.autoCapitalization
     });
+
     return updatedProject;
   };
 
@@ -567,7 +569,11 @@ export const projectServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
 
-    const updatedProject = await projectDAL.updateById(projectId, { autoCapitalization });
+    const updatedProject = await projectDAL.updateById(projectId, {
+      autoCapitalization,
+      enforceCapitalization: autoCapitalization
+    });
+
     return updatedProject;
   };
 
