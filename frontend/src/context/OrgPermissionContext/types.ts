@@ -62,6 +62,7 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.AuditLogs]
   | [OrgPermissionActions, OrgPermissionSubjects.ProjectTemplates]
   | [OrgPermissionActions, OrgPermissionSubjects.AppConnections];
+// TODO(scott): add back once org UI refactored
 // | [
 //     OrgPermissionAppConnectionActions,
 //     (

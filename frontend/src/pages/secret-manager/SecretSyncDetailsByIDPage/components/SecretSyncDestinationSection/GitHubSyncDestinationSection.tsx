@@ -3,7 +3,7 @@ import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { SecretSyncLabel } from "@app/components/secret-syncs";
-import { GitHubSyncSelectedRepositoriesTooltipContent } from "@app/components/secret-syncs/github/GitHubSyncSelectedRepositoriesTooltipContent";
+import { GitHubSyncSelectedRepositoriesTooltipContent } from "@app/components/secret-syncs/github";
 import { Tooltip } from "@app/components/v2";
 import {
   GitHubSyncScope,

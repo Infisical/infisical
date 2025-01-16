@@ -86,10 +86,6 @@ export const NativeIntegrationsTab = () => {
     isIntegrationsEmpty
   ]);
 
-  // useEffect(() => {
-  //   setView(integrations?.length ? IntegrationView.List : IntegrationView.New);
-  // }, [isIntegrationsFetched]);
-
   const handleProviderIntegration = async (provider: string) => {
     const selectedCloudIntegration = cloudIntegrations?.find(({ slug }) => provider === slug);
     if (!selectedCloudIntegration) return;

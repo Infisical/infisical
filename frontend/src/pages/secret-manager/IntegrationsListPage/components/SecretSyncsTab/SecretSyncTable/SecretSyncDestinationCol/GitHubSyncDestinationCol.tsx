@@ -1,4 +1,4 @@
-import { GitHubSyncSelectedRepositoriesTooltipContent } from "@app/components/secret-syncs/github/GitHubSyncSelectedRepositoriesTooltipContent";
+import { GitHubSyncSelectedRepositoriesTooltipContent } from "@app/components/secret-syncs/github";
 import {
   GitHubSyncScope,
   GitHubSyncVisibility,
