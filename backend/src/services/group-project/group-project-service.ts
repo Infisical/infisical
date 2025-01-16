@@ -83,7 +83,6 @@ export const groupProjectServiceFactory = ({
     const isUuid = isUuidV4(groupIdOrName);
 
     let group: TGroups | null = null;
-    // id can only be a uuid, name can be anything
     if (isUuid) {
       group = await groupDAL.findOne({ orgId: actorOrgId, id: groupIdOrName });
     }
@@ -139,7 +138,7 @@ export const groupProjectServiceFactory = ({
     const projectGroup = await groupProjectDAL.transaction(async (tx) => {
       const groupProjectMembership = await groupProjectDAL.create(
         {
-          groupId: group.id,
+          groupId: group!.id,
           projectId: project.id
         },
         tx
@@ -174,7 +173,7 @@ export const groupProjectServiceFactory = ({
       // share project key with users in group that have not
       // individually been added to the project and that are not part of
       // other groups that are in the project
-      const groupMembers = await userGroupMembershipDAL.findGroupMembersNotInProject(group.id, project.id, tx);
+      const groupMembers = await userGroupMembershipDAL.findGroupMembersNotInProject(group!.id, project.id, tx);
 
       if (groupMembers.length) {
         const ghostUser = await projectDAL.findProjectGhostUser(project.id, tx);
