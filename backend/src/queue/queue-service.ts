@@ -273,7 +273,6 @@ export const queueServiceFactory = (
 
     workerContainer[name] = new Worker<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>(name, jobFn, {
       ...queueSettings,
-      concurrency: 3, // TODO: remove
       connection
     });
   };
