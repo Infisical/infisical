@@ -1471,7 +1471,7 @@ export const secretServiceFactory = ({
       if (secretName !== secretName.toUpperCase()) {
         throw new BadRequestError({
           message:
-            "Secret names must be in UPPERCASE per project requirements. You can disable this requirement in project settings."
+            "Secret name must be in UPPERCASE per project requirements. You can disable this requirement in project settings."
         });
       }
     }
@@ -1624,7 +1624,7 @@ export const secretServiceFactory = ({
       if (newSecretName && newSecretName !== newSecretName.toUpperCase()) {
         throw new BadRequestError({
           message:
-            "Secret names must be in UPPERCASE per project requirements. You can disable this requirement in project settings."
+            "Secret name must be in UPPERCASE per project requirements. You can disable this requirement in project settings."
         });
       }
     }
