@@ -12,12 +12,15 @@ import {
   useServerConfig
 } from "@app/context";
 import { withPermission } from "@app/hoc";
+import { usePopUp } from "@app/hooks";
 import {
   useCreateNewInstallationSession,
   useGetSecretScanningInstallationStatus,
+  useGetSecretScanningRisks,
   useLinkGitAppInstallationWithOrg
 } from "@app/hooks/api/secretScanning";
 
+import { ExportSecretScansModal } from "./components/ExportSecretScansModal";
 import { SecretScanningLogsTable } from "./components";
 
 export const SecretScanningPage = withPermission(
@@ -25,9 +28,12 @@ export const SecretScanningPage = withPermission(
     const queryParams = useSearch({
       from: ROUTE_PATHS.Organization.SecretScanning.id
     });
+
     const { config } = useServerConfig();
     const { currentOrg } = useOrganization();
     const organizationId = currentOrg.id;
+
+    const { isPending, data: gitRisks } = useGetSecretScanningRisks(organizationId);
 
     const { mutateAsync: linkGitAppInstallationWithOrganization } =
       useLinkGitAppInstallationWithOrg();
@@ -37,13 +43,15 @@ export const SecretScanningPage = withPermission(
     const integrationEnabled =
       !isSecretScanningInstatllationStatusLoading && installationStatus?.appInstallationCompleted;
 
+    const { handlePopUpToggle, popUp } = usePopUp(["exportSecretScans"]);
+
     useEffect(() => {
       const linkInstallation = async () => {
         if (queryParams.state && queryParams.installation_id) {
           try {
             const isLinked = await linkGitAppInstallationWithOrganization({
-              installationId: queryParams.installation_id as string,
-              sessionId: queryParams.state as string
+              installationId: String(queryParams.installation_id),
+              sessionId: String(queryParams.state)
             });
             if (isLinked) {
               window.location.reload();
@@ -132,9 +140,25 @@ export const SecretScanningPage = withPermission(
                 </div>
               )}
             </div>
-            <SecretScanningLogsTable />
+            <div className="mt-8 space-y-3">
+              <div className="flex w-full justify-end">
+                <Button
+                  onClick={() => handlePopUpToggle("exportSecretScans", true)}
+                  variant="solid"
+                  colorSchema="secondary"
+                >
+                  Export
+                </Button>
+              </div>
+              <SecretScanningLogsTable gitRisks={gitRisks} isPending={isPending} />
+            </div>
           </div>
         </div>
+        <ExportSecretScansModal
+          gitRisks={gitRisks || []}
+          handlePopUpToggle={handlePopUpToggle}
+          popUp={popUp}
+        />
       </div>
     );
   },

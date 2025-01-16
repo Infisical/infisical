@@ -6,7 +6,7 @@ import { SecretScanningPage } from "./SecretScanningPage";
 
 const SecretScanningQueryParams = z.object({
   state: z.string().catch(""),
-  installation_id: z.string().catch("")
+  installation_id: z.coerce.string().optional()
 });
 
 export const Route = createFileRoute(
