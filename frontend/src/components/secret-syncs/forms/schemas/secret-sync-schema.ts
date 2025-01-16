@@ -28,7 +28,6 @@ const BaseSecretSyncSchema = z.object({
   isEnabled: z.boolean()
 });
 
-// TODO: union once more supported
 export const SecretSyncFormSchema = z
   .discriminatedUnion("destination", [
     AwsParameterStoreSyncDestinationSchema,
