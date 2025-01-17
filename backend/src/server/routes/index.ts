@@ -232,6 +232,8 @@ import { registerSecretScannerGhApp } from "../plugins/secret-scanner";
 import { registerV1Routes } from "./v1";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
+import { consumerSecretsServiceFactory } from "@app/services/consumer-secrets/consumer-secrets-service";
+import { consumerSecretsDALFactory } from "@app/services/consumer-secrets/consumer-secrets-dal";
 
 export const registerRoutes = async (
   server: FastifyZodProvider,
@@ -255,6 +257,7 @@ export const registerRoutes = async (
   await server.register(registerSecretScannerGhApp, { prefix: "/ss-webhook" });
 
   // db layers
+  const consumerSecretsDAL = consumerSecretsDALFactory(db);
   const userDAL = userDALFactory(db);
   const userAliasDAL = userAliasDALFactory(db);
   const authDAL = authDALFactory(db);
@@ -542,6 +545,8 @@ export const registerRoutes = async (
     userDAL,
     kmsService
   });
+
+  const consumerSecretsService = consumerSecretsServiceFactory({consumerSecretsDAL});
 
   const loginService = authLoginServiceFactory({ userDAL, smtpService, tokenService, orgDAL, totpService });
   const passwordService = authPaswordServiceFactory({
@@ -1387,6 +1392,7 @@ export const registerRoutes = async (
 
   // inject all services
   server.decorate<FastifyZodProvider["services"]>("services", {
+    consumerSecrets: consumerSecretsService,
     login: loginService,
     password: passwordService,
     signup: signupService,

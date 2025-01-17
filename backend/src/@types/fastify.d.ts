@@ -91,6 +91,7 @@ import { TUserServiceFactory } from "@app/services/user/user-service";
 import { TUserEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
 import { TWebhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { TWorkflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
+import { TConsumerSecretsServiceFactory } from "@app/services/consumer-secrets/consumer-secrets-service";
 
 declare module "fastify" {
   interface Session {
@@ -127,6 +128,7 @@ declare module "fastify" {
   interface FastifyInstance {
     redis: Redis;
     services: {
+      consumerSecrets: TConsumerSecretsServiceFactory;
       login: TAuthLoginFactory;
       password: TAuthPasswordFactory;
       signup: TAuthSignupFactory;
