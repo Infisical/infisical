@@ -9,18 +9,26 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@app/components/v2";
-import { useOrganization } from "@app/context";
+import { useOrganization, useSubscription } from "@app/context";
 import { useGetOrganizations, useLogoutUser } from "@app/hooks/api";
+import { SubscriptionPlan } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 
 type Prop = {
   onChangeOrg: (orgId: string) => void;
 };
 
+const getPlan = (subscription: SubscriptionPlan) => {
+  if (subscription.dynamicSecret) return "Enterprise Plan";
+  if (subscription.pitRecovery) return "Pro Plan";
+  return "Free Plan";
+};
+
 export const SidebarHeader = ({ onChangeOrg }: Prop) => {
   const { currentOrg } = useOrganization();
   const navigate = useNavigate();
   const { data: orgs } = useGetOrganizations();
+  const { subscription } = useSubscription();
 
   const logout = useLogoutUser();
   const logOutUser = async () => {
@@ -45,7 +53,7 @@ export const SidebarHeader = ({ onChangeOrg }: Prop) => {
               <div className="max-w-36 truncate text-ellipsis text-sm font-medium capitalize">
                 {currentOrg?.name}
               </div>
-              <div className="text-xs text-mineshaft-400">Free Plan</div>
+              <div className="text-xs text-mineshaft-400">{getPlan(subscription)}</div>
             </div>
             <FontAwesomeIcon icon={faSort} className="text-xs text-mineshaft-400" />
           </div>
