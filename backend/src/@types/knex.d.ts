@@ -1,6 +1,9 @@
 import { Knex as KnexOriginal } from "knex";
 
 import {
+  TConsumerSecrets,
+  TConsumerSecretsInsert,
+  TConsumerSecretsUpdate,
   TableName,
   TAccessApprovalPolicies,
   TAccessApprovalPoliciesApprovers,

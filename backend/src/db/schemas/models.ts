@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export enum TableName {
+  ConsumerSecrets = "consumer_secrets",
   Users = "users",
   SshCertificateAuthority = "ssh_certificate_authorities",
   SshCertificateAuthoritySecret = "ssh_certificate_authority_secrets",
