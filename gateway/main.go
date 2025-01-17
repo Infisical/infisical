@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -73,6 +74,14 @@ func (tm *TunnelManager) findAvailablePort() (int, error) {
 	return 0, fmt.Errorf("no available ports in range %d-%d", tm.portRange.start, tm.portRange.end)
 }
 
+func sanitizeHost(host string) string {
+	// If host contains @, take everything after the last @
+	if idx := strings.LastIndex(host, "@"); idx != -1 {
+		return host[idx+1:]
+	}
+	return host
+}
+
 func (tm *TunnelManager) createTunnel(req TunnelRequest) (*TunnelResponse, error) {
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
@@ -133,15 +142,18 @@ func (tm *TunnelManager) handleTunnelConnections(tunnel *Tunnel) {
 func (tm *TunnelManager) handleConnection(tunnel *Tunnel, clientConn net.Conn) {
 	defer clientConn.Close()
 
-	targetConn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", tunnel.TargetHost, tunnel.TargetPort))
+	// Sanitize the host before dialing
+	targetHost := sanitizeHost(tunnel.TargetHost)
+
+	targetConn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", targetHost, tunnel.TargetPort))
 	if err != nil {
-		tm.logger.Printf("Failed to connect to target %s:%d: %v", tunnel.TargetHost, tunnel.TargetPort, err)
+		tm.logger.Printf("Failed to connect to target %s:%d: %v", targetHost, tunnel.TargetPort, err)
 		return
 	}
 	defer targetConn.Close()
 
 	tm.logger.Printf("New connection on tunnel %s: %s -> %s:%d",
-		tunnel.ID, clientConn.RemoteAddr(), tunnel.TargetHost, tunnel.TargetPort)
+		tunnel.ID, clientConn.RemoteAddr(), targetHost, tunnel.TargetPort)
 
 	// Bidirectional copy
 	errCh := make(chan error, 2)
