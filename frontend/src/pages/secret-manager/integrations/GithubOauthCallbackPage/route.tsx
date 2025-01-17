@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, linkOptions } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
@@ -14,5 +14,19 @@ export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/github/oauth2/callback"
 )({
   component: GithubOauthCallbackPage,
-  validateSearch: zodValidator(GithubOAuthCallbackPageQueryParamsSchema)
+  validateSearch: zodValidator(GithubOAuthCallbackPageQueryParamsSchema),
+  beforeLoad: ({ context, params }) => {
+    return {
+      breadcrumbs: [
+        ...context.breadcrumbs,
+        {
+          label: "Integrations",
+          link: linkOptions({ to: "/secret-manager/$projectId/integrations", params })
+        },
+        {
+          label: "GitHub"
+        }
+      ]
+    };
+  }
 });
