@@ -38,7 +38,7 @@ var secretsCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		projectId, err := cmd.Flags().GetString("projectId")
+		projectId, err := util.GetProjectId(cmd)
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
@@ -162,7 +162,7 @@ var secretsSetCmd = &cobra.Command{
 			}
 		}
 
-		projectId, err := cmd.Flags().GetString("projectId")
+		projectId, err := util.GetProjectId(cmd)
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
@@ -246,7 +246,7 @@ var secretsDeleteCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		projectId, err := cmd.Flags().GetString("projectId")
+		projectId, err := util.GetProjectId(cmd)
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
@@ -335,7 +335,7 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
-	projectId, err := cmd.Flags().GetString("projectId")
+	projectId, err := util.GetProjectId(cmd)
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
 	}
@@ -447,7 +447,7 @@ func generateExampleEnv(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
-	projectId, err := cmd.Flags().GetString("projectId")
+	projectId, err := util.GetProjectId(cmd)
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
 	}
