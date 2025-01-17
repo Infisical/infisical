@@ -4,7 +4,6 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
-import { getProjectTitle } from "@app/helpers/project";
 import { withProjectPermission } from "@app/hoc";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 import { ProjectAccessControlTabs } from "@app/types/project";

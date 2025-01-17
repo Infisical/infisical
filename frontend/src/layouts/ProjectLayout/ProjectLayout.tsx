@@ -4,21 +4,18 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 
 import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
+  BreadcrumbContainer,
   Menu,
   MenuGroup,
-  MenuItem
+  MenuItem,
+  TBreadcrumbFormat
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { useGetAccessRequestsCount, useGetSecretApprovalRequestCount } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { InsecureConnectionBanner } from "../OrganizationLayout/components/InsecureConnectionBanner";
+import { MinimizedOrgSidebar } from "./components/MinimizedOrgSidebar";
 import { ProjectSelect } from "./components/ProjectSelect";
 
 // This is a generic layout shared by all types of projects.
@@ -54,6 +51,7 @@ export const ProjectLayout = () => {
       <div className="dark hidden h-screen w-full flex-col overflow-x-hidden md:flex">
         {!window.isSecureContext && <InsecureConnectionBanner />}
         <div className="flex flex-grow flex-col overflow-y-hidden md:flex-row">
+          <MinimizedOrgSidebar />
           <aside className="dark w-full border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60">
             <nav className="items-between flex h-full flex-col justify-between overflow-y-auto dark:[color-scheme:dark]">
               <div>
@@ -199,34 +197,10 @@ export const ProjectLayout = () => {
               </div>
             </nav>
           </aside>
-          <main className="flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800 dark:[color-scheme:dark]">
-            {breadcrumbs && (
-              <div className="mx-auto max-w-7xl py-4 capitalize text-white">
-                <Breadcrumb>
-                  <BreadcrumbList>
-                    {breadcrumbs.map((el, index) => {
-                      const isNotLastCrumb = index + 1 !== breadcrumbs.length;
-                      return (
-                        <>
-                          {el.link && isNotLastCrumb && !("disabled" in el.link) ? (
-                            <Link {...el.link}>
-                              <BreadcrumbItem>
-                                <BreadcrumbLink>{el.label}</BreadcrumbLink>
-                              </BreadcrumbItem>
-                            </Link>
-                          ) : (
-                            <BreadcrumbItem>
-                              <BreadcrumbPage>{el.label}</BreadcrumbPage>
-                            </BreadcrumbItem>
-                          )}
-                          {isNotLastCrumb && <BreadcrumbSeparator />}
-                        </>
-                      );
-                    })}
-                  </BreadcrumbList>
-                </Breadcrumb>
-              </div>
-            )}
+          <main className="flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800 px-4 pb-4 dark:[color-scheme:dark]">
+            {breadcrumbs ? (
+              <BreadcrumbContainer breadcrumbs={breadcrumbs as TBreadcrumbFormat[]} />
+            ) : null}
             <Outlet />
           </main>
         </div>

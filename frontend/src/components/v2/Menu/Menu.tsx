@@ -1,6 +1,5 @@
 import { ComponentPropsWithRef, ElementType, ReactNode, Ref, useRef } from "react";
 import { DotLottie, DotLottieReact } from "@lottiefiles/dotlottie-react";
-import { motion } from "framer-motion";
 import { twMerge } from "tailwind-merge";
 
 export type MenuProps = {

@@ -163,7 +163,7 @@ const Page = () => {
     );
 
   return (
-    <div className="container relative mx-auto max-w-7xl pb-12 text-white">
+    <div className="container relative mx-auto max-w-7xl text-white">
       <div className="relative">
         {view === IntegrationView.List ? (
           <motion.div

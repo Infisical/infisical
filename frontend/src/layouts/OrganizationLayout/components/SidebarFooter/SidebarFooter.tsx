@@ -1,13 +1,10 @@
 import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
 import {
-  faAnglesLeft,
-  faAnglesRight,
   faArrowUpRightFromSquare,
   faBook,
   faEnvelope,
   faInfinity,
   faInfo,
-  faInfoCircle,
   faPlus,
   faQuestion,
   faUser
@@ -20,14 +17,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
-  MenuItem
+  DropdownMenuTrigger
 } from "@app/components/v2";
 import { envConfig } from "@app/config/env";
 import { useOrganization, useSubscription, useUser } from "@app/context";
 import { useGetOrgTrialUrl, useLogoutUser } from "@app/hooks/api";
-
-import { MenuIconButton } from "../MenuIconButton";
 
 export const INFISICAL_SUPPORT_OPTIONS = [
   [
@@ -52,12 +46,7 @@ export const INFISICAL_SUPPORT_OPTIONS = [
   ]
 ];
 
-type Props = {
-  isCollapsed?: boolean;
-  onToggleSidebar: () => void;
-};
-
-export const SidebarFooter = ({ isCollapsed, onToggleSidebar }: Props) => {
+export const SidebarFooter = () => {
   const { subscription } = useSubscription();
   const { currentOrg } = useOrganization();
 
@@ -82,38 +71,28 @@ export const SidebarFooter = ({ isCollapsed, onToggleSidebar }: Props) => {
         subscription && subscription.slug === "starter" && !subscription.has_used_trial
           ? "mb-2"
           : "mb-4"
-      } flex w-full cursor-default flex-col items-center ${isCollapsed ? "px-1" : "px-2"} text-sm text-mineshaft-400`}
+      } flex w-full cursor-default flex-col items-center px-2 text-sm text-mineshaft-400`}
     >
       {(window.location.origin.includes("https://app.infisical.com") ||
-        window.location.origin.includes("https://gamma.infisical.com")) &&
-        !isCollapsed && <WishForm />}
-      {!isCollapsed && (
-        <Link
-          to="/organization/access-management"
-          search={{
-            action: "invite"
-          }}
-          className="w-full"
-        >
-          <div className="mb-3 w-full pl-2 duration-200 hover:text-mineshaft-200">
-            <FontAwesomeIcon icon={faPlus} className="mr-3" />
-            Invite people
-          </div>
-        </Link>
-      )}
+        window.location.origin.includes("https://gamma.infisical.com")) && <WishForm />}
+      <Link
+        to="/organization/access-management"
+        search={{
+          action: "invite"
+        }}
+        className="w-full"
+      >
+        <div className="mb-3 w-full pl-2 duration-200 hover:text-mineshaft-200">
+          <FontAwesomeIcon icon={faPlus} className="mr-3" />
+          Invite people
+        </div>
+      </Link>
       <DropdownMenu>
         <DropdownMenuTrigger className="w-full">
-          {isCollapsed ? (
-            <MenuIconButton>
-              <FontAwesomeIcon icon={faInfoCircle} className="mb-3 text-lg" />
-              Support
-            </MenuIconButton>
-          ) : (
-            <div className="mb-4 flex w-full items-center pl-2 duration-200 hover:text-mineshaft-200">
-              <FontAwesomeIcon icon={faQuestion} className="mr-3 px-[0.1rem]" />
-              Help & Support
-            </div>
-          )}
+          <div className="mb-4 flex w-full items-center pl-2 duration-200 hover:text-mineshaft-200">
+            <FontAwesomeIcon icon={faQuestion} className="mr-3 px-[0.1rem]" />
+            Help & Support
+          </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="p-1">
           {INFISICAL_SUPPORT_OPTIONS.map(([icon, text, url]) => (
@@ -161,39 +140,19 @@ export const SidebarFooter = ({ isCollapsed, onToggleSidebar }: Props) => {
           </div>
         </button>
       )}
-      {isCollapsed ? (
-        <MenuIconButton onClick={onToggleSidebar} className="p-4">
-          <FontAwesomeIcon icon={faAnglesRight} className="text-lg" />
-        </MenuIconButton>
-      ) : (
-        <MenuItem onClick={onToggleSidebar} className="mb-2 w-full px-2 text-mineshaft-400">
-          <FontAwesomeIcon icon={faAnglesLeft} className="mr-3" />
-          Collapse
-        </MenuItem>
-      )}
       <DropdownMenu>
-        <DropdownMenuTrigger className="w-full">
-          {isCollapsed ? (
+        <DropdownMenuTrigger asChild className="w-full">
+          <div className="flex w-full cursor-pointer items-center rounded-md border border-mineshaft-600 p-2 px-1">
+            <div className="mr-2 flex h-6 w-6 items-center justify-center rounded-md bg-primary text-sm uppercase">
+              {user?.firstName?.charAt(0)}
+            </div>
+            <div className="max-w-40 flex-grow truncate text-ellipsis text-left text-sm capitalize text-white">
+              {user?.firstName} {user?.lastName}
+            </div>
             <div>
-              <MenuIconButton>
-                <div className="my-1 flex h-6 w-6 items-center justify-center rounded-md bg-primary text-sm uppercase text-black">
-                  {user?.firstName?.charAt(0)}
-                </div>
-              </MenuIconButton>
+              <FontAwesomeIcon icon={faUser} className="text-xs text-mineshaft-400" />
             </div>
-          ) : (
-            <div className="flex w-full cursor-pointer items-center rounded-md border border-mineshaft-600 p-2 px-1">
-              <div className="mr-2 flex h-6 w-6 items-center justify-center rounded-md bg-primary text-sm uppercase">
-                {user?.firstName?.charAt(0)}
-              </div>
-              <div className="max-w-40 flex-grow truncate text-ellipsis text-left text-sm capitalize text-white">
-                {user?.firstName} {user?.lastName}
-              </div>
-              <div>
-                <FontAwesomeIcon icon={faUser} className="text-xs text-mineshaft-400" />
-              </div>
-            </div>
-          )}
+          </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="p-1">
           <div className="px-2 py-1 text-xs text-mineshaft-400">{user?.username}</div>

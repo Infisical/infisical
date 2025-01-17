@@ -366,7 +366,7 @@ export const ProductOverviewPage = ({ type }: Props) => {
   }
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col justify-start bg-bunker-800 md:h-screen">
+    <div className="mx-auto flex max-w-7xl flex-col justify-start bg-bunker-800">
       <Helmet>
         <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
         <link rel="icon" href="/infisical.ico" />

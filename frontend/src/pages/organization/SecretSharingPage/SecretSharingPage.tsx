@@ -3,8 +3,9 @@ import { useTranslation } from "react-i18next";
 import { faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { ShareSecretSection } from "./components";
 import { PageHeader } from "@app/components/v2";
+
+import { ShareSecretSection } from "./components";
 
 export const SecretSharingPage = () => {
   const { t } = useTranslation();

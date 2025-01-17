@@ -187,7 +187,7 @@ export const CircleCIConfigurePage = () => {
           name="secretPath"
           render={({ field, fieldState: { error } }) => (
             <FormControl label="Secrets Path" errorText={error?.message} isError={Boolean(error)}>
-              <SecretPathInput {...field} environment={selectedEnvironment.slug}/>
+              <SecretPathInput {...field} environment={selectedEnvironment.slug} />
             </FormControl>
           )}
         />

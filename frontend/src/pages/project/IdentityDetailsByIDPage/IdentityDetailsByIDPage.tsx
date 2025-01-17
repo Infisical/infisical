@@ -1,16 +1,13 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
-import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { format, formatRelative } from "date-fns";
+import { formatRelative } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal, EmptyState, PageHeader, Spinner } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
-import { getProjectTitle } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import {
   useDeleteIdentityFromWorkspace,

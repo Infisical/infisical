@@ -14,8 +14,6 @@ export const PageHeader = ({ title, description, children }: Props) => (
       </div>
       <div>{children}</div>
     </div>
-    <div>
-      <p className="mt-2 text-gray-400">{description}</p>
-    </div>
+    <div className="mt-2 text-gray-400">{description}</div>
   </div>
 );

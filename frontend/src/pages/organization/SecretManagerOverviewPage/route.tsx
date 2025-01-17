@@ -1,4 +1,6 @@
-import { createFileRoute, linkOptions } from "@tanstack/react-router";
+import { faHome } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { createFileRoute } from "@tanstack/react-router";
 
 import { SecretManagerOverviewPage } from "./SecretManagerOverviewPage";
 
@@ -9,12 +11,11 @@ export const Route = createFileRoute(
   context: () => ({
     breadcrumbs: [
       {
-        label: "products",
-        link: linkOptions({ disabled: true, to: "/" })
+        label: "Products",
+        icon: () => <FontAwesomeIcon icon={faHome} />
       },
       {
-        label: "Secret Management",
-        link: linkOptions({ to: "/organization/secret-manager/overview" })
+        label: "Secret Management"
       }
     ]
   })

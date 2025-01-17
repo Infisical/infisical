@@ -7,7 +7,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
-import NavHeader from "@app/components/navigation/NavHeader";
 import { createNotification } from "@app/components/notifications";
 import { PermissionDeniedBanner } from "@app/components/permissions";
 import {
@@ -67,7 +66,6 @@ const LOADER_TEXT = [
 ];
 
 const Page = () => {
-  const { t } = useTranslation();
   const { currentWorkspace } = useWorkspace();
   const navigate = useNavigate({
     from: ROUTE_PATHS.SecretManager.SecretDashboardPage.path
@@ -264,18 +262,6 @@ const Page = () => {
       state === OrderByDirection.ASC ? OrderByDirection.DESC : OrderByDirection.ASC
     );
 
-  const handleEnvChange = (slug: string) => {
-    navigate({
-      params: {
-        envSlug: slug
-      },
-      search: (state) => {
-        const newState = { ...state, secretPath: undefined };
-        return newState;
-      }
-    });
-  };
-
   const handleTagToggle = useCallback(
     (tagSlug: string) =>
       setFilter((state) => {
@@ -396,21 +382,8 @@ const Page = () => {
     setDebouncedSearchFilter("");
   };
   return (
-    <div className="container mx-auto flex flex-col px-6 text-mineshaft-50 dark:[color-scheme:dark]">
+    <div className="container mx-auto flex max-w-7xl flex-col text-mineshaft-50 dark:[color-scheme:dark]">
       <SecretV2MigrationSection />
-      <div className="relative -top-2 right-6 mb-2 ml-6">
-        <NavHeader
-          pageName={t("dashboard.title")}
-          currentEnv={environment}
-          userAvailableEnvs={currentWorkspace?.environments}
-          isFolderMode
-          secretPath={secretPath}
-          isProjectRelated
-          onEnvChange={handleEnvChange}
-          isProtectedBranch={isProtectedBranch}
-          protectionPolicyName={boardPolicy?.name}
-        />
-      </div>
       {!isRollbackMode ? (
         <>
           <ActionBar
@@ -428,6 +401,7 @@ const Page = () => {
             isSnapshotCountLoading={isSnapshotCountLoading}
             onToggleRowType={handleToggleRowType}
             onClickRollbackMode={() => handlePopUpToggle("snapshots", true)}
+            protectedBranchPolicyName={boardPolicy?.name}
           />
           <div className="thin-scrollbar mt-3 overflow-y-auto overflow-x-hidden rounded-md rounded-b-none bg-mineshaft-800 text-left text-sm text-bunker-300">
             <div className="flex flex-col" id="dashboard">

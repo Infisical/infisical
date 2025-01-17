@@ -15,6 +15,7 @@ import {
   faFolder,
   faFolderPlus,
   faKey,
+  faLock,
   faMinusSquare,
   faPlus,
   faTrash
@@ -80,6 +81,7 @@ type Props = {
   isVisible?: boolean;
   snapshotCount: number;
   isSnapshotCountLoading?: boolean;
+  protectedBranchPolicyName?: string;
   onSearchChange: (term: string) => void;
   onToggleTagFilter: (tagId: string) => void;
   onVisibilityToggle: () => void;
@@ -101,7 +103,8 @@ export const ActionBar = ({
   onToggleTagFilter,
   onVisibilityToggle,
   onClickRollbackMode,
-  onToggleRowType
+  onToggleRowType,
+  protectedBranchPolicyName
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "addFolder",
@@ -112,9 +115,9 @@ export const ActionBar = ({
     "misc",
     "upgradePlan"
   ] as const);
+  const isProtectedBranch = Boolean(protectedBranchPolicyName);
   const { subscription } = useSubscription();
   const { openPopUp } = usePopUpAction();
-
   const { mutateAsync: createFolder } = useCreateFolder();
   const { mutateAsync: deleteBatchSecretV3 } = useDeleteSecretBatch();
   const { mutateAsync: moveSecrets } = useMoveSecrets();
@@ -386,6 +389,15 @@ export const ActionBar = ({
               </DropdownSubMenu>
             </DropdownMenuContent>
           </DropdownMenu>
+        </div>
+        <div>
+          {isProtectedBranch && (
+            <Tooltip content={`Protected by policy ${protectedBranchPolicyName}`}>
+              <IconButton variant="outline_bg" ariaLabel="protected">
+                <FontAwesomeIcon icon={faLock} className="text-primary" />
+              </IconButton>
+            </Tooltip>
+          )}
         </div>
         <div className="flex-grow" />
         <div>

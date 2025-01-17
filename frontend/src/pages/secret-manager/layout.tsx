@@ -1,3 +1,5 @@
+import { faHome } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createFileRoute, linkOptions } from "@tanstack/react-router";
 
 import { workspaceKeys } from "@app/hooks/api";
@@ -23,9 +25,11 @@ export const Route = createFileRoute(
     });
 
     return {
+      project,
       breadcrumbs: [
         {
           label: "Secret Managers",
+          icon: () => <FontAwesomeIcon icon={faHome} />,
           link: linkOptions({ to: "/organization/secret-manager/overview" })
         },
         {

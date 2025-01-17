@@ -1,7 +1,8 @@
 import { Helmet } from "react-helmet";
 
-import { LogsSection } from "./components";
 import { PageHeader } from "@app/components/v2";
+
+import { LogsSection } from "./components";
 
 export const AuditLogsPage = () => {
   return (

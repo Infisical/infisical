@@ -1,8 +1,9 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
-import { OrgTabGroup } from "./components";
 import { PageHeader } from "@app/components/v2";
+
+import { OrgTabGroup } from "./components";
 
 export const SettingsPage = () => {
   const { t } = useTranslation();

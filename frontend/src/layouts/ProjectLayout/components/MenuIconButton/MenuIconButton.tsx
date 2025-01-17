@@ -1,8 +1,8 @@
 import { ComponentPropsWithRef, ElementType, useRef } from "react";
 import { DotLottie, DotLottieReact } from "@lottiefiles/dotlottie-react";
+import { twMerge } from "tailwind-merge";
 
 import { MenuItemProps } from "@app/components/v2";
-import { twMerge } from "tailwind-merge";
 
 export const MenuIconButton = <T extends ElementType = "button">({
   children,
@@ -10,7 +10,7 @@ export const MenuIconButton = <T extends ElementType = "button">({
   className,
   isDisabled,
   isSelected,
-  as: Item = "button",
+  as: Item = "div",
   description,
   // wrapping in forward ref with generic component causes the loss of ts definitions on props
   inputRef,
@@ -35,7 +35,7 @@ export const MenuIconButton = <T extends ElementType = "button">({
       <div
         className={`${
           isSelected ? "visisble" : "invisible"
-        } absolute -left-[0.28rem] h-full w-[0.07rem] rounded-md bg-primary`}
+        } absolute -left-[0.28rem] h-full w-0.5 rounded-md bg-primary`}
       />
       {icon && (
         <div className="my-auto mb-2 h-6 w-6">
@@ -49,7 +49,7 @@ export const MenuIconButton = <T extends ElementType = "button">({
           />
         </div>
       )}
-      <span className="flex-grow break-words text-center text-xxs">{children}</span>
+      <div className="flex-grow justify-center break-words text-center text-xxs">{children}</div>
     </Item>
   );
 };

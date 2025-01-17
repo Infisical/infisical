@@ -79,7 +79,7 @@ export const Page = () => {
   }
 
   return (
-    <div className="container mx-auto flex max-w-7xl flex-col justify-between bg-bunker-800 p-6 text-white">
+    <div className="container mx-auto flex max-w-7xl flex-col justify-between bg-bunker-800 text-white">
       {membershipDetails ? (
         <>
           <PageHeader

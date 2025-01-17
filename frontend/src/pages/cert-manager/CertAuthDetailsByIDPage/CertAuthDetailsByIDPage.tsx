@@ -1,6 +1,4 @@
 import { Helmet } from "react-helmet";
-import { faChevronLeft, faEllipsis } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
@@ -91,7 +89,7 @@ const Page = () => {
                   </Tooltip>
                 </div>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="emd" className="p-1">
+              <DropdownMenuContent align="end" className="p-1">
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Delete}
                   a={ProjectPermissionSub.CertificateAuthorities}
