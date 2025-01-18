@@ -11,6 +11,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -335,50 +336,19 @@ func startGateway(cmd *cobra.Command, args []string) {
 		util.HandleError(err)
 	}
 
-	accessToken := infisicalClient.Auth().GetAccessToken()
-	httpClient := resty.New().SetAuthToken(accessToken)
-	if infisicalConfig.Gateway.ID == "" {
-
-		createdGateway, err := api.CallCreateGatewayV1(httpClient, api.CreateGatewayV1Request{
-			Name: gatewayName,
-		})
-
-		if err != nil {
-			util.HandleError(err)
-		}
-
-		infisicalConfig.Gateway.ID = createdGateway.Gateway.ID
-		err = util.WriteConfigFile(&infisicalConfig)
-
-		if err != nil {
-			util.HandleError(err)
-		}
-	} else {
-		res, err := api.CallGetGatewayV1(httpClient, api.GetGatewayV1Request{
-			ID: infisicalConfig.Gateway.ID,
-		})
-
-		if err != nil {
-			util.HandleError(err)
-		}
-
-		if res.Gateway.Name != gatewayName {
-			fmt.Printf("Gateway name has been changed from %s to %s\nUpdating..\n\n", res.Gateway.Name, gatewayName)
-			_, err := api.CallUpdateGatewayV1(httpClient, api.UpdateGatewayV1Request{
-				ID:   infisicalConfig.Gateway.ID,
-				Name: gatewayName,
-			})
-
-			if err != nil {
-				util.HandleError(err)
-			}
-		}
-	}
-
 	tm := NewTunnelManager(10000, 20000, infisicalClient)
+
+	setupComplete := false
+	var wg sync.WaitGroup
 
 	authMiddleware := func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
+
+			if !setupComplete {
+				http.Error(w, "Unauthorized: Gateway setup not complete", http.StatusUnauthorized)
+				return
+			}
+
 			token := r.Header.Get("Authorization")
 			if token == "" {
 				http.Error(w, "Unauthorized: No token provided", http.StatusUnauthorized)
@@ -408,11 +378,60 @@ func startGateway(cmd *cobra.Command, args []string) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	serverPort := 8022
-	tm.logger.Printf("Starting gateway server on port %d", serverPort)
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", serverPort), nil); err != nil {
-		tm.logger.Fatalf("Failed to start server: %v", err)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		serverPort := 8022
+		tm.logger.Printf("Starting gateway server on port %d", serverPort)
+		if err := http.ListenAndServe(fmt.Sprintf(":%d", serverPort), nil); err != nil {
+			tm.logger.Fatalf("Failed to start server: %v", err)
+			os.Exit(1)
+		}
+	}()
+
+	accessToken := infisicalClient.Auth().GetAccessToken()
+	httpClient := resty.New().SetAuthToken(accessToken)
+	if infisicalConfig.Gateway.ID == "" {
+
+		createdGateway, err := api.CallCreateGatewayV1(httpClient, api.CreateGatewayV1Request{
+			Name: gatewayName,
+		})
+
+		if err != nil {
+			util.HandleError(err)
+		}
+
+		infisicalConfig.Gateway.ID = createdGateway.Gateway.ID
+		err = util.WriteConfigFile(&infisicalConfig)
+
+		if err != nil {
+			util.HandleError(err)
+		}
+	} else {
+		res, err := api.CallGetGatewayV1(httpClient, api.GetGatewayV1Request{
+			ID: infisicalConfig.Gateway.ID,
+		})
+
+		if err != nil {
+			util.HandleError(err)
+		}
+
+		if res.Gateway.Name != gatewayName {
+			tm.logger.Printf("Gateway name has been changed from %s to %s\nUpdating..\n\n", res.Gateway.Name, gatewayName)
+			_, err := api.CallUpdateGatewayV1(httpClient, api.UpdateGatewayV1Request{
+				ID:   infisicalConfig.Gateway.ID,
+				Name: gatewayName,
+			})
+
+			if err != nil {
+				util.HandleError(err)
+			}
+		}
 	}
+
+	tm.logger.Panicf("Gateway started successfully on port %d", 8022)
+	setupComplete = true
+	wg.Wait()
 
 }
 
