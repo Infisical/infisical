@@ -1,6 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { ProjectType } from "@app/db/schemas";
+import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { NotFoundError } from "@app/lib/errors";
@@ -81,14 +81,14 @@ export const integrationServiceFactory = ({
     if (!integrationAuth)
       throw new NotFoundError({ message: `Integration auth with ID '${integrationAuthId}' not found` });
 
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integrationAuth.projectId,
+      projectId: integrationAuth.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.SecretManager);
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -160,14 +160,14 @@ export const integrationServiceFactory = ({
     const integration = await integrationDAL.findById(id);
     if (!integration) throw new NotFoundError({ message: `Integration with ID '${id}' not found` });
 
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integration.projectId,
+      projectId: integration.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.SecretManager);
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Integrations);
 
     const newEnvironment = environment || integration.environment.slug;
@@ -227,13 +227,14 @@ export const integrationServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integration?.projectId || "",
+      projectId: integration.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
 
     if (!integration) {
@@ -254,13 +255,14 @@ export const integrationServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integration?.projectId || "",
+      projectId: integration.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
 
     const integrationAuth = await integrationAuthDAL.findById(integration.integrationAuthId);
@@ -296,14 +298,14 @@ export const integrationServiceFactory = ({
     const integration = await integrationDAL.findById(id);
     if (!integration) throw new NotFoundError({ message: `Integration with ID '${id}' not found` });
 
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integration.projectId,
+      projectId: integration.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.SecretManager);
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Integrations);
 
     const integrationAuth = await integrationAuthDAL.findById(integration.integrationAuthId);
@@ -333,13 +335,14 @@ export const integrationServiceFactory = ({
     actorAuthMethod,
     projectId
   }: TProjectPermission) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
 
     const integrations = await integrationDAL.findByProjectId(projectId);
@@ -352,13 +355,14 @@ export const integrationServiceFactory = ({
       throw new NotFoundError({ message: `Integration with ID '${id}' not found` });
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integration.projectId,
+      projectId: integration.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
 
     await secretQueueService.syncIntegrations({

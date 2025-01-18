@@ -87,7 +87,16 @@ export const main = async ({ db, hsmModule, auditLogDb, smtp, logger, queue, key
 
     await server.register<FastifyCorsOptions>(cors, {
       credentials: true,
-      origin: appCfg.SITE_URL || true
+      ...(appCfg.CORS_ALLOWED_ORIGINS?.length
+        ? {
+            origin: [...appCfg.CORS_ALLOWED_ORIGINS, ...(appCfg.SITE_URL ? [appCfg.SITE_URL] : [])]
+          }
+        : {
+            origin: appCfg.SITE_URL || true
+          }),
+      ...(appCfg.CORS_ALLOWED_HEADERS?.length && {
+        allowedHeaders: appCfg.CORS_ALLOWED_HEADERS
+      })
     });
 
     await server.register(addErrorsToResponseSchemas);

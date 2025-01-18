@@ -932,15 +932,22 @@ const syncSecretsAWSParameterStore = async ({
           logger.info(
             `getIntegrationSecrets: create secret in AWS SSM for [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]`
           );
-          await ssm
-            .putParameter({
-              Name: `${integration.path}${key}`,
-              Type: "SecureString",
-              Value: secrets[key].value,
-              ...(metadata.kmsKeyId && { KeyId: metadata.kmsKeyId }),
-              Overwrite: true
-            })
-            .promise();
+
+          try {
+            await ssm
+              .putParameter({
+                Name: `${integration.path}${key}`,
+                Type: "SecureString",
+                Value: secrets[key].value,
+                ...(metadata.kmsKeyId && { KeyId: metadata.kmsKeyId }),
+                Overwrite: true
+              })
+              .promise();
+          } catch (error) {
+            (error as { secretKey: string }).secretKey = key;
+            throw error;
+          }
+
           if (metadata.secretAWSTag?.length) {
             try {
               await ssm
@@ -987,15 +994,20 @@ const syncSecretsAWSParameterStore = async ({
 
         // we ensure that the KMS key configured in the integration is applied for ALL parameters on AWS
         if (secrets[key].value && (shouldUpdateKms || awsParameterStoreSecretsObj[key].Value !== secrets[key].value)) {
-          await ssm
-            .putParameter({
-              Name: `${integration.path}${key}`,
-              Type: "SecureString",
-              Value: secrets[key].value,
-              Overwrite: true,
-              ...(metadata.kmsKeyId && { KeyId: metadata.kmsKeyId })
-            })
-            .promise();
+          try {
+            await ssm
+              .putParameter({
+                Name: `${integration.path}${key}`,
+                Type: "SecureString",
+                Value: secrets[key].value,
+                Overwrite: true,
+                ...(metadata.kmsKeyId && { KeyId: metadata.kmsKeyId })
+              })
+              .promise();
+          } catch (error) {
+            (error as { secretKey: string }).secretKey = key;
+            throw error;
+          }
         }
 
         if (awsParameterStoreSecretsObj[key].Name) {
@@ -3750,17 +3762,28 @@ const syncSecretsCloudflarePages = async ({
   );
 
   const metadata = z.record(z.any()).parse(integration.metadata);
-  if (metadata.shouldAutoRedeploy) {
-    await request.post(
-      `${IntegrationUrls.CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accessId}/pages/projects/${integration.app}/deployments`,
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json"
+  if (metadata.shouldAutoRedeploy && integration.targetEnvironment === "production") {
+    await request
+      .post(
+        `${IntegrationUrls.CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accessId}/pages/projects/${integration.app}/deployments`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json"
+          }
         }
-      }
-    );
+      )
+      .catch((error) => {
+        if (error instanceof AxiosError && error.response?.status === 304) {
+          logger.info(
+            `syncSecretsCloudflarePages: CF pages redeployment returned status code 304 for integration [id=${integration.id}]`
+          );
+          return;
+        }
+
+        throw error;
+      });
   }
 };
 

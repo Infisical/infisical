@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ProjectType } from "@app/db/schemas";
+import { ActionProjectType, ProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionCmekActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -34,14 +34,14 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
       projectId = cmekProjectFromSplit.id;
     }
 
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
-      actor.type,
-      actor.id,
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
       projectId,
-      actor.authMethod,
-      actor.orgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.KMS);
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Create, ProjectPermissionSub.Cmek);
 
     const cmek = await kmsService.generateKmsKey({
@@ -60,14 +60,14 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
 
     if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
 
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
-      actor.type,
-      actor.id,
-      key.projectId,
-      actor.authMethod,
-      actor.orgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.KMS);
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: key.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Edit, ProjectPermissionSub.Cmek);
 
@@ -83,14 +83,14 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
 
     if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
 
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
-      actor.type,
-      actor.id,
-      key.projectId,
-      actor.authMethod,
-      actor.orgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.KMS);
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: key.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Delete, ProjectPermissionSub.Cmek);
 
@@ -109,13 +109,14 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
       projectId = cmekProjectFromSplit.id;
     }
 
-    const { permission } = await permissionService.getProjectPermission(
-      actor.type,
-      actor.id,
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
       projectId,
-      actor.authMethod,
-      actor.orgId
-    );
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
 
@@ -133,15 +134,15 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
 
     if (key.isDisabled) throw new BadRequestError({ message: "Key is disabled" });
 
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
-      actor.type,
-      actor.id,
-      key.projectId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: key.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
+    });
 
-    ForbidOnInvalidProjectType(ProjectType.KMS);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Encrypt, ProjectPermissionSub.Cmek);
 
     const encrypt = await kmsService.encryptWithKmsKey({ kmsId: keyId });
@@ -160,14 +161,14 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
 
     if (key.isDisabled) throw new BadRequestError({ message: "Key is disabled" });
 
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
-      actor.type,
-      actor.id,
-      key.projectId,
-      actor.authMethod,
-      actor.orgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.KMS);
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: key.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Decrypt, ProjectPermissionSub.Cmek);
 

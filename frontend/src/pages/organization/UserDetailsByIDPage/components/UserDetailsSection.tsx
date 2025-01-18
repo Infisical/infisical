@@ -18,13 +18,9 @@ import {
   useUser
 } from "@app/context";
 import { useTimedReset } from "@app/hooks";
-import {
-  useAddUsersToOrg,
-  useFetchServerStatus,
-  useGetOrgMembership,
-  useGetOrgRoles
-} from "@app/hooks/api";
+import { useFetchServerStatus, useGetOrgMembership, useGetOrgRoles } from "@app/hooks/api";
 import { OrgUser } from "@app/hooks/api/types";
+import { useResendOrgMemberInvitation } from "@app/hooks/api/users/mutation";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -45,28 +41,27 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
   const { data: roles } = useGetOrgRoles(orgId);
   const { data: serverDetails } = useFetchServerStatus();
   const { data: membership } = useGetOrgMembership(orgId, membershipId);
-  const { mutateAsync: inviteUsers, isPending } = useAddUsersToOrg();
 
-  const onResendInvite = async (email: string) => {
+  const { mutateAsync: resendOrgMemberInvitation, isPending } = useResendOrgMemberInvitation();
+
+  const onResendInvite = async () => {
     try {
-      const { data } = await inviteUsers({
-        organizationId: orgId,
-        inviteeEmails: [email],
-        organizationRoleSlug: "member"
+      const signupToken = await resendOrgMemberInvitation({
+        membershipId
       });
 
-      //   setCompleteInviteLink(data?.completeInviteLink || "");
-
-      if (!data.completeInviteLinks) {
-        createNotification({
-          text: `Successfully resent invite to ${email}`,
-          type: "success"
-        });
+      if (signupToken) {
+        return;
       }
+
+      createNotification({
+        text: "Successfully resent org invitation",
+        type: "success"
+      });
     } catch (err) {
       console.error(err);
       createNotification({
-        text: `Failed to resend invite to ${email}`,
+        text: "Failed to resend org invitation",
         type: "error"
       });
     }
@@ -133,7 +128,7 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
                   variant="plain"
                   className="group relative ml-2"
                   onClick={() => {
-                    navigator.clipboard.writeText("");
+                    navigator.clipboard.writeText(membership.user.username);
                     setCopyTextUsername("Copied");
                   }}
                 >
@@ -210,9 +205,7 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
                     colorSchema="primary"
                     type="submit"
                     isLoading={isPending}
-                    onClick={() => {
-                      onResendInvite(membership.user.email as string);
-                    }}
+                    onClick={onResendInvite}
                   >
                     Resend Invite
                   </Button>

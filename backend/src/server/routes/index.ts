@@ -608,6 +608,7 @@ export const registerRoutes = async (
   });
   const superAdminService = superAdminServiceFactory({
     userDAL,
+    userAliasDAL,
     authService: loginService,
     serverCfgDAL: superAdminDAL,
     kmsRootConfigDAL,

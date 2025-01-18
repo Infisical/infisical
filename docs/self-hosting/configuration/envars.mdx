@@ -34,6 +34,27 @@ Used to configure platform-specific security and operational settings
   this to `false`.
 </ParamField>
 
+## CORS
+
+Cross-Origin Resource Sharing (CORS) is a security feature that allows web applications running on one domain to access resources from another domain.
+The following environment variables can be used to configure the Infisical Rest API to allow or restrict access to resources from different origins.
+
+<ParamField query="CORS_ALLOWED_ORIGINS" type="string" optional>
+
+  Specify a list of origins that are allowed to access the Infisical API.
+
+  An example value would be `CORS_ALLOWED_ORIGINS=["https://example.com"]`.
+
+  Defaults to the same value as your `SITE_URL` environment variable.
+</ParamField>
+
+<ParamField query="CORS_ALLOWED_METHODS" type="string" optional>
+  Array of HTTP methods allowed for CORS requests.
+
+  Defaults to reflecting the headers specified in the request's Access-Control-Request-Headers header.
+</ParamField>
+
+
 ## Data Layer
 
 The platform utilizes Postgres to persist all of its data and Redis for caching and backgroud tasks
@@ -72,7 +93,7 @@ DB_READ_REPLICAS=[{"DB_CONNECTION_URI":""}]
   </Expandable>
 </ParamField>
 
-## Email service
+## Email Service
 
 Without email configuration, Infisical's core functions like sign-up/login and secret operations work, but this disables multi-factor authentication, email invites for projects, alerts for suspicious logins, and all other email-dependent features.
 

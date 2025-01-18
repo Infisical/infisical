@@ -474,7 +474,7 @@ export const PROJECTS = {
   },
   ADD_GROUP_TO_PROJECT: {
     projectId: "The ID of the project to add the group to.",
-    groupId: "The ID of the group to add to the project.",
+    groupIdOrName: "The ID or name of the group to add to the project.",
     role: "The role for the group to assume in the project."
   },
   UPDATE_GROUP_IN_PROJECT: {
