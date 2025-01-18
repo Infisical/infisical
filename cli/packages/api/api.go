@@ -544,3 +544,81 @@ func CallUpdateRawSecretsV3(httpClient *resty.Client, request UpdateRawSecretByN
 
 	return nil
 }
+
+func CallListGatewaysV1(httpClient *resty.Client) (ListGatewaysV1Response, error) {
+	var listGatewaysResponse ListGatewaysV1Response
+	response, err := httpClient.
+		R().
+		SetResult(&listGatewaysResponse).
+		SetHeader("User-Agent", USER_AGENT).
+		Get(fmt.Sprintf("%v/v1/gateways", config.INFISICAL_URL))
+
+	if err != nil {
+		return ListGatewaysV1Response{}, fmt.Errorf("CallListGatewaysV1: Unable to complete api request [err=%w]", err)
+	}
+
+	if response.IsError() {
+		return ListGatewaysV1Response{}, fmt.Errorf("CallListGatewaysV1: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+	}
+
+	return listGatewaysResponse, nil
+}
+
+func CallGetGatewayV1(httpClient *resty.Client, request GetGatewayV1Request) (GetGatewayV1Response, error) {
+	var getGatewayResponse GetGatewayV1Response
+	response, err := httpClient.
+		R().
+		SetResult(&getGatewayResponse).
+		SetHeader("User-Agent", USER_AGENT).
+		Get(fmt.Sprintf("%v/v1/gateways/%v", config.INFISICAL_URL, request.ID))
+
+	if err != nil {
+		return GetGatewayV1Response{}, fmt.Errorf("CallGetGatewayV1: Unable to complete api request [err=%w]", err)
+	}
+
+	if response.IsError() {
+		return GetGatewayV1Response{}, fmt.Errorf("CallGetGatewayV1: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+	}
+
+	return getGatewayResponse, nil
+}
+
+func CallCreateGatewayV1(httpClient *resty.Client, request CreateGatewayV1Request) (CreateGatewayV1Response, error) {
+	var createGatewayResponse CreateGatewayV1Response
+	response, err := httpClient.
+		R().
+		SetResult(&createGatewayResponse).
+		SetHeader("User-Agent", USER_AGENT).
+		SetBody(request).
+		Post(fmt.Sprintf("%v/v1/gateways", config.INFISICAL_URL))
+
+	if err != nil {
+		return CreateGatewayV1Response{}, fmt.Errorf("CallCreateGatewayV1: Unable to complete api request [err=%w]", err)
+	}
+
+	if response.IsError() {
+		return CreateGatewayV1Response{}, fmt.Errorf("CallCreateGatewayV1: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+	}
+
+	return createGatewayResponse, nil
+}
+
+func CallUpdateGatewayV1(httpClient *resty.Client, request UpdateGatewayV1Request) (UpdateGatewayV1Response, error) {
+	var updateGatewayResponse UpdateGatewayV1Response
+	response, err := httpClient.
+		R().
+		SetResult(&updateGatewayResponse).
+		SetHeader("User-Agent", USER_AGENT).
+		SetBody(request).
+		Patch(fmt.Sprintf("%v/v1/gateways/%v", config.INFISICAL_URL, request.ID))
+
+	if err != nil {
+		return UpdateGatewayV1Response{}, fmt.Errorf("CallUpdateGatewayV1: Unable to complete api request [err=%w]", err)
+	}
+
+	if response.IsError() {
+		return UpdateGatewayV1Response{}, fmt.Errorf("CallUpdateGatewayV1: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+	}
+
+	return updateGatewayResponse, nil
+}

@@ -198,6 +198,7 @@ func GetWorkspaceConfigByPath(path string) (workspaceConfig models.WorkspaceConf
 // Get the infisical config file and if it doesn't exist, return empty config model, otherwise raise error
 func GetConfigFile() (models.ConfigFile, error) {
 	fullConfigFilePath, _, err := GetFullConfigFilePath()
+
 	if err != nil {
 		return models.ConfigFile{}, err
 	}

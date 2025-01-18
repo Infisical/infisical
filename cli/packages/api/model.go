@@ -629,3 +629,42 @@ type GetRawSecretV3ByNameResponse struct {
 	} `json:"secret"`
 	ETag string
 }
+
+type Gateway struct {
+	Name       string    `json:"name"`
+	ID         string    `json:"id"`
+	Hostname   string    `json:"host"`
+	LastPingAt time.Time `json:"lastPingAt"`
+	OrgId      string    `json:"orgId"`
+	CreatedAt  time.Time `json:"createdAt"`
+	UpdatedAt  time.Time `json:"updatedAt"`
+}
+
+type ListGatewaysV1Response struct {
+	Gateways []Gateway `json:"gateways"`
+}
+
+type GetGatewayV1Response struct {
+	Gateway Gateway `json:"gateway"`
+}
+
+type GetGatewayV1Request struct {
+	ID string
+}
+
+type CreateGatewayV1Response struct {
+	Gateway Gateway `json:"gateway"`
+}
+
+type CreateGatewayV1Request struct {
+	Name string `json:"name"`
+}
+
+type UpdateGatewayV1Request struct {
+	ID   string
+	Name string `json:"name"`
+}
+
+type UpdateGatewayV1Response struct {
+	Gateway Gateway `json:"gateway"`
+}
