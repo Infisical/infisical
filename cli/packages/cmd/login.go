@@ -315,7 +315,11 @@ var loginCmd = &cobra.Command{
 			credential, err := authStrategies[strategy](cmd, infisicalClient)
 
 			if err != nil {
-				util.HandleError(fmt.Errorf("unable to authenticate with %s [err=%v]", formatAuthMethod(loginMethod), err))
+				euErrorMessage := ""
+				if strings.HasPrefix(config.INFISICAL_URL, util.INFISICAL_DEFAULT_US_URL) {
+					euErrorMessage = "\nIf you are using the Infisical Cloud Europe Region, please switch to it by using the \"--region eu\" flag."
+				}
+				util.HandleError(fmt.Errorf("unable to authenticate with %s [err=%v].%s", formatAuthMethod(loginMethod), err, euErrorMessage))
 			}
 
 			if plainOutput {
