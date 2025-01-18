@@ -176,7 +176,15 @@ func (r *InfisicalSecretReconciler) createInfisicalManagedKubeSecret(ctx context
 		}
 
 		for templateKey, userTemplate := range managedTemplateData.Data {
-			tmpl, err := template.New("secret-templates").Parse(userTemplate)
+			tmpl, err := template.New("secret-templates").Funcs(template.FuncMap{
+				"toBase64DecodedString": func(encodedString string) string {
+					decoded, err := base64.StdEncoding.DecodeString(encodedString)
+					if err != nil {
+						return fmt.Sprintf("Error: %v", err)
+					}
+					return string(decoded)
+				},
+			}).Parse(userTemplate)
 			if err != nil {
 				return fmt.Errorf("unable to compile template: %s [err=%v]", templateKey, err)
 			}
@@ -263,7 +271,7 @@ func (r *InfisicalSecretReconciler) updateInfisicalManagedKubeSecret(ctx context
 
 		for templateKey, userTemplate := range managedTemplateData.Data {
 			tmpl, err := template.New("secret-templates").Funcs(template.FuncMap{
-				"base64DecodeBytes": func(encodedString string) string {
+				"toBase64DecodedString": func(encodedString string) string {
 					decoded, err := base64.StdEncoding.DecodeString(encodedString)
 					if err != nil {
 						return fmt.Sprintf("Error: %v", err)
