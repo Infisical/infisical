@@ -429,7 +429,7 @@ func startGateway(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	tm.logger.Panicf("Gateway started successfully on port %d", 8022)
+	tm.logger.Printf("Gateway started successfully on port %d", 8022)
 	setupComplete = true
 	wg.Wait()
 
