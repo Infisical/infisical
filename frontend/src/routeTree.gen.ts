@@ -46,6 +46,7 @@ import { Route as organizationSettingsPageRouteImport } from './pages/organizati
 import { Route as organizationSecretSharingPageRouteImport } from './pages/organization/SecretSharingPage/route'
 import { Route as organizationSecretScanningPageRouteImport } from './pages/organization/SecretScanningPage/route'
 import { Route as organizationNoOrgPageRouteImport } from './pages/organization/NoOrgPage/route'
+import { Route as secretManagerConsumerSecretsPageRouteImport } from './pages/secret-manager/ConsumerSecretsPage/route'
 import { Route as organizationBillingPageRouteImport } from './pages/organization/BillingPage/route'
 import { Route as organizationAuditLogsPageRouteImport } from './pages/organization/AuditLogsPage/route'
 import { Route as organizationAdminPageRouteImport } from './pages/organization/AdminPage/route'
@@ -491,6 +492,13 @@ const organizationNoOrgPageRouteRoute = organizationNoOrgPageRouteImport.update(
     getParentRoute: () => organizationLayoutRoute,
   } as any,
 )
+
+const secretManagerConsumerSecretsPageRouteRoute =
+  secretManagerConsumerSecretsPageRouteImport.update({
+    id: '/consumer-secrets',
+    path: '/consumer-secrets',
+    getParentRoute: () => organizationLayoutRoute,
+  } as any)
 
 const organizationBillingPageRouteRoute =
   organizationBillingPageRouteImport.update({
@@ -1784,6 +1792,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof organizationBillingPageRouteImport
       parentRoute: typeof organizationLayoutImport
     }
+    '/_authenticate/_inject-org-details/organization/_layout/consumer-secrets': {
+      id: '/_authenticate/_inject-org-details/organization/_layout/consumer-secrets'
+      path: '/consumer-secrets'
+      fullPath: '/organization/consumer-secrets'
+      preLoaderRoute: typeof secretManagerConsumerSecretsPageRouteImport
+      parentRoute: typeof organizationLayoutImport
+    }
     '/_authenticate/_inject-org-details/organization/_layout/none': {
       id: '/_authenticate/_inject-org-details/organization/_layout/none'
       path: '/none'
@@ -2804,6 +2819,7 @@ interface organizationLayoutRouteChildren {
   organizationAdminPageRouteRoute: typeof organizationAdminPageRouteRoute
   organizationAuditLogsPageRouteRoute: typeof organizationAuditLogsPageRouteRoute
   organizationBillingPageRouteRoute: typeof organizationBillingPageRouteRoute
+  secretManagerConsumerSecretsPageRouteRoute: typeof secretManagerConsumerSecretsPageRouteRoute
   organizationNoOrgPageRouteRoute: typeof organizationNoOrgPageRouteRoute
   organizationSecretScanningPageRouteRoute: typeof organizationSecretScanningPageRouteRoute
   organizationSecretSharingPageRouteRoute: typeof organizationSecretSharingPageRouteRoute
@@ -2825,6 +2841,8 @@ const organizationLayoutRouteChildren: organizationLayoutRouteChildren = {
   organizationAdminPageRouteRoute: organizationAdminPageRouteRoute,
   organizationAuditLogsPageRouteRoute: organizationAuditLogsPageRouteRoute,
   organizationBillingPageRouteRoute: organizationBillingPageRouteRoute,
+  secretManagerConsumerSecretsPageRouteRoute:
+    secretManagerConsumerSecretsPageRouteRoute,
   organizationNoOrgPageRouteRoute: organizationNoOrgPageRouteRoute,
   organizationSecretScanningPageRouteRoute:
     organizationSecretScanningPageRouteRoute,
@@ -3468,6 +3486,7 @@ export interface FileRoutesByFullPath {
   '/organization/admin': typeof organizationAdminPageRouteRoute
   '/organization/audit-logs': typeof organizationAuditLogsPageRouteRoute
   '/organization/billing': typeof organizationBillingPageRouteRoute
+  '/organization/consumer-secrets': typeof secretManagerConsumerSecretsPageRouteRoute
   '/organization/none': typeof organizationNoOrgPageRouteRoute
   '/organization/secret-scanning': typeof organizationSecretScanningPageRouteRoute
   '/organization/secret-sharing': typeof organizationSecretSharingPageRouteRoute
@@ -3633,6 +3652,7 @@ export interface FileRoutesByTo {
   '/organization/admin': typeof organizationAdminPageRouteRoute
   '/organization/audit-logs': typeof organizationAuditLogsPageRouteRoute
   '/organization/billing': typeof organizationBillingPageRouteRoute
+  '/organization/consumer-secrets': typeof secretManagerConsumerSecretsPageRouteRoute
   '/organization/none': typeof organizationNoOrgPageRouteRoute
   '/organization/secret-scanning': typeof organizationSecretScanningPageRouteRoute
   '/organization/secret-sharing': typeof organizationSecretSharingPageRouteRoute
@@ -3807,6 +3827,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/organization/_layout/admin': typeof organizationAdminPageRouteRoute
   '/_authenticate/_inject-org-details/organization/_layout/audit-logs': typeof organizationAuditLogsPageRouteRoute
   '/_authenticate/_inject-org-details/organization/_layout/billing': typeof organizationBillingPageRouteRoute
+  '/_authenticate/_inject-org-details/organization/_layout/consumer-secrets': typeof secretManagerConsumerSecretsPageRouteRoute
   '/_authenticate/_inject-org-details/organization/_layout/none': typeof organizationNoOrgPageRouteRoute
   '/_authenticate/_inject-org-details/organization/_layout/secret-scanning': typeof organizationSecretScanningPageRouteRoute
   '/_authenticate/_inject-org-details/organization/_layout/secret-sharing': typeof organizationSecretSharingPageRouteRoute
@@ -3982,6 +4003,7 @@ export interface FileRouteTypes {
     | '/organization/admin'
     | '/organization/audit-logs'
     | '/organization/billing'
+    | '/organization/consumer-secrets'
     | '/organization/none'
     | '/organization/secret-scanning'
     | '/organization/secret-sharing'
@@ -4146,6 +4168,7 @@ export interface FileRouteTypes {
     | '/organization/admin'
     | '/organization/audit-logs'
     | '/organization/billing'
+    | '/organization/consumer-secrets'
     | '/organization/none'
     | '/organization/secret-scanning'
     | '/organization/secret-sharing'
@@ -4318,6 +4341,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/organization/_layout/admin'
     | '/_authenticate/_inject-org-details/organization/_layout/audit-logs'
     | '/_authenticate/_inject-org-details/organization/_layout/billing'
+    | '/_authenticate/_inject-org-details/organization/_layout/consumer-secrets'
     | '/_authenticate/_inject-org-details/organization/_layout/none'
     | '/_authenticate/_inject-org-details/organization/_layout/secret-scanning'
     | '/_authenticate/_inject-org-details/organization/_layout/secret-sharing'
@@ -4691,6 +4715,7 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/organization/_layout/admin",
         "/_authenticate/_inject-org-details/organization/_layout/audit-logs",
         "/_authenticate/_inject-org-details/organization/_layout/billing",
+        "/_authenticate/_inject-org-details/organization/_layout/consumer-secrets",
         "/_authenticate/_inject-org-details/organization/_layout/none",
         "/_authenticate/_inject-org-details/organization/_layout/secret-scanning",
         "/_authenticate/_inject-org-details/organization/_layout/secret-sharing",
@@ -4738,6 +4763,10 @@ export const routeTree = rootRoute
     },
     "/_authenticate/_inject-org-details/organization/_layout/billing": {
       "filePath": "organization/BillingPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/organization/_layout"
+    },
+    "/_authenticate/_inject-org-details/organization/_layout/consumer-secrets": {
+      "filePath": "secret-manager/ConsumerSecretsPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/organization/_layout"
     },
     "/_authenticate/_inject-org-details/organization/_layout/none": {

@@ -24,7 +24,7 @@ import { SidebarHeader } from "./components/SidebarHeader";
 export const OrganizationLayout = () => {
   const [shouldShowMfa, toggleShowMfa] = useToggle(false);
   const [requiredMfaMethod, setRequiredMfaMethod] = useState(MfaMethod.EMAIL);
-  const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
+  const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => { });
 
   const { user } = useUser();
 
@@ -132,14 +132,14 @@ export const OrganizationLayout = () => {
                     {(window.location.origin.includes("https://app.infisical.com") ||
                       window.location.origin.includes("https://eu.infisical.com") ||
                       window.location.origin.includes("https://gamma.infisical.com")) && (
-                      <Link to="/organization/billing">
-                        {({ isActive }) => (
-                          <MenuItem isSelected={isActive} icon="spinning-coin">
-                            Usage & Billing
-                          </MenuItem>
-                        )}
-                      </Link>
-                    )}
+                        <Link to="/organization/billing">
+                          {({ isActive }) => (
+                            <MenuItem isSelected={isActive} icon="spinning-coin">
+                              Usage & Billing
+                            </MenuItem>
+                          )}
+                        </Link>
+                      )}
                     <Link to="/organization/audit-logs">
                       {({ isActive }) => (
                         <MenuItem isSelected={isActive} icon="moving-block">
@@ -151,6 +151,13 @@ export const OrganizationLayout = () => {
                       {({ isActive }) => (
                         <MenuItem isSelected={isActive} icon="toggle-settings">
                           Organization Settings
+                        </MenuItem>
+                      )}
+                    </Link>
+                    <Link to={`/organization/consumer-secrets` as const}>
+                      {({ isActive }) => (
+                        <MenuItem isSelected={isActive} icon="sliding-carousel">
+                          Consumer Secrets
                         </MenuItem>
                       )}
                     </Link>

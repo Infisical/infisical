@@ -9,6 +9,7 @@ const adminRoute = route("/admin", [
 
 const organizationRoutes = route("/organization", [
   layout("organization/layout.tsx", [
+    route("/consumer-secrets", "secret-manager/ConsumerSecretsPage/route.tsx"),
     route("/secret-manager/overview", "organization/SecretManagerOverviewPage/route.tsx"),
     route("/cert-manager/overview", "organization/CertManagerOverviewPage/route.tsx"),
     route("/ssh/overview", "organization/SshOverviewPage/route.tsx"),
@@ -34,6 +35,7 @@ const organizationRoutes = route("/organization", [
 
 const secretManagerRoutes = route("/secret-manager/$projectId", [
   layout("secret-manager-layout", "secret-manager/layout.tsx", [
+    // route("/consumer-secrets", "secret-manager/ConsumerSecretsPage/route.tsx"),
     route("/overview", "secret-manager/OverviewPage/route.tsx"),
     route("/secrets/$envSlug", "secret-manager/SecretDashboardPage/route.tsx"),
     route("/allowlist", "secret-manager/IPAllowlistPage/route.tsx"),
