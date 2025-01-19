@@ -1,4 +1,5 @@
 export interface ConsumerSecretRaw {
+    id: string,
     organization: string,
     user: string,
     plaintextSecret: string,

@@ -20,6 +20,7 @@ export const consumerSecretsServiceFactory = ({ consumerSecretsDAL, orgBotDAL }:
     const encryptionKey = await getEncryptionKey(organizationId, orgBotDAL);
     return consumerSecrets.map((secret) => {
       const raw: ConsumerSecretRaw = {
+        id: secret.id,
         organization: secret.organization,
         user: secret.user,
         plaintextSecret: decryptSymmetric({
