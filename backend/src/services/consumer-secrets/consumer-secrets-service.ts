@@ -53,9 +53,6 @@ export const consumerSecretsServiceFactory = ({ consumerSecretsDAL, orgBotDAL }:
   }
 
   const deleteConsumerSecret = async (organization: string, user: string, secretId: string) => {
-    console.log(organization);
-    console.log(user);
-    console.log(secretId);
     const existingSecret = await consumerSecretsDAL.find({ user, organization, id: secretId });
 
     if (existingSecret.length == 1) {
@@ -64,7 +61,42 @@ export const consumerSecretsServiceFactory = ({ consumerSecretsDAL, orgBotDAL }:
       throw new Error("Did not find secret.");
     }
   }
-  return { getAllMyConsumerSecrets, createConsumerSecret, deleteConsumerSecret };
+
+  const editConsumerSecret = async (organization: string, user: string, secretId: string, plainTextData: string) => {
+    const existingSecret = await consumerSecretsDAL.find({ user, organization, id: secretId });
+
+    if (existingSecret.length == 1) {
+      const encryptionKey = await getEncryptionKey(organization, orgBotDAL);
+
+      const { ciphertext, iv, tag } = encryptSymmetric(plainTextData, encryptionKey);
+
+      consumerSecretsDAL.update({ id: secretId }, {
+        encrypted_data: Buffer.from(ciphertext, "utf8"),
+        encryption_iv: iv,
+        encryption_tag: tag,
+      })
+    } else {
+      throw new Error("Did not find secret.");
+    }
+
+    const encryptionKey = await getEncryptionKey(organization, orgBotDAL);
+
+    const { ciphertext, iv, tag } = encryptSymmetric(plainTextData, encryptionKey);
+
+    await consumerSecretsDAL.create({
+      id: uuidV4(),
+      organization,
+      user,
+      encrypted_data: Buffer.from(ciphertext, "utf8"),
+      encryption_iv: iv,
+      encryption_tag: tag,
+    });
+
+    return;
+  }
+
+
+  return { getAllMyConsumerSecrets, createConsumerSecret, deleteConsumerSecret, editConsumerSecret };
 };
 
 async function getEncryptionKey(orgId: string, orgBotDAL: TOrgBotDALFactory): Promise<string> {
@@ -77,3 +109,4 @@ async function getEncryptionKey(orgId: string, orgBotDAL: TOrgBotDALFactory): Pr
     keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
   });
 }
+

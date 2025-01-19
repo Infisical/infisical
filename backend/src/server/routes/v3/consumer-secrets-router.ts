@@ -51,7 +51,7 @@ export const registerConsumerSecretsRouter = async (server: FastifyZodProvider) 
     method: "DELETE",
     url: "/delete/:secretId",  // api/v3/consumersecrets/delete/<secretUUID>
     config: {
-      rateLimit: readLimit
+      rateLimit: writeLimit
     },
     schema: {
       params: z.object({
@@ -70,4 +70,26 @@ export const registerConsumerSecretsRouter = async (server: FastifyZodProvider) 
       return true;
     }
   });
+
+  server.route({
+    method: "PATCH",
+    url: "/edit",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      body: z.object({
+        plaintextSecret: z.string(),
+        secretId: z.string().uuid(),
+      }),
+      response: {
+        200: z.boolean(),
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      await server.services.consumerSecrets.editConsumerSecret(req.permission.orgId, req.permission.id, req.body.secretId, req.body.plaintextSecret);
+      return true;
+    },
+  })
 };
