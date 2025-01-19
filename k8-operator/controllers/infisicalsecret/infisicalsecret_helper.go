@@ -3,6 +3,7 @@ package controllers
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"strings"
@@ -154,6 +155,16 @@ func (r *InfisicalSecretReconciler) getInfisicalServiceAccountCredentialsFromKub
 	return model.ServiceAccountDetails{AccessKey: string(accessKeyFromSecret), PrivateKey: string(privateKeyFromSecret), PublicKey: string(publicKeyFromSecret)}, nil
 }
 
+var infisicalSecretTemplateFunctions = template.FuncMap{
+	"decodeBase64ToBytes": func(encodedString string) []byte {
+		decoded, err := base64.StdEncoding.DecodeString(encodedString)
+		if err != nil {
+			panic(fmt.Sprintf("Error: %v", err))
+		}
+		return decoded
+	},
+}
+
 func (r *InfisicalSecretReconciler) createInfisicalManagedKubeSecret(ctx context.Context, logger logr.Logger, infisicalSecret v1alpha1.InfisicalSecret, secretsFromAPI []model.SingleEnvironmentVariable, ETag string) error {
 	plainProcessedSecrets := make(map[string][]byte)
 	secretType := infisicalSecret.Spec.ManagedSecretReference.SecretType
@@ -175,7 +186,7 @@ func (r *InfisicalSecretReconciler) createInfisicalManagedKubeSecret(ctx context
 		}
 
 		for templateKey, userTemplate := range managedTemplateData.Data {
-			tmpl, err := template.New("secret-templates").Parse(userTemplate)
+			tmpl, err := template.New("secret-templates").Funcs(infisicalSecretTemplateFunctions).Parse(userTemplate)
 			if err != nil {
 				return fmt.Errorf("unable to compile template: %s [err=%v]", templateKey, err)
 			}
@@ -261,7 +272,7 @@ func (r *InfisicalSecretReconciler) updateInfisicalManagedKubeSecret(ctx context
 		}
 
 		for templateKey, userTemplate := range managedTemplateData.Data {
-			tmpl, err := template.New("secret-templates").Parse(userTemplate)
+			tmpl, err := template.New("secret-templates").Funcs(infisicalSecretTemplateFunctions).Parse(userTemplate)
 			if err != nil {
 				return fmt.Errorf("unable to compile template: %s [err=%v]", templateKey, err)
 			}
@@ -410,11 +421,6 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 
 	} else {
 		return errors.New("no authentication method provided yet. Please configure a authentication method then try again")
-	}
-
-	if !updateDetails.Modified {
-		logger.Info("ReconcileInfisicalSecret: No secrets modified so reconcile not needed")
-		return nil
 	}
 
 	if managedKubeSecret == nil {
