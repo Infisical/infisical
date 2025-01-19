@@ -13,7 +13,9 @@ export const ConsumerSecretsSchema = z.object({
   id: z.string().uuid(),
   organization: z.string().uuid(),
   user: z.string().uuid(),
-  encrypted_data: zodBuffer
+  encrypted_data: zodBuffer,
+  encryption_iv: z.string(),
+  encryption_tag: z.string()
 });
 
 export type TConsumerSecrets = z.infer<typeof ConsumerSecretsSchema>;

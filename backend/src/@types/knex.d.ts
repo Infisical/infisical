@@ -398,6 +398,7 @@ declare module "knex" {
 
 declare module "knex/types/tables" {
   interface Tables {
+    [TableName.ConsumerSecrets]: KnexOriginal.CompositeTableType<TConsumerSecrets, TConsumerSecretsInsert, TCertificateAuthoritiesUpdate>;
     [TableName.Users]: KnexOriginal.CompositeTableType<TUsers, TUsersInsert, TUsersUpdate>;
     [TableName.Groups]: KnexOriginal.CompositeTableType<TGroups, TGroupsInsert, TGroupsUpdate>;
     [TableName.SshCertificateAuthority]: KnexOriginal.CompositeTableType<
