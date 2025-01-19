@@ -546,7 +546,7 @@ export const registerRoutes = async (
     kmsService
   });
 
-  const consumerSecretsService = consumerSecretsServiceFactory({consumerSecretsDAL});
+  const consumerSecretsService = consumerSecretsServiceFactory({ consumerSecretsDAL, orgBotDAL });
 
   const loginService = authLoginServiceFactory({ userDAL, smtpService, tokenService, orgDAL, totpService });
   const passwordService = authPaswordServiceFactory({
