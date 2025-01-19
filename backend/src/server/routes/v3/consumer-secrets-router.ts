@@ -33,13 +33,16 @@ export const registerConsumerSecretsRouter = async (server: FastifyZodProvider) 
       rateLimit: writeLimit
     },
     schema: {
+      body: z.object({
+        plaintextSecret: z.string(),
+      }),
       response: {
         200: z.boolean(),
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      await server.services.consumerSecrets.createConsumerSecret(req.permission.orgId, req.permission.id, "Hello World");
+      await server.services.consumerSecrets.createConsumerSecret(req.permission.orgId, req.permission.id, req.body.plaintextSecret);
       return true;
     },
   })

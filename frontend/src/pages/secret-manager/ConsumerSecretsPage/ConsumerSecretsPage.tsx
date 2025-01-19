@@ -1,5 +1,6 @@
 import { apiRequest } from "@app/config/request";
 import { useQuery } from "@tanstack/react-query";
+import { ConsumerSecretRaw, encodeConsumerSecret } from "./models";
 
 export function ConsumerSecretsPage() {
     const { data } = useGetConsumerSecrets();
@@ -8,7 +9,9 @@ export function ConsumerSecretsPage() {
         <div style={{ background: "white" }}>
             Hello World
             <br /><br />
-            <button onClick={() => apiRequest.post("api/v3/consumersecrets/create")}>Create Secret</button>
+            <button onClick={() => apiRequest.post("api/v3/consumersecrets/create", {
+                plaintextSecret: encodeConsumerSecret({ kind: "SecureNote", title: "My Title", content: "My Content" })
+            })}>Create Secret</button>
             <br /><br />
             <ConsumerSecretsList secrets={data?.data} />
         </div>
@@ -16,11 +19,6 @@ export function ConsumerSecretsPage() {
 }
 
 function ConsumerSecretsList({ secrets }: { secrets: any }) {
-
-    console.log("HELLO SECRETS");
-
-    console.log(secrets);
-
     return <div>
         Consumer Secrets List
         {JSON.stringify(secrets)}
@@ -37,8 +35,3 @@ function useGetConsumerSecrets() {
 
 
 
-export interface ConsumerSecretRaw {
-    organization: string,
-    user: string,
-    plaintextSecret: string,
-}
