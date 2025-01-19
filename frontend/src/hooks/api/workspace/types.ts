@@ -14,6 +14,16 @@ export enum ProjectType {
   KMS = "kms",
   SSH = "ssh"
 }
+export enum ProjectsViewMode {
+  GRID = "grid",
+  LIST = "list"
+}
+
+export enum ProjectOrderBy {
+  Name = "name"
+}
+
+
 
 export enum ProjectUserMembershipTemporaryMode {
   Relative = "relative"
