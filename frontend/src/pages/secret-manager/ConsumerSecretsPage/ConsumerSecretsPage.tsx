@@ -60,4 +60,4 @@ function useGetConsumerSecrets() {
     });
 }
 
-const ConsumerSecretsQueryKey = ["ConsumerSecrets"] as const; 
+export const ConsumerSecretsQueryKey = ["ConsumerSecrets"] as const; 

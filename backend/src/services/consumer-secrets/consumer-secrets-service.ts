@@ -51,7 +51,20 @@ export const consumerSecretsServiceFactory = ({ consumerSecretsDAL, orgBotDAL }:
 
     return;
   }
-  return { getAllMyConsumerSecrets, createConsumerSecret };
+
+  const deleteConsumerSecret = async (organization: string, user: string, secretId: string) => {
+    console.log(organization);
+    console.log(user);
+    console.log(secretId);
+    const existingSecret = await consumerSecretsDAL.find({ user, organization, id: secretId });
+
+    if (existingSecret.length == 1) {
+      consumerSecretsDAL.deleteById(secretId);
+    } else {
+      throw new Error("Did not find secret.");
+    }
+  }
+  return { getAllMyConsumerSecrets, createConsumerSecret, deleteConsumerSecret };
 };
 
 async function getEncryptionKey(orgId: string, orgBotDAL: TOrgBotDALFactory): Promise<string> {
