@@ -1,7 +1,8 @@
 import { apiRequest } from "@app/config/request";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ConsumerSecretRaw, encodeConsumerSecret } from "./models";
 import { ConsumerSecretItem } from "./ConsumerSecretItem";
+import { useState } from "react";
 
 export function ConsumerSecretsPage() {
     const { data } = useGetConsumerSecrets();
@@ -9,13 +10,38 @@ export function ConsumerSecretsPage() {
     return (
         <div style={{ background: "white" }}>
             <p className="text-3xl">Consumer Secrets</p>
-            <button onClick={() => apiRequest.post("api/v3/consumersecrets/create", {
-                plaintextSecret: encodeConsumerSecret({ kind: "SecureNote", title: "My Title", content: "My Content" })
-            })}>Create Secret</button>
-            <br /><br />
+            <ConsumerSecretCreateForm />
             <ConsumerSecretsList rawSecrets={data?.data.consumerSecretsData || []} />
         </div>
     );
+}
+
+function ConsumerSecretCreateForm() {
+    const [title, setTitle] = useState("");
+    const [content, setContent] = useState("");
+
+    const plaintextSecret = encodeConsumerSecret({ kind: "SecureNote", title, content });
+
+    const queryClinet = useQueryClient();
+
+    return <>
+        <p className="text-2xl">Create a Secret</p>
+        <label>
+            Title Field:
+            <input style={{ background: "white" }} value={title} onChange={(e) => setTitle(e.target.value)} />
+        </label>
+        <br />
+        <label>
+            Content Field:
+            <input style={{ background: "white" }} value={content} onChange={(e) => setContent(e.target.value)} />
+        </label>
+
+        <br />
+
+        <button onClick={() =>
+            apiRequest.post("api/v3/consumersecrets/create", { plaintextSecret }).then(() => queryClinet.invalidateQueries({ queryKey: ConsumerSecretsQueryKey }))
+        }>Create Secret Button</button >
+    </>
 }
 
 function ConsumerSecretsList({ rawSecrets }: { rawSecrets: ConsumerSecretRaw[] }) {
@@ -29,11 +55,9 @@ function ConsumerSecretsList({ rawSecrets }: { rawSecrets: ConsumerSecretRaw[] }
 
 function useGetConsumerSecrets() {
     return useQuery({
-        queryKey: ["ConsumerSecrets"],
+        queryKey: ConsumerSecretsQueryKey,
         queryFn: async () => await apiRequest.get<{ consumerSecretsData: ConsumerSecretRaw[] }>('api/v3/consumersecrets/all'),
     });
 }
 
-
-
-
+const ConsumerSecretsQueryKey = ["ConsumerSecrets"] as const; 
