@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { faChevronLeft, faEllipsis } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
@@ -16,6 +14,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  PageHeader,
   Tooltip
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
@@ -165,30 +164,13 @@ const Page = () => {
   return (
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       {data && (
-        <div className="mx-auto mb-6 w-full max-w-7xl px-6 py-6">
-          <Button
-            variant="link"
-            type="submit"
-            leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
-            onClick={() => {
-              navigate({
-                to: "/organization/access-management",
-                search: {
-                  selectedTab: OrgAccessControlTabSections.Identities
-                }
-              });
-            }}
-            className="mb-4"
-          >
-            Identities
-          </Button>
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-3xl font-semibold text-white">{data.identity.name}</p>
+        <div className="mx-auto mb-6 w-full max-w-7xl">
+          <PageHeader title={data.identity.name}>
             <DropdownMenu>
               <DropdownMenuTrigger asChild className="rounded-lg">
                 <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
                   <Tooltip content="More options">
-                    <FontAwesomeIcon size="sm" icon={faEllipsis} />
+                    <Button variant="outline_bg">More</Button>
                   </Tooltip>
                 </div>
               </DropdownMenuTrigger>
@@ -257,7 +239,7 @@ const Page = () => {
                 </OrgPermissionCan>
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
+          </PageHeader>
           <div className="flex">
             <div className="mr-4 w-96">
               <IdentityDetailsSection identityId={identityId} handlePopUpOpen={handlePopUpOpen} />

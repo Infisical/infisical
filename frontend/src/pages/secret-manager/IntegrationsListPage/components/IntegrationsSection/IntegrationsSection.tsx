@@ -1,7 +1,7 @@
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { Button, Checkbox, DeleteActionModal } from "@app/components/v2";
+import { Button, Checkbox, DeleteActionModal, PageHeader } from "@app/components/v2";
 import { usePopUp, useToggle } from "@app/hooks";
 import { TCloudIntegration, TIntegration } from "@app/hooks/api/types";
 
@@ -38,11 +38,11 @@ export const IntegrationsSection = ({
   const [shouldDeleteSecrets, setShouldDeleteSecrets] = useToggle(false);
 
   return (
-    <div className="mx-6 mb-8">
-      <div className="mb-4 mt-6 flex flex-col items-start justify-between px-2 text-xl">
-        <h1 className="text-3xl font-semibold">Integrations</h1>
-        <p className="text-base text-bunker-300">Manage integrations with third-party services.</p>
-      </div>
+    <div className="mb-8">
+      <PageHeader
+        title="Integrations"
+        description="Manage integrations with third-party services."
+      />
       <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-4 flex items-center justify-between">
           <p className="text-xl font-semibold text-mineshaft-100">Active Integrations</p>

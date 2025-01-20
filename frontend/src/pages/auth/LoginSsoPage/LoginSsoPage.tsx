@@ -59,7 +59,7 @@ export const LoginSsoPage = () => {
           />
         </div>
       </Link>
-      <div>{renderView()}</div>;
+      <div>{renderView()}</div>
     </div>
   );
 };

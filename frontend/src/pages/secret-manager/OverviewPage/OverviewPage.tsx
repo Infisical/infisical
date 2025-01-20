@@ -19,7 +19,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useRouter, useSearch } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
-import NavHeader from "@app/components/navigation/NavHeader";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -34,6 +33,7 @@ import {
   IconButton,
   Modal,
   ModalContent,
+  PageHeader,
   Pagination,
   Table,
   TableContainer,
@@ -661,22 +661,17 @@ export const OverviewPage = () => {
     );
 
   return (
-    <div className="h-full">
+    <div className="">
       <Helmet>
         <title>{t("common.head-title", { title: t("dashboard.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-        <meta property="og:image" content="/images/message.png" />
         <meta property="og:title" content={String(t("dashboard.og-title"))} />
         <meta name="og:description" content={String(t("dashboard.og-description"))} />
       </Helmet>
-      <div className="container mx-auto px-6 text-mineshaft-50 dark:[color-scheme:dark]">
-        <div className="relative right-5 ml-4">
-          <NavHeader pageName={t("dashboard.title")} isProjectRelated />
-        </div>
-        <div className="space-y-8">
-          <div className="flex w-full items-baseline justify-between">
-            <div className="mt-6">
-              <p className="text-3xl font-semibold text-bunker-100">Secrets Overview</p>
+      <div className="mx-auto max-w-7xl text-mineshaft-50 dark:[color-scheme:dark]">
+        <div className="flex w-full items-baseline justify-between">
+          <PageHeader
+            title="Secrets Overview"
+            description={
               <p className="text-md text-bunker-300">
                 Inject your secrets using
                 <a
@@ -714,32 +709,33 @@ export const OverviewPage = () => {
                 >
                   more
                 </a>
-                .
+                . Click the Explore button to view the secret details section.
               </p>
-            </div>
-          </div>
-          <div className="flex items-center justify-between">
-            <FolderBreadCrumbs secretPath={secretPath} onResetSearch={handleResetSearch} />
-            <div className="flex flex-row items-center justify-center space-x-2">
-              {userAvailableEnvs.length > 0 && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <IconButton
-                      ariaLabel="Environments"
-                      variant="plain"
-                      size="sm"
-                      className={twMerge(
-                        "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
-                        isTableFiltered && "border-primary/50 text-primary"
-                      )}
-                    >
-                      <Tooltip content="Choose visible environments" className="mb-2">
-                        <FontAwesomeIcon icon={faList} />
-                      </Tooltip>
-                    </IconButton>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {/* <DropdownMenuItem className="px-1.5" asChild>
+            }
+          />
+        </div>
+        <div className="mt-4 flex items-center justify-between">
+          <FolderBreadCrumbs secretPath={secretPath} onResetSearch={handleResetSearch} />
+          <div className="flex flex-row items-center justify-center space-x-2">
+            {userAvailableEnvs.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <IconButton
+                    ariaLabel="Environments"
+                    variant="plain"
+                    size="sm"
+                    className={twMerge(
+                      "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
+                      isTableFiltered && "border-primary/50 text-primary"
+                    )}
+                  >
+                    <Tooltip content="Choose visible environments" className="mb-2">
+                      <FontAwesomeIcon icon={faList} />
+                    </Tooltip>
+                  </IconButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {/* <DropdownMenuItem className="px-1.5" asChild>
                     <Button
                       size="xs"
                       className="w-full"
@@ -751,129 +747,126 @@ export const OverviewPage = () => {
                       Create an environment
                     </Button>
                   </DropdownMenuItem> */}
-                    <DropdownMenuLabel>Filter project resources</DropdownMenuLabel>
-                    <DropdownMenuItem
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleToggleRowType(RowType.Folder);
-                      }}
-                      icon={filter[RowType.Folder] && <FontAwesomeIcon icon={faCheckCircle} />}
-                      iconPos="right"
-                    >
-                      <div className="flex items-center gap-2">
-                        <FontAwesomeIcon icon={faFolder} className="text-yellow-700" />
-                        <span>Folders</span>
-                      </div>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleToggleRowType(RowType.DynamicSecret);
-                      }}
-                      icon={
-                        filter[RowType.DynamicSecret] && <FontAwesomeIcon icon={faCheckCircle} />
-                      }
-                      iconPos="right"
-                    >
-                      <div className="flex items-center gap-2">
-                        <FontAwesomeIcon icon={faFingerprint} className="text-yellow-700" />
-                        <span>Dynamic Secrets</span>
-                      </div>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleToggleRowType(RowType.Secret);
-                      }}
-                      icon={filter[RowType.Secret] && <FontAwesomeIcon icon={faCheckCircle} />}
-                      iconPos="right"
-                    >
-                      <div className="flex items-center gap-2">
-                        <FontAwesomeIcon icon={faKey} className="text-bunker-300" />
-                        <span>Secrets</span>
-                      </div>
-                    </DropdownMenuItem>
-                    <DropdownMenuLabel>Choose visible environments</DropdownMenuLabel>
-                    {userAvailableEnvs.map((availableEnv) => {
-                      const { id: envId, name } = availableEnv;
+                  <DropdownMenuLabel>Filter project resources</DropdownMenuLabel>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleToggleRowType(RowType.Folder);
+                    }}
+                    icon={filter[RowType.Folder] && <FontAwesomeIcon icon={faCheckCircle} />}
+                    iconPos="right"
+                  >
+                    <div className="flex items-center gap-2">
+                      <FontAwesomeIcon icon={faFolder} className="text-yellow-700" />
+                      <span>Folders</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleToggleRowType(RowType.DynamicSecret);
+                    }}
+                    icon={filter[RowType.DynamicSecret] && <FontAwesomeIcon icon={faCheckCircle} />}
+                    iconPos="right"
+                  >
+                    <div className="flex items-center gap-2">
+                      <FontAwesomeIcon icon={faFingerprint} className="text-yellow-700" />
+                      <span>Dynamic Secrets</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleToggleRowType(RowType.Secret);
+                    }}
+                    icon={filter[RowType.Secret] && <FontAwesomeIcon icon={faCheckCircle} />}
+                    iconPos="right"
+                  >
+                    <div className="flex items-center gap-2">
+                      <FontAwesomeIcon icon={faKey} className="text-bunker-300" />
+                      <span>Secrets</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuLabel>Choose visible environments</DropdownMenuLabel>
+                  {userAvailableEnvs.map((availableEnv) => {
+                    const { id: envId, name } = availableEnv;
 
-                      const isEnvSelected = visibleEnvs.map((env) => env.id).includes(envId);
-                      return (
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handleEnvSelect(envId);
-                          }}
-                          key={envId}
-                          disabled={visibleEnvs?.length === 1}
-                          icon={isEnvSelected && <FontAwesomeIcon icon={faCheckCircle} />}
-                          iconPos="right"
-                        >
-                          <div className="flex items-center">{name}</div>
-                        </DropdownMenuItem>
-                      );
-                    })}
+                    const isEnvSelected = visibleEnvs.map((env) => env.id).includes(envId);
+                    return (
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleEnvSelect(envId);
+                        }}
+                        key={envId}
+                        disabled={visibleEnvs?.length === 1}
+                        icon={isEnvSelected && <FontAwesomeIcon icon={faCheckCircle} />}
+                        iconPos="right"
+                      >
+                        <div className="flex items-center">{name}</div>
+                      </DropdownMenuItem>
+                    );
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            <SecretSearchInput
+              value={searchFilter}
+              tags={tags}
+              onChange={setSearchFilter}
+              environments={userAvailableEnvs}
+              projectId={currentWorkspace?.id}
+            />
+            {userAvailableEnvs.length > 0 && (
+              <div>
+                <Button
+                  variant="outline_bg"
+                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                  onClick={() => handlePopUpOpen("addSecretsInAllEnvs")}
+                  className="h-10 rounded-r-none"
+                >
+                  Add Secret
+                </Button>
+                <DropdownMenu
+                  open={popUp.misc.isOpen}
+                  onOpenChange={(isOpen) => handlePopUpToggle("misc", isOpen)}
+                >
+                  <DropdownMenuTrigger asChild>
+                    <IconButton
+                      ariaLabel="add-folder-or-import"
+                      variant="outline_bg"
+                      className="rounded-l-none bg-mineshaft-600 p-3"
+                    >
+                      <FontAwesomeIcon icon={faAngleDown} />
+                    </IconButton>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <div className="flex flex-col space-y-1 p-1.5">
+                      <ProjectPermissionCan
+                        I={ProjectPermissionActions.Create}
+                        a={ProjectPermissionSub.SecretFolders}
+                      >
+                        {(isAllowed) => (
+                          <Button
+                            leftIcon={<FontAwesomeIcon icon={faFolderPlus} />}
+                            onClick={() => {
+                              handlePopUpOpen("addFolder");
+                              handlePopUpClose("misc");
+                            }}
+                            isDisabled={!isAllowed}
+                            variant="outline_bg"
+                            className="h-10"
+                            isFullWidth
+                          >
+                            Add Folder
+                          </Button>
+                        )}
+                      </ProjectPermissionCan>
+                    </div>
                   </DropdownMenuContent>
                 </DropdownMenu>
-              )}
-              <SecretSearchInput
-                value={searchFilter}
-                tags={tags}
-                onChange={setSearchFilter}
-                environments={userAvailableEnvs}
-                projectId={currentWorkspace?.id}
-              />
-              {userAvailableEnvs.length > 0 && (
-                <div>
-                  <Button
-                    variant="outline_bg"
-                    leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                    onClick={() => handlePopUpOpen("addSecretsInAllEnvs")}
-                    className="h-10 rounded-r-none"
-                  >
-                    Add Secret
-                  </Button>
-                  <DropdownMenu
-                    open={popUp.misc.isOpen}
-                    onOpenChange={(isOpen) => handlePopUpToggle("misc", isOpen)}
-                  >
-                    <DropdownMenuTrigger asChild>
-                      <IconButton
-                        ariaLabel="add-folder-or-import"
-                        variant="outline_bg"
-                        className="rounded-l-none bg-mineshaft-600 p-3"
-                      >
-                        <FontAwesomeIcon icon={faAngleDown} />
-                      </IconButton>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <div className="flex flex-col space-y-1 p-1.5">
-                        <ProjectPermissionCan
-                          I={ProjectPermissionActions.Create}
-                          a={ProjectPermissionSub.SecretFolders}
-                        >
-                          {(isAllowed) => (
-                            <Button
-                              leftIcon={<FontAwesomeIcon icon={faFolderPlus} />}
-                              onClick={() => {
-                                handlePopUpOpen("addFolder");
-                                handlePopUpClose("misc");
-                              }}
-                              isDisabled={!isAllowed}
-                              variant="outline_bg"
-                              className="h-10"
-                              isFullWidth
-                            >
-                              Add Folder
-                            </Button>
-                          )}
-                        </ProjectPermissionCan>
-                      </div>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
         <SelectionPanel

@@ -22,7 +22,15 @@ import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { NewProjectModal } from "@app/components/projects";
-import { Button, IconButton, Input, Pagination, Skeleton, Tooltip } from "@app/components/v2";
+import {
+  Button,
+  IconButton,
+  Input,
+  PageHeader,
+  Pagination,
+  Skeleton,
+  Tooltip
+} from "@app/components/v2";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -49,13 +57,6 @@ enum ProjectsViewMode {
 enum ProjectOrderBy {
   Name = "name"
 }
-
-const formatTitle = (type: ProjectType) => {
-  if (type === ProjectType.SecretManager) return "Secret Management";
-  if (type === ProjectType.CertificateManager) return "Cert Management";
-  if (type === ProjectType.KMS) return "Key Management";
-  return "SSH";
-};
 
 const formatDescription = (type: ProjectType) => {
   if (type === ProjectType.SecretManager)
@@ -365,13 +366,13 @@ export const ProductOverviewPage = ({ type }: Props) => {
   }
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col justify-start bg-bunker-800 md:h-screen">
+    <div className="mx-auto flex max-w-7xl flex-col justify-start bg-bunker-800">
       <Helmet>
         <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       {!serverDetails?.redisConfigured && (
-        <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl">
+        <div className="mb-4 flex flex-col items-start justify-start text-3xl">
           <p className="mb-4 mr-4 font-semibold text-white">Announcements</p>
           <div className="flex w-full items-center rounded-md border border-blue-400/70 bg-blue-900/70 p-2 text-base text-mineshaft-100">
             <FontAwesomeIcon
@@ -393,14 +394,9 @@ export const ProductOverviewPage = ({ type }: Props) => {
           </div>
         </div>
       )}
-      <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0">
-        <div className="flex w-full justify-between">
-          <p className="mr-4 text-3xl font-semibold text-white">{formatTitle(type)}</p>
-        </div>
-        <div>
-          <p className="mr-4 mt-2 text-gray-400">{formatDescription(type)}</p>
-        </div>
-        <div className="mt-6 flex w-full flex-row">
+      <div className="mb-4 flex flex-col items-start justify-start">
+        <PageHeader title="Projects" description={formatDescription(type)} />
+        <div className="flex w-full flex-row">
           <Input
             className="h-[2.3rem] bg-mineshaft-800 text-sm placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
             placeholder="Search by project name..."

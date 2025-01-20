@@ -167,7 +167,7 @@ export const ProjectSelect = () => {
   }, [workspaces, projectFavorites, currentWorkspace]);
 
   return (
-    <div className="mb-4 mt-5 w-full p-3">
+    <div className="mt-2 w-full p-3">
       <p className="mb-1 ml-1.5 text-xs font-semibold uppercase text-gray-400">
         {currentWorkspace?.type ? getProjectTitle(currentWorkspace?.type) : "Project"}
       </p>

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { Badge } from "@app/components/v2/Badge";
 import { useWorkspace } from "@app/context";
 import { useGetAccessRequestsCount, useGetSecretApprovalRequestCount } from "@app/hooks/api";
@@ -35,39 +35,32 @@ export const SecretApprovalsPage = () => {
       : TabSection.SecretApprovalRequests;
 
   return (
-    <div className="h-full">
+    <div>
       <Helmet>
         <title>{t("common.head-title", { title: t("approval.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-        <meta property="og:image" content="/images/message.png" />
         <meta property="og:title" content={String(t("approval.og-title"))} />
         <meta name="og:description" content={String(t("approval.og-description"))} />
       </Helmet>
-      <div className="container mx-auto h-full w-full max-w-7xl bg-bunker-800 px-6 text-white">
-        <div className="flex items-center justify-between py-6">
-          <div className="flex w-full flex-col">
-            <h2 className="text-3xl font-semibold text-gray-200">Approval Workflows</h2>
-            <p className="text-bunker-300">
-              Create approval policies for any modifications to secrets in sensitive environments
-              and folders.
-            </p>
-          </div>
-          <div className="flex w-max justify-center">
-            <a
-              href="https://infisical.com/docs/documentation/platform/pr-workflows"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <span className="flex w-max cursor-pointer items-center rounded-md border border-mineshaft-500 bg-mineshaft-600 px-4 py-2 text-mineshaft-200 duration-200 hover:border-primary/40 hover:bg-primary/10 hover:text-white">
-                Documentation
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="mb-[0.06rem] ml-1 text-xs"
-                />
-              </span>
-            </a>
-          </div>
-        </div>
+      <div className="container mx-auto h-full w-full max-w-7xl bg-bunker-800 text-white">
+        <PageHeader
+          title="Approval Workflows"
+          description="Create approval policies for any modifications to secrets in sensitive environments and folders.
+"
+        >
+          <a
+            href="https://infisical.com/docs/documentation/platform/pr-workflows"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <span className="flex w-max cursor-pointer items-center rounded-md border border-mineshaft-500 bg-mineshaft-600 px-4 py-2 text-mineshaft-200 duration-200 hover:border-primary/40 hover:bg-primary/10 hover:text-white">
+              Documentation
+              <FontAwesomeIcon
+                icon={faArrowUpRightFromSquare}
+                className="mb-[0.06rem] ml-1 text-xs"
+              />
+            </span>
+          </a>
+        </PageHeader>
         <Tabs defaultValue={defaultTab}>
           <TabList>
             <Tab value={TabSection.SecretApprovalRequests}>

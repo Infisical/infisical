@@ -1,13 +1,12 @@
+import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
-
 import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useSearch } from "@tanstack/react-router";
 import z from "zod";
 
 import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
-import { Helmet } from "react-helmet";
-import { useSearch } from "@tanstack/react-router";
 import { ROUTE_PATHS } from "@app/const/routes";
 
 const schema = z.object({
@@ -18,7 +17,7 @@ type FormData = z.infer<typeof schema>;
 
 export function AzureKeyVaultAuthorizePage() {
   const { state, clientId } = useSearch({
-    from: ROUTE_PATHS.SecretManager.Integratons.AzureKeyVaultAuthorizePage.id,
+    from: ROUTE_PATHS.SecretManager.Integratons.AzureKeyVaultAuthorizePage.id
   });
 
   const { control, handleSubmit } = useForm<FormData>({
@@ -38,7 +37,7 @@ export function AzureKeyVaultAuthorizePage() {
   return (
     <div className="flex h-full w-full items-center justify-center">
       <Helmet>
-          <title>Authorize Azure Key Vault Integration</title>
+        <title>Authorize Azure Key Vault Integration</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <Card className="mb-12 max-w-lg rounded-md border border-mineshaft-600">
@@ -56,12 +55,12 @@ export function AzureKeyVaultAuthorizePage() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <div className="ml-2 mb-1 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 Docs
                 <FontAwesomeIcon
                   icon={faArrowUpRightFromSquare}
-                  className="ml-1.5 mb-[0.07rem] text-xxs"
+                  className="mb-[0.07rem] ml-1.5 text-xxs"
                 />
               </div>
             </a>

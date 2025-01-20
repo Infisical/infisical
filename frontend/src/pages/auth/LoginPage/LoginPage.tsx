@@ -80,7 +80,7 @@ export const LoginPage = () => {
           />
         </div>
       </Link>
-      <div className="pb-28">{renderView()}</div>;
+      <div className="pb-28">{renderView()}</div>
     </div>
   );
 };

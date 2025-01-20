@@ -2,7 +2,7 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 
 import { CaTab, CertificatesTab, PkiAlertsTab } from "./components";
@@ -19,11 +19,9 @@ export const CertificatesPage = () => {
     <div className="container mx-auto flex h-full flex-col justify-between bg-bunker-800 text-white">
       <Helmet>
         <title>{t("common.head-title", { title: "Certificates" })}</title>
-        <link rel="icon" href="/infisical.ico" />
-        <meta property="og:image" content="/images/message.png" />
       </Helmet>
-      <div className="mx-auto mb-6 w-full max-w-7xl px-6 py-6">
-        <p className="mb-4 mr-4 text-3xl font-semibold text-white">Internal PKI</p>
+      <div className="mx-auto mb-6 w-full max-w-7xl">
+        <PageHeader title="Overview" />
         <Tabs defaultValue={TabSections.Certificates}>
           <TabList>
             <Tab value={TabSections.Certificates}>Certificates</Tab>

@@ -1,8 +1,8 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { faChevronLeft, faEllipsis, faRefresh, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faRefresh, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { useParams } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -13,6 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   EmptyState,
+  PageHeader,
   Tooltip
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
@@ -28,7 +29,6 @@ import { integrationSlugNameMapping } from "./IntegrationsDetailsByIDPage.utils"
 
 export const IntegrationDetailsByIDPage = () => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const integrationId = useParams({
     from: ROUTE_PATHS.SecretManager.IntegrationDetailsByIDPage.id,
     select: (el) => el.integrationId
@@ -50,38 +50,21 @@ export const IntegrationDetailsByIDPage = () => {
         <meta property="og:title" content="Manage your .env files in seconds" />
         <meta name="og:description" content={t("integrations.description") as string} />
       </Helmet>
-      <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+      <div className="mx-auto flex max-w-7xl flex-col justify-between bg-bunker-800 text-white">
         {integration ? (
-          <div className="mx-auto mb-6 w-full max-w-7xl px-6 py-6">
-            <Button
-              variant="link"
-              type="submit"
-              leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
-              onClick={() => {
-                navigate({
-                  to: "/secret-manager/$projectId/integrations",
-                  params: {
-                    projectId
-                  }
-                });
-              }}
-              className="mb-4"
+          <div className="mx-auto mb-6 w-full max-w-7xl">
+            <PageHeader
+              title={`${integrationSlugNameMapping[integration.integration]} Integration`}
             >
-              Integrations
-            </Button>
-            <div className="mb-4 flex items-center justify-between">
-              <p className="text-3xl font-semibold text-white">
-                {integrationSlugNameMapping[integration.integration]} Integration
-              </p>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild className="rounded-lg">
                   <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
                     <Tooltip content="More options">
-                      <FontAwesomeIcon size="sm" icon={faEllipsis} />
+                      <Button variant="outline_bg">More</Button>
                     </Tooltip>
                   </div>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="p-1">
+                <DropdownMenuContent align="end" className="p-1">
                   <DropdownMenuItem
                     onClick={async () => {
                       await syncIntegration({
@@ -119,13 +102,13 @@ export const IntegrationDetailsByIDPage = () => {
                   </OrgPermissionCan>
                 </DropdownMenuContent>
               </DropdownMenu>
-            </div>
-            <div className="flex justify-center">
+            </PageHeader>
+            <div className="flex">
               <div className="mr-4 w-96">
                 <IntegrationDetailsSection integration={integration} />
                 <IntegrationConnectionSection integration={integration} />
               </div>
-              <div className="space-y-4">
+              <div className="flex-grow space-y-4">
                 <IntegrationSettingsSection integration={integration} />
                 <IntegrationAuditLogsSection integration={integration} />
               </div>

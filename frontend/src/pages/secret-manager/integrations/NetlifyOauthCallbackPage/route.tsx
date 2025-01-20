@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, linkOptions } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
@@ -10,8 +10,25 @@ export const NetlifyOAuthCallbackPageQueryParamsSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/netlify/oauth2/callback"
+  "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/netlify/oauth2/callback"
 )({
   component: NetlifyOauthCallbackPage,
-  validateSearch: zodValidator(NetlifyOAuthCallbackPageQueryParamsSchema)
+  validateSearch: zodValidator(NetlifyOAuthCallbackPageQueryParamsSchema),
+  beforeLoad: ({ context, params }) => {
+    return {
+      breadcrumbs: [
+        ...context.breadcrumbs,
+        {
+          label: "Integrations",
+          link: linkOptions({
+            to: "/secret-manager/$projectId/integrations",
+            params
+          })
+        },
+        {
+          label: "Netlify"
+        }
+      ]
+    };
+  }
 });
