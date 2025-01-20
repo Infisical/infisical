@@ -5,7 +5,6 @@ import {
   faBook,
   faCheck,
   faCog,
-  faEllipsis,
   faEnvelope,
   faInfinity,
   faInfo,
@@ -309,11 +308,12 @@ export const MinimizedOrgSidebar = () => {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <div className="w-full">
-                    <MenuIconButton isSelected={isMoreSelected}>
-                      <div className="relative flex flex-col items-center justify-center">
-                        <FontAwesomeIcon icon={faEllipsis} className="mb-3 text-lg" />
-                        <span>More</span>
-                      </div>
+                    <MenuIconButton
+                      lottieIconMode="reverse"
+                      icon="three-ellipsis"
+                      isSelected={isMoreSelected}
+                    >
+                      More
                     </MenuIconButton>
                   </div>
                 </DropdownMenuTrigger>
@@ -410,11 +410,7 @@ export const MinimizedOrgSidebar = () => {
             <DropdownMenu>
               <DropdownMenuTrigger className="w-full" asChild>
                 <div>
-                  <MenuIconButton>
-                    <div className="my-1 flex h-6 w-6 items-center justify-center rounded-md bg-primary text-sm uppercase text-black">
-                      {user?.firstName?.charAt(0)}
-                    </div>
-                  </MenuIconButton>
+                  <MenuIconButton icon="user">User</MenuIconButton>
                 </div>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="p-1">

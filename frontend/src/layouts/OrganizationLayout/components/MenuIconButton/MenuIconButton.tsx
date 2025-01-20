@@ -14,8 +14,10 @@ export const MenuIconButton = <T extends ElementType = "button">({
   description,
   // wrapping in forward ref with generic component causes the loss of ts definitions on props
   inputRef,
+  lottieIconMode = "forward",
   ...props
-}: MenuItemProps<T> & ComponentPropsWithRef<T>): JSX.Element => {
+}: MenuItemProps<T> &
+  ComponentPropsWithRef<T> & { lottieIconMode?: "reverse" | "forward" }): JSX.Element => {
   const iconRef = useRef<DotLottie | null>(null);
   return (
     <Item
@@ -46,6 +48,7 @@ export const MenuIconButton = <T extends ElementType = "button">({
             src={`/lotties/${icon}.json`}
             loop
             className="h-full w-full"
+            mode={lottieIconMode}
           />
         </div>
       )}
