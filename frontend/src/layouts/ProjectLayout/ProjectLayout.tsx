@@ -170,7 +170,7 @@ export const ProjectLayout = () => {
                         </Link>
                       )}
                     </MenuGroup>
-                    <MenuGroup title="Others">
+                    <MenuGroup title="Other">
                       <Link
                         to={`/${currentWorkspace.type}/$projectId/access-management` as const}
                         params={{

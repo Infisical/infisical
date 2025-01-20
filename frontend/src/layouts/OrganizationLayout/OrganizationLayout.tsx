@@ -81,7 +81,7 @@ export const OrganizationLayout = () => {
                         </Link>
                       )}
                     </MenuGroup>
-                    <MenuGroup title="Others">
+                    <MenuGroup title="Other">
                       <Link to="/organization/access-management">
                         {({ isActive }) => (
                           <MenuItem isSelected={isActive} icon="groups">
