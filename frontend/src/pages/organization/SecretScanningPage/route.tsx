@@ -12,7 +12,7 @@ const SecretScanningQueryParams = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/organization/_layout/secret-scanning"
+  "/_authenticate/_inject-org-details/_org-layout/organization/secret-scanning"
 )({
   validateSearch: zodValidator(SecretScanningQueryParams),
   component: SecretScanningPage,

@@ -8,28 +8,26 @@ const adminRoute = route("/admin", [
 ]);
 
 const organizationRoutes = route("/organization", [
-  layout("organization/layout.tsx", [
-    route("/secret-manager/overview", "organization/SecretManagerOverviewPage/route.tsx"),
-    route("/cert-manager/overview", "organization/CertManagerOverviewPage/route.tsx"),
-    route("/ssh/overview", "organization/SshOverviewPage/route.tsx"),
-    route("/kms/overview", "organization/KmsOverviewPage/route.tsx"),
-    route("/access-management", "organization/AccessManagementPage/route.tsx"),
-    route("/admin", "organization/AdminPage/route.tsx"),
-    route("/audit-logs", "organization/AuditLogsPage/route.tsx"),
-    route("/billing", "organization/BillingPage/route.tsx"),
-    route("/none", "organization/NoOrgPage/route.tsx"),
-    route("/secret-sharing", "organization/SecretSharingPage/route.tsx"),
-    route("/settings", "organization/SettingsPage/route.tsx"),
-    route("/secret-scanning", "organization/SecretScanningPage/route.tsx"),
-    route("/groups/$groupId", "organization/GroupDetailsByIDPage/route.tsx"),
-    route("/members/$membershipId", "organization/UserDetailsByIDPage/route.tsx"),
-    route("/roles/$roleId", "organization/RoleByIDPage/route.tsx"),
-    route("/identities/$identityId", "organization/IdentityDetailsByIDPage/route.tsx"),
-    route(
-      "/app-connections/github/oauth/callback",
-      "organization/AppConnections/GithubOauthCallbackPage/route.tsx"
-    )
-  ])
+  route("/secret-manager/overview", "organization/SecretManagerOverviewPage/route.tsx"),
+  route("/cert-manager/overview", "organization/CertManagerOverviewPage/route.tsx"),
+  route("/ssh/overview", "organization/SshOverviewPage/route.tsx"),
+  route("/kms/overview", "organization/KmsOverviewPage/route.tsx"),
+  route("/access-management", "organization/AccessManagementPage/route.tsx"),
+  route("/admin", "organization/AdminPage/route.tsx"),
+  route("/audit-logs", "organization/AuditLogsPage/route.tsx"),
+  route("/billing", "organization/BillingPage/route.tsx"),
+  route("/none", "organization/NoOrgPage/route.tsx"),
+  route("/secret-sharing", "organization/SecretSharingPage/route.tsx"),
+  route("/settings", "organization/SettingsPage/route.tsx"),
+  route("/secret-scanning", "organization/SecretScanningPage/route.tsx"),
+  route("/groups/$groupId", "organization/GroupDetailsByIDPage/route.tsx"),
+  route("/members/$membershipId", "organization/UserDetailsByIDPage/route.tsx"),
+  route("/roles/$roleId", "organization/RoleByIDPage/route.tsx"),
+  route("/identities/$identityId", "organization/IdentityDetailsByIDPage/route.tsx"),
+  route(
+    "/app-connections/github/oauth/callback",
+    "organization/AppConnections/GithubOauthCallbackPage/route.tsx"
+  )
 ]);
 
 const secretManagerRoutes = route("/secret-manager/$projectId", [
@@ -338,12 +336,14 @@ export const routes = rootRoute("root.tsx", [
     ]),
     middleware("inject-org-details.tsx", [
       adminRoute,
-      organizationRoutes,
-      secretManagerRoutes,
-      secretManagerIntegrationsRedirect,
-      certManagerRoutes,
-      kmsRoutes,
-      sshRoutes
+      layout("org-layout", "organization/layout.tsx", [
+        organizationRoutes,
+        secretManagerRoutes,
+        secretManagerIntegrationsRedirect,
+        certManagerRoutes,
+        kmsRoutes,
+        sshRoutes
+      ])
     ])
   ])
 ]);

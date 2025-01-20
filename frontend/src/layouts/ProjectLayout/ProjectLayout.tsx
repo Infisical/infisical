@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { faMobile } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { motion } from "framer-motion";
 
 import {
   BreadcrumbContainer,
@@ -14,8 +15,6 @@ import { useWorkspace } from "@app/context";
 import { useGetAccessRequestsCount, useGetSecretApprovalRequestCount } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 
-import { InsecureConnectionBanner } from "../OrganizationLayout/components/InsecureConnectionBanner";
-import { MinimizedOrgSidebar } from "./components/MinimizedOrgSidebar";
 import { ProjectSelect } from "./components/ProjectSelect";
 
 // This is a generic layout shared by all types of projects.
@@ -49,10 +48,15 @@ export const ProjectLayout = () => {
   return (
     <>
       <div className="dark hidden h-screen w-full flex-col overflow-x-hidden md:flex">
-        {!window.isSecureContext && <InsecureConnectionBanner />}
         <div className="flex flex-grow flex-col overflow-y-hidden md:flex-row">
-          <MinimizedOrgSidebar />
-          <aside className="dark w-full border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60">
+          <motion.div
+            key="menu-project-items"
+            initial={{ x: -150 }}
+            animate={{ x: 0 }}
+            exit={{ x: -150 }}
+            transition={{ duration: 0.2 }}
+            className="dark w-full border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60"
+          >
             <nav className="items-between flex h-full flex-col justify-between overflow-y-auto dark:[color-scheme:dark]">
               <div>
                 <ProjectSelect />
@@ -196,13 +200,13 @@ export const ProjectLayout = () => {
                 </div>
               </div>
             </nav>
-          </aside>
-          <main className="flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800 px-4 pb-4 dark:[color-scheme:dark]">
+          </motion.div>
+          <div className="flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800 px-4 pb-4 dark:[color-scheme:dark]">
             {breadcrumbs ? (
               <BreadcrumbContainer breadcrumbs={breadcrumbs as TBreadcrumbFormat[]} />
             ) : null}
             <Outlet />
-          </main>
+          </div>
         </div>
       </div>
       <div className="z-[200] flex h-screen w-screen flex-col items-center justify-center bg-bunker-800 md:hidden">

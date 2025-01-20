@@ -6,7 +6,7 @@ import { fetchWorkspaceById } from "@app/hooks/api/workspace/queries";
 import { ProjectLayout } from "@app/layouts/ProjectLayout";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/ssh/$projectId/_ssh-layout"
+  "/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout"
 )({
   component: ProjectLayout,
   beforeLoad: async ({ params, context }) => {

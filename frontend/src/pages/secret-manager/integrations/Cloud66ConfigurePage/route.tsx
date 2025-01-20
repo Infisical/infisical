@@ -9,7 +9,7 @@ const Cloud66ConfigurePageQueryParamsSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloud-66/create"
+  "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/cloud-66/create"
 )({
   component: Cloud66ConfigurePage,
   validateSearch: zodValidator(Cloud66ConfigurePageQueryParamsSchema),
@@ -19,7 +19,10 @@ export const Route = createFileRoute(
         ...context.breadcrumbs,
         {
           label: "Integrations",
-          link: linkOptions({ to: "/secret-manager/$projectId/integrations", params })
+          link: linkOptions({
+            to: "/secret-manager/$projectId/integrations",
+            params
+          })
         },
         {
           label: "Cloud 66"

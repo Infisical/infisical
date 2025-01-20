@@ -9,7 +9,7 @@ const QoveryConfigurePageQueryParamsSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/qovery/create"
+  "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/qovery/create"
 )({
   component: QoveryConfigurePage,
   validateSearch: zodValidator(QoveryConfigurePageQueryParamsSchema),
@@ -19,7 +19,10 @@ export const Route = createFileRoute(
         ...context.breadcrumbs,
         {
           label: "Integrations",
-          link: linkOptions({ to: "/secret-manager/$projectId/integrations", params })
+          link: linkOptions({
+            to: "/secret-manager/$projectId/integrations",
+            params
+          })
         },
         {
           label: "Qovery"

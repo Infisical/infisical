@@ -10,7 +10,7 @@ export const GitlabOAuthCallbackPageQueryParamsSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gitlab/oauth2/callback"
+  "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/gitlab/oauth2/callback"
 )({
   component: GitLabOAuthCallbackPage,
   validateSearch: zodValidator(GitlabOAuthCallbackPageQueryParamsSchema),
@@ -20,7 +20,10 @@ export const Route = createFileRoute(
         ...context.breadcrumbs,
         {
           label: "Integrations",
-          link: linkOptions({ to: "/secret-manager/$projectId/integrations", params })
+          link: linkOptions({
+            to: "/secret-manager/$projectId/integrations",
+            params
+          })
         },
         {
           label: "GitLab"

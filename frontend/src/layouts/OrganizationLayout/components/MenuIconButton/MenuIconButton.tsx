@@ -22,7 +22,7 @@ export const MenuIconButton = <T extends ElementType = "button">({
       type="button"
       role="menuitem"
       className={twMerge(
-        "duration-50 group relative flex w-full cursor-pointer flex-col items-center justify-center rounded p-2 font-inter text-sm text-bunker-100 transition-all hover:bg-mineshaft-700",
+        "group relative flex w-full cursor-pointer flex-col items-center justify-center rounded p-2 font-inter text-sm text-bunker-100 transition-all duration-150 hover:bg-mineshaft-700",
         isSelected && "bg-bunker-800 hover:bg-mineshaft-600",
         isDisabled && "cursor-not-allowed hover:bg-transparent",
         className
@@ -34,8 +34,8 @@ export const MenuIconButton = <T extends ElementType = "button">({
     >
       <div
         className={`${
-          isSelected ? "visisble" : "invisible"
-        } absolute -left-[0.28rem] h-full w-0.5 rounded-md bg-primary`}
+          isSelected ? "opacity-100" : "opacity-0"
+        } absolute -left-[0.28rem] h-full w-1 rounded-md bg-primary transition-all duration-150`}
       />
       {icon && (
         <div className="my-auto mb-2 h-6 w-6">
@@ -49,7 +49,12 @@ export const MenuIconButton = <T extends ElementType = "button">({
           />
         </div>
       )}
-      <div className="flex-grow justify-center break-words text-center text-xxs">{children}</div>
+      <div
+        className="flex-grow justify-center break-words text-center"
+        style={{ fontSize: "10px" }}
+      >
+        {children}
+      </div>
     </Item>
   );
 };

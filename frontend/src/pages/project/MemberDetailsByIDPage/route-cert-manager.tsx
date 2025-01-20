@@ -3,7 +3,7 @@ import { createFileRoute, linkOptions } from "@tanstack/react-router";
 import { MemberDetailsByIDPage } from "./MemberDetailsByIDPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/cert-manager/$projectId/_cert-manager-layout/members/$membershipId"
+  "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/members/$membershipId"
 )({
   component: MemberDetailsByIDPage,
   beforeLoad: ({ context, params }) => {

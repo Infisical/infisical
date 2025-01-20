@@ -1,23 +1,23 @@
 import { useState } from "react";
+import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
 import {
   faArrowUpRightFromSquare,
   faBook,
   faCheck,
   faCog,
   faEllipsis,
+  faEnvelope,
   faInfinity,
   faInfo,
   faInfoCircle,
   faMoneyBill,
-  faReply,
-  faShare,
   faSignOut,
+  faUser,
   faUsers
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate, useRouter } from "@tanstack/react-router";
-import { motion } from "framer-motion";
+import { Link, linkOptions, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
 
 import { Mfa } from "@app/components/auth/Mfa";
 import { CreateOrgModal } from "@app/components/organization/CreateOrgModal";
@@ -42,13 +42,41 @@ import {
 } from "@app/hooks/api";
 import { authKeys } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
+import { SubscriptionPlan } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 import { ProjectType } from "@app/hooks/api/workspace/types";
-import { INFISICAL_SUPPORT_OPTIONS } from "@app/layouts/OrganizationLayout/components/SidebarFooter/SidebarFooter";
 import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
 import { MenuIconButton } from "../MenuIconButton";
-import { ProjectSwitcher } from "./ProjectSwitcher";
+
+const getPlan = (subscription: SubscriptionPlan) => {
+  if (subscription.dynamicSecret) return "Enterprise Plan";
+  if (subscription.pitRecovery) return "Pro Plan";
+  return "Free Plan";
+};
+
+export const INFISICAL_SUPPORT_OPTIONS = [
+  [
+    <FontAwesomeIcon key={1} className="pr-4 text-sm" icon={faSlack} />,
+    "Support Forum",
+    "https://infisical.com/slack"
+  ],
+  [
+    <FontAwesomeIcon key={2} className="pr-4 text-sm" icon={faBook} />,
+    "Read Docs",
+    "https://infisical.com/docs/documentation/getting-started/introduction"
+  ],
+  [
+    <FontAwesomeIcon key={3} className="pr-4 text-sm" icon={faGithub} />,
+    "GitHub Issues",
+    "https://github.com/Infisical/infisical/issues"
+  ],
+  [
+    <FontAwesomeIcon key={4} className="pr-4 text-sm" icon={faEnvelope} />,
+    "Email Support",
+    "mailto:support@infisical.com"
+  ]
+];
 
 export const MinimizedOrgSidebar = () => {
   const [shouldShowMfa, toggleShowMfa] = useToggle(false);
@@ -66,7 +94,16 @@ export const MinimizedOrgSidebar = () => {
   const { mutateAsync: selectOrganization } = useSelectOrganization();
   const navigate = useNavigate();
   const router = useRouter();
+  const location = useLocation();
   const queryClient = useQueryClient();
+
+  const isMoreSelected = (
+    [
+      linkOptions({ to: "/organization/access-management" }).to,
+      linkOptions({ to: "/organization/settings" }).to,
+      linkOptions({ to: "/organization/audit-logs" }).to
+    ] as string[]
+  ).includes(location.pathname);
 
   const handleOrgChange = async (orgId: string) => {
     queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
@@ -115,11 +152,14 @@ export const MinimizedOrgSidebar = () => {
 
   return (
     <>
-      <aside className="dark w-16 border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 transition-all duration-150">
+      <aside
+        className="dark z-10 border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 transition-all duration-150"
+        style={{ width: "72px" }}
+      >
         <nav className="items-between flex h-full flex-col justify-between overflow-y-auto dark:[color-scheme:dark]">
           <div>
             <div className="flex cursor-pointer items-center p-2 pt-4 hover:bg-mineshaft-700">
-              <DropdownMenu>
+              <DropdownMenu modal>
                 <DropdownMenuTrigger asChild>
                   <div className="flex w-full items-center justify-center rounded-md border border-none border-mineshaft-600 p-1 transition-all">
                     <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
@@ -127,7 +167,25 @@ export const MinimizedOrgSidebar = () => {
                     </div>
                   </div>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="p-1">
+                <DropdownMenuContent
+                  align="start"
+                  side="right"
+                  className="p-1 shadow-mineshaft-600 drop-shadow-md"
+                  style={{ minWidth: "320px" }}
+                >
+                  <div className="px-2 py-1">
+                    <div className="flex w-full items-center justify-center rounded-md border border-mineshaft-600 p-1 transition-all duration-150 hover:bg-mineshaft-700">
+                      <div className="mr-2 flex h-8 w-8 items-center justify-center rounded-md bg-primary text-black">
+                        {currentOrg?.name.charAt(0)}
+                      </div>
+                      <div className="flex flex-grow flex-col text-white">
+                        <div className="max-w-36 truncate text-ellipsis text-sm font-medium capitalize">
+                          {currentOrg?.name}
+                        </div>
+                        <div className="text-xs text-mineshaft-400">{getPlan(subscription)}</div>
+                      </div>
+                    </div>
+                  </div>
                   <div className="px-2 py-1 text-xs capitalize text-mineshaft-400">
                     organizations
                   </div>
@@ -172,11 +230,6 @@ export const MinimizedOrgSidebar = () => {
                     );
                   })}
                   <div className="mt-1 h-1 border-t border-mineshaft-600" />
-                  <Link to="/organization/secret-manager/overview">
-                    <DropdownMenuItem icon={<FontAwesomeIcon icon={faReply} />}>
-                      Home
-                    </DropdownMenuItem>
-                  </Link>
                   <DropdownMenuItem
                     icon={<FontAwesomeIcon icon={faSignOut} />}
                     onClick={logOutUser}
@@ -186,132 +239,112 @@ export const MinimizedOrgSidebar = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            <div className="px-1">
-              <motion.div
-                key="menu-icons"
-                className="space-y-1"
-                initial={{ x: 300, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                exit={{ x: -300, opacity: 0 }}
-                transition={{ duration: 0.1 }}
-              >
-                <DropdownMenu modal>
-                  <DropdownMenuTrigger>
-                    <MenuIconButton
-                      isSelected={window.location.pathname.startsWith(
-                        `/${ProjectType.SecretManager}`
-                      )}
-                      icon="sliding-carousel"
-                    >
-                      Secret Manager
-                    </MenuIconButton>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    side="right"
-                    className="px-3 pb-2"
-                    style={{ minWidth: "320px" }}
+            <div className="space-y-1 px-1">
+              <Link to="/organization/secret-manager/overview">
+                {({ isActive }) => (
+                  <MenuIconButton
+                    isSelected={
+                      isActive ||
+                      window.location.pathname.startsWith(`/${ProjectType.SecretManager}`)
+                    }
+                    icon="sliding-carousel"
                   >
-                    <ProjectSwitcher type={ProjectType.SecretManager} />
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <DropdownMenu modal>
-                  <DropdownMenuTrigger>
-                    <MenuIconButton
-                      isSelected={window.location.pathname.startsWith(
-                        `/${ProjectType.CertificateManager}`
-                      )}
-                      icon="note"
-                    >
-                      Cert Manager
-                    </MenuIconButton>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    side="right"
-                    className="px-3 pb-2"
-                    style={{ minWidth: "320px" }}
+                    Secret Manager
+                  </MenuIconButton>
+                )}
+              </Link>
+              <Link to="/organization/cert-manager/overview">
+                {({ isActive }) => (
+                  <MenuIconButton
+                    isSelected={
+                      isActive ||
+                      window.location.pathname.startsWith(`/${ProjectType.CertificateManager}`)
+                    }
+                    icon="note"
                   >
-                    <ProjectSwitcher type={ProjectType.CertificateManager} />
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <DropdownMenu modal>
-                  <DropdownMenuTrigger className="w-full">
-                    <MenuIconButton
-                      isSelected={window.location.pathname.startsWith(`/${ProjectType.KMS}`)}
-                      icon="unlock"
-                    >
-                      KMS
-                    </MenuIconButton>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    side="right"
-                    className="px-3 pb-2"
-                    style={{ minWidth: "320px" }}
+                    Cert Manager
+                  </MenuIconButton>
+                )}
+              </Link>
+              <Link to="/organization/kms/overview">
+                {({ isActive }) => (
+                  <MenuIconButton
+                    isSelected={
+                      isActive || window.location.pathname.startsWith(`/${ProjectType.KMS}`)
+                    }
+                    icon="unlock"
                   >
-                    <ProjectSwitcher type={ProjectType.KMS} />
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <DropdownMenu modal>
-                  <DropdownMenuTrigger className="w-full">
-                    <MenuIconButton
-                      isSelected={window.location.pathname.startsWith(`/${ProjectType.SSH}`)}
-                      icon="verified"
-                    >
-                      SSH
-                    </MenuIconButton>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    side="right"
-                    className="px-3 pb-2"
-                    style={{ minWidth: "320px" }}
+                    KMS
+                  </MenuIconButton>
+                )}
+              </Link>
+              <Link to="/organization/ssh/overview">
+                {({ isActive }) => (
+                  <MenuIconButton
+                    isSelected={
+                      isActive || window.location.pathname.startsWith(`/${ProjectType.SSH}`)
+                    }
+                    icon="verified"
                   >
-                    <ProjectSwitcher type={ProjectType.SSH} />
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <div className="w-full">
-                      <MenuIconButton>
-                        <div className="flex flex-col items-center justify-center">
-                          <FontAwesomeIcon icon={faEllipsis} className="mb-3 text-lg" />
-                          <span>More</span>
-                        </div>
-                      </MenuIconButton>
-                    </div>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" side="right" className="p-1">
-                    <DropdownMenuLabel>Organization Options</DropdownMenuLabel>
-                    <Link to="/organization/access-management">
-                      <DropdownMenuItem icon={<FontAwesomeIcon icon={faUsers} />}>
-                        Access Control
+                    SSH
+                  </MenuIconButton>
+                )}
+              </Link>
+              <div className="w-full bg-mineshaft-500" style={{ height: "1px" }} />
+              <Link to="/organization/secret-scanning">
+                {({ isActive }) => (
+                  <MenuIconButton isSelected={isActive} icon="secret-scan">
+                    Secret Scanning
+                  </MenuIconButton>
+                )}
+              </Link>
+              <Link to="/organization/secret-sharing">
+                {({ isActive }) => (
+                  <MenuIconButton isSelected={isActive} icon="lock-closed">
+                    Secret Sharing
+                  </MenuIconButton>
+                )}
+              </Link>
+              <div className="my-1 w-full bg-mineshaft-500" style={{ height: "1px" }} />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <div className="w-full">
+                    <MenuIconButton isSelected={isMoreSelected}>
+                      <div className="relative flex flex-col items-center justify-center">
+                        <FontAwesomeIcon icon={faEllipsis} className="mb-3 text-lg" />
+                        <span>More</span>
+                      </div>
+                    </MenuIconButton>
+                  </div>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" side="right" className="p-1">
+                  <DropdownMenuLabel>Organization Options</DropdownMenuLabel>
+                  <Link to="/organization/access-management">
+                    <DropdownMenuItem icon={<FontAwesomeIcon icon={faUsers} />}>
+                      Access Control
+                    </DropdownMenuItem>
+                  </Link>
+                  {(window.location.origin.includes("https://app.infisical.com") ||
+                    window.location.origin.includes("https://eu.infisical.com") ||
+                    window.location.origin.includes("https://gamma.infisical.com")) && (
+                    <Link to="/organization/billing">
+                      <DropdownMenuItem icon={<FontAwesomeIcon icon={faMoneyBill} />}>
+                        Usage & Billing
                       </DropdownMenuItem>
                     </Link>
-                    <Link to="/organization/secret-sharing">
-                      <DropdownMenuItem icon={<FontAwesomeIcon icon={faShare} />}>
-                        Secret Sharing
-                      </DropdownMenuItem>
-                    </Link>
-                    {(window.location.origin.includes("https://app.infisical.com") ||
-                      window.location.origin.includes("https://eu.infisical.com") ||
-                      window.location.origin.includes("https://gamma.infisical.com")) && (
-                      <Link to="/organization/billing">
-                        <DropdownMenuItem icon={<FontAwesomeIcon icon={faMoneyBill} />}>
-                          Usage & Billing
-                        </DropdownMenuItem>
-                      </Link>
-                    )}
-                    <Link to="/organization/audit-logs">
-                      <DropdownMenuItem icon={<FontAwesomeIcon icon={faBook} />}>
-                        Audit Logs
-                      </DropdownMenuItem>
-                    </Link>
-                    <Link to="/organization/settings">
-                      <DropdownMenuItem icon={<FontAwesomeIcon icon={faCog} />}>
-                        Organization Settings
-                      </DropdownMenuItem>
-                    </Link>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </motion.div>
+                  )}
+                  <Link to="/organization/audit-logs">
+                    <DropdownMenuItem icon={<FontAwesomeIcon icon={faBook} />}>
+                      Audit Logs
+                    </DropdownMenuItem>
+                  </Link>
+                  <Link to="/organization/settings">
+                    <DropdownMenuItem icon={<FontAwesomeIcon icon={faCog} />}>
+                      Organization Settings
+                    </DropdownMenuItem>
+                  </Link>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
           <div
@@ -385,7 +418,19 @@ export const MinimizedOrgSidebar = () => {
                 </div>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="p-1">
-                <div className="px-2 py-1 text-xs text-mineshaft-400">{user?.username}</div>
+                <div className="px-2 py-1">
+                  <div className="flex w-full items-center justify-center rounded-md border border-mineshaft-600 p-1 transition-all duration-150 hover:bg-mineshaft-700">
+                    <div className="p-2">
+                      <FontAwesomeIcon icon={faUser} className="text-mineshaft-400" />
+                    </div>
+                    <div className="flex flex-grow flex-col text-white">
+                      <div className="max-w-36 truncate text-ellipsis text-sm font-medium capitalize">
+                        {user?.firstName} {user?.lastName}
+                      </div>
+                      <div className="text-xs text-mineshaft-300">{user.email}</div>
+                    </div>
+                  </div>
+                </div>
                 <Link to="/personal-settings">
                   <DropdownMenuItem>Personal Settings</DropdownMenuItem>
                 </Link>

@@ -5,7 +5,7 @@ import { createFileRoute, linkOptions } from "@tanstack/react-router";
 import { AuditLogsPage } from "./AuditLogsPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/organization/_layout/audit-logs"
+  "/_authenticate/_inject-org-details/_org-layout/organization/audit-logs"
 )({
   component: AuditLogsPage,
   context: () => ({
