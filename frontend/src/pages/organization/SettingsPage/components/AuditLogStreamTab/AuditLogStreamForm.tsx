@@ -103,7 +103,7 @@ export const AuditLogStreamForm = ({ id = "", onClose }: Props) => {
       console.log(err);
       createNotification({
         type: "error",
-        text: "Failed to create stream"
+        text: (err as Error)?.message ?? "Failed to create stream"
       });
     }
   };
