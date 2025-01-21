@@ -5,6 +5,10 @@ permissions:
   id-token: write
   contents: read
 
+concurrency: 
+  group: "infisical-core-deployment"
+  cancel-in-progress: false  
+
 jobs:
   infisical-tests:
     name: Integration tests
