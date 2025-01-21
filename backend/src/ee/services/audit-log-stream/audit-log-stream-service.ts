@@ -93,7 +93,7 @@ export const auditLogStreamServiceFactory = ({
         }
       )
       .catch((err) => {
-        throw new Error(`Failed to connect with the source ${(err as Error)?.message}`);
+        throw new BadRequestError({ message: `Failed to connect with upstream source: ${(err as Error)?.message}` });
       });
     const encryptedHeaders = headers ? infisicalSymmetricEncypt(JSON.stringify(headers)) : undefined;
     const logStream = await auditLogStreamDAL.create({
