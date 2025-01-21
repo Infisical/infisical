@@ -531,7 +531,7 @@ export const scimServiceFactory = ({
           firstName: scimUser.name.givenName,
           email: scimUser.emails[0].value,
           lastName: scimUser.name.familyName,
-          isEmailVerified: hasEmailChanged ? trustScimEmails : true
+          isEmailVerified: hasEmailChanged ? trustScimEmails : undefined
         },
         tx
       );
