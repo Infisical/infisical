@@ -8,7 +8,7 @@ import { Button, ModalClose } from "@app/components/v2";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { TSecretSync, useUpdateSecretSync } from "@app/hooks/api/secretSyncs";
 
-import { SecretSyncFormSchema, TSecretSyncForm } from "./schemas";
+import { TSecretSyncForm, UpdateSecretSyncFormSchema } from "./schemas";
 import { SecretSyncDestinationFields } from "./SecretSyncDestinationFields";
 import { SecretSyncDetailsFields } from "./SecretSyncDetailsFields";
 import { SecretSyncOptionsFields } from "./SecretSyncOptionsFields";
@@ -25,10 +25,11 @@ export const EditSecretSyncForm = ({ secretSync, fields, onComplete }: Props) =>
   const { name: destinationName } = SECRET_SYNC_MAP[secretSync.destination];
 
   const formMethods = useForm<TSecretSyncForm>({
-    resolver: zodResolver(SecretSyncFormSchema),
+    resolver: zodResolver(UpdateSecretSyncFormSchema),
     defaultValues: {
       ...secretSync,
-      secretPath: secretSync.folder.path,
+      environment: secretSync.environment ?? undefined,
+      secretPath: secretSync.folder?.path,
       description: secretSync.description ?? ""
     },
     reValidateMode: "onChange"
@@ -39,7 +40,7 @@ export const EditSecretSyncForm = ({ secretSync, fields, onComplete }: Props) =>
       const updatedSecretSync = await updateSecretSync.mutateAsync({
         syncId: secretSync.id,
         ...formData,
-        environment: environment.slug
+        environment: environment?.slug
       });
 
       createNotification({

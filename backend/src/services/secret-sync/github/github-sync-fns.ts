@@ -6,20 +6,12 @@ import { GitHubSyncScope, GitHubSyncVisibility } from "@app/services/secret-sync
 import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
-import { TGitHubSyncWithCredentials } from "./github-sync-types";
-
-interface GitHubSecret {
-  name: string;
-  created_at: string;
-  updated_at: string;
-  visibility?: "all" | "private" | "selected";
-  selected_repositories_url?: string | undefined;
-}
+import { TGitHubPublicKey, TGitHubSecret, TGitHubSecretPayload, TGitHubSyncWithCredentials } from "./github-sync-types";
 
 // TODO: rate limit handling
 
 const getEncryptedSecrets = async (client: Octokit, secretSync: TGitHubSyncWithCredentials) => {
-  let encryptedSecrets: GitHubSecret[];
+  let encryptedSecrets: TGitHubSecret[];
 
   const { destinationConfig } = secretSync;
 
@@ -52,17 +44,8 @@ const getEncryptedSecrets = async (client: Octokit, secretSync: TGitHubSyncWithC
   return encryptedSecrets;
 };
 
-interface GitHubPublicKey {
-  key_id: string;
-  key: string;
-  id?: number | undefined;
-  url?: string | undefined;
-  title?: string | undefined;
-  created_at?: string | undefined;
-}
-
 const getPublicKey = async (client: Octokit, secretSync: TGitHubSyncWithCredentials) => {
-  let publicKey: GitHubPublicKey;
+  let publicKey: TGitHubPublicKey;
 
   const { destinationConfig } = secretSync;
 
@@ -100,7 +83,11 @@ const getPublicKey = async (client: Octokit, secretSync: TGitHubSyncWithCredenti
   return publicKey;
 };
 
-const deleteSecret = async (client: Octokit, secretSync: TGitHubSyncWithCredentials, encryptedSecret: GitHubSecret) => {
+const deleteSecret = async (
+  client: Octokit,
+  secretSync: TGitHubSyncWithCredentials,
+  encryptedSecret: TGitHubSecret
+) => {
   const { destinationConfig } = secretSync;
 
   switch (destinationConfig.scope) {
@@ -132,13 +119,7 @@ const deleteSecret = async (client: Octokit, secretSync: TGitHubSyncWithCredenti
   }
 };
 
-interface GitHubSecretPayload {
-  key_id: string;
-  secret_name: string;
-  encrypted_value: string;
-}
-
-const putSecret = async (client: Octokit, secretSync: TGitHubSyncWithCredentials, payload: GitHubSecretPayload) => {
+const putSecret = async (client: Octokit, secretSync: TGitHubSyncWithCredentials, payload: TGitHubSecretPayload) => {
   const { destinationConfig } = secretSync;
 
   switch (destinationConfig.scope) {
@@ -210,7 +191,7 @@ export const GithubSyncFns = {
       }
     });
   },
-  importSecrets: async (secretSync: TGitHubSyncWithCredentials) => {
+  getSecrets: async (secretSync: TGitHubSyncWithCredentials) => {
     throw new Error(`${SECRET_SYNC_NAME_MAP[secretSync.destination]} does not support importing secrets.`);
   },
   removeSecrets: async (secretSync: TGitHubSyncWithCredentials, affixedSecretMap: TSecretMap) => {

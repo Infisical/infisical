@@ -48,8 +48,10 @@ export const useUpdateSecretSync = () => {
 export const useDeleteSecretSync = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ syncId, destination }: TDeleteSecretSyncDTO) => {
-      const { data } = await apiRequest.delete(`/api/v1/secret-syncs/${destination}/${syncId}`);
+    mutationFn: async ({ syncId, destination, removeSecrets }: TDeleteSecretSyncDTO) => {
+      const { data } = await apiRequest.delete(`/api/v1/secret-syncs/${destination}/${syncId}`, {
+        params: { removeSecrets }
+      });
 
       return data;
     },

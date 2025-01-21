@@ -127,7 +127,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
 
   server.route({
     method: "GET",
-    url: `/name/:syncName`,
+    url: `/sync-name/:syncName`,
     config: {
       rateLimit: readLimit
     },
@@ -219,7 +219,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
       rateLimit: writeLimit
     },
     schema: {
-      description: `Update the specified ${destinationName} Connection.`,
+      description: `Update the specified ${destinationName} Sync.`,
       params: z.object({
         syncId: z.string().uuid().describe(SecretSyncs.UPDATE(destination).syncId)
       }),
@@ -261,9 +261,16 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
       rateLimit: writeLimit
     },
     schema: {
-      description: `Delete the specified ${destinationName} Connection.`,
+      description: `Delete the specified ${destinationName} Sync.`,
       params: z.object({
         syncId: z.string().uuid().describe(SecretSyncs.DELETE(destination).syncId)
+      }),
+      querystring: z.object({
+        removeSecrets: z
+          .enum(["true", "false"])
+          .default("false")
+          .transform((value) => value === "true")
+          .describe(SecretSyncs.DELETE(destination).removeSecrets)
       }),
       response: {
         200: z.object({ secretSync: responseSchema })
@@ -272,9 +279,10 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { syncId } = req.params;
+      const { removeSecrets } = req.query;
 
       const secretSync = (await server.services.secretSync.deleteSecretSync(
-        { destination, syncId },
+        { destination, syncId, removeSecrets },
         req.permission
       )) as T;
 
@@ -285,7 +293,8 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
           type: EventType.DELETE_SECRET_SYNC,
           metadata: {
             destination,
-            syncId
+            syncId,
+            removeSecrets
           }
         }
       });

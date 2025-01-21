@@ -24,6 +24,16 @@ export enum ProjectPermissionCmekActions {
   Decrypt = "decrypt"
 }
 
+export enum ProjectPermissionSecretSyncActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  SyncSecrets = "sync-secrets",
+  ImportSecrets = "import-secrets",
+  RemoveSecrets = "remove-secrets"
+}
+
 export enum PermissionConditionOperators {
   $IN = "$in",
   $ALL = "$all",
@@ -174,7 +184,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificates]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
-  | [ProjectPermissionActions, ProjectPermissionSub.SecretSyncs]
+  | [ProjectPermissionSecretSyncActions, ProjectPermissionSub.SecretSyncs]
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]

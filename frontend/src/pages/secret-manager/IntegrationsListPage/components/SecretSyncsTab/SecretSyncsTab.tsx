@@ -4,7 +4,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { CreateSecretSyncModal } from "@app/components/secret-syncs";
 import { Button, Spinner } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { useListSecretSyncs } from "@app/hooks/api/secretSyncs";
 
@@ -56,7 +57,7 @@ export const SecretSyncsTab = () => {
             </p>
           </div>
           <ProjectPermissionCan
-            I={ProjectPermissionActions.Create}
+            I={ProjectPermissionSecretSyncActions.Create}
             a={ProjectPermissionSub.SecretSyncs}
           >
             {(isAllowed) => (

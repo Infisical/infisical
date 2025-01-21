@@ -31,7 +31,7 @@ import {
   SecretSyncImportBehavior,
   SecretSyncInitialSyncBehavior
 } from "@app/services/secret-sync/secret-sync-enums";
-import { SecretSyncFns } from "@app/services/secret-sync/secret-sync-fns";
+import { parseSyncErrorMessage, SecretSyncFns } from "@app/services/secret-sync/secret-sync-fns";
 import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import {
   SecretSyncAction,
@@ -74,7 +74,7 @@ type TSecretSyncQueueFactoryDep = {
     | "deleteMany"
   >;
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds">;
-  secretSyncDAL: Pick<TSecretSyncDALFactory, "findById" | "find" | "updateById">;
+  secretSyncDAL: Pick<TSecretSyncDALFactory, "findById" | "find" | "updateById" | "deleteById">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   projectDAL: TProjectDALFactory;
@@ -93,19 +93,6 @@ type TSecretSyncQueueFactoryDep = {
 type SecretSyncActionJob = Job<
   TQueueSecretSyncSyncSecretsByIdDTO | TQueueSecretSyncImportSecretsByIdDTO | TQueueSecretSyncRemoveSecretsByIdDTO
 >;
-
-const getRequeueDelay = (failureCount?: number) => {
-  if (!failureCount) return 0;
-
-  const baseDelay = 1000;
-  const maxDelay = 30000;
-
-  const delay = Math.min(baseDelay * 2 ** failureCount, maxDelay);
-
-  const jitter = delay * (0.5 + Math.random() * 0.5);
-
-  return jitter;
-};
 
 export const secretSyncQueueFactory = ({
   queueService,
@@ -178,12 +165,12 @@ export const secretSyncQueueFactory = ({
   });
 
   const $getSecrets = async (secretSync: TSecretSyncRaw | TSecretSyncWithCredentials, includeImports = true) => {
-    const {
-      projectId,
-      folderId,
-      environment: { slug: environmentSlug },
-      folder: { path: secretPath }
-    } = secretSync;
+    const { projectId, folderId, environment, folder } = secretSync;
+
+    if (!folderId || !environment || !folder)
+      throw new Error(
+        "Invalid Secret Sync source configuration: folder no longer exists. Please update source environment and secret path."
+      );
 
     const secretMap: TSecretMap = {};
 
@@ -210,8 +197,8 @@ export const secretSyncQueueFactory = ({
         const secretKey = secret.key;
         const secretValue = decryptSecretValue(secret.encryptedValue);
         const expandedSecretValue = await expandSecretReferences({
-          environment: environmentSlug,
-          secretPath,
+          environment: environment.slug,
+          secretPath: folder.path,
           skipMultilineEncoding: secret.skipMultilineEncoding,
           value: secretValue
         });
@@ -260,7 +247,7 @@ export const secretSyncQueueFactory = ({
 
   const queueSecretSyncSyncSecretsById = async (payload: TQueueSecretSyncSyncSecretsByIdDTO) =>
     queueService.queue(QueueName.AppConnectionSecretSync, QueueJobs.SecretSyncSyncSecrets, payload, {
-      delay: getRequeueDelay(payload.failedToAcquireLockCount),
+      delay: payload.failedToAcquireLockCount ? 1000 : 0, // we don't want to delay initial job
       attempts: 5,
       backoff: {
         type: "exponential",
@@ -309,9 +296,14 @@ export const secretSyncQueueFactory = ({
     secretSync: TSecretSyncWithCredentials,
     importBehavior: SecretSyncImportBehavior
   ): Promise<TSecretMap> => {
-    const { projectId, environment } = secretSync;
+    const { projectId, environment, folder } = secretSync;
 
-    const importedSecrets = await SecretSyncFns.importSecrets(secretSync);
+    if (!environment || !folder)
+      throw new Error(
+        "Invalid Secret Sync source configuration: folder no longer exists. Please update source environment and secret path."
+      );
+
+    const importedSecrets = await SecretSyncFns.getSecrets(secretSync);
 
     if (!Object.keys(importedSecrets).length) return {};
 
@@ -345,7 +337,7 @@ export const secretSyncQueueFactory = ({
     if (secretsToCreate.length) {
       await $createManySecretsRawFn({
         projectId,
-        path: secretSync.folder.path,
+        path: folder.path,
         environment: environment.slug,
         secrets: secretsToCreate
       });
@@ -354,7 +346,7 @@ export const secretSyncQueueFactory = ({
     if (importBehavior === SecretSyncImportBehavior.PrioritizeDestination && secretsToUpdate.length) {
       await $updateManySecretsRawFn({
         projectId,
-        path: secretSync.folder.path,
+        path: folder.path,
         environment: environment.slug,
         secrets: secretsToUpdate
       });
@@ -444,13 +436,7 @@ export const secretSyncQueueFactory = ({
         });
       }
 
-      syncMessage =
-        // eslint-disable-next-line no-nested-ternary
-        (err instanceof AxiosError
-          ? err?.response?.data
-            ? JSON.stringify(err?.response?.data)
-            : err?.message
-          : (err as Error)?.message) || "An unknown error occurred.";
+      syncMessage = parseSyncErrorMessage(err);
 
       // re-throw so job fails
       throw err;
@@ -566,13 +552,7 @@ export const secretSyncQueueFactory = ({
         });
       }
 
-      importMessage =
-        // eslint-disable-next-line no-nested-ternary
-        (err instanceof AxiosError
-          ? err?.response?.data
-            ? JSON.stringify(err?.response?.data)
-            : err?.message
-          : (err as Error)?.message) || "An unknown error occurred.";
+      importMessage = parseSyncErrorMessage(err);
 
       // re-throw so job fails
       throw err;
@@ -629,7 +609,7 @@ export const secretSyncQueueFactory = ({
 
   const $handleRemoveSecretsJob = async (job: TSecretSyncRemoveSecretsDTO) => {
     const {
-      data: { syncId, auditLogInfo }
+      data: { syncId, auditLogInfo, deleteSyncOnComplete }
     } = job;
 
     const secretSync = await secretSyncDAL.findById(syncId);
@@ -691,13 +671,7 @@ export const secretSyncQueueFactory = ({
         });
       }
 
-      removeMessage =
-        // eslint-disable-next-line no-nested-ternary
-        (err instanceof AxiosError
-          ? err?.response?.data
-            ? JSON.stringify(err?.response?.data)
-            : err?.message
-          : (err as Error)?.message) || "An unknown error occurred.";
+      removeMessage = parseSyncErrorMessage(err);
 
       // re-throw so job fails
       throw err;
@@ -731,19 +705,23 @@ export const secretSyncQueueFactory = ({
       });
 
       if (isSuccess || isFinalAttempt) {
-        const updatedSecretSync = await secretSyncDAL.updateById(secretSync.id, {
-          removeStatus,
-          lastRemoveJobId: job.id,
-          lastRemoveMessage: removeMessage,
-          lastRemovedAt: isSuccess ? ranAt : undefined
-        });
-
-        if (!isSuccess) {
-          await $queueSendSecretSyncFailedNotifications({
-            secretSync: updatedSecretSync,
-            action: SecretSyncAction.RemoveSecrets,
-            auditLogInfo
+        if (isSuccess && deleteSyncOnComplete) {
+          await secretSyncDAL.deleteById(secretSync.id);
+        } else {
+          const updatedSecretSync = await secretSyncDAL.updateById(secretSync.id, {
+            removeStatus,
+            lastRemoveJobId: job.id,
+            lastRemoveMessage: removeMessage,
+            lastRemovedAt: isSuccess ? ranAt : undefined
           });
+
+          if (!isSuccess) {
+            await $queueSendSecretSyncFailedNotifications({
+              secretSync: updatedSecretSync,
+              action: SecretSyncAction.RemoveSecrets,
+              auditLogInfo
+            });
+          }
         }
       }
     }
@@ -806,8 +784,8 @@ export const secretSyncQueueFactory = ({
         syncDestination,
         content: `Your ${syncDestination} Sync named "${name}" failed while attempting to ${action.toLowerCase()} secrets.`,
         failureMessage,
-        secretPath: folder.path,
-        environment: environment.name,
+        secretPath: folder?.path,
+        environment: environment?.name,
         projectName: project.name,
         syncUrl: `${appCfg.SITE_URL}/integrations/secret-syncs/${destination}/${secretSync.id}`
       }

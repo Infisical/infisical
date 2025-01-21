@@ -29,17 +29,17 @@ export const GitHubSyncDestinationSchema = z.object({
       })
     ])
     .superRefine((options, ctx) => {
-      if (options.scope !== GitHubSyncScope.Organization) return;
-
-      if (
-        options.visibility === GitHubSyncVisibility.Selected &&
-        !options.selectedRepositoryIds?.length
-      ) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Select at least 1 repository",
-          path: ["selectedRepositoryIds"]
-        });
+      if (options.scope === GitHubSyncScope.Organization) {
+        if (
+          options.visibility === GitHubSyncVisibility.Selected &&
+          !options.selectedRepositoryIds?.length
+        ) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Select at least 1 repository",
+            path: ["selectedRepositoryIds"]
+          });
+        }
       }
     })
 });

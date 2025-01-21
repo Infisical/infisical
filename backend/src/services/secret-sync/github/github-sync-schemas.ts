@@ -32,24 +32,24 @@ const GitHubSyncDestinationConfigSchema = z
     })
   ])
   .superRefine((options, ctx) => {
-    if (options.scope !== GitHubSyncScope.Organization) return;
+    if (options.scope === GitHubSyncScope.Organization) {
+      if (options.visibility === GitHubSyncVisibility.Selected) {
+        if (!options.selectedRepositoryIds?.length)
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Select at least 1 repository",
+            path: ["selectedRepositoryIds"]
+          });
+        return;
+      }
 
-    if (options.visibility === GitHubSyncVisibility.Selected) {
-      if (!options.selectedRepositoryIds?.length)
+      if (options.selectedRepositoryIds?.length) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Select at least 1 repository",
+          message: `Selected repositories is only supported for visibility "Selected"`,
           path: ["selectedRepositoryIds"]
         });
-      return;
-    }
-
-    if (options.selectedRepositoryIds?.length) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `Selected repositories is only supported for visibility "Selected"`,
-        path: ["selectedRepositoryIds"]
-      });
+      }
     }
   });
 

@@ -1,6 +1,7 @@
 import AWS, { AWSError } from "aws-sdk";
 
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
+import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { TAwsParameterStoreSyncWithCredentials } from "./aws-parameter-store-sync-types";
@@ -146,12 +147,19 @@ export const AwsParameterStoreSyncFns = {
         continue;
       }
 
-      await putParameter(ssm, {
-        Name: `${destinationConfig.path}${key}`,
-        Type: "SecureString",
-        Value: value,
-        Overwrite: true
-      });
+      try {
+        await putParameter(ssm, {
+          Name: `${destinationConfig.path}${key}`,
+          Type: "SecureString",
+          Value: value,
+          Overwrite: true
+        });
+      } catch (error) {
+        throw new SecretSyncError({
+          error,
+          secretKey: key
+        });
+      }
     }
 
     const parametersToDelete: AWS.SSM.Parameter[] = [];
@@ -166,7 +174,7 @@ export const AwsParameterStoreSyncFns = {
 
     await deleteParametersBatch(ssm, parametersToDelete);
   },
-  importSecrets: async (secretSync: TAwsParameterStoreSyncWithCredentials): Promise<TSecretMap> => {
+  getSecrets: async (secretSync: TAwsParameterStoreSyncWithCredentials): Promise<TSecretMap> => {
     const { destinationConfig } = secretSync;
 
     const ssm = await getSSM(secretSync);

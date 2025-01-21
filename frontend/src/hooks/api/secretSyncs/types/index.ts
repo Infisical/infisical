@@ -37,6 +37,7 @@ export type TUpdateSecretSyncDTO = Partial<
 export type TDeleteSecretSyncDTO = {
   destination: SecretSync;
   syncId: string;
+  removeSecrets: boolean;
 };
 
 export type TTriggerSecretSyncSyncSecretsDTO = {

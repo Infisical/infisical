@@ -3,7 +3,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
 import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 
@@ -41,7 +42,7 @@ export const AppConnectionsTab = withPermission(
               </p>
             </div>
             <OrgPermissionCan
-              I={OrgPermissionActions.Create}
+              I={OrgPermissionAppConnectionActions.Create}
               a={OrgPermissionSubjects.AppConnections}
             >
               {(isAllowed) => (
@@ -70,7 +71,7 @@ export const AppConnectionsTab = withPermission(
     );
   },
   {
-    action: OrgPermissionActions.Read,
+    action: OrgPermissionAppConnectionActions.Read,
     subject: OrgPermissionSubjects.AppConnections
   }
 );

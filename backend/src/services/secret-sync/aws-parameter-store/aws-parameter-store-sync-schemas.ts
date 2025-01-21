@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 import { SecretSyncs } from "@app/lib/api-docs";
-import { wrapWithSlashes } from "@app/lib/fn";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import {
@@ -14,23 +13,10 @@ const AwsParameterStoreSyncDestinationConfigSchema = z.object({
   region: z.nativeEnum(AWSRegion).describe(SecretSyncs.DESTINATION_CONFIG.AWS_PARAMETER_STORE.REGION),
   path: z
     .string()
-    .min(1, "Parameter Store Path Required")
-    .transform(wrapWithSlashes)
-    .superRefine((val, ctx) => {
-      if (!/^\/([/]|(([\w-]+\/)+))?$/.test(val)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `Invalid Parameter Store Path - must follow "/example/path/" format`
-        });
-      }
-
-      if (val.length > 2048) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `Invalid Parameter Store Path - cannot exceed 2048 characters`
-        });
-      }
-    })
+    .trim()
+    .min(1, "Parameter Store Path required")
+    .max(2048, "Cannot exceed 2048 characters")
+    .regex(/^\/([/]|(([\w-]+\/)+))?$/)
     .describe(SecretSyncs.DESTINATION_CONFIG.AWS_PARAMETER_STORE.PATH)
 });
 

@@ -2,7 +2,11 @@ import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSecretSyncActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
@@ -65,15 +69,14 @@ export const secretSyncServiceFactory = ({
       projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretSyncs);
-
-    const folders = await folderDAL.findByProjectId(projectId);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretSyncActions.Read,
+      ProjectPermissionSub.SecretSyncs
+    );
 
     const secretSyncs = await secretSyncDAL.find({
       ...(destination && { destination }),
-      $in: {
-        folderId: folders.map((folder) => folder.id)
-      }
+      projectId
     });
 
     return secretSyncs as TSecretSync[];
@@ -96,7 +99,10 @@ export const secretSyncServiceFactory = ({
       projectId: secretSync.projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretSyncs);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretSyncActions.Read,
+      ProjectPermissionSub.SecretSyncs
+    );
 
     if (secretSync.connection.app !== SECRET_SYNC_CONNECTION_MAP[destination])
       throw new BadRequestError({
@@ -134,7 +140,10 @@ export const secretSyncServiceFactory = ({
       projectId: secretSync.projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretSyncs);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretSyncActions.Read,
+      ProjectPermissionSub.SecretSyncs
+    );
 
     if (secretSync.connection.app !== SECRET_SYNC_CONNECTION_MAP[destination])
       throw new BadRequestError({
@@ -163,7 +172,7 @@ export const secretSyncServiceFactory = ({
       throw new BadRequestError({ message: "Project version does not support Secret Syncs" });
 
     ForbiddenError.from(projectPermission).throwUnlessCan(
-      ProjectPermissionActions.Create,
+      ProjectPermissionSecretSyncActions.Create,
       ProjectPermissionSub.SecretSyncs
     );
 
@@ -187,17 +196,13 @@ export const secretSyncServiceFactory = ({
     // validates permission to connect and app is valid for sync destination
     await appConnectionService.connectAppConnectionById(destinationApp, params.connectionId, actor);
 
-    const projectFolders = await folderDAL.findByProjectId(folder.projectId);
-
     const secretSync = await secretSyncDAL.transaction(async (tx) => {
       const isConflictingName = Boolean(
         (
           await secretSyncDAL.find(
             {
               name: params.name,
-              $in: {
-                folderId: projectFolders.map((f) => f.id)
-              }
+              projectId
             },
             tx
           )
@@ -212,7 +217,8 @@ export const secretSyncServiceFactory = ({
       const sync = await secretSyncDAL.create({
         folderId: folder.id,
         ...params,
-        ...(params.isEnabled && { syncStatus: SecretSyncStatus.Pending })
+        ...(params.isEnabled && { syncStatus: SecretSyncStatus.Pending }),
+        projectId
       });
 
       return sync;
@@ -243,7 +249,10 @@ export const secretSyncServiceFactory = ({
       projectId: secretSync.projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretSyncs);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretSyncActions.Edit,
+      ProjectPermissionSub.SecretSyncs
+    );
 
     if (secretSync.connection.app !== SECRET_SYNC_CONNECTION_MAP[destination])
       throw new BadRequestError({
@@ -251,12 +260,17 @@ export const secretSyncServiceFactory = ({
       });
 
     const updatedSecretSync = await secretSyncDAL.transaction(async (tx) => {
+      let { folderId } = secretSync;
+
       if (
-        (secretPath && secretPath !== secretSync.folder.path) ||
-        (environment && environment !== secretSync.environment.slug)
+        (secretPath && secretPath !== secretSync.folder?.path) ||
+        (environment && environment !== secretSync.environment?.slug)
       ) {
-        const updatedEnvironment = environment ?? secretSync.environment.slug;
-        const updatedSecretPath = secretPath ?? secretSync.folder.path;
+        const updatedEnvironment = environment ?? secretSync.environment?.slug;
+        const updatedSecretPath = secretPath ?? secretSync.folder?.path;
+
+        if (!updatedEnvironment || !updatedSecretPath)
+          throw new BadRequestError({ message: "Must specify both source environment and secret path" });
 
         ForbiddenError.from(permission).throwUnlessCan(
           ProjectPermissionActions.Read,
@@ -272,19 +286,17 @@ export const secretSyncServiceFactory = ({
           throw new BadRequestError({
             message: `Could not find folder with path "${secretPath}" in environment "${environment}" for project with ID "${secretSync.projectId}"`
           });
+
+        folderId = newFolder.id;
       }
 
       if (params.name && secretSync.name !== params.name) {
-        const projectFolders = await folderDAL.findByProjectId(secretSync.projectId);
-
         const isConflictingName = Boolean(
           (
             await secretSyncDAL.find(
               {
                 name: params.name,
-                $in: {
-                  folderId: projectFolders.map((f) => f.id)
-                }
+                projectId: secretSync.projectId
               },
               tx
             )
@@ -301,7 +313,8 @@ export const secretSyncServiceFactory = ({
 
       const updatedSync = await secretSyncDAL.updateById(syncId, {
         ...params,
-        ...(isEnabled && { syncStatus: SecretSyncStatus.Pending })
+        ...(isEnabled && folderId && { syncStatus: SecretSyncStatus.Pending }),
+        folderId
       });
 
       return updatedSync;
@@ -312,7 +325,10 @@ export const secretSyncServiceFactory = ({
     return updatedSecretSync as TSecretSync;
   };
 
-  const deleteSecretSync = async ({ destination, syncId }: TDeleteSecretSyncDTO, actor: OrgServiceActor) => {
+  const deleteSecretSync = async (
+    { destination, syncId, removeSecrets }: TDeleteSecretSyncDTO,
+    actor: OrgServiceActor
+  ) => {
     const secretSync = await secretSyncDAL.findById(syncId);
 
     if (!secretSync)
@@ -329,12 +345,40 @@ export const secretSyncServiceFactory = ({
       projectId: secretSync.projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.SecretSyncs);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretSyncActions.Delete,
+      ProjectPermissionSub.SecretSyncs
+    );
 
     if (secretSync.connection.app !== SECRET_SYNC_CONNECTION_MAP[destination])
       throw new BadRequestError({
         message: `Secret sync with ID "${secretSync.id}" is not configured for ${SECRET_SYNC_NAME_MAP[destination]}`
       });
+
+    if (removeSecrets) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionSecretSyncActions.RemoveSecrets,
+        ProjectPermissionSub.SecretSyncs
+      );
+
+      if (!secretSync.folderId)
+        throw new BadRequestError({
+          message: `Invalid source configuration: folder no longer exists. Please configure a valid source and try again.`
+        });
+
+      const isSyncJobRunning = Boolean(await keyStore.getItem(KeyStorePrefixes.SecretSyncLock(syncId)));
+
+      if (isSyncJobRunning)
+        throw new BadRequestError({ message: `A job for this sync is already in progress. Please try again shortly.` });
+
+      await secretSyncQueue.queueSecretSyncRemoveSecretsById({ syncId, deleteSyncOnComplete: true });
+
+      const updatedSecretSync = await secretSyncDAL.updateById(syncId, {
+        removeStatus: SecretSyncStatus.Pending
+      });
+
+      return updatedSecretSync;
+    }
 
     await secretSyncDAL.deleteById(syncId);
 
@@ -361,11 +405,19 @@ export const secretSyncServiceFactory = ({
       projectId: secretSync.projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretSyncs);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretSyncActions.SyncSecrets,
+      ProjectPermissionSub.SecretSyncs
+    );
 
     if (secretSync.connection.app !== SECRET_SYNC_CONNECTION_MAP[destination])
       throw new BadRequestError({
         message: `Secret sync with ID "${secretSync.id}" is not configured for ${SECRET_SYNC_NAME_MAP[destination]}`
+      });
+
+    if (!secretSync.folderId)
+      throw new BadRequestError({
+        message: `Invalid source configuration: folder no longer exists. Please configure a valid source and try again.`
       });
 
     const isSyncJobRunning = Boolean(await keyStore.getItem(KeyStorePrefixes.SecretSyncLock(syncId)));
@@ -408,11 +460,19 @@ export const secretSyncServiceFactory = ({
       projectId: secretSync.projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretSyncs);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretSyncActions.ImportSecrets,
+      ProjectPermissionSub.SecretSyncs
+    );
 
     if (secretSync.connection.app !== SECRET_SYNC_CONNECTION_MAP[destination])
       throw new BadRequestError({
         message: `Secret sync with ID "${secretSync.id}" is not configured for ${SECRET_SYNC_NAME_MAP[destination]}`
+      });
+
+    if (!secretSync.folderId)
+      throw new BadRequestError({
+        message: `Invalid source configuration: folder no longer exists. Please configure a valid source and try again.`
       });
 
     const isSyncJobRunning = Boolean(await keyStore.getItem(KeyStorePrefixes.SecretSyncLock(syncId)));
@@ -449,11 +509,19 @@ export const secretSyncServiceFactory = ({
       projectId: secretSync.projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretSyncs);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretSyncActions.RemoveSecrets,
+      ProjectPermissionSub.SecretSyncs
+    );
 
     if (secretSync.connection.app !== SECRET_SYNC_CONNECTION_MAP[destination])
       throw new BadRequestError({
         message: `Secret sync with ID "${secretSync.id}" is not configured for ${SECRET_SYNC_NAME_MAP[destination]}`
+      });
+
+    if (!secretSync.folderId)
+      throw new BadRequestError({
+        message: `Invalid source configuration: folder no longer exists. Please configure a valid source and try again.`
       });
 
     const isSyncJobRunning = Boolean(await keyStore.getItem(KeyStorePrefixes.SecretSyncLock(syncId)));

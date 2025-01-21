@@ -43,8 +43,8 @@ export const BaseSecretSyncSchema = (destination: SecretSync, syncOptionsConfig?
       name: z.string(),
       id: z.string().uuid()
     }),
-    environment: z.object({ slug: z.string(), name: z.string(), id: z.string().uuid() }),
-    folder: z.object({ id: z.string(), path: z.string() })
+    environment: z.object({ slug: z.string(), name: z.string(), id: z.string().uuid() }).nullable(),
+    folder: z.object({ id: z.string(), path: z.string() }).nullable()
   });
 
 export const GenericCreateSecretSyncFieldsSchema = (destination: SecretSync, syncOptionsConfig?: TSyncOptionsConfig) =>

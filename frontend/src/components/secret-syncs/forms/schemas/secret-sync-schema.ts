@@ -28,11 +28,13 @@ const BaseSecretSyncSchema = z.object({
   isEnabled: z.boolean()
 });
 
-export const SecretSyncFormSchema = z
-  .discriminatedUnion("destination", [
-    AwsParameterStoreSyncDestinationSchema,
-    GitHubSyncDestinationSchema
-  ])
-  .and(BaseSecretSyncSchema);
+const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
+  AwsParameterStoreSyncDestinationSchema,
+  GitHubSyncDestinationSchema
+]);
+
+export const SecretSyncFormSchema = SecretSyncUnionSchema.and(BaseSecretSyncSchema);
+
+export const UpdateSecretSyncFormSchema = SecretSyncUnionSchema.and(BaseSecretSyncSchema.partial());
 
 export type TSecretSyncForm = z.infer<typeof SecretSyncFormSchema>;

@@ -39,10 +39,10 @@ export const SECRET_SYNC_IMPORT_BEHAVIOR_MAP: Record<
 > = {
   [SecretSyncImportBehavior.PrioritizeSource]: (destinationName: string) => ({
     name: "Prioritize Infisical Values",
-    description: `Infisical will import any secrets present in the ${destinationName} destination prior to syncing, prioritizing values present in Infisical over ${destinationName}.`
+    description: `Infisical will import any secrets present in the ${destinationName} destination, prioritizing values present in Infisical over ${destinationName}.`
   }),
   [SecretSyncImportBehavior.PrioritizeDestination]: (destinationName: string) => ({
     name: `Prioritize ${destinationName} Values`,
-    description: `Infisical will import any secrets present in the ${destinationName} destination prior to syncing, prioritizing values present in ${destinationName} over Infisical.`
+    description: `Infisical will import any secrets present in the ${destinationName} destination, prioritizing values present in ${destinationName} over Infisical.`
   })
 };

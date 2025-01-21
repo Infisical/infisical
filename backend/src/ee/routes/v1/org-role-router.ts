@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 import { OrgMembershipRole, OrgMembershipsSchema, OrgRolesSchema } from "@app/db/schemas";
-import { OrgPermissionSchema } from "@app/ee/services/permission/org-permission";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -25,7 +24,8 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
         ),
         name: z.string().trim(),
         description: z.string().trim().nullish(),
-        permissions: OrgPermissionSchema.array()
+        // TODO(scott): once UI refactored permissions: OrgPermissionSchema.array()
+        permissions: z.any().array()
       }),
       response: {
         200: z.object({
@@ -97,7 +97,8 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
           .optional(),
         name: z.string().trim().optional(),
         description: z.string().trim().nullish(),
-        permissions: OrgPermissionSchema.array().optional()
+        // TODO(scott): once UI refactored permissions: OrgPermissionSchema.array().optional()
+        permissions: z.any().array().optional()
       }),
       response: {
         200: z.object({

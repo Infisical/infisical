@@ -1688,7 +1688,8 @@ export const SecretSyncs = {
     };
   },
   DELETE: (destination: SecretSync) => ({
-    syncId: `The ID of the ${SECRET_SYNC_NAME_MAP[destination]} Sync to be deleted.`
+    syncId: `The ID of the ${SECRET_SYNC_NAME_MAP[destination]} Sync to be deleted.`,
+    removeSecrets: `Whether previously synced secrets should be removed prior to deletion.`
   }),
   SYNC_SECRETS: (destination: SecretSync) => ({
     syncId: `The ID of the ${SECRET_SYNC_NAME_MAP[destination]} Sync to trigger a sync for.`

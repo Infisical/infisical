@@ -5,7 +5,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { SecretSyncLabel } from "@app/components/secret-syncs";
 import { IconButton } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
 import { AwsParameterStoreSyncDestinationSection } from "@app/pages/secret-manager/SecretSyncDetailsByIDPage/components/SecretSyncDestinationSection/AwsParameterStoreSyncDestinationSection";
@@ -38,7 +39,7 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
         <h3 className="font-semibold text-mineshaft-100">Destination Configuration</h3>
         <ProjectPermissionCan
-          I={ProjectPermissionActions.Edit}
+          I={ProjectPermissionSecretSyncActions.Edit}
           a={ProjectPermissionSub.SecretSyncs}
         >
           {(isAllowed) => (

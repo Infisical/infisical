@@ -6,7 +6,7 @@ export type TRootSecretSync = {
   name: string;
   description?: string | null;
   version: number;
-  folderId: string;
+  folderId: string | null;
   connectionId: string;
   createdAt: string;
   updatedAt: string;
@@ -38,9 +38,9 @@ export type TRootSecretSync = {
     id: string;
     name: string;
     slug: string;
-  };
+  } | null;
   folder: {
     id: string;
     path: string;
-  };
+  } | null;
 };

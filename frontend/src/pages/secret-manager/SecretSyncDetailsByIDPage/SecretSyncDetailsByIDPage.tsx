@@ -8,7 +8,8 @@ import { EditSecretSyncModal } from "@app/components/secret-syncs";
 import { SecretSyncEditFields } from "@app/components/secret-syncs/types";
 import { Button, ContentLoader, EmptyState } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { usePopUp } from "@app/hooks";
 import { SecretSync, useGetSecretSync } from "@app/hooks/api/secretSyncs";
@@ -140,7 +141,7 @@ export const SecretSyncDetailsByIDPage = () => {
       <ProjectPermissionCan
         renderGuardBanner
         passThrough={false}
-        I={ProjectPermissionActions.Read}
+        I={ProjectPermissionSecretSyncActions.Read}
         a={ProjectPermissionSub.SecretSyncs}
       >
         <PageContent />

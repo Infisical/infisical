@@ -7,7 +7,9 @@ import { IntegrationsListPageTabs } from "@app/types/integrations";
 import { IntegrationsListPage } from "./IntegrationsListPage";
 
 const IntegrationsListPageQuerySchema = z.object({
-  selectedTab: z.string().catch(IntegrationsListPageTabs.NativeIntegrations)
+  selectedTab: z
+    .nativeEnum(IntegrationsListPageTabs)
+    .catch(IntegrationsListPageTabs.NativeIntegrations)
 });
 
 export const Route = createFileRoute(

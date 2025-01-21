@@ -1,9 +1,12 @@
+import { AxiosError } from "axios";
+
 import {
   AWS_PARAMETER_STORE_SYNC_LIST_OPTION,
   AwsParameterStoreSyncFns
 } from "@app/services/secret-sync/aws-parameter-store";
 import { GITHUB_SYNC_LIST_OPTION, GithubSyncFns } from "@app/services/secret-sync/github";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
+import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import {
   TSecretMap,
   TSecretSyncListItem,
@@ -59,8 +62,6 @@ const stripAffixes = (secretSync: TSecretSyncWithCredentials, unprocessedSecretM
   return secretMap;
 };
 
-// TODO(scott): ideally do this in a map to reduce code but requires typescript trickery...
-
 export const SecretSyncFns = {
   syncSecrets: (secretSync: TSecretSyncWithCredentials, secretMap: TSecretMap): Promise<void> => {
     const affixedSecretMap = addAffixes(secretSync, secretMap);
@@ -76,14 +77,14 @@ export const SecretSyncFns = {
         );
     }
   },
-  importSecrets: async (secretSync: TSecretSyncWithCredentials): Promise<TSecretMap> => {
+  getSecrets: async (secretSync: TSecretSyncWithCredentials): Promise<TSecretMap> => {
     let secretMap: TSecretMap;
     switch (secretSync.destination) {
       case SecretSync.AWSParameterStore:
-        secretMap = await AwsParameterStoreSyncFns.importSecrets(secretSync);
+        secretMap = await AwsParameterStoreSyncFns.getSecrets(secretSync);
         break;
       case SecretSync.GitHub:
-        secretMap = await GithubSyncFns.importSecrets(secretSync);
+        secretMap = await GithubSyncFns.getSecrets(secretSync);
         break;
       default:
         throw new Error(
@@ -107,4 +108,19 @@ export const SecretSyncFns = {
         );
     }
   }
+};
+
+export const parseSyncErrorMessage = (err: unknown): string => {
+  if (err instanceof SecretSyncError) {
+    return JSON.stringify({
+      secretKey: err.secretKey,
+      error: parseSyncErrorMessage(err.error)
+    });
+  }
+
+  if (err instanceof AxiosError) {
+    return err?.response?.data ? JSON.stringify(err?.response?.data) : err?.message ?? "An unknown error occurred.";
+  }
+
+  return (err as Error)?.message || "An unknown error occurred.";
 };

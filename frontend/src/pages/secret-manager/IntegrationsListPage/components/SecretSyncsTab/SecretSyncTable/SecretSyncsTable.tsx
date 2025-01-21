@@ -43,6 +43,7 @@ import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
   SecretSync,
+  SecretSyncStatus,
   TSecretSync,
   useTriggerSecretSyncSyncSecrets,
   useUpdateSecretSync
@@ -70,6 +71,20 @@ enum SecretSyncStatusCol {
   Failed = "failed",
   Disabled = "disabled"
 }
+
+const getSyncStatusOrderValue = (syncStatus: SecretSyncStatus | null) => {
+  switch (syncStatus) {
+    case SecretSyncStatus.Failed:
+      return 0;
+    case SecretSyncStatus.Pending:
+    case SecretSyncStatus.Running:
+      return 1;
+    case SecretSyncStatus.Succeeded:
+      return 2;
+    default:
+      return 3;
+  }
+};
 
 type Props = {
   secretSyncs: TSecretSync[];
@@ -124,7 +139,11 @@ export const SecretSyncsTable = ({ secretSyncs }: Props) => {
           if (filters.destinations.length && !filters.destinations.includes(destination))
             return false;
 
-          if (filters.environmentIds.length && !filters.environmentIds.includes(environment.id))
+          if (
+            filters.environmentIds.length &&
+            environment?.id &&
+            !filters.environmentIds.includes(environment.id)
+          )
             return false;
 
           const status = isEnabled ? syncStatus : SecretSyncStatusCol.Disabled;
@@ -143,8 +162,8 @@ export const SecretSyncsTable = ({ secretSyncs }: Props) => {
           return (
             SECRET_SYNC_MAP[destination].name.toLowerCase().includes(searchValue) ||
             name.toLowerCase().includes(searchValue) ||
-            folder.path.toLowerCase().includes(searchValue) ||
-            environment.name.toLowerCase().includes(searchValue) ||
+            folder?.path.toLowerCase().includes(searchValue) ||
+            environment?.name.toLowerCase().includes(searchValue) ||
             connection.name.toLowerCase().includes(searchValue) ||
             destinationValues.primaryText.toLowerCase().includes(searchValue) ||
             destinationValues.secondaryText?.toLowerCase().includes(searchValue)
@@ -155,9 +174,9 @@ export const SecretSyncsTable = ({ secretSyncs }: Props) => {
 
           switch (orderBy) {
             case SecretSyncsOrderBy.Source:
-              return syncOne.folder.path
+              return (syncOne.folder?.path ?? "")
                 .toLowerCase()
-                .localeCompare(syncTwo.folder.path.toLowerCase());
+                .localeCompare(syncTwo.folder?.path.toLowerCase() ?? "");
             case SecretSyncsOrderBy.Destination:
               return getSecretSyncDestinationColValues(syncOne)
                 .primaryText.toLowerCase()
@@ -165,9 +184,17 @@ export const SecretSyncsTable = ({ secretSyncs }: Props) => {
                   getSecretSyncDestinationColValues(syncTwo).primaryText.toLowerCase()
                 );
             case SecretSyncsOrderBy.Status:
-              return syncOne.connection.name
-                .toLowerCase()
-                .localeCompare(syncTwo.connection.name.toLowerCase());
+              if (!syncOne.isEnabled && syncTwo.isEnabled) return 1;
+              if (syncOne.isEnabled && !syncTwo.isEnabled) return -1;
+
+              if (!syncOne.syncStatus && syncTwo.syncStatus) return 1;
+              if (syncOne.syncStatus && !syncTwo.syncStatus) return -1;
+              if (!syncOne.syncStatus && !syncTwo.syncStatus) return 0;
+
+              return (
+                getSyncStatusOrderValue(syncOne.syncStatus) -
+                getSyncStatusOrderValue(syncTwo.syncStatus)
+              );
             case SecretSyncsOrderBy.Name:
             default:
               return syncOne.name.toLowerCase().localeCompare(syncTwo.name.toLowerCase());

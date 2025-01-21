@@ -14,8 +14,12 @@ export async function up(knex: Knex): Promise<void> {
       t.integer("version").defaultTo(1).notNullable();
       t.jsonb("destinationConfig").notNullable();
       t.jsonb("syncOptions").notNullable();
-      t.uuid("folderId").notNullable();
-      t.foreign("folderId").references("id").inTable(TableName.SecretFolder).onDelete("CASCADE");
+      // we're including projectId in addition to folder ID because we allow folderId to be null (if the folder
+      // is deleted), to preserve sync configuration
+      t.string("projectId").notNullable();
+      t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
+      t.uuid("folderId");
+      t.foreign("folderId").references("id").inTable(TableName.SecretFolder).onDelete("SET NULL");
       t.uuid("connectionId").notNullable();
       t.foreign("connectionId").references("id").inTable(TableName.AppConnection);
       t.timestamps(true, true, true);

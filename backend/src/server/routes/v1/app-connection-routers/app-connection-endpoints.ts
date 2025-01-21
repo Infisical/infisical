@@ -143,7 +143,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
 
   server.route({
     method: "GET",
-    url: `/name/:connectionName`,
+    url: `/connection-name/:connectionName`,
     config: {
       rateLimit: readLimit
     },

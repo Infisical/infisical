@@ -62,6 +62,7 @@ export type TUpdateSecretSyncDTO = Partial<Omit<TCreateSecretSyncDTO, "connectio
 export type TDeleteSecretSyncDTO = {
   destination: SecretSync;
   syncId: string;
+  removeSecrets: boolean;
 };
 
 type AuditLogInfo = Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
@@ -110,6 +111,7 @@ export type TTriggerSecretSyncImportSecretsByIdDTO = {
 export type TQueueSecretSyncRemoveSecretsByIdDTO = {
   syncId: string;
   auditLogInfo?: AuditLogInfo;
+  deleteSyncOnComplete?: boolean;
 };
 
 export type TTriggerSecretSyncRemoveSecretsByIdDTO = {

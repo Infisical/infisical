@@ -34,6 +34,16 @@ export enum ProjectPermissionDynamicSecretActions {
   Lease = "lease"
 }
 
+export enum ProjectPermissionSecretSyncActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  SyncSecrets = "sync-secrets",
+  ImportSecrets = "import-secrets",
+  RemoveSecrets = "remove-secrets"
+}
+
 export enum ProjectPermissionSub {
   Role = "role",
   Member = "member",
@@ -145,7 +155,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateTemplates]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
-  | [ProjectPermissionActions, ProjectPermissionSub.SecretSyncs]
+  | [ProjectPermissionSecretSyncActions, ProjectPermissionSub.SecretSyncs]
   | [ProjectPermissionCmekActions, ProjectPermissionSub.Cmek]
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Project]
@@ -396,7 +406,7 @@ const GeneralPermissionSchema = [
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.SecretSyncs).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretSyncActions).describe(
       "Describe what action an entity can take."
     )
   })
@@ -514,8 +524,7 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.PkiCollections,
     ProjectPermissionSub.SshCertificateAuthorities,
     ProjectPermissionSub.SshCertificates,
-    ProjectPermissionSub.SshCertificateTemplates,
-    ProjectPermissionSub.SecretSyncs
+    ProjectPermissionSub.SshCertificateTemplates
   ].forEach((el) => {
     can(
       [
@@ -552,6 +561,18 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionCmekActions.Decrypt
     ],
     ProjectPermissionSub.Cmek
+  );
+  can(
+    [
+      ProjectPermissionSecretSyncActions.Create,
+      ProjectPermissionSecretSyncActions.Edit,
+      ProjectPermissionSecretSyncActions.Delete,
+      ProjectPermissionSecretSyncActions.Read,
+      ProjectPermissionSecretSyncActions.SyncSecrets,
+      ProjectPermissionSecretSyncActions.ImportSecrets,
+      ProjectPermissionSecretSyncActions.RemoveSecrets
+    ],
+    ProjectPermissionSub.SecretSyncs
   );
   return rules;
 };
@@ -719,10 +740,13 @@ const buildMemberPermissionRules = () => {
 
   can(
     [
-      ProjectPermissionActions.Read,
-      ProjectPermissionActions.Edit,
-      ProjectPermissionActions.Create,
-      ProjectPermissionActions.Delete
+      ProjectPermissionSecretSyncActions.Create,
+      ProjectPermissionSecretSyncActions.Edit,
+      ProjectPermissionSecretSyncActions.Delete,
+      ProjectPermissionSecretSyncActions.Read,
+      ProjectPermissionSecretSyncActions.SyncSecrets,
+      ProjectPermissionSecretSyncActions.ImportSecrets,
+      ProjectPermissionSecretSyncActions.RemoveSecrets
     ],
     ProjectPermissionSub.SecretSyncs
   );
@@ -760,7 +784,7 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificateAuthorities);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificates);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificateTemplates);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretSyncs);
+  can(ProjectPermissionSecretSyncActions.Read, ProjectPermissionSub.SecretSyncs);
 
   return rules;
 };

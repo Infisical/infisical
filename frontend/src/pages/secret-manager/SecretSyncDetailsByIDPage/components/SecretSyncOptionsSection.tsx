@@ -4,7 +4,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { SecretSyncLabel } from "@app/components/secret-syncs";
 import { IconButton } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP } from "@app/helpers/secretSyncs";
 import { TSecretSync } from "@app/hooks/api/secretSyncs";
 
@@ -26,7 +27,7 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
         <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
           <h3 className="font-semibold text-mineshaft-100">Sync Options</h3>
           <ProjectPermissionCan
-            I={ProjectPermissionActions.Edit}
+            I={ProjectPermissionSecretSyncActions.Edit}
             a={ProjectPermissionSub.SecretSyncs}
           >
             {(isAllowed) => (
