@@ -9,7 +9,7 @@ const AzureDevopsConfigurePageQueryParamsSchema = z.object({
 })
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/azure-devops/create',
+  '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/azure-devops/create',
 )({
   component: AzureDevopsConfigurePage,
   validateSearch: zodValidator(AzureDevopsConfigurePageQueryParamsSchema),

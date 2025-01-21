@@ -9,7 +9,7 @@ const GcpConfigurePageQueryParamsSchema = z.object({
 })
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gcp-secret-manager/create',
+  '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/gcp-secret-manager/create',
 )({
   component: GcpSecretManagerConfigurePage,
   validateSearch: zodValidator(GcpConfigurePageQueryParamsSchema),

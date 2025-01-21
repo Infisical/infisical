@@ -9,7 +9,7 @@ const TerraformCloudConfigurePageQueryParamsSchema = z.object({
 })
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/terraform-cloud/create',
+  '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/terraform-cloud/create',
 )({
   component: TerraformCloudConfigurePage,
   validateSearch: zodValidator(TerraformCloudConfigurePageQueryParamsSchema),

@@ -9,7 +9,7 @@ const FlyioConfigurePageQueryParamsSchema = z.object({
 })
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/flyio/create',
+  '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/flyio/create',
 )({
   component: FlyioConfigurePage,
   validateSearch: zodValidator(FlyioConfigurePageQueryParamsSchema),

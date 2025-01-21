@@ -3,7 +3,7 @@ import { createFileRoute, linkOptions } from '@tanstack/react-router'
 import { DatabricksAuthorizePage } from './DatabricksAuthorizePage'
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/databricks/authorize',
+  '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/databricks/authorize',
 )({
   component: DatabricksAuthorizePage,
   beforeLoad: ({ context, params }) => {

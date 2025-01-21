@@ -9,7 +9,7 @@ const RundeskConfigurePageQueryParamsSchema = z.object({
 })
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/rundeck/create',
+  '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/rundeck/create',
 )({
   component: RundeckConfigurePage,
   validateSearch: zodValidator(RundeskConfigurePageQueryParamsSchema),

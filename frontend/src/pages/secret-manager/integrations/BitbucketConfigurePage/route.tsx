@@ -9,7 +9,7 @@ const BitbucketConfigurePageQueryParamsSchema = z.object({
 })
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/bitbucket/create',
+  '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/bitbucket/create',
 )({
   component: BitbucketConfigurePage,
   validateSearch: zodValidator(BitbucketConfigurePageQueryParamsSchema),

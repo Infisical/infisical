@@ -7,7 +7,7 @@ import { localStorageService } from '@app/helpers/localStorage'
 import { VercelOAuthCallbackPageQueryParamsSchema } from './VercelOauthCallbackPage/route'
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/integrations/vercel/oauth2/callback',
+  '/_authenticate/_inject-org-details/_org-layout/integrations/vercel/oauth2/callback',
 )({
   validateSearch: zodValidator(VercelOAuthCallbackPageQueryParamsSchema),
   beforeLoad: ({ search }) => {

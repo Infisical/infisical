@@ -9,7 +9,7 @@ import { fetchWorkspaceById } from '@app/hooks/api/workspace/queries'
 import { ProjectLayout } from '@app/layouts/ProjectLayout'
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/kms/$projectId/_kms-layout',
+  '/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout',
 )({
   component: ProjectLayout,
   beforeLoad: async ({ params, context }) => {

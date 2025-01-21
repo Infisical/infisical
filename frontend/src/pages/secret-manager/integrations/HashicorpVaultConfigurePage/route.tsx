@@ -9,7 +9,7 @@ const HashicorpVaultConfigurePageQueryParamsSchema = z.object({
 })
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/hashicorp-vault/create',
+  '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/hashicorp-vault/create',
 )({
   component: HashicorpVaultConfigurePage,
   validateSearch: zodValidator(HashicorpVaultConfigurePageQueryParamsSchema),

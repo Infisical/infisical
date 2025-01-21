@@ -7,7 +7,7 @@ import { localStorageService } from '@app/helpers/localStorage'
 import { HerokuOAuthCallbackPageQueryParamsSchema } from './HerokuOauthCallbackPage/route'
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/integrations/heroku/oauth2/callback',
+  '/_authenticate/_inject-org-details/_org-layout/integrations/heroku/oauth2/callback',
 )({
   validateSearch: zodValidator(HerokuOAuthCallbackPageQueryParamsSchema),
   beforeLoad: ({ search }) => {

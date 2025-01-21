@@ -7,7 +7,7 @@ import { localStorageService } from '@app/helpers/localStorage'
 import { GithubOAuthCallbackPageQueryParamsSchema } from './GithubOauthCallbackPage/route'
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/integrations/github/oauth2/callback',
+  '/_authenticate/_inject-org-details/_org-layout/integrations/github/oauth2/callback',
 )({
   validateSearch: zodValidator(GithubOAuthCallbackPageQueryParamsSchema),
   beforeLoad: ({ search }) => {

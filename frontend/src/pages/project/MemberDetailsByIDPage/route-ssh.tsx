@@ -3,7 +3,7 @@ import { createFileRoute, linkOptions } from '@tanstack/react-router'
 import { MemberDetailsByIDPage } from './MemberDetailsByIDPage'
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/ssh/$projectId/_ssh-layout/members/$membershipId',
+  '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/members/$membershipId',
 )({
   component: MemberDetailsByIDPage,
   beforeLoad: ({ context, params }) => {

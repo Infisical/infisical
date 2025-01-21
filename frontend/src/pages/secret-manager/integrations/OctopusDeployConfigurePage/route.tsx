@@ -9,7 +9,7 @@ const OctopusDeployConfigurePageQueryParamsSchema = z.object({
 })
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/octopus-deploy/create',
+  '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/octopus-deploy/create',
 )({
   component: OctopusDeployConfigurePage,
   validateSearch: zodValidator(OctopusDeployConfigurePageQueryParamsSchema),

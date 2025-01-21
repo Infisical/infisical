@@ -9,7 +9,7 @@ const CircleCIConfigurePageQueryParamsSchema = z.object({
 })
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/circleci/create',
+  '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/circleci/create',
 )({
   component: CircleCIConfigurePage,
   validateSearch: zodValidator(CircleCIConfigurePageQueryParamsSchema),

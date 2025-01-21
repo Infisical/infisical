@@ -9,7 +9,7 @@ const CloudflarePagesConfigurePageQueryParamsSchema = z.object({
 })
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/cloudflare-pages/create',
+  '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/cloudflare-pages/create',
 )({
   component: CloudflarePagesConfigurePage,
   validateSearch: zodValidator(CloudflarePagesConfigurePageQueryParamsSchema),

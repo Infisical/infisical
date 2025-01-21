@@ -5,7 +5,7 @@ import { createFileRoute, linkOptions } from '@tanstack/react-router'
 import { SshOverviewPage } from './SshOverviewPage'
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/organization/_layout/ssh/overview',
+  '/_authenticate/_inject-org-details/_org-layout/organization/ssh/overview',
 )({
   component: SshOverviewPage,
   context: () => ({

@@ -3,7 +3,7 @@ import { createFileRoute, linkOptions } from '@tanstack/react-router'
 import { GitlabAuthorizePage } from './GitlabAuthorizePage'
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/gitlab/authorize',
+  '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/gitlab/authorize',
 )({
   component: GitlabAuthorizePage,
   beforeLoad: ({ context, params }) => {

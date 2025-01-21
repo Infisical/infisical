@@ -9,7 +9,7 @@ const RailwayConfigurePageQueryParamsSchema = z.object({
 })
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/railway/create',
+  '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/railway/create',
 )({
   component: RailwayConfigurePage,
   validateSearch: zodValidator(RailwayConfigurePageQueryParamsSchema),

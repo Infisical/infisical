@@ -9,7 +9,7 @@ const AwsParameterStoreConfigurePageQueryParamsSchema = z.object({
 })
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/aws-parameter-store/create',
+  '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/aws-parameter-store/create',
 )({
   component: AWSParameterStoreConfigurePage,
   validateSearch: zodValidator(AwsParameterStoreConfigurePageQueryParamsSchema),

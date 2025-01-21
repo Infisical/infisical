@@ -9,7 +9,7 @@ const TravisCIConfigurePageQueryParamsSchema = z.object({
 })
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/travisci/create',
+  '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/travisci/create',
 )({
   component: TravisCIConfigurePage,
   validateSearch: zodValidator(TravisCIConfigurePageQueryParamsSchema),

@@ -9,7 +9,7 @@ const WindmillConfigurePageQueryParamsSchema = z.object({
 })
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/windmill/create',
+  '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/windmill/create',
 )({
   component: WindmillConfigurePage,
   validateSearch: zodValidator(WindmillConfigurePageQueryParamsSchema),
