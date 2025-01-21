@@ -88,7 +88,7 @@ type TSecretServiceFactoryDep = {
   secretDAL: TSecretDALFactory;
   secretTagDAL: TSecretTagDALFactory;
   secretVersionDAL: TSecretVersionDALFactory;
-  projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findProjectBySlug">;
+  projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findProjectBySlug" | "findById">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   folderDAL: Pick<
     TSecretFolderDALFactory,
@@ -1466,6 +1466,16 @@ export const secretServiceFactory = ({
     secretMetadata
   }: TCreateSecretRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+    const project = await projectDAL.findById(projectId);
+    if (project.enforceCapitalization) {
+      if (secretName !== secretName.toUpperCase()) {
+        throw new BadRequestError({
+          message:
+            "Secret name must be in UPPERCASE per project requirements. You can disable this requirement in project settings."
+        });
+      }
+    }
+
     const policy =
       actor === ActorType.USER && type === SecretType.Shared
         ? await secretApprovalPolicyService.getSecretApprovalPolicy(projectId, environment, secretPath)
@@ -1609,6 +1619,16 @@ export const secretServiceFactory = ({
     secretMetadata
   }: TUpdateSecretRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+    const project = await projectDAL.findById(projectId);
+    if (project.enforceCapitalization) {
+      if (newSecretName && newSecretName !== newSecretName.toUpperCase()) {
+        throw new BadRequestError({
+          message:
+            "Secret name must be in UPPERCASE per project requirements. You can disable this requirement in project settings."
+        });
+      }
+    }
+
     const policy =
       actor === ActorType.USER && type === SecretType.Shared
         ? await secretApprovalPolicyService.getSecretApprovalPolicy(projectId, environment, secretPath)
@@ -1858,7 +1878,23 @@ export const secretServiceFactory = ({
       actor === ActorType.USER
         ? await secretApprovalPolicyService.getSecretApprovalPolicy(projectId, environment, secretPath)
         : undefined;
+
     if (shouldUseSecretV2Bridge) {
+      const project = await projectDAL.findById(projectId);
+      if (project.enforceCapitalization) {
+        const caseViolatingSecretKeys = inputSecrets
+          .filter((sec) => sec.secretKey !== sec.secretKey.toUpperCase())
+          .map((sec) => sec.secretKey);
+
+        if (caseViolatingSecretKeys.length) {
+          throw new BadRequestError({
+            message: `Secret names must be in UPPERCASE per project requirements: ${caseViolatingSecretKeys.join(
+              ", "
+            )}. You can disable this requirement in project settings`
+          });
+        }
+      }
+
       if (policy) {
         const approval = await secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
           policy,
@@ -1987,6 +2023,21 @@ export const secretServiceFactory = ({
         ? await secretApprovalPolicyService.getSecretApprovalPolicy(projectId, environment, secretPath)
         : undefined;
     if (shouldUseSecretV2Bridge) {
+      const project = await projectDAL.findById(projectId);
+      if (project.enforceCapitalization) {
+        const caseViolatingSecretKeys = inputSecrets
+          .filter((sec) => sec.newSecretName && sec.newSecretName !== sec.newSecretName.toUpperCase())
+          .map((sec) => sec.newSecretName);
+
+        if (caseViolatingSecretKeys.length) {
+          throw new BadRequestError({
+            message: `Secret names must be in UPPERCASE per project requirements: ${caseViolatingSecretKeys.join(
+              ", "
+            )}. You can disable this requirement in project settings`
+          });
+        }
+      }
+
       if (policy) {
         const approval = await secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
           policy,

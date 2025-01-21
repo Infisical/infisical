@@ -125,8 +125,8 @@ export const CreateSecretForm = ({
 
     if (!secretKey || isWholeKeyHighlighted) {
       e.preventDefault();
-
-      setValue("key", key);
+      const keyStr = autoCapitalize ? key.toUpperCase() : key;
+      setValue("key", keyStr);
       if (value) {
         setValue("value", value);
       }

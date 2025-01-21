@@ -37,7 +37,7 @@ export const AutoCapitalizationSection = () => {
 
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <p className="mb-3 text-xl font-semibold">{t("settings.project.auto-capitalization")}</p>
+      <p className="mb-3 text-xl font-semibold">{t("settings.project.enforce-capitalization")}</p>
       <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
         {(isAllowed) => (
           <div className="w-max">
@@ -50,7 +50,7 @@ export const AutoCapitalizationSection = () => {
                 handleToggleCapitalizationToggle(state as boolean);
               }}
             >
-              {t("settings.project.auto-capitalization-description")}
+              {t("settings.project.enforce-capitalization-description")}
             </Checkbox>
           </div>
         )}
