@@ -1,15 +1,15 @@
-import { createFileRoute, linkOptions } from '@tanstack/react-router'
-import { zodValidator } from '@tanstack/zod-adapter'
-import { z } from 'zod'
+import { createFileRoute, linkOptions } from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
+import { z } from "zod";
 
-import { SelectIntegrationAuthPage } from './SelectIntegrationAuthPage'
+import { SelectIntegrationAuthPage } from "./SelectIntegrationAuthPage";
 
 const SelectIntegrationAuthPageQueryParamsSchema = z.object({
-  integrationSlug: z.string(),
-})
+  integrationSlug: z.string()
+});
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/select-integration-auth',
+  "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/select-integration-auth"
 )({
   component: SelectIntegrationAuthPage,
   validateSearch: zodValidator(SelectIntegrationAuthPageQueryParamsSchema),
@@ -18,16 +18,16 @@ export const Route = createFileRoute(
       breadcrumbs: [
         ...context.breadcrumbs,
         {
-          label: 'Integrations',
+          label: "Integrations",
           link: linkOptions({
-            to: '/secret-manager/$projectId/integrations',
-            params,
-          }),
+            to: "/secret-manager/$projectId/integrations",
+            params
+          })
         },
         {
-          label: 'Configure',
-        },
-      ],
-    }
-  },
-})
+          label: "Configure"
+        }
+      ]
+    };
+  }
+});

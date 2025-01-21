@@ -1,9 +1,9 @@
-import { createFileRoute, linkOptions } from '@tanstack/react-router'
+import { createFileRoute, linkOptions } from "@tanstack/react-router";
 
-import { RenderAuthorizePage } from './RenderAuthorizePage'
+import { RenderAuthorizePage } from "./RenderAuthorizePage";
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/render/authorize',
+  "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/render/authorize"
 )({
   component: RenderAuthorizePage,
   beforeLoad: ({ context, params }) => {
@@ -11,16 +11,16 @@ export const Route = createFileRoute(
       breadcrumbs: [
         ...context.breadcrumbs,
         {
-          label: 'Integrations',
+          label: "Integrations",
           link: linkOptions({
-            to: '/secret-manager/$projectId/integrations',
-            params,
-          }),
+            to: "/secret-manager/$projectId/integrations",
+            params
+          })
         },
         {
-          label: 'Render',
-        },
-      ],
-    }
-  },
-})
+          label: "Render"
+        }
+      ]
+    };
+  }
+});

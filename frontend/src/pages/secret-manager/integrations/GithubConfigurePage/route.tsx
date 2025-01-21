@@ -1,15 +1,15 @@
-import { createFileRoute, linkOptions } from '@tanstack/react-router'
-import { zodValidator } from '@tanstack/zod-adapter'
-import { z } from 'zod'
+import { createFileRoute, linkOptions } from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
+import { z } from "zod";
 
-import { GithubConfigurePage } from './GithubConfigurePage'
+import { GithubConfigurePage } from "./GithubConfigurePage";
 
 const GithubConfigurePageQueryParamsSchema = z.object({
-  integrationAuthId: z.string(),
-})
+  integrationAuthId: z.string()
+});
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/github/create',
+  "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/github/create"
 )({
   component: GithubConfigurePage,
   validateSearch: zodValidator(GithubConfigurePageQueryParamsSchema),
@@ -18,16 +18,16 @@ export const Route = createFileRoute(
       breadcrumbs: [
         ...context.breadcrumbs,
         {
-          label: 'Integrations',
+          label: "Integrations",
           link: linkOptions({
-            to: '/secret-manager/$projectId/integrations',
-            params,
-          }),
+            to: "/secret-manager/$projectId/integrations",
+            params
+          })
         },
         {
-          label: 'GitHub',
-        },
-      ],
-    }
-  },
-})
+          label: "GitHub"
+        }
+      ]
+    };
+  }
+});

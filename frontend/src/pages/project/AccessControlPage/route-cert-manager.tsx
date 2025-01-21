@@ -1,19 +1,17 @@
-import { createFileRoute, linkOptions } from '@tanstack/react-router'
-import { zodValidator } from '@tanstack/zod-adapter'
-import { z } from 'zod'
+import { createFileRoute, linkOptions } from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
+import { z } from "zod";
 
-import { ProjectAccessControlTabs } from '@app/types/project'
+import { ProjectAccessControlTabs } from "@app/types/project";
 
-import { AccessControlPage } from './AccessControlPage'
+import { AccessControlPage } from "./AccessControlPage";
 
 const AccessControlPageQuerySchema = z.object({
-  selectedTab: z
-    .nativeEnum(ProjectAccessControlTabs)
-    .catch(ProjectAccessControlTabs.Member),
-})
+  selectedTab: z.nativeEnum(ProjectAccessControlTabs).catch(ProjectAccessControlTabs.Member)
+});
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/access-management',
+  "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/access-management"
 )({
   component: AccessControlPage,
   validateSearch: zodValidator(AccessControlPageQuerySchema),
@@ -22,15 +20,15 @@ export const Route = createFileRoute(
       breadcrumbs: [
         ...context.breadcrumbs,
         {
-          label: 'Access Control',
+          label: "Access Control",
           link: linkOptions({
-            to: '/cert-manager/$projectId/access-management',
+            to: "/cert-manager/$projectId/access-management",
             params: {
-              projectId: params.projectId,
-            },
-          }),
-        },
-      ],
-    }
-  },
-})
+              projectId: params.projectId
+            }
+          })
+        }
+      ]
+    };
+  }
+});

@@ -1,9 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from "@tanstack/react-router";
 
-import { NoOrgPage } from './NoOrgPage'
+import { NoOrgPage } from "./NoOrgPage";
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/_org-layout/organization/none',
+  "/_authenticate/_inject-org-details/_org-layout/organization/none"
 )({
-  component: NoOrgPage,
-})
+  component: NoOrgPage
+});
