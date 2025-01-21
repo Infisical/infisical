@@ -117,10 +117,6 @@ jobs:
     steps:
       - uses: twingate/github-action@v1
         with:
-        # The Twingate Service Key used to connect Twingate to the proper service
-        # Learn more about [Twingate Services](https://docs.twingate.com/docs/services)
-        #
-        # Required
           service-key: ${{ secrets.TWINGATE_SERVICE_KEY }}
       - name: Checkout code
         uses: actions/checkout@v2
@@ -163,6 +159,31 @@ jobs:
           service: infisical-core-platform
           cluster: infisical-core-platform
           wait-for-service-stability: true
+      - name: Post slack message 
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          webhook: ${{ secrets.SLACK_DEPLOYMENT_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            text: "*Deployment Status Update*: ${{ job.status }}"
+            blocks:
+              - type: "section"
+                text:
+                  type: "mrkdwn"
+                  text: "*Deployment Status Update*: ${{ job.status }}"
+              - type: "section"
+                fields:
+                  - type: "mrkdwn"
+                    text: "*Application:*\nInfisical Core"
+                  - type: "mrkdwn"
+                    text: "*Instance Type:*\nShared Infisical Cloud"
+              - type: "section"
+                fields:
+                  - type: "mrkdwn"
+                    text: "*Region:*\nUS"
+                  - type: "mrkdwn"
+                    text: "*Git Tag:*\n<https://github.com/Infisical/infisical/commit/${{ steps.commit.outputs.short }}>"
+
 
   production-eu:
       name: EU production deploy
