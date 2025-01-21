@@ -1,3 +1,4 @@
+{{- if not .Values.scopedNamespace }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -38,3 +39,4 @@ subjects:
 - kind: ServiceAccount
   name: '{{ include "secrets-operator.fullname" . }}-controller-manager'
   namespace: '{{ .Release.Namespace }}'
+{{- end }}
