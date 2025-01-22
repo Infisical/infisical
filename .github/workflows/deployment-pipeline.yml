@@ -7,7 +7,7 @@ permissions:
 
 concurrency: 
   group: "infisical-core-deployment"
-  cancel-in-progress: false  
+  cancel-in-progress: true  
 
 jobs:
   infisical-tests:
