@@ -198,7 +198,7 @@ export const VercelConfigurePage = () => {
           helperText={
             <Tooltip
               className="max-w-md"
-              content="Double check Infisical's Access permissions in Vercel by navigating to Team > Integrations > Infisical > Settings > Manage Access."
+              content="Double check Infisical's access permissions in Vercel by navigating to Team > Integrations > Infisical > Settings > Manage Access."
             >
               <div>
                 <span>Don&#39;t see the project you&#39;re looking for?</span>{" "}
