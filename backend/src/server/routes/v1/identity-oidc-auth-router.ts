@@ -105,20 +105,15 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
         accessTokenTTL: z
           .number()
           .int()
-          .min(1)
+          .min(0)
           .max(315360000)
-          .refine((value) => value !== 0, {
-            message: "accessTokenTTL must have a non zero number"
-          })
           .default(2592000)
           .describe(OIDC_AUTH.ATTACH.accessTokenTTL),
         accessTokenMaxTTL: z
           .number()
           .int()
+          .min(0)
           .max(315360000)
-          .refine((value) => value !== 0, {
-            message: "accessTokenMaxTTL must have a non zero number"
-          })
           .default(2592000)
           .describe(OIDC_AUTH.ATTACH.accessTokenMaxTTL),
         accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(OIDC_AUTH.ATTACH.accessTokenNumUsesLimit)
@@ -202,23 +197,17 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
           accessTokenTTL: z
             .number()
             .int()
-            .min(1)
+            .min(0)
             .max(315360000)
-            .refine((value) => value !== 0, {
-              message: "accessTokenTTL must have a non zero number"
-            })
             .default(2592000)
             .describe(OIDC_AUTH.UPDATE.accessTokenTTL),
           accessTokenMaxTTL: z
             .number()
             .int()
+            .min(0)
             .max(315360000)
-            .refine((value) => value !== 0, {
-              message: "accessTokenMaxTTL must have a non zero number"
-            })
             .default(2592000)
             .describe(OIDC_AUTH.UPDATE.accessTokenMaxTTL),
-
           accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(OIDC_AUTH.UPDATE.accessTokenNumUsesLimit)
         })
         .partial(),

@@ -106,20 +106,15 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         accessTokenTTL: z
           .number()
           .int()
-          .min(1)
+          .min(0)
           .max(315360000)
-          .refine((value) => value !== 0, {
-            message: "accessTokenTTL must have a non zero number"
-          })
           .default(2592000)
           .describe(UNIVERSAL_AUTH.ATTACH.accessTokenTTL), // 30 days
         accessTokenMaxTTL: z
           .number()
           .int()
+          .min(0)
           .max(315360000)
-          .refine((value) => value !== 0, {
-            message: "accessTokenMaxTTL must have a non zero number"
-          })
           .default(2592000)
           .describe(UNIVERSAL_AUTH.ATTACH.accessTokenMaxTTL), // 30 days
         accessTokenNumUsesLimit: z
@@ -214,10 +209,8 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         accessTokenMaxTTL: z
           .number()
           .int()
+          .min(0)
           .max(315360000)
-          .refine((value) => value !== 0, {
-            message: "accessTokenMaxTTL must have a non zero number"
-          })
           .optional()
           .describe(UNIVERSAL_AUTH.UPDATE.accessTokenMaxTTL)
       }),

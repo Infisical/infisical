@@ -99,20 +99,15 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
         accessTokenTTL: z
           .number()
           .int()
-          .min(1)
+          .min(0)
           .max(315360000)
-          .refine((value) => value !== 0, {
-            message: "accessTokenTTL must have a non zero number"
-          })
           .default(2592000)
           .describe(AWS_AUTH.ATTACH.accessTokenTTL),
         accessTokenMaxTTL: z
           .number()
           .int()
+          .min(1)
           .max(315360000)
-          .refine((value) => value !== 0, {
-            message: "accessTokenMaxTTL must have a non zero number"
-          })
           .default(2592000)
           .describe(AWS_AUTH.ATTACH.accessTokenMaxTTL),
         accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(AWS_AUTH.ATTACH.accessTokenNumUsesLimit)
@@ -186,15 +181,7 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
           .describe(AWS_AUTH.UPDATE.accessTokenTrustedIps),
         accessTokenTTL: z.number().int().min(0).max(315360000).optional().describe(AWS_AUTH.UPDATE.accessTokenTTL),
         accessTokenNumUsesLimit: z.number().int().min(0).optional().describe(AWS_AUTH.UPDATE.accessTokenNumUsesLimit),
-        accessTokenMaxTTL: z
-          .number()
-          .int()
-          .max(315360000)
-          .refine((value) => value !== 0, {
-            message: "accessTokenMaxTTL must have a non zero number"
-          })
-          .optional()
-          .describe(AWS_AUTH.UPDATE.accessTokenMaxTTL)
+        accessTokenMaxTTL: z.number().int().max(315360000).min(0).optional().describe(AWS_AUTH.UPDATE.accessTokenMaxTTL)
       }),
       response: {
         200: z.object({

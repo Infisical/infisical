@@ -38,20 +38,15 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         accessTokenTTL: z
           .number()
           .int()
-          .min(1)
+          .min(0)
           .max(315360000)
-          .refine((value) => value !== 0, {
-            message: "accessTokenTTL must have a non zero number"
-          })
           .default(2592000)
           .describe(TOKEN_AUTH.ATTACH.accessTokenTTL),
         accessTokenMaxTTL: z
           .number()
           .int()
+          .min(0)
           .max(315360000)
-          .refine((value) => value !== 0, {
-            message: "accessTokenMaxTTL must have a non zero number"
-          })
           .default(2592000)
           .describe(TOKEN_AUTH.ATTACH.accessTokenMaxTTL),
         accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(TOKEN_AUTH.ATTACH.accessTokenNumUsesLimit)
@@ -124,10 +119,8 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         accessTokenMaxTTL: z
           .number()
           .int()
+          .min(0)
           .max(315360000)
-          .refine((value) => value !== 0, {
-            message: "accessTokenMaxTTL must have a non zero number"
-          })
           .optional()
           .describe(TOKEN_AUTH.UPDATE.accessTokenMaxTTL)
       }),

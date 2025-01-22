@@ -99,12 +99,12 @@ export const identityAzureAuthServiceFactory = ({
         authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
       } as TIdentityAccessTokenJwtPayload,
       appCfg.AUTH_SECRET,
-      {
-        expiresIn:
-          Number(identityAccessToken.accessTokenMaxTTL) === 0
-            ? undefined
-            : Number(identityAccessToken.accessTokenMaxTTL)
-      }
+      // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
+      Number(identityAccessToken.accessTokenMaxTTL) === 0
+        ? undefined
+        : {
+            expiresIn: Number(identityAccessToken.accessTokenMaxTTL)
+          }
     );
 
     return { accessToken, identityAzureAuth, identityAccessToken, identityMembershipOrg };
