@@ -317,7 +317,7 @@ var loginCmd = &cobra.Command{
 			if err != nil {
 				euErrorMessage := ""
 				if strings.HasPrefix(config.INFISICAL_URL, util.INFISICAL_DEFAULT_US_URL) {
-					euErrorMessage = "\nIf you are using the Infisical Cloud Europe Region, please switch to it by using the \"--region eu\" flag."
+					euErrorMessage = fmt.Sprintf("\nIf you are using the Infisical Cloud Europe Region, please switch to it by using the \"--domain %s\" flag.", util.INFISICAL_DEFAULT_EU_URL)
 				}
 				util.HandleError(fmt.Errorf("unable to authenticate with %s [err=%v].%s", formatAuthMethod(loginMethod), err, euErrorMessage))
 			}

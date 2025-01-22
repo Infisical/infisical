@@ -39,7 +39,6 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initLog)
 	rootCmd.PersistentFlags().StringP("log-level", "l", "info", "log level (trace, debug, info, warn, error, fatal)")
-	rootCmd.PersistentFlags().StringP("region", "r", "us", "Select the Infisical Cloud Region (us or eu). If the domain option is provided, this setting will be ignored.")
 	rootCmd.PersistentFlags().Bool("telemetry", true, "Infisical collects non-sensitive telemetry data to enhance features and improve user experience. Participation is voluntary")
 	rootCmd.PersistentFlags().StringVar(&config.INFISICAL_URL, "domain", fmt.Sprintf("%s/api", util.INFISICAL_DEFAULT_US_URL), "Point the CLI to your own backend [can also set via environment variable name: INFISICAL_API_URL]")
 	rootCmd.PersistentFlags().Bool("silent", false, "Disable output of tip/info messages. Useful when running in scripts or CI/CD pipelines.")
@@ -47,15 +46,6 @@ func init() {
 		silent, err := cmd.Flags().GetBool("silent")
 		if err != nil {
 			util.HandleError(err)
-		}
-
-		region, err := cmd.Flags().GetString("region")
-		if err != nil {
-			util.HandleError(err)
-		}
-
-		if region == "eu" {
-			config.INFISICAL_URL = util.INFISICAL_DEFAULT_EU_URL
 		}
 
 		config.INFISICAL_URL = util.AppendAPIEndpoint(config.INFISICAL_URL)
