@@ -7,6 +7,8 @@ import {
   TAppConnection,
   TAppConnectionMap,
   TAppConnectionOptions,
+  TAvailableAppConnection,
+  TAvailableAppConnectionsResponse,
   TGetAppConnection,
   TListAppConnections
 } from "@app/hooks/api/appConnections/types";
@@ -19,9 +21,10 @@ export const appConnectionKeys = {
   all: ["app-connection"] as const,
   options: () => [...appConnectionKeys.all, "options"] as const,
   list: () => [...appConnectionKeys.all, "list"] as const,
+  listAvailable: (app: AppConnection) => [...appConnectionKeys.all, app, "list-available"] as const,
   listByApp: (app: AppConnection) => [...appConnectionKeys.list(), app],
-  byId: (app: AppConnection, templateId: string) =>
-    [...appConnectionKeys.all, app, "by-id", templateId] as const
+  byId: (app: AppConnection, connectionId: string) =>
+    [...appConnectionKeys.all, app, "by-id", connectionId] as const
 };
 
 export const useAppConnectionOptions = (
@@ -76,6 +79,31 @@ export const useListAppConnections = (
     queryFn: async () => {
       const { data } =
         await apiRequest.get<TListAppConnections<TAppConnection>>("/api/v1/app-connections");
+
+      return data.appConnections;
+    },
+    ...options
+  });
+};
+
+export const useListAvailableAppConnections = (
+  app: AppConnection,
+  options?: Omit<
+    UseQueryOptions<
+      TAvailableAppConnection[],
+      unknown,
+      TAvailableAppConnection[],
+      ReturnType<typeof appConnectionKeys.listAvailable>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: appConnectionKeys.listAvailable(app),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TAvailableAppConnectionsResponse>(
+        `/api/v1/app-connections/${app}/available`
+      );
 
       return data.appConnections;
     },

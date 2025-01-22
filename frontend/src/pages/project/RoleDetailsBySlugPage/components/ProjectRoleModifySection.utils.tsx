@@ -8,6 +8,7 @@ import {
 import {
   PermissionConditionOperators,
   ProjectPermissionDynamicSecretActions,
+  ProjectPermissionSecretSyncActions,
   TPermissionCondition,
   TPermissionConditionOperators
 } from "@app/context/ProjectPermissionContext/types";
@@ -35,6 +36,16 @@ const DynamicSecretPolicyActionSchema = z.object({
   [ProjectPermissionDynamicSecretActions.DeleteRootCredential]: z.boolean().optional(),
   [ProjectPermissionDynamicSecretActions.CreateRootCredential]: z.boolean().optional(),
   [ProjectPermissionDynamicSecretActions.Lease]: z.boolean().optional()
+});
+
+const SecretSyncPolicyActionSchema = z.object({
+  [ProjectPermissionSecretSyncActions.Read]: z.boolean().optional(),
+  [ProjectPermissionSecretSyncActions.Create]: z.boolean().optional(),
+  [ProjectPermissionSecretSyncActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionSecretSyncActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionSecretSyncActions.SyncSecrets]: z.boolean().optional(),
+  [ProjectPermissionSecretSyncActions.ImportSecrets]: z.boolean().optional(),
+  [ProjectPermissionSecretSyncActions.RemoveSecrets]: z.boolean().optional()
 });
 
 const SecretRollbackPolicyActionSchema = z.object({
@@ -137,7 +148,8 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.Tags]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SecretRotation]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Kms]: GeneralPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.Cmek]: CmekPolicyActionSchema.array().default([])
+      [ProjectPermissionSub.Cmek]: CmekPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.SecretSyncs]: SecretSyncPolicyActionSchema.array().default([])
     })
     .partial()
     .optional()
@@ -331,6 +343,31 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canDelete) formVal[subject]![0].delete = true;
       if (canEncrypt) formVal[subject]![0].encrypt = true;
       if (canDecrypt) formVal[subject]![0].decrypt = true;
+      return;
+    }
+
+    if (subject === ProjectPermissionSub.SecretSyncs) {
+      const canRead = action.includes(ProjectPermissionSecretSyncActions.Read);
+      const canEdit = action.includes(ProjectPermissionSecretSyncActions.Edit);
+      const canDelete = action.includes(ProjectPermissionSecretSyncActions.Delete);
+      const canCreate = action.includes(ProjectPermissionSecretSyncActions.Create);
+      const canSyncSecrets = action.includes(ProjectPermissionSecretSyncActions.SyncSecrets);
+      const canImportSecrets = action.includes(ProjectPermissionSecretSyncActions.ImportSecrets);
+      const canRemoveSecrets = action.includes(ProjectPermissionSecretSyncActions.RemoveSecrets);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      // from above statement we are sure it won't be undefined
+      if (canRead) formVal[subject]![0][ProjectPermissionSecretSyncActions.Read] = true;
+      if (canEdit) formVal[subject]![0][ProjectPermissionSecretSyncActions.Edit] = true;
+      if (canCreate) formVal[subject]![0][ProjectPermissionSecretSyncActions.Create] = true;
+      if (canDelete) formVal[subject]![0][ProjectPermissionSecretSyncActions.Delete] = true;
+      if (canSyncSecrets)
+        formVal[subject]![0][ProjectPermissionSecretSyncActions.SyncSecrets] = true;
+      if (canImportSecrets)
+        formVal[subject]![0][ProjectPermissionSecretSyncActions.ImportSecrets] = true;
+      if (canRemoveSecrets)
+        formVal[subject]![0][ProjectPermissionSecretSyncActions.RemoveSecrets] = true;
     }
   });
   return formVal;
@@ -669,6 +706,24 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
     actions: [
       { label: "Perform rollback", value: "create" },
       { label: "View", value: "read" }
+    ]
+  },
+  [ProjectPermissionSub.SecretSyncs]: {
+    title: "Secret Syncs",
+    actions: [
+      { label: "Read", value: ProjectPermissionSecretSyncActions.Read },
+      { label: "Create", value: ProjectPermissionSecretSyncActions.Create },
+      { label: "Modify", value: ProjectPermissionSecretSyncActions.Edit },
+      { label: "Remove", value: ProjectPermissionSecretSyncActions.Delete },
+      { label: "Trigger Syncs", value: ProjectPermissionSecretSyncActions.SyncSecrets },
+      {
+        label: "Import Secrets from Destination",
+        value: ProjectPermissionSecretSyncActions.ImportSecrets
+      },
+      {
+        label: "Remove Secrets from Destination",
+        value: ProjectPermissionSecretSyncActions.RemoveSecrets
+      }
     ]
   }
 };

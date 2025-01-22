@@ -23,7 +23,8 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { useToggle } from "@app/hooks";
 import { TAppConnection } from "@app/hooks/api/appConnections";
@@ -119,7 +120,7 @@ export const AppConnectionRow = ({
                 Copy Connection ID
               </DropdownMenuItem>
               <OrgPermissionCan
-                I={OrgPermissionActions.Edit}
+                I={OrgPermissionAppConnectionActions.Edit}
                 a={OrgPermissionSubjects.AppConnections}
               >
                 {(isAllowed: boolean) => (
@@ -133,7 +134,7 @@ export const AppConnectionRow = ({
                 )}
               </OrgPermissionCan>
               <OrgPermissionCan
-                I={OrgPermissionActions.Edit}
+                I={OrgPermissionAppConnectionActions.Edit}
                 a={OrgPermissionSubjects.AppConnections}
               >
                 {(isAllowed: boolean) => (
@@ -147,7 +148,7 @@ export const AppConnectionRow = ({
                 )}
               </OrgPermissionCan>
               <OrgPermissionCan
-                I={OrgPermissionActions.Delete}
+                I={OrgPermissionAppConnectionActions.Delete}
                 a={OrgPermissionSubjects.AppConnections}
               >
                 {(isAllowed: boolean) => (

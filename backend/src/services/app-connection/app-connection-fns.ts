@@ -1,3 +1,4 @@
+import { TAppConnections } from "@app/db/schemas/app-connections";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactoryDep } from "@app/services/app-connection/app-connection-service";
 import { TAppConnection, TAppConnectionConfig } from "@app/services/app-connection/app-connection-types";
@@ -64,9 +65,8 @@ export const validateAppConnectionCredentials = async (
 ): Promise<TAppConnection["credentials"]> => {
   const { app } = appConnection;
   switch (app) {
-    case AppConnection.AWS: {
+    case AppConnection.AWS:
       return validateAwsConnectionCredentials(appConnection);
-    }
     case AppConnection.GitHub:
       return validateGitHubConnectionCredentials(appConnection);
     default:
@@ -89,4 +89,18 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }
+};
+
+export const decryptAppConnection = async (
+  appConnection: TAppConnections,
+  kmsService: TAppConnectionServiceFactoryDep["kmsService"]
+) => {
+  return {
+    ...appConnection,
+    credentials: await decryptAppConnectionCredentials({
+      encryptedCredentials: appConnection.encryptedCredentials,
+      orgId: appConnection.orgId,
+      kmsService
+    })
+  } as TAppConnection;
 };

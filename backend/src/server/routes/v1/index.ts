@@ -1,6 +1,10 @@
-import { APP_CONNECTION_REGISTER_MAP, registerAppConnectionRouter } from "@app/server/routes/v1/app-connection-routers";
+import {
+  APP_CONNECTION_REGISTER_ROUTER_MAP,
+  registerAppConnectionRouter
+} from "@app/server/routes/v1/app-connection-routers";
 import { registerCmekRouter } from "@app/server/routes/v1/cmek-router";
 import { registerDashboardRouter } from "@app/server/routes/v1/dashboard-router";
+import { registerSecretSyncRouter, SECRET_SYNC_REGISTER_ROUTER_MAP } from "@app/server/routes/v1/secret-sync-routers";
 
 import { registerAdminRouter } from "./admin-router";
 import { registerAuthRoutes } from "./auth-router";
@@ -113,12 +117,28 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerExternalGroupOrgRoleMappingRouter, { prefix: "/external-group-mappings" });
 
   await server.register(
-    async (appConnectionsRouter) => {
-      await appConnectionsRouter.register(registerAppConnectionRouter);
-      for await (const [app, router] of Object.entries(APP_CONNECTION_REGISTER_MAP)) {
-        await appConnectionsRouter.register(router, { prefix: `/${app}` });
+    async (appConnectionRouter) => {
+      // register generic app connection endpoints
+      await appConnectionRouter.register(registerAppConnectionRouter);
+
+      // register service specific endpoints (app-connections/aws, app-connections/github, etc.)
+      for await (const [app, router] of Object.entries(APP_CONNECTION_REGISTER_ROUTER_MAP)) {
+        await appConnectionRouter.register(router, { prefix: `/${app}` });
       }
     },
     { prefix: "/app-connections" }
+  );
+
+  await server.register(
+    async (secretSyncRouter) => {
+      // register generic secret sync endpoints
+      await secretSyncRouter.register(registerSecretSyncRouter);
+
+      // register service specific secret sync endpoints (secret-syncs/aws-parameter-store, secret-syncs/github, etc.)
+      for await (const [destination, router] of Object.entries(SECRET_SYNC_REGISTER_ROUTER_MAP)) {
+        await secretSyncRouter.register(router, { prefix: `/${destination}` });
+      }
+    },
+    { prefix: "/secret-syncs" }
   );
 };

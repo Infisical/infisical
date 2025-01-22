@@ -5,11 +5,11 @@ import { DiscriminativePick } from "@app/lib/types";
 import { AppConnection } from "../app-connection-enums";
 import {
   CreateGitHubConnectionSchema,
-  GitHubAppConnectionSchema,
+  GitHubConnectionSchema,
   ValidateGitHubConnectionCredentialsSchema
 } from "./github-connection-schemas";
 
-export type TGitHubConnection = z.infer<typeof GitHubAppConnectionSchema>;
+export type TGitHubConnection = z.infer<typeof GitHubConnectionSchema>;
 
 export type TGitHubConnectionInput = z.infer<typeof CreateGitHubConnectionSchema> & {
   app: AppConnection.GitHub;

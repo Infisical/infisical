@@ -1,219 +1,40 @@
-import { useCallback, useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "@tanstack/react-router";
-import { motion } from "framer-motion";
+import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { ContentLoader } from "@app/components/v2";
+import { Badge, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
+
 import {
-  useDeleteIntegration,
-  useDeleteIntegrationAuths,
-  useGetCloudIntegrations,
-  useGetWorkspaceAuthorizations,
-  useGetWorkspaceIntegrations
-} from "@app/hooks/api";
-import { IntegrationAuth } from "@app/hooks/api/types";
-
-import { CloudIntegrationSection } from "./components/CloudIntegrationSection";
-import { FrameworkIntegrationSection } from "./components/FrameworkIntegrationSection";
-import { InfrastructureIntegrationSection } from "./components/InfrastructureIntegrationSection/InfrastructureIntegrationSection";
-import { IntegrationsSection } from "./components/IntegrationsSection";
-import { redirectForProviderAuth } from "./IntegrationsListPage.utils";
-
-enum IntegrationView {
-  List = "list",
-  New = "new"
-}
-
-const Page = () => {
-  const { currentWorkspace } = useWorkspace();
-  const navigate = useNavigate();
-  const { environments, id: workspaceId } = currentWorkspace;
-  const [view, setView] = useState<IntegrationView>(IntegrationView.New);
-
-  const { data: cloudIntegrations, isPending: isCloudIntegrationsLoading } =
-    useGetCloudIntegrations();
-
-  const {
-    data: integrationAuths,
-    isPending: isIntegrationAuthLoading,
-    isFetching: isIntegrationAuthFetching
-  } = useGetWorkspaceAuthorizations(
-    workspaceId,
-    useCallback((data: IntegrationAuth[]) => {
-      const groupBy: Record<string, IntegrationAuth> = {};
-      data.forEach((el) => {
-        groupBy[el.integration] = el;
-      });
-      return groupBy;
-    }, [])
-  );
-
-  // mutation
-  const {
-    data: integrations,
-    isPending: isIntegrationLoading,
-    isFetching: isIntegrationFetching,
-    isFetched: isIntegrationsFetched
-  } = useGetWorkspaceIntegrations(workspaceId);
-
-  const { mutateAsync: deleteIntegration } = useDeleteIntegration();
-  const {
-    mutateAsync: deleteIntegrationAuths,
-    isSuccess: isDeleteIntegrationAuthSuccess,
-    reset: resetDeleteIntegrationAuths
-  } = useDeleteIntegrationAuths();
-
-  const isIntegrationsAuthorizedEmpty = !Object.keys(integrationAuths || {}).length;
-  const isIntegrationsEmpty = !integrations?.length;
-  // summary: this use effect is trigger when all integration auths are removed thus deactivate bot
-  // details: so on successfully deleting an integration auth, immediately integration list is refeteched
-  // After the refetch is completed check if its empty. Then set bot active and reset the submit hook for isSuccess to go back to false
-  useEffect(() => {
-    if (
-      isDeleteIntegrationAuthSuccess &&
-      !isIntegrationFetching &&
-      !isIntegrationAuthFetching &&
-      isIntegrationsAuthorizedEmpty &&
-      isIntegrationsEmpty
-    ) {
-      resetDeleteIntegrationAuths();
-    }
-  }, [
-    isIntegrationFetching,
-    isDeleteIntegrationAuthSuccess,
-    isIntegrationAuthFetching,
-    isIntegrationsAuthorizedEmpty,
-    isIntegrationsEmpty
-  ]);
-
-  useEffect(() => {
-    setView(integrations?.length ? IntegrationView.List : IntegrationView.New);
-  }, [isIntegrationsFetched]);
-
-  const handleProviderIntegration = async (provider: string) => {
-    const selectedCloudIntegration = cloudIntegrations?.find(({ slug }) => provider === slug);
-    if (!selectedCloudIntegration) return;
-
-    try {
-      redirectForProviderAuth(currentWorkspace.id, navigate, selectedCloudIntegration);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  // function to strat integration for a provider
-  // confirmation to user passing the bot key for provider to get secret access
-  const handleProviderIntegrationStart = (provider: string) => {
-    handleProviderIntegration(provider);
-  };
-
-  const handleIntegrationDelete = async (
-    integrationId: string,
-    shouldDeleteIntegrationSecrets: boolean,
-    cb: () => void
-  ) => {
-    try {
-      await deleteIntegration({ id: integrationId, workspaceId, shouldDeleteIntegrationSecrets });
-      if (cb) cb();
-      createNotification({
-        type: "success",
-        text: "Deleted integration"
-      });
-    } catch (err) {
-      console.log(err);
-      createNotification({
-        type: "error",
-        text: "Failed to delete integration"
-      });
-    }
-  };
-
-  const handleIntegrationAuthRevoke = async (provider: string, cb?: () => void) => {
-    const integrationAuthForProvider = integrationAuths?.[provider];
-    if (!integrationAuthForProvider) return;
-
-    try {
-      await deleteIntegrationAuths({
-        integration: provider,
-        workspaceId
-      });
-      if (cb) cb();
-      createNotification({
-        type: "success",
-        text: "Revoked provider authentication"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        type: "error",
-        text: "Failed to revoke provider authentication"
-      });
-    }
-  };
-
-  if (isIntegrationLoading || isCloudIntegrationsLoading)
-    return (
-      <div className="flex flex-col items-center gap-2">
-        <ContentLoader text={["Loading integrations..."]} />
-      </div>
-    );
-
-  return (
-    <div className="container relative mx-auto max-w-7xl text-white">
-      <div className="relative">
-        {view === IntegrationView.List ? (
-          <motion.div
-            key="view-integrations"
-            transition={{ duration: 0.3 }}
-            initial={{ opacity: 0, translateX: 30 }}
-            animate={{ opacity: 1, translateX: 0 }}
-            exit={{ opacity: 0, translateX: 30 }}
-            className="w-full"
-          >
-            <IntegrationsSection
-              cloudIntegrations={cloudIntegrations}
-              onAddIntegration={() => setView(IntegrationView.New)}
-              isLoading={isIntegrationLoading}
-              integrations={integrations}
-              environments={environments}
-              onIntegrationDelete={handleIntegrationDelete}
-              workspaceId={workspaceId}
-            />
-          </motion.div>
-        ) : (
-          <motion.div
-            key="add-integration"
-            transition={{ duration: 0.3 }}
-            initial={{ opacity: 0, translateX: 30 }}
-            animate={{ opacity: 1, translateX: 0 }}
-            exit={{ opacity: 0, translateX: 30 }}
-            className="w-full"
-          >
-            <CloudIntegrationSection
-              onViewActiveIntegrations={
-                integrations?.length ? () => setView(IntegrationView.List) : undefined
-              }
-              isLoading={isCloudIntegrationsLoading || isIntegrationAuthLoading}
-              cloudIntegrations={cloudIntegrations}
-              integrationAuths={integrationAuths}
-              onIntegrationStart={handleProviderIntegrationStart}
-              onIntegrationRevoke={handleIntegrationAuthRevoke}
-            />
-            <FrameworkIntegrationSection />
-            <InfrastructureIntegrationSection />
-          </motion.div>
-        )}
-      </div>
-    </div>
-  );
-};
+  FrameworkIntegrationTab,
+  InfrastructureIntegrationTab,
+  NativeIntegrationsTab,
+  SecretSyncsTab
+} from "./components";
 
 export const IntegrationsListPage = () => {
+  const navigate = useNavigate();
+  const { currentWorkspace } = useWorkspace();
   const { t } = useTranslation();
+
+  const { selectedTab } = useSearch({
+    from: ROUTE_PATHS.SecretManager.IntegrationsListPage.id
+  });
+
+  const updateSelectedTab = (tab: string) => {
+    navigate({
+      to: ROUTE_PATHS.SecretManager.IntegrationsListPage.path,
+      search: (prev) => ({ ...prev, selectedTab: tab }),
+      params: {
+        projectId: currentWorkspace.id
+      }
+    });
+  };
 
   return (
     <>
@@ -223,14 +44,90 @@ export const IntegrationsListPage = () => {
         <meta property="og:title" content="Manage your .env files in seconds" />
         <meta name="og:description" content={t("integrations.description") as string} />
       </Helmet>
-      <ProjectPermissionCan
-        renderGuardBanner
-        passThrough={false}
-        I={ProjectPermissionActions.Read}
-        a={ProjectPermissionSub.Integrations}
-      >
-        <Page />
-      </ProjectPermissionCan>
+      <div className="container relative mx-auto max-w-7xl pb-12 text-white">
+        <div className="mx-6 mb-8">
+          <div className="mb-4 mt-6 flex flex-col items-start justify-between px-2 text-xl">
+            <h1 className="text-3xl font-semibold">Integrations</h1>
+            <p className="text-base text-bunker-300">
+              Manage integrations with third-party services.
+            </p>
+          </div>
+          <div className="mx-2 mb-4 flex flex-col rounded-r border-l-2 border-l-primary bg-mineshaft-300/5 px-4 py-2.5">
+            <div className="mb-1 flex items-center text-sm">
+              <FontAwesomeIcon icon={faInfoCircle} size="sm" className="mr-1 text-primary" />
+              Integrations Update
+            </div>
+            <p className="mb-2 mt-1 text-sm text-bunker-300">
+              Infisical is excited to announce{" "}
+              <a
+                className="text-bunker-200 underline decoration-primary-700 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+                href="https://infisical.com/docs/integrations/secret-syncs/overview"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Secret Syncs
+              </a>
+              , a new way to sync your secrets to third-party services using{" "}
+              <a
+                className="text-bunker-200 underline decoration-primary-700 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+                href="https://infisical.com/docs/integrations/app-connections/overview"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                App Connections
+              </a>
+              , offering deeper customization and re-configurability.
+            </p>
+            <p className="text-sm text-bunker-300">
+              Existing integrations (now called Native Integrations) will continue to be supported
+              as we build out our Secret Sync library.
+            </p>
+          </div>
+          <Tabs value={selectedTab} onValueChange={updateSelectedTab}>
+            <TabList>
+              <Tab value={IntegrationsListPageTabs.SecretSyncs}>
+                Secret Syncs
+                <Badge variant="primary" className="ml-1 cursor-pointer text-xs">
+                  New
+                </Badge>
+              </Tab>
+              <Tab value={IntegrationsListPageTabs.NativeIntegrations}>Native Integrations</Tab>
+              <Tab value={IntegrationsListPageTabs.FrameworkIntegrations}>
+                Framework Integrations
+              </Tab>
+              <Tab value={IntegrationsListPageTabs.InfrastructureIntegrations}>
+                Infrastructure Integrations
+              </Tab>
+            </TabList>
+            <TabPanel value={IntegrationsListPageTabs.SecretSyncs}>
+              <ProjectPermissionCan
+                renderGuardBanner
+                passThrough={false}
+                I={ProjectPermissionActions.Read}
+                a={ProjectPermissionSub.SecretSyncs}
+              >
+                <SecretSyncsTab />
+              </ProjectPermissionCan>
+            </TabPanel>
+            <TabPanel value={IntegrationsListPageTabs.NativeIntegrations}>
+              <ProjectPermissionCan
+                renderGuardBanner
+                passThrough={false}
+                I={ProjectPermissionActions.Read}
+                a={ProjectPermissionSub.Integrations}
+              >
+                <NativeIntegrationsTab />
+              </ProjectPermissionCan>
+            </TabPanel>
+            <TabPanel value={IntegrationsListPageTabs.FrameworkIntegrations}>
+              <FrameworkIntegrationTab />
+            </TabPanel>
+            <TabPanel value={IntegrationsListPageTabs.InfrastructureIntegrations}>
+              <InfrastructureIntegrationTab />
+            </TabPanel>
+          </Tabs>
+        </div>
+      </div>
     </>
   );
 };

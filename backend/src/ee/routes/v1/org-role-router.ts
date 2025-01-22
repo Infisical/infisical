@@ -24,6 +24,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
         ),
         name: z.string().trim(),
         description: z.string().trim().nullish(),
+        // TODO(scott): once UI refactored permissions: OrgPermissionSchema.array()
         permissions: z.any().array()
       }),
       response: {
@@ -96,6 +97,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
           .optional(),
         name: z.string().trim().optional(),
         description: z.string().trim().nullish(),
+        // TODO(scott): once UI refactored permissions: OrgPermissionSchema.array().optional()
         permissions: z.any().array().optional()
       }),
       response: {

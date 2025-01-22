@@ -85,7 +85,36 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.INTEGRATION_SYNCED]: "Integration sync",
   [EventType.CREATE_SHARED_SECRET]: "Create shared secret",
   [EventType.DELETE_SHARED_SECRET]: "Delete shared secret",
-  [EventType.READ_SHARED_SECRET]: "Read shared secret"
+  [EventType.READ_SHARED_SECRET]: "Read shared secret",
+  [EventType.CREATE_CMEK]: "Create KMS key",
+  [EventType.UPDATE_CMEK]: "Update KMS key",
+  [EventType.DELETE_CMEK]: "Delete KMS key",
+  [EventType.GET_CMEKS]: "List KMS keys",
+  [EventType.CMEK_ENCRYPT]: "Encrypt with KMS key",
+  [EventType.CMEK_DECRYPT]: "Decrypt with KMS key",
+  [EventType.UPDATE_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS]:
+    "Update SSO group to organization role mapping",
+  [EventType.GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS]: "List SSO group to organization role mapping",
+  [EventType.GET_PROJECT_TEMPLATES]: "List project templates",
+  [EventType.GET_PROJECT_TEMPLATE]: "Get project template",
+  [EventType.CREATE_PROJECT_TEMPLATE]: "Create project template",
+  [EventType.UPDATE_PROJECT_TEMPLATE]: "Update project template",
+  [EventType.DELETE_PROJECT_TEMPLATE]: "Delete project template",
+  [EventType.APPLY_PROJECT_TEMPLATE]: "Apply project template",
+  [EventType.GET_APP_CONNECTIONS]: "List App Connections",
+  [EventType.GET_AVAILABLE_APP_CONNECTIONS_DETAILS]: "List App Connections Details",
+  [EventType.GET_APP_CONNECTION]: "Get App Connection",
+  [EventType.CREATE_APP_CONNECTION]: "Create App Connection",
+  [EventType.UPDATE_APP_CONNECTION]: "Update App Connection",
+  [EventType.DELETE_APP_CONNECTION]: "Delete App Connection",
+  [EventType.GET_SECRET_SYNCS]: "List Secret Syncs",
+  [EventType.GET_SECRET_SYNC]: "Get Secret Sync",
+  [EventType.CREATE_SECRET_SYNC]: "Create Secret Sync",
+  [EventType.UPDATE_SECRET_SYNC]: "Update Secret Sync",
+  [EventType.DELETE_SECRET_SYNC]: "Delete Secret Sync",
+  [EventType.SECRET_SYNC_SYNC_SECRETS]: "Secret Sync synced secrets",
+  [EventType.SECRET_SYNC_IMPORT_SECRETS]: "Secret Sync imported secrets",
+  [EventType.SECRET_SYNC_REMOVE_SECRETS]: "Secret Sync removed secrets"
 };
 
 export const userAgentTTypeoNameMap: { [K in UserAgentType]: string } = {

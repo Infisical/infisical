@@ -44,11 +44,6 @@ export const GitHubOAuthCallbackPage = () => {
 
       // validate state
       if (state !== localStorage.getItem("latestCSRFToken")) {
-        createNotification({
-          type: "error",
-          text: "Invalid state, redirecting..."
-        });
-        navigate({ to: "/" });
         return;
       }
 

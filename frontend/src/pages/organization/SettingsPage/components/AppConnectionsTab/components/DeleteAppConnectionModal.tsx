@@ -33,7 +33,7 @@ export const DeleteAppConnectionModal = ({ isOpen, onOpenChange, appConnection }
       console.error(err);
 
       createNotification({
-        text: `Failed remove ${APP_CONNECTION_MAP[app].name} connection`,
+        text: `Failed to remove ${APP_CONNECTION_MAP[app].name} connection`,
         type: "error"
       });
     }

@@ -5,6 +5,7 @@ import { createNotification } from "@app/components/notifications";
 import { Button, Table, TableContainer, TBody, Th, THead, Tr } from "@app/components/v2";
 import { OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useGetOrgRole, useUpdateOrgRole } from "@app/hooks/api";
+import { OrgPermissionAppConnectionRow } from "@app/pages/organization/RoleByIDPage/components/RolePermissionsSection/OrgPermissionAppConnectionRow";
 
 import {
   formRolePermission2API,
@@ -69,8 +70,7 @@ const SIMPLE_PERMISSION_OPTIONS = [
     title: "External KMS",
     formName: OrgPermissionSubjects.Kms
   },
-  { title: "Project Templates", formName: OrgPermissionSubjects.ProjectTemplates },
-  { title: "App Connections", formName: OrgPermissionSubjects.AppConnections }
+  { title: "Project Templates", formName: OrgPermissionSubjects.ProjectTemplates }
 ] as const;
 
 type Props = {
@@ -165,6 +165,11 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
                   />
                 );
               })}
+              <OrgPermissionAppConnectionRow
+                control={control}
+                setValue={setValue}
+                isEditable={isCustomRole}
+              />
               <OrgRoleWorkspaceRow
                 control={control}
                 setValue={setValue}

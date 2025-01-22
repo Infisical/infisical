@@ -1,14 +1,10 @@
-import {
-  faArrowUpRightFromSquare,
-  faBookOpen,
-  faPlus,
-  faWrench
-} from "@fortawesome/free-solid-svg-icons";
+import { faArrowUpRightFromSquare, faBookOpen, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
+import { OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
 import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 
@@ -16,23 +12,7 @@ import { AddAppConnectionModal, AppConnectionsTable } from "./components";
 
 export const AppConnectionsTab = withPermission(
   () => {
-    const { subscription } = useSubscription();
-
     const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["addConnection"] as const);
-
-    // TODO: remove once live
-    if (!subscription?.appConnections)
-      return (
-        <div className="m-auto mt-40 flex w-full max-w-2xl flex-col items-center rounded-md bg-mineshaft-800 px-2 pt-4 text-bunker-300">
-          <FontAwesomeIcon icon={faWrench} size="2xl" />
-          <div className="flex flex-col items-center py-4">
-            <div className="text-lg text-mineshaft-200">
-              App Connections are currently unavailable.
-            </div>
-            <span className="text-mineshaft-300">Check back soon.</span>
-          </div>
-        </div>
-      );
 
     return (
       <div>
@@ -62,7 +42,7 @@ export const AppConnectionsTab = withPermission(
               </p>
             </div>
             <OrgPermissionCan
-              I={OrgPermissionActions.Create}
+              I={OrgPermissionAppConnectionActions.Create}
               a={OrgPermissionSubjects.AppConnections}
             >
               {(isAllowed) => (
@@ -91,7 +71,7 @@ export const AppConnectionsTab = withPermission(
     );
   },
   {
-    action: OrgPermissionActions.Read,
+    action: OrgPermissionAppConnectionActions.Read,
     subject: OrgPermissionSubjects.AppConnections
   }
 );

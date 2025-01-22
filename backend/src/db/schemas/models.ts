@@ -131,7 +131,8 @@ export enum TableName {
   WorkflowIntegrations = "workflow_integrations",
   SlackIntegrations = "slack_integrations",
   ProjectSlackConfigs = "project_slack_configs",
-  AppConnection = "app_connections"
+  AppConnection = "app_connections",
+  SecretSync = "secret_syncs"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt";

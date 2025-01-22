@@ -29,7 +29,6 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { useSubscription } from "@app/context";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { TAppConnection, useListAppConnections } from "@app/hooks/api/appConnections";
@@ -52,11 +51,7 @@ type AppConnectionFilters = {
 };
 
 export const AppConnectionsTable = () => {
-  const { subscription } = useSubscription();
-
-  const { isLoading, data: appConnections = [] } = useListAppConnections({
-    enabled: subscription?.appConnections
-  });
+  const { isLoading, data: appConnections = [] } = useListAppConnections();
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "deleteConnection",
