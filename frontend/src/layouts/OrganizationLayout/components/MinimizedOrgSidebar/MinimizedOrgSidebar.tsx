@@ -27,7 +27,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
+  Tooltip
 } from "@app/components/v2";
 import { envConfig } from "@app/config/env";
 import { useOrganization, useSubscription, useUser } from "@app/context";
@@ -386,26 +387,28 @@ export const MinimizedOrgSidebar = () => {
               </DropdownMenuContent>
             </DropdownMenu>
             {subscription && subscription.slug === "starter" && !subscription.has_used_trial && (
-              <button
-                type="button"
-                onClick={async () => {
-                  if (!subscription || !currentOrg) return;
+              <Tooltip content="Start Free Pro Trial" side="right">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!subscription || !currentOrg) return;
 
-                  // direct user to start pro trial
-                  const url = await mutateAsync({
-                    orgId: currentOrg.id,
-                    success_url: window.location.href
-                  });
+                    // direct user to start pro trial
+                    const url = await mutateAsync({
+                      orgId: currentOrg.id,
+                      success_url: window.location.href
+                    });
 
-                  window.location.href = url;
-                }}
-                className="mt-1.5 w-full"
-              >
-                <div className="justify-left mb-1.5 mt-1.5 flex w-full items-center rounded-md bg-mineshaft-600 py-1 pl-4 text-mineshaft-300 duration-200 hover:bg-mineshaft-500 hover:text-primary-400">
-                  <FontAwesomeIcon icon={faInfinity} className="ml-0.5 mr-3 py-2 text-primary" />
-                  Start Free Pro Trial
-                </div>
-              </button>
+                    window.location.href = url;
+                  }}
+                  className="mt-1.5 w-full"
+                >
+                  <div className="justify-left mb-1.5 mt-1.5 flex w-full flex-col items-center rounded-md p-1 text-xs text-mineshaft-300 transition-all duration-150 hover:bg-mineshaft-500 hover:text-primary-400">
+                    <FontAwesomeIcon icon={faInfinity} className="py-2 text-lg text-primary" />
+                    Pro Trial
+                  </div>
+                </button>
+              </Tooltip>
             )}
             <DropdownMenu>
               <DropdownMenuTrigger className="w-full" asChild>
