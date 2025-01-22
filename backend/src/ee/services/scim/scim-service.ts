@@ -531,7 +531,7 @@ export const scimServiceFactory = ({
           firstName: scimUser.name.givenName,
           email: scimUser.emails[0].value,
           lastName: scimUser.name.familyName,
-          isEmailVerified: hasEmailChanged ? trustScimEmails : true
+          isEmailVerified: hasEmailChanged ? trustScimEmails : undefined
         },
         tx
       );
@@ -790,6 +790,21 @@ export const scimServiceFactory = ({
       });
 
     const newGroup = await groupDAL.transaction(async (tx) => {
+      const conflictingGroup = await groupDAL.findOne(
+        {
+          name: displayName,
+          orgId
+        },
+        tx
+      );
+
+      if (conflictingGroup) {
+        throw new ScimRequestError({
+          detail: `Group with name '${displayName}' already exists in the organization`,
+          status: 409
+        });
+      }
+
       const group = await groupDAL.create(
         {
           name: displayName,

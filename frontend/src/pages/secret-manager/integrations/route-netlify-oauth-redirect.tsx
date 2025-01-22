@@ -7,7 +7,7 @@ import { localStorageService } from "@app/helpers/localStorage";
 import { NetlifyOAuthCallbackPageQueryParamsSchema } from "./NetlifyOauthCallbackPage/route";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/integrations/netlify/oauth2/callback"
+  "/_authenticate/_inject-org-details/_org-layout/integrations/netlify/oauth2/callback"
 )({
   validateSearch: zodValidator(NetlifyOAuthCallbackPageQueryParamsSchema),
   beforeLoad: ({ search }) => {

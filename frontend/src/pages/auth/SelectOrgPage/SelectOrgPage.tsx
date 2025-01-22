@@ -85,8 +85,7 @@ export const SelectOrganizationPage = () => {
           }
         }
 
-        window.open(url);
-        window.close();
+        window.location.href = url;
         return;
       }
 

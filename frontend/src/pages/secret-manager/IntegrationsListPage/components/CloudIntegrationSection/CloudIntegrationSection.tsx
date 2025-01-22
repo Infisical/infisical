@@ -104,7 +104,7 @@ export const CloudIntegrationSection = ({
           />
         </div>
       </div>
-      <div className="mx-6 grid grid-cols-3 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-7">
+      <div className="mx-2 grid grid-cols-3 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-7">
         {isLoading &&
           Array.from({ length: 12 }).map((_, index) => (
             <Skeleton className="h-32" key={`cloud-integration-skeleton-${index + 1}`} />

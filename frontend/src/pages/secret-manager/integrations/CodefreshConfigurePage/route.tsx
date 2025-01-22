@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, linkOptions } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
@@ -9,8 +9,25 @@ const CodefreshConfigurePageQueryParamsSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/codefresh/create"
+  "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/codefresh/create"
 )({
   component: CodefreshConfigurePage,
-  validateSearch: zodValidator(CodefreshConfigurePageQueryParamsSchema)
+  validateSearch: zodValidator(CodefreshConfigurePageQueryParamsSchema),
+  beforeLoad: ({ context, params }) => {
+    return {
+      breadcrumbs: [
+        ...context.breadcrumbs,
+        {
+          label: "Integrations",
+          link: linkOptions({
+            to: "/secret-manager/$projectId/integrations",
+            params
+          })
+        },
+        {
+          label: "Codefresh"
+        }
+      ]
+    };
+  }
 });

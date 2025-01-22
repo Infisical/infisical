@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, linkOptions } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
@@ -9,8 +9,25 @@ const WindmillConfigurePageQueryParamsSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/windmill/create"
+  "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/windmill/create"
 )({
   component: WindmillConfigurePage,
-  validateSearch: zodValidator(WindmillConfigurePageQueryParamsSchema)
+  validateSearch: zodValidator(WindmillConfigurePageQueryParamsSchema),
+  beforeLoad: ({ context, params }) => {
+    return {
+      breadcrumbs: [
+        ...context.breadcrumbs,
+        {
+          label: "Integrations",
+          link: linkOptions({
+            to: "/secret-manager/$projectId/integrations",
+            params
+          })
+        },
+        {
+          label: "Windmill"
+        }
+      ]
+    };
+  }
 });

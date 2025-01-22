@@ -289,8 +289,8 @@
       "project-id-description2": "Para más guías, incluyendo ejemplos de código en diferentes lenguajes y frameworks, visita ",
       "auto-generated": "Este es el ID único y autogenerado de proyecto. No se puede modificar.",
       "docs": "Documentación de Infisical",
-      "auto-capitalization": "Mayúsculas automáticas",
-      "auto-capitalization-description": "De acuerdo con los estándares, Infisical pondrá en mayúsculas tus claves. Si quieres desactivar esta funcionalidad, lo puedes hacer aquí."
+      "enforce-capitalization": "Hacer cumplir la capitalización",
+      "enforce-capitalization-description": "Según los estándares, Infisical aplica claves secretas en mayúsculas. Si desea desactivar esta función, puede hacerlo aquí."
     }
   },
   "signup": {

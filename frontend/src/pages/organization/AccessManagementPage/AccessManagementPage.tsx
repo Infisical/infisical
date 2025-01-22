@@ -2,7 +2,7 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrgPermission } from "@app/context";
 import { OrgAccessControlTabSections } from "@app/types/org";
@@ -59,8 +59,11 @@ export const AccessManagementPage = () => {
       <Helmet>
         <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
       </Helmet>
-      <div className="mx-auto mb-6 w-full max-w-7xl px-6 py-6">
-        <p className="mb-4 mr-4 text-3xl font-semibold text-white">Organization Access Control</p>
+      <div className="mx-auto mb-6 w-full max-w-7xl">
+        <PageHeader
+          title="Organization Access Control"
+          description="Manage fine-grained access for users, groups, roles, and identities within your organization resources."
+        />
         <Tabs value={selectedTab} onValueChange={updateSelectedTab}>
           <TabList>
             {tabSections

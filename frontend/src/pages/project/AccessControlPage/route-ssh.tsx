@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, linkOptions } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
@@ -11,8 +11,24 @@ const AccessControlPageQuerySchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/ssh/$projectId/_ssh-layout/access-management"
+  "/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/access-management"
 )({
   component: AccessControlPage,
-  validateSearch: zodValidator(AccessControlPageQuerySchema)
+  validateSearch: zodValidator(AccessControlPageQuerySchema),
+  beforeLoad: ({ context, params }) => {
+    return {
+      breadcrumbs: [
+        ...context.breadcrumbs,
+        {
+          label: "Access Control",
+          link: linkOptions({
+            to: "/ssh/$projectId/access-management",
+            params: {
+              projectId: params.projectId
+            }
+          })
+        }
+      ]
+    };
+  }
 });

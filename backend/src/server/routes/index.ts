@@ -923,7 +923,8 @@ export const registerRoutes = async (
     certificateTemplateDAL,
     projectSlackConfigDAL,
     slackIntegrationDAL,
-    projectTemplateService
+    projectTemplateService,
+    groupProjectDAL
   });
 
   const projectEnvService = projectEnvServiceFactory({

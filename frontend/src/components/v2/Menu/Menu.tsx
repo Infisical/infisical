@@ -1,6 +1,5 @@
 import { ComponentPropsWithRef, ElementType, ReactNode, Ref, useRef } from "react";
 import { DotLottie, DotLottieReact } from "@lottiefiles/dotlottie-react";
-import { motion } from "framer-motion";
 import { twMerge } from "tailwind-merge";
 
 export type MenuProps = {
@@ -30,7 +29,7 @@ export const MenuItem = <T extends ElementType = "button">({
   className,
   isDisabled,
   isSelected,
-  as: Item = "button",
+  as: Item = "div",
   description,
   // wrapping in forward ref with generic component causes the loss of ts definitions on props
   inputRef,
@@ -38,46 +37,40 @@ export const MenuItem = <T extends ElementType = "button">({
 }: MenuItemProps<T> & ComponentPropsWithRef<T>): JSX.Element => {
   const iconRef = useRef<DotLottie | null>(null);
   return (
-    <div onMouseEnter={() => iconRef.current?.play()} onMouseLeave={() => iconRef.current?.stop()}>
-      <li
-        className={twMerge(
-          "duration-50 group mt-0.5 flex cursor-pointer flex-col rounded px-1 py-2 font-inter text-sm text-bunker-100 transition-all hover:bg-mineshaft-700",
-          isSelected && "bg-mineshaft-600 hover:bg-mineshaft-600",
-          isDisabled && "cursor-not-allowed hover:bg-transparent",
-          className
-        )}
-      >
-        <motion.span className="flex w-full flex-row items-center justify-start rounded-sm">
-          <Item
-            type="button"
-            role="menuitem"
-            className="relative flex items-center"
-            ref={inputRef}
-            {...props}
-          >
-            <div
-              className={`${
-                isSelected ? "visisble" : "invisible"
-              } absolute -left-[0.28rem] h-5 w-[0.07rem] rounded-md bg-primary`}
-            />
-            {icon && (
-              <div style={{ width: "22px", height: "22px" }} className="my-auto ml-1 mr-3">
-                <DotLottieReact
-                  dotLottieRefCallback={(el) => {
-                    iconRef.current = el;
-                  }}
-                  src={`/lotties/${icon}.json`}
-                  loop
-                  className="h-full w-full"
-                />
-              </div>
-            )}
-            <span className="flex-grow text-left">{children}</span>
-          </Item>
-          {description && <span className="mt-2 text-xs">{description}</span>}
-        </motion.span>
-      </li>
-    </div>
+    <Item
+      type="button"
+      role="menuitem"
+      className={twMerge(
+        "duration-50 group relative mt-0.5 flex w-full cursor-pointer items-center rounded px-1 py-2 font-inter text-sm text-bunker-100 transition-all hover:bg-mineshaft-700",
+        isSelected && "bg-mineshaft-600 hover:bg-mineshaft-600",
+        isDisabled && "cursor-not-allowed hover:bg-transparent",
+        className
+      )}
+      ref={inputRef}
+      onMouseEnter={() => iconRef.current?.play()}
+      onMouseLeave={() => iconRef.current?.stop()}
+      {...props}
+    >
+      <div
+        className={`${
+          isSelected ? "visisble" : "invisible"
+        } absolute -left-[0.28rem] h-5 w-[0.07rem] rounded-md bg-primary`}
+      />
+      {icon && (
+        <div style={{ width: "22px", height: "22px" }} className="my-auto ml-1 mr-3">
+          <DotLottieReact
+            dotLottieRefCallback={(el) => {
+              iconRef.current = el;
+            }}
+            src={`/lotties/${icon}.json`}
+            loop
+            className="h-full w-full"
+          />
+        </div>
+      )}
+      <span className="flex-grow text-left">{children}</span>
+      {description && <span className="mt-2 text-xs">{description}</span>}
+    </Item>
   );
 };
 
@@ -90,7 +83,7 @@ export type MenuGroupProps = {
 
 export const MenuGroup = ({ children, title }: MenuGroupProps): JSX.Element => (
   <>
-    <li className="p-2 text-xs text-gray-400">{title}</li>
+    <li className="px-2 pt-3 text-xs uppercase text-gray-400">{title}</li>
     {children}
   </>
 );

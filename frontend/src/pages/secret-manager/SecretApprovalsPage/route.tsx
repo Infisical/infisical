@@ -9,8 +9,18 @@ const SecretApprovalPageQueryParams = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/approval"
+  "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/approval"
 )({
   component: SecretApprovalsPage,
-  validateSearch: zodValidator(SecretApprovalPageQueryParams)
+  validateSearch: zodValidator(SecretApprovalPageQueryParams),
+  beforeLoad: ({ context }) => {
+    return {
+      breadcrumbs: [
+        ...context.breadcrumbs,
+        {
+          label: "Approvals"
+        }
+      ]
+    };
+  }
 });

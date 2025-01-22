@@ -1,7 +1,7 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
-import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/workspace/types";
 
@@ -42,12 +42,9 @@ export const SettingsPage = () => {
     <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
       <Helmet>
         <title>{t("common.head-title", { title: t("settings.project.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      <div className="w-full max-w-7xl px-6">
-        <div className="my-6">
-          <p className="text-3xl font-semibold text-gray-200">{t("settings.project.title")}</p>
-        </div>
+      <div className="w-full max-w-7xl">
+        <PageHeader title={t("settings.project.title")} />
         <Tabs defaultValue={tabs[0].key}>
           <TabList>
             {tabs

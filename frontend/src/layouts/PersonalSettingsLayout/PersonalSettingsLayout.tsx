@@ -14,7 +14,7 @@ import { envConfig } from "@app/config/env";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { InsecureConnectionBanner } from "../OrganizationLayout/components/InsecureConnectionBanner";
-import { INFISICAL_SUPPORT_OPTIONS } from "../OrganizationLayout/components/SidebarFooter/SidebarFooter";
+import { INFISICAL_SUPPORT_OPTIONS } from "../OrganizationLayout/components/MinimizedOrgSidebar/MinimizedOrgSidebar";
 
 export const PersonalSettingsLayout = () => {
   const { t } = useTranslation();

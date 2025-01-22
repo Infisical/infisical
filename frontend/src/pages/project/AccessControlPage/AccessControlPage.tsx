@@ -2,9 +2,8 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
-import { getProjectTitle } from "@app/helpers/project";
 import { withProjectPermission } from "@app/hoc";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
@@ -38,11 +37,11 @@ const Page = withProjectPermission(
 
     return (
       <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
-        <div className="mx-auto mb-6 w-full max-w-7xl px-6 py-6">
-          <p className="mb-4 mr-4 text-3xl font-semibold text-white">
-            {currentWorkspace?.type ? getProjectTitle(currentWorkspace?.type) : "Project"} Access
-            Control
-          </p>
+        <div className="mx-auto mb-6 w-full max-w-7xl">
+          <PageHeader
+            title="Access Control"
+            description="Manage fine-grained access for users, groups, roles, and identities within your project resources."
+          />
           <Tabs value={selectedTab} onValueChange={updateSelectedTab}>
             <TabList>
               <Tab value={ProjectAccessControlTabs.Member}>Users</Tab>

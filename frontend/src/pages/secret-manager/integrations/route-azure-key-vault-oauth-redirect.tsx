@@ -7,7 +7,7 @@ import { localStorageService } from "@app/helpers/localStorage";
 import { AzureKeyVaultOauthCallbackQueryParamsSchema } from "./AzureKeyVaultOauthCallbackPage/route";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/integrations/azure-key-vault/oauth2/callback"
+  "/_authenticate/_inject-org-details/_org-layout/integrations/azure-key-vault/oauth2/callback"
 )({
   validateSearch: zodValidator(AzureKeyVaultOauthCallbackQueryParamsSchema),
   beforeLoad: ({ search }) => {

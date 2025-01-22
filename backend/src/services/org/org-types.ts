@@ -35,6 +35,10 @@ export type TInviteUserToOrgDTO = {
   }[];
 } & TOrgPermission;
 
+export type TResendOrgMemberInvitationDTO = {
+  membershipId: string;
+} & TOrgPermission;
+
 export type TVerifyUserToOrgDTO = {
   email: string;
   orgId: string;

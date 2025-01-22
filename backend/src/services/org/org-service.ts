@@ -69,6 +69,7 @@ import {
   TGetOrgMembershipDTO,
   TInviteUserToOrgDTO,
   TListProjectMembershipsByOrgMembershipIdDTO,
+  TResendOrgMemberInvitationDTO,
   TUpdateOrgDTO,
   TUpdateOrgMembershipDTO,
   TVerifyUserToOrgDTO
@@ -584,6 +585,66 @@ export const orgServiceFactory = ({
     });
     return membership;
   };
+
+  const resendOrgMemberInvitation = async ({
+    orgId,
+    actorId,
+    actor,
+    actorAuthMethod,
+    actorOrgId,
+    membershipId
+  }: TResendOrgMemberInvitationDTO) => {
+    const appCfg = getConfig();
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
+
+    const org = await orgDAL.findOrgById(orgId);
+
+    const [inviteeOrgMembership] = await orgDAL.findMembership({
+      [`${TableName.OrgMembership}.orgId` as "orgId"]: orgId,
+      [`${TableName.OrgMembership}.id` as "id"]: membershipId
+    });
+
+    if (inviteeOrgMembership.status !== OrgMembershipStatus.Invited) {
+      throw new BadRequestError({
+        message: "Organization invitation already accepted"
+      });
+    }
+
+    const token = await tokenService.createTokenForUser({
+      type: TokenType.TOKEN_EMAIL_ORG_INVITATION,
+      userId: inviteeOrgMembership.userId,
+      orgId
+    });
+
+    if (!appCfg.isSmtpConfigured) {
+      return {
+        signupToken: {
+          email: inviteeOrgMembership.email as string,
+          link: `${appCfg.SITE_URL}/signupinvite?token=${token}&to=${inviteeOrgMembership.email}&organization_id=${org?.id}`
+        }
+      };
+    }
+
+    await smtpService.sendMail({
+      template: SmtpTemplates.OrgInvite,
+      subjectLine: "Infisical organization invitation",
+      recipients: [inviteeOrgMembership.email as string],
+      substitutions: {
+        inviterFirstName: inviteeOrgMembership.firstName,
+        inviterUsername: inviteeOrgMembership.email,
+        organizationName: org?.name,
+        email: inviteeOrgMembership.email,
+        organizationId: org?.id.toString(),
+        token,
+        callback_url: `${appCfg.SITE_URL}/signupinvite`
+      }
+    });
+
+    return { signupToken: undefined };
+  };
+
   /*
    * Invite user to organization
    */
@@ -627,6 +688,7 @@ export const orgServiceFactory = ({
           }
         })
       : [];
+
     if (projectsToInvite.length !== invitedProjects?.length) {
       throw new ForbiddenRequestError({
         message: "Access denied to one or more of the specified projects"
@@ -1221,6 +1283,7 @@ export const orgServiceFactory = ({
     deleteIncidentContact,
     getOrgGroups,
     listProjectMembershipsByOrgMembershipId,
-    findOrgBySlug
+    findOrgBySlug,
+    resendOrgMemberInvitation
   };
 };

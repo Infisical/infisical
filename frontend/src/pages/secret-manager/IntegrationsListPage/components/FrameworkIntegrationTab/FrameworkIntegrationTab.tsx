@@ -16,7 +16,7 @@ export const FrameworkIntegrationTab = () => {
         <h1 className="text-3xl font-semibold">{t("integrations.framework-integrations")}</h1>
         <p className="text-base text-gray-400">{t("integrations.click-to-setup")}</p>
       </div>
-      <div className="mx-6 mt-4 grid grid-cols-3 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-7">
+      <div className="mx-2 mt-4 grid grid-cols-3 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-7">
         {sortedFrameworks.map((framework) => (
           <a
             key={`framework-integration-${framework.slug}`}

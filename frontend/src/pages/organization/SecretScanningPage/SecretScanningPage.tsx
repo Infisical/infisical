@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearch } from "@tanstack/react-router";
 
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, NoticeBanner, Pagination } from "@app/components/v2";
+import { Button, NoticeBanner, PageHeader, Pagination } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   OrgPermissionActions,
@@ -111,11 +111,11 @@ export const SecretScanningPage = withPermission(
           <meta property="og:image" content="/images/message.png" />
         </Helmet>
         <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
-          <div className="w-full max-w-7xl px-6">
-            <div className="mt-6 text-3xl font-semibold text-gray-200">Secret Scanning</div>
-            <div className="mb-6 text-lg text-mineshaft-300">
-              Automatically monitor your GitHub activity and prevent secret leaks
-            </div>
+          <div className="w-full max-w-7xl">
+            <PageHeader
+              title="Secret Scanning"
+              description="Automatically monitor your GitHub activity and prevent secret leaks"
+            />
             {config.isSecretScanningDisabled && (
               <NoticeBanner title="Secret scanning is in maintenance" className="mb-4">
                 We are working on improving the performance of secret scanning due to increased

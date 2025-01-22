@@ -20,6 +20,7 @@ import {
   DeleteActionModal,
   EmptyState,
   IconButton,
+  PageHeader,
   Skeleton,
   Spinner,
   Table,
@@ -137,30 +138,25 @@ const Page = () => {
   };
 
   return (
-    <div className="container mx-auto h-full w-full max-w-7xl bg-bunker-800 px-6 text-white">
-      <div className="flex items-center justify-between py-6">
-        <div className="flex w-full flex-col">
-          <h2 className="text-3xl font-semibold text-gray-200">Secret Rotation</h2>
-          <p className="text-bunker-300">
-            Stop manually rotating secrets and automate credential rotation.
-          </p>
-        </div>
-        <div className="flex w-max justify-center">
-          <a
-            target="_blank"
-            rel="noopener noreferrer"
-            href="https://infisical.com/docs/documentation/platform/secret-rotation/overview"
-          >
-            <span className="flex w-max cursor-pointer items-center rounded-md border border-mineshaft-500 bg-mineshaft-600 px-4 py-2 text-mineshaft-200 duration-200 hover:border-primary/40 hover:bg-primary/10 hover:text-white">
-              Documentation
-              <FontAwesomeIcon
-                icon={faArrowUpRightFromSquare}
-                className="mb-[0.06rem] ml-1 text-xs"
-              />
-            </span>
-          </a>
-        </div>
-      </div>
+    <div className="container mx-auto w-full max-w-7xl bg-bunker-800 text-white">
+      <PageHeader
+        title="Secret Rotation"
+        description="Stop manually rotating secrets and automate credential rotation."
+      >
+        <a
+          target="_blank"
+          rel="noopener noreferrer"
+          href="https://infisical.com/docs/documentation/platform/secret-rotation/overview"
+        >
+          <span className="flex w-max cursor-pointer items-center rounded-md border border-mineshaft-500 bg-mineshaft-600 px-4 py-2 text-mineshaft-200 duration-200 hover:border-primary/40 hover:bg-primary/10 hover:text-white">
+            Documentation
+            <FontAwesomeIcon
+              icon={faArrowUpRightFromSquare}
+              className="mb-[0.06rem] ml-1 text-xs"
+            />
+          </span>
+        </a>
+      </PageHeader>
       <div className="mb-6">
         <div className="mb-2 mt-6 text-xl font-semibold text-gray-200">Rotated Secrets</div>
         <div className="flex flex-col space-y-2">
@@ -374,7 +370,7 @@ export const SecretRotationPage = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="h-full bg-bunker-800">
+    <div className="bg-bunker-800">
       <Helmet>
         <title>{t("common.head-title", { title: t("settings.project.title") })}</title>
         <link rel="icon" href="/infisical.ico" />

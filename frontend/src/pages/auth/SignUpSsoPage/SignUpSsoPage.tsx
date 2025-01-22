@@ -89,7 +89,7 @@ export const SignupSsoPage = () => {
           alt="Infisical Logo"
         />
       </div>
-      <div>{renderView()}</div>;
+      <div>{renderView()}</div>
     </div>
   );
 };

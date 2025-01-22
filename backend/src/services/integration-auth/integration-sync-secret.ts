@@ -932,15 +932,22 @@ const syncSecretsAWSParameterStore = async ({
           logger.info(
             `getIntegrationSecrets: create secret in AWS SSM for [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]`
           );
-          await ssm
-            .putParameter({
-              Name: `${integration.path}${key}`,
-              Type: "SecureString",
-              Value: secrets[key].value,
-              ...(metadata.kmsKeyId && { KeyId: metadata.kmsKeyId }),
-              Overwrite: true
-            })
-            .promise();
+
+          try {
+            await ssm
+              .putParameter({
+                Name: `${integration.path}${key}`,
+                Type: "SecureString",
+                Value: secrets[key].value,
+                ...(metadata.kmsKeyId && { KeyId: metadata.kmsKeyId }),
+                Overwrite: true
+              })
+              .promise();
+          } catch (error) {
+            (error as { secretKey: string }).secretKey = key;
+            throw error;
+          }
+
           if (metadata.secretAWSTag?.length) {
             try {
               await ssm
@@ -987,15 +994,20 @@ const syncSecretsAWSParameterStore = async ({
 
         // we ensure that the KMS key configured in the integration is applied for ALL parameters on AWS
         if (secrets[key].value && (shouldUpdateKms || awsParameterStoreSecretsObj[key].Value !== secrets[key].value)) {
-          await ssm
-            .putParameter({
-              Name: `${integration.path}${key}`,
-              Type: "SecureString",
-              Value: secrets[key].value,
-              Overwrite: true,
-              ...(metadata.kmsKeyId && { KeyId: metadata.kmsKeyId })
-            })
-            .promise();
+          try {
+            await ssm
+              .putParameter({
+                Name: `${integration.path}${key}`,
+                Type: "SecureString",
+                Value: secrets[key].value,
+                Overwrite: true,
+                ...(metadata.kmsKeyId && { KeyId: metadata.kmsKeyId })
+              })
+              .promise();
+          } catch (error) {
+            (error as { secretKey: string }).secretKey = key;
+            throw error;
+          }
         }
 
         if (awsParameterStoreSecretsObj[key].Name) {

@@ -13,8 +13,18 @@ const IntegrationsListPageQuerySchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/secret-manager/$projectId/_secret-manager-layout/integrations/"
+  "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/"
 )({
   component: IntegrationsListPage,
-  validateSearch: zodValidator(IntegrationsListPageQuerySchema)
+  validateSearch: zodValidator(IntegrationsListPageQuerySchema),
+  beforeLoad: ({ context }) => {
+    return {
+      breadcrumbs: [
+        ...context.breadcrumbs,
+        {
+          label: "Integrations"
+        }
+      ]
+    };
+  }
 });
