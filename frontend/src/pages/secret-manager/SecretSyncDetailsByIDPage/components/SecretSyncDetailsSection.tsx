@@ -1,11 +1,11 @@
 import { useMemo } from "react";
-import { faBan, faEdit } from "@fortawesome/free-solid-svg-icons";
+import { faEdit } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { SecretSyncLabel, SecretSyncStatusBadge } from "@app/components/secret-syncs";
-import { Badge, IconButton } from "@app/components/v2";
+import { SecretSyncLabel } from "@app/components/secret-syncs";
+import { IconButton } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { SecretSyncStatus, TSecretSync } from "@app/hooks/api/secretSyncs";
@@ -16,7 +16,7 @@ type Props = {
 };
 
 export const SecretSyncDetailsSection = ({ secretSync, onEditDetails }: Props) => {
-  const { syncStatus, lastSyncMessage, lastSyncedAt, name, description, isEnabled } = secretSync;
+  const { syncStatus, lastSyncMessage, lastSyncedAt, name, description } = secretSync;
 
   const failureMessage = useMemo(() => {
     if (syncStatus === SecretSyncStatus.Failed) {
@@ -57,16 +57,6 @@ export const SecretSyncDetailsSection = ({ secretSync, onEditDetails }: Props) =
         <div className="space-y-3">
           <SecretSyncLabel label="Name">{name}</SecretSyncLabel>
           <SecretSyncLabel label="Description">{description}</SecretSyncLabel>
-          <SecretSyncLabel label="Status">
-            {isEnabled ? (
-              syncStatus && <SecretSyncStatusBadge status={syncStatus} />
-            ) : (
-              <Badge className="flex w-min items-center gap-1.5 bg-mineshaft-400/50 text-bunker-300">
-                <FontAwesomeIcon icon={faBan} />
-                <span>Disabled</span>
-              </Badge>
-            )}
-          </SecretSyncLabel>
           {lastSyncedAt && (
             <SecretSyncLabel label="Last Synced">
               {format(new Date(lastSyncedAt), "yyyy-MM-dd, hh:mm aaa")}

@@ -218,14 +218,14 @@ export const secretSyncServiceFactory = ({
       const sync = await secretSyncDAL.create({
         folderId: folder.id,
         ...params,
-        ...(params.isEnabled && { syncStatus: SecretSyncStatus.Pending }),
+        ...(params.isAutoSyncEnabled && { syncStatus: SecretSyncStatus.Pending }),
         projectId
       });
 
       return sync;
     });
 
-    if (secretSync.isEnabled) await secretSyncQueue.queueSecretSyncSyncSecretsById({ syncId: secretSync.id });
+    if (secretSync.isAutoSyncEnabled) await secretSyncQueue.queueSecretSyncSyncSecretsById({ syncId: secretSync.id });
 
     return secretSync as TSecretSync;
   };
@@ -317,18 +317,19 @@ export const secretSyncServiceFactory = ({
           });
       }
 
-      const isEnabled = params.isEnabled ?? secretSync.isEnabled;
+      const isAutoSyncEnabled = params.isAutoSyncEnabled ?? secretSync.isAutoSyncEnabled;
 
       const updatedSync = await secretSyncDAL.updateById(syncId, {
         ...params,
-        ...(isEnabled && folderId && { syncStatus: SecretSyncStatus.Pending }),
+        ...(isAutoSyncEnabled && folderId && { syncStatus: SecretSyncStatus.Pending }),
         folderId
       });
 
       return updatedSync;
     });
 
-    if (updatedSecretSync.isEnabled) await secretSyncQueue.queueSecretSyncSyncSecretsById({ syncId: secretSync.id });
+    if (updatedSecretSync.isAutoSyncEnabled)
+      await secretSyncQueue.queueSecretSyncSyncSecretsById({ syncId: secretSync.id });
 
     return updatedSecretSync as TSecretSync;
   };

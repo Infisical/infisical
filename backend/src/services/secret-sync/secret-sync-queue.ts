@@ -827,7 +827,7 @@ export const secretSyncQueueFactory = ({
         `Could not find folder at path "${secretPath}" for environment with slug "${environmentSlug}" in project with ID "${projectId}"`
       );
 
-    const secretSyncs = await secretSyncDAL.find({ folderId: folder.id, isEnabled: true });
+    const secretSyncs = await secretSyncDAL.find({ folderId: folder.id, isAutoSyncEnabled: true });
 
     await Promise.all(secretSyncs.map((secretSync) => queueSecretSyncSyncSecretsById({ syncId: secretSync.id })));
   };

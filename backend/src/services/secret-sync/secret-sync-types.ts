@@ -51,7 +51,7 @@ export type TCreateSecretSyncDTO = Pick<TSecretSync, "syncOptions" | "destinatio
   projectId: string;
   secretPath: string;
   environment: string;
-  isEnabled?: boolean;
+  isAutoSyncEnabled?: boolean;
 };
 
 export type TUpdateSecretSyncDTO = Partial<Omit<TCreateSecretSyncDTO, "projectId">> & {

@@ -26,7 +26,7 @@ const BaseSecretSyncSchema = z.object({
     //   .transform((str) => str.toUpperCase())
     //   .optional()
   }),
-  isEnabled: z.boolean()
+  isAutoSyncEnabled: z.boolean()
 });
 
 const SecretSyncUnionSchema = z.discriminatedUnion("destination", [

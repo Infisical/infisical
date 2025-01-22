@@ -1671,7 +1671,7 @@ export const SecretSyncs = {
       connectionId: `The ID of the ${
         APP_CONNECTION_NAME_MAP[SECRET_SYNC_CONNECTION_MAP[destination]]
       } Connection to use for syncing.`,
-      isEnabled: `Whether secrets should be synced automatically or not.`,
+      isAutoSyncEnabled: `Whether secrets should be automatically synced when changes occur at the source location or not.`,
       syncOptions: "Optional parameters to modify how secrets are synced."
     };
   },
@@ -1686,7 +1686,7 @@ export const SecretSyncs = {
       environment: `The updated slug of the project environment to sync secrets from.`,
       secretPath: `The updated folder path to sync secrets from.`,
       description: `The updated description of the ${destinationName} Sync.`,
-      isEnabled: `Whether secrets should be synced automatically or not.`,
+      isAutoSyncEnabled: `Whether secrets should be automatically synced when changes occur at the source location or not.`,
       syncOptions: "Optional parameters to modify how secrets are synced."
     };
   },

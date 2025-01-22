@@ -76,7 +76,7 @@ export const SecretSyncRow = ({
     name,
     description,
     syncStatus,
-    isEnabled,
+    isAutoSyncEnabled,
     projectId
   } = secretSync;
 
@@ -131,8 +131,7 @@ export const SecretSyncRow = ({
       }
       className={twMerge(
         "group h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700",
-        syncStatus === SecretSyncStatus.Failed && "bg-red/5 hover:bg-red/10",
-        !isEnabled && "bg-mineshaft-400/15 opacity-50 hover:opacity-100"
+        syncStatus === SecretSyncStatus.Failed && "bg-red/5 hover:bg-red/10"
       )}
       key={`sync-${id}`}
     >
@@ -180,58 +179,59 @@ export const SecretSyncRow = ({
       <SecretSyncDestinationCol secretSync={secretSync} />
       <Td>
         <div className="flex items-center gap-1">
-          {isEnabled ? (
-            syncStatus && (
-              <Tooltip
-                position="left"
-                className="max-w-sm"
-                content={
-                  [SecretSyncStatus.Succeeded, SecretSyncStatus.Failed].includes(syncStatus) ? (
-                    <div className="flex flex-col gap-2 whitespace-normal py-1">
-                      {lastSyncedAt && (
-                        <div>
-                          <div
-                            className={`mb-2 flex self-start ${syncStatus === SecretSyncStatus.Failed ? "text-yellow" : "text-green"}`}
-                          >
-                            <FontAwesomeIcon
-                              icon={faCalendarCheck}
-                              className="ml-1 pr-1.5 pt-0.5 text-sm"
-                            />
-                            <div className="text-xs">Last Synced</div>
-                          </div>
-                          <div className="rounded bg-mineshaft-600 p-2 text-xs">
-                            {format(new Date(lastSyncedAt), "yyyy-MM-dd, hh:mm aaa")}
-                          </div>
+          {syncStatus && (
+            <Tooltip
+              position="left"
+              className="max-w-sm"
+              content={
+                [SecretSyncStatus.Succeeded, SecretSyncStatus.Failed].includes(syncStatus) ? (
+                  <div className="flex flex-col gap-2 whitespace-normal py-1">
+                    {lastSyncedAt && (
+                      <div>
+                        <div
+                          className={`mb-2 flex self-start ${syncStatus === SecretSyncStatus.Failed ? "text-yellow" : "text-green"}`}
+                        >
+                          <FontAwesomeIcon
+                            icon={faCalendarCheck}
+                            className="ml-1 pr-1.5 pt-0.5 text-sm"
+                          />
+                          <div className="text-xs">Last Synced</div>
                         </div>
-                      )}
-                      {failureMessage && (
-                        <div>
-                          <div className="mb-2 flex self-start text-red">
-                            <FontAwesomeIcon
-                              icon={faXmark}
-                              className="ml-1 pr-1.5 pt-0.5 text-sm"
-                            />
-                            <div className="text-xs">Failure Reason</div>
-                          </div>
-                          <div className="rounded bg-mineshaft-600 p-2 text-xs">
-                            {failureMessage}
-                          </div>
+                        <div className="rounded bg-mineshaft-600 p-2 text-xs">
+                          {format(new Date(lastSyncedAt), "yyyy-MM-dd, hh:mm aaa")}
                         </div>
-                      )}
-                    </div>
-                  ) : undefined
-                }
-              >
-                <div>
-                  <SecretSyncStatusBadge status={syncStatus} />
-                </div>
-              </Tooltip>
-            )
-          ) : (
-            <Badge className="flex w-min items-center gap-1.5 bg-mineshaft-400/50 text-bunker-300">
-              <FontAwesomeIcon icon={faBan} />
-              <span>Disabled</span>
-            </Badge>
+                      </div>
+                    )}
+                    {failureMessage && (
+                      <div>
+                        <div className="mb-2 flex self-start text-red">
+                          <FontAwesomeIcon icon={faXmark} className="ml-1 pr-1.5 pt-0.5 text-sm" />
+                          <div className="text-xs">Failure Reason</div>
+                        </div>
+                        <div className="rounded bg-mineshaft-600 p-2 text-xs">{failureMessage}</div>
+                      </div>
+                    )}
+                  </div>
+                ) : undefined
+              }
+            >
+              <div>
+                <SecretSyncStatusBadge status={syncStatus} />
+              </div>
+            </Tooltip>
+          )}
+          {!isAutoSyncEnabled && (
+            <Tooltip
+              className="text-xs"
+              content="Auto-Sync is disabled. Changes to the source location will not be automatically synced to the destination."
+            >
+              <div>
+                <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300">
+                  <FontAwesomeIcon icon={faBan} />
+                  {!syncStatus && "Auto-Sync Disabled"}
+                </Badge>
+              </div>
+            </Tooltip>
           )}
           <SecretSyncImportStatusBadge mini secretSync={secretSync} />
           <SecretSyncRemoveStatusBadge mini secretSync={secretSync} />
@@ -359,13 +359,13 @@ export const SecretSyncRow = ({
                 {(isAllowed: boolean) => (
                   <DropdownMenuItem
                     isDisabled={!isAllowed}
-                    icon={<FontAwesomeIcon icon={isEnabled ? faToggleOff : faToggleOn} />}
+                    icon={<FontAwesomeIcon icon={isAutoSyncEnabled ? faToggleOff : faToggleOn} />}
                     onClick={(e) => {
                       e.stopPropagation();
                       onToggleEnable(secretSync);
                     }}
                   >
-                    {isEnabled ? "Disable" : "Enable"} Sync
+                    {isAutoSyncEnabled ? "Disable" : "Enable"} Auto-Sync
                   </DropdownMenuItem>
                 )}
               </ProjectPermissionCan>

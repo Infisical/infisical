@@ -51,7 +51,7 @@ export const CreateSecretSyncForm = ({ destination, onComplete, onCancel }: Prop
     resolver: zodResolver(SecretSyncFormSchema),
     defaultValues: {
       destination,
-      isEnabled: true,
+      isAutoSyncEnabled: true,
       syncOptions: {
         initialSyncBehavior: syncOption?.canImportSecrets
           ? undefined
@@ -161,26 +161,26 @@ export const CreateSecretSyncForm = ({ destination, onComplete, onCancel }: Prop
               <SecretSyncOptionsFields />
               <Controller
                 control={control}
-                name="isEnabled"
+                name="isAutoSyncEnabled"
                 render={({ field: { value, onChange }, fieldState: { error } }) => {
                   return (
                     <FormControl
                       helperText={
                         value
-                          ? "Secrets will automatically be synced when changes occur in the source location"
-                          : "Secrets will not be synced until enabled"
+                          ? "Secrets will automatically be synced when changes occur in the source location."
+                          : "Secrets will not automatically be synced when changes occur in the source location. You can still trigger syncs manually."
                       }
                       isError={Boolean(error)}
                       errorText={error?.message}
                     >
                       <Switch
-                        className="bg-red/50 shadow-inner data-[state=checked]:bg-green/50"
-                        id="secret-sync-enabled"
+                        className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/50"
+                        id="auto-sync-enabled"
                         thumbClassName="bg-mineshaft-800"
                         onCheckedChange={onChange}
                         isChecked={value}
                       >
-                        <p className="w-14">{value ? "Enabled" : "Disabled"}</p>
+                        <p className="w-[8.4rem]">Auto-Sync {value ? "Enabled" : "Disabled"}</p>
                       </Switch>
                     </FormControl>
                   );
@@ -204,9 +204,11 @@ export const CreateSecretSyncForm = ({ destination, onComplete, onCancel }: Prop
             containerClassName="-mt-5"
             onCheckedChange={(isChecked) => setConfirmOverwrite(Boolean(isChecked))}
           >
-            <p className={`mt-5 text-wrap ${confirmOverwrite ? "text-mineshaft-200" : "text-red"}`}>
+            <p
+              className={`mt-5 text-wrap text-xs ${confirmOverwrite ? "text-mineshaft-200" : "text-red"}`}
+            >
               I understand all secrets present in the configured {destinationName} destination will
-              be removed that are not present within Infisical.
+              be removed if they are not present within Infisical.
             </p>
           </Checkbox>
         )}
@@ -222,7 +224,6 @@ export const CreateSecretSyncForm = ({ destination, onComplete, onCancel }: Prop
         >
           {isFinalStep ? "Create Sync" : "Next"}
         </Button>
-        {}
         {selectedTabIndex > 0 && (
           <Button onClick={handlePrev} colorSchema="secondary">
             Back

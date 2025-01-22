@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import {
+  faBan,
   faCheck,
   faCopy,
   faDownload,
@@ -24,6 +25,7 @@ import {
   SecretSyncRemoveStatusBadge
 } from "@app/components/secret-syncs";
 import {
+  Badge,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -84,22 +86,22 @@ export const SecretSyncActionTriggers = ({ secretSync }: Props) => {
   }, [isIdCopied]);
 
   const handleToggleEnableSync = async () => {
-    const isEnabled = !secretSync.isEnabled;
+    const isAutoSyncEnabled = !secretSync.isAutoSyncEnabled;
 
     try {
       await updateSync.mutateAsync({
         syncId: secretSync.id,
         destination: secretSync.destination,
-        isEnabled
+        isAutoSyncEnabled
       });
 
       createNotification({
-        text: `Successfully ${isEnabled ? "enabled" : "disabled"} ${destinationName} Sync`,
+        text: `Successfully ${isAutoSyncEnabled ? "enabled" : "disabled"} auto-sync for ${destinationName} Sync`,
         type: "success"
       });
     } catch {
       createNotification({
-        text: `Failed to ${isEnabled ? "enable" : "disable"} ${destinationName} Sync`,
+        text: `Failed to ${isAutoSyncEnabled ? "enable" : "disable"} auto-sync for ${destinationName} Sync`,
         type: "error"
       });
     }
@@ -129,6 +131,27 @@ export const SecretSyncActionTriggers = ({ secretSync }: Props) => {
       <div className="ml-auto mt-4 flex flex-wrap items-center justify-end gap-2">
         <SecretSyncImportStatusBadge secretSync={secretSync} />
         <SecretSyncRemoveStatusBadge secretSync={secretSync} />
+        {secretSync.isAutoSyncEnabled ? (
+          <Badge
+            variant="success"
+            className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap"
+          >
+            <FontAwesomeIcon icon={faRotate} />
+            <span>Auto-Sync Enabled</span>
+          </Badge>
+        ) : (
+          <Tooltip
+            className="text-xs"
+            content="Auto-Sync is disabled. Changes to the source location will not be automatically synced to the destination."
+          >
+            <div>
+              <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300">
+                <FontAwesomeIcon icon={faBan} />
+                <span>Auto-Sync Disabled</span>
+              </Badge>
+            </div>
+          </Tooltip>
+        )}
         <div>
           <ProjectPermissionCan
             I={ProjectPermissionSecretSyncActions.SyncSecrets}
@@ -230,11 +253,13 @@ export const SecretSyncActionTriggers = ({ secretSync }: Props) => {
                   <DropdownMenuItem
                     isDisabled={!isAllowed}
                     icon={
-                      <FontAwesomeIcon icon={secretSync.isEnabled ? faToggleOff : faToggleOn} />
+                      <FontAwesomeIcon
+                        icon={secretSync.isAutoSyncEnabled ? faToggleOff : faToggleOn}
+                      />
                     }
                     onClick={handleToggleEnableSync}
                   >
-                    {secretSync.isEnabled ? "Disable" : "Enable"} Sync
+                    {secretSync.isAutoSyncEnabled ? "Disable" : "Enable"} Auto-Sync
                   </DropdownMenuItem>
                 )}
               </ProjectPermissionCan>

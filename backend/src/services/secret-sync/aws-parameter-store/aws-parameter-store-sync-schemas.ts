@@ -16,7 +16,7 @@ const AwsParameterStoreSyncDestinationConfigSchema = z.object({
     .trim()
     .min(1, "Parameter Store Path required")
     .max(2048, "Cannot exceed 2048 characters")
-    .regex(/^\/([/]|(([\w-]+\/)+))?$/)
+    .regex(/^\/([/]|(([\w-]+\/)+))?$/, 'Invalid path - must follow "/example/path/" format')
     .describe(SecretSyncs.DESTINATION_CONFIG.AWS_PARAMETER_STORE.PATH)
 });
 

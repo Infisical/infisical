@@ -12,7 +12,7 @@ export const SecretSyncsSchema = z.object({
   name: z.string(),
   description: z.string().nullable().optional(),
   destination: z.string(),
-  isEnabled: z.boolean().default(true),
+  isAutoSyncEnabled: z.boolean().default(true),
   version: z.number().default(1),
   destinationConfig: z.unknown(),
   syncOptions: z.unknown(),

@@ -26,7 +26,7 @@ export const SecretSyncReviewFields = () => {
       initialSyncBehavior
     },
     destination,
-    isEnabled
+    isAutoSyncEnabled
   } = watch();
 
   const destinationName = SECRET_SYNC_MAP[destination].name;
@@ -67,9 +67,9 @@ export const SecretSyncReviewFields = () => {
           <span className="text-sm text-mineshaft-300">Options</span>
         </div>
         <div className="flex flex-wrap gap-x-8 gap-y-2">
-          <SecretSyncLabel label="Sync Enabled">
-            <Badge variant={isEnabled ? "success" : "danger"}>
-              {isEnabled ? "Enabled" : "Disabled"}
+          <SecretSyncLabel label="Auto-Sync">
+            <Badge variant={isAutoSyncEnabled ? "success" : "danger"}>
+              {isAutoSyncEnabled ? "Enabled" : "Disabled"}
             </Badge>
           </SecretSyncLabel>
           <SecretSyncLabel label="Initial Sync Behavior">

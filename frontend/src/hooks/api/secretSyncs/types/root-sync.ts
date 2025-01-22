@@ -10,7 +10,7 @@ export type TRootSecretSync = {
   connectionId: string;
   createdAt: string;
   updatedAt: string;
-  isEnabled: boolean;
+  isAutoSyncEnabled: boolean;
   projectId: string;
   syncStatus: SecretSyncStatus | null;
   lastSyncJobId: string | null;

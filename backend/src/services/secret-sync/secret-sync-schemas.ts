@@ -65,7 +65,7 @@ export const GenericCreateSecretSyncFieldsSchema = (destination: SecretSync, syn
       .min(1, "Secret path required")
       .transform(removeTrailingSlash)
       .describe(SecretSyncs.CREATE(destination).secretPath),
-    isEnabled: z.boolean().default(true).describe(SecretSyncs.CREATE(destination).isEnabled),
+    isAutoSyncEnabled: z.boolean().default(true).describe(SecretSyncs.CREATE(destination).isAutoSyncEnabled),
     syncOptions: SyncOptionsSchema(destination, syncOptionsConfig).describe(SecretSyncs.CREATE(destination).syncOptions)
   });
 
@@ -89,7 +89,7 @@ export const GenericUpdateSecretSyncFieldsSchema = (destination: SecretSync, syn
       .transform(removeTrailingSlash)
       .optional()
       .describe(SecretSyncs.UPDATE(destination).secretPath),
-    isEnabled: z.boolean().optional().describe(SecretSyncs.UPDATE(destination).isEnabled),
+    isAutoSyncEnabled: z.boolean().optional().describe(SecretSyncs.UPDATE(destination).isAutoSyncEnabled),
     syncOptions: SyncOptionsSchema(destination, syncOptionsConfig)
       .optional()
       .describe(SecretSyncs.UPDATE(destination).syncOptions)

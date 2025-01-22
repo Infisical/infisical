@@ -40,7 +40,7 @@ description: "Learn how to configure an AWS Parameter Store Sync for Infisical."
                 - **Overwrite Destination Secrets**: Removes any secrets at the destination endpoint not present in Infisical.
                 - **Import Secrets (Prioritize Infisical)**: Imports secrets from the destination endpoint prior to syncing, prioritizing values present in Infisical if secrets conflict.
                 - **Import Secrets (Prioritize Parameter Store)**: Imports secrets from the destination endpoint prior to syncing, prioritizing values present in Parameter Store if secrets conflict.
-            - **Enabled**: If enabled, secrets will automatically be synced from the source. Disable to prevent syncing until enabled.
+            - **Auto-Sync Enabled**: If enabled, secrets will automatically be synced from the source location when changes occur. Disable to enforce manual syncing only.
 
         6. Configure the **Details** of your Parameter Store Sync, then click **Next**.
         ![Configure Details](/images/secret-syncs/aws-parameter-store/aws-parameter-store-details.png)

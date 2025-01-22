@@ -73,7 +73,7 @@ export const SecretSyncFns = {
         return GithubSyncFns.syncSecrets(secretSync, secretMap);
       default:
         throw new Error(
-          `Unhandled sync destination for push secrets: ${(secretSync as TSecretSyncWithCredentials).destination}`
+          `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
         );
     }
   },
@@ -88,7 +88,7 @@ export const SecretSyncFns = {
         break;
       default:
         throw new Error(
-          `Unhandled sync destination for push secrets: ${(secretSync as TSecretSyncWithCredentials).destination}`
+          `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
         );
     }
 
@@ -105,7 +105,7 @@ export const SecretSyncFns = {
         return GithubSyncFns.removeSecrets(secretSync, secretMap);
       default:
         throw new Error(
-          `Unhandled sync destination for removing secrets: ${(secretSync as TSecretSyncWithCredentials).destination}`
+          `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
         );
     }
   }

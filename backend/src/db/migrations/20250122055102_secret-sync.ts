@@ -10,7 +10,7 @@ export async function up(knex: Knex): Promise<void> {
       t.string("name", 32).notNullable();
       t.string("description");
       t.string("destination").notNullable();
-      t.boolean("isEnabled").notNullable().defaultTo(true);
+      t.boolean("isAutoSyncEnabled").notNullable().defaultTo(true);
       t.integer("version").defaultTo(1).notNullable();
       t.jsonb("destinationConfig").notNullable();
       t.jsonb("syncOptions").notNullable();

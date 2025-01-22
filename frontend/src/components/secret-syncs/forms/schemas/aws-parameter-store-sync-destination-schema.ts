@@ -10,7 +10,7 @@ export const AwsParameterStoreSyncDestinationSchema = z.object({
       .trim()
       .min(1, "Parameter Store Path required")
       .max(2048, "Cannot exceed 2048 characters")
-      .regex(/^\/([/]|(([\w-]+\/)+))?$/),
+      .regex(/^\/([/]|(([\w-]+\/)+))?$/, 'Invalid path - must follow "/example/path/" format'),
     region: z.string().min(1, "Region required")
   })
 });

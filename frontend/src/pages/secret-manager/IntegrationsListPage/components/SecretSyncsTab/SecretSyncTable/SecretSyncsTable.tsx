@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import {
   faArrowDown,
   faArrowUp,
-  faBan,
   faCheck,
   faCheckCircle,
   faFilter,
@@ -61,16 +60,9 @@ enum SecretSyncsOrderBy {
 
 type SecretSyncFilters = {
   destinations: SecretSync[];
-  status: SecretSyncStatusCol[];
+  status: SecretSyncStatus[];
   environmentIds: string[];
 };
-
-enum SecretSyncStatusCol {
-  Pending = "pending",
-  Success = "success",
-  Failed = "failed",
-  Disabled = "disabled"
-}
 
 const getSyncStatusOrderValue = (syncStatus: SecretSyncStatus | null) => {
   switch (syncStatus) {
@@ -91,10 +83,10 @@ type Props = {
 };
 
 const STATUS_ICON_MAP = {
-  [SecretSyncStatusCol.Success]: { icon: faCheck, className: "text-green", name: "Synced" },
-  [SecretSyncStatusCol.Failed]: { icon: faWarning, className: "text-red", name: "Not Synced" },
-  [SecretSyncStatusCol.Pending]: { icon: faRotate, className: "text-yellow", name: "Syncing" },
-  [SecretSyncStatusCol.Disabled]: { icon: faBan, className: "text-mineshaft-400", name: "Disabled" }
+  [SecretSyncStatus.Succeeded]: { icon: faCheck, className: "text-green", name: "Synced" },
+  [SecretSyncStatus.Failed]: { icon: faWarning, className: "text-red", name: "Not Synced" },
+  [SecretSyncStatus.Pending]: { icon: faRotate, className: "text-yellow", name: "Syncing" },
+  [SecretSyncStatus.Running]: { icon: faRotate, className: "text-yellow", name: "Syncing" }
 };
 
 export const SecretSyncsTable = ({ secretSyncs }: Props) => {
@@ -133,8 +125,7 @@ export const SecretSyncsTable = ({ secretSyncs }: Props) => {
     () =>
       secretSyncs
         .filter((secretSync) => {
-          const { destination, name, connection, folder, environment, syncStatus, isEnabled } =
-            secretSync;
+          const { destination, name, connection, folder, environment, syncStatus } = secretSync;
 
           if (filters.destinations.length && !filters.destinations.includes(destination))
             return false;
@@ -146,12 +137,7 @@ export const SecretSyncsTable = ({ secretSyncs }: Props) => {
           )
             return false;
 
-          const status = isEnabled ? syncStatus : SecretSyncStatusCol.Disabled;
-
-          if (
-            filters.status.length &&
-            (!status || !filters.status.includes(status as SecretSyncStatusCol))
-          ) {
+          if (filters.status.length && (!syncStatus || !filters.status.includes(syncStatus))) {
             return false;
           }
 
@@ -184,9 +170,6 @@ export const SecretSyncsTable = ({ secretSyncs }: Props) => {
                   getSecretSyncDestinationColValues(syncTwo).primaryText.toLowerCase()
                 );
             case SecretSyncsOrderBy.Status:
-              if (!syncOne.isEnabled && syncTwo.isEnabled) return 1;
-              if (syncOne.isEnabled && !syncTwo.isEnabled) return -1;
-
               if (!syncOne.syncStatus && syncTwo.syncStatus) return 1;
               if (syncOne.syncStatus && !syncTwo.syncStatus) return -1;
               if (!syncOne.syncStatus && !syncTwo.syncStatus) return 0;
@@ -238,22 +221,22 @@ export const SecretSyncsTable = ({ secretSyncs }: Props) => {
   const handleToggleEnableSync = async (secretSync: TSecretSync) => {
     const destinationName = SECRET_SYNC_MAP[secretSync.destination].name;
 
-    const isEnabled = !secretSync.isEnabled;
+    const isAutoSyncEnabled = !secretSync.isAutoSyncEnabled;
 
     try {
       await updateSync.mutateAsync({
         syncId: secretSync.id,
         destination: secretSync.destination,
-        isEnabled
+        isAutoSyncEnabled
       });
 
       createNotification({
-        text: `Successfully ${isEnabled ? "enabled" : "disabled"} ${destinationName} Sync`,
+        text: `Successfully ${isAutoSyncEnabled ? "enabled" : "disabled"} auto-sync for ${destinationName} Sync`,
         type: "success"
       });
     } catch {
       createNotification({
-        text: `Failed to ${isEnabled ? "enable" : "disable"} ${destinationName} Sync`,
+        text: `Failed to ${isAutoSyncEnabled ? "enable" : "disable"} auto-sync for ${destinationName} Sync`,
         type: "error"
       });
     }
@@ -306,7 +289,7 @@ export const SecretSyncsTable = ({ secretSyncs }: Props) => {
           </DropdownMenuTrigger>
           <DropdownMenuContent className="thin-scrollbar max-h-[70vh] overflow-y-auto" align="end">
             <DropdownMenuLabel>Status</DropdownMenuLabel>
-            {Object.values(SecretSyncStatusCol).map((status) => (
+            {Object.values(SecretSyncStatus).map((status) => (
               <DropdownMenuItem
                 onClick={(e) => {
                   e.preventDefault();
@@ -442,7 +425,7 @@ export const SecretSyncsTable = ({ secretSyncs }: Props) => {
                   </IconButton>
                 </div>
               </Th>
-              <Th className="min-w-[10rem]">
+              <Th className="min-w-[10.5rem]">
                 <div className="flex items-center">
                   Status
                   <IconButton
