@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Switch } from "@app/components/v2";
+import { Button, Checkbox, FormControl, Switch } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import {
@@ -43,6 +43,7 @@ export const CreateSecretSyncForm = ({ destination, onComplete, onCancel }: Prop
   const { name: destinationName } = SECRET_SYNC_MAP[destination];
 
   const [selectedTabIndex, setSelectedTabIndex] = useState(0);
+  const [confirmOverwrite, setConfirmOverwrite] = useState(false);
 
   const { syncOption } = useSecretSyncOption(destination);
 
@@ -93,7 +94,7 @@ export const CreateSecretSyncForm = ({ destination, onComplete, onCancel }: Prop
     setSelectedTabIndex((prev) => prev - 1);
   };
 
-  const { handleSubmit, trigger } = formMethods;
+  const { handleSubmit, trigger, watch, control } = formMethods;
 
   const isStepValid = async (index: number) => trigger(FORM_TABS[index].fields);
 
@@ -122,7 +123,7 @@ export const CreateSecretSyncForm = ({ destination, onComplete, onCancel }: Prop
     return isEnabled;
   };
 
-  const { control } = formMethods;
+  const initialSyncBehavior = watch("syncOptions.initialSyncBehavior");
 
   return (
     <form className={twMerge(isFinalStep && "max-h-[70vh] overflow-y-auto")}>
@@ -195,10 +196,33 @@ export const CreateSecretSyncForm = ({ destination, onComplete, onCancel }: Prop
           </Tab.Panels>
         </Tab.Group>
       </FormProvider>
+      {isFinalStep &&
+        initialSyncBehavior === SecretSyncInitialSyncBehavior.OverwriteDestination && (
+          <Checkbox
+            id="confirm-overwrite"
+            isChecked={confirmOverwrite}
+            containerClassName="-mt-5"
+            onCheckedChange={(isChecked) => setConfirmOverwrite(Boolean(isChecked))}
+          >
+            <p className={`mt-5 text-wrap ${confirmOverwrite ? "text-mineshaft-200" : "text-red"}`}>
+              I understand all secrets present in the configured {destinationName} destination will
+              be removed that are not present within Infisical.
+            </p>
+          </Checkbox>
+        )}
       <div className="flex w-full flex-row-reverse justify-between gap-4 pt-4">
-        <Button onClick={handleNext} colorSchema="secondary">
+        <Button
+          isDisabled={
+            isFinalStep &&
+            initialSyncBehavior === SecretSyncInitialSyncBehavior.OverwriteDestination &&
+            !confirmOverwrite
+          }
+          onClick={handleNext}
+          colorSchema="secondary"
+        >
           {isFinalStep ? "Create Sync" : "Next"}
         </Button>
+        {}
         {selectedTabIndex > 0 && (
           <Button onClick={handlePrev} colorSchema="secondary">
             Back

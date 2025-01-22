@@ -13,6 +13,7 @@ import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import { listSecretSyncOptions } from "@app/services/secret-sync/secret-sync-fns";
 import {
   SecretSyncStatus,
@@ -261,6 +262,13 @@ export const secretSyncServiceFactory = ({
 
     const updatedSecretSync = await secretSyncDAL.transaction(async (tx) => {
       let { folderId } = secretSync;
+
+      if (params.connectionId) {
+        const destinationApp = SECRET_SYNC_CONNECTION_MAP[secretSync.destination as SecretSync];
+
+        // validates permission to connect and app is valid for sync destination
+        await appConnectionService.connectAppConnectionById(destinationApp, params.connectionId, actor);
+      }
 
       if (
         (secretPath && secretPath !== secretSync.folder?.path) ||

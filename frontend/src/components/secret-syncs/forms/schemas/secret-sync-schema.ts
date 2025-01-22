@@ -13,17 +13,18 @@ const BaseSecretSyncSchema = z.object({
   environment: z.object({ slug: z.string(), id: z.string(), name: z.string() }),
   secretPath: z.string().min(1, "Secret path required"),
   syncOptions: z.object({
-    initialSyncBehavior: z.nativeEnum(SecretSyncInitialSyncBehavior),
-    prependPrefix: z
-      .string()
-      .trim()
-      .transform((str) => str.toUpperCase())
-      .optional(),
-    appendSuffix: z
-      .string()
-      .trim()
-      .transform((str) => str.toUpperCase())
-      .optional()
+    initialSyncBehavior: z.nativeEnum(SecretSyncInitialSyncBehavior)
+    // scott: removed temporarily for evaluation of template formatting
+    // prependPrefix: z
+    //   .string()
+    //   .trim()
+    //   .transform((str) => str.toUpperCase())
+    //   .optional(),
+    // appendSuffix: z
+    //   .string()
+    //   .trim()
+    //   .transform((str) => str.toUpperCase())
+    //   .optional()
   }),
   isEnabled: z.boolean()
 });

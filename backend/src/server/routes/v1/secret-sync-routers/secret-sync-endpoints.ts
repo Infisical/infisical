@@ -31,6 +31,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
     isEnabled?: boolean;
   }>;
   updateSchema: z.ZodType<{
+    connectionId?: string;
     name?: string;
     environment?: string;
     secretPath?: string;

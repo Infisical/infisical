@@ -54,7 +54,7 @@ export type TCreateSecretSyncDTO = Pick<TSecretSync, "syncOptions" | "destinatio
   isEnabled?: boolean;
 };
 
-export type TUpdateSecretSyncDTO = Partial<Omit<TCreateSecretSyncDTO, "connectionId" | "projectId">> & {
+export type TUpdateSecretSyncDTO = Partial<Omit<TCreateSecretSyncDTO, "projectId">> & {
   syncId: string;
   destination: SecretSync;
 };

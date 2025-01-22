@@ -2,7 +2,7 @@ import { Controller, useFormContext } from "react-hook-form";
 import { faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { FormControl, Input, Select, SelectItem } from "@app/components/v2";
+import { FormControl, Select, SelectItem } from "@app/components/v2";
 import { SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP, SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { useSecretSyncOption } from "@app/hooks/api/secretSyncs";
 
@@ -91,7 +91,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
           )}
         </>
       )}
-      <Controller
+      {/* <Controller
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <FormControl
             isError={Boolean(error)}
@@ -118,7 +118,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
         )}
         control={control}
         name="syncOptions.appendSuffix"
-      />
+      /> */}
     </>
   );
 };

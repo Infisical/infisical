@@ -1679,6 +1679,9 @@ export const SecretSyncs = {
     const destinationName = SECRET_SYNC_NAME_MAP[destination];
     return {
       syncId: `The ID of the ${destinationName} Sync to be updated.`,
+      connectionId: `The updated ID of the ${
+        APP_CONNECTION_NAME_MAP[SECRET_SYNC_CONNECTION_MAP[destination]]
+      } Connection to use for syncing.`,
       name: `The updated name of the ${destinationName} Sync. Must be slug-friendly.`,
       environment: `The updated slug of the project environment to sync secrets from.`,
       secretPath: `The updated folder path to sync secrets from.`,

@@ -3,6 +3,7 @@ import sodium from "libsodium-wrappers";
 
 import { getGitHubClient } from "@app/services/app-connection/github";
 import { GitHubSyncScope, GitHubSyncVisibility } from "@app/services/secret-sync/github/github-sync-enums";
+import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
@@ -158,7 +159,33 @@ const putSecret = async (client: Octokit, secretSync: TGitHubSyncWithCredentials
 };
 
 export const GithubSyncFns = {
-  syncSecrets: async (secretSync: TGitHubSyncWithCredentials, affixedSecretMap: TSecretMap) => {
+  syncSecrets: async (secretSync: TGitHubSyncWithCredentials, secretMap: TSecretMap) => {
+    switch (secretSync.destinationConfig.scope) {
+      case GitHubSyncScope.Organization:
+        if (Object.values(secretMap).length > 1000) {
+          throw new SecretSyncError({
+            message: "GitHub does not support storing more than 1,000 secrets at the organization level.",
+            shouldRetry: false
+          });
+        }
+        break;
+      case GitHubSyncScope.Repository:
+      case GitHubSyncScope.RepositoryEnvironment:
+        if (Object.values(secretMap).length > 100) {
+          throw new SecretSyncError({
+            message: "GitHub does not support storing more than 100 secrets at the repository level.",
+            shouldRetry: false
+          });
+        }
+        break;
+      default:
+        throw new Error(
+          `Unsupported GitHub Sync scope ${
+            (secretSync.destinationConfig as TGitHubSyncWithCredentials["destinationConfig"]).scope
+          }`
+        );
+    }
+
     const client = getGitHubClient(secretSync.connection);
 
     const encryptedSecrets = await getEncryptedSecrets(client, secretSync);
@@ -166,16 +193,16 @@ export const GithubSyncFns = {
     const publicKey = await getPublicKey(client, secretSync);
 
     for await (const encryptedSecret of encryptedSecrets) {
-      if (!(encryptedSecret.name in affixedSecretMap)) {
+      if (!(encryptedSecret.name in secretMap)) {
         await deleteSecret(client, secretSync, encryptedSecret);
       }
     }
 
     await sodium.ready.then(async () => {
-      for await (const key of Object.keys(affixedSecretMap)) {
+      for await (const key of Object.keys(secretMap)) {
         // convert secret & base64 key to Uint8Array.
         const binaryKey = sodium.from_base64(publicKey.key, sodium.base64_variants.ORIGINAL);
-        const binarySecretValue = sodium.from_string(affixedSecretMap[key].value);
+        const binarySecretValue = sodium.from_string(secretMap[key].value);
 
         // encrypt secret using libsodium
         const encryptedBytes = sodium.crypto_box_seal(binarySecretValue, binaryKey);
@@ -183,24 +210,31 @@ export const GithubSyncFns = {
         // convert encrypted Uint8Array to base64
         const encryptedSecretValue = sodium.to_base64(encryptedBytes, sodium.base64_variants.ORIGINAL);
 
-        await putSecret(client, secretSync, {
-          secret_name: key,
-          encrypted_value: encryptedSecretValue,
-          key_id: publicKey.key_id
-        });
+        try {
+          await putSecret(client, secretSync, {
+            secret_name: key,
+            encrypted_value: encryptedSecretValue,
+            key_id: publicKey.key_id
+          });
+        } catch (error) {
+          throw new SecretSyncError({
+            error,
+            secretKey: key
+          });
+        }
       }
     });
   },
   getSecrets: async (secretSync: TGitHubSyncWithCredentials) => {
     throw new Error(`${SECRET_SYNC_NAME_MAP[secretSync.destination]} does not support importing secrets.`);
   },
-  removeSecrets: async (secretSync: TGitHubSyncWithCredentials, affixedSecretMap: TSecretMap) => {
+  removeSecrets: async (secretSync: TGitHubSyncWithCredentials, secretMap: TSecretMap) => {
     const client = getGitHubClient(secretSync.connection);
 
     const encryptedSecrets = await getEncryptedSecrets(client, secretSync);
 
     for await (const encryptedSecret of encryptedSecrets) {
-      if (encryptedSecret.name in affixedSecretMap) {
+      if (encryptedSecret.name in secretMap) {
         await deleteSecret(client, secretSync, encryptedSecret);
       }
     }

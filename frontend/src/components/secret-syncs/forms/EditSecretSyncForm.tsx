@@ -35,12 +35,13 @@ export const EditSecretSyncForm = ({ secretSync, fields, onComplete }: Props) =>
     reValidateMode: "onChange"
   });
 
-  const onSubmit = async ({ environment, ...formData }: TSecretSyncForm) => {
+  const onSubmit = async ({ environment, connection, ...formData }: TSecretSyncForm) => {
     try {
       const updatedSecretSync = await updateSecretSync.mutateAsync({
         syncId: secretSync.id,
         ...formData,
-        environment: environment?.slug
+        environment: environment?.slug,
+        connectionId: connection.id
       });
 
       createNotification({

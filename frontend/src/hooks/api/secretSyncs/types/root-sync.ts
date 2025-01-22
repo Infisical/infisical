@@ -26,8 +26,8 @@ export type TRootSecretSync = {
   lastRemoveMessage: string | null;
   syncOptions: {
     initialSyncBehavior: SecretSyncInitialSyncBehavior;
-    prependPrefix?: string;
-    appendSuffix?: string;
+    // prependPrefix?: string;
+    // appendSuffix?: string;
   };
   connection: {
     app: AppConnection;

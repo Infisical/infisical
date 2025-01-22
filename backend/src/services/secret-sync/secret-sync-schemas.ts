@@ -13,19 +13,19 @@ const SyncOptionsSchema = (secretSync: SecretSync, options: TSyncOptionsConfig =
     initialSyncBehavior: (options.canImportSecrets
       ? z.nativeEnum(SecretSyncInitialSyncBehavior)
       : z.literal(SecretSyncInitialSyncBehavior.OverwriteDestination)
-    ).describe(SecretSyncs.SYNC_OPTIONS(secretSync).INITIAL_SYNC_BEHAVIOR),
-    prependPrefix: z
-      .string()
-      .trim()
-      .transform((str) => str.toUpperCase())
-      .optional()
-      .describe(SecretSyncs.SYNC_OPTIONS(secretSync).PREPEND_PREFIX),
-    appendSuffix: z
-      .string()
-      .trim()
-      .transform((str) => str.toUpperCase())
-      .optional()
-      .describe(SecretSyncs.SYNC_OPTIONS(secretSync).APPEND_SUFFIX)
+    ).describe(SecretSyncs.SYNC_OPTIONS(secretSync).INITIAL_SYNC_BEHAVIOR)
+    // prependPrefix: z
+    //   .string()
+    //   .trim()
+    //   .transform((str) => str.toUpperCase())
+    //   .optional()
+    //   .describe(SecretSyncs.SYNC_OPTIONS(secretSync).PREPEND_PREFIX),
+    // appendSuffix: z
+    //   .string()
+    //   .trim()
+    //   .transform((str) => str.toUpperCase())
+    //   .optional()
+    //   .describe(SecretSyncs.SYNC_OPTIONS(secretSync).APPEND_SUFFIX)
   });
 
 export const BaseSecretSyncSchema = (destination: SecretSync, syncOptionsConfig?: TSyncOptionsConfig) =>
@@ -72,6 +72,7 @@ export const GenericCreateSecretSyncFieldsSchema = (destination: SecretSync, syn
 export const GenericUpdateSecretSyncFieldsSchema = (destination: SecretSync, syncOptionsConfig?: TSyncOptionsConfig) =>
   z.object({
     name: slugSchema({ field: "name" }).describe(SecretSyncs.UPDATE(destination).name).optional(),
+    connectionId: z.string().uuid().describe(SecretSyncs.UPDATE(destination).connectionId).optional(),
     description: z
       .string()
       .trim()

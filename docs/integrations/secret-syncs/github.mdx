@@ -62,8 +62,6 @@ description: "Learn how to configure a GitHub Sync for Infisical."
                 <Note>
                     GitHub does not support importing secrets.
                 </Note>
-            - **Prepend Prefix**: An optional prefix to prepend to secret keys when synced.
-            - **Append Suffix**: An optional suffix to append to secret keys when synced.
             - **Enabled**: If enabled, secrets will automatically be synced from the source. Disable to prevent syncing until enabled.
 
         6. Configure the **Details** of your GitHub Sync, then click **Next**.
@@ -97,13 +95,12 @@ description: "Learn how to configure a GitHub Sync for Infisical."
             "secretPath": "/my-secrets",
             "isEnabled": true,
             "syncOptions": {
-                "initialSyncBehavior": "overwrite-destination",
-                "prependPrefix": "INF_",
+                "initialSyncBehavior": "overwrite-destination"
             },
             "destinationConfig": {
                 "scope": "repository",
                 "owner": "my-github",
-                "repo: "my-repository"
+                "repo": "my-repository"
             }
         }'
         ```
@@ -135,8 +132,7 @@ description: "Learn how to configure a GitHub Sync for Infisical."
                 "lastRemoveMessage": null,
                 "lastRemovedAt": null,
                 "syncOptions": {
-                    "initialSyncBehavior": "overwrite-destination",
-                    "prependPrefix": "INF_"
+                    "initialSyncBehavior": "overwrite-destination"
                 },
                 "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
                 "connection": {
@@ -157,7 +153,7 @@ description: "Learn how to configure a GitHub Sync for Infisical."
                 "destinationConfig": {
                     "scope": "repository",
                     "owner": "my-github",
-                    "repo: "my-repository"
+                    "repo": "my-repository"
                 }
             }
         }

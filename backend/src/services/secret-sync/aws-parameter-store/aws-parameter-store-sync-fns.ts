@@ -129,7 +129,7 @@ const deleteParametersBatch = async (
 };
 
 export const AwsParameterStoreSyncFns = {
-  syncSecrets: async (secretSync: TAwsParameterStoreSyncWithCredentials, affixedSecretMap: TSecretMap) => {
+  syncSecrets: async (secretSync: TAwsParameterStoreSyncWithCredentials, secretMap: TSecretMap) => {
     const { destinationConfig } = secretSync;
 
     const ssm = await getSSM(secretSync);
@@ -138,7 +138,7 @@ export const AwsParameterStoreSyncFns = {
 
     const awsParameterStoreSecretsRecord = await getParametersByPath(ssm, destinationConfig.path);
 
-    for await (const entry of Object.entries(affixedSecretMap)) {
+    for await (const entry of Object.entries(secretMap)) {
       const [key, { value }] = entry;
 
       // skip empty values (not allowed by AWS) or secrets that haven't changed
@@ -167,7 +167,7 @@ export const AwsParameterStoreSyncFns = {
     for (const entry of Object.entries(awsParameterStoreSecretsRecord)) {
       const [key, parameter] = entry;
 
-      if (!(key in affixedSecretMap) || !affixedSecretMap[key].value) {
+      if (!(key in secretMap) || !secretMap[key].value) {
         parametersToDelete.push(parameter);
       }
     }
@@ -185,7 +185,7 @@ export const AwsParameterStoreSyncFns = {
       Object.entries(awsParameterStoreSecretsRecord).map(([key, value]) => [key, { value: value.Value ?? "" }])
     );
   },
-  removeSecrets: async (secretSync: TAwsParameterStoreSyncWithCredentials, affixedSecretMap: TSecretMap) => {
+  removeSecrets: async (secretSync: TAwsParameterStoreSyncWithCredentials, secretMap: TSecretMap) => {
     const { destinationConfig } = secretSync;
 
     const ssm = await getSSM(secretSync);
@@ -197,7 +197,7 @@ export const AwsParameterStoreSyncFns = {
     for (const entry of Object.entries(awsParameterStoreSecretsRecord)) {
       const [key, param] = entry;
 
-      if (key in affixedSecretMap) {
+      if (key in secretMap) {
         parametersToDelete.push(param);
       }
     }

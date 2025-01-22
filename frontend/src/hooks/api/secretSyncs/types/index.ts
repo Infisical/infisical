@@ -28,7 +28,7 @@ export type TCreateSecretSyncDTO = DiscriminativePick<
 > & { environment: string; secretPath: string; projectId: string };
 
 export type TUpdateSecretSyncDTO = Partial<
-  Omit<TCreateSecretSyncDTO, "connectionId" | "destination" | "projectId">
+  Omit<TCreateSecretSyncDTO, "destination" | "projectId">
 > & {
   destination: SecretSync;
   syncId: string;

@@ -31,6 +31,7 @@ import {
   SecretSyncImportBehavior,
   SecretSyncInitialSyncBehavior
 } from "@app/services/secret-sync/secret-sync-enums";
+import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { parseSyncErrorMessage, SecretSyncFns } from "@app/services/secret-sync/secret-sync-fns";
 import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import {
@@ -93,6 +94,19 @@ type TSecretSyncQueueFactoryDep = {
 type SecretSyncActionJob = Job<
   TQueueSecretSyncSyncSecretsByIdDTO | TQueueSecretSyncImportSecretsByIdDTO | TQueueSecretSyncRemoveSecretsByIdDTO
 >;
+
+const getRequeueDelay = (failureCount?: number) => {
+  if (!failureCount) return 0;
+
+  const baseDelay = 1000;
+  const maxDelay = 30000;
+
+  const delay = Math.min(baseDelay * 2 ** failureCount, maxDelay);
+
+  const jitter = delay * (0.5 + Math.random() * 0.5);
+
+  return jitter;
+};
 
 export const secretSyncQueueFactory = ({
   queueService,
@@ -164,13 +178,18 @@ export const secretSyncQueueFactory = ({
     resourceMetadataDAL
   });
 
-  const $getSecrets = async (secretSync: TSecretSyncRaw | TSecretSyncWithCredentials, includeImports = true) => {
+  const $getInfisicalSecrets = async (
+    secretSync: TSecretSyncRaw | TSecretSyncWithCredentials,
+    includeImports = true
+  ) => {
     const { projectId, folderId, environment, folder } = secretSync;
 
     if (!folderId || !environment || !folder)
-      throw new Error(
-        "Invalid Secret Sync source configuration: folder no longer exists. Please update source environment and secret path."
-      );
+      throw new SecretSyncError({
+        message:
+          "Invalid Secret Sync source configuration: folder no longer exists. Please update source environment and secret path.",
+        shouldRetry: false
+      });
 
     const secretMap: TSecretMap = {};
 
@@ -247,7 +266,7 @@ export const secretSyncQueueFactory = ({
 
   const queueSecretSyncSyncSecretsById = async (payload: TQueueSecretSyncSyncSecretsByIdDTO) =>
     queueService.queue(QueueName.AppConnectionSecretSync, QueueJobs.SecretSyncSyncSecrets, payload, {
-      delay: payload.failedToAcquireLockCount ? 1000 : 0, // we don't want to delay initial job
+      delay: getRequeueDelay(payload.failedToAcquireLockCount), // this is for delaying re-queued jobs if sync is locked
       attempts: 5,
       backoff: {
         type: "exponential",
@@ -309,7 +328,7 @@ export const secretSyncQueueFactory = ({
 
     const importedSecretMap: TSecretMap = {};
 
-    const secretMap = await $getSecrets(secretSync, false);
+    const secretMap = await $getInfisicalSecrets(secretSync, false);
 
     const secretsToCreate: Parameters<typeof $createManySecretsRawFn>[0]["secrets"] = [];
     const secretsToUpdate: Parameters<typeof $updateManySecretsRawFn>[0]["secrets"] = [];
@@ -374,7 +393,7 @@ export const secretSyncQueueFactory = ({
 
     let isSynced = false;
     let syncMessage: string | null = null;
-    const isFinalAttempt = job.attemptsStarted === job.opts.attempts;
+    let isFinalAttempt = job.attemptsStarted === job.opts.attempts;
 
     try {
       const {
@@ -400,7 +419,7 @@ export const secretSyncQueueFactory = ({
         syncOptions: { initialSyncBehavior }
       } = secretSyncWithCredentials;
 
-      const secretMap = await $getSecrets(secretSync);
+      const secretMap = await $getInfisicalSecrets(secretSync);
 
       if (!lastSyncedAt && initialSyncBehavior !== SecretSyncInitialSyncBehavior.OverwriteDestination) {
         const importedSecretMap = await $importSecrets(
@@ -438,8 +457,12 @@ export const secretSyncQueueFactory = ({
 
       syncMessage = parseSyncErrorMessage(err);
 
-      // re-throw so job fails
-      throw err;
+      if (err instanceof SecretSyncError && !err.shouldRetry) {
+        isFinalAttempt = true;
+      } else {
+        // re-throw so job fails
+        throw err;
+      }
     } finally {
       const ranAt = new Date();
       const syncStatus = isSynced ? SecretSyncStatus.Succeeded : SecretSyncStatus.Failed;
@@ -639,7 +662,7 @@ export const secretSyncQueueFactory = ({
         kmsService
       });
 
-      const secretMap = await $getSecrets(secretSync);
+      const secretMap = await $getInfisicalSecrets(secretSync);
 
       await SecretSyncFns.removeSecrets(
         {
@@ -816,7 +839,6 @@ export const secretSyncQueueFactory = ({
       case QueueJobs.SecretSyncSyncSecrets: {
         const { failedToAcquireLockCount = 0, ...rest } = job.data as TQueueSecretSyncSyncSecretsByIdDTO;
 
-        //
         if (failedToAcquireLockCount < 10) {
           await queueSecretSyncSyncSecretsById({ ...rest, failedToAcquireLockCount: failedToAcquireLockCount + 1 });
           return;

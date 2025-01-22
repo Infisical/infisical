@@ -22,55 +22,55 @@ export const listSecretSyncOptions = () => {
   return Object.values(SECRET_SYNC_LIST_OPTIONS).sort((a, b) => a.name.localeCompare(b.name));
 };
 
-const addAffixes = (secretSync: TSecretSyncWithCredentials, unprocessedSecretMap: TSecretMap) => {
-  let secretMap = { ...unprocessedSecretMap };
-
-  const { appendSuffix, prependPrefix } = secretSync.syncOptions;
-
-  if (appendSuffix || prependPrefix) {
-    secretMap = {};
-    Object.entries(unprocessedSecretMap).forEach(([key, value]) => {
-      secretMap[`${prependPrefix || ""}${key}${appendSuffix || ""}`] = value;
-    });
-  }
-
-  return secretMap;
-};
-
-const stripAffixes = (secretSync: TSecretSyncWithCredentials, unprocessedSecretMap: TSecretMap) => {
-  let secretMap = { ...unprocessedSecretMap };
-
-  const { appendSuffix, prependPrefix } = secretSync.syncOptions;
-
-  if (appendSuffix || prependPrefix) {
-    secretMap = {};
-    Object.entries(unprocessedSecretMap).forEach(([key, value]) => {
-      let processedKey = key;
-
-      if (prependPrefix && processedKey.startsWith(prependPrefix)) {
-        processedKey = processedKey.slice(prependPrefix.length);
-      }
-
-      if (appendSuffix && processedKey.endsWith(appendSuffix)) {
-        processedKey = processedKey.slice(0, -appendSuffix.length);
-      }
-
-      secretMap[processedKey] = value;
-    });
-  }
-
-  return secretMap;
-};
+// const addAffixes = (secretSync: TSecretSyncWithCredentials, unprocessedSecretMap: TSecretMap) => {
+//   let secretMap = { ...unprocessedSecretMap };
+//
+//   const { appendSuffix, prependPrefix } = secretSync.syncOptions;
+//
+//   if (appendSuffix || prependPrefix) {
+//     secretMap = {};
+//     Object.entries(unprocessedSecretMap).forEach(([key, value]) => {
+//       secretMap[`${prependPrefix || ""}${key}${appendSuffix || ""}`] = value;
+//     });
+//   }
+//
+//   return secretMap;
+// };
+//
+// const stripAffixes = (secretSync: TSecretSyncWithCredentials, unprocessedSecretMap: TSecretMap) => {
+//   let secretMap = { ...unprocessedSecretMap };
+//
+//   const { appendSuffix, prependPrefix } = secretSync.syncOptions;
+//
+//   if (appendSuffix || prependPrefix) {
+//     secretMap = {};
+//     Object.entries(unprocessedSecretMap).forEach(([key, value]) => {
+//       let processedKey = key;
+//
+//       if (prependPrefix && processedKey.startsWith(prependPrefix)) {
+//         processedKey = processedKey.slice(prependPrefix.length);
+//       }
+//
+//       if (appendSuffix && processedKey.endsWith(appendSuffix)) {
+//         processedKey = processedKey.slice(0, -appendSuffix.length);
+//       }
+//
+//       secretMap[processedKey] = value;
+//     });
+//   }
+//
+//   return secretMap;
+// };
 
 export const SecretSyncFns = {
   syncSecrets: (secretSync: TSecretSyncWithCredentials, secretMap: TSecretMap): Promise<void> => {
-    const affixedSecretMap = addAffixes(secretSync, secretMap);
+    // const affixedSecretMap = addAffixes(secretSync, secretMap);
 
     switch (secretSync.destination) {
       case SecretSync.AWSParameterStore:
-        return AwsParameterStoreSyncFns.syncSecrets(secretSync, affixedSecretMap);
+        return AwsParameterStoreSyncFns.syncSecrets(secretSync, secretMap);
       case SecretSync.GitHub:
-        return GithubSyncFns.syncSecrets(secretSync, affixedSecretMap);
+        return GithubSyncFns.syncSecrets(secretSync, secretMap);
       default:
         throw new Error(
           `Unhandled sync destination for push secrets: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -92,16 +92,17 @@ export const SecretSyncFns = {
         );
     }
 
-    return stripAffixes(secretSync, secretMap);
+    return secretMap;
+    // return stripAffixes(secretSync, secretMap);
   },
   removeSecrets: (secretSync: TSecretSyncWithCredentials, secretMap: TSecretMap): Promise<void> => {
-    const affixedSecretMap = addAffixes(secretSync, secretMap);
+    // const affixedSecretMap = addAffixes(secretSync, secretMap);
 
     switch (secretSync.destination) {
       case SecretSync.AWSParameterStore:
-        return AwsParameterStoreSyncFns.removeSecrets(secretSync, affixedSecretMap);
+        return AwsParameterStoreSyncFns.removeSecrets(secretSync, secretMap);
       case SecretSync.GitHub:
-        return GithubSyncFns.removeSecrets(secretSync, affixedSecretMap);
+        return GithubSyncFns.removeSecrets(secretSync, secretMap);
       default:
         throw new Error(
           `Unhandled sync destination for removing secrets: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -114,7 +115,7 @@ export const parseSyncErrorMessage = (err: unknown): string => {
   if (err instanceof SecretSyncError) {
     return JSON.stringify({
       secretKey: err.secretKey,
-      error: parseSyncErrorMessage(err.error)
+      error: err.message ?? parseSyncErrorMessage(err.error)
     });
   }
 

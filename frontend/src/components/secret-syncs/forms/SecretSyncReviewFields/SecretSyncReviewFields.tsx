@@ -21,7 +21,10 @@ export const SecretSyncReviewFields = () => {
     connection,
     environment,
     secretPath,
-    syncOptions: { appendSuffix, prependPrefix, initialSyncBehavior },
+    syncOptions: {
+      // appendSuffix, prependPrefix,
+      initialSyncBehavior
+    },
     destination,
     isEnabled
   } = watch();
@@ -72,8 +75,8 @@ export const SecretSyncReviewFields = () => {
           <SecretSyncLabel label="Initial Sync Behavior">
             {SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP[initialSyncBehavior](destinationName).name}
           </SecretSyncLabel>
-          <SecretSyncLabel label="Prepend Prefix">{prependPrefix}</SecretSyncLabel>
-          <SecretSyncLabel label="Append Suffix">{appendSuffix}</SecretSyncLabel>
+          {/* <SecretSyncLabel label="Prepend Prefix">{prependPrefix}</SecretSyncLabel>
+          <SecretSyncLabel label="Append Suffix">{appendSuffix}</SecretSyncLabel> */}
         </div>
       </div>
       <div className="flex flex-col gap-3">
