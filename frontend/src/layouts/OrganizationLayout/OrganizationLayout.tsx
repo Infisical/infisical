@@ -32,16 +32,18 @@ export const OrganizationLayout = () => {
 
   const { t } = useTranslation();
 
-  const shouldShowOrgSidebar = !(
-    [
-      linkOptions({ to: "/organization/secret-manager/overview" }).to,
-      linkOptions({ to: "/organization/cert-manager/overview" }).to,
-      linkOptions({ to: "/organization/ssh/overview" }).to,
-      linkOptions({ to: "/organization/kms/overview" }).to,
-      linkOptions({ to: "/organization/secret-scanning" }).to,
-      linkOptions({ to: "/organization/secret-sharing" }).to
-    ] as string[]
-  ).includes(location.pathname);
+  const shouldShowOrgSidebar =
+    location.pathname.startsWith("/organization") &&
+    !(
+      [
+        linkOptions({ to: "/organization/secret-manager/overview" }).to,
+        linkOptions({ to: "/organization/cert-manager/overview" }).to,
+        linkOptions({ to: "/organization/ssh/overview" }).to,
+        linkOptions({ to: "/organization/kms/overview" }).to,
+        linkOptions({ to: "/organization/secret-scanning" }).to,
+        linkOptions({ to: "/organization/secret-sharing" }).to
+      ] as string[]
+    ).includes(location.pathname);
 
   return (
     <>
