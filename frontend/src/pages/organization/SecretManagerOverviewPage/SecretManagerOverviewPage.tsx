@@ -147,7 +147,7 @@ export const ProductOverviewPage = ({ type }: Props) => {
     return {
       workspacesWithFaveProp: workspacesWithFav
     };
-  }, [filteredWorkspaces, projectFavorites]);
+  }, [filteredWorkspaces, projectFavorites, offset, limit, page]);
 
   const addProjectToFavorites = async (projectId: string) => {
     try {
