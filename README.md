@@ -56,7 +56,7 @@ We're on a mission to make security tooling more accessible to everyone, not jus
 - **[Infisical Kubernetes Operator](https://infisical.com/docs/documentation/getting-started/kubernetes)**: Deliver secrets to your Kubernetes workloads and automatically reload deployments.
 - **[Infisical Agent](https://infisical.com/docs/infisical-agent/overview)**: Inject secrets into applications without modifying any code logic.
 
-### Internal PKI:
+### Infisical (Internal) PKI:
 
 - **[Private Certificate Authority](https://infisical.com/docs/documentation/platform/pki/private-ca)**: Create CA hierarchies, configure [certificate templates](https://infisical.com/docs/documentation/platform/pki/certificates#guide-to-issuing-certificates) for policy enforcement, and start issuing X.509 certificates.
 - **[Certificate Management](https://infisical.com/docs/documentation/platform/pki/certificates)**: Manage the certificate lifecycle from [issuance](https://infisical.com/docs/documentation/platform/pki/certificates#guide-to-issuing-certificates) to [revocation](https://infisical.com/docs/documentation/platform/pki/certificates#guide-to-revoking-certificates) with support for CRL.
@@ -64,12 +64,17 @@ We're on a mission to make security tooling more accessible to everyone, not jus
 - **[Infisical PKI Issuer for Kubernetes](https://infisical.com/docs/documentation/platform/pki/pki-issuer)**: Deliver TLS certificates to your Kubernetes workloads with automatic renewal.
 - **[Enrollment over Secure Transport](https://infisical.com/docs/documentation/platform/pki/est)**: Enroll and manage certificates via EST protocol.
 
-### Key Management (KMS):
+### Infisical Key Management System (KMS):
 
 - **[Cryptographic Keys](https://infisical.com/docs/documentation/platform/kms)**: Centrally manage keys across projects through a user-friendly interface or via the API.
 - **[Encrypt and Decrypt Data](https://infisical.com/docs/documentation/platform/kms#guide-to-encrypting-data)**: Use symmetric keys to encrypt and decrypt data.
 
+### Infisical SSH
+
+- **[Signed SSH Certificates](https://infisical.com/docs/documentation/platform/ssh)**: Issue ephemeral SSH credentials for secure, short-lived, and centralized access to infrastructure.
+
 ### General Platform:
+
 - **Authentication Methods**: Authenticate machine identities with Infisical using a cloud-native or platform agnostic authentication method ([Kubernetes Auth](https://infisical.com/docs/documentation/platform/identities/kubernetes-auth), [GCP Auth](https://infisical.com/docs/documentation/platform/identities/gcp-auth), [Azure Auth](https://infisical.com/docs/documentation/platform/identities/azure-auth), [AWS Auth](https://infisical.com/docs/documentation/platform/identities/aws-auth), [OIDC Auth](https://infisical.com/docs/documentation/platform/identities/oidc-auth/general), [Universal Auth](https://infisical.com/docs/documentation/platform/identities/universal-auth)).
 - **[Access Controls](https://infisical.com/docs/documentation/platform/access-controls/overview)**: Define advanced authorization controls for users and machine identities with [RBAC](https://infisical.com/docs/documentation/platform/access-controls/role-based-access-controls), [additional privileges](https://infisical.com/docs/documentation/platform/access-controls/additional-privileges), [temporary access](https://infisical.com/docs/documentation/platform/access-controls/temporary-access), [access requests](https://infisical.com/docs/documentation/platform/access-controls/access-requests), [approval workflows](https://infisical.com/docs/documentation/platform/pr-workflows), and more.
 - **[Audit logs](https://infisical.com/docs/documentation/platform/audit-logs)**: Track every action taken on the platform.
