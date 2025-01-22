@@ -16,7 +16,8 @@ import {
   FormControl,
   Input,
   Select,
-  SelectItem
+  SelectItem,
+  Tooltip
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useWorkspace } from "@app/context";
@@ -192,7 +193,21 @@ export const VercelConfigurePage = () => {
             placeholder="Provide a path, default is /"
           />
         </FormControl>
-        <FormControl label="Vercel App" className="px-6">
+        <FormControl
+          label="Vercel App"
+          helperText={
+            <Tooltip
+              className="max-w-md"
+              content="Double check Infisical's access permissions in Vercel by navigating to Team > Integrations > Infisical > Settings > Manage Access."
+            >
+              <div>
+                <span>Don&#39;t see the project you&#39;re looking for?</span>{" "}
+                <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
+              </div>
+            </Tooltip>
+          }
+          className="px-6"
+        >
           <Select
             value={targetAppId}
             onValueChange={(val) => setTargetAppId(val)}
