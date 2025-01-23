@@ -1,1 +1,0 @@
-export { ShareSecretPage } from "./ShareSecretPage";

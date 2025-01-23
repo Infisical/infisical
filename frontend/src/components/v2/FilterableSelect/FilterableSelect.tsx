@@ -41,12 +41,12 @@ export const FilterableSelect = <T,>({
     }}
     classNames={{
       container: ({ isDisabled }) =>
-        twMerge("w-full text-sm font-inter", isDisabled && "!pointer-events-auto opacity-50"),
+        twMerge("w-full font-inter text-sm", isDisabled && "!pointer-events-auto opacity-50"),
       control: ({ isFocused, isDisabled }) =>
         twMerge(
-          isFocused ? "border-primary-400/50" : "border-mineshaft-600 ",
-          `border w-full p-0.5 rounded-md text-mineshaft-200 font-inter bg-mineshaft-900 ${
-            isDisabled ? "!cursor-not-allowed" : "hover:border-gray-400 hover:cursor-pointer"
+          isFocused ? "border-primary-400/50" : "border-mineshaft-600",
+          `w-full rounded-md border bg-mineshaft-900 p-0.5 font-inter text-mineshaft-200 ${
+            isDisabled ? "!cursor-not-allowed" : "hover:cursor-pointer hover:border-gray-400"
           } `
         ),
       placeholder: () =>
@@ -72,7 +72,7 @@ export const FilterableSelect = <T,>({
         twMerge(
           isFocused && "bg-mineshaft-700 active:bg-mineshaft-600",
           isSelected && "text-mineshaft-200",
-          "hover:cursor-pointer rounded text-xs px-3 py-2"
+          "rounded px-3 py-2 text-xs hover:cursor-pointer"
         ),
       noOptionsMessage: () => "text-mineshaft-400 p-2 rounded-md"
     }}

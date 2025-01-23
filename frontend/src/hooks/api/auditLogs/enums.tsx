@@ -2,7 +2,8 @@ export enum ActorType {
   PLATFORM = "platform",
   USER = "user",
   SERVICE = "service",
-  IDENTITY = "identity"
+  IDENTITY = "identity",
+  UNKNOWN_USER = "unknownUser"
 }
 
 export enum UserAgentType {
@@ -17,6 +18,7 @@ export enum UserAgentType {
 
 export enum EventType {
   GET_SECRETS = "get-secrets",
+  DELETE_SECRETS = "delete-secrets",
   GET_SECRET = "get-secret",
   CREATE_SECRET = "create-secret",
   UPDATE_SECRET = "update-secret",
@@ -94,5 +96,36 @@ export enum EventType {
   GET_CERTIFICATE_TEMPLATE_EST_CONFIG = "get-certificate-template-est-config",
   UPDATE_PROJECT_SLACK_CONFIG = "update-project-slack-config",
   GET_PROJECT_SLACK_CONFIG = "get-project-slack-config",
-  INTEGRATION_SYNCED = "integration-synced"
+  INTEGRATION_SYNCED = "integration-synced",
+  CREATE_SHARED_SECRET = "create-shared-secret",
+  DELETE_SHARED_SECRET = "delete-shared-secret",
+  READ_SHARED_SECRET = "read-shared-secret",
+  CREATE_CMEK = "create-cmek",
+  UPDATE_CMEK = "update-cmek",
+  DELETE_CMEK = "delete-cmek",
+  GET_CMEKS = "get-cmeks",
+  CMEK_ENCRYPT = "cmek-encrypt",
+  CMEK_DECRYPT = "cmek-decrypt",
+  UPDATE_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "update-external-group-org-role-mapping",
+  GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "get-external-group-org-role-mapping",
+  GET_PROJECT_TEMPLATES = "get-project-templates",
+  GET_PROJECT_TEMPLATE = "get-project-template",
+  CREATE_PROJECT_TEMPLATE = "create-project-template",
+  UPDATE_PROJECT_TEMPLATE = "update-project-template",
+  DELETE_PROJECT_TEMPLATE = "delete-project-template",
+  APPLY_PROJECT_TEMPLATE = "apply-project-template",
+  GET_APP_CONNECTIONS = "get-app-connections",
+  GET_AVAILABLE_APP_CONNECTIONS_DETAILS = "get-available-app-connections-details",
+  GET_APP_CONNECTION = "get-app-connection",
+  CREATE_APP_CONNECTION = "create-app-connection",
+  UPDATE_APP_CONNECTION = "update-app-connection",
+  DELETE_APP_CONNECTION = "delete-app-connection",
+  GET_SECRET_SYNCS = "get-secret-syncs",
+  GET_SECRET_SYNC = "get-secret-sync",
+  CREATE_SECRET_SYNC = "create-secret-sync",
+  UPDATE_SECRET_SYNC = "update-secret-sync",
+  DELETE_SECRET_SYNC = "delete-secret-sync",
+  SECRET_SYNC_SYNC_SECRETS = "secret-sync-sync-secrets",
+  SECRET_SYNC_IMPORT_SECRETS = "secret-sync-import-secrets",
+  SECRET_SYNC_REMOVE_SECRETS = "secret-sync-remove-secrets"
 }

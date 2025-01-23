@@ -19,10 +19,10 @@ import {
 export const useCreateSecretV3 = ({
   options
 }: {
-  options?: Omit<MutationOptions<{}, {}, TCreateSecretsV3DTO>, "mutationFn">;
+  options?: Omit<MutationOptions<object, object, TCreateSecretsV3DTO>, "mutationFn">;
 } = {}) => {
   const queryClient = useQueryClient();
-  return useMutation<{}, {}, TCreateSecretsV3DTO>({
+  return useMutation<object, object, TCreateSecretsV3DTO>({
     mutationFn: async ({
       secretPath = "/",
       type,
@@ -47,19 +47,19 @@ export const useCreateSecretV3 = ({
       return data;
     },
     onSuccess: (_, { workspaceId, environment, secretPath }) => {
-      queryClient.invalidateQueries(
-        dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
-      );
-      queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId }));
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
+      });
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ workspaceId }) });
     },
     ...options
   });
@@ -68,10 +68,10 @@ export const useCreateSecretV3 = ({
 export const useUpdateSecretV3 = ({
   options
 }: {
-  options?: Omit<MutationOptions<{}, {}, TUpdateSecretsV3DTO>, "mutationFn">;
+  options?: Omit<MutationOptions<object, object, TUpdateSecretsV3DTO>, "mutationFn">;
 } = {}) => {
   const queryClient = useQueryClient();
-  return useMutation<{}, {}, TUpdateSecretsV3DTO>({
+  return useMutation<object, object, TUpdateSecretsV3DTO>({
     mutationFn: async ({
       secretPath = "/",
       type,
@@ -84,7 +84,8 @@ export const useUpdateSecretV3 = ({
       secretReminderRepeatDays,
       secretReminderNote,
       newSecretName,
-      skipMultilineEncoding
+      skipMultilineEncoding,
+      secretMetadata
     }) => {
       const { data } = await apiRequest.patch(`/api/v3/secrets/raw/${secretKey}`, {
         workspaceId,
@@ -97,24 +98,25 @@ export const useUpdateSecretV3 = ({
         newSecretName,
         secretComment,
         tagIds,
-        secretValue
+        secretValue,
+        secretMetadata
       });
       return data;
     },
     onSuccess: (_, { workspaceId, environment, secretPath }) => {
-      queryClient.invalidateQueries(
-        dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
-      );
-      queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId }));
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
+      });
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ workspaceId }) });
     },
     ...options
   });
@@ -123,11 +125,11 @@ export const useUpdateSecretV3 = ({
 export const useDeleteSecretV3 = ({
   options
 }: {
-  options?: Omit<MutationOptions<{}, {}, TDeleteSecretsV3DTO>, "mutationFn">;
+  options?: Omit<MutationOptions<object, object, TDeleteSecretsV3DTO>, "mutationFn">;
 } = {}) => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TDeleteSecretsV3DTO>({
+  return useMutation<object, object, TDeleteSecretsV3DTO>({
     mutationFn: async ({
       secretPath = "/",
       type,
@@ -148,19 +150,19 @@ export const useDeleteSecretV3 = ({
       return data;
     },
     onSuccess: (_, { workspaceId, environment, secretPath }) => {
-      queryClient.invalidateQueries(
-        dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
-      );
-      queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId }));
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
+      });
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ workspaceId }) });
     },
     ...options
   });
@@ -169,11 +171,11 @@ export const useDeleteSecretV3 = ({
 export const useCreateSecretBatch = ({
   options
 }: {
-  options?: Omit<MutationOptions<{}, {}, TCreateSecretBatchDTO>, "mutationFn">;
+  options?: Omit<MutationOptions<object, object, TCreateSecretBatchDTO>, "mutationFn">;
 } = {}) => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TCreateSecretBatchDTO>({
+  return useMutation<object, object, TCreateSecretBatchDTO>({
     mutationFn: async ({ secretPath = "/", workspaceId, environment, secrets }) => {
       const { data } = await apiRequest.post("/api/v3/secrets/batch/raw", {
         workspaceId,
@@ -184,19 +186,19 @@ export const useCreateSecretBatch = ({
       return data;
     },
     onSuccess: (_, { workspaceId, environment, secretPath }) => {
-      queryClient.invalidateQueries(
-        dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
-      );
-      queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId }));
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
+      });
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ workspaceId }) });
     },
     ...options
   });
@@ -205,11 +207,11 @@ export const useCreateSecretBatch = ({
 export const useUpdateSecretBatch = ({
   options
 }: {
-  options?: Omit<MutationOptions<{}, {}, TUpdateSecretBatchDTO>, "mutationFn">;
+  options?: Omit<MutationOptions<object, object, TUpdateSecretBatchDTO>, "mutationFn">;
 } = {}) => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TUpdateSecretBatchDTO>({
+  return useMutation<object, object, TUpdateSecretBatchDTO>({
     mutationFn: async ({ secretPath = "/", workspaceId, environment, secrets }) => {
       const { data } = await apiRequest.patch("/api/v3/secrets/batch/raw", {
         workspaceId,
@@ -220,19 +222,19 @@ export const useUpdateSecretBatch = ({
       return data;
     },
     onSuccess: (_, { workspaceId, environment, secretPath }) => {
-      queryClient.invalidateQueries(
-        dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
-      );
-      queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId }));
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
+      });
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ workspaceId }) });
     },
     ...options
   });
@@ -241,11 +243,11 @@ export const useUpdateSecretBatch = ({
 export const useDeleteSecretBatch = ({
   options
 }: {
-  options?: Omit<MutationOptions<{}, {}, TDeleteSecretBatchDTO>, "mutationFn">;
+  options?: Omit<MutationOptions<object, object, TDeleteSecretBatchDTO>, "mutationFn">;
 } = {}) => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TDeleteSecretBatchDTO>({
+  return useMutation<object, object, TDeleteSecretBatchDTO>({
     mutationFn: async ({ secretPath = "/", workspaceId, environment, secrets }) => {
       const { data } = await apiRequest.delete("/api/v3/secrets/batch/raw", {
         data: {
@@ -258,19 +260,19 @@ export const useDeleteSecretBatch = ({
       return data;
     },
     onSuccess: (_, { workspaceId, environment, secretPath }) => {
-      queryClient.invalidateQueries(
-        dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
-      );
-      queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId }));
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
+      });
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ workspaceId }) });
     },
     ...options
   });
@@ -279,7 +281,7 @@ export const useDeleteSecretBatch = ({
 export const useMoveSecrets = ({
   options
 }: {
-  options?: Omit<MutationOptions<{}, {}, TMoveSecretsDTO>, "mutationFn">;
+  options?: Omit<MutationOptions<object, object, TMoveSecretsDTO>, "mutationFn">;
 } = {}) => {
   const queryClient = useQueryClient();
 
@@ -288,7 +290,7 @@ export const useMoveSecrets = ({
       isSourceUpdated: boolean;
       isDestinationUpdated: boolean;
     },
-    {},
+    object,
     TMoveSecretsDTO
   >({
     mutationFn: async ({
@@ -316,34 +318,36 @@ export const useMoveSecrets = ({
       return data;
     },
     onSuccess: (_, { projectId, sourceEnvironment, sourceSecretPath }) => {
-      queryClient.invalidateQueries(
-        dashboardKeys.getDashboardSecrets({
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({
           projectId,
           secretPath: sourceSecretPath
         })
-      );
-      queryClient.invalidateQueries(
-        secretKeys.getProjectSecret({
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretKeys.getProjectSecret({
           workspaceId: projectId,
           environment: sourceEnvironment,
           secretPath: sourceSecretPath
         })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.list({
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.list({
           environment: sourceEnvironment,
           workspaceId: projectId,
           directory: sourceSecretPath
         })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.count({
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.count({
           environment: sourceEnvironment,
           workspaceId: projectId,
           directory: sourceSecretPath
         })
-      );
-      queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId: projectId }));
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalRequestKeys.count({ workspaceId: projectId })
+      });
     },
     ...options
   });
@@ -355,7 +359,7 @@ export const createSecret = async (dto: TCreateSecretsV3DTO) => {
 };
 
 export const useBackfillSecretReference = () =>
-  useMutation<{ message: string }, {}, { projectId: string }>({
+  useMutation<{ message: string }, object, { projectId: string }>({
     mutationFn: async ({ projectId }) => {
       const { data } = await apiRequest.post("/api/v3/secrets/backfill-secret-references", {
         projectId

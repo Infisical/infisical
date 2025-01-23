@@ -24,7 +24,7 @@ export const useAddExternalKms = (orgId: string) => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(kmsKeys.getExternalKmsList(orgId));
+      queryClient.invalidateQueries({ queryKey: kmsKeys.getExternalKmsList(orgId) });
     }
   });
 };
@@ -49,8 +49,8 @@ export const useUpdateExternalKms = (orgId: string) => {
       return data;
     },
     onSuccess: (_, { kmsId }) => {
-      queryClient.invalidateQueries(kmsKeys.getExternalKmsList(orgId));
-      queryClient.invalidateQueries(kmsKeys.getExternalKmsById(kmsId));
+      queryClient.invalidateQueries({ queryKey: kmsKeys.getExternalKmsList(orgId) });
+      queryClient.invalidateQueries({ queryKey: kmsKeys.getExternalKmsById(kmsId) });
     }
   });
 };
@@ -64,7 +64,7 @@ export const useRemoveExternalKms = (orgId: string) => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(kmsKeys.getExternalKmsList(orgId));
+      queryClient.invalidateQueries({ queryKey: kmsKeys.getExternalKmsList(orgId) });
     }
   });
 };
@@ -82,7 +82,7 @@ export const useUpdateProjectKms = (projectId: string) => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(kmsKeys.getActiveProjectKms(projectId));
+      queryClient.invalidateQueries({ queryKey: kmsKeys.getActiveProjectKms(projectId) });
     }
   });
 };
@@ -98,7 +98,7 @@ export const useLoadProjectKmsBackup = (projectId: string) => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(kmsKeys.getActiveProjectKms(projectId));
+      queryClient.invalidateQueries({ queryKey: kmsKeys.getActiveProjectKms(projectId) });
     }
   });
 };
@@ -139,7 +139,7 @@ export const useExternalKmsFetchGcpKeys = (orgId: string) => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(kmsKeys.getExternalKmsList(orgId));
+      queryClient.invalidateQueries({ queryKey: kmsKeys.getExternalKmsList(orgId) });
     }
   });
 };

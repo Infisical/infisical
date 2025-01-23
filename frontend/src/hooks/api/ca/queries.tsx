@@ -7,7 +7,7 @@ import { TCertificateAuthority } from "./types";
 
 export const caKeys = {
   getCaById: (caId: string) => [{ caId }, "ca"],
-  getCaCerts: (caId: string) => [{ caId }, "ca-certs"],
+  getCaCerts: (caId: string) => [{ caId }, "ca-cert"],
   getCaCrls: (caId: string) => [{ caId }, "ca-crls"],
   getCaCert: (caId: string) => [{ caId }, "ca-cert"],
   getCaCsr: (caId: string) => [{ caId }, "ca-csr"],

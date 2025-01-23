@@ -13,7 +13,7 @@ export type TabListProps = TabsPrimitive.TabsListProps;
 
 export const TabList = ({ className, children, ...props }: TabListProps) => (
   <TabsPrimitive.List
-    className={twMerge("flex flex-shrink-0  border-b-2 border-mineshaft-800", className)}
+    className={twMerge("flex flex-shrink-0 border-b-2 border-mineshaft-800", className)}
     {...props}
   >
     {children}

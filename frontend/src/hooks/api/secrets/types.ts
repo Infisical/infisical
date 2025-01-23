@@ -1,3 +1,5 @@
+import { ProjectPermissionActions } from "@app/context";
+
 import type { WsTag } from "../tags/types";
 
 export enum SecretType {
@@ -48,6 +50,7 @@ export type SecretV3RawSanitized = {
   overrideAction?: string;
   folderId?: string;
   skipMultilineEncoding?: boolean;
+  secretMetadata?: { key: string; value: string }[];
 };
 
 export type SecretV3Raw = {
@@ -63,6 +66,7 @@ export type SecretV3Raw = {
   secretComment?: string;
   secretReminderNote?: string;
   secretReminderRepeatDays?: number;
+  secretMetadata?: { key: string; value: string }[];
   skipMultilineEncoding?: boolean;
   metadata?: Record<string, string>;
   tags?: WsTag[];
@@ -123,6 +127,13 @@ export type GetSecretVersionsDTO = {
   offset: number;
 };
 
+export type TGetSecretAccessListDTO = {
+  workspaceId: string;
+  environment: string;
+  secretPath: string;
+  secretKey: string;
+};
+
 export type TCreateSecretsV3DTO = {
   secretKey: string;
   secretValue: string;
@@ -148,6 +159,7 @@ export type TUpdateSecretsV3DTO = {
   secretReminderRepeatDays?: number | null;
   secretReminderNote?: string | null;
   tagIds?: string[];
+  secretMetadata?: { key: string; value: string }[];
 };
 
 export type TDeleteSecretsV3DTO = {
@@ -227,4 +239,11 @@ export type TSecretReferenceTraceNode = {
   environment: string;
   secretPath: string;
   children: TSecretReferenceTraceNode[];
+};
+
+export type SecretAccessListEntry = {
+  allowedActions: ProjectPermissionActions[];
+  id: string;
+  membershipId: string;
+  name: string;
 };

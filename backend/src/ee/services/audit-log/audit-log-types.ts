@@ -13,6 +13,13 @@ import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-types";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
+import { SecretSync, SecretSyncImportBehavior } from "@app/services/secret-sync/secret-sync-enums";
+import {
+  TCreateSecretSyncDTO,
+  TDeleteSecretSyncDTO,
+  TSecretSyncRaw,
+  TUpdateSecretSyncDTO
+} from "@app/services/secret-sync/secret-sync-types";
 
 export type TListProjectAuditLogDTO = {
   filter: {
@@ -31,7 +38,7 @@ export type TListProjectAuditLogDTO = {
 
 export type TCreateAuditLogDTO = {
   event: Event;
-  actor: UserActor | IdentityActor | ServiceActor | ScimClientActor | PlatformActor;
+  actor: UserActor | IdentityActor | ServiceActor | ScimClientActor | PlatformActor | UnknownUserActor;
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;
@@ -226,10 +233,22 @@ export enum EventType {
   DELETE_PROJECT_TEMPLATE = "delete-project-template",
   APPLY_PROJECT_TEMPLATE = "apply-project-template",
   GET_APP_CONNECTIONS = "get-app-connections",
+  GET_AVAILABLE_APP_CONNECTIONS_DETAILS = "get-available-app-connections-details",
   GET_APP_CONNECTION = "get-app-connection",
   CREATE_APP_CONNECTION = "create-app-connection",
   UPDATE_APP_CONNECTION = "update-app-connection",
-  DELETE_APP_CONNECTION = "delete-app-connection"
+  DELETE_APP_CONNECTION = "delete-app-connection",
+  CREATE_SHARED_SECRET = "create-shared-secret",
+  DELETE_SHARED_SECRET = "delete-shared-secret",
+  READ_SHARED_SECRET = "read-shared-secret",
+  GET_SECRET_SYNCS = "get-secret-syncs",
+  GET_SECRET_SYNC = "get-secret-sync",
+  CREATE_SECRET_SYNC = "create-secret-sync",
+  UPDATE_SECRET_SYNC = "update-secret-sync",
+  DELETE_SECRET_SYNC = "delete-secret-sync",
+  SECRET_SYNC_SYNC_SECRETS = "secret-sync-sync-secrets",
+  SECRET_SYNC_IMPORT_SECRETS = "secret-sync-import-secrets",
+  SECRET_SYNC_REMOVE_SECRETS = "secret-sync-remove-secrets"
 }
 
 interface UserActorMetadata {
@@ -252,6 +271,8 @@ interface ScimClientActorMetadata {}
 
 interface PlatformActorMetadata {}
 
+interface UnknownUserActorMetadata {}
+
 export interface UserActor {
   type: ActorType.USER;
   metadata: UserActorMetadata;
@@ -265,6 +286,11 @@ export interface ServiceActor {
 export interface PlatformActor {
   type: ActorType.PLATFORM;
   metadata: PlatformActorMetadata;
+}
+
+export interface UnknownUserActor {
+  type: ActorType.UNKNOWN_USER;
+  metadata: UnknownUserActorMetadata;
 }
 
 export interface IdentityActor {
@@ -1883,6 +1909,15 @@ interface GetAppConnectionsEvent {
   };
 }
 
+interface GetAvailableAppConnectionsDetailsEvent {
+  type: EventType.GET_AVAILABLE_APP_CONNECTIONS_DETAILS;
+  metadata: {
+    app?: AppConnection;
+    count: number;
+    connectionIds: string[];
+  };
+}
+
 interface GetAppConnectionEvent {
   type: EventType.GET_APP_CONNECTION;
   metadata: {
@@ -1904,6 +1939,107 @@ interface DeleteAppConnectionEvent {
   type: EventType.DELETE_APP_CONNECTION;
   metadata: {
     connectionId: string;
+  };
+}
+
+interface CreateSharedSecretEvent {
+  type: EventType.CREATE_SHARED_SECRET;
+  metadata: {
+    id: string;
+    accessType: string;
+    name?: string;
+    expiresAfterViews?: number;
+    usingPassword: boolean;
+    expiresAt: string;
+  };
+}
+
+interface DeleteSharedSecretEvent {
+  type: EventType.DELETE_SHARED_SECRET;
+  metadata: {
+    id: string;
+    name?: string;
+  };
+}
+
+interface ReadSharedSecretEvent {
+  type: EventType.READ_SHARED_SECRET;
+  metadata: {
+    id: string;
+    name?: string;
+    accessType: string;
+  };
+}
+
+interface GetSecretSyncsEvent {
+  type: EventType.GET_SECRET_SYNCS;
+  metadata: {
+    destination?: SecretSync;
+    count: number;
+    syncIds: string[];
+  };
+}
+
+interface GetSecretSyncEvent {
+  type: EventType.GET_SECRET_SYNC;
+  metadata: {
+    destination: SecretSync;
+    syncId: string;
+  };
+}
+
+interface CreateSecretSyncEvent {
+  type: EventType.CREATE_SECRET_SYNC;
+  metadata: Omit<TCreateSecretSyncDTO, "projectId"> & { syncId: string };
+}
+
+interface UpdateSecretSyncEvent {
+  type: EventType.UPDATE_SECRET_SYNC;
+  metadata: TUpdateSecretSyncDTO;
+}
+
+interface DeleteSecretSyncEvent {
+  type: EventType.DELETE_SECRET_SYNC;
+  metadata: TDeleteSecretSyncDTO;
+}
+
+interface SecretSyncSyncSecretsEvent {
+  type: EventType.SECRET_SYNC_SYNC_SECRETS;
+  metadata: Pick<
+    TSecretSyncRaw,
+    "syncOptions" | "destinationConfig" | "destination" | "syncStatus" | "connectionId" | "folderId"
+  > & {
+    syncId: string;
+    syncMessage: string | null;
+    jobId: string;
+    jobRanAt: Date;
+  };
+}
+
+interface SecretSyncImportSecretsEvent {
+  type: EventType.SECRET_SYNC_IMPORT_SECRETS;
+  metadata: Pick<
+    TSecretSyncRaw,
+    "syncOptions" | "destinationConfig" | "destination" | "importStatus" | "connectionId" | "folderId"
+  > & {
+    syncId: string;
+    importMessage: string | null;
+    jobId: string;
+    jobRanAt: Date;
+    importBehavior: SecretSyncImportBehavior;
+  };
+}
+
+interface SecretSyncRemoveSecretsEvent {
+  type: EventType.SECRET_SYNC_REMOVE_SECRETS;
+  metadata: Pick<
+    TSecretSyncRaw,
+    "syncOptions" | "destinationConfig" | "destination" | "removeStatus" | "connectionId" | "folderId"
+  > & {
+    syncId: string;
+    removeMessage: string | null;
+    jobId: string;
+    jobRanAt: Date;
   };
 }
 
@@ -2080,7 +2216,19 @@ export type Event =
   | DeleteProjectTemplateEvent
   | ApplyProjectTemplateEvent
   | GetAppConnectionsEvent
+  | GetAvailableAppConnectionsDetailsEvent
   | GetAppConnectionEvent
   | CreateAppConnectionEvent
   | UpdateAppConnectionEvent
-  | DeleteAppConnectionEvent;
+  | DeleteAppConnectionEvent
+  | CreateSharedSecretEvent
+  | DeleteSharedSecretEvent
+  | ReadSharedSecretEvent
+  | GetSecretSyncsEvent
+  | GetSecretSyncEvent
+  | CreateSecretSyncEvent
+  | UpdateSecretSyncEvent
+  | DeleteSecretSyncEvent
+  | SecretSyncSyncSecretsEvent
+  | SecretSyncImportSecretsEvent
+  | SecretSyncRemoveSecretsEvent;

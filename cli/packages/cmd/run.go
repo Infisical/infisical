@@ -419,22 +419,23 @@ func executeCommandWithWatchMode(commandFlag string, args []string, watchModeInt
 
 	for {
 		<-recheckSecretsChannel
-		watchMutex.Lock()
+		func() {
+			watchMutex.Lock()
+			defer watchMutex.Unlock()
 
-		newEnvironmentVariables, err := fetchAndFormatSecretsForShell(request, projectConfigDir, secretOverriding, token)
-		if err != nil {
-			log.Error().Err(err).Msg("[HOT RELOAD] Failed to fetch secrets")
-			continue
-		}
+			newEnvironmentVariables, err := fetchAndFormatSecretsForShell(request, projectConfigDir, secretOverriding, token)
+			if err != nil {
+				log.Error().Err(err).Msg("[HOT RELOAD] Failed to fetch secrets")
+				return
+			}
 
-		if newEnvironmentVariables.ETag != currentETag {
-			runCommandWithWatcher(newEnvironmentVariables)
-		} else {
-			log.Debug().Msg("[HOT RELOAD] No changes detected in secrets, not reloading process")
-		}
+			if newEnvironmentVariables.ETag != currentETag {
+				runCommandWithWatcher(newEnvironmentVariables)
+			} else {
+				log.Debug().Msg("[HOT RELOAD] No changes detected in secrets, not reloading process")
+			}
 
-		watchMutex.Unlock()
-
+		}()
 	}
 }
 

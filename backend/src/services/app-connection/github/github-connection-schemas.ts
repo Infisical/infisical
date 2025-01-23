@@ -57,7 +57,7 @@ export const UpdateGitHubConnectionSchema = z
 
 const BaseGitHubConnectionSchema = BaseAppConnectionSchema.extend({ app: z.literal(AppConnection.GitHub) });
 
-export const GitHubAppConnectionSchema = z.intersection(
+export const GitHubConnectionSchema = z.intersection(
   BaseGitHubConnectionSchema,
   z.discriminatedUnion("method", [
     z.object({
@@ -74,19 +74,19 @@ export const GitHubAppConnectionSchema = z.intersection(
 export const SanitizedGitHubConnectionSchema = z.discriminatedUnion("method", [
   BaseGitHubConnectionSchema.extend({
     method: z.literal(GitHubConnectionMethod.App),
-    credentials: GitHubConnectionAppOutputCredentialsSchema.omit({ installationId: true })
+    credentials: GitHubConnectionAppOutputCredentialsSchema.pick({})
   }),
   BaseGitHubConnectionSchema.extend({
     method: z.literal(GitHubConnectionMethod.OAuth),
-    credentials: GitHubConnectionOAuthOutputCredentialsSchema.omit({ accessToken: true })
+    credentials: GitHubConnectionOAuthOutputCredentialsSchema.pick({})
   })
 ]);
 
 export const GitHubConnectionListItemSchema = z.object({
   name: z.literal("GitHub"),
   app: z.literal(AppConnection.GitHub),
-  // the below is preferable but currently breaks mintlify
-  // methods: z.tuple([z.literal(GitHubConnectionMethod.GitHubApp), z.literal(GitHubConnectionMethod.OAuth)]),
+  // the below is preferable but currently breaks with our zod to json schema parser
+  // methods: z.tuple([z.literal(GitHubConnectionMethod.App), z.literal(GitHubConnectionMethod.OAuth)]),
   methods: z.nativeEnum(GitHubConnectionMethod).array(),
   oauthClientId: z.string().optional(),
   appClientSlug: z.string().optional()

@@ -9,6 +9,7 @@ export type SwitchProps = Omit<SwitchPrimitive.SwitchProps, "checked" | "disable
   isRequired?: boolean;
   isDisabled?: boolean;
   containerClassName?: string;
+  thumbClassName?: string;
 };
 
 export const Switch = ({
@@ -19,6 +20,7 @@ export const Switch = ({
   isDisabled,
   isRequired,
   containerClassName,
+  thumbClassName,
   ...props
 }: SwitchProps): JSX.Element => (
   <div className={twMerge("flex items-center font-inter text-bunker-300", containerClassName)}>
@@ -38,7 +40,12 @@ export const Switch = ({
       )}
       id={id}
     >
-      <SwitchPrimitive.Thumb className="block h-4 w-4 translate-x-0.5 rounded-full border-none bg-black shadow transition-all will-change-transform data-[state=checked]:translate-x-[18px]" />
+      <SwitchPrimitive.Thumb
+        className={twMerge(
+          "block h-4 w-4 translate-x-0.5 rounded-full border-none bg-black shadow transition-all will-change-transform data-[state=checked]:translate-x-[18px]",
+          thumbClassName
+        )}
+      />
     </SwitchPrimitive.Root>
   </div>
 );

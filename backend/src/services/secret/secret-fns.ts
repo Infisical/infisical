@@ -3,6 +3,7 @@ import { subject } from "@casl/ability";
 import path from "path";
 
 import {
+  ActionProjectType,
   SecretEncryptionAlgo,
   SecretKeyEncoding,
   SecretType,
@@ -176,13 +177,14 @@ export const recursivelyGetSecretPaths = ({
       folderId: p.folderId
     }));
 
-    const { permission } = await permissionService.getProjectPermission(
-      auth.actor,
-      auth.actorId,
+    const { permission } = await permissionService.getProjectPermission({
+      actor: auth.actor,
+      actorId: auth.actorId,
       projectId,
-      auth.actorAuthMethod,
-      auth.actorOrgId
-    );
+      actorAuthMethod: auth.actorAuthMethod,
+      actorOrgId: auth.actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     // Filter out paths that the user does not have permission to access, and paths that are not in the current path
     const allowedPaths = paths.filter(
@@ -749,7 +751,8 @@ export const createManySecretsRawFnFactory = ({
   secretVersionV2BridgeDAL,
   secretV2BridgeDAL,
   secretVersionTagV2BridgeDAL,
-  kmsService
+  kmsService,
+  resourceMetadataDAL
 }: TCreateManySecretsRawFnFactory) => {
   const getBotKeyFn = getBotKeyFnFactory(projectBotDAL, projectDAL);
   const createManySecretsRawFn = async ({
@@ -760,7 +763,7 @@ export const createManySecretsRawFnFactory = ({
     userId
   }: TCreateManySecretsRawFn) => {
     const { botKey, shouldUseSecretV2Bridge } = await getBotKeyFn(projectId);
-
+    const project = await projectDAL.findById(projectId);
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
       throw new NotFoundError({
@@ -814,7 +817,9 @@ export const createManySecretsRawFnFactory = ({
             tagIds: el.tags
           })),
           folderId,
+          orgId: project.orgId,
           secretDAL: secretV2BridgeDAL,
+          resourceMetadataDAL,
           secretVersionDAL: secretVersionV2BridgeDAL,
           secretTagDAL,
           secretVersionTagDAL: secretVersionTagV2BridgeDAL,
@@ -909,6 +914,7 @@ export const updateManySecretsRawFnFactory = ({
   secretVersionTagV2BridgeDAL,
   secretVersionV2BridgeDAL,
   secretV2BridgeDAL,
+  resourceMetadataDAL,
   kmsService
 }: TUpdateManySecretsRawFnFactory) => {
   const getBotKeyFn = getBotKeyFnFactory(projectBotDAL, projectDAL);
@@ -920,6 +926,7 @@ export const updateManySecretsRawFnFactory = ({
     userId
   }: TUpdateManySecretsRawFn): Promise<Array<{ id: string }>> => {
     const { botKey, shouldUseSecretV2Bridge } = await getBotKeyFn(projectId);
+    const project = await projectDAL.findById(projectId);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
@@ -988,11 +995,13 @@ export const updateManySecretsRawFnFactory = ({
       const updatedSecrets = await secretDAL.transaction(async (tx) =>
         fnSecretV2BridgeBulkUpdate({
           folderId,
+          orgId: project.orgId,
           tx,
           inputSecrets: inputSecrets.map((el) => ({
             filter: { id: secretsToUpdateInDBGroupedByKey[el.key][0].id, type: SecretType.Shared },
             data: el
           })),
+          resourceMetadataDAL,
           secretDAL: secretV2BridgeDAL,
           secretVersionDAL: secretVersionV2BridgeDAL,
           secretTagDAL,

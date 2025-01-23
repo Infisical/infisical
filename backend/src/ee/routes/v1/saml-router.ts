@@ -84,7 +84,10 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
                 samlConfig.audience = `spn:${ssoConfig.issuer}`;
               }
             }
-            if (ssoConfig.authProvider === SamlProviders.GOOGLE_SAML) {
+            if (
+              ssoConfig.authProvider === SamlProviders.GOOGLE_SAML ||
+              ssoConfig.authProvider === SamlProviders.AUTH0_SAML
+            ) {
               samlConfig.wantAssertionsSigned = false;
             }
 
@@ -123,7 +126,10 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
               `email: ${email} firstName: ${profile.firstName as string}`
             );
 
-            throw new Error("Invalid saml request. Missing email or first name");
+            throw new BadRequestError({
+              message:
+                "Missing email or first name. Please double check your SAML attribute mapping for the selected provider."
+            });
           }
 
           const userMetadata = Object.keys(profile.attributes || {})

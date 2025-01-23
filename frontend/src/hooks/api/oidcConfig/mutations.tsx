@@ -53,8 +53,8 @@ export const useUpdateOIDCConfig = () => {
       return data;
     },
     onSuccess(_, dto) {
-      queryClient.invalidateQueries(oidcConfigKeys.getOIDCConfig(dto.orgSlug));
-      queryClient.invalidateQueries(organizationKeys.getUserOrganizations);
+      queryClient.invalidateQueries({ queryKey: oidcConfigKeys.getOIDCConfig(dto.orgSlug) });
+      queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizations });
     }
   });
 };
@@ -107,7 +107,7 @@ export const useCreateOIDCConfig = () => {
       return data;
     },
     onSuccess(_, dto) {
-      queryClient.invalidateQueries(oidcConfigKeys.getOIDCConfig(dto.orgSlug));
+      queryClient.invalidateQueries({ queryKey: oidcConfigKeys.getOIDCConfig(dto.orgSlug) });
     }
   });
 };

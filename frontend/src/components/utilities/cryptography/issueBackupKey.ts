@@ -73,7 +73,7 @@ const issueBackupKey = async ({
           },
           async () => {
             clientKey.createVerifier(
-              async (err: any, result: { salt: string; verifier: string }) => {
+              async (_err: any, result: { salt: string; verifier: string }) => {
                 const { ciphertext, iv, tag } = Aes256Gcm.encrypt({
                   text: String(localStorage.getItem("PRIVATE_KEY")),
                   secret: generatedKey
@@ -104,7 +104,7 @@ const issueBackupKey = async ({
         );
       }
     );
-  } catch (error) {
+  } catch {
     setBackupKeyError(true);
     console.log("Failed to issue a backup key");
   }

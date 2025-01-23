@@ -3,9 +3,12 @@ package main
 import (
 	"flag"
 	"os"
+	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
+	"math/rand"
+
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -16,6 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	secretsv1alpha1 "github.com/Infisical/infisical/k8-operator/api/v1alpha1"
+	infisicalDynamicSecretController "github.com/Infisical/infisical/k8-operator/controllers/infisicaldynamicsecret"
 	infisicalPushSecretController "github.com/Infisical/infisical/k8-operator/controllers/infisicalpushsecret"
 	infisicalSecretController "github.com/Infisical/infisical/k8-operator/controllers/infisicalsecret"
 	//+kubebuilder:scaffold:imports
@@ -97,6 +101,16 @@ func main() {
 		BaseLogger: ctrl.Log,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "InfisicalPushSecret")
+		os.Exit(1)
+	}
+
+	if err = (&infisicalDynamicSecretController.InfisicalDynamicSecretReconciler{
+		Client:     mgr.GetClient(),
+		Scheme:     mgr.GetScheme(),
+		BaseLogger: ctrl.Log,
+		Random:     rand.New(rand.NewSource(time.Now().UnixNano())),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "InfisicalDynamicSecret")
 		os.Exit(1)
 	}
 

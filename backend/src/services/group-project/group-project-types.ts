@@ -3,7 +3,7 @@ import { TProjectPermission } from "@app/lib/types";
 import { ProjectUserMembershipTemporaryMode } from "../project-membership/project-membership-types";
 
 export type TCreateProjectGroupDTO = {
-  groupId: string;
+  groupIdOrName: string;
   roles: (
     | {
         role: string;

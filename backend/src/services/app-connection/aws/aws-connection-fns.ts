@@ -4,7 +4,7 @@ import { randomUUID } from "crypto";
 
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
-import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
 
 import { AwsConnectionMethod } from "./aws-connection-enums";
 import { TAwsConnectionConfig } from "./aws-connection-types";
@@ -20,7 +20,7 @@ export const getAwsAppConnectionListItem = () => {
   };
 };
 
-export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig, region = "us-east-1") => {
+export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig, region = AWSRegion.US_EAST_1) => {
   const appCfg = getConfig();
 
   let accessKeyId: string;

@@ -16,7 +16,7 @@ type Props<T extends Abilities> = (T extends AbilityTuple
       subject: string;
     }) & { className?: string; containerClassName?: string };
 
-export const withPermission = <T extends {}, J extends TOrgPermission>(
+export const withPermission = <T extends object, J extends TOrgPermission>(
   Component: ComponentType<T>,
   { action, subject, className, containerClassName }: Props<Generics<J>["abilities"]>
 ) => {

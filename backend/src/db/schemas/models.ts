@@ -80,6 +80,7 @@ export enum TableName {
   IdentityProjectAdditionalPrivilege = "identity_project_additional_privilege",
   // used by both identity and users
   IdentityMetadata = "identity_metadata",
+  ResourceMetadata = "resource_metadata",
   ScimToken = "scim_tokens",
   AccessApprovalPolicy = "access_approval_policies",
   AccessApprovalPolicyApprover = "access_approval_policies_approvers",
@@ -130,7 +131,8 @@ export enum TableName {
   WorkflowIntegrations = "workflow_integrations",
   SlackIntegrations = "slack_integrations",
   ProjectSlackConfigs = "project_slack_configs",
-  AppConnection = "app_connections"
+  AppConnection = "app_connections",
+  SecretSync = "secret_syncs"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt";
@@ -213,4 +215,13 @@ export enum ProjectType {
   CertificateManager = "cert-manager",
   KMS = "kms",
   SSH = "ssh"
+}
+
+export enum ActionProjectType {
+  SecretManager = ProjectType.SecretManager,
+  CertificateManager = ProjectType.CertificateManager,
+  KMS = ProjectType.KMS,
+  SSH = ProjectType.SSH,
+  // project operations that happen on all types
+  Any = "any"
 }

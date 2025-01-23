@@ -1,5 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
+import { ActionProjectType } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { TProjectPermission } from "@app/lib/types";
@@ -27,13 +28,14 @@ export const trustedIpServiceFactory = ({
   projectDAL
 }: TTrustedIpServiceFactoryDep) => {
   const listIpsByProjectId = async ({ projectId, actor, actorId, actorAuthMethod, actorOrgId }: TProjectPermission) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
     const trustedIps = await trustedIpDAL.find({
       projectId
@@ -51,13 +53,14 @@ export const trustedIpServiceFactory = ({
     comment,
     isActive
   }: TCreateIpDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.IpAllowList);
 
     const project = await projectDAL.findById(projectId);
@@ -96,13 +99,14 @@ export const trustedIpServiceFactory = ({
     comment,
     trustedIpId
   }: TUpdateIpDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.IpAllowList);
 
     const project = await projectDAL.findById(projectId);
@@ -141,13 +145,14 @@ export const trustedIpServiceFactory = ({
     actorAuthMethod,
     trustedIpId
   }: TDeleteIpDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.IpAllowList);
 
     const project = await projectDAL.findById(projectId);

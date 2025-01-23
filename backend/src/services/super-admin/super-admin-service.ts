@@ -16,12 +16,15 @@ import { TKmsServiceFactory } from "../kms/kms-service";
 import { RootKeyEncryptionStrategy } from "../kms/kms-types";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TUserDALFactory } from "../user/user-dal";
+import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
+import { UserAliasType } from "../user-alias/user-alias-types";
 import { TSuperAdminDALFactory } from "./super-admin-dal";
 import { LoginMethod, TAdminGetUsersDTO, TAdminSignUpDTO } from "./super-admin-types";
 
 type TSuperAdminServiceFactoryDep = {
   serverCfgDAL: TSuperAdminDALFactory;
   userDAL: TUserDALFactory;
+  userAliasDAL: Pick<TUserAliasDALFactory, "findOne">;
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
   kmsService: Pick<TKmsServiceFactory, "encryptWithRootKey" | "decryptWithRootKey" | "updateEncryptionStrategy">;
   kmsRootConfigDAL: TKmsRootConfigDALFactory;
@@ -48,6 +51,7 @@ const ADMIN_CONFIG_DB_UUID = "00000000-0000-0000-0000-000000000000";
 export const superAdminServiceFactory = ({
   serverCfgDAL,
   userDAL,
+  userAliasDAL,
   authService,
   orgService,
   keyStore,
@@ -104,29 +108,45 @@ export const superAdminServiceFactory = ({
 
     if (data.enabledLoginMethods) {
       const superAdminUser = await userDAL.findById(userId);
+      const isSamlConfiguredForUser = Boolean(
+        await userAliasDAL.findOne({
+          userId,
+          aliasType: UserAliasType.SAML
+        })
+      );
+
+      // We do not store SAML and OIDC auth values in the user authMethods field
+      // and so we infer its usage from the user's aliases
+      const isUserSamlAccessEnabled = isSamlConfiguredForUser && data.enabledLoginMethods.includes(LoginMethod.SAML);
+      const isOidcConfiguredForUser = Boolean(
+        await userAliasDAL.findOne({
+          userId,
+          aliasType: UserAliasType.OIDC
+        })
+      );
+
+      const isUserOidcAccessEnabled = isOidcConfiguredForUser && data.enabledLoginMethods.includes(LoginMethod.OIDC);
+
       const loginMethodToAuthMethod = {
         [LoginMethod.EMAIL]: [AuthMethod.EMAIL],
         [LoginMethod.GOOGLE]: [AuthMethod.GOOGLE],
         [LoginMethod.GITLAB]: [AuthMethod.GITLAB],
         [LoginMethod.GITHUB]: [AuthMethod.GITHUB],
         [LoginMethod.LDAP]: [AuthMethod.LDAP],
-        [LoginMethod.OIDC]: [AuthMethod.OIDC],
-        [LoginMethod.SAML]: [
-          AuthMethod.AZURE_SAML,
-          AuthMethod.GOOGLE_SAML,
-          AuthMethod.JUMPCLOUD_SAML,
-          AuthMethod.KEYCLOAK_SAML,
-          AuthMethod.OKTA_SAML
-        ]
+        [LoginMethod.SAML]: [],
+        [LoginMethod.OIDC]: []
       };
 
-      if (
-        !data.enabledLoginMethods.some((loginMethod) =>
+      const canServerAdminAccessAfterApply =
+        data.enabledLoginMethods.some((loginMethod) =>
           loginMethodToAuthMethod[loginMethod as LoginMethod].some(
             (authMethod) => superAdminUser.authMethods?.includes(authMethod)
           )
-        )
-      ) {
+        ) ||
+        isUserSamlAccessEnabled ||
+        isUserOidcAccessEnabled;
+
+      if (!canServerAdminAccessAfterApply) {
         throw new BadRequestError({
           message: "You must configure at least one auth method to prevent account lockout"
         });

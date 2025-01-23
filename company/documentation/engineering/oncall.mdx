@@ -1,0 +1,78 @@
+---
+title: "On call rotation"
+sidebarTitle: "On call rotation"
+description: "Learn about call rotation at Infisical"
+---
+
+Infisical is mission-critical software, which means minimizing service disruptions is a top priority. 
+To make sure we can react to any issues that come up, we have an on-call rotation that helps us to provide responsive, 24x7x365 support to our customers. 
+Being part of the on-call rotation is an opportunity to deepen the understanding of our infrastructure, deployment pipelines, and customer-facing systems. 
+Having this broader understanding of our system not only helps us design better software but also enhances the overall stability of our platform. 
+
+### On-Call Overview
+
+**Rotation Details**
+
+Each engineer will be on call once a week, from **Thursday to Thursday**, including weekends. 
+During this time, the on-call engineer is expected to be available at all times to respond to service disruption alerts.
+
+While being on call, you are responsible for acting as the first line of defense for critical incidents and answering customer support inquiries. 
+During your working hours, you must respond to all support tickets or involve relevant team members with sufficient context. 
+Outside of working hours, you are expected to be available for any high-severity pager alerts and critical support inquiries by customers.
+
+### Responsibilities While On Call
+
+During your working hours, prioritize the following in this order:
+
+1. **Responding to Alerts:**
+    - Monitor and respond promptly to all PagerDuty alerts.
+    - Investigate incidents, determine root causes, and mitigate issues.
+    - Refer to runbooks or any relevant documentation to resolve alarms quickly.
+2. **Customer Support:**
+    - Actively monitor all support inquiries in [**Pylon**](https://app.usepylon.com/issues) and respond to incoming tickets.
+    - Debug and resolve customer issues. If you encounter a problem outside your expertise, collaborate with the relevant teammates to resolve it. This is an opportunity to learn and build context for future incidents.
+3. **Sprint work:**
+    - Since the current on-call workload does not require all of your working hours, you are expected to work on the sprint items assigned to you. 
+      If the on-call workload increases significantly, inform Maidul to make adjustments.
+4. **Continuous Improvement:**
+    - Take note of recurring patterns, inefficiencies, and opportunities where we can automate to reduce on-call burdens in the future.
+
+<Warning>
+    Outside of working hours, you are expected to be available and respond to any high-severity pager alerts and critical support inquiries by customers.
+</Warning>
+
+### Before You Get On Call
+
+- **Set Up PagerDuty:** Ensure you have the PagerDuty mobile app installed, configured, and notifications enabled for Infisical services.
+- **Access Required Tools:** Verify access to internal network, runbooks on Notion, [https://grafana.infisical.com](https://grafana.infisical.com/), access to aws accounts and any other access you may require.
+- **AWS Permissions:** You will be granted sufficient AWS permissions before the start of your on-call shift in case you need to access production accounts.
+
+### At the End of Your Shift
+
+- Post an on-call summary in the Slack channel `#on-call-summaries` at the end of your shift using the following [template](/documentation/engineering/oncall-summery-template). Include notable findings, support inquires and incidents you encountered. 
+  This will helps the rest of the team stay in the loop and open discussions on how to prevent similar issues in the future.
+- Do a **handoff meeting/slack huddle** with the next engineer on call to summarize any outstanding work, unresolved issues, or any incidents that require follow-up. Ensure the next on-call engineer is fully briefed so they can pick up where you left off. **Include Maidul in this hand off call.**
+
+### When to escalate an incident
+
+If you are paged for incident that you cannot resolve after attempting to debug and mitigate the issue, you should not hesitate to escalate and page others in. 
+It’s better to get help sooner rather than later to minimize the impact on customers. 
+
+- **Paging relevant teammate:** If you’ve tried resolving an issue on your own and need additional help, page another engineer who might be relevant through PagerDuty.
+- **Escalating to Maidul:** You can page Maidul at any time if you think it would be helpful.
+
+### How to be successful on you rotations
+
+- Be on top of all changes that get merged into main. This will help you be aware of any changes that might cause issues.
+- When responding to support inquiries, double check your replies and make sure they are well written and typo-free. Always acknowledge inquiries quickly to make customers feel valued, and suggest a meeting or huddle if you need more clarity on their issues.
+- When customers raise support inquiries, always consider what could have been done to make the inquiry self-serve. Could adding a tooltip next to the relevant feature provide clarity? Maybe the documentation could be more detailed or better organized?
+- Document all of your notable support/findings/incidents/feature requests during on call so that it is easy to create your on call summary at the end of your on call shift.
+
+### Resources
+
+- [Pylon for support tickets](https://app.usepylon.com/issues)
+- [AWS Portal](https://infisical.awsapps.com/start/)
+- [View metrics on Grafana](https://grafana.infisical.com/)
+- [Metabase](https://analytics.internal.infisical.com/)
+- [Run books](https://www.notion.so/Runbooks-19e534883d6b4621b8c712194edbb687?pvs=21)
+- [On call summary template](/documentation/engineering/oncall-summery-template)

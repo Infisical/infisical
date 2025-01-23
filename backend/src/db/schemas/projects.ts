@@ -13,7 +13,7 @@ export const ProjectsSchema = z.object({
   id: z.string(),
   name: z.string(),
   slug: z.string(),
-  autoCapitalization: z.boolean().default(true).nullable().optional(),
+  autoCapitalization: z.boolean().default(false).nullable().optional(),
   orgId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date(),
@@ -25,7 +25,8 @@ export const ProjectsSchema = z.object({
   kmsSecretManagerKeyId: z.string().uuid().nullable().optional(),
   kmsSecretManagerEncryptedDataKey: zodBuffer.nullable().optional(),
   description: z.string().nullable().optional(),
-  type: z.string()
+  type: z.string(),
+  enforceCapitalization: z.boolean().default(false)
 });
 
 export type TProjects = z.infer<typeof ProjectsSchema>;

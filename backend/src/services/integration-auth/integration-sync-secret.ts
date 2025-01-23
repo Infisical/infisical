@@ -38,6 +38,7 @@ import { TCreateManySecretsRawFn, TUpdateManySecretsRawFn } from "@app/services/
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
 import { IntegrationMetadataSchema } from "../integration/integration-schema";
+import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-schema";
 import { IntegrationAuthMetadataSchema } from "./integration-auth-schema";
 import {
   CircleCiScope,
@@ -48,6 +49,7 @@ import {
 import {
   IntegrationInitialSyncBehavior,
   IntegrationMappingBehavior,
+  IntegrationMetadataSyncMode,
   Integrations,
   IntegrationUrls
 } from "./integration-list";
@@ -930,15 +932,22 @@ const syncSecretsAWSParameterStore = async ({
           logger.info(
             `getIntegrationSecrets: create secret in AWS SSM for [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]`
           );
-          await ssm
-            .putParameter({
-              Name: `${integration.path}${key}`,
-              Type: "SecureString",
-              Value: secrets[key].value,
-              ...(metadata.kmsKeyId && { KeyId: metadata.kmsKeyId }),
-              Overwrite: true
-            })
-            .promise();
+
+          try {
+            await ssm
+              .putParameter({
+                Name: `${integration.path}${key}`,
+                Type: "SecureString",
+                Value: secrets[key].value,
+                ...(metadata.kmsKeyId && { KeyId: metadata.kmsKeyId }),
+                Overwrite: true
+              })
+              .promise();
+          } catch (error) {
+            (error as { secretKey: string }).secretKey = key;
+            throw error;
+          }
+
           if (metadata.secretAWSTag?.length) {
             try {
               await ssm
@@ -985,15 +994,20 @@ const syncSecretsAWSParameterStore = async ({
 
         // we ensure that the KMS key configured in the integration is applied for ALL parameters on AWS
         if (secrets[key].value && (shouldUpdateKms || awsParameterStoreSecretsObj[key].Value !== secrets[key].value)) {
-          await ssm
-            .putParameter({
-              Name: `${integration.path}${key}`,
-              Type: "SecureString",
-              Value: secrets[key].value,
-              Overwrite: true,
-              ...(metadata.kmsKeyId && { KeyId: metadata.kmsKeyId })
-            })
-            .promise();
+          try {
+            await ssm
+              .putParameter({
+                Name: `${integration.path}${key}`,
+                Type: "SecureString",
+                Value: secrets[key].value,
+                Overwrite: true,
+                ...(metadata.kmsKeyId && { KeyId: metadata.kmsKeyId })
+              })
+              .promise();
+          } catch (error) {
+            (error as { secretKey: string }).secretKey = key;
+            throw error;
+          }
         }
 
         if (awsParameterStoreSecretsObj[key].Name) {
@@ -1082,14 +1096,14 @@ const syncSecretsAWSSecretManager = async ({
   projectId
 }: {
   integration: TIntegrations;
-  secrets: Record<string, { value: string; comment?: string }>;
+  secrets: Record<string, { value: string; comment?: string; secretMetadata?: ResourceMetadataDTO }>;
   accessId: string | null;
   accessToken: string;
   awsAssumeRoleArn: string | null;
   projectId?: string;
 }) => {
   const appCfg = getConfig();
-  const metadata = z.record(z.any()).parse(integration.metadata || {});
+  const metadata = IntegrationMetadataSchema.parse(integration.metadata || {});
 
   if (!accessId && !awsAssumeRoleArn) {
     throw new Error("AWS access ID/AWS Assume Role is required");
@@ -1137,8 +1151,25 @@ const syncSecretsAWSSecretManager = async ({
 
   const processAwsSecret = async (
     secretId: string,
-    secretValue: Record<string, string | null | undefined> | string
+    secretValue: Record<string, string | null | undefined> | string,
+    secretMetadata?: ResourceMetadataDTO
   ) => {
+    const secretAWSTag = metadata.secretAWSTag as { key: string; value: string }[] | undefined;
+    const shouldTag =
+      (secretAWSTag && secretAWSTag.length) ||
+      (metadata.metadataSyncMode === IntegrationMetadataSyncMode.SECRET_METADATA &&
+        metadata.mappingBehavior === IntegrationMappingBehavior.ONE_TO_ONE);
+    const tagArray =
+      (metadata.metadataSyncMode === IntegrationMetadataSyncMode.SECRET_METADATA ? secretMetadata : secretAWSTag) ?? [];
+
+    const integrationTagObj = tagArray.reduce(
+      (acc, item) => {
+        acc[item.key] = item.value;
+        return acc;
+      },
+      {} as Record<string, string>
+    );
+
     try {
       const awsSecretManagerSecret = await secretsManager.send(
         new GetSecretValueCommand({
@@ -1167,15 +1198,14 @@ const syncSecretsAWSSecretManager = async ({
         } else {
           await secretsManager.send(
             new DeleteSecretCommand({
-              SecretId: secretId
+              SecretId: secretId,
+              ForceDeleteWithoutRecovery: true
             })
           );
         }
       }
 
-      const secretAWSTag = metadata.secretAWSTag as { key: string; value: string }[] | undefined;
-
-      if (secretAWSTag && secretAWSTag.length) {
+      if (shouldTag) {
         const describedSecret = await secretsManager.send(
           // requires secretsmanager:DescribeSecret policy
           new DescribeSecretCommand({
@@ -1184,14 +1214,6 @@ const syncSecretsAWSSecretManager = async ({
         );
 
         if (!describedSecret.Tags) return;
-
-        const integrationTagObj = secretAWSTag.reduce(
-          (acc, item) => {
-            acc[item.key] = item.value;
-            return acc;
-          },
-          {} as Record<string, string>
-        );
 
         const awsTagObj = (describedSecret.Tags || []).reduce(
           (acc, item) => {
@@ -1224,7 +1246,7 @@ const syncSecretsAWSSecretManager = async ({
           }
         });
 
-        secretAWSTag?.forEach((tag) => {
+        tagArray.forEach((tag) => {
           if (!(tag.key in awsTagObj)) {
             // create tag in AWS secret manager
             tagsToUpdate.push({
@@ -1261,8 +1283,8 @@ const syncSecretsAWSSecretManager = async ({
               Name: secretId,
               SecretString: typeof secretValue === "string" ? secretValue : JSON.stringify(secretValue),
               ...(metadata.kmsKeyId && { KmsKeyId: metadata.kmsKeyId }),
-              Tags: metadata.secretAWSTag
-                ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({
+              Tags: shouldTag
+                ? tagArray.map((tag: { key: string; value: string }) => ({
                     Key: tag.key,
                     Value: tag.value
                   }))
@@ -1279,7 +1301,10 @@ const syncSecretsAWSSecretManager = async ({
 
   if (metadata.mappingBehavior === IntegrationMappingBehavior.ONE_TO_ONE) {
     for await (const [key, value] of Object.entries(secrets)) {
-      await processAwsSecret(key, value.value);
+      await processAwsSecret(key, value.value, value.secretMetadata).catch((error) => {
+        error.secretKey = key;
+        throw error;
+      });
     }
   } else {
     await processAwsSecret(integration.app as string, getSecretKeyValuePair(secrets));
@@ -2762,13 +2787,23 @@ const syncSecretsAzureDevops = async ({
  * Sync/push [secrets] to GitLab repo with name [integration.app]
  */
 const syncSecretsGitLab = async ({
+  createManySecretsRawFn,
   integrationAuth,
   integration,
   secrets,
   accessToken
 }: {
+  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<{ id: string }>>;
   integrationAuth: TIntegrationAuths;
-  integration: TIntegrations;
+  integration: TIntegrations & {
+    projectId: string;
+    environment: {
+      id: string;
+      name: string;
+      slug: string;
+    };
+    secretPath: string;
+  };
   secrets: Record<string, { value: string; comment?: string }>;
   accessToken: string;
 }) => {
@@ -2824,6 +2859,81 @@ const syncSecretsGitLab = async ({
 
       return isValid;
     });
+
+  if (!integration.lastUsed) {
+    const secretsToAddToInfisical: { [key: string]: GitLabSecret } = {};
+    const secretsToRemoveInGitlab: GitLabSecret[] = [];
+
+    if (!metadata.initialSyncBehavior) {
+      metadata.initialSyncBehavior = IntegrationInitialSyncBehavior.OVERWRITE_TARGET;
+    }
+
+    getSecretsRes.forEach((gitlabSecret) => {
+      // first time using integration
+      // -> apply initial sync behavior
+      switch (metadata.initialSyncBehavior) {
+        // Override all the secrets in GitLab
+        case IntegrationInitialSyncBehavior.OVERWRITE_TARGET: {
+          if (!(gitlabSecret.key in secrets)) {
+            secretsToRemoveInGitlab.push(gitlabSecret);
+          }
+          break;
+        }
+        case IntegrationInitialSyncBehavior.PREFER_SOURCE: {
+          // if the secret is not in infisical, we need to add it to infisical
+          if (!(gitlabSecret.key in secrets)) {
+            secrets[gitlabSecret.key] = {
+              value: gitlabSecret.value
+            };
+            // need to remove prefix and suffix from what we're saving to Infisical
+            const prefix = metadata?.secretPrefix || "";
+            const suffix = metadata?.secretSuffix || "";
+            let processedKey = gitlabSecret.key;
+
+            // Remove prefix if it exists at the start
+            if (prefix && processedKey.startsWith(prefix)) {
+              processedKey = processedKey.slice(prefix.length);
+            }
+
+            // Remove suffix if it exists at the end
+            if (suffix && processedKey.endsWith(suffix)) {
+              processedKey = processedKey.slice(0, -suffix.length);
+            }
+
+            secretsToAddToInfisical[processedKey] = gitlabSecret;
+          }
+          break;
+        }
+        default: {
+          throw new Error(`Invalid initial sync behavior: ${metadata.initialSyncBehavior}`);
+        }
+      }
+    });
+
+    if (Object.keys(secretsToAddToInfisical).length) {
+      await createManySecretsRawFn({
+        projectId: integration.projectId,
+        environment: integration.environment.slug,
+        path: integration.secretPath,
+        secrets: Object.keys(secretsToAddToInfisical).map((key) => ({
+          secretName: key,
+          secretValue: secretsToAddToInfisical[key].value,
+          type: SecretType.Shared
+        }))
+      });
+    }
+
+    for await (const gitlabSecret of secretsToRemoveInGitlab) {
+      await request.delete(
+        `${gitLabApiUrl}/v4/projects/${integration?.appId}/variables/${gitlabSecret.key}?filter[environment_scope]=${integration.targetEnvironment}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        }
+      );
+    }
+  }
 
   for await (const key of Object.keys(secrets)) {
     const existingSecret = getSecretsRes.find((s) => s.key === key);
@@ -3652,17 +3762,28 @@ const syncSecretsCloudflarePages = async ({
   );
 
   const metadata = z.record(z.any()).parse(integration.metadata);
-  if (metadata.shouldAutoRedeploy) {
-    await request.post(
-      `${IntegrationUrls.CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accessId}/pages/projects/${integration.app}/deployments`,
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json"
+  if (metadata.shouldAutoRedeploy && integration.targetEnvironment === "production") {
+    await request
+      .post(
+        `${IntegrationUrls.CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accessId}/pages/projects/${integration.app}/deployments`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json"
+          }
         }
-      }
-    );
+      )
+      .catch((error) => {
+        if (error instanceof AxiosError && error.response?.status === 304) {
+          logger.info(
+            `syncSecretsCloudflarePages: CF pages redeployment returned status code 304 for integration [id=${integration.id}]`
+          );
+          return;
+        }
+
+        throw error;
+      });
   }
 };
 
@@ -4439,7 +4560,7 @@ export const syncIntegrationSecrets = async ({
     secretPath: string;
   };
   integrationAuth: TIntegrationAuths;
-  secrets: Record<string, { value: string; comment?: string }>;
+  secrets: Record<string, { value: string; comment?: string; secretMetadata?: ResourceMetadataDTO }>;
   accessId: string | null;
   awsAssumeRoleArn: string | null;
   accessToken: string;
@@ -4544,7 +4665,8 @@ export const syncIntegrationSecrets = async ({
         integrationAuth,
         integration,
         secrets,
-        accessToken
+        accessToken,
+        createManySecretsRawFn
       });
       break;
     case Integrations.RENDER:

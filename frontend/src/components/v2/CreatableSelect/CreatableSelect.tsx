@@ -38,7 +38,7 @@ export const CreatableSelect = <T,>({
         control: ({ isFocused }) =>
           twMerge(
             isFocused ? "border-primary-400/50" : "border-mineshaft-600 hover:border-gray-400",
-            "border w-full p-0.5 rounded-md text-mineshaft-200 font-inter bg-mineshaft-900 hover:cursor-pointer"
+            "w-full rounded-md border bg-mineshaft-900 p-0.5 font-inter text-mineshaft-200 hover:cursor-pointer"
           ),
         placeholder: () => "text-mineshaft-400 text-sm pl-1 py-0.5",
         input: () => "pl-1 py-0.5",
@@ -58,7 +58,7 @@ export const CreatableSelect = <T,>({
           twMerge(
             isFocused && "bg-mineshaft-700 active:bg-mineshaft-600",
             isSelected && "text-mineshaft-200",
-            "hover:cursor-pointer text-xs px-3 py-2"
+            "px-3 py-2 text-xs hover:cursor-pointer"
           ),
         noOptionsMessage: () => "text-mineshaft-400 p-2 rounded-md"
       }}

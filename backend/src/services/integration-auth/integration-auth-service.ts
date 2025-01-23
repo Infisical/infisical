@@ -5,7 +5,7 @@ import { Client as OctopusClient, SpaceRepository as OctopusSpaceRepository } fr
 import AWS from "aws-sdk";
 
 import {
-  ProjectType,
+  ActionProjectType,
   SecretEncryptionAlgo,
   SecretKeyEncoding,
   TIntegrationAuths,
@@ -97,13 +97,14 @@ export const integrationAuthServiceFactory = ({
     actorAuthMethod,
     projectId
   }: TProjectPermission) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const authorizations = await integrationAuthDAL.find({ projectId });
     return authorizations;
@@ -114,13 +115,14 @@ export const integrationAuthServiceFactory = ({
 
     return Promise.all(
       authorizations.filter(async (auth) => {
-        const { permission } = await permissionService.getProjectPermission(
+        const { permission } = await permissionService.getProjectPermission({
           actor,
           actorId,
-          auth.projectId,
+          projectId: auth.projectId,
           actorAuthMethod,
-          actorOrgId
-        );
+          actorOrgId,
+          actionProjectType: ActionProjectType.SecretManager
+        });
 
         return permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
       })
@@ -131,13 +133,14 @@ export const integrationAuthServiceFactory = ({
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integrationAuth.projectId,
+      projectId: integrationAuth.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     return integrationAuth;
   };
@@ -156,14 +159,14 @@ export const integrationAuthServiceFactory = ({
     if (!Object.values(Integrations).includes(integration as Integrations))
       throw new BadRequestError({ message: "Invalid integration" });
 
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.SecretManager);
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
 
     const tokenExchange = await exchangeCode({ integration, code, url, installationId });
@@ -266,14 +269,14 @@ export const integrationAuthServiceFactory = ({
     if (!Object.values(Integrations).includes(integration as Integrations))
       throw new BadRequestError({ message: "Invalid integration" });
 
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.SecretManager);
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
 
     const updateDoc: TIntegrationAuthsInsert = {
@@ -401,13 +404,14 @@ export const integrationAuthServiceFactory = ({
       throw new NotFoundError({ message: `Integration auth with id ${integrationAuthId} not found.` });
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integrationAuth.projectId,
+      projectId: integrationAuth.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Integrations);
 
     const { projectId } = integrationAuth;
@@ -662,13 +666,14 @@ export const integrationAuthServiceFactory = ({
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integrationAuth.projectId,
+      projectId: integrationAuth.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
 
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(integrationAuth.projectId);
@@ -696,13 +701,14 @@ export const integrationAuthServiceFactory = ({
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integrationAuth.projectId,
+      projectId: integrationAuth.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
 
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
@@ -726,13 +732,14 @@ export const integrationAuthServiceFactory = ({
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integrationAuth.projectId,
+      projectId: integrationAuth.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
@@ -767,13 +774,14 @@ export const integrationAuthServiceFactory = ({
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integrationAuth.projectId,
+      projectId: integrationAuth.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
@@ -795,13 +803,14 @@ export const integrationAuthServiceFactory = ({
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integrationAuth.projectId,
+      projectId: integrationAuth.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
 
@@ -869,13 +878,14 @@ export const integrationAuthServiceFactory = ({
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integrationAuth.projectId,
+      projectId: integrationAuth.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
@@ -916,13 +926,14 @@ export const integrationAuthServiceFactory = ({
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integrationAuth.projectId,
+      projectId: integrationAuth.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
@@ -950,13 +961,14 @@ export const integrationAuthServiceFactory = ({
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integrationAuth.projectId,
+      projectId: integrationAuth.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessId, accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
@@ -1008,13 +1020,14 @@ export const integrationAuthServiceFactory = ({
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integrationAuth.projectId,
+      projectId: integrationAuth.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
@@ -1044,13 +1057,14 @@ export const integrationAuthServiceFactory = ({
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integrationAuth.projectId,
+      projectId: integrationAuth.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
@@ -1085,13 +1099,14 @@ export const integrationAuthServiceFactory = ({
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integrationAuth.projectId,
+      projectId: integrationAuth.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
@@ -1125,13 +1140,14 @@ export const integrationAuthServiceFactory = ({
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integrationAuth.projectId,
+      projectId: integrationAuth.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
@@ -1165,13 +1181,14 @@ export const integrationAuthServiceFactory = ({
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID ${id} not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integrationAuth.projectId,
+      projectId: integrationAuth.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
@@ -1204,13 +1221,14 @@ export const integrationAuthServiceFactory = ({
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integrationAuth.projectId,
+      projectId: integrationAuth.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
@@ -1244,13 +1262,14 @@ export const integrationAuthServiceFactory = ({
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integrationAuth.projectId,
+      projectId: integrationAuth.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
@@ -1312,13 +1331,14 @@ export const integrationAuthServiceFactory = ({
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integrationAuth.projectId,
+      projectId: integrationAuth.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
@@ -1386,13 +1406,14 @@ export const integrationAuthServiceFactory = ({
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integrationAuth.projectId,
+      projectId: integrationAuth.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
@@ -1436,13 +1457,14 @@ export const integrationAuthServiceFactory = ({
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integrationAuth.projectId,
+      projectId: integrationAuth.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
@@ -1484,13 +1506,14 @@ export const integrationAuthServiceFactory = ({
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integrationAuth.projectId,
+      projectId: integrationAuth.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
@@ -1552,13 +1575,14 @@ export const integrationAuthServiceFactory = ({
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integrationAuth.projectId,
+      projectId: integrationAuth.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
@@ -1593,13 +1617,14 @@ export const integrationAuthServiceFactory = ({
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integrationAuth.projectId,
+      projectId: integrationAuth.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
@@ -1705,13 +1730,14 @@ export const integrationAuthServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TDeleteIntegrationAuthsDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Integrations);
 
     const integrations = await integrationAuthDAL.delete({ integration, projectId });
@@ -1728,13 +1754,14 @@ export const integrationAuthServiceFactory = ({
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integrationAuth.projectId,
+      projectId: integrationAuth.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Integrations);
 
     const delIntegrationAuth = await integrationAuthDAL.transaction(async (tx) => {
@@ -1761,26 +1788,28 @@ export const integrationAuthServiceFactory = ({
       throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
     }
 
-    const { permission: sourcePermission } = await permissionService.getProjectPermission(
+    const { permission: sourcePermission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integrationAuth.projectId,
+      projectId: integrationAuth.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     ForbiddenError.from(sourcePermission).throwUnlessCan(
       ProjectPermissionActions.Create,
       ProjectPermissionSub.Integrations
     );
 
-    const { permission: targetPermission } = await permissionService.getProjectPermission(
+    const { permission: targetPermission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     ForbiddenError.from(targetPermission).throwUnlessCan(
       ProjectPermissionActions.Create,
@@ -1806,13 +1835,14 @@ export const integrationAuthServiceFactory = ({
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integrationAuth.projectId,
+      projectId: integrationAuth.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
@@ -1846,13 +1876,14 @@ export const integrationAuthServiceFactory = ({
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      integrationAuth.projectId,
+      projectId: integrationAuth.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);

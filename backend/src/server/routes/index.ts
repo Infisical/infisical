@@ -181,6 +181,7 @@ import { projectUserMembershipRoleDALFactory } from "@app/services/project-membe
 import { projectRoleDALFactory } from "@app/services/project-role/project-role-dal";
 import { projectRoleServiceFactory } from "@app/services/project-role/project-role-service";
 import { dailyResourceCleanUpQueueServiceFactory } from "@app/services/resource-cleanup/resource-cleanup-queue";
+import { resourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { secretDALFactory } from "@app/services/secret/secret-dal";
 import { secretQueueFactory } from "@app/services/secret/secret-queue";
 import { secretServiceFactory } from "@app/services/secret/secret-service";
@@ -195,6 +196,9 @@ import { secretImportDALFactory } from "@app/services/secret-import/secret-impor
 import { secretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
 import { secretSharingDALFactory } from "@app/services/secret-sharing/secret-sharing-dal";
 import { secretSharingServiceFactory } from "@app/services/secret-sharing/secret-sharing-service";
+import { secretSyncDALFactory } from "@app/services/secret-sync/secret-sync-dal";
+import { secretSyncQueueFactory } from "@app/services/secret-sync/secret-sync-queue";
+import { secretSyncServiceFactory } from "@app/services/secret-sync/secret-sync-service";
 import { secretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { secretTagServiceFactory } from "@app/services/secret-tag/secret-tag-service";
 import { secretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
@@ -317,6 +321,7 @@ export const registerRoutes = async (
   const trustedIpDAL = trustedIpDALFactory(db);
   const telemetryDAL = telemetryDALFactory(db);
   const appConnectionDAL = appConnectionDALFactory(db);
+  const secretSyncDAL = secretSyncDALFactory(db, folderDAL);
 
   // ee db layer ops
   const permissionDAL = permissionDALFactory(db);
@@ -374,6 +379,7 @@ export const registerRoutes = async (
   const externalGroupOrgRoleMappingDAL = externalGroupOrgRoleMappingDALFactory(db);
 
   const projectTemplateDAL = projectTemplateDALFactory(db);
+  const resourceMetadataDAL = resourceMetadataDALFactory(db);
 
   const permissionService = permissionServiceFactory({
     permissionDAL,
@@ -606,6 +612,7 @@ export const registerRoutes = async (
   });
   const superAdminService = superAdminServiceFactory({
     userDAL,
+    userAliasDAL,
     authService: loginService,
     serverCfgDAL: superAdminDAL,
     kmsRootConfigDAL,
@@ -821,6 +828,29 @@ export const registerRoutes = async (
     kmsService
   });
 
+  const secretSyncQueue = secretSyncQueueFactory({
+    queueService,
+    secretSyncDAL,
+    folderDAL,
+    secretImportDAL,
+    secretV2BridgeDAL,
+    kmsService,
+    keyStore,
+    auditLogService,
+    smtpService,
+    projectDAL,
+    projectMembershipDAL,
+    projectBotDAL,
+    secretDAL,
+    secretBlindIndexDAL,
+    secretVersionDAL,
+    secretTagDAL,
+    secretVersionTagDAL,
+    secretVersionV2BridgeDAL,
+    secretVersionTagV2BridgeDAL,
+    resourceMetadataDAL
+  });
+
   const secretQueueService = secretQueueFactory({
     keyStore,
     queueService,
@@ -854,7 +884,9 @@ export const registerRoutes = async (
     secretApprovalRequestDAL,
     projectKeyDAL,
     projectUserMembershipRoleDAL,
-    orgService
+    orgService,
+    resourceMetadataDAL,
+    secretSyncQueue
   });
 
   const projectService = projectServiceFactory({
@@ -891,7 +923,8 @@ export const registerRoutes = async (
     certificateTemplateDAL,
     projectSlackConfigDAL,
     slackIntegrationDAL,
-    projectTemplateService
+    projectTemplateService,
+    groupProjectDAL
   });
 
   const projectEnvService = projectEnvServiceFactory({
@@ -980,7 +1013,8 @@ export const registerRoutes = async (
     secretApprovalPolicyService,
     secretApprovalRequestSecretDAL,
     kmsService,
-    snapshotService
+    snapshotService,
+    resourceMetadataDAL
   });
 
   const secretApprovalRequestService = secretApprovalRequestServiceFactory({
@@ -1007,7 +1041,8 @@ export const registerRoutes = async (
     projectEnvDAL,
     userDAL,
     licenseService,
-    projectSlackConfigDAL
+    projectSlackConfigDAL,
+    resourceMetadataDAL
   });
 
   const secretService = secretServiceFactory({
@@ -1028,7 +1063,8 @@ export const registerRoutes = async (
     secretApprovalRequestDAL,
     secretApprovalRequestSecretDAL,
     secretV2BridgeService,
-    secretApprovalRequestService
+    secretApprovalRequestService,
+    licenseService
   });
 
   const secretSharingService = secretSharingServiceFactory({
@@ -1086,8 +1122,10 @@ export const registerRoutes = async (
     kmsService,
     secretV2BridgeDAL,
     secretVersionV2TagBridgeDAL: secretVersionTagV2BridgeDAL,
-    secretVersionV2BridgeDAL
+    secretVersionV2BridgeDAL,
+    resourceMetadataDAL
   });
+
   const secretRotationQueue = secretRotationQueueFactory({
     telemetryService,
     secretRotationDAL,
@@ -1339,7 +1377,8 @@ export const registerRoutes = async (
     folderDAL,
     secretDAL: secretV2BridgeDAL,
     queueService,
-    secretV2BridgeService
+    secretV2BridgeService,
+    resourceMetadataDAL
   });
 
   const migrationService = externalMigrationServiceFactory({
@@ -1358,8 +1397,17 @@ export const registerRoutes = async (
   const appConnectionService = appConnectionServiceFactory({
     appConnectionDAL,
     permissionService,
-    kmsService,
-    licenseService
+    kmsService
+  });
+
+  const secretSyncService = secretSyncServiceFactory({
+    secretSyncDAL,
+    permissionService,
+    appConnectionService,
+    folderDAL,
+    secretSyncQueue,
+    projectBotService,
+    keyStore
   });
 
   await superAdminService.initServerCfg();
@@ -1459,7 +1507,8 @@ export const registerRoutes = async (
     externalGroupOrgRoleMapping: externalGroupOrgRoleMappingService,
     projectTemplate: projectTemplateService,
     totp: totpService,
-    appConnection: appConnectionService
+    appConnection: appConnectionService,
+    secretSync: secretSyncService
   });
 
   const cronJobs: CronJob[] = [];

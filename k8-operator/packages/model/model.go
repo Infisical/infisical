@@ -28,3 +28,15 @@ type SecretTemplateOptions struct {
 	Value      string `json:"value"`
 	SecretPath string `json:"secretPath"`
 }
+
+type Project struct {
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	Slug         string `json:"slug"`
+	OrgID        string `json:"orgId"`
+	Environments []struct {
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		ID   string `json:"id"`
+	}
+}

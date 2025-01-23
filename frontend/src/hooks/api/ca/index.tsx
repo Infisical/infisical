@@ -8,4 +8,11 @@ export {
   useSignIntermediate,
   useUpdateCa
 } from "./mutations";
-export { useGetCaById, useGetCaCert, useGetCaCerts, useGetCaCertTemplates,useGetCaCrls, useGetCaCsr } from "./queries";
+export {
+  useGetCaById,
+  useGetCaCert,
+  useGetCaCerts,
+  useGetCaCertTemplates,
+  useGetCaCrls,
+  useGetCaCsr
+} from "./queries";

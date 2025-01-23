@@ -8,10 +8,13 @@ export * from "./github-connection";
 
 export type TAppConnection = TAwsConnection | TGitHubConnection;
 
+export type TAvailableAppConnection = Pick<TAppConnection, "name" | "app" | "id">;
+
 export type TListAppConnections<T extends TAppConnection> = { appConnections: T[] };
 export type TGetAppConnection<T extends TAppConnection> = { appConnection: T };
 export type TAppConnectionOptions = { appConnectionOptions: TAppConnectionOption[] };
 export type TAppConnectionResponse = { appConnection: TAppConnection };
+export type TAvailableAppConnectionsResponse = { appConnections: TAvailableAppConnection[] };
 
 export type TCreateAppConnectionDTO = Pick<
   TAppConnection,

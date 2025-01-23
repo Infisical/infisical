@@ -54,6 +54,32 @@ rules:
 - apiGroups:
   - secrets.infisical.com
   resources:
+  - infisicaldynamicsecrets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - secrets.infisical.com
+  resources:
+  - infisicaldynamicsecrets/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - secrets.infisical.com
+  resources:
+  - infisicaldynamicsecrets/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - secrets.infisical.com
+  resources:
   - infisicalpushsecrets
   verbs:
   - create

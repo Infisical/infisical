@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient, UseQueryOptions } from "@tanstack/react-query";
 
-import SecurityClient from "@app/components/utilities/SecurityClient";
 import { apiRequest } from "@app/config/request";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 
@@ -42,7 +41,8 @@ export const organizationKeys = {
   }: TListOrgIdentitiesDTO) =>
     [...organizationKeys.getOrgIdentityMemberships(orgId), params] as const,
   getOrgGroups: (orgId: string) => [{ orgId }, "organization-groups"] as const,
-  getOrgIntegrationAuths: (orgId: string) => [{ orgId }, "integration-auths"] as const
+  getOrgIntegrationAuths: (orgId: string) => [{ orgId }, "integration-auths"] as const,
+  getOrgById: (orgId: string) => ["organization", { orgId }]
 };
 
 export const fetchOrganizations = async () => {
@@ -61,6 +61,22 @@ export const useGetOrganizations = () => {
   });
 };
 
+export const fetchOrganizationById = async (id: string) => {
+  const {
+    data: { organization }
+  } = await apiRequest.get<{ organization: Organization }>(`/api/v1/organization/${id}`);
+  return organization;
+};
+
+export const useGetOrganizationById = (id: string) => {
+  return useQuery({
+    queryKey: organizationKeys.getOrgById(id),
+    queryFn: async () => {
+      return fetchOrganizationById(id);
+    }
+  });
+};
+
 export const useCreateOrg = (options: { invalidate: boolean } = { invalidate: true }) => {
   const queryClient = useQueryClient();
 
@@ -68,7 +84,7 @@ export const useCreateOrg = (options: { invalidate: boolean } = { invalidate: tr
     mutationFn: async ({ name }: { name: string }) => {
       const {
         data: { organization }
-      } = await apiRequest.post<{ organization: { id: string } }>("/api/v2/organizations", {
+      } = await apiRequest.post("/api/v2/organizations", {
         name
       });
 
@@ -76,7 +92,7 @@ export const useCreateOrg = (options: { invalidate: boolean } = { invalidate: tr
     },
     onSuccess: () => {
       if (options?.invalidate) {
-        queryClient.invalidateQueries(organizationKeys.getUserOrganizations);
+        queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizations });
       }
     }
   });
@@ -84,7 +100,7 @@ export const useCreateOrg = (options: { invalidate: boolean } = { invalidate: tr
 
 export const useUpdateOrg = () => {
   const queryClient = useQueryClient();
-  return useMutation<{}, {}, UpdateOrgDTO>({
+  return useMutation<object, object, UpdateOrgDTO>({
     mutationFn: ({
       name,
       authEnforced,
@@ -106,7 +122,7 @@ export const useUpdateOrg = () => {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(organizationKeys.getUserOrganizations);
+      queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizations });
     }
   });
 };
@@ -210,7 +226,9 @@ export const useUpdateOrgBillingDetails = () => {
       return data;
     },
     onSuccess(_, dto) {
-      queryClient.invalidateQueries(organizationKeys.getOrgBillingDetails(dto.organizationId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgBillingDetails(dto.organizationId)
+      });
     }
   });
 };
@@ -255,7 +273,9 @@ export const useAddOrgPmtMethod = () => {
       return url;
     },
     onSuccess(_, dto) {
-      queryClient.invalidateQueries(organizationKeys.getOrgPmtMethods(dto.organizationId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgPmtMethods(dto.organizationId)
+      });
     }
   });
 };
@@ -278,7 +298,9 @@ export const useDeleteOrgPmtMethod = () => {
       return data;
     },
     onSuccess(_, dto) {
-      queryClient.invalidateQueries(organizationKeys.getOrgPmtMethods(dto.organizationId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgPmtMethods(dto.organizationId)
+      });
     }
   });
 };
@@ -321,7 +343,9 @@ export const useAddOrgTaxId = () => {
       return data;
     },
     onSuccess(_, dto) {
-      queryClient.invalidateQueries(organizationKeys.getOrgTaxIds(dto.organizationId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgTaxIds(dto.organizationId)
+      });
     }
   });
 };
@@ -338,7 +362,9 @@ export const useDeleteOrgTaxId = () => {
       return data;
     },
     onSuccess(_, dto) {
-      queryClient.invalidateQueries(organizationKeys.getOrgTaxIds(dto.organizationId));
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgTaxIds(dto.organizationId)
+      });
     }
   });
 };
@@ -438,30 +464,41 @@ export const useDeleteOrgById = () => {
   return useMutation({
     mutationFn: async ({ organizationId }: { organizationId: string }) => {
       const {
-        data: { organization, accessToken }
-      } = await apiRequest.delete<{ organization: Organization; accessToken: string }>(
+        data: { organization }
+      } = await apiRequest.delete<{ organization: Organization }>(
         `/api/v2/organizations/${organizationId}`
       );
-      SecurityClient.setToken(accessToken);
-      localStorage.removeItem("orgData.id");
-
       return organization;
     },
     onSuccess(_, dto) {
-      queryClient.invalidateQueries(organizationKeys.getUserOrganizations);
-      queryClient.invalidateQueries(organizationKeys.getOrgPlanBillingInfo(dto.organizationId));
-      queryClient.invalidateQueries(organizationKeys.getOrgPlanTable(dto.organizationId));
-      queryClient.invalidateQueries(
-        organizationKeys.getOrgPlansTable(dto.organizationId, "monthly")
-      ); // You might need to invalidate for 'yearly' as well.
-      queryClient.invalidateQueries(
-        organizationKeys.getOrgPlansTable(dto.organizationId, "yearly")
-      );
-      queryClient.invalidateQueries(organizationKeys.getOrgBillingDetails(dto.organizationId));
-      queryClient.invalidateQueries(organizationKeys.getOrgPmtMethods(dto.organizationId));
-      queryClient.invalidateQueries(organizationKeys.getOrgTaxIds(dto.organizationId));
-      queryClient.invalidateQueries(organizationKeys.getOrgInvoices(dto.organizationId));
-      queryClient.invalidateQueries(organizationKeys.getOrgLicenses(dto.organizationId));
+      queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizations });
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgPlanBillingInfo(dto.organizationId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgPlanTable(dto.organizationId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgPlansTable(dto.organizationId, "monthly")
+      }); // You might need to invalidate for 'yearly' as well.
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgPlansTable(dto.organizationId, "yearly")
+      });
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgBillingDetails(dto.organizationId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgPmtMethods(dto.organizationId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgTaxIds(dto.organizationId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgInvoices(dto.organizationId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgLicenses(dto.organizationId)
+      });
     }
   });
 };

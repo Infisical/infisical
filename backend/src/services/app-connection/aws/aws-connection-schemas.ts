@@ -38,11 +38,11 @@ export const AwsConnectionSchema = z.intersection(
 export const SanitizedAwsConnectionSchema = z.discriminatedUnion("method", [
   BaseAwsConnectionSchema.extend({
     method: z.literal(AwsConnectionMethod.AssumeRole),
-    credentials: AwsConnectionAssumeRoleCredentialsSchema.omit({ roleArn: true })
+    credentials: AwsConnectionAssumeRoleCredentialsSchema.pick({})
   }),
   BaseAwsConnectionSchema.extend({
     method: z.literal(AwsConnectionMethod.AccessKey),
-    credentials: AwsConnectionAccessTokenCredentialsSchema.omit({ secretAccessKey: true })
+    credentials: AwsConnectionAccessTokenCredentialsSchema.pick({ accessKeyId: true })
   })
 ]);
 
@@ -75,7 +75,7 @@ export const UpdateAwsConnectionSchema = z
 export const AwsConnectionListItemSchema = z.object({
   name: z.literal("AWS"),
   app: z.literal(AppConnection.AWS),
-  // the below is preferable but currently breaks mintlify
+  // the below is preferable but currently breaks with our zod to json schema parser
   // methods: z.tuple([z.literal(AwsConnectionMethod.AssumeRole), z.literal(AwsConnectionMethod.AccessKey)]),
   methods: z.nativeEnum(AwsConnectionMethod).array(),
   accessKeyId: z.string().optional()

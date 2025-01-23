@@ -51,7 +51,7 @@ const buildSlackPayload = (notification: TSlackNotification) => {
 *Environment*: ${payload.environment}
 *Secret path*: ${payload.secretPath || "/"}
 
-View the complete details <${appCfg.SITE_URL}/project/${payload.projectId}/approval?requestId=${
+View the complete details <${appCfg.SITE_URL}/secret-manager/${payload.projectId}/approval?requestId=${
         payload.requestId
       }|here>.`;
 

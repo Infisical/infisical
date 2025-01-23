@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import Ajv from "ajv";
 
-import { ProjectType, ProjectVersion, TableName } from "@app/db/schemas";
+import { ActionProjectType, ProjectVersion, TableName } from "@app/db/schemas";
 import { decryptSymmetric128BitHexKeyUTF8, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
@@ -53,14 +53,14 @@ export const secretRotationServiceFactory = ({
     actorAuthMethod,
     projectId
   }: TProjectPermission) => {
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.SecretManager);
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRotation);
 
     return {
@@ -82,14 +82,14 @@ export const secretRotationServiceFactory = ({
     secretPath,
     environment
   }: TCreateSecretRotationDTO) => {
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.SecretManager);
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       ProjectPermissionSub.SecretRotation
@@ -191,13 +191,14 @@ export const secretRotationServiceFactory = ({
   };
 
   const getByProjectId = async ({ actorId, projectId, actor, actorOrgId, actorAuthMethod }: TListByProjectIdDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRotation);
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
@@ -236,14 +237,14 @@ export const secretRotationServiceFactory = ({
         message: "Failed to add secret rotation due to plan restriction. Upgrade plan to add secret rotation."
       });
 
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      doc.projectId,
+      projectId: project.id,
       actorAuthMethod,
-      actorOrgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.SecretManager);
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretRotation);
     await secretRotationQueue.removeFromQueue(doc.id, doc.interval);
     await secretRotationQueue.addToQueue(doc.id, doc.interval);
@@ -254,14 +255,14 @@ export const secretRotationServiceFactory = ({
     const doc = await secretRotationDAL.findById(rotationId);
     if (!doc) throw new NotFoundError({ message: `Rotation with ID '${rotationId}' not found` });
 
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      doc.projectId,
+      projectId: doc.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.SecretManager);
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
       ProjectPermissionSub.SecretRotation

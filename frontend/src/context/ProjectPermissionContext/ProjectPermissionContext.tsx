@@ -1,62 +1,77 @@
-import { createContext, ReactNode, useContext } from "react";
+import { useCallback } from "react";
+import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
+import { unpackRules } from "@casl/ability/extra";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { useParams } from "@tanstack/react-router";
 
-import { useGetUserProjectPermissions } from "@app/hooks/api";
-import { TProjectMembership } from "@app/hooks/api/users/types";
+import {
+  conditionsMatcher,
+  fetchUserProjectPermissions,
+  roleQueryKeys
+} from "@app/hooks/api/roles/queries";
+import { groupBy } from "@app/lib/fn/array";
+import { omit } from "@app/lib/fn/object";
 
-import { useWorkspace } from "../WorkspaceContext";
-import { TProjectPermission } from "./types";
-
-type Props = {
-  children: ReactNode;
-};
-
-const ProjectPermissionContext = createContext<null | {
-  permission: TProjectPermission;
-  membership: TProjectMembership;
-}>(null);
-
-export const ProjectPermissionProvider = ({ children }: Props): JSX.Element => {
-  const { currentWorkspace, isLoading: isWsLoading } = useWorkspace();
-  const workspaceId = currentWorkspace?.id || "";
-  const { data: permission, isLoading } = useGetUserProjectPermissions({ workspaceId });
-
-  if ((isLoading && currentWorkspace) || isWsLoading) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-bunker-800">
-        <img
-          src="/images/loading/loading.gif"
-          height={70}
-          width={120}
-          decoding="async"
-          loading="lazy"
-          alt="infisical loading indicator"
-        />
-      </div>
-    );
-  }
-
-  if (!permission && currentWorkspace) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-bunker-800">
-        Failed to load user permissions
-      </div>
-    );
-  }
-
-  return (
-    <ProjectPermissionContext.Provider value={permission!}>
-      {children}
-    </ProjectPermissionContext.Provider>
-  );
-};
+import { ProjectPermissionSet } from "./types";
 
 export const useProjectPermission = () => {
-  const ctx = useContext(ProjectPermissionContext);
-  if (!ctx) {
+  const projectId = useParams({
+    strict: false,
+    select: (el) => el?.projectId
+  });
+  if (!projectId) {
     throw new Error("useProjectPermission to be used within <ProjectPermissionContext>");
   }
 
-  const hasProjectRole = (role: string) => ctx?.membership?.roles?.includes(role) || false;
+  const {
+    data: { permission, membership }
+  } = useSuspenseQuery({
+    queryKey: roleQueryKeys.getUserProjectPermissions({ workspaceId: projectId }),
+    queryFn: () => fetchUserProjectPermissions({ workspaceId: projectId }),
+    staleTime: Infinity,
+    select: (data) => {
+      const rule = unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(data.permissions);
+      const negatedRules = groupBy(
+        rule.filter((i) => i.inverted && i.conditions),
+        (i) => `${i.subject}-${JSON.stringify(i.conditions)}`
+      );
+      const ability = createMongoAbility<ProjectPermissionSet>(rule, {
+        // this allows in frontend to skip some rules using *
+        conditionsMatcher: (rules) => {
+          return (entity) => {
+            // skip validation if its negated rules
+            const isNegatedRule =
+              // eslint-disable-next-line no-underscore-dangle
+              negatedRules?.[`${entity.__caslSubjectType__}-${JSON.stringify(rules)}`];
+            if (isNegatedRule) {
+              const baseMatcher = conditionsMatcher(rules);
+              return baseMatcher(entity);
+            }
 
-  return { ...ctx, hasProjectRole };
+            const rulesStrippedOfWildcard = omit(
+              rules,
+              Object.keys(entity).filter((el) => entity[el]?.includes("*"))
+            );
+            const baseMatcher = conditionsMatcher(rulesStrippedOfWildcard);
+            return baseMatcher(entity);
+          };
+        }
+      });
+
+      return {
+        permission: ability,
+        membership: {
+          ...data.membership,
+          roles: data.membership.roles.map(({ role }) => role)
+        }
+      };
+    }
+  });
+
+  const hasProjectRole = useCallback(
+    (role: string) => membership?.roles?.includes(role) || false,
+    []
+  );
+
+  return { permission, membership, hasProjectRole };
 };

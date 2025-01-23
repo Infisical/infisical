@@ -4,9 +4,9 @@ import { MongoQuery } from "@ucast/mongo2js";
 import handlebars from "handlebars";
 
 import {
+  ActionProjectType,
   OrgMembershipRole,
   ProjectMembershipRole,
-  ProjectType,
   ServiceTokenScopes,
   TIdentityProjectMemberships,
   TProjectMemberships
@@ -23,7 +23,14 @@ import { TServiceTokenDALFactory } from "@app/services/service-token/service-tok
 import { orgAdminPermissions, orgMemberPermissions, orgNoAccessPermissions, OrgPermissionSet } from "./org-permission";
 import { TPermissionDALFactory } from "./permission-dal";
 import { escapeHandlebarsMissingMetadata, validateOrgSSO } from "./permission-fns";
-import { TBuildOrgPermissionDTO, TBuildProjectPermissionDTO } from "./permission-service-types";
+import {
+  TBuildOrgPermissionDTO,
+  TBuildProjectPermissionDTO,
+  TGetIdentityProjectPermissionArg,
+  TGetProjectPermissionArg,
+  TGetServiceTokenProjectPermissionArg,
+  TGetUserProjectPermissionArg
+} from "./permission-service-types";
 import {
   buildServiceTokenProjectPermission,
   projectAdminPermissions,
@@ -193,12 +200,13 @@ export const permissionServiceFactory = ({
   };
 
   // user permission for a project in an organization
-  const getUserProjectPermission = async (
-    userId: string,
-    projectId: string,
-    authMethod: ActorAuthMethod,
-    userOrgId?: string
-  ): Promise<TProjectPermissionRT<ActorType.USER>> => {
+  const getUserProjectPermission = async ({
+    userId,
+    projectId,
+    authMethod,
+    userOrgId,
+    actionProjectType
+  }: TGetUserProjectPermissionArg): Promise<TProjectPermissionRT<ActorType.USER>> => {
     const userProjectPermission = await permissionDAL.getProjectPermission(userId, projectId);
     if (!userProjectPermission) throw new ForbiddenRequestError({ name: "User not a part of the specified project" });
 
@@ -218,6 +226,12 @@ export const permissionServiceFactory = ({
     }
 
     validateOrgSSO(authMethod, userProjectPermission.orgAuthEnforced);
+
+    if (actionProjectType !== ActionProjectType.Any && actionProjectType !== userProjectPermission.projectType) {
+      throw new BadRequestError({
+        message: `The project is of type ${userProjectPermission.projectType}. Operations of type ${actionProjectType} are not allowed.`
+      });
+    }
 
     // join two permissions and pass to build the final permission set
     const rolePermissions = userProjectPermission.roles?.map(({ role, permissions }) => ({ role, permissions })) || [];
@@ -256,13 +270,6 @@ export const permissionServiceFactory = ({
     return {
       permission,
       membership: userProjectPermission,
-      ForbidOnInvalidProjectType: (productType: ProjectType) => {
-        if (productType !== userProjectPermission.projectType) {
-          throw new BadRequestError({
-            message: `The project is of type ${userProjectPermission.projectType}. Operations of type ${productType} are not allowed.`
-          });
-        }
-      },
       hasRole: (role: string) =>
         userProjectPermission.roles.findIndex(
           ({ role: slug, customRoleSlug }) => role === slug || slug === customRoleSlug
@@ -270,11 +277,12 @@ export const permissionServiceFactory = ({
     };
   };
 
-  const getIdentityProjectPermission = async (
-    identityId: string,
-    projectId: string,
-    identityOrgId: string | undefined
-  ): Promise<TProjectPermissionRT<ActorType.IDENTITY>> => {
+  const getIdentityProjectPermission = async ({
+    identityId,
+    projectId,
+    identityOrgId,
+    actionProjectType
+  }: TGetIdentityProjectPermissionArg): Promise<TProjectPermissionRT<ActorType.IDENTITY>> => {
     const identityProjectPermission = await permissionDAL.getProjectIdentityPermission(identityId, projectId);
     if (!identityProjectPermission)
       throw new ForbiddenRequestError({
@@ -291,6 +299,12 @@ export const permissionServiceFactory = ({
 
     if (identityProjectPermission.orgId !== identityOrgId) {
       throw new ForbiddenRequestError({ name: "Identity is not a member of the specified organization" });
+    }
+
+    if (actionProjectType !== ActionProjectType.Any && actionProjectType !== identityProjectPermission.projectType) {
+      throw new BadRequestError({
+        message: `The project is of type ${identityProjectPermission.projectType}. Operations of type ${actionProjectType} are not allowed.`
+      });
     }
 
     const rolePermissions =
@@ -331,13 +345,6 @@ export const permissionServiceFactory = ({
     return {
       permission,
       membership: identityProjectPermission,
-      ForbidOnInvalidProjectType: (productType: ProjectType) => {
-        if (productType !== identityProjectPermission.projectType) {
-          throw new BadRequestError({
-            message: `The project is of type ${identityProjectPermission.projectType}. Operations of type ${productType} are not allowed.`
-          });
-        }
-      },
       hasRole: (role: string) =>
         identityProjectPermission.roles.findIndex(
           ({ role: slug, customRoleSlug }) => role === slug || slug === customRoleSlug
@@ -345,11 +352,12 @@ export const permissionServiceFactory = ({
     };
   };
 
-  const getServiceTokenProjectPermission = async (
-    serviceTokenId: string,
-    projectId: string,
-    actorOrgId: string | undefined
-  ) => {
+  const getServiceTokenProjectPermission = async ({
+    serviceTokenId,
+    projectId,
+    actorOrgId,
+    actionProjectType
+  }: TGetServiceTokenProjectPermissionArg) => {
     const serviceToken = await serviceTokenDAL.findById(serviceTokenId);
     if (!serviceToken) throw new NotFoundError({ message: `Service token with ID '${serviceTokenId}' not found` });
 
@@ -373,17 +381,16 @@ export const permissionServiceFactory = ({
       });
     }
 
+    if (actionProjectType !== ActionProjectType.Any && actionProjectType !== serviceTokenProject.type) {
+      throw new BadRequestError({
+        message: `The project is of type ${serviceTokenProject.type}. Operations of type ${actionProjectType} are not allowed.`
+      });
+    }
+
     const scopes = ServiceTokenScopes.parse(serviceToken.scopes || []);
     return {
       permission: buildServiceTokenProjectPermission(scopes, serviceToken.permissions),
-      membership: undefined,
-      ForbidOnInvalidProjectType: (productType: ProjectType) => {
-        if (productType !== serviceTokenProject.type) {
-          throw new BadRequestError({
-            message: `The project is of type ${serviceTokenProject.type}. Operations of type ${productType} are not allowed.`
-          });
-        }
-      }
+      membership: undefined
     };
   };
 
@@ -392,7 +399,6 @@ export const permissionServiceFactory = ({
         permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
         membership: undefined;
         hasRole: (arg: string) => boolean;
-        ForbidOnInvalidProjectType: (type: ProjectType) => void;
       } // service token doesn't have both membership and roles
     : {
         permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
@@ -402,23 +408,156 @@ export const permissionServiceFactory = ({
           roles: Array<{ role: string }>;
         };
         hasRole: (role: string) => boolean;
-        ForbidOnInvalidProjectType: (type: ProjectType) => void;
       };
 
-  const getProjectPermission = async <T extends ActorType>(
-    type: T,
-    id: string,
-    projectId: string,
-    actorAuthMethod: ActorAuthMethod,
-    actorOrgId: string | undefined
-  ): Promise<TProjectPermissionRT<T>> => {
-    switch (type) {
+  const getProjectPermissions = async (projectId: string) => {
+    // fetch user permissions
+    const rawUserProjectPermissions = await permissionDAL.getProjectUserPermissions(projectId);
+    const userPermissions = rawUserProjectPermissions.map((userProjectPermission) => {
+      const rolePermissions =
+        userProjectPermission.roles?.map(({ role, permissions }) => ({ role, permissions })) || [];
+      const additionalPrivileges =
+        userProjectPermission.additionalPrivileges?.map(({ permissions }) => ({
+          role: ProjectMembershipRole.Custom,
+          permissions
+        })) || [];
+
+      const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
+      const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false });
+      const metadataKeyValuePair = escapeHandlebarsMissingMetadata(
+        objectify(
+          userProjectPermission.metadata,
+          (i) => i.key,
+          (i) => i.value
+        )
+      );
+      const interpolateRules = templatedRules(
+        {
+          identity: {
+            id: userProjectPermission.userId,
+            username: userProjectPermission.username,
+            metadata: metadataKeyValuePair
+          }
+        },
+        { data: false }
+      );
+      const permission = createMongoAbility<ProjectPermissionSet>(
+        JSON.parse(interpolateRules) as RawRuleOf<MongoAbility<ProjectPermissionSet>>[],
+        {
+          conditionsMatcher
+        }
+      );
+
+      return {
+        permission,
+        id: userProjectPermission.userId,
+        name: userProjectPermission.username,
+        membershipId: userProjectPermission.id
+      };
+    });
+
+    // fetch identity permissions
+    const rawIdentityProjectPermissions = await permissionDAL.getProjectIdentityPermissions(projectId);
+    const identityPermissions = rawIdentityProjectPermissions.map((identityProjectPermission) => {
+      const rolePermissions =
+        identityProjectPermission.roles?.map(({ role, permissions }) => ({ role, permissions })) || [];
+      const additionalPrivileges =
+        identityProjectPermission.additionalPrivileges?.map(({ permissions }) => ({
+          role: ProjectMembershipRole.Custom,
+          permissions
+        })) || [];
+
+      const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
+      const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false });
+      const metadataKeyValuePair = escapeHandlebarsMissingMetadata(
+        objectify(
+          identityProjectPermission.metadata,
+          (i) => i.key,
+          (i) => i.value
+        )
+      );
+
+      const interpolateRules = templatedRules(
+        {
+          identity: {
+            id: identityProjectPermission.identityId,
+            username: identityProjectPermission.username,
+            metadata: metadataKeyValuePair
+          }
+        },
+        { data: false }
+      );
+      const permission = createMongoAbility<ProjectPermissionSet>(
+        JSON.parse(interpolateRules) as RawRuleOf<MongoAbility<ProjectPermissionSet>>[],
+        {
+          conditionsMatcher
+        }
+      );
+
+      return {
+        permission,
+        id: identityProjectPermission.identityId,
+        name: identityProjectPermission.username,
+        membershipId: identityProjectPermission.id
+      };
+    });
+
+    // fetch group permissions
+    const rawGroupProjectPermissions = await permissionDAL.getProjectGroupPermissions(projectId);
+    const groupPermissions = rawGroupProjectPermissions.map((groupProjectPermission) => {
+      const rolePermissions =
+        groupProjectPermission.roles?.map(({ role, permissions }) => ({ role, permissions })) || [];
+      const rules = buildProjectPermissionRules(rolePermissions);
+      const permission = createMongoAbility<ProjectPermissionSet>(rules, {
+        conditionsMatcher
+      });
+
+      return {
+        permission,
+        id: groupProjectPermission.groupId,
+        name: groupProjectPermission.username,
+        membershipId: groupProjectPermission.id
+      };
+    });
+
+    return {
+      userPermissions,
+      identityPermissions,
+      groupPermissions
+    };
+  };
+
+  const getProjectPermission = async <T extends ActorType>({
+    actor,
+    actorId,
+    projectId,
+    actorAuthMethod,
+    actorOrgId,
+    actionProjectType
+  }: TGetProjectPermissionArg): Promise<TProjectPermissionRT<T>> => {
+    switch (actor) {
       case ActorType.USER:
-        return getUserProjectPermission(id, projectId, actorAuthMethod, actorOrgId) as Promise<TProjectPermissionRT<T>>;
+        return getUserProjectPermission({
+          userId: actorId,
+          projectId,
+          authMethod: actorAuthMethod,
+          userOrgId: actorOrgId,
+          actionProjectType
+        }) as Promise<TProjectPermissionRT<T>>;
       case ActorType.SERVICE:
-        return getServiceTokenProjectPermission(id, projectId, actorOrgId) as Promise<TProjectPermissionRT<T>>;
+        return getServiceTokenProjectPermission({
+          serviceTokenId: actorId,
+          projectId,
+          actorOrgId,
+          actionProjectType
+        }) as Promise<TProjectPermissionRT<T>>;
       case ActorType.IDENTITY:
-        return getIdentityProjectPermission(id, projectId, actorOrgId) as Promise<TProjectPermissionRT<T>>;
+        return getIdentityProjectPermission({
+          identityId: actorId,
+          projectId,
+          identityOrgId: actorOrgId,
+          actionProjectType
+        }) as Promise<TProjectPermissionRT<T>>;
       default:
         throw new BadRequestError({
           message: "Invalid actor provided",
@@ -455,6 +594,7 @@ export const permissionServiceFactory = ({
     getOrgPermission,
     getUserProjectPermission,
     getProjectPermission,
+    getProjectPermissions,
     getOrgPermissionByRole,
     getProjectPermissionByRole,
     buildOrgPermission,

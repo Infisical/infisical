@@ -1,1 +1,0 @@
-export { SecretMainPage } from "./SecretMainPage";

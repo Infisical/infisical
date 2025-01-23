@@ -16,64 +16,6 @@ type InfisicalPushSecretDestination struct {
 	ProjectID string `json:"projectId"`
 }
 
-type PushSecretTlsConfig struct {
-	// Reference to secret containing CA cert
-	// +kubebuilder:validation:Optional
-	CaRef CaReference `json:"caRef,omitempty"`
-}
-
-// PushSecretUniversalAuth defines universal authentication
-type PushSecretUniversalAuth struct {
-	// +kubebuilder:validation:Required
-	CredentialsRef KubeSecretReference `json:"credentialsRef"`
-}
-
-type PushSecretAwsIamAuth struct {
-	// +kubebuilder:validation:Required
-	IdentityID string `json:"identityId"`
-}
-
-type PushSecretAzureAuth struct {
-	// +kubebuilder:validation:Required
-	IdentityID string `json:"identityId"`
-	// +kubebuilder:validation:Optional
-	Resource string `json:"resource,omitempty"`
-}
-
-type PushSecretGcpIdTokenAuth struct {
-	// +kubebuilder:validation:Required
-	IdentityID string `json:"identityId"`
-}
-
-type PushSecretGcpIamAuth struct {
-	// +kubebuilder:validation:Required
-	IdentityID string `json:"identityId"`
-	// +kubebuilder:validation:Required
-	ServiceAccountKeyFilePath string `json:"serviceAccountKeyFilePath"`
-}
-
-type PushSecretKubernetesAuth struct {
-	// +kubebuilder:validation:Required
-	IdentityID string `json:"identityId"`
-	// +kubebuilder:validation:Required
-	ServiceAccountRef KubernetesServiceAccountRef `json:"serviceAccountRef"`
-}
-
-type PushSecretAuthentication struct {
-	// +kubebuilder:validation:Optional
-	UniversalAuth PushSecretUniversalAuth `json:"universalAuth,omitempty"`
-	// +kubebuilder:validation:Optional
-	KubernetesAuth PushSecretKubernetesAuth `json:"kubernetesAuth,omitempty"`
-	// +kubebuilder:validation:Optional
-	AwsIamAuth PushSecretAwsIamAuth `json:"awsIamAuth,omitempty"`
-	// +kubebuilder:validation:Optional
-	AzureAuth PushSecretAzureAuth `json:"azureAuth,omitempty"`
-	// +kubebuilder:validation:Optional
-	GcpIdTokenAuth PushSecretGcpIdTokenAuth `json:"gcpIdTokenAuth,omitempty"`
-	// +kubebuilder:validation:Optional
-	GcpIamAuth PushSecretGcpIamAuth `json:"gcpIamAuth,omitempty"`
-}
-
 type SecretPush struct {
 	// +kubebuilder:validation:Required
 	Secret KubeSecretReference `json:"secret"`
@@ -92,7 +34,7 @@ type InfisicalPushSecretSpec struct {
 	Destination InfisicalPushSecretDestination `json:"destination"`
 
 	// +kubebuilder:validation:Optional
-	Authentication PushSecretAuthentication `json:"authentication"`
+	Authentication GenericInfisicalAuthentication `json:"authentication"`
 
 	// +kubebuilder:validation:Required
 	Push SecretPush `json:"push"`
@@ -104,7 +46,7 @@ type InfisicalPushSecretSpec struct {
 	HostAPI string `json:"hostAPI"`
 
 	// +kubebuilder:validation:Optional
-	TLS PushSecretTlsConfig `json:"tls"`
+	TLS TLSConfig `json:"tls"`
 }
 
 // InfisicalPushSecretStatus defines the observed state of InfisicalPushSecret

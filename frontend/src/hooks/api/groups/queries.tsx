@@ -60,7 +60,7 @@ export const useListGroupUsers = ({
       filter
     }),
     enabled: Boolean(groupSlug),
-    keepPreviousData: true,
+    placeholderData: (previousData) => previousData,
     queryFn: async () => {
       const params = new URLSearchParams({
         offset: String(offset),

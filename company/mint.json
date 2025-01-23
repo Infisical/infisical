@@ -62,7 +62,13 @@
         "handbook/time-off",
         "handbook/hiring",
         "handbook/meetings",
-        "handbook/talking-to-customers"
+        "handbook/talking-to-customers",
+        {
+          "group": "Engineering",
+          "pages": [
+            "documentation/engineering/oncall"
+          ]
+        }
       ]
     }
   ],

@@ -25,7 +25,7 @@ export const useGetOrgIncidentContact = (orgId: string) =>
 export const useAddIncidentContact = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, AddIncidentContactDTO>({
+  return useMutation<object, object, AddIncidentContactDTO>({
     mutationFn: async ({ orgId, email }) => {
       const { data } = await apiRequest.post(`/api/v1/organization/${orgId}/incidentContactOrg`, {
         email
@@ -33,7 +33,7 @@ export const useAddIncidentContact = () => {
       return data;
     },
     onSuccess: (_, { orgId }) => {
-      queryClient.invalidateQueries(incidentContactKeys.getAllContact(orgId));
+      queryClient.invalidateQueries({ queryKey: incidentContactKeys.getAllContact(orgId) });
     }
   });
 };
@@ -41,7 +41,7 @@ export const useAddIncidentContact = () => {
 export const useDeleteIncidentContact = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, DeleteIncidentContactDTO>({
+  return useMutation<object, object, DeleteIncidentContactDTO>({
     mutationFn: async ({ orgId, incidentContactId }) => {
       const { data } = await apiRequest.delete(
         `/api/v1/organization/${orgId}/incidentContactOrg/${incidentContactId}`
@@ -49,7 +49,7 @@ export const useDeleteIncidentContact = () => {
       return data;
     },
     onSuccess: (_, { orgId }) => {
-      queryClient.invalidateQueries(incidentContactKeys.getAllContact(orgId));
+      queryClient.invalidateQueries({ queryKey: incidentContactKeys.getAllContact(orgId) });
     }
   });
 };

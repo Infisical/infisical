@@ -3,11 +3,11 @@ import { AxiosError } from "axios";
 
 import { apiRequest } from "@app/config/request";
 import { SessionStorageKeys } from "@app/const";
-import { setAuthToken } from "@app/reactQuery";
 
 import { APIKeyDataV2 } from "../apiKeys/types";
 import { MfaMethod } from "../auth/types";
 import { TGroupWithProjectMemberships } from "../groups/types";
+import { setAuthToken } from "../reactQuery";
 import { workspaceKeys } from "../workspace";
 import { userKeys } from "./query-keys";
 import {
@@ -31,7 +31,11 @@ export const fetchUserDetails = async () => {
   return data.user;
 };
 
-export const useGetUser = () => useQuery(userKeys.getUser, fetchUserDetails);
+export const useGetUser = () =>
+  useQuery({
+    queryKey: userKeys.getUser,
+    queryFn: fetchUserDetails
+  });
 
 export const useDeleteMe = () => {
   const queryClient = useQueryClient();
@@ -53,7 +57,6 @@ export const useDeleteMe = () => {
       localStorage.removeItem("tag");
       localStorage.removeItem("PRIVATE_KEY");
       localStorage.removeItem("orgData.id");
-      localStorage.removeItem("projectData.id");
 
       queryClient.clear();
     }
@@ -80,14 +83,14 @@ export const fetchUserProjectFavorites = async (orgId: string) => {
 export const useRenameUser = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, RenameUserDTO>({
+  return useMutation<object, object, RenameUserDTO>({
     mutationFn: ({ newName }) =>
       apiRequest.patch("/api/v2/users/me/name", {
         firstName: newName?.split(" ")[0],
         lastName: newName?.split(" ").slice(1).join(" ")
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries(userKeys.getUser);
+      queryClient.invalidateQueries({ queryKey: userKeys.getUser });
     }
   });
 };
@@ -106,7 +109,7 @@ export const useUpdateUserAuthMethods = () => {
       return user;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(userKeys.getUser);
+      queryClient.invalidateQueries({ queryKey: userKeys.getUser });
     }
   });
 };
@@ -152,18 +155,20 @@ export const useAddUsersToOrg = () => {
     };
   };
 
-  return useMutation<Response, {}, AddUserToOrgDTO>({
+  return useMutation<Response, object, AddUserToOrgDTO>({
     mutationFn: (dto) => {
       return apiRequest.post("/api/v1/invite-org/signup", dto);
     },
     onSuccess: (_, { organizationId, projects }) => {
-      queryClient.invalidateQueries(userKeys.getOrgUsers(organizationId));
+      queryClient.invalidateQueries({ queryKey: userKeys.getOrgUsers(organizationId) });
 
       projects?.forEach((project) => {
         if (project.slug) {
-          queryClient.invalidateQueries(workspaceKeys.getWorkspaceGroupMemberships(project.slug));
+          queryClient.invalidateQueries({
+            queryKey: workspaceKeys.getWorkspaceGroupMemberships(project.slug)
+          });
         }
-        queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(project.id));
+        queryClient.invalidateQueries({ queryKey: workspaceKeys.getWorkspaceUsers(project.id) });
       });
     }
   });
@@ -207,12 +212,12 @@ export const useGetOrgMembershipProjectMemberships = (
 export const useDeleteOrgMembership = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, DeletOrgMembershipDTO>({
+  return useMutation<object, object, DeletOrgMembershipDTO>({
     mutationFn: ({ membershipId, orgId }) => {
       return apiRequest.delete(`/api/v2/organizations/${orgId}/memberships/${membershipId}`);
     },
     onSuccess: (_, { orgId }) => {
-      queryClient.invalidateQueries(userKeys.getOrgUsers(orgId));
+      queryClient.invalidateQueries({ queryKey: userKeys.getOrgUsers(orgId) });
     }
   });
 };
@@ -220,15 +225,15 @@ export const useDeleteOrgMembership = () => {
 export const useDeactivateOrgMembership = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, DeletOrgMembershipDTO>({
+  return useMutation<object, object, DeletOrgMembershipDTO>({
     mutationFn: ({ membershipId, orgId }) => {
       return apiRequest.post(
         `/api/v2/organizations/${orgId}/memberships/${membershipId}/deactivate`
       );
     },
     onSuccess: (_, { orgId, membershipId }) => {
-      queryClient.invalidateQueries(userKeys.getOrgUsers(orgId));
-      queryClient.invalidateQueries(userKeys.getOrgMembership(orgId, membershipId));
+      queryClient.invalidateQueries({ queryKey: userKeys.getOrgUsers(orgId) });
+      queryClient.invalidateQueries({ queryKey: userKeys.getOrgMembership(orgId, membershipId) });
     }
   });
 };
@@ -236,7 +241,7 @@ export const useDeactivateOrgMembership = () => {
 export const useUpdateOrgMembership = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, UpdateOrgMembershipDTO>({
+  return useMutation<object, object, UpdateOrgMembershipDTO>({
     mutationFn: ({ organizationId, membershipId, role, isActive, metadata }) => {
       return apiRequest.patch(
         `/api/v2/organizations/${organizationId}/memberships/${membershipId}`,
@@ -248,23 +253,27 @@ export const useUpdateOrgMembership = () => {
       );
     },
     onSuccess: (_, { organizationId, membershipId }) => {
-      queryClient.invalidateQueries(userKeys.getOrgUsers(organizationId));
-      queryClient.invalidateQueries(userKeys.getOrgMembership(organizationId, membershipId));
+      queryClient.invalidateQueries({ queryKey: userKeys.getOrgUsers(organizationId) });
+      queryClient.invalidateQueries({
+        queryKey: userKeys.getOrgMembership(organizationId, membershipId)
+      });
     },
     // to remove old states
     onError: (_, { organizationId, membershipId }) => {
-      queryClient.invalidateQueries(userKeys.getOrgUsers(organizationId));
-      queryClient.invalidateQueries(userKeys.getOrgMembership(organizationId, membershipId));
+      queryClient.invalidateQueries({ queryKey: userKeys.getOrgUsers(organizationId) });
+      queryClient.invalidateQueries({
+        queryKey: userKeys.getOrgMembership(organizationId, membershipId)
+      });
     }
   });
 };
 
 export const useRegisterUserAction = () => {
   const queryClient = useQueryClient();
-  return useMutation<{}, {}, string>({
+  return useMutation<object, object, string>({
     mutationFn: (action) => apiRequest.post("/api/v1/user-action", { action }),
     onSuccess: () => {
-      queryClient.invalidateQueries(userKeys.userAction);
+      queryClient.invalidateQueries({ queryKey: userKeys.userAction });
     }
   });
 };
@@ -287,7 +296,6 @@ export const useLogoutUser = (keepQueryClient?: boolean) => {
       localStorage.removeItem("tag");
       localStorage.removeItem("PRIVATE_KEY");
       localStorage.removeItem("orgData.id");
-      localStorage.removeItem("projectData.id");
       sessionStorage.removeItem(SessionStorageKeys.CLI_TERMINAL_TOKEN);
 
       if (!keepQueryClient) {
@@ -346,7 +354,7 @@ export const useCreateAPIKey = () => {
       return data;
     },
     onSuccess() {
-      queryClient.invalidateQueries(userKeys.myAPIKeys);
+      queryClient.invalidateQueries({ queryKey: userKeys.myAPIKeys });
     }
   });
 };
@@ -361,7 +369,7 @@ export const useDeleteAPIKey = () => {
       return data;
     },
     onSuccess() {
-      queryClient.invalidateQueries(userKeys.myAPIKeys);
+      queryClient.invalidateQueries({ queryKey: userKeys.myAPIKeys });
     }
   });
 };
@@ -387,7 +395,7 @@ export const useRevokeMySessions = () => {
       return data;
     },
     onSuccess() {
-      queryClient.invalidateQueries(userKeys.mySessions);
+      queryClient.invalidateQueries({ queryKey: userKeys.mySessions });
     }
   });
 };
@@ -412,7 +420,7 @@ export const useUpdateUserMfa = () => {
       return user;
     },
     onSuccess() {
-      queryClient.invalidateQueries(userKeys.getUser);
+      queryClient.invalidateQueries({ queryKey: userKeys.getUser });
     }
   });
 };

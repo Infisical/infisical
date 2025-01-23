@@ -3,14 +3,15 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import {
+  ActionProjectType,
   ProjectMembershipRole,
-  ProjectType,
   ProjectUpgradeStatus,
   SecretEncryptionAlgo,
   SecretKeyEncoding,
   SecretsSchema,
   SecretType
 } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
@@ -69,6 +70,7 @@ import {
   TDeleteSecretRawDTO,
   TGetASecretDTO,
   TGetASecretRawDTO,
+  TGetSecretAccessListDTO,
   TGetSecretsDTO,
   TGetSecretsRawDTO,
   TGetSecretVersionsDTO,
@@ -86,7 +88,7 @@ type TSecretServiceFactoryDep = {
   secretDAL: TSecretDALFactory;
   secretTagDAL: TSecretTagDALFactory;
   secretVersionDAL: TSecretVersionDALFactory;
-  projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findProjectBySlug">;
+  projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findProjectBySlug" | "findById">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   folderDAL: Pick<
     TSecretFolderDALFactory,
@@ -94,7 +96,7 @@ type TSecretServiceFactoryDep = {
   >;
   secretV2BridgeService: TSecretV2BridgeServiceFactory;
   secretBlindIndexDAL: TSecretBlindIndexDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissions">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   secretQueueService: Pick<
     TSecretQueueFactory,
@@ -113,6 +115,7 @@ type TSecretServiceFactoryDep = {
     TSecretApprovalRequestSecretDALFactory,
     "insertMany" | "insertApprovalSecretTags"
   >;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TSecretServiceFactory = ReturnType<typeof secretServiceFactory>;
@@ -134,7 +137,8 @@ export const secretServiceFactory = ({
   secretApprovalRequestDAL,
   secretApprovalRequestSecretDAL,
   secretV2BridgeService,
-  secretApprovalRequestService
+  secretApprovalRequestService,
+  licenseService
 }: TSecretServiceFactoryDep) => {
   const getSecretReference = async (projectId: string) => {
     // if bot key missing means e2e still exist
@@ -187,14 +191,14 @@ export const secretServiceFactory = ({
     projectId,
     ...inputSecret
   }: TCreateSecretDTO) => {
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.SecretManager);
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
@@ -288,6 +292,7 @@ export const secretServiceFactory = ({
         actorId,
         actor,
         projectId,
+        orgId: actorOrgId,
         environmentSlug: folder.environment.slug
       });
     }
@@ -304,14 +309,14 @@ export const secretServiceFactory = ({
     projectId,
     ...inputSecret
   }: TUpdateSecretDTO) => {
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.SecretManager);
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
@@ -429,6 +434,7 @@ export const secretServiceFactory = ({
       await snapshotService.performSnapshot(folderId);
       await secretQueueService.syncSecrets({
         secretPath: path,
+        orgId: actorOrgId,
         actorId,
         actor,
         projectId,
@@ -448,14 +454,14 @@ export const secretServiceFactory = ({
     projectId,
     ...inputSecret
   }: TDeleteSecretDTO) => {
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.SecretManager);
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
@@ -526,6 +532,7 @@ export const secretServiceFactory = ({
         actorId,
         actor,
         projectId,
+        orgId: actorOrgId,
         environmentSlug: folder.environment.slug
       });
     }
@@ -544,13 +551,14 @@ export const secretServiceFactory = ({
     includeImports,
     recursive
   }: TGetSecretsDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     let paths: { folderId: string; path: string }[] = [];
 
@@ -651,13 +659,14 @@ export const secretServiceFactory = ({
     version,
     includeImports
   }: TGetASecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -750,14 +759,14 @@ export const secretServiceFactory = ({
     projectId,
     secrets: inputSecrets
   }: TCreateBulkSecretDTO) => {
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.SecretManager);
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -820,6 +829,7 @@ export const secretServiceFactory = ({
       actorId,
       secretPath: path,
       projectId,
+      orgId: actorOrgId,
       environmentSlug: folder.environment.slug
     });
 
@@ -836,14 +846,14 @@ export const secretServiceFactory = ({
     projectId,
     secrets: inputSecrets
   }: TUpdateBulkSecretDTO) => {
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.SecretManager);
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
@@ -928,6 +938,7 @@ export const secretServiceFactory = ({
       actorId,
       secretPath: path,
       projectId,
+      orgId: actorOrgId,
       environmentSlug: folder.environment.slug
     });
 
@@ -944,14 +955,14 @@ export const secretServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TDeleteBulkSecretDTO) => {
-    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
-    ForbidOnInvalidProjectType(ProjectType.SecretManager);
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -1014,6 +1025,7 @@ export const secretServiceFactory = ({
       actorId,
       secretPath: path,
       projectId,
+      orgId: actorOrgId,
       environmentSlug: folder.environment.slug
     });
 
@@ -1145,6 +1157,71 @@ export const secretServiceFactory = ({
       });
 
     return secretV2BridgeService.getSecretReferenceTree(dto);
+  };
+
+  const getSecretAccessList = async (dto: TGetSecretAccessListDTO) => {
+    const { environment, secretPath, secretName, projectId } = dto;
+    const plan = await licenseService.getPlan(dto.actorOrgId);
+    if (!plan.secretAccessInsights) {
+      throw new BadRequestError({
+        message: "Failed to fetch secret access list due to plan restriction. Upgrade your plan."
+      });
+    }
+
+    const secret = await secretV2BridgeService.getSecretByName({
+      actor: dto.actor,
+      actorId: dto.actorId,
+      actorOrgId: dto.actorOrgId,
+      actorAuthMethod: dto.actorAuthMethod,
+      projectId,
+      secretName,
+      path: secretPath,
+      environment,
+      type: "shared"
+    });
+
+    const { userPermissions, identityPermissions, groupPermissions } = await permissionService.getProjectPermissions(
+      dto.projectId
+    );
+
+    const attachAllowedActions = (
+      entityPermission:
+        | (typeof userPermissions)[number]
+        | (typeof identityPermissions)[number]
+        | (typeof groupPermissions)[number]
+    ) => {
+      const allowedActions = [
+        ProjectPermissionActions.Read,
+        ProjectPermissionActions.Delete,
+        ProjectPermissionActions.Create,
+        ProjectPermissionActions.Edit
+      ].filter((action) =>
+        entityPermission.permission.can(
+          action,
+          subject(ProjectPermissionSub.Secrets, {
+            environment,
+            secretPath,
+            secretName,
+            secretTags: secret?.tags?.map((el) => el.slug)
+          })
+        )
+      );
+
+      return {
+        ...entityPermission,
+        allowedActions
+      };
+    };
+
+    const usersWithAccess = userPermissions.map(attachAllowedActions).filter((user) => user.allowedActions.length > 0);
+    const identitiesWithAccess = identityPermissions
+      .map(attachAllowedActions)
+      .filter((identity) => identity.allowedActions.length > 0);
+    const groupsWithAccess = groupPermissions
+      .map(attachAllowedActions)
+      .filter((group) => group.allowedActions.length > 0);
+
+    return { users: usersWithAccess, identities: identitiesWithAccess, groups: groupsWithAccess };
   };
 
   const getSecretsRaw = async ({
@@ -1385,9 +1462,20 @@ export const secretServiceFactory = ({
     skipMultilineEncoding,
     tagIds,
     secretReminderNote,
-    secretReminderRepeatDays
+    secretReminderRepeatDays,
+    secretMetadata
   }: TCreateSecretRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+    const project = await projectDAL.findById(projectId);
+    if (project.enforceCapitalization) {
+      if (secretName !== secretName.toUpperCase()) {
+        throw new BadRequestError({
+          message:
+            "Secret name must be in UPPERCASE per project requirements. You can disable this requirement in project settings."
+        });
+      }
+    }
+
     const policy =
       actor === ActorType.USER && type === SecretType.Shared
         ? await secretApprovalPolicyService.getSecretApprovalPolicy(projectId, environment, secretPath)
@@ -1412,7 +1500,8 @@ export const secretServiceFactory = ({
                 secretValue,
                 tagIds,
                 reminderNote: secretReminderNote,
-                reminderRepeatDays: secretReminderRepeatDays
+                reminderRepeatDays: secretReminderRepeatDays,
+                secretMetadata
               }
             ]
           }
@@ -1435,7 +1524,8 @@ export const secretServiceFactory = ({
         tagIds,
         secretReminderNote,
         skipMultilineEncoding,
-        secretReminderRepeatDays
+        secretReminderRepeatDays,
+        secretMetadata
       });
       return { secret, type: SecretProtectionType.Direct as const };
     }
@@ -1525,9 +1615,20 @@ export const secretServiceFactory = ({
     secretReminderRepeatDays,
     metadata,
     secretComment,
-    newSecretName
+    newSecretName,
+    secretMetadata
   }: TUpdateSecretRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+    const project = await projectDAL.findById(projectId);
+    if (project.enforceCapitalization) {
+      if (newSecretName && newSecretName !== newSecretName.toUpperCase()) {
+        throw new BadRequestError({
+          message:
+            "Secret name must be in UPPERCASE per project requirements. You can disable this requirement in project settings."
+        });
+      }
+    }
+
     const policy =
       actor === ActorType.USER && type === SecretType.Shared
         ? await secretApprovalPolicyService.getSecretApprovalPolicy(projectId, environment, secretPath)
@@ -1553,7 +1654,8 @@ export const secretServiceFactory = ({
                 secretValue,
                 tagIds,
                 reminderNote: secretReminderNote,
-                reminderRepeatDays: secretReminderRepeatDays
+                reminderRepeatDays: secretReminderRepeatDays,
+                secretMetadata
               }
             ]
           }
@@ -1577,7 +1679,8 @@ export const secretServiceFactory = ({
         secretName,
         newSecretName,
         metadata,
-        secretValue
+        secretValue,
+        secretMetadata
       });
       return { type: SecretProtectionType.Direct as const, secret };
     }
@@ -1775,7 +1878,23 @@ export const secretServiceFactory = ({
       actor === ActorType.USER
         ? await secretApprovalPolicyService.getSecretApprovalPolicy(projectId, environment, secretPath)
         : undefined;
+
     if (shouldUseSecretV2Bridge) {
+      const project = await projectDAL.findById(projectId);
+      if (project.enforceCapitalization) {
+        const caseViolatingSecretKeys = inputSecrets
+          .filter((sec) => sec.secretKey !== sec.secretKey.toUpperCase())
+          .map((sec) => sec.secretKey);
+
+        if (caseViolatingSecretKeys.length) {
+          throw new BadRequestError({
+            message: `Secret names must be in UPPERCASE per project requirements: ${caseViolatingSecretKeys.join(
+              ", "
+            )}. You can disable this requirement in project settings`
+          });
+        }
+      }
+
       if (policy) {
         const approval = await secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
           policy,
@@ -1793,7 +1912,8 @@ export const secretServiceFactory = ({
               secretComment: el.secretComment,
               metadata: el.metadata,
               skipMultilineEncoding: el.skipMultilineEncoding,
-              secretKey: el.secretKey
+              secretKey: el.secretKey,
+              secretMetadata: el.secretMetadata
             }))
           }
         });
@@ -1903,6 +2023,21 @@ export const secretServiceFactory = ({
         ? await secretApprovalPolicyService.getSecretApprovalPolicy(projectId, environment, secretPath)
         : undefined;
     if (shouldUseSecretV2Bridge) {
+      const project = await projectDAL.findById(projectId);
+      if (project.enforceCapitalization) {
+        const caseViolatingSecretKeys = inputSecrets
+          .filter((sec) => sec.newSecretName && sec.newSecretName !== sec.newSecretName.toUpperCase())
+          .map((sec) => sec.newSecretName);
+
+        if (caseViolatingSecretKeys.length) {
+          throw new BadRequestError({
+            message: `Secret names must be in UPPERCASE per project requirements: ${caseViolatingSecretKeys.join(
+              ", "
+            )}. You can disable this requirement in project settings`
+          });
+        }
+      }
+
       if (policy) {
         const approval = await secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
           policy,
@@ -1919,7 +2054,8 @@ export const secretServiceFactory = ({
               secretValue: el.secretValue,
               secretComment: el.secretComment,
               skipMultilineEncoding: el.skipMultilineEncoding,
-              secretKey: el.secretKey
+              secretKey: el.secretKey,
+              secretMetadata: el.secretMetadata
             }))
           }
         });
@@ -2146,13 +2282,14 @@ export const secretServiceFactory = ({
     if (!botKey)
       throw new NotFoundError({ message: `Project bot for project with ID '${folder.projectId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      folder.projectId,
+      projectId: folder.projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
     const secretVersions = await secretVersionDAL.find({ secretId }, { offset, limit, sort: [["createdAt", "desc"]] });
     return secretVersions.map((el) =>
@@ -2181,13 +2318,14 @@ export const secretServiceFactory = ({
     actorId
   }: TAttachSecretTagsDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      project.id,
+      projectId: project.id,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
@@ -2262,6 +2400,7 @@ export const secretServiceFactory = ({
     await secretQueueService.syncSecrets({
       secretPath,
       projectId: project.id,
+      orgId: project.orgId,
       environmentSlug: environment,
       excludeReplication: true
     });
@@ -2285,13 +2424,14 @@ export const secretServiceFactory = ({
     actorId
   }: TAttachSecretTagsDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      project.id,
+      projectId: project.id,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
@@ -2370,6 +2510,7 @@ export const secretServiceFactory = ({
     await secretQueueService.syncSecrets({
       secretPath,
       projectId: project.id,
+      orgId: project.orgId,
       environmentSlug: environment,
       excludeReplication: true
     });
@@ -2390,13 +2531,14 @@ export const secretServiceFactory = ({
     actorOrgId,
     actorAuthMethod
   }: TBackFillSecretReferencesDTO) => {
-    const { hasRole } = await permissionService.getProjectPermission(
+    const { hasRole } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     if (!hasRole(ProjectMembershipRole.Admin))
       throw new ForbiddenRequestError({ message: "Only admins are allowed to take this action" });
@@ -2474,13 +2616,14 @@ export const secretServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      project.id,
+      projectId: project.id,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
@@ -2828,6 +2971,7 @@ export const secretServiceFactory = ({
       await snapshotService.performSnapshot(destinationFolder.id);
       await secretQueueService.syncSecrets({
         projectId: project.id,
+        orgId: project.orgId,
         secretPath: destinationFolder.path,
         environmentSlug: destinationFolder.environment.slug,
         actorId,
@@ -2839,6 +2983,7 @@ export const secretServiceFactory = ({
       await snapshotService.performSnapshot(sourceFolder.id);
       await secretQueueService.syncSecrets({
         projectId: project.id,
+        orgId: project.orgId,
         secretPath: sourceFolder.path,
         environmentSlug: sourceFolder.environment.slug,
         actorId,
@@ -2860,13 +3005,14 @@ export const secretServiceFactory = ({
     actorOrgId,
     actorAuthMethod
   }: TStartSecretsV2MigrationDTO) => {
-    const { hasRole } = await permissionService.getProjectPermission(
+    const { hasRole } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     if (!hasRole(ProjectMembershipRole.Admin))
       throw new ForbiddenRequestError({ message: "Only admins are allowed to take this action" });
@@ -2888,13 +3034,14 @@ export const secretServiceFactory = ({
 
     if (!shouldUseSecretV2Bridge) throw new BadRequestError({ message: "Project version not supported" });
 
-    const { permission } = await permissionService.getProjectPermission(
-      actor.type,
-      actor.id,
-      params.projectId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: params.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
     const secrets = secretV2BridgeService.getSecretsByFolderMappings({ ...params, userId: actor.id }, permission);
 
@@ -2928,6 +3075,7 @@ export const secretServiceFactory = ({
     getSecretsCountMultiEnv,
     getSecretsRawMultiEnv,
     getSecretReferenceTree,
-    getSecretsRawByFolderMappings
+    getSecretsRawByFolderMappings,
+    getSecretAccessList
   };
 };

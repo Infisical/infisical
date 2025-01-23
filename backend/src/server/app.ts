@@ -27,10 +27,10 @@ import { globalRateLimiterCfg } from "./config/rateLimiter";
 import { addErrorsToResponseSchemas } from "./plugins/add-errors-to-response-schemas";
 import { apiMetrics } from "./plugins/api-metrics";
 import { fastifyErrHandler } from "./plugins/error-handler";
-import { registerExternalNextjs } from "./plugins/external-nextjs";
 import { serializerCompiler, validatorCompiler, ZodTypeProvider } from "./plugins/fastify-zod";
 import { fastifyIp } from "./plugins/ip";
 import { maintenanceMode } from "./plugins/maintenanceMode";
+import { registerServeUI } from "./plugins/serve-ui";
 import { fastifySwagger } from "./plugins/swagger";
 import { registerRoutes } from "./routes";
 
@@ -87,7 +87,16 @@ export const main = async ({ db, hsmModule, auditLogDb, smtp, logger, queue, key
 
     await server.register<FastifyCorsOptions>(cors, {
       credentials: true,
-      origin: appCfg.SITE_URL || true
+      ...(appCfg.CORS_ALLOWED_ORIGINS?.length
+        ? {
+            origin: [...appCfg.CORS_ALLOWED_ORIGINS, ...(appCfg.SITE_URL ? [appCfg.SITE_URL] : [])]
+          }
+        : {
+            origin: appCfg.SITE_URL || true
+          }),
+      ...(appCfg.CORS_ALLOWED_HEADERS?.length && {
+        allowedHeaders: appCfg.CORS_ALLOWED_HEADERS
+      })
     });
 
     await server.register(addErrorsToResponseSchemas);
@@ -120,13 +129,10 @@ export const main = async ({ db, hsmModule, auditLogDb, smtp, logger, queue, key
 
     await server.register(registerRoutes, { smtp, queue, db, auditLogDb, keyStore, hsmModule });
 
-    if (appCfg.isProductionMode) {
-      await server.register(registerExternalNextjs, {
-        standaloneMode: appCfg.STANDALONE_MODE || IS_PACKAGED,
-        dir: path.join(__dirname, IS_PACKAGED ? "../../../" : "../../"),
-        port: appCfg.PORT
-      });
-    }
+    await server.register(registerServeUI, {
+      standaloneMode: appCfg.STANDALONE_MODE || IS_PACKAGED,
+      dir: path.join(__dirname, IS_PACKAGED ? "../../../" : "../../")
+    });
 
     await server.ready();
     server.swagger();

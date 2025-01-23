@@ -10,6 +10,7 @@ import { useToggle } from "@app/hooks/useToggle";
 import { ERROR_NOT_ALLOWED_READ_SECRETS } from "./constants";
 import {
   GetSecretVersionsDTO,
+  SecretAccessListEntry,
   SecretType,
   SecretV3Raw,
   SecretV3RawResponse,
@@ -18,6 +19,7 @@ import {
   TGetProjectSecretsAllEnvDTO,
   TGetProjectSecretsDTO,
   TGetProjectSecretsKey,
+  TGetSecretAccessListDTO,
   TGetSecretReferenceTreeDTO,
   TSecretReferenceTraceNode
 } from "./types";
@@ -27,6 +29,13 @@ export const secretKeys = {
   getProjectSecret: ({ workspaceId, environment, secretPath }: TGetProjectSecretsKey) =>
     [{ workspaceId, environment, secretPath }, "secrets"] as const,
   getSecretVersion: (secretId: string) => [{ secretId }, "secret-versions"] as const,
+  getSecretAccessList: ({
+    workspaceId,
+    environment,
+    secretPath,
+    secretKey
+  }: TGetSecretAccessListDTO) =>
+    ["secret-access-list", { workspaceId, environment, secretPath, secretKey }] as const,
   getSecretReferenceTree: (dto: TGetSecretReferenceTreeDTO) => ["secret-reference-tree", dto]
 };
 
@@ -67,7 +76,8 @@ export const mergePersonalSecrets = (rawSecrets: SecretV3Raw[]) => {
       updatedAt: el.updatedAt,
       version: el.version,
       skipMultilineEncoding: el.skipMultilineEncoding,
-      path: el.secretPath
+      path: el.secretPath,
+      secretMetadata: el.secretMetadata
     };
 
     if (el.type === SecretType.Personal) {
@@ -115,26 +125,6 @@ export const useGetProjectSecrets = ({
     enabled: Boolean(workspaceId && environment) && (options?.enabled ?? true),
     queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath }),
     queryFn: () => fetchProjectSecrets({ workspaceId, environment, secretPath }),
-    onError: (error) => {
-      if (axios.isAxiosError(error)) {
-        const { message, requestId } = error.response?.data as {
-          message: string;
-          requestId: string;
-        };
-        createNotification({
-          title: "Error fetching secrets",
-          type: "error",
-          text: message,
-          copyActions: [
-            {
-              value: requestId,
-              name: "Request ID",
-              label: `Request ID: ${requestId}`
-            }
-          ]
-        });
-      }
-    },
     select: useCallback(
       (data: Awaited<ReturnType<typeof fetchProjectSecrets>>) => mergePersonalSecrets(data.secrets),
       []
@@ -249,6 +239,27 @@ export const useGetSecretVersion = (dto: GetSecretVersionsDTO) =>
     select: useCallback((data: SecretVersions[]) => {
       return data.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     }, [])
+  });
+
+export const useGetSecretAccessList = (dto: TGetSecretAccessListDTO) =>
+  useQuery({
+    enabled: Boolean(dto.secretKey),
+    queryKey: secretKeys.getSecretAccessList(dto),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        groups: SecretAccessListEntry[];
+        identities: SecretAccessListEntry[];
+        users: SecretAccessListEntry[];
+      }>(`/api/v1/secrets/${dto.secretKey}/access-list`, {
+        params: {
+          workspaceId: dto.workspaceId,
+          environment: dto.environment,
+          secretPath: dto.secretPath
+        }
+      });
+
+      return data;
+    }
   });
 
 const fetchSecretReferenceTree = async ({

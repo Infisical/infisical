@@ -5,6 +5,10 @@ permissions:
   id-token: write
   contents: read
 
+concurrency: 
+  group: "infisical-core-deployment"
+  cancel-in-progress: true  
+
 jobs:
   infisical-tests:
     name: Integration tests
@@ -97,7 +101,7 @@ jobs:
           image: infisical/staging_infisical:${{ steps.commit.outputs.short }}
           environment-variables: "LOG_LEVEL=info"
       - name: Deploy to Amazon ECS service
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
           task-definition: ${{ steps.render-web-container.outputs.task-definition }}
           service: infisical-core-gamma-stage
@@ -113,10 +117,6 @@ jobs:
     steps:
       - uses: twingate/github-action@v1
         with:
-        # The Twingate Service Key used to connect Twingate to the proper service
-        # Learn more about [Twingate Services](https://docs.twingate.com/docs/services)
-        #
-        # Required
           service-key: ${{ secrets.TWINGATE_SERVICE_KEY }}
       - name: Checkout code
         uses: actions/checkout@v2
@@ -153,12 +153,37 @@ jobs:
           image: infisical/staging_infisical:${{ steps.commit.outputs.short }}
           environment-variables: "LOG_LEVEL=info"
       - name: Deploy to Amazon ECS service
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
           task-definition: ${{ steps.render-web-container.outputs.task-definition }}
           service: infisical-core-platform
           cluster: infisical-core-platform
           wait-for-service-stability: true
+      - name: Post slack message 
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          webhook: ${{ secrets.SLACK_DEPLOYMENT_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            text: "*Deployment Status Update*: ${{ job.status }}"
+            blocks:
+              - type: "section"
+                text:
+                  type: "mrkdwn"
+                  text: "*Deployment Status Update*: ${{ job.status }}"
+              - type: "section"
+                fields:
+                  - type: "mrkdwn"
+                    text: "*Application:*\nInfisical Core"
+                  - type: "mrkdwn"
+                    text: "*Instance Type:*\nShared Infisical Cloud"
+              - type: "section"
+                fields:
+                  - type: "mrkdwn"
+                    text: "*Region:*\nUS"
+                  - type: "mrkdwn"
+                    text: "*Git Tag:*\n<https://github.com/Infisical/infisical/commit/${{ steps.commit.outputs.short }}>"
+
 
   production-eu:
       name: EU production deploy
@@ -204,9 +229,34 @@ jobs:
             image: infisical/staging_infisical:${{ steps.commit.outputs.short }}
             environment-variables: "LOG_LEVEL=info"
         - name: Deploy to Amazon ECS service
-          uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+          uses: aws-actions/amazon-ecs-deploy-task-definition@v2
           with:
             task-definition: ${{ steps.render-web-container.outputs.task-definition }}
             service: infisical-core-platform
             cluster: infisical-core-platform
             wait-for-service-stability: true
+        - name: Post slack message 
+          uses: slackapi/slack-github-action@v2.0.0
+          with:
+            webhook: ${{ secrets.SLACK_DEPLOYMENT_WEBHOOK_URL }}
+            webhook-type: incoming-webhook
+            payload: |
+              text: "*Deployment Status Update*: ${{ job.status }}"
+              blocks:
+                - type: "section"
+                  text:
+                    type: "mrkdwn"
+                    text: "*Deployment Status Update*: ${{ job.status }}"
+                - type: "section"
+                  fields:
+                    - type: "mrkdwn"
+                      text: "*Application:*\nInfisical Core"
+                    - type: "mrkdwn"
+                      text: "*Instance Type:*\nShared Infisical Cloud"
+                - type: "section"
+                  fields:
+                    - type: "mrkdwn"
+                      text: "*Region:*\nEU"
+                    - type: "mrkdwn"
+                      text: "*Git Tag:*\n<https://github.com/Infisical/infisical/commit/${{ steps.commit.outputs.short }}>"
+

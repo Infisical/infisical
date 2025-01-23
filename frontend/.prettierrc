@@ -3,5 +3,8 @@
   "printWidth": 100,
   "trailingComma": "none",
   "tabWidth": 2,
-  "semi": true
+  "semi": true,
+  "plugins": ["prettier-plugin-tailwindcss"],
+  "tailwindStylesheet": "./src/index.css",
+  "tailwindFunctions": ["clsx", "twMerge"]
 }
