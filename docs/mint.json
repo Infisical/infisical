@@ -347,16 +347,26 @@
       "group": "App Connections",
       "pages": [
         "integrations/app-connections/overview",
-        "integrations/app-connections/aws",
-        "integrations/app-connections/github"
+        {
+          "group": "Connections",
+          "pages": [
+            "integrations/app-connections/aws",
+            "integrations/app-connections/github"
+          ]
+        }
       ]
     },
     {
       "group": "Secret Syncs",
       "pages": [
         "integrations/secret-syncs/overview",
-        "integrations/secret-syncs/aws-parameter-store",
-        "integrations/secret-syncs/github"
+        {
+          "group": "Syncs",
+          "pages": [
+            "integrations/secret-syncs/aws-parameter-store",
+            "integrations/secret-syncs/github"
+          ]
+        }
       ]
     },
     {
