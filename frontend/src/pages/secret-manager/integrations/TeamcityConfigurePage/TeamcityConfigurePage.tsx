@@ -99,15 +99,10 @@ export const TeamcityConfigurePage = () => {
     }
   };
 
-  const filteredBuildConfigs = targetBuildConfigs?.concat({
-    name: "",
-    buildConfigId: ""
-  });
-
   return integrationAuth &&
     selectedSourceEnvironment &&
     integrationAuthApps &&
-    filteredBuildConfigs &&
+    targetBuildConfigs &&
     targetAppId ? (
     <div className="flex h-full w-full items-center justify-center">
       <Helmet>
@@ -185,7 +180,7 @@ export const TeamcityConfigurePage = () => {
               ))
             ) : (
               <SelectItem value="none" key="target-app-none">
-                No project found
+                No projects found
               </SelectItem>
             )}
           </Select>
@@ -195,15 +190,22 @@ export const TeamcityConfigurePage = () => {
             value={targetBuildConfigId}
             onValueChange={(val) => setTargetBuildConfigId(val)}
             className="w-full border border-mineshaft-500"
+            isDisabled={targetBuildConfigs.length === 0}
           >
-            {filteredBuildConfigs.map((buildConfig: any) => (
-              <SelectItem
-                value={buildConfig.buildConfigId}
-                key={`target-build-config-${buildConfig.buildConfigId}`}
-              >
-                {buildConfig.name}
+            {targetBuildConfigs.length ? (
+              targetBuildConfigs.map((buildConfig: any) => (
+                <SelectItem
+                  value={buildConfig.buildConfigId}
+                  key={`target-build-config-${buildConfig.buildConfigId}`}
+                >
+                  {buildConfig.name}
+                </SelectItem>
+              ))
+            ) : (
+              <SelectItem value="none" key="target-app-none">
+                No build configs found
               </SelectItem>
-            ))}
+            )}
           </Select>
         </FormControl>
         <Button
