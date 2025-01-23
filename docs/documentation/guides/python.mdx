@@ -5,7 +5,7 @@ title: "Python"
 This guide demonstrates how to use Infisical to manage secrets for your Python stack from local development to production. It uses:
 
 - Infisical (you can use [Infisical Cloud](https://app.infisical.com) or a [self-hosted instance of Infisical](https://infisical.com/docs/self-hosting/overview)) to store your secrets.
-- The [infisical-python](https://pypi.org/project/infisical-python/) Python client SDK to fetch secrets back to your Python application on demand.
+- The [infisicalsdk](https://pypi.org/project/infisicalsdk/) Python client SDK to fetch secrets back to your Python application on demand.
 
 ## Project Setup
 
@@ -36,40 +36,38 @@ python3 -m venv env
 source env/bin/activate
 ```
 
-Install Flask and [infisical-python](https://pypi.org/project/infisical-python/), the client Python SDK for Infisical.
+Install Flask and [infisicalsdk](https://pypi.org/project/infisicalsdk/), the client Python SDK for Infisical.
 
 ```console
-pip install flask infisical-python
+pip install flask infisicalsdk
 ```
 
 Finally, create an `app.py` file containing the application code.
 
 ```py
 from flask import Flask
-from infisical_client import ClientSettings, InfisicalClient, GetSecretOptions, AuthenticationOptions, UniversalAuthMethod
+from infisical_sdk import InfisicalSDKClient
 
 app = Flask(__name__)
 
-client = InfisicalClient(ClientSettings(
-    auth=AuthenticationOptions(
-      universal_auth=UniversalAuthMethod(
-        client_id="CLIENT_ID",
-        client_secret="CLIENT_SECRET",
-      )
-    )
-))
+client = InfisicalSDKClient(host="https://app.infisical.com") # host is optional, defaults to https://app.infisical.com
+
+client.auth.universal_auth.login(
+  "<machine-identity-client-id>",
+  "<machine-identity-client-secret>"
+)
 
 @app.route("/")
 def hello_world():
     # access value
+     name = client.secrets.get_secret_by_name(
+      secret_name="NAME",
+      project_id="<project-id>",
+      environment_slug="dev",
+      secret_path="/"
+     )
 
-    name = client.getSecret(options=GetSecretOptions(
-       environment="dev",
-       project_id="PROJECT_ID",
-       secret_name="NAME"
-    ))
-
-    return f"Hello! My name is: {name.secret_value}"
+    return f"Hello! My name is: {name.secretValue}"
 ```
 
 Here, we initialized a `client` instance of the Infisical Python SDK with the Infisical Token
@@ -89,15 +87,6 @@ At this stage, you know how to fetch secrets from Infisical back to your Python 
 ## FAQ
 
 <AccordionGroup>
-    <Accordion title="Isn't it inefficient if my app makes a request every time it needs a secret?">
-        The client SDK caches every secret and implements a 5-minute waiting period before
-        re-requesting it. The waiting period can be controlled by setting the `cacheTTL` parameter at
-        the time of initializing the client.
-    </Accordion>
-    <Accordion title="What if a request for a secret fails?">
-        The SDK caches every secret and falls back to the cached value if a request fails. If no cached
-        value ever-existed, the SDK falls back to whatever value is on `process.env`.
-    </Accordion>
     <Accordion title="What's the point if I still have to manage a token for the SDK?">
         The token enables the SDK to authenticate with Infisical to fetch back your secrets.
         Although the SDK requires you to pass in a token, it enables greater efficiency and security
@@ -114,6 +103,6 @@ At this stage, you know how to fetch secrets from Infisical back to your Python 
 
 See also:
 
-- Explore the [Python SDK](https://github.com/Infisical/sdk/tree/main/crates/infisical-py)
+- Explore the [Python SDK](https://github.com/Infisical/python-sdk-official)
 
 
