@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { SecretSyncLabel } from "@app/components/secret-syncs";
+import { SecretSyncLabel, SecretSyncStatusBadge } from "@app/components/secret-syncs";
 import { IconButton } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
@@ -57,6 +57,11 @@ export const SecretSyncDetailsSection = ({ secretSync, onEditDetails }: Props) =
         <div className="space-y-3">
           <SecretSyncLabel label="Name">{name}</SecretSyncLabel>
           <SecretSyncLabel label="Description">{description}</SecretSyncLabel>
+          {syncStatus && (
+            <SecretSyncLabel label="Status">
+              <SecretSyncStatusBadge status={syncStatus} />
+            </SecretSyncLabel>
+          )}
           {lastSyncedAt && (
             <SecretSyncLabel label="Last Synced">
               {format(new Date(lastSyncedAt), "yyyy-MM-dd, hh:mm aaa")}

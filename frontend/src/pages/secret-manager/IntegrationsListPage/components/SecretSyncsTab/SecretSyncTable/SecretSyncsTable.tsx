@@ -289,34 +289,36 @@ export const SecretSyncsTable = ({ secretSyncs }: Props) => {
           </DropdownMenuTrigger>
           <DropdownMenuContent className="thin-scrollbar max-h-[70vh] overflow-y-auto" align="end">
             <DropdownMenuLabel>Status</DropdownMenuLabel>
-            {Object.values(SecretSyncStatus).map((status) => (
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.preventDefault();
-                  setFilters((prev) => ({
-                    ...prev,
-                    status: prev.status.includes(status)
-                      ? prev.status.filter((s) => s !== status)
-                      : [...prev.status, status]
-                  }));
-                }}
-                key={status}
-                icon={
-                  filters.status.includes(status) && (
-                    <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
-                  )
-                }
-                iconPos="right"
-              >
-                <div className="flex items-center gap-2">
-                  <FontAwesomeIcon
-                    icon={STATUS_ICON_MAP[status].icon}
-                    className={STATUS_ICON_MAP[status].className}
-                  />
-                  <span className="capitalize">{STATUS_ICON_MAP[status].name}</span>
-                </div>
-              </DropdownMenuItem>
-            ))}
+            {[SecretSyncStatus.Running, SecretSyncStatus.Succeeded, SecretSyncStatus.Failed].map(
+              (status) => (
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setFilters((prev) => ({
+                      ...prev,
+                      status: prev.status.includes(status)
+                        ? prev.status.filter((s) => s !== status)
+                        : [...prev.status, status]
+                    }));
+                  }}
+                  key={status}
+                  icon={
+                    filters.status.includes(status) && (
+                      <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
+                    )
+                  }
+                  iconPos="right"
+                >
+                  <div className="flex items-center gap-2">
+                    <FontAwesomeIcon
+                      icon={STATUS_ICON_MAP[status].icon}
+                      className={STATUS_ICON_MAP[status].className}
+                    />
+                    <span className="capitalize">{STATUS_ICON_MAP[status].name}</span>
+                  </div>
+                </DropdownMenuItem>
+              )
+            )}
             <DropdownMenuLabel>Service</DropdownMenuLabel>
             {secretSyncs.length ? (
               [...new Set(secretSyncs.map(({ destination }) => destination))].map((destination) => {

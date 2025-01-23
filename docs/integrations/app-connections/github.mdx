@@ -9,10 +9,6 @@ Infisical supports two methods for connecting to GitHub.
     <Tab title="GitHub App (Recommended)">
         Infisical will use a GitHub App with finely grained permissions to connect to GitHub.
 
-        **Prerequisites:**
-
-        - Set up and add envars to [Infisical Cloud](https://app.infisical.com)
-
         <Accordion title="Self-Hosted Instance">
             Using the GitHub integration with app authentication on a self-hosted instance of Infisical requires configuring an application on GitHub
             and registering your instance with it.
@@ -61,9 +57,9 @@ Infisical supports two methods for connecting to GitHub.
 
                     - `INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID`: The **Client ID** of your GitHub application.
                     - `INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET`: The **Client Secret** of your GitHub application.
-                    - `INF_APP_CONNECTION_GITHUB_APP_CLIENT_SLUG`: The **Slug** of your GitHub application. This is the one found in the URL.
-                    - `INF_APP_CONNECTION_GITHUB_APP_CLIENT_APP_ID`: The **App ID** of your GitHub application.
-                    - `INF_APP_CONNECTION_GITHUB_APP_CLIENT_PRIVATE_KEY`: The **Private Key** of your GitHub application.
+                    - `INF_APP_CONNECTION_GITHUB_APP_SLUG`: The **Slug** of your GitHub application. This is the one found in the URL.
+                    - `INF_APP_CONNECTION_GITHUB_APP_ID`: The **App ID** of your GitHub application.
+                    - `INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY`: The **Private Key** of your GitHub application.
 
                     Once added, restart your Infisical instance and use the GitHub integration via app authentication.
                 </Step>
@@ -99,10 +95,6 @@ Infisical supports two methods for connecting to GitHub.
     </Tab>
     <Tab title="OAuth">
         Infisical will use an OAuth App to connect to GitHub.
-
-        **Prerequisites:**
-
-        - Set up and add envars to [Infisical Cloud](https://app.infisical.com)
 
         <Accordion title="Self-Hosted Instance">
             Using the GitHub integration on a self-hosted instance of Infisical requires configuring an OAuth application in GitHub

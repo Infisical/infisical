@@ -81,11 +81,14 @@ export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig
 };
 
 export const validateAwsConnectionCredentials = async (appConnection: TAwsConnectionConfig) => {
-  const awsConfig = await getAwsConnectionConfig(appConnection);
-  const sts = new AWS.STS(awsConfig);
-  let resp: Awaited<ReturnType<ReturnType<typeof sts.getCallerIdentity>["promise"]>>;
+  let resp: AWS.STS.GetCallerIdentityResponse & {
+    $response: AWS.Response<AWS.STS.GetCallerIdentityResponse, AWS.AWSError>;
+  };
 
   try {
+    const awsConfig = await getAwsConnectionConfig(appConnection);
+    const sts = new AWS.STS(awsConfig);
+
     resp = await sts.getCallerIdentity().promise();
   } catch (e: unknown) {
     throw new BadRequestError({
@@ -93,7 +96,7 @@ export const validateAwsConnectionCredentials = async (appConnection: TAwsConnec
     });
   }
 
-  if (resp.$response.httpResponse.statusCode !== 200)
+  if (resp?.$response.httpResponse.statusCode !== 200)
     throw new InternalServerError({
       message: `Unable to validate credentials: ${
         resp.$response.error?.message ??
