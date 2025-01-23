@@ -17,7 +17,7 @@ type Props = {
 
 const schema = z.object({
   name: z.string(),
-  slug: slugSchema({ min: 1 })
+  slug: slugSchema({ min: 1, max: 64 })
 });
 
 export type FormData = z.infer<typeof schema>;
