@@ -14,14 +14,14 @@ import {
   useDeleteIdentityTokenAuth,
   useDeleteIdentityUniversalAuth
 } from "@app/hooks/api";
-import { ViewIdentityJwtAuthContent } from "@app/pages/organization/IdentityDetailsByIDPage/components/ViewIdentityAuthModal/ViewIdentityJwtAuthContent";
-import { ViewIdentityOidcAuthContent } from "@app/pages/organization/IdentityDetailsByIDPage/components/ViewIdentityAuthModal/ViewIdentityOidcAuthContent";
 
 import { ViewAuthMethodProps } from "./types";
 import { ViewIdentityAwsAuthContent } from "./ViewIdentityAwsAuthContent";
 import { ViewIdentityAzureAuthContent } from "./ViewIdentityAzureAuthContent";
 import { ViewIdentityGcpAuthContent } from "./ViewIdentityGcpAuthContent";
+import { ViewIdentityJwtAuthContent } from "./ViewIdentityJwtAuthContent";
 import { ViewIdentityKubernetesAuthContent } from "./ViewIdentityKubernetesAuthContent";
+import { ViewIdentityOidcAuthContent } from "./ViewIdentityOidcAuthContent";
 import { ViewIdentityTokenAuthContent } from "./ViewIdentityTokenAuthContent";
 import { ViewIdentityUniversalAuthContent } from "./ViewIdentityUniversalAuthContent";
 
