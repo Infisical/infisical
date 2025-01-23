@@ -11,7 +11,7 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 type Props = {
   identityId: string;
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["identity", "identityAuthMethod", "token", "clientSecret"]>,
+    popUpName: keyof UsePopUpState<["identity", "identityAuthMethod"]>,
     data?: object
   ) => void;
 };

@@ -45,7 +45,7 @@ export type FormData = z.infer<typeof schema>;
 type Props = {
   handlePopUpOpen: (popUpName: keyof UsePopUpState<["upgradePlan"]>) => void;
   handlePopUpToggle: (
-    popUpName: keyof UsePopUpState<["identityAuthMethod", "revokeAuthMethod"]>,
+    popUpName: keyof UsePopUpState<["identityAuthMethod"]>,
     state?: boolean
   ) => void;
   identityAuthMethodData: {
@@ -389,17 +389,6 @@ export const IdentityGcpAuthForm = ({
             Cancel
           </Button>
         </div>
-        {isUpdate && (
-          <Button
-            size="sm"
-            colorSchema="danger"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting}
-            onClick={() => handlePopUpToggle("revokeAuthMethod", true)}
-          >
-            Remove Auth Method
-          </Button>
-        )}
       </div>
     </form>
   );

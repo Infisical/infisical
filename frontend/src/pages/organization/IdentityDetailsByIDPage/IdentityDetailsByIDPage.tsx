@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "@tanstack/react-router";
@@ -19,27 +18,17 @@ import {
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
-import {
-  IdentityAuthMethod,
-  useDeleteIdentity,
-  useGetIdentityById,
-  useRevokeIdentityTokenAuthToken,
-  useRevokeIdentityUniversalAuthClientSecret
-} from "@app/hooks/api";
-import { Identity } from "@app/hooks/api/identities/types";
+import { useDeleteIdentity, useGetIdentityById } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
+import { ViewIdentityAuthModal } from "@app/pages/organization/IdentityDetailsByIDPage/components/ViewIdentityAuthModal/ViewIdentityAuthModal";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
 import { IdentityAuthMethodModal } from "../AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModal";
 import { IdentityModal } from "../AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityModal";
-import { IdentityUniversalAuthClientSecretModal } from "../AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityUniversalAuthClientSecretModal";
 import {
   IdentityAuthenticationSection,
-  IdentityClientSecretModal,
   IdentityDetailsSection,
-  IdentityProjectsSection,
-  IdentityTokenListModal,
-  IdentityTokenModal
+  IdentityProjectsSection
 } from "./components";
 
 const Page = () => {
@@ -52,25 +41,13 @@ const Page = () => {
   const orgId = currentOrg?.id || "";
   const { data } = useGetIdentityById(identityId);
   const { mutateAsync: deleteIdentity } = useDeleteIdentity();
-  const { mutateAsync: revokeToken } = useRevokeIdentityTokenAuthToken();
-  const { mutateAsync: revokeClientSecret } = useRevokeIdentityUniversalAuthClientSecret();
-
-  const [selectedAuthMethod, setSelectedAuthMethod] = useState<
-    Identity["authMethods"][number] | null
-  >(null);
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "identity",
     "deleteIdentity",
     "identityAuthMethod",
-    "revokeAuthMethod",
-    "token",
-    "tokenList",
-    "revokeToken",
-    "clientSecret",
-    "revokeClientSecret",
-    "universalAuthClientSecret", // list of client secrets
-    "upgradePlan"
+    "upgradePlan",
+    "viewAuthMethod"
   ] as const);
 
   const onDeleteIdentitySubmit = async (id: string) => {
@@ -99,63 +76,6 @@ const Page = () => {
 
       createNotification({
         text,
-        type: "error"
-      });
-    }
-  };
-
-  const onRevokeTokenSubmit = async ({
-    identityId: parentIdentityId,
-    tokenId,
-    name
-  }: {
-    identityId: string;
-    tokenId: string;
-    name: string;
-  }) => {
-    try {
-      await revokeToken({
-        identityId: parentIdentityId,
-        tokenId
-      });
-
-      handlePopUpClose("revokeToken");
-
-      createNotification({
-        text: `Successfully revoked token ${name ?? ""}`,
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text = error?.response?.data?.message ?? "Failed to delete identity";
-
-      createNotification({
-        text,
-        type: "error"
-      });
-    }
-  };
-
-  const onDeleteClientSecretSubmit = async ({ clientSecretId }: { clientSecretId: string }) => {
-    try {
-      if (!data?.identity.id || selectedAuthMethod !== IdentityAuthMethod.UNIVERSAL_AUTH) return;
-
-      await revokeClientSecret({
-        identityId: data?.identity.id,
-        clientSecretId
-      });
-
-      handlePopUpToggle("revokeClientSecret", false);
-
-      createNotification({
-        text: "Successfully deleted client secret",
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to delete client secret",
         type: "error"
       });
     }
@@ -244,8 +164,6 @@ const Page = () => {
             <div className="mr-4 w-96">
               <IdentityDetailsSection identityId={identityId} handlePopUpOpen={handlePopUpOpen} />
               <IdentityAuthenticationSection
-                selectedAuthMethod={selectedAuthMethod}
-                setSelectedAuthMethod={setSelectedAuthMethod}
                 identityId={identityId}
                 handlePopUpOpen={handlePopUpOpen}
               />
@@ -256,18 +174,6 @@ const Page = () => {
       )}
       <IdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <IdentityAuthMethodModal
-        popUp={popUp}
-        handlePopUpOpen={handlePopUpOpen}
-        handlePopUpToggle={handlePopUpToggle}
-      />
-      <IdentityTokenModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <IdentityTokenListModal
-        popUp={popUp}
-        handlePopUpOpen={handlePopUpOpen}
-        handlePopUpToggle={handlePopUpToggle}
-      />
-      <IdentityClientSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <IdentityUniversalAuthClientSecretModal
         popUp={popUp}
         handlePopUpOpen={handlePopUpOpen}
         handlePopUpToggle={handlePopUpToggle}
@@ -290,41 +196,19 @@ const Page = () => {
           )
         }
       />
-      <DeleteActionModal
-        isOpen={popUp.revokeToken.isOpen}
-        title={`Are you sure want to revoke ${
-          (popUp?.revokeToken?.data as { name: string })?.name || ""
-        }?`}
-        onChange={(isOpen) => handlePopUpToggle("revokeToken", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() => {
-          const revokeTokenData = popUp?.revokeToken?.data as {
-            identityId: string;
-            tokenId: string;
-            name: string;
-          };
-
-          return onRevokeTokenSubmit(revokeTokenData);
-        }}
-      />
-      <DeleteActionModal
-        isOpen={popUp.revokeClientSecret.isOpen}
-        title={`Are you sure want to delete the client secret ${
-          (popUp?.revokeClientSecret?.data as { clientSecretPrefix: string })?.clientSecretPrefix ||
-          ""
-        }************?`}
-        onChange={(isOpen) => handlePopUpToggle("revokeClientSecret", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() => {
-          const deleteClientSecretData = popUp?.revokeClientSecret?.data as {
-            clientSecretId: string;
-            clientSecretPrefix: string;
-          };
-
-          return onDeleteClientSecretSubmit({
-            clientSecretId: deleteClientSecretData.clientSecretId
-          });
-        }}
+      <ViewIdentityAuthModal
+        isOpen={popUp.viewAuthMethod.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("viewAuthMethod", isOpen)}
+        authMethod={popUp.viewAuthMethod.data}
+        identityId={identityId}
+        onEditAuthMethod={(authMethod) =>
+          handlePopUpOpen("identityAuthMethod", {
+            identityId,
+            name: data?.identity.name,
+            allAuthMethods: data?.identity.authMethods,
+            authMethod
+          })
+        }
       />
     </div>
   );
