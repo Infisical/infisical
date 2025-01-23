@@ -19,7 +19,7 @@ const schema = z.object({
   environmentName: z
     .string()
     .min(1, { message: "Environment Name field must be at least 1 character" }),
-  environmentSlug: slugSchema()
+  environmentSlug: slugSchema({ max: 64 })
 });
 
 export type FormData = z.infer<typeof schema>;
