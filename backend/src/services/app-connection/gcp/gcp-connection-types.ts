@@ -21,7 +21,7 @@ export type TGcpConnectionConfig = DiscriminativePick<TGcpConnectionInput, "meth
   orgId: string;
 };
 
-export interface GCPApp {
+export type GCPApp = {
   projectNumber: string;
   projectId: string;
   lifecycleState: "ACTIVE" | "LIFECYCLE_STATE_UNSPECIFIED" | "DELETE_REQUESTED" | "DELETE_IN_PROGRESS";
@@ -31,15 +31,15 @@ export interface GCPApp {
     type: "organization" | "folder" | "project";
     id: string;
   };
-}
+};
 
-export interface GCPGetProjectsRes {
+export type GCPGetProjectsRes = {
   projects: GCPApp[];
   nextPageToken?: string;
-}
+};
 
-export interface GCPGetServiceRes {
+export type GCPGetServiceRes = {
   name: string;
   parent: string;
   state: "ENABLED" | "DISABLED" | "STATE_UNSPECIFIED";
-}
+};

@@ -13,3 +13,21 @@ export type TGcpSyncInput = z.infer<typeof CreateGcpSyncSchema>;
 export type TGcpSyncWithCredentials = TGcpSync & {
   connection: TGcpConnection;
 };
+
+export type GCPSecret = {
+  name: string;
+  createTime: string;
+};
+
+export type GCPSMListSecretsRes = {
+  secrets?: GCPSecret[];
+  totalSize?: number;
+  nextPageToken?: string;
+};
+
+export type GCPLatestSecretVersionAccess = {
+  name: string;
+  payload: {
+    data: string;
+  };
+};
