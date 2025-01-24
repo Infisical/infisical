@@ -201,6 +201,9 @@ const envSchema = z
     INF_APP_CONNECTION_GITHUB_APP_SLUG: zpStr(z.string().optional()),
     INF_APP_CONNECTION_GITHUB_APP_ID: zpStr(z.string().optional()),
 
+    // gcp app
+    INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL: zpStr(z.string().optional()),
+
     /* CORS ----------------------------------------------------------------------------- */
 
     CORS_ALLOWED_ORIGINS: zpStr(

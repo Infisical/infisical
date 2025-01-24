@@ -3,10 +3,13 @@ import { TAppConnectionOption } from "@app/hooks/api/appConnections/types/app-op
 import { TAwsConnection } from "@app/hooks/api/appConnections/types/aws-connection";
 import { TGitHubConnection } from "@app/hooks/api/appConnections/types/github-connection";
 
+import { TGcpConnection } from "./gcp-connection";
+
 export * from "./aws-connection";
+export * from "./gcp-connection";
 export * from "./github-connection";
 
-export type TAppConnection = TAwsConnection | TGitHubConnection;
+export type TAppConnection = TAwsConnection | TGitHubConnection | TGcpConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "app" | "id">;
 

@@ -1,6 +1,7 @@
 export enum AppConnection {
   GitHub = "github",
-  AWS = "aws"
+  AWS = "aws",
+  GCP = "gcp"
 }
 
 export enum AWSRegion {

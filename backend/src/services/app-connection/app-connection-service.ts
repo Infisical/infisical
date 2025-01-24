@@ -26,6 +26,7 @@ import { githubConnectionService } from "@app/services/app-connection/github/git
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAppConnectionDALFactory } from "./app-connection-dal";
+import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
 
 export type TAppConnectionServiceFactoryDep = {
   appConnectionDAL: TAppConnectionDALFactory;
@@ -37,7 +38,8 @@ export type TAppConnectionServiceFactory = ReturnType<typeof appConnectionServic
 
 const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAppConnectionCredentials> = {
   [AppConnection.AWS]: ValidateAwsConnectionCredentialsSchema,
-  [AppConnection.GitHub]: ValidateGitHubConnectionCredentialsSchema
+  [AppConnection.GitHub]: ValidateGitHubConnectionCredentialsSchema,
+  [AppConnection.GCP]: ValidateGcpConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({

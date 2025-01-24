@@ -11,9 +11,11 @@ import {
   TValidateGitHubConnectionCredentials
 } from "@app/services/app-connection/github";
 
-export type TAppConnection = { id: string } & (TAwsConnection | TGitHubConnection);
+import { TGcpConnection, TGcpConnectionConfig, TGcpConnectionInput, TValidateGcpConnectionCredentials } from "./gcp";
 
-export type TAppConnectionInput = { id: string } & (TAwsConnectionInput | TGitHubConnectionInput);
+export type TAppConnection = { id: string } & (TAwsConnection | TGitHubConnection | TGcpConnection);
+
+export type TAppConnectionInput = { id: string } & (TAwsConnectionInput | TGitHubConnectionInput | TGcpConnectionInput);
 
 export type TCreateAppConnectionDTO = Pick<
   TAppConnectionInput,
@@ -24,8 +26,9 @@ export type TUpdateAppConnectionDTO = Partial<Omit<TCreateAppConnectionDTO, "met
   connectionId: string;
 };
 
-export type TAppConnectionConfig = TAwsConnectionConfig | TGitHubConnectionConfig;
+export type TAppConnectionConfig = TAwsConnectionConfig | TGitHubConnectionConfig | TGcpConnectionConfig;
 
 export type TValidateAppConnectionCredentials =
   | TValidateAwsConnectionCredentials
-  | TValidateGitHubConnectionCredentials;
+  | TValidateGitHubConnectionCredentials
+  | TValidateGcpConnectionCredentials;
