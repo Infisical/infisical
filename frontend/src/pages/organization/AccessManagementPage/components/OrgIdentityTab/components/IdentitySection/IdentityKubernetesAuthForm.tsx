@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -6,16 +6,27 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, IconButton, Input, TextArea } from "@app/components/v2";
+import {
+  Button,
+  FormControl,
+  IconButton,
+  Input,
+  Tab,
+  TabList,
+  TabPanel,
+  Tabs,
+  TextArea
+} from "@app/components/v2";
 import { useOrganization, useSubscription } from "@app/context";
 import {
   useAddIdentityKubernetesAuth,
   useGetIdentityKubernetesAuth,
   useUpdateIdentityKubernetesAuth
 } from "@app/hooks/api";
-import { IdentityAuthMethod } from "@app/hooks/api/identities";
 import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+
+import { IdentityFormTab } from "./types";
 
 const schema = z
   .object({
@@ -50,18 +61,15 @@ type Props = {
     popUpName: keyof UsePopUpState<["identityAuthMethod"]>,
     state?: boolean
   ) => void;
-  identityAuthMethodData: {
-    identityId: string;
-    name: string;
-    configuredAuthMethods?: IdentityAuthMethod[];
-    authMethod?: IdentityAuthMethod;
-  };
+  identityId?: string;
+  isUpdate?: boolean;
 };
 
 export const IdentityKubernetesAuthForm = ({
   handlePopUpOpen,
   handlePopUpToggle,
-  identityAuthMethodData
+  identityId,
+  isUpdate
 }: Props) => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
@@ -69,11 +77,9 @@ export const IdentityKubernetesAuthForm = ({
 
   const { mutateAsync: addMutateAsync } = useAddIdentityKubernetesAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityKubernetesAuth();
+  const [tabValue, setTabValue] = useState<IdentityFormTab>(IdentityFormTab.Configuration);
 
-  const isUpdate = identityAuthMethodData?.configuredAuthMethods?.includes(
-    identityAuthMethodData.authMethod! || ""
-  );
-  const { data } = useGetIdentityKubernetesAuth(identityAuthMethodData?.identityId ?? "", {
+  const { data } = useGetIdentityKubernetesAuth(identityId ?? "", {
     enabled: isUpdate
   });
 
@@ -154,7 +160,7 @@ export const IdentityKubernetesAuthForm = ({
     accessTokenTrustedIps
   }: FormData) => {
     try {
-      if (!identityAuthMethodData) return;
+      if (!identityId) return;
 
       if (data) {
         await updateMutateAsync({
@@ -165,7 +171,7 @@ export const IdentityKubernetesAuthForm = ({
           allowedNamespaces,
           allowedAudience,
           caCert,
-          identityId: identityAuthMethodData.identityId,
+          identityId,
           accessTokenTTL: Number(accessTokenTTL),
           accessTokenMaxTTL: Number(accessTokenMaxTTL),
           accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
@@ -174,7 +180,7 @@ export const IdentityKubernetesAuthForm = ({
       } else {
         await addMutateAsync({
           organizationId: orgId,
-          identityId: identityAuthMethodData.identityId,
+          identityId,
           kubernetesHost: kubernetesHost || "",
           tokenReviewerJwt,
           allowedNames: allowedNames || "",
@@ -205,230 +211,252 @@ export const IdentityKubernetesAuthForm = ({
   };
 
   return (
-    <form onSubmit={handleSubmit(onFormSubmit)}>
-      <Controller
-        control={control}
-        defaultValue="2592000"
-        name="kubernetesHost"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Kubernetes Host / Base Kubernetes API URL "
-            isError={Boolean(error)}
-            errorText={error?.message}
-            tooltipText="The host string, host:port pair, or URL to the base of the Kubernetes API server. This can usually be obtained by running 'kubectl cluster-info'"
-            isRequired
-          >
-            <Input {...field} placeholder="https://my-example-k8s-api-host.com" type="text" />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        name="tokenReviewerJwt"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Token Reviewer JWT"
-            isError={Boolean(error)}
-            errorText={error?.message}
-            tooltipText="A long-lived service account JWT token for Infisical to access the TokenReview API to validate other service account JWT tokens submitted by applications/pods."
-            isRequired
-          >
-            <Input {...field} placeholder="" type="password" />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        name="allowedNames"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Allowed Service Account Names"
-            isError={Boolean(error)}
-            tooltipText="An optional comma-separated list of trusted service account names that are allowed to authenticate with Infisical. Leave empty to allow any service account."
-            errorText={error?.message}
-          >
-            <Input {...field} placeholder="service-account-1-name, service-account-1-name" />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        defaultValue=""
-        name="allowedNamespaces"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Allowed Namespaces"
-            isError={Boolean(error)}
-            errorText={error?.message}
-            tooltipText="A comma-separated list of trusted namespaces that service accounts must belong to authenticate with Infisical."
-          >
-            <Input {...field} placeholder="namespaceA, namespaceB" type="text" />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        defaultValue=""
-        name="allowedAudience"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Allowed Audience"
-            isError={Boolean(error)}
-            errorText={error?.message}
-            tooltipText="An optional audience claim that the service account JWT token must have to authenticate with Infisical. Leave empty to allow any audience claim."
-          >
-            <Input {...field} placeholder="" type="text" />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        name="caCert"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="CA Certificate"
-            errorText={error?.message}
-            isError={Boolean(error)}
-            tooltipText="An optional PEM-encoded CA cert for the Kubernetes API server. This is used by the TLS client for secure communication with the Kubernetes API server."
-          >
-            <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        defaultValue="2592000"
-        name="accessTokenTTL"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Access Token TTL (seconds)"
-            tooltipText="The lifetime for an acccess token in seconds. This value will be referenced at renewal time."
-            isError={Boolean(error)}
-            errorText={error?.message}
-          >
-            <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        defaultValue="2592000"
-        name="accessTokenMaxTTL"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Access Token Max TTL (seconds)"
-            isError={Boolean(error)}
-            errorText={error?.message}
-            tooltipText="The maximum lifetime for an access token in seconds. This value will be referenced at renewal time."
-          >
-            <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        defaultValue="0"
-        name="accessTokenNumUsesLimit"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Access Token Max Number of Uses"
-            isError={Boolean(error)}
-            errorText={error?.message}
-            tooltipText="The maximum number of times that an access token can be used; a value of 0 implies infinite number of uses."
-          >
-            <Input {...field} placeholder="0" type="number" min="0" step="1" />
-          </FormControl>
-        )}
-      />
-      {accessTokenTrustedIpsFields.map(({ id }, index) => (
-        <div className="mb-3 flex items-end space-x-2" key={id}>
+    <form
+      onSubmit={handleSubmit(onFormSubmit, (fields) => {
+        setTabValue(
+          [
+            "kubernetesHost",
+            "tokenReviewerJwt",
+            "accessTokenTTL",
+            "accessTokenMaxTTL",
+            "accessTokenNumUsesLimit"
+          ].includes(Object.keys(fields)[0])
+            ? IdentityFormTab.Configuration
+            : IdentityFormTab.Advanced
+        );
+      })}
+    >
+      <Tabs value={tabValue} onValueChange={(value) => setTabValue(value as IdentityFormTab)}>
+        <TabList>
+          <Tab value={IdentityFormTab.Configuration}>Configuration</Tab>
+          <Tab value={IdentityFormTab.Advanced}>Advanced</Tab>
+        </TabList>
+        <TabPanel value={IdentityFormTab.Configuration}>
           <Controller
             control={control}
-            name={`accessTokenTrustedIps.${index}.ipAddress`}
-            defaultValue="0.0.0.0/0"
-            render={({ field, fieldState: { error } }) => {
-              return (
-                <FormControl
-                  className="mb-0 flex-grow"
-                  label={index === 0 ? "Access Token Trusted IPs" : undefined}
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  tooltipText="The IPs or CIDR ranges that access tokens can be used from. By default, each token is given the 0.0.0.0/0, allowing usage from any network address."
-                >
-                  <Input
-                    value={field.value}
-                    onChange={(e) => {
-                      if (subscription?.ipAllowlisting) {
-                        field.onChange(e);
-                        return;
-                      }
-
-                      handlePopUpOpen("upgradePlan");
-                    }}
-                    placeholder="123.456.789.0"
-                  />
-                </FormControl>
-              );
-            }}
+            defaultValue="2592000"
+            name="kubernetesHost"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Kubernetes Host / Base Kubernetes API URL "
+                isError={Boolean(error)}
+                errorText={error?.message}
+                tooltipText="The host string, host:port pair, or URL to the base of the Kubernetes API server. This can usually be obtained by running 'kubectl cluster-info'"
+                isRequired
+              >
+                <Input {...field} placeholder="https://my-example-k8s-api-host.com" type="text" />
+              </FormControl>
+            )}
           />
-          <IconButton
-            onClick={() => {
-              if (subscription?.ipAllowlisting) {
-                removeAccessTokenTrustedIp(index);
-                return;
-              }
+          <Controller
+            control={control}
+            name="tokenReviewerJwt"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Token Reviewer JWT"
+                isError={Boolean(error)}
+                errorText={error?.message}
+                tooltipText="A long-lived service account JWT token for Infisical to access the TokenReview API to validate other service account JWT tokens submitted by applications/pods."
+                isRequired
+              >
+                <Input {...field} placeholder="" type="password" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            defaultValue="2592000"
+            name="accessTokenTTL"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Access Token TTL (seconds)"
+                tooltipText="The lifetime for an acccess token in seconds. This value will be referenced at renewal time."
+                isError={Boolean(error)}
+                errorText={error?.message}
+              >
+                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            defaultValue="2592000"
+            name="accessTokenMaxTTL"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Access Token Max TTL (seconds)"
+                isError={Boolean(error)}
+                errorText={error?.message}
+                tooltipText="The maximum lifetime for an access token in seconds. This value will be referenced at renewal time."
+              >
+                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            defaultValue="0"
+            name="accessTokenNumUsesLimit"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Access Token Max Number of Uses"
+                isError={Boolean(error)}
+                errorText={error?.message}
+                tooltipText="The maximum number of times that an access token can be used; a value of 0 implies infinite number of uses."
+              >
+                <Input {...field} placeholder="0" type="number" min="0" step="1" />
+              </FormControl>
+            )}
+          />
+        </TabPanel>
+        <TabPanel value={IdentityFormTab.Advanced}>
+          <Controller
+            control={control}
+            name="allowedNames"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Allowed Service Account Names"
+                isError={Boolean(error)}
+                tooltipText="An optional comma-separated list of trusted service account names that are allowed to authenticate with Infisical. Leave empty to allow any service account."
+                errorText={error?.message}
+              >
+                <Input {...field} placeholder="service-account-1-name, service-account-1-name" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            defaultValue=""
+            name="allowedNamespaces"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Allowed Namespaces"
+                isError={Boolean(error)}
+                errorText={error?.message}
+                tooltipText="A comma-separated list of trusted namespaces that service accounts must belong to authenticate with Infisical."
+              >
+                <Input {...field} placeholder="namespaceA, namespaceB" type="text" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            defaultValue=""
+            name="allowedAudience"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Allowed Audience"
+                isError={Boolean(error)}
+                errorText={error?.message}
+                tooltipText="An optional audience claim that the service account JWT token must have to authenticate with Infisical. Leave empty to allow any audience claim."
+              >
+                <Input {...field} placeholder="" type="text" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            name="caCert"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="CA Certificate"
+                errorText={error?.message}
+                isError={Boolean(error)}
+                tooltipText="An optional PEM-encoded CA cert for the Kubernetes API server. This is used by the TLS client for secure communication with the Kubernetes API server."
+              >
+                <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
+              </FormControl>
+            )}
+          />
+          {accessTokenTrustedIpsFields.map(({ id }, index) => (
+            <div className="mb-3 flex items-end space-x-2" key={id}>
+              <Controller
+                control={control}
+                name={`accessTokenTrustedIps.${index}.ipAddress`}
+                defaultValue="0.0.0.0/0"
+                render={({ field, fieldState: { error } }) => {
+                  return (
+                    <FormControl
+                      className="mb-0 flex-grow"
+                      label={index === 0 ? "Access Token Trusted IPs" : undefined}
+                      isError={Boolean(error)}
+                      errorText={error?.message}
+                      tooltipText="The IPs or CIDR ranges that access tokens can be used from. By default, each token is given the 0.0.0.0/0, allowing usage from any network address."
+                    >
+                      <Input
+                        value={field.value}
+                        onChange={(e) => {
+                          if (subscription?.ipAllowlisting) {
+                            field.onChange(e);
+                            return;
+                          }
 
-              handlePopUpOpen("upgradePlan");
-            }}
-            size="lg"
-            colorSchema="danger"
-            variant="plain"
-            ariaLabel="update"
-            className="p-3"
-          >
-            <FontAwesomeIcon icon={faXmark} />
-          </IconButton>
-        </div>
-      ))}
-      <div className="my-4 ml-1">
+                          handlePopUpOpen("upgradePlan");
+                        }}
+                        placeholder="123.456.789.0"
+                      />
+                    </FormControl>
+                  );
+                }}
+              />
+              <IconButton
+                onClick={() => {
+                  if (subscription?.ipAllowlisting) {
+                    removeAccessTokenTrustedIp(index);
+                    return;
+                  }
+
+                  handlePopUpOpen("upgradePlan");
+                }}
+                size="lg"
+                colorSchema="danger"
+                variant="plain"
+                ariaLabel="update"
+                className="p-3"
+              >
+                <FontAwesomeIcon icon={faXmark} />
+              </IconButton>
+            </div>
+          ))}
+          <div className="my-4 ml-1">
+            <Button
+              variant="outline_bg"
+              onClick={() => {
+                if (subscription?.ipAllowlisting) {
+                  appendAccessTokenTrustedIp({
+                    ipAddress: "0.0.0.0/0"
+                  });
+                  return;
+                }
+
+                handlePopUpOpen("upgradePlan");
+              }}
+              leftIcon={<FontAwesomeIcon icon={faPlus} />}
+              size="xs"
+            >
+              Add IP Address
+            </Button>
+          </div>
+        </TabPanel>
+      </Tabs>
+      <div className="flex items-center">
         <Button
-          variant="outline_bg"
-          onClick={() => {
-            if (subscription?.ipAllowlisting) {
-              appendAccessTokenTrustedIp({
-                ipAddress: "0.0.0.0/0"
-              });
-              return;
-            }
-
-            handlePopUpOpen("upgradePlan");
-          }}
-          leftIcon={<FontAwesomeIcon icon={faPlus} />}
-          size="xs"
+          className="mr-4"
+          size="sm"
+          type="submit"
+          isLoading={isSubmitting}
+          isDisabled={isSubmitting}
         >
-          Add IP Address
+          {isUpdate ? "Update" : "Add"}
         </Button>
-      </div>
-      <div className="flex justify-between">
-        <div className="flex items-center">
-          <Button
-            className="mr-4"
-            size="sm"
-            type="submit"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting}
-          >
-            {isUpdate ? "Update" : "Create"}
-          </Button>
 
-          <Button
-            colorSchema="secondary"
-            variant="plain"
-            onClick={() => handlePopUpToggle("identityAuthMethod", false)}
-          >
-            Cancel
-          </Button>
-        </div>
+        <Button
+          colorSchema="secondary"
+          variant="plain"
+          onClick={() => handlePopUpToggle("identityAuthMethod", false)}
+        >
+          Cancel
+        </Button>
       </div>
     </form>
   );

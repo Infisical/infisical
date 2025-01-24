@@ -201,14 +201,6 @@ const Page = () => {
         onOpenChange={(isOpen) => handlePopUpToggle("viewAuthMethod", isOpen)}
         authMethod={popUp.viewAuthMethod.data}
         identityId={identityId}
-        onEditAuthMethod={(authMethod) =>
-          handlePopUpOpen("identityAuthMethod", {
-            identityId,
-            name: data?.identity.name,
-            allAuthMethods: data?.identity.authMethods,
-            authMethod
-          })
-        }
       />
     </div>
   );

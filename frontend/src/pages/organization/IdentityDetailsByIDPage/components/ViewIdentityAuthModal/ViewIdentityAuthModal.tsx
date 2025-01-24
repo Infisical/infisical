@@ -1,3 +1,4 @@
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal, Modal, ModalContent } from "@app/components/v2";
 import { useOrganization } from "@app/context";
@@ -30,7 +31,6 @@ type Props = {
   authMethod?: IdentityAuthMethod;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onEditAuthMethod: (authMethod: IdentityAuthMethod) => void;
   onDeleteAuthMethod: () => void;
 };
 
@@ -42,13 +42,16 @@ type TRevokeOptions = {
 export const Content = ({
   identityId,
   authMethod,
-  onEditAuthMethod,
   onDeleteAuthMethod
-}: Pick<Props, "authMethod" | "identityId" | "onEditAuthMethod" | "onDeleteAuthMethod">) => {
+}: Pick<Props, "authMethod" | "identityId" | "onDeleteAuthMethod">) => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
 
-  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["revokeAuthMethod"] as const);
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
+    "revokeAuthMethod",
+    "upgradePlan",
+    "identityAuthMethod"
+  ] as const);
 
   const { mutateAsync: revokeUniversalAuth } = useDeleteIdentityUniversalAuth();
   const { mutateAsync: revokeTokenAuth } = useDeleteIdentityTokenAuth();
@@ -128,7 +131,9 @@ export const Content = ({
       <Component
         identityId={identityId}
         onDelete={handleDelete}
-        onEdit={() => onEditAuthMethod(authMethod)}
+        popUp={popUp}
+        handlePopUpOpen={handlePopUpOpen}
+        handlePopUpToggle={handlePopUpToggle}
       />
       <DeleteActionModal
         isOpen={popUp?.revokeAuthMethod?.isOpen}
@@ -138,6 +143,11 @@ export const Content = ({
         buttonText="Remove"
         onDeleteApproved={handleDeleteAuthMethod}
       />
+      <UpgradePlanModal
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        text={(popUp.upgradePlan?.data as { description: string })?.description}
+      />
     </>
   );
 };
@@ -146,8 +156,7 @@ export const ViewIdentityAuthModal = ({
   isOpen,
   onOpenChange,
   authMethod,
-  identityId,
-  onEditAuthMethod
+  identityId
 }: Omit<Props, "onDeleteAuthMethod">) => {
   if (!identityId || !authMethod) return null;
 
@@ -157,7 +166,6 @@ export const ViewIdentityAuthModal = ({
         <Content
           identityId={identityId}
           authMethod={authMethod}
-          onEditAuthMethod={onEditAuthMethod}
           onDeleteAuthMethod={() => onOpenChange(false)}
         />
       </ModalContent>

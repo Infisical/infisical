@@ -2,6 +2,7 @@ import { faBan } from "@fortawesome/free-solid-svg-icons";
 
 import { EmptyState, Spinner } from "@app/components/v2";
 import { useGetIdentityGcpAuth } from "@app/hooks/api";
+import { IdentityGcpAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityGcpAuthForm";
 
 import { IdentityAuthFieldDisplay } from "./IdentityAuthFieldDisplay";
 import { ViewAuthMethodProps } from "./types";
@@ -9,8 +10,10 @@ import { ViewIdentityContentWrapper } from "./ViewIdentityContentWrapper";
 
 export const ViewIdentityGcpAuthContent = ({
   identityId,
-  onEdit,
-  onDelete
+  handlePopUpToggle,
+  handlePopUpOpen,
+  onDelete,
+  popUp
 }: ViewAuthMethodProps) => {
   const { data, isPending } = useGetIdentityGcpAuth(identityId);
 
@@ -28,8 +31,34 @@ export const ViewIdentityGcpAuthContent = ({
     );
   }
 
+  if (popUp.identityAuthMethod.isOpen) {
+    return (
+      <IdentityGcpAuthForm
+        identityId={identityId}
+        isUpdate
+        handlePopUpOpen={handlePopUpOpen}
+        handlePopUpToggle={handlePopUpToggle}
+      />
+    );
+  }
+
   return (
-    <ViewIdentityContentWrapper onEdit={onEdit} onDelete={onDelete}>
+    <ViewIdentityContentWrapper
+      onEdit={() => handlePopUpOpen("identityAuthMethod")}
+      onDelete={onDelete}
+    >
+      <IdentityAuthFieldDisplay label="Access Token TLL (seconds)">
+        {data.accessTokenTTL}
+      </IdentityAuthFieldDisplay>
+      <IdentityAuthFieldDisplay label="Access Token Max TLL (seconds)">
+        {data.accessTokenMaxTTL}
+      </IdentityAuthFieldDisplay>
+      <IdentityAuthFieldDisplay label="Access Token Max Number of Uses">
+        {data.accessTokenNumUsesLimit}
+      </IdentityAuthFieldDisplay>
+      <IdentityAuthFieldDisplay label="Access Token Trusted IPs">
+        {data.accessTokenTrustedIps.map((ip) => ip.ipAddress).join(", ")}
+      </IdentityAuthFieldDisplay>
       <IdentityAuthFieldDisplay label="Type">
         {data.type === "gce" ? "GCP ID Token Auth" : "GCP IAM Auth"}
       </IdentityAuthFieldDisplay>
@@ -55,18 +84,6 @@ export const ViewIdentityGcpAuthContent = ({
           </IdentityAuthFieldDisplay>
         </>
       )}
-      <IdentityAuthFieldDisplay label="Access Token TLL (seconds)">
-        {data.accessTokenTTL}
-      </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Access Token Max TLL (seconds)">
-        {data.accessTokenMaxTTL}
-      </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Access Token Max Number of Uses">
-        {data.accessTokenNumUsesLimit}
-      </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Access Token Trusted IPs">
-        {data.accessTokenTrustedIps.map((ip) => ip.ipAddress).join(", ")}
-      </IdentityAuthFieldDisplay>
     </ViewIdentityContentWrapper>
   );
 };

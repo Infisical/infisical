@@ -64,8 +64,8 @@ export const IdentityUniversalAuthClientSecretsTable = ({ clientSecrets, identit
 
   return (
     <div className="col-span-2">
-      <div className="flex items-baseline justify-between border-b border-mineshaft-500 pb-1">
-        <span className="text-sm text-bunker-300">Client Secrets</span>
+      <div className="flex items-end justify-between border-b border-mineshaft-500 pb-2">
+        <span className="text-bunker-300">Client Secrets</span>
         <Button
           size="xs"
           onClick={() => {

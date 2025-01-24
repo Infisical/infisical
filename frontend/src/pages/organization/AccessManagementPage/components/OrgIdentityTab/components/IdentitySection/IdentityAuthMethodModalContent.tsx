@@ -111,7 +111,7 @@ export const IdentityAuthMethodModalContent = ({
     [IdentityAuthMethod.UNIVERSAL_AUTH]: {
       render: () => (
         <IdentityUniversalAuthForm
-          identityAuthMethodData={identityAuthMethodData}
+          identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
         />
@@ -121,7 +121,7 @@ export const IdentityAuthMethodModalContent = ({
     [IdentityAuthMethod.OIDC_AUTH]: {
       render: () => (
         <IdentityOidcAuthForm
-          identityAuthMethodData={identityAuthMethodData}
+          identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
         />
@@ -131,7 +131,7 @@ export const IdentityAuthMethodModalContent = ({
     [IdentityAuthMethod.TOKEN_AUTH]: {
       render: () => (
         <IdentityTokenAuthForm
-          identityAuthMethodData={identityAuthMethodData}
+          identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
         />
@@ -141,7 +141,7 @@ export const IdentityAuthMethodModalContent = ({
     [IdentityAuthMethod.AZURE_AUTH]: {
       render: () => (
         <IdentityAzureAuthForm
-          identityAuthMethodData={identityAuthMethodData}
+          identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
         />
@@ -151,7 +151,7 @@ export const IdentityAuthMethodModalContent = ({
     [IdentityAuthMethod.GCP_AUTH]: {
       render: () => (
         <IdentityGcpAuthForm
-          identityAuthMethodData={identityAuthMethodData}
+          identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
         />
@@ -161,7 +161,7 @@ export const IdentityAuthMethodModalContent = ({
     [IdentityAuthMethod.KUBERNETES_AUTH]: {
       render: () => (
         <IdentityKubernetesAuthForm
-          identityAuthMethodData={identityAuthMethodData}
+          identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
         />
@@ -171,7 +171,7 @@ export const IdentityAuthMethodModalContent = ({
     [IdentityAuthMethod.AWS_AUTH]: {
       render: () => (
         <IdentityAwsAuthForm
-          identityAuthMethodData={identityAuthMethodData}
+          identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
         />
@@ -181,7 +181,7 @@ export const IdentityAuthMethodModalContent = ({
     [IdentityAuthMethod.JWT_AUTH]: {
       render: () => (
         <IdentityJwtAuthForm
-          identityAuthMethodData={identityAuthMethodData}
+          identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
         />

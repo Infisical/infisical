@@ -7,6 +7,7 @@ import {
   useGetIdentityUniversalAuth,
   useGetIdentityUniversalAuthClientSecrets
 } from "@app/hooks/api";
+import { IdentityUniversalAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityUniversalAuthForm";
 
 import { IdentityAuthFieldDisplay } from "./IdentityAuthFieldDisplay";
 import { IdentityUniversalAuthClientSecretsTable } from "./IdentityUniversalAuthClientSecretsTable";
@@ -15,8 +16,10 @@ import { ViewIdentityContentWrapper } from "./ViewIdentityContentWrapper";
 
 export const ViewIdentityUniversalAuthContent = ({
   identityId,
-  onEdit,
-  onDelete
+  handlePopUpToggle,
+  handlePopUpOpen,
+  onDelete,
+  popUp
 }: ViewAuthMethodProps) => {
   const { data, isPending } = useGetIdentityUniversalAuth(identityId);
   const { data: clientSecrets = [], isPending: clientSecretsPending } =
@@ -43,8 +46,22 @@ export const ViewIdentityUniversalAuthContent = ({
     );
   }
 
+  if (popUp.identityAuthMethod.isOpen) {
+    return (
+      <IdentityUniversalAuthForm
+        identityId={identityId}
+        isUpdate
+        handlePopUpOpen={handlePopUpOpen}
+        handlePopUpToggle={handlePopUpToggle}
+      />
+    );
+  }
+
   return (
-    <ViewIdentityContentWrapper onEdit={onEdit} onDelete={onDelete}>
+    <ViewIdentityContentWrapper
+      onEdit={() => handlePopUpOpen("identityAuthMethod")}
+      onDelete={onDelete}
+    >
       <IdentityAuthFieldDisplay label="Access Token TLL (seconds)">
         {data.accessTokenTTL}
       </IdentityAuthFieldDisplay>
@@ -61,8 +78,8 @@ export const ViewIdentityUniversalAuthContent = ({
         {data.clientSecretTrustedIps.map((ip) => ip.ipAddress).join(", ")}
       </IdentityAuthFieldDisplay>
       <div className="col-span-2 my-3">
-        <div className="mb-2 border-b border-mineshaft-500">
-          <span className="text-sm text-bunker-300">Client ID</span>
+        <div className="mb-3 border-b border-mineshaft-500 pb-2">
+          <span className="text-bunker-300">Client ID</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm">{data.clientId}</span>

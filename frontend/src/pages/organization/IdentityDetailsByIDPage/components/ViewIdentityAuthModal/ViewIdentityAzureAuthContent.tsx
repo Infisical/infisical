@@ -2,6 +2,7 @@ import { faBan } from "@fortawesome/free-solid-svg-icons";
 
 import { EmptyState, Spinner } from "@app/components/v2";
 import { useGetIdentityAzureAuth } from "@app/hooks/api";
+import { IdentityAzureAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityAzureAuthForm";
 
 import { IdentityAuthFieldDisplay } from "./IdentityAuthFieldDisplay";
 import { ViewAuthMethodProps } from "./types";
@@ -9,8 +10,10 @@ import { ViewIdentityContentWrapper } from "./ViewIdentityContentWrapper";
 
 export const ViewIdentityAzureAuthContent = ({
   identityId,
-  onEdit,
-  onDelete
+  handlePopUpToggle,
+  handlePopUpOpen,
+  onDelete,
+  popUp
 }: ViewAuthMethodProps) => {
   const { data, isPending } = useGetIdentityAzureAuth(identityId);
 
@@ -28,20 +31,22 @@ export const ViewIdentityAzureAuthContent = ({
     );
   }
 
+  if (popUp.identityAuthMethod.isOpen) {
+    return (
+      <IdentityAzureAuthForm
+        identityId={identityId}
+        isUpdate
+        handlePopUpOpen={handlePopUpOpen}
+        handlePopUpToggle={handlePopUpToggle}
+      />
+    );
+  }
+
   return (
-    <ViewIdentityContentWrapper onEdit={onEdit} onDelete={onDelete}>
-      <IdentityAuthFieldDisplay className="col-span-2" label="Tenant ID">
-        {data.tenantId}
-      </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay className="col-span-2" label="Resource / Audience">
-        {data.resource}
-      </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay className="col-span-2" label="Allowed Service Principal IDs">
-        {data.allowedServicePrincipalIds
-          ?.split(",")
-          .map((id) => id.trim())
-          .join(", ")}
-      </IdentityAuthFieldDisplay>
+    <ViewIdentityContentWrapper
+      onEdit={() => handlePopUpOpen("identityAuthMethod")}
+      onDelete={onDelete}
+    >
       <IdentityAuthFieldDisplay label="Access Token TLL (seconds)">
         {data.accessTokenTTL}
       </IdentityAuthFieldDisplay>
@@ -53,6 +58,18 @@ export const ViewIdentityAzureAuthContent = ({
       </IdentityAuthFieldDisplay>
       <IdentityAuthFieldDisplay label="Access Token Trusted IPs">
         {data.accessTokenTrustedIps.map((ip) => ip.ipAddress).join(", ")}
+      </IdentityAuthFieldDisplay>
+      <IdentityAuthFieldDisplay className="col-span-2" label="Tenant ID">
+        {data.tenantId}
+      </IdentityAuthFieldDisplay>
+      <IdentityAuthFieldDisplay className="col-span-2" label="Resource / Audience">
+        {data.resource}
+      </IdentityAuthFieldDisplay>
+      <IdentityAuthFieldDisplay className="col-span-2" label="Allowed Service Principal IDs">
+        {data.allowedServicePrincipalIds
+          ?.split(",")
+          .map((id) => id.trim())
+          .join(", ")}
       </IdentityAuthFieldDisplay>
     </ViewIdentityContentWrapper>
   );

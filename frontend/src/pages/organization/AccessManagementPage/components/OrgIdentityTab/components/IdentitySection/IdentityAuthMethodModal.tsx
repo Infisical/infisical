@@ -34,7 +34,7 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
         title={
           isSelectedAuthAlreadyConfigured
             ? `Edit ${identityAuthToNameMap[selectedAuthMethod!] ?? ""}`
-            : `Create new ${identityAuthToNameMap[selectedAuthMethod!] ?? ""}`
+            : `Add ${identityAuthToNameMap[selectedAuthMethod!] ?? ""}`
         }
       >
         <IdentityAuthMethodModalContent
