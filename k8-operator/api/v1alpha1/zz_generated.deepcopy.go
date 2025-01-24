@@ -565,8 +565,8 @@ func (in *InfisicalSecretSpec) DeepCopyInto(out *InfisicalSecretSpec) {
 	out.TokenSecretReference = in.TokenSecretReference
 	out.Authentication = in.Authentication
 	in.ManagedSecretReference.DeepCopyInto(&out.ManagedSecretReference)
-	if in.ManagedSecretReferences != nil {
-		in, out := &in.ManagedSecretReferences, &out.ManagedSecretReferences
+	if in.ManagedKubeSecretReferences != nil {
+		in, out := &in.ManagedKubeSecretReferences, &out.ManagedKubeSecretReferences
 		*out = make([]ManagedKubeSecretConfig, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])

@@ -337,7 +337,7 @@ func (r *InfisicalSecretReconciler) updateResourceVariables(infisicalSecret v1al
 	infisicalSecretResourceVariablesMap[string(infisicalSecret.UID)] = resourceVariables
 }
 
-func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context, logger logr.Logger, infisicalSecret v1alpha1.InfisicalSecret, managedSecretReferences []v1alpha1.ManagedKubeSecretConfig) error {
+func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context, logger logr.Logger, infisicalSecret v1alpha1.InfisicalSecret, managedKubeSecretReferences []v1alpha1.ManagedKubeSecretConfig) error {
 
 	resourceVariables := r.getResourceVariables(infisicalSecret)
 	infisicalClient := resourceVariables.InfisicalClient
@@ -361,7 +361,7 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 		})
 	}
 
-	for _, managedSecretReference := range managedSecretReferences {
+	for _, managedSecretReference := range managedKubeSecretReferences {
 		// Look for managed secret by name and namespace
 		managedKubeSecret, err := util.GetKubeSecretByNamespacedName(ctx, r.Client, types.NamespacedName{
 			Name:      managedSecretReference.SecretName,
