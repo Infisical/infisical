@@ -1,6 +1,7 @@
 export enum SecretSync {
   AWSParameterStore = "aws-parameter-store",
-  GitHub = "github"
+  GitHub = "github",
+  GCP = "gcp"
 }
 
 export enum SecretSyncInitialSyncBehavior {

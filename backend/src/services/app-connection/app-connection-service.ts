@@ -27,6 +27,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAppConnectionDALFactory } from "./app-connection-dal";
 import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
+import { gcpConnectionService } from "./gcp/gcp-connection-service";
 
 export type TAppConnectionServiceFactoryDep = {
   appConnectionDAL: TAppConnectionDALFactory;
@@ -384,6 +385,7 @@ export const appConnectionServiceFactory = ({
     deleteAppConnection,
     connectAppConnectionById,
     listAvailableAppConnectionsForUser,
-    github: githubConnectionService(connectAppConnectionById)
+    github: githubConnectionService(connectAppConnectionById),
+    gcp: gcpConnectionService(connectAppConnectionById)
   };
 };

@@ -13,9 +13,12 @@ import {
   TSecretSyncWithCredentials
 } from "@app/services/secret-sync/secret-sync-types";
 
+import { GCP_SYNC_LIST_OPTION } from "./gcp";
+
 const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.AWSParameterStore]: AWS_PARAMETER_STORE_SYNC_LIST_OPTION,
-  [SecretSync.GitHub]: GITHUB_SYNC_LIST_OPTION
+  [SecretSync.GitHub]: GITHUB_SYNC_LIST_OPTION,
+  [SecretSync.GCP]: GCP_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {

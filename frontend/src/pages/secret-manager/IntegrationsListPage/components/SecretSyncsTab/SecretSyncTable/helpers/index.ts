@@ -39,6 +39,9 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
           throw new Error(`Unhandled GitHub Scope Destination Col Values ${destination}`);
       }
       break;
+    case SecretSync.GCP:
+      primaryText = destinationConfig.projectId;
+      break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
   }

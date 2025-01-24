@@ -20,3 +20,26 @@ export type TValidateGcpConnectionCredentials = typeof ValidateGcpConnectionCred
 export type TGcpConnectionConfig = DiscriminativePick<TGcpConnectionInput, "method" | "app" | "credentials"> & {
   orgId: string;
 };
+
+export interface GCPApp {
+  projectNumber: string;
+  projectId: string;
+  lifecycleState: "ACTIVE" | "LIFECYCLE_STATE_UNSPECIFIED" | "DELETE_REQUESTED" | "DELETE_IN_PROGRESS";
+  name: string;
+  createTime: string;
+  parent: {
+    type: "organization" | "folder" | "project";
+    id: string;
+  };
+}
+
+export interface GCPGetProjectsRes {
+  projects: GCPApp[];
+  nextPageToken?: string;
+}
+
+export interface GCPGetServiceRes {
+  name: string;
+  parent: string;
+  state: "ENABLED" | "DISABLED" | "STATE_UNSPECIFIED";
+}

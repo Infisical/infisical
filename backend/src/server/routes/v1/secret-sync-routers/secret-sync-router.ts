@@ -9,13 +9,19 @@ import {
   AwsParameterStoreSyncListItemSchema,
   AwsParameterStoreSyncSchema
 } from "@app/services/secret-sync/aws-parameter-store";
+import { GcpSyncListItemSchema, GcpSyncSchema } from "@app/services/secret-sync/gcp";
 import { GitHubSyncListItemSchema, GitHubSyncSchema } from "@app/services/secret-sync/github";
 
-const SecretSyncSchema = z.discriminatedUnion("destination", [AwsParameterStoreSyncSchema, GitHubSyncSchema]);
+const SecretSyncSchema = z.discriminatedUnion("destination", [
+  AwsParameterStoreSyncSchema,
+  GitHubSyncSchema,
+  GcpSyncSchema
+]);
 
 const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   AwsParameterStoreSyncListItemSchema,
-  GitHubSyncListItemSchema
+  GitHubSyncListItemSchema,
+  GcpSyncListItemSchema
 ]);
 
 export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {

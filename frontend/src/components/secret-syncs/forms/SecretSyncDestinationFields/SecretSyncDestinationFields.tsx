@@ -4,6 +4,7 @@ import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
 import { AwsParameterStoreSyncFields } from "./AwsParameterStoreSyncFields";
+import { GcpSyncFields } from "./GcpSyncFields";
 import { GitHubSyncFields } from "./GitHubSyncFields";
 
 export const SecretSyncDestinationFields = () => {
@@ -16,6 +17,8 @@ export const SecretSyncDestinationFields = () => {
       return <AwsParameterStoreSyncFields />;
     case SecretSync.GitHub:
       return <GitHubSyncFields />;
+    case SecretSync.GCP:
+      return <GcpSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

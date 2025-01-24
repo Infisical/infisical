@@ -2,12 +2,20 @@ import { gaxios, Impersonated, JWT } from "google-auth-library";
 import { GetAccessTokenResponse } from "google-auth-library/build/src/auth/oauth2client";
 
 import { getConfig } from "@app/lib/config/env";
+import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
 import { AppConnection } from "../app-connection-enums";
 import { getAppConnectionMethodName } from "../app-connection-fns";
 import { GcpConnectionMethod } from "./gcp-connection-enums";
-import { TGcpConnectionConfig } from "./gcp-connection-types";
+import {
+  GCPApp,
+  GCPGetProjectsRes,
+  GCPGetServiceRes,
+  TGcpConnection,
+  TGcpConnectionConfig
+} from "./gcp-connection-types";
 
 export const getGcpAppConnectionListItem = () => {
   return {
@@ -17,9 +25,8 @@ export const getGcpAppConnectionListItem = () => {
   };
 };
 
-export const validateGcpConnectionCredentials = async (appConnection: TGcpConnectionConfig) => {
+export const getAuthToken = async (appConnection: TGcpConnectionConfig) => {
   const appCfg = getConfig();
-
   if (!appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL) {
     throw new InternalServerError({
       message: `Environment variables have not been configured for GCP ${getAppConnectionMethodName(
@@ -66,6 +73,80 @@ export const validateGcpConnectionCredentials = async (appConnection: TGcpConnec
       message: `Unable to validate connection`
     });
   }
+
+  return tokenResponse.token;
+};
+
+export const getGcpSecretManagerProjects = async (appConnection: TGcpConnection) => {
+  const accessToken = await getAuthToken(appConnection);
+
+  let gcpApps: GCPApp[] = [];
+
+  const pageSize = 100;
+  let pageToken: string | undefined;
+  let hasMorePages = true;
+
+  const projects: {
+    name: string;
+    id: string;
+  }[] = [];
+
+  while (hasMorePages) {
+    const params = new URLSearchParams({
+      pageSize: String(pageSize),
+      ...(pageToken ? { pageToken } : {})
+    });
+
+    // eslint-disable-next-line no-await-in-loop
+    const { data } = await request.get<GCPGetProjectsRes>(`${IntegrationUrls.GCP_API_URL}/v1/projects`, {
+      params,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Accept-Encoding": "application/json"
+      }
+    });
+
+    gcpApps = gcpApps.concat(data.projects);
+
+    if (!data.nextPageToken) {
+      hasMorePages = false;
+    }
+
+    pageToken = data.nextPageToken;
+  }
+
+  // eslint-disable-next-line
+  for await (const gcpApp of gcpApps) {
+    try {
+      const res = (
+        await request.get<GCPGetServiceRes>(
+          `${IntegrationUrls.GCP_SERVICE_USAGE_URL}/v1/projects/${gcpApp.projectId}/services/${IntegrationUrls.GCP_SECRET_MANAGER_SERVICE_NAME}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Accept-Encoding": "application/json"
+            }
+          }
+        )
+      ).data;
+
+      if (res.state === "ENABLED") {
+        projects.push({
+          name: gcpApp.name,
+          id: gcpApp.projectId
+        });
+      }
+    } catch {
+      // eslint-disable-next-line
+      continue;
+    }
+  }
+
+  return projects;
+};
+
+export const validateGcpConnectionCredentials = async (appConnection: TGcpConnectionConfig) => {
+  await getAuthToken(appConnection);
 
   return appConnection.credentials;
 };
