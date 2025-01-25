@@ -5,7 +5,7 @@ title: "Node"
 This guide demonstrates how to use Infisical to manage secrets for your Node stack from local development to production. It uses:
 
 - Infisical (you can use [Infisical Cloud](https://app.infisical.com) or a [self-hosted instance of Infisical](https://infisical.com/docs/self-hosting/overview)) to store your secrets.
-- The [@infisical/sdk](https://github.com/Infisical/sdk/tree/main/languages/node) Node.js client SDK to fetch secrets back to your Node application on demand.
+- The [@infisical/sdk](https://github.com/Infisical/node-sdk-v2) Node.js client SDK to fetch secrets back to your Node application on demand.
 
 ## Project Setup
 
@@ -46,43 +46,56 @@ Finally, create an index.js file containing the application code.
 
 ```js
 const express = require('express');
-const { InfisicalClient } = require("@infisical/sdk");
+const { InfisicalSDK } = require("@infisical/sdk");
+
 
 const app = express();
 
 const PORT = 3000;
 
-const client = new InfisicalClient({
-    auth: {
-      universalAuth: {
-        clientId: "YOUR_CLIENT_ID",
-        clientSecret: "YOUR_CLIENT_SECRET",
-      }
-    }
-});
+let client;
+
+const setupClient = () => {  
+
+  if (client) {
+    return;
+  }
+
+  const infisicalSdk = new InfisicalSDK({
+      siteUrl: "your-infisical-instance.com" // Optional, defaults to https://app.infisical.com
+  });
+
+  await client.auth().universalAuth.login({
+    clientId: "<machine-identity-client-id>",
+    clientSecret: "<machine-identity-client-secret>"
+  });
+
+  // If authentication was successful, assign the client
+  client = infisicalSdk;
+}
+
+
 
 app.get("/", async (req, res) => {
-    // access value
+    await setupClient();
 
     const name = await client.getSecret({
-        environment: "dev",
-        projectId: "PROJECT_ID",
-        path: "/",
-        type: "shared",
-        secretName: "NAME"
+      environment: "dev", // dev, staging, prod, etc.
+      projectId: "<project-id>",
+      path: "/",
+      secretName: "NAME"
     });
-
+    
     res.send(`Hello! My name is: ${name.secretValue}`);
 });
 
 app.listen(PORT, async () => {
-    // initialize client
-
-    console.log(`App listening on port ${PORT}`);
+    // initialize http server
+    console.log(`Server listening on port ${PORT}`);
 });
 ```
 
-Here, we initialized a `client` instance of the Infisical Node SDK with the Infisical Token
+Here, we initialized a `client` instance of the Infisical Node SDK with the [Machine Identity](/documentation/platform/identities/overview)
 that we created earlier, giving access to the secrets in the development environment of the
 project in Infisical that we created earlier.
 
@@ -94,16 +107,12 @@ node index.js
 
 The client fetched the secret with the key `NAME` from Infisical that we returned in the response of the endpoint.
 
-At this stage, you know how to fetch secrets from Infisical back to your Node application. By using Infisical Tokens scoped to different environments, you can easily manage secrets across various stages of your project in Infisical, from local development to production.
+At this stage, you know how to fetch secrets from Infisical back to your Node application.
+By using Machine Identities scoped to different projects and environments, you can easily manage secrets across various stages of your project in Infisical, from local development to production.
 
 ## FAQ
 
 <AccordionGroup>
-    <Accordion title="Isn't it inefficient if my app makes a request every time it needs a secret?">
-        The client SDK caches every secret and implements a 5-minute waiting period before
-        re-requesting it. The waiting period can be controlled by setting the `cacheTTL` parameter at
-        the time of initializing the client.
-    </Accordion>
     <Accordion title="What if a request for a secret fails?">
         The SDK caches every secret and falls back to the cached value if a request fails. If no cached
         value ever-existed, the SDK falls back to whatever value is on `process.env`.
@@ -124,4 +133,4 @@ At this stage, you know how to fetch secrets from Infisical back to your Node ap
 
 See also:
 
-- Explore the [Node SDK](https://github.com/Infisical/sdk/tree/main/languages/node)
+- Explore the [Node SDK](https://github.com/Infisical/node-sdk-v2)
