@@ -180,10 +180,12 @@ export const SecretListView = ({
 
       try {
         // personal secret change
+        let personalAction = false;
         if (overrideAction === "deleted") {
           await handleSecretOperation("delete", SecretType.Personal, oldKey, {
             secretId: orgSecret.idOverride
           });
+          personalAction = true;
         } else if (overrideAction && idOverride) {
           await handleSecretOperation("update", SecretType.Personal, oldKey, {
             value: valueOverride,
@@ -191,14 +193,16 @@ export const SecretListView = ({
             secretId: orgSecret.idOverride,
             skipMultilineEncoding: modSecret.skipMultilineEncoding
           });
+          personalAction = true;
         } else if (overrideAction) {
           await handleSecretOperation("create", SecretType.Personal, oldKey, {
             value: valueOverride
           });
+          personalAction = true;
         }
 
         // shared secret change
-        if (!isSharedSecUnchanged) {
+        if (!isSharedSecUnchanged && !personalAction) {
           await handleSecretOperation("update", SecretType.Shared, oldKey, {
             value,
             tags: tagIds,
@@ -232,10 +236,11 @@ export const SecretListView = ({
         });
         handlePopUpClose("secretDetail");
         createNotification({
-          type: isProtectedBranch ? "info" : "success",
-          text: isProtectedBranch
-            ? "Requested changes have been sent for review"
-            : "Successfully saved secrets"
+          type: isProtectedBranch && !personalAction ? "info" : "success",
+          text:
+            isProtectedBranch && !personalAction
+              ? "Requested changes have been sent for review"
+              : "Successfully saved secrets"
         });
       } catch (error) {
         console.log(error);
