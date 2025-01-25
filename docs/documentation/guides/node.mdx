@@ -65,7 +65,7 @@ const setupClient = () => {
       siteUrl: "your-infisical-instance.com" // Optional, defaults to https://app.infisical.com
   });
 
-  await client.auth().universalAuth.login({
+  await infisicalSdk.auth().universalAuth.login({
     clientId: "<machine-identity-client-id>",
     clientSecret: "<machine-identity-client-secret>"
   });
@@ -77,12 +77,12 @@ const setupClient = () => {
 
 
 app.get("/", async (req, res) => {
-    await setupClient();
+    
 
-    const name = await client.getSecret({
+    const name = await client.secrets().getSecret({
       environment: "dev", // dev, staging, prod, etc.
       projectId: "<project-id>",
-      path: "/",
+      secretPath: "/",
       secretName: "NAME"
     });
     
@@ -90,7 +90,8 @@ app.get("/", async (req, res) => {
 });
 
 app.listen(PORT, async () => {
-    // initialize http server
+  // initialize http server and Infisical
+    await setupClient();
     console.log(`Server listening on port ${PORT}`);
 });
 ```
