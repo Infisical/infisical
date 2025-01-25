@@ -288,7 +288,12 @@ export const SecretListView = ({
         text: "Failed to delete secret"
       });
     }
-  }, [(popUp.deleteSecret?.data as SecretV3RawSanitized)?.key, environment, secretPath]);
+  }, [
+    (popUp.deleteSecret?.data as SecretV3RawSanitized)?.key,
+    environment,
+    secretPath,
+    isProtectedBranch
+  ]);
 
   // for optimization on minimise re-rendering of secret items
   const onCreateTag = useCallback(() => handlePopUpOpen("createTag"), []);
