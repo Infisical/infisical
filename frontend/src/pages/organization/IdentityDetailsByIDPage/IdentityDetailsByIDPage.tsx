@@ -1,21 +1,11 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import {
-  Button,
-  DeleteActionModal,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  PageHeader,
-  Tooltip
-} from "@app/components/v2";
+import { DeleteActionModal, PageHeader } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useDeleteIdentity, useGetIdentityById } from "@app/hooks/api";
@@ -85,81 +75,7 @@ const Page = () => {
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       {data && (
         <div className="mx-auto mb-6 w-full max-w-7xl">
-          <PageHeader title={data.identity.name}>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild className="rounded-lg">
-                <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
-                  <Tooltip content="More options">
-                    <Button variant="outline_bg">More</Button>
-                  </Tooltip>
-                </div>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="p-1">
-                <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Identity}>
-                  {(isAllowed) => (
-                    <DropdownMenuItem
-                      className={twMerge(
-                        !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                      )}
-                      onClick={async () => {
-                        handlePopUpOpen("identity", {
-                          identityId,
-                          name: data.identity.name,
-                          role: data.role,
-                          customRole: data.customRole
-                        });
-                      }}
-                      disabled={!isAllowed}
-                    >
-                      Edit Identity
-                    </DropdownMenuItem>
-                  )}
-                </OrgPermissionCan>
-                <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Identity}>
-                  {(isAllowed) => (
-                    <DropdownMenuItem
-                      className={twMerge(
-                        !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                      )}
-                      onClick={async () => {
-                        handlePopUpOpen("identityAuthMethod", {
-                          identityId,
-                          name: data.identity.name,
-                          allAuthMethods: data.identity.authMethods
-                        });
-                      }}
-                      disabled={!isAllowed}
-                    >
-                      Add new auth method
-                    </DropdownMenuItem>
-                  )}
-                </OrgPermissionCan>
-                <OrgPermissionCan
-                  I={OrgPermissionActions.Delete}
-                  a={OrgPermissionSubjects.Identity}
-                >
-                  {(isAllowed) => (
-                    <DropdownMenuItem
-                      className={twMerge(
-                        isAllowed
-                          ? "hover:!bg-red-500 hover:!text-white"
-                          : "pointer-events-none cursor-not-allowed opacity-50"
-                      )}
-                      onClick={async () => {
-                        handlePopUpOpen("deleteIdentity", {
-                          identityId,
-                          name: data.identity.name
-                        });
-                      }}
-                      disabled={!isAllowed}
-                    >
-                      Delete Identity
-                    </DropdownMenuItem>
-                  )}
-                </OrgPermissionCan>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </PageHeader>
+          <PageHeader title={data.identity.name} />
           <div className="flex">
             <div className="mr-4 w-96">
               <IdentityDetailsSection identityId={identityId} handlePopUpOpen={handlePopUpOpen} />
