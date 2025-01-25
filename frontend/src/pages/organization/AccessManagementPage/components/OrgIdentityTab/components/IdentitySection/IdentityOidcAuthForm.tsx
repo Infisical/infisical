@@ -223,13 +223,7 @@ export const IdentityOidcAuthForm = ({
     <form
       onSubmit={handleSubmit(onFormSubmit, (fields) => {
         setTabValue(
-          [
-            "accessTokenTrustedIps",
-            "caCert",
-            "boundAudiences",
-            "boundSubject",
-            "boundClaims"
-          ].includes(Object.keys(fields)[0])
+          ["accessTokenTrustedIps", "caCert", "boundClaims"].includes(Object.keys(fields)[0])
             ? IdentityFormTab.Advanced
             : IdentityFormTab.Configuration
         );
@@ -274,6 +268,48 @@ export const IdentityOidcAuthForm = ({
                   type="text"
                   placeholder="https://token.actions.githubusercontent.com"
                 />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            name="boundSubject"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Subject"
+                isError={Boolean(error)}
+                errorText={error?.message}
+                icon={
+                  <Tooltip
+                    className="text-center"
+                    content={<span>This field supports glob patterns</span>}
+                  >
+                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
+                  </Tooltip>
+                }
+              >
+                <Input {...field} type="text" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            name="boundAudiences"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Audiences"
+                isError={Boolean(error)}
+                errorText={error?.message}
+                icon={
+                  <Tooltip
+                    className="text-center"
+                    content={<span>This field supports glob patterns</span>}
+                  >
+                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
+                  </Tooltip>
+                }
+              >
+                <Input {...field} type="text" placeholder="service1, service2" />
               </FormControl>
             )}
           />
@@ -331,48 +367,6 @@ export const IdentityOidcAuthForm = ({
                 isError={Boolean(error)}
               >
                 <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="boundSubject"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Subject"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                icon={
-                  <Tooltip
-                    className="text-center"
-                    content={<span>This field supports glob patterns</span>}
-                  >
-                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
-                  </Tooltip>
-                }
-              >
-                <Input {...field} type="text" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="boundAudiences"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Audiences"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                icon={
-                  <Tooltip
-                    className="text-center"
-                    content={<span>This field supports glob patterns</span>}
-                  >
-                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
-                  </Tooltip>
-                }
-              >
-                <Input {...field} type="text" placeholder="service1, service2" />
               </FormControl>
             )}
           />

@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { faChevronDown, faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
   DropdownMenu,
@@ -9,6 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@app/components/v2";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 
 type Props = {
   children: ReactNode;
@@ -34,12 +36,28 @@ export const ViewIdentityContentWrapper = ({ children, onDelete, onEdit }: Props
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="min-w-[120px]" align="end">
-                <DropdownMenuItem onClick={onEdit} icon={<FontAwesomeIcon icon={faEdit} />}>
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={onDelete} icon={<FontAwesomeIcon icon={faTrash} />}>
-                  Delete
-                </DropdownMenuItem>
+                <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Identity}>
+                  {(isAllowed) => (
+                    <DropdownMenuItem
+                      isDisabled={!isAllowed}
+                      onClick={onEdit}
+                      icon={<FontAwesomeIcon icon={faEdit} />}
+                    >
+                      Edit
+                    </DropdownMenuItem>
+                  )}
+                </OrgPermissionCan>
+                <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Identity}>
+                  {(isAllowed) => (
+                    <DropdownMenuItem
+                      isDisabled={!isAllowed}
+                      onClick={onDelete}
+                      icon={<FontAwesomeIcon icon={faTrash} />}
+                    >
+                      Delete
+                    </DropdownMenuItem>
+                  )}
+                </OrgPermissionCan>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

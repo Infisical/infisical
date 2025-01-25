@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
   DeleteActionModal,
@@ -19,6 +20,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useRevokeIdentityUniversalAuthClientSecret } from "@app/hooks/api";
 import { ClientSecretData } from "@app/hooks/api/identities/types";
@@ -66,18 +68,23 @@ export const IdentityUniversalAuthClientSecretsTable = ({ clientSecrets, identit
     <div className="col-span-2">
       <div className="flex items-end justify-between border-b border-mineshaft-500 pb-2">
         <span className="text-bunker-300">Client Secrets</span>
-        <Button
-          size="xs"
-          onClick={() => {
-            handlePopUpOpen("clientSecret", {
-              identityId
-            });
-          }}
-          leftIcon={<FontAwesomeIcon icon={faPlus} />}
-          colorSchema="secondary"
-        >
-          Add Client Secret
-        </Button>
+        <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Identity}>
+          {(isAllowed) => (
+            <Button
+              isDisabled={!isAllowed}
+              size="xs"
+              onClick={() => {
+                handlePopUpOpen("clientSecret", {
+                  identityId
+                });
+              }}
+              leftIcon={<FontAwesomeIcon icon={faPlus} />}
+              colorSchema="secondary"
+            >
+              Add Client Secret
+            </Button>
+          )}
+        </OrgPermissionCan>
       </div>
       <TableContainer className="mt-4 rounded-none border-none">
         <Table>
@@ -121,22 +128,30 @@ export const IdentityUniversalAuthClientSecretsTable = ({ clientSecrets, identit
                         {expiresAt ? format(expiresAt, "yyyy-MM-dd") : "-"}
                       </Td>
                       <Td>
-                        <Tooltip content="Delete Secret">
-                          <IconButton
-                            onClick={() => {
-                              handlePopUpOpen("revokeClientSecret", {
-                                clientSecretPrefix,
-                                clientSecretId: id
-                              });
-                            }}
-                            size="xs"
-                            colorSchema="danger"
-                            variant="plain"
-                            ariaLabel="Delete secret"
-                          >
-                            <FontAwesomeIcon icon={faTrash} />
-                          </IconButton>
-                        </Tooltip>
+                        <OrgPermissionCan
+                          I={OrgPermissionActions.Edit}
+                          a={OrgPermissionSubjects.Identity}
+                        >
+                          {(isAllowed) => (
+                            <Tooltip content={isAllowed ? "Delete Secret" : "Access Restricted"}>
+                              <IconButton
+                                isDisabled={!isAllowed}
+                                onClick={() => {
+                                  handlePopUpOpen("revokeClientSecret", {
+                                    clientSecretPrefix,
+                                    clientSecretId: id
+                                  });
+                                }}
+                                size="xs"
+                                colorSchema="danger"
+                                variant="plain"
+                                ariaLabel="Delete secret"
+                              >
+                                <FontAwesomeIcon icon={faTrash} />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                        </OrgPermissionCan>
                       </Td>
                     </Tr>
                   );

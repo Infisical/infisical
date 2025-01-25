@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
   DeleteActionModal,
@@ -19,6 +20,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useRevokeIdentityTokenAuthToken } from "@app/hooks/api";
 import { IdentityAccessToken } from "@app/hooks/api/identities/types";
@@ -77,18 +79,23 @@ export const IdentityTokenAuthTokensTable = ({ tokens, identityId }: Props) => {
     <div className="col-span-2 mt-3">
       <div className="flex items-end justify-between border-b border-mineshaft-500 pb-2">
         <span className="text-bunker-300">Access Tokens</span>
-        <Button
-          size="xs"
-          onClick={() => {
-            handlePopUpOpen("token", {
-              identityId
-            });
-          }}
-          leftIcon={<FontAwesomeIcon icon={faPlus} />}
-          colorSchema="secondary"
-        >
-          Add Token
-        </Button>
+        <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Identity}>
+          {(isAllowed) => (
+            <Button
+              size="xs"
+              isDisabled={!isAllowed}
+              onClick={() => {
+                handlePopUpOpen("token", {
+                  identityId
+                });
+              }}
+              leftIcon={<FontAwesomeIcon icon={faPlus} />}
+              colorSchema="secondary"
+            >
+              Add Token
+            </Button>
+          )}
+        </OrgPermissionCan>
       </div>
       <TableContainer className="mt-4 rounded-none border-none">
         <Table>
@@ -136,40 +143,56 @@ export const IdentityTokenAuthTokensTable = ({ tokens, identityId }: Props) => {
                       </Td>
                       <Td>
                         <div className="flex items-center gap-2">
-                          <Tooltip content="Edit Token">
-                            <IconButton
-                              onClick={() => {
-                                handlePopUpOpen("token", {
-                                  identityId,
-                                  tokenId: id,
-                                  name
-                                });
-                              }}
-                              size="xs"
-                              variant="plain"
-                              ariaLabel="Edit token"
-                            >
-                              <FontAwesomeIcon icon={faEdit} />
-                            </IconButton>
-                          </Tooltip>
+                          <OrgPermissionCan
+                            I={OrgPermissionActions.Edit}
+                            a={OrgPermissionSubjects.Identity}
+                          >
+                            {(isAllowed) => (
+                              <Tooltip content={isAllowed ? "Edit Token" : "Access Restricted"}>
+                                <IconButton
+                                  isDisabled={!isAllowed}
+                                  onClick={() => {
+                                    handlePopUpOpen("token", {
+                                      identityId,
+                                      tokenId: id,
+                                      name
+                                    });
+                                  }}
+                                  size="xs"
+                                  variant="plain"
+                                  ariaLabel="Edit token"
+                                >
+                                  <FontAwesomeIcon icon={faEdit} />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                          </OrgPermissionCan>
                           {!isAccessTokenRevoked && (
-                            <Tooltip content="Revoke Token">
-                              <IconButton
-                                onClick={() => {
-                                  handlePopUpOpen("revokeToken", {
-                                    identityId,
-                                    tokenId: id,
-                                    name
-                                  });
-                                }}
-                                size="xs"
-                                colorSchema="danger"
-                                variant="plain"
-                                ariaLabel="Revoke token"
-                              >
-                                <FontAwesomeIcon icon={faBan} />
-                              </IconButton>
-                            </Tooltip>
+                            <OrgPermissionCan
+                              I={OrgPermissionActions.Edit}
+                              a={OrgPermissionSubjects.Identity}
+                            >
+                              {(isAllowed) => (
+                                <Tooltip content={isAllowed ? "Revoke Token" : "Access Restricted"}>
+                                  <IconButton
+                                    isDisabled={!isAllowed}
+                                    onClick={() => {
+                                      handlePopUpOpen("revokeToken", {
+                                        identityId,
+                                        tokenId: id,
+                                        name
+                                      });
+                                    }}
+                                    size="xs"
+                                    colorSchema="danger"
+                                    variant="plain"
+                                    ariaLabel="Revoke token"
+                                  >
+                                    <FontAwesomeIcon icon={faBan} />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                            </OrgPermissionCan>
                           )}
                         </div>
                       </Td>

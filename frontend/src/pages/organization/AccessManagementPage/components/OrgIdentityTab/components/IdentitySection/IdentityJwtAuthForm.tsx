@@ -278,13 +278,7 @@ export const IdentityJwtAuthForm = ({
     <form
       onSubmit={handleSubmit(onFormSubmit, (fields) => {
         setTabValue(
-          [
-            "accessTokenTrustedIps",
-            "boundIssuer",
-            "boundAudiences",
-            "boundSubject",
-            "boundClaims"
-          ].includes(Object.keys(fields)[0])
+          ["accessTokenTrustedIps"].includes(Object.keys(fields)[0])
             ? IdentityFormTab.Advanced
             : IdentityFormTab.Configuration
         );
@@ -365,7 +359,6 @@ export const IdentityJwtAuthForm = ({
               />
             </>
           )}
-
           {selectedConfigurationType === IdentityJwtConfigurationType.STATIC && (
             <>
               {publicKeyFields.map(({ id }, index) => (
@@ -430,50 +423,6 @@ export const IdentityJwtAuthForm = ({
               </div>
             </>
           )}
-          <Controller
-            control={control}
-            defaultValue="2592000"
-            name="accessTokenTTL"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Access Token TTL (seconds)"
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
-                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            defaultValue="2592000"
-            name="accessTokenMaxTTL"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Access Token Max TTL (seconds)"
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
-                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            defaultValue="0"
-            name="accessTokenNumUsesLimit"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Access Token Max Number of Uses"
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
-                <Input {...field} placeholder="0" type="number" min="0" step="1" />
-              </FormControl>
-            )}
-          />
-        </TabPanel>
-        <TabPanel value={IdentityFormTab.Advanced}>
           <Controller
             control={control}
             name="boundIssuer"
@@ -604,6 +553,50 @@ export const IdentityJwtAuthForm = ({
               Add Claims
             </Button>
           </div>
+          <Controller
+            control={control}
+            defaultValue="2592000"
+            name="accessTokenTTL"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Access Token TTL (seconds)"
+                isError={Boolean(error)}
+                errorText={error?.message}
+              >
+                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            defaultValue="2592000"
+            name="accessTokenMaxTTL"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Access Token Max TTL (seconds)"
+                isError={Boolean(error)}
+                errorText={error?.message}
+              >
+                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            defaultValue="0"
+            name="accessTokenNumUsesLimit"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Access Token Max Number of Uses"
+                isError={Boolean(error)}
+                errorText={error?.message}
+              >
+                <Input {...field} placeholder="0" type="number" min="0" step="1" />
+              </FormControl>
+            )}
+          />
+        </TabPanel>
+        <TabPanel value={IdentityFormTab.Advanced}>
           {accessTokenTrustedIpsFields.map(({ id }, index) => (
             <div className="mb-3 flex items-end space-x-2" key={id}>
               <Controller

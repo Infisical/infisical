@@ -1,7 +1,9 @@
 import { faCog, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { OrgPermissionCan } from "@app/components/permissions";
 import { Button } from "@app/components/v2";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { IdentityAuthMethod, identityAuthToNameMap, useGetIdentityById } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -45,21 +47,26 @@ export const IdentityAuthenticationSection = ({ identityId, handlePopUpOpen }: P
       {!Object.values(IdentityAuthMethod).every((method) =>
         data.identity.authMethods.includes(method)
       ) && (
-        <Button
-          onClick={() => {
-            handlePopUpOpen("identityAuthMethod", {
-              identityId,
-              name: data.identity.name,
-              allAuthMethods: data.identity.authMethods
-            });
-          }}
-          variant="outline_bg"
-          className="mt-3 w-full"
-          size="xs"
-          leftIcon={<FontAwesomeIcon icon={faPlus} />}
-        >
-          {data.identity.authMethods.length ? "Add" : "Create"} Auth Method
-        </Button>
+        <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Identity}>
+          {(isAllowed) => (
+            <Button
+              isDisabled={!isAllowed}
+              onClick={() => {
+                handlePopUpOpen("identityAuthMethod", {
+                  identityId,
+                  name: data.identity.name,
+                  allAuthMethods: data.identity.authMethods
+                });
+              }}
+              variant="outline_bg"
+              className="mt-3 w-full"
+              size="xs"
+              leftIcon={<FontAwesomeIcon icon={faPlus} />}
+            >
+              {data.identity.authMethods.length ? "Add" : "Create"} Auth Method
+            </Button>
+          )}
+        </OrgPermissionCan>
       )}
     </div>
   ) : (

@@ -219,7 +219,9 @@ export const IdentityKubernetesAuthForm = ({
             "tokenReviewerJwt",
             "accessTokenTTL",
             "accessTokenMaxTTL",
-            "accessTokenNumUsesLimit"
+            "accessTokenNumUsesLimit",
+            "allowedNames",
+            "allowedNamespaces"
           ].includes(Object.keys(fields)[0])
             ? IdentityFormTab.Configuration
             : IdentityFormTab.Advanced
@@ -260,6 +262,35 @@ export const IdentityKubernetesAuthForm = ({
                 isRequired
               >
                 <Input {...field} placeholder="" type="password" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            defaultValue=""
+            name="allowedNamespaces"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Allowed Namespaces"
+                isError={Boolean(error)}
+                errorText={error?.message}
+                tooltipText="A comma-separated list of trusted namespaces that service accounts must belong to authenticate with Infisical."
+              >
+                <Input {...field} placeholder="namespaceA, namespaceB" type="text" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            name="allowedNames"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Allowed Service Account Names"
+                isError={Boolean(error)}
+                tooltipText="An optional comma-separated list of trusted service account names that are allowed to authenticate with Infisical. Leave empty to allow any service account."
+                errorText={error?.message}
+              >
+                <Input {...field} placeholder="service-account-1-name, service-account-1-name" />
               </FormControl>
             )}
           />
@@ -310,35 +341,6 @@ export const IdentityKubernetesAuthForm = ({
           />
         </TabPanel>
         <TabPanel value={IdentityFormTab.Advanced}>
-          <Controller
-            control={control}
-            name="allowedNames"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Allowed Service Account Names"
-                isError={Boolean(error)}
-                tooltipText="An optional comma-separated list of trusted service account names that are allowed to authenticate with Infisical. Leave empty to allow any service account."
-                errorText={error?.message}
-              >
-                <Input {...field} placeholder="service-account-1-name, service-account-1-name" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            defaultValue=""
-            name="allowedNamespaces"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Allowed Namespaces"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                tooltipText="A comma-separated list of trusted namespaces that service accounts must belong to authenticate with Infisical."
-              >
-                <Input {...field} placeholder="namespaceA, namespaceB" type="text" />
-              </FormControl>
-            )}
-          />
           <Controller
             control={control}
             defaultValue=""
