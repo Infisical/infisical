@@ -142,9 +142,6 @@ export const VercelConfigurePage = () => {
   };
 
   const selectedVercelEnvironments = useMemo(() => {
-    // Structure looks like:
-    // {appId: string, environments: [{id: string, name: string}]}[]
-
     let selectedEnvironments = vercelEnvironments;
 
     const environments = customEnvironments?.find(
@@ -240,12 +237,11 @@ export const VercelConfigurePage = () => {
           <Select
             value={targetAppId}
             onValueChange={(val) => {
-              setTargetAppId(val);
-
-              // Reset the target environment if it's not a default environment
               if (vercelEnvironments.every((env) => env.slug !== targetEnvironment)) {
                 setTargetEnvironment(vercelEnvironments[0].slug);
               }
+
+              setTargetAppId(val);
             }}
             className="w-full border border-mineshaft-500"
             isDisabled={integrationAuthApps.length === 0}
