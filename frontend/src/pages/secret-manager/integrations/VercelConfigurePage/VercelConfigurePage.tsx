@@ -164,8 +164,6 @@ export const VercelConfigurePage = () => {
     return selectedEnvironments;
   }, [targetAppId, customEnvironments]);
 
-  console.log("selectedVercelEnvironments", selectedVercelEnvironments);
-
   return integrationAuth &&
     selectedSourceEnvironment &&
     integrationAuthApps &&

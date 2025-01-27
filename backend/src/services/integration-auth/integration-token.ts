@@ -5,7 +5,6 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 
 import { Integrations, IntegrationUrls } from "./integration-list";
-import { AxiosError } from "axios";
 
 type ExchangeCodeAzureResponse = {
   token_type: string;
@@ -198,22 +197,15 @@ const exchangeCodeVercel = async ({ code }: { code: string }) => {
   }
 
   const res = (
-    await request
-      .post<ExchangeCodeVercelResponse>(
-        IntegrationUrls.VERCEL_TOKEN_URL,
-        new URLSearchParams({
-          code,
-          client_id: appCfg.CLIENT_ID_VERCEL,
-          client_secret: appCfg.CLIENT_SECRET_VERCEL,
-          redirect_uri: `${appCfg.SITE_URL}/integrations/vercel/oauth2/callback`
-        })
-      )
-      .catch((e) => {
-        if (e instanceof AxiosError) {
-          console.log(e.response?.data);
-        }
-        throw e;
+    await request.post<ExchangeCodeVercelResponse>(
+      IntegrationUrls.VERCEL_TOKEN_URL,
+      new URLSearchParams({
+        code,
+        client_id: appCfg.CLIENT_ID_VERCEL,
+        client_secret: appCfg.CLIENT_SECRET_VERCEL,
+        redirect_uri: `${appCfg.SITE_URL}/integrations/vercel/oauth2/callback`
       })
+    )
   ).data;
 
   return {

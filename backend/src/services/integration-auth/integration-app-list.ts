@@ -180,10 +180,6 @@ export const getAppsVercel = async ({ accessToken, teamId }: { teamId?: string |
       }
     });
 
-    for (const project of data.projects) {
-      console.log(project.customEnvironments);
-    }
-
     data.projects.forEach((a) => {
       apps.push({
         name: a.name,
