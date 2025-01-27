@@ -10,6 +10,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
+import { useOrganization } from "@app/context";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { GcpConnectionMethod, TGcpConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -32,7 +33,7 @@ const formSchema = z.discriminatedUnion("method", [
   rootSchema.extend({
     method: z.literal(GcpConnectionMethod.ServiceAccountImpersonation),
     credentials: z.object({
-      serviceAccountEmail: z.string().trim().min(1, "Service account email required")
+      serviceAccountEmail: z.string().email().trim().min(1, "Service account email required")
     })
   })
 ]);
@@ -49,6 +50,7 @@ export const GcpConnectionForm = ({ appConnection, onSubmit }: Props) => {
       method: GcpConnectionMethod.ServiceAccountImpersonation
     }
   });
+  const { currentOrg } = useOrganization();
 
   const {
     handleSubmit,
@@ -101,6 +103,7 @@ export const GcpConnectionForm = ({ appConnection, onSubmit }: Props) => {
               isError={Boolean(error?.message)}
               label="Service Account Email"
               className="group"
+              helperText={`Service account email must be prefixed with "${currentOrg.id.split("-").slice(0, 2).join("-")}".`}
             >
               <SecretInput
                 containerClassName="text-gray-400 group-focus-within:!border-primary-400/50 border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"

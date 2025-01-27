@@ -11,7 +11,7 @@ import {
 import { GcpConnectionMethod } from "./gcp-connection-enums";
 
 export const GcpConnectionServiceAccountImpersonationCredentialsSchema = z.object({
-  serviceAccountEmail: z.string().trim().min(1, "Service account email required")
+  serviceAccountEmail: z.string().email().trim().min(1, "Service account email required")
 });
 
 const BaseGcpConnectionSchema = BaseAppConnectionSchema.extend({ app: z.literal(AppConnection.GCP) });

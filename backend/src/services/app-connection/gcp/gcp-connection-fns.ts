@@ -146,6 +146,18 @@ export const getGcpSecretManagerProjects = async (appConnection: TGcpConnection)
 };
 
 export const validateGcpConnectionCredentials = async (appConnection: TGcpConnectionConfig) => {
+  // Check if provided service account email prefix matches organization ID.
+  // We do this to mitigate confused deputy attacks in multi-tenant instances
+  const expectedEmailPrefix = appConnection.orgId.split("-").slice(0, 2).join("-");
+  if (
+    appConnection.credentials.serviceAccountEmail &&
+    !appConnection.credentials.serviceAccountEmail.startsWith(expectedEmailPrefix)
+  ) {
+    throw new BadRequestError({
+      message: `GCP service account email must have a prefix of "${expectedEmailPrefix}"`
+    });
+  }
+
   await getAuthToken(appConnection);
 
   return appConnection.credentials;
