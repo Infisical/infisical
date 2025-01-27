@@ -17,7 +17,7 @@ export const SecretSyncDestinationFields = () => {
       return <AwsParameterStoreSyncFields />;
     case SecretSync.GitHub:
       return <GitHubSyncFields />;
-    case SecretSync.GCP:
+    case SecretSync.GCPSecretManager:
       return <GcpSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);

@@ -4,7 +4,7 @@ import { TSecretSyncListItem } from "@app/services/secret-sync/secret-sync-types
 
 export const GCP_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "GCP Secret Manager",
-  destination: SecretSync.GCP,
+  destination: SecretSync.GCPSecretManager,
   connection: AppConnection.GCP,
   canImportSecrets: false
 };

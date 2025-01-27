@@ -39,7 +39,7 @@ export const SecretSyncReviewFields = () => {
     case SecretSync.GitHub:
       DestinationFieldsComponent = <GitHubSyncReviewFields />;
       break;
-    case SecretSync.GCP:
+    case SecretSync.GCPSecretManager:
       DestinationFieldsComponent = <GcpSyncReviewFields />;
       break;
     default:

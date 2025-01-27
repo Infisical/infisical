@@ -5,7 +5,7 @@ import { registerSyncSecretsEndpoints } from "./secret-sync-endpoints";
 
 export const registerGcpSyncRouter = async (server: FastifyZodProvider) =>
   registerSyncSecretsEndpoints({
-    destination: SecretSync.GCP,
+    destination: SecretSync.GCPSecretManager,
     server,
     responseSchema: GcpSyncSchema,
     createSchema: CreateGcpSyncSchema,

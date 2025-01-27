@@ -3,7 +3,7 @@ import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { TRootSecretSync } from "@app/hooks/api/secretSyncs/types/root-sync";
 
 export type TGcpSync = TRootSecretSync & {
-  destination: SecretSync.GCP;
+  destination: SecretSync.GCPSecretManager;
   destinationConfig: {
     projectId: string;
   };

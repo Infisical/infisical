@@ -10,7 +10,9 @@ import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { TSecretSyncForm } from "../schemas";
 
 export const GcpSyncFields = () => {
-  const { control, setValue } = useFormContext<TSecretSyncForm & { destination: SecretSync.GCP }>();
+  const { control, setValue } = useFormContext<
+    TSecretSyncForm & { destination: SecretSync.GCPSecretManager }
+  >();
 
   const connectionId = useWatch({ name: "connection.id", control });
 

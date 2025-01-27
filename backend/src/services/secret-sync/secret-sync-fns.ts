@@ -19,7 +19,7 @@ import { GcpSyncFns } from "./gcp/gcp-sync-fns";
 const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.AWSParameterStore]: AWS_PARAMETER_STORE_SYNC_LIST_OPTION,
   [SecretSync.GitHub]: GITHUB_SYNC_LIST_OPTION,
-  [SecretSync.GCP]: GCP_SYNC_LIST_OPTION
+  [SecretSync.GCPSecretManager]: GCP_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -75,7 +75,7 @@ export const SecretSyncFns = {
         return AwsParameterStoreSyncFns.syncSecrets(secretSync, secretMap);
       case SecretSync.GitHub:
         return GithubSyncFns.syncSecrets(secretSync, secretMap);
-      case SecretSync.GCP:
+      case SecretSync.GCPSecretManager:
         return GcpSyncFns.syncSecrets(secretSync, secretMap);
       default:
         throw new Error(
@@ -92,7 +92,7 @@ export const SecretSyncFns = {
       case SecretSync.GitHub:
         secretMap = await GithubSyncFns.getSecrets(secretSync);
         break;
-      case SecretSync.GCP:
+      case SecretSync.GCPSecretManager:
         secretMap = await GcpSyncFns.getSecrets(secretSync);
         break;
       default:
@@ -112,7 +112,7 @@ export const SecretSyncFns = {
         return AwsParameterStoreSyncFns.removeSecrets(secretSync, secretMap);
       case SecretSync.GitHub:
         return GithubSyncFns.removeSecrets(secretSync, secretMap);
-      case SecretSync.GCP:
+      case SecretSync.GCPSecretManager:
         return GcpSyncFns.removeSecrets(secretSync, secretMap);
       default:
         throw new Error(

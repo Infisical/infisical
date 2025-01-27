@@ -14,7 +14,7 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <AwsParameterStoreSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.GitHub:
       return <GitHubSyncDestinationCol secretSync={secretSync} />;
-    case SecretSync.GCP:
+    case SecretSync.GCPSecretManager:
       return <GcpSyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(

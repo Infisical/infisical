@@ -16,22 +16,28 @@ const GcpSyncDestinationConfigSchema = z.object({
   projectId: z.string().min(1, "Project ID is required")
 });
 
-export const GcpSyncSchema = BaseSecretSyncSchema(SecretSync.GCP, GcpSyncOptionsConfig).extend({
-  destination: z.literal(SecretSync.GCP),
+export const GcpSyncSchema = BaseSecretSyncSchema(SecretSync.GCPSecretManager, GcpSyncOptionsConfig).extend({
+  destination: z.literal(SecretSync.GCPSecretManager),
   destinationConfig: GcpSyncDestinationConfigSchema
 });
 
-export const CreateGcpSyncSchema = GenericCreateSecretSyncFieldsSchema(SecretSync.GCP, GcpSyncOptionsConfig).extend({
+export const CreateGcpSyncSchema = GenericCreateSecretSyncFieldsSchema(
+  SecretSync.GCPSecretManager,
+  GcpSyncOptionsConfig
+).extend({
   destinationConfig: GcpSyncDestinationConfigSchema
 });
 
-export const UpdateGcpSyncSchema = GenericUpdateSecretSyncFieldsSchema(SecretSync.GCP, GcpSyncOptionsConfig).extend({
+export const UpdateGcpSyncSchema = GenericUpdateSecretSyncFieldsSchema(
+  SecretSync.GCPSecretManager,
+  GcpSyncOptionsConfig
+).extend({
   destinationConfig: GcpSyncDestinationConfigSchema.optional()
 });
 
 export const GcpSyncListItemSchema = z.object({
   name: z.literal("GCP Secret Manager"),
   connection: z.literal(AppConnection.GCP),
-  destination: z.literal(SecretSync.GCP),
+  destination: z.literal(SecretSync.GCPSecretManager),
   canImportSecrets: z.literal(false)
 });

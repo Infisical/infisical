@@ -32,7 +32,7 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
     case SecretSync.GitHub:
       DestinationComponents = <GitHubSyncDestinationSection secretSync={secretSync} />;
       break;
-    case SecretSync.GCP:
+    case SecretSync.GCPSecretManager:
       DestinationComponents = <GcpSyncDestinationSection secretSync={secretSync} />;
       break;
     default:

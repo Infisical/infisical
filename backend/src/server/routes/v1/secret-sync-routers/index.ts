@@ -9,5 +9,5 @@ export * from "./secret-sync-router";
 export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: FastifyZodProvider) => Promise<void>> = {
   [SecretSync.AWSParameterStore]: registerAwsParameterStoreSyncRouter,
   [SecretSync.GitHub]: registerGitHubSyncRouter,
-  [SecretSync.GCP]: registerGcpSyncRouter
+  [SecretSync.GCPSecretManager]: registerGcpSyncRouter
 };
