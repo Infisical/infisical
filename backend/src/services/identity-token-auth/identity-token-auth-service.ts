@@ -329,10 +329,10 @@ export const identityTokenAuthServiceFactory = ({
       } as TIdentityAccessTokenJwtPayload,
       appCfg.AUTH_SECRET,
       // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
-      Number(identityAccessToken.accessTokenMaxTTL) === 0
+      Number(identityAccessToken.accessTokenTTL) === 0
         ? undefined
         : {
-            expiresIn: Number(identityAccessToken.accessTokenMaxTTL)
+            expiresIn: Number(identityAccessToken.accessTokenTTL)
           }
     );
 
