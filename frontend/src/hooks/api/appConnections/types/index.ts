@@ -39,4 +39,5 @@ export type TDeleteAppConnectionDTO = {
 export type TAppConnectionMap = {
   [AppConnection.AWS]: TAwsConnection;
   [AppConnection.GitHub]: TGitHubConnection;
+  [AppConnection.GCP]: TGcpConnection;
 };
