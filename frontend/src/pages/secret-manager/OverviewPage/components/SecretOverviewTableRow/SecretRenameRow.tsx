@@ -195,7 +195,7 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
                       ariaLabel="copy-value"
                       variant="plain"
                       size="sm"
-                      className="p-0 opacity-0 group-hover:opacity-100"
+                      className="p-0 opacity-100"
                       onClick={copyTokenToClipboard}
                     >
                       <FontAwesomeIcon icon={isSecNameCopied ? faCheck : faCopy} />
