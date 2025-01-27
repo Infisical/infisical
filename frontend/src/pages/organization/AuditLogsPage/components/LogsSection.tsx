@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
 import { withPermission } from "@app/hoc";
+import { useDebounce } from "@app/hooks";
 import { ActorType, EventType, UserAgentType } from "@app/hooks/api/auditLogs/enums";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -67,9 +68,12 @@ export const LogsSection = withPermission(
     const userAgentType = watch("userAgentType") as UserAgentType | undefined;
     const actor = watch("actor");
     const projectId = watch("project")?.id;
+    const secretPath = watch("secretPath");
 
     const startDate = watch("startDate");
     const endDate = watch("endDate");
+
+    const [debouncedSecretPath] = useDebounce<string>(secretPath!, 500);
 
     return (
       <div>
@@ -90,6 +94,7 @@ export const LogsSection = withPermission(
           isOrgAuditLogs={isOrgAuditLogs}
           showActorColumn={!!showActorColumn}
           filter={{
+            secretPath: debouncedSecretPath || undefined,
             eventMetadata: presets?.eventMetadata,
             projectId,
             actorType: presets?.actorType,

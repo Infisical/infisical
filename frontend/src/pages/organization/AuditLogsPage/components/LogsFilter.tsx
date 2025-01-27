@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
   FilterableSelect,
   FormControl,
+  Input,
   Select,
   SelectItem
 } from "@app/components/v2";
@@ -50,6 +51,7 @@ export const LogsFilter = ({
   className,
   control,
   reset,
+  setValue,
   watch
 }: Props) => {
   const [isStartDatePickerOpen, setIsStartDatePickerOpen] = useState(false);
@@ -101,6 +103,7 @@ export const LogsFilter = ({
   };
 
   const selectedEventTypes = watch("eventType") as EventType[] | undefined;
+  const selectedProjectId = watch("project")?.id;
 
   return (
     <div
@@ -109,30 +112,49 @@ export const LogsFilter = ({
         className
       )}
     >
-      {isOrgAuditLogs && workspacesInOrg.length > 0 && (
-        <Controller
-          control={control}
-          name="project"
-          render={({ field: { onChange, value }, fieldState: { error } }) => (
-            <FormControl
-              label="Project"
-              errorText={error?.message}
-              isError={Boolean(error)}
-              className="mr-12 w-64"
-            >
-              <FilterableSelect
-                value={value}
-                isClearable
-                onChange={onChange}
-                placeholder="Select a project..."
-                options={workspacesInOrg.map(({ name, id }) => ({ name, id }))}
-                getOptionValue={(option) => option.id}
-                getOptionLabel={(option) => option.name}
-              />
-            </FormControl>
-          )}
-        />
-      )}
+      <div className="flex items-center gap-4">
+        {isOrgAuditLogs && workspacesInOrg.length > 0 && (
+          <Controller
+            control={control}
+            name="project"
+            render={({ field: { onChange, value }, fieldState: { error } }) => (
+              <FormControl
+                label="Project"
+                errorText={error?.message}
+                isError={Boolean(error)}
+                className="w-64"
+              >
+                <FilterableSelect
+                  value={value}
+                  isClearable
+                  onChange={(e) => {
+                    console.log(e);
+                    if (e === null) {
+                      setValue("secretPath", "");
+                    }
+                    onChange(e);
+                  }}
+                  placeholder="Select a project..."
+                  options={workspacesInOrg.map(({ name, id }) => ({ name, id }))}
+                  getOptionValue={(option) => option.id}
+                  getOptionLabel={(option) => option.name}
+                />
+              </FormControl>
+            )}
+          />
+        )}
+        {selectedProjectId && (
+          <Controller
+            control={control}
+            name="secretPath"
+            render={({ field: { onChange, value, ...field } }) => (
+              <FormControl label="Secret path" className="w-40">
+                <Input {...field} value={value} onChange={(e) => onChange(e.target.value)} />
+              </FormControl>
+            )}
+          />
+        )}
+      </div>
       <div className="mt-1 flex items-center space-x-2">
         <Controller
           control={control}

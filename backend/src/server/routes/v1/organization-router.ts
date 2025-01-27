@@ -11,7 +11,7 @@ import {
 } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { AUDIT_LOGS, ORGANIZATIONS } from "@app/lib/api-docs";
-import { getLastMidnightDateISO } from "@app/lib/fn";
+import { getLastMidnightDateISO, removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -113,6 +113,12 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       querystring: z.object({
         projectId: z.string().optional().describe(AUDIT_LOGS.EXPORT.projectId),
         actorType: z.nativeEnum(ActorType).optional(),
+        secretPath: z
+          .string()
+          .optional()
+          .transform((val) => (!val ? val : removeTrailingSlash(val)))
+          .describe(AUDIT_LOGS.EXPORT.secretPath),
+
         // eventType is split with , for multiple values, we need to transform it to array
         eventType: z
           .string()

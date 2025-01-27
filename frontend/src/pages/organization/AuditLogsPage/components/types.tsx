@@ -12,7 +12,8 @@ export const auditLogFilterFormSchema = z
     startDate: z.date().optional(),
     endDate: z.date().optional(),
     page: z.coerce.number().optional(),
-    perPage: z.coerce.number().optional()
+    perPage: z.coerce.number().optional(),
+    secretPath: z.string().optional()
   })
   .superRefine((el, ctx) => {
     if (el.endDate && el.startDate && el.endDate < el.startDate) {
