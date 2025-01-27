@@ -141,7 +141,7 @@ export const SecretPathInput = ({
           maxHeight: "var(--radix-select-content-available-height)"
         }}
       >
-        <div className="h-full w-full max-w-60 flex-col items-center justify-center rounded-md text-white">
+        <div className="h-full w-full flex-col items-center justify-center rounded-md text-white">
           {suggestions.map((suggestion, i) => (
             <div
               tabIndex={0}
