@@ -365,7 +365,8 @@
           "group": "Syncs",
           "pages": [
             "integrations/secret-syncs/aws-parameter-store",
-            "integrations/secret-syncs/github"
+            "integrations/secret-syncs/github",
+            "integrations/secret-syncs/gcp-secret-manager"
           ]
         }
       ]
