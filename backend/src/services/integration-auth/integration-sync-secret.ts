@@ -1636,7 +1636,7 @@ const syncSecretsVercel = async ({
                 }
               : {
                   customEnvironmentIds: res[key].customEnvironmentIds?.includes(integration.targetEnvironment as string)
-                    ? [...res[key].customEnvironmentIds]
+                    ? [...(res[key].customEnvironmentIds || [])]
                     : [...(res[key]?.customEnvironmentIds || []), integration.targetEnvironment as string]
                 }),
 
