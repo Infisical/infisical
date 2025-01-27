@@ -2,5 +2,4 @@ export { IdentityAuthenticationSection } from "./IdentityAuthenticationSection/I
 export { IdentityClientSecretModal } from "./IdentityClientSecretModal";
 export { IdentityDetailsSection } from "./IdentityDetailsSection";
 export { IdentityProjectsSection } from "./IdentityProjectsSection/IdentityProjectsSection";
-export { IdentityTokenListModal } from "./IdentityTokenListModal";
 export { IdentityTokenModal } from "./IdentityTokenModal";

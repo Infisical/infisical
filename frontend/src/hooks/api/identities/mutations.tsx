@@ -923,7 +923,7 @@ export const useAddIdentityTokenAuth = () => {
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
       queryClient.invalidateQueries({
-        queryKey: identitiesKeys.getIdentityUniversalAuth(identityId)
+        queryKey: identitiesKeys.getIdentityTokenAuth(identityId)
       });
     }
   });
@@ -959,7 +959,7 @@ export const useUpdateIdentityTokenAuth = () => {
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
       queryClient.invalidateQueries({
-        queryKey: identitiesKeys.getIdentityUniversalAuth(identityId)
+        queryKey: identitiesKeys.getIdentityTokenAuth(identityId)
       });
     }
   });
