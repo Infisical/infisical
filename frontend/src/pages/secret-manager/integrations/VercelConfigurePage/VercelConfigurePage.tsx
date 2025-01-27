@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import {
   faArrowUpRightFromSquare,
@@ -25,7 +25,8 @@ import { useCreateIntegration } from "@app/hooks/api";
 import {
   useGetIntegrationAuthApps,
   useGetIntegrationAuthById,
-  useGetIntegrationAuthVercelBranches
+  useGetIntegrationAuthVercelBranches,
+  useGetIntegrationAuthVercelCustomEnvironments
 } from "@app/hooks/api/integrationAuth";
 import { IntegrationSyncBehavior } from "@app/hooks/api/integrations/types";
 
@@ -74,6 +75,11 @@ export const VercelConfigurePage = () => {
       integrationAuthId: (integrationAuthId as string) ?? "",
       teamId: integrationAuth?.teamId as string
     });
+
+  const { data: customEnvironments } = useGetIntegrationAuthVercelCustomEnvironments({
+    teamId: integrationAuth?.teamId as string,
+    integrationAuthId: integrationAuthId as string
+  });
 
   const { data: branches } = useGetIntegrationAuthVercelBranches({
     integrationAuthId: integrationAuthId as string,
@@ -134,6 +140,31 @@ export const VercelConfigurePage = () => {
       console.error(err);
     }
   };
+
+  const selectedVercelEnvironments = useMemo(() => {
+    // Structure looks like:
+    // {appId: string, environments: [{id: string, name: string}]}[]
+
+    let selectedEnvironments = vercelEnvironments;
+
+    const environments = customEnvironments?.find(
+      (e) => e.appId === targetAppId
+    )?.customEnvironments;
+
+    if (environments && environments.length > 0) {
+      selectedEnvironments = [
+        ...selectedEnvironments,
+        ...environments.map((env) => ({
+          name: env.slug,
+          slug: env.id
+        }))
+      ];
+    }
+
+    return selectedEnvironments;
+  }, [targetAppId, customEnvironments]);
+
+  console.log("selectedVercelEnvironments", selectedVercelEnvironments);
 
   return integrationAuth &&
     selectedSourceEnvironment &&
@@ -210,7 +241,14 @@ export const VercelConfigurePage = () => {
         >
           <Select
             value={targetAppId}
-            onValueChange={(val) => setTargetAppId(val)}
+            onValueChange={(val) => {
+              setTargetAppId(val);
+
+              // Reset the target environment if it's not a default environment
+              if (vercelEnvironments.every((env) => env.slug !== targetEnvironment)) {
+                setTargetEnvironment(vercelEnvironments[0].slug);
+              }
+            }}
             className="w-full border border-mineshaft-500"
             isDisabled={integrationAuthApps.length === 0}
           >
@@ -236,7 +274,7 @@ export const VercelConfigurePage = () => {
             onValueChange={(val) => setTargetEnvironment(val)}
             className="w-full border border-mineshaft-500"
           >
-            {vercelEnvironments.map((vercelEnvironment) => (
+            {selectedVercelEnvironments.map((vercelEnvironment) => (
               <SelectItem
                 value={vercelEnvironment.slug}
                 key={`target-environment-${vercelEnvironment.slug}`}

@@ -1450,9 +1450,13 @@ const syncSecretsVercel = async ({
   secrets: Record<string, { value: string; comment?: string } | null>;
   accessToken: string;
 }) => {
+  const isCustomEnvironment = !["development", "preview", "production"].includes(
+    integration.targetEnvironment as string
+  );
   interface VercelSecret {
     id?: string;
     type: string;
+    customEnvironmentIds?: string[];
     key: string;
     value: string;
     target: string[];
@@ -1486,6 +1490,16 @@ const syncSecretsVercel = async ({
       }
     )
   ).data.envs.filter((secret) => {
+    if (isCustomEnvironment) {
+      if (!secret.customEnvironmentIds?.includes(integration.targetEnvironment as string)) {
+        // case: secret does not have the same custom environment
+        return false;
+      }
+
+      // no need to check for preview environment, as custom environments are not available in preview
+      return true;
+    }
+
     if (!secret.target.includes(integration.targetEnvironment as string)) {
       // case: secret does not have the same target environment
       return false;
@@ -1583,7 +1597,13 @@ const syncSecretsVercel = async ({
             key,
             value: infisicalSecrets[key]?.value,
             type: "encrypted",
-            target: [integration.targetEnvironment as string],
+            ...(isCustomEnvironment
+              ? {
+                  customEnvironmentIds: [integration.targetEnvironment as string]
+                }
+              : {
+                  target: [integration.targetEnvironment as string]
+                }),
             ...(integration.path
               ? {
                   gitBranch: integration.path
@@ -1607,9 +1627,19 @@ const syncSecretsVercel = async ({
             key,
             value: infisicalSecrets[key]?.value,
             type: res[key].type,
-            target: res[key].target.includes(integration.targetEnvironment as string)
-              ? [...res[key].target]
-              : [...res[key].target, integration.targetEnvironment as string],
+
+            ...(!isCustomEnvironment
+              ? {
+                  target: res[key].target.includes(integration.targetEnvironment as string)
+                    ? [...res[key].target]
+                    : [...res[key].target, integration.targetEnvironment as string]
+                }
+              : {
+                  customEnvironmentIds: res[key].customEnvironmentIds?.includes(integration.targetEnvironment as string)
+                    ? [...res[key].customEnvironmentIds]
+                    : [...(res[key]?.customEnvironmentIds || []), integration.targetEnvironment as string]
+                }),
+
             ...(integration.path
               ? {
                   gitBranch: integration.path

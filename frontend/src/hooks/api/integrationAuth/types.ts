@@ -43,6 +43,11 @@ export type Environment = {
   environmentId: string;
 };
 
+export type VercelEnvironment = {
+  id: string;
+  slug: string;
+};
+
 export type ChecklyGroup = {
   name: string;
   groupId: number;
