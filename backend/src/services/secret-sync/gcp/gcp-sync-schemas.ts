@@ -30,7 +30,7 @@ export const UpdateGcpSyncSchema = GenericUpdateSecretSyncFieldsSchema(SecretSyn
 });
 
 export const GcpSyncListItemSchema = z.object({
-  name: z.literal("GCP"),
+  name: z.literal("GCP Secret Manager"),
   connection: z.literal(AppConnection.GCP),
   destination: z.literal(SecretSync.GCP),
   canImportSecrets: z.literal(false)
