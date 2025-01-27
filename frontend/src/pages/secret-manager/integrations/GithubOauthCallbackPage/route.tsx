@@ -18,7 +18,7 @@ export const Route = createFileRoute(
   beforeLoad: ({ context, params }) => {
     return {
       breadcrumbs: [
-        ...context.breadcrumbs,
+        ...(context?.breadcrumbs || []),
         {
           label: "Integrations",
           link: linkOptions({
