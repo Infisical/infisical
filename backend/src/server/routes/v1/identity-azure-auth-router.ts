@@ -76,34 +76,44 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
       params: z.object({
         identityId: z.string().trim().describe(AZURE_AUTH.LOGIN.identityId)
       }),
-      body: z.object({
-        tenantId: z.string().trim().describe(AZURE_AUTH.ATTACH.tenantId),
-        resource: z.string().trim().describe(AZURE_AUTH.ATTACH.resource),
-        allowedServicePrincipalIds: validateAzureAuthField.describe(AZURE_AUTH.ATTACH.allowedServicePrincipalIds),
-        accessTokenTrustedIps: z
-          .object({
-            ipAddress: z.string().trim()
-          })
-          .array()
-          .min(1)
-          .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
-          .describe(AZURE_AUTH.ATTACH.accessTokenTrustedIps),
-        accessTokenTTL: z
-          .number()
-          .int()
-          .min(0)
-          .max(315360000)
-          .default(2592000)
-          .describe(AZURE_AUTH.ATTACH.accessTokenTTL),
-        accessTokenMaxTTL: z
-          .number()
-          .int()
-          .min(0)
-          .max(315360000)
-          .default(2592000)
-          .describe(AZURE_AUTH.ATTACH.accessTokenMaxTTL),
-        accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(AZURE_AUTH.ATTACH.accessTokenNumUsesLimit)
-      }),
+      body: z
+        .object({
+          tenantId: z.string().trim().describe(AZURE_AUTH.ATTACH.tenantId),
+          resource: z.string().trim().describe(AZURE_AUTH.ATTACH.resource),
+          allowedServicePrincipalIds: validateAzureAuthField.describe(AZURE_AUTH.ATTACH.allowedServicePrincipalIds),
+          accessTokenTrustedIps: z
+            .object({
+              ipAddress: z.string().trim()
+            })
+            .array()
+            .min(1)
+            .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
+            .describe(AZURE_AUTH.ATTACH.accessTokenTrustedIps),
+          accessTokenTTL: z
+            .number()
+            .int()
+            .min(0)
+            .max(315360000)
+            .default(2592000)
+            .describe(AZURE_AUTH.ATTACH.accessTokenTTL),
+          accessTokenMaxTTL: z
+            .number()
+            .int()
+            .min(0)
+            .max(315360000)
+            .default(2592000)
+            .describe(AZURE_AUTH.ATTACH.accessTokenMaxTTL),
+          accessTokenNumUsesLimit: z
+            .number()
+            .int()
+            .min(0)
+            .default(0)
+            .describe(AZURE_AUTH.ATTACH.accessTokenNumUsesLimit)
+        })
+        .refine(
+          (val) => val.accessTokenTTL <= val.accessTokenMaxTTL,
+          "Access Token TTL cannot be greater than Access Token Max TTL."
+        ),
       response: {
         200: z.object({
           identityAzureAuth: IdentityAzureAuthsSchema
@@ -158,30 +168,40 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
       params: z.object({
         identityId: z.string().trim().describe(AZURE_AUTH.UPDATE.identityId)
       }),
-      body: z.object({
-        tenantId: z.string().trim().optional().describe(AZURE_AUTH.UPDATE.tenantId),
-        resource: z.string().trim().optional().describe(AZURE_AUTH.UPDATE.resource),
-        allowedServicePrincipalIds: validateAzureAuthField
-          .optional()
-          .describe(AZURE_AUTH.UPDATE.allowedServicePrincipalIds),
-        accessTokenTrustedIps: z
-          .object({
-            ipAddress: z.string().trim()
-          })
-          .array()
-          .min(1)
-          .optional()
-          .describe(AZURE_AUTH.UPDATE.accessTokenTrustedIps),
-        accessTokenTTL: z.number().int().min(0).max(315360000).optional().describe(AZURE_AUTH.UPDATE.accessTokenTTL),
-        accessTokenNumUsesLimit: z.number().int().min(0).optional().describe(AZURE_AUTH.UPDATE.accessTokenNumUsesLimit),
-        accessTokenMaxTTL: z
-          .number()
-          .int()
-          .max(315360000)
-          .min(0)
-          .optional()
-          .describe(AZURE_AUTH.UPDATE.accessTokenMaxTTL)
-      }),
+      body: z
+        .object({
+          tenantId: z.string().trim().optional().describe(AZURE_AUTH.UPDATE.tenantId),
+          resource: z.string().trim().optional().describe(AZURE_AUTH.UPDATE.resource),
+          allowedServicePrincipalIds: validateAzureAuthField
+            .optional()
+            .describe(AZURE_AUTH.UPDATE.allowedServicePrincipalIds),
+          accessTokenTrustedIps: z
+            .object({
+              ipAddress: z.string().trim()
+            })
+            .array()
+            .min(1)
+            .optional()
+            .describe(AZURE_AUTH.UPDATE.accessTokenTrustedIps),
+          accessTokenTTL: z.number().int().min(0).max(315360000).optional().describe(AZURE_AUTH.UPDATE.accessTokenTTL),
+          accessTokenNumUsesLimit: z
+            .number()
+            .int()
+            .min(0)
+            .optional()
+            .describe(AZURE_AUTH.UPDATE.accessTokenNumUsesLimit),
+          accessTokenMaxTTL: z
+            .number()
+            .int()
+            .max(315360000)
+            .min(0)
+            .optional()
+            .describe(AZURE_AUTH.UPDATE.accessTokenMaxTTL)
+        })
+        .refine(
+          (val) => (val.accessTokenMaxTTL && val.accessTokenTTL ? val.accessTokenTTL <= val.accessTokenMaxTTL : true),
+          "Access Token TTL cannot be greater than Access Token Max TTL."
+        ),
       response: {
         200: z.object({
           identityAzureAuth: IdentityAzureAuthsSchema
