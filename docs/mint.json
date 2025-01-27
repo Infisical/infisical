@@ -351,7 +351,8 @@
           "group": "Connections",
           "pages": [
             "integrations/app-connections/aws",
-            "integrations/app-connections/github"
+            "integrations/app-connections/github",
+            "integrations/app-connections/gcp"
           ]
         }
       ]
@@ -798,7 +799,8 @@
           "pages": [
             "api-reference/endpoints/app-connections/list",
             "api-reference/endpoints/app-connections/options",
-            { "group":  "AWS",
+            {
+              "group": "AWS",
               "pages": [
                 "api-reference/endpoints/app-connections/aws/list",
                 "api-reference/endpoints/app-connections/aws/available",
@@ -809,7 +811,8 @@
                 "api-reference/endpoints/app-connections/aws/delete"
               ]
             },
-            { "group":  "GitHub",
+            {
+              "group": "GitHub",
               "pages": [
                 "api-reference/endpoints/app-connections/github/list",
                 "api-reference/endpoints/app-connections/github/available",
@@ -827,7 +830,8 @@
           "pages": [
             "api-reference/endpoints/secret-syncs/list",
             "api-reference/endpoints/secret-syncs/options",
-            { "group":  "AWS Parameter Store",
+            {
+              "group": "AWS Parameter Store",
               "pages": [
                 "api-reference/endpoints/secret-syncs/aws-parameter-store/list",
                 "api-reference/endpoints/secret-syncs/aws-parameter-store/get-by-id",
@@ -840,7 +844,8 @@
                 "api-reference/endpoints/secret-syncs/aws-parameter-store/remove-secrets"
               ]
             },
-            { "group":  "GitHub",
+            {
+              "group": "GitHub",
               "pages": [
                 "api-reference/endpoints/secret-syncs/github/list",
                 "api-reference/endpoints/secret-syncs/github/get-by-id",
