@@ -1,17 +1,23 @@
 import { Controller, FormProvider, useForm } from "react-hook-form";
+import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
+import { createNotification } from "@app/components/notifications";
 import {
   Button,
   FormControl,
+  IconButton,
   ModalClose,
   SecretInput,
   Select,
-  SelectItem
+  SelectItem,
+  Tooltip
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import { useToggle } from "@app/hooks";
 import { GcpConnectionMethod, TGcpConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
@@ -51,6 +57,9 @@ export const GcpConnectionForm = ({ appConnection, onSubmit }: Props) => {
     }
   });
   const { currentOrg } = useOrganization();
+
+  const [isCopied, { timedToggle: toggleIsCopied }] = useToggle(false);
+  const expectedAccountIdSuffix = currentOrg.id.split("-").slice(0, 2).join("-");
 
   const {
     handleSubmit,
@@ -103,7 +112,40 @@ export const GcpConnectionForm = ({ appConnection, onSubmit }: Props) => {
               isError={Boolean(error?.message)}
               label="Service Account Email"
               className="group"
-              helperText={`Service account ID (the part of the email before '@') must be suffixed with "${currentOrg.id.split("-").slice(0, 2).join("-")}".`}
+              helperText={
+                <>
+                  <span>
+                    {`Service account ID (the part of the email before '@') must be suffixed with "${expectedAccountIdSuffix}"`}
+                  </span>
+                  <Tooltip className="relative right-2" position="bottom" content="Copy">
+                    <IconButton
+                      variant="plain"
+                      ariaLabel="copy"
+                      onClick={() => {
+                        if (isCopied) {
+                          return;
+                        }
+
+                        navigator.clipboard.writeText(expectedAccountIdSuffix);
+
+                        createNotification({
+                          text: "Copied to clipboard",
+                          type: "info"
+                        });
+
+                        toggleIsCopied(2000);
+                      }}
+                      className="hover:bg-bunker-100/10"
+                    >
+                      <FontAwesomeIcon
+                        icon={!isCopied ? faCopy : faCheck}
+                        size="sm"
+                        className="cursor-pointer"
+                      />
+                    </IconButton>
+                  </Tooltip>
+                </>
+              }
             >
               <SecretInput
                 containerClassName="text-gray-400 group-focus-within:!border-primary-400/50 border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
