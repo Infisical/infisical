@@ -153,7 +153,7 @@ export const validateGcpConnectionCredentials = async (appConnection: TGcpConnec
     const serviceAccountId = appConnection.credentials.serviceAccountEmail.split("@")[0];
     if (!serviceAccountId.endsWith(expectedAccountIdSuffix)) {
       throw new BadRequestError({
-        message: `GCP service account ID (the part of the email before '@') must have a suffix of "${expectedAccountIdSuffix}"`
+        message: `GCP service account ID must have a suffix of "${expectedAccountIdSuffix}" e.g. service-account-${expectedAccountIdSuffix}@my-project.iam.gserviceaccount.com"`
       });
     }
   }
