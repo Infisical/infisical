@@ -15,6 +15,7 @@ export const fetchOrgSubscription = async (orgID: string) => {
     `/api/v1/organizations/${orgID}/plan`
   );
 
+  // remove this before pushing
   console.log(data.plan);
 
   return data.plan;
