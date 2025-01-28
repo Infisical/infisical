@@ -30,6 +30,10 @@ export type TGetSecretsDTO = {
   includeImports?: boolean;
   recursive?: boolean;
   tagSlugs?: string[];
+  secretMetadata?: {
+    key: string;
+    value: string;
+  }[];
   orderBy?: SecretsOrderBy;
   orderDirection?: OrderByDirection;
   offset?: number;
@@ -310,6 +314,7 @@ export type TFindSecretsByFolderIdsFilter = {
   orderDirection?: OrderByDirection;
   search?: string;
   tagSlugs?: string[];
+  secretMetadata?: { key: string; value: string }[];
   includeTagsInSearch?: boolean;
   keys?: string[];
 };

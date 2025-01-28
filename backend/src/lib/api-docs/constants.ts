@@ -688,7 +688,9 @@ export const RAW_SECRETS = {
     environment: "The slug of the environment to list secrets from.",
     secretPath: "The secret path to list secrets from.",
     includeImports: "Weather to include imported secrets or not.",
-    tagSlugs: "The comma separated tag slugs to filter secrets."
+    tagSlugs: "The comma separated tag slugs to filter secrets.",
+    secretMetadata:
+      "The secret metadata key-value pairs to filter secrets by. When querying for multiple metadata pairs, the query is treated as an AND operation. Secret metadata format is key1:value1,key2:value2."
   },
   CREATE: {
     secretName: "The name of the secret to create.",

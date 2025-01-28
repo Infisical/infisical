@@ -414,6 +414,22 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
           `${TableName.SecretTag}.id`
         )
         .leftJoin(TableName.ResourceMetadata, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
+        .where((bd) => {
+          if (filters?.secretMetadata && filters.secretMetadata?.length > 0) {
+            filters.secretMetadata.forEach((meta) => {
+              void bd.whereExists((qb) => {
+                void qb
+                  .select("secretId")
+                  .from(TableName.ResourceMetadata)
+                  .whereRaw(`"${TableName.ResourceMetadata}"."secretId" = "${TableName.SecretV2}"."id"`)
+                  .where({
+                    [`${TableName.ResourceMetadata}.key` as string]: meta.key,
+                    [`${TableName.ResourceMetadata}.value` as string]: meta.value
+                  });
+              });
+            });
+          }
+        })
         .select(
           selectAllTableCols(TableName.SecretV2),
           db.raw(
@@ -481,6 +497,19 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
           }
         ]
       });
+
+      // if (secretMetadata) {
+      //   return data.filter((s) => {
+      //     if (!s.secretMetadata.length) return false;
+
+      //     return secretMetadata.every((m) => {
+      //       const secretMeta = s.secretMetadata.find((sm) => sm.key === m.key);
+      //       if (!secretMeta) return false;
+      //       return secretMeta.value === m.value;
+      //     });
+      //   });
+      // }
+
       return data;
     } catch (error) {
       throw new DatabaseError({ error, name: "get all secret" });

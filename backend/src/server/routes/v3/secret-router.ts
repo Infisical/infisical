@@ -181,6 +181,40 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       ],
       querystring: z.object({
+        secretMetadata: z
+          .string()
+          .optional()
+          .transform((value) => {
+            if (!value) return undefined;
+
+            const metadata = value.split(",").map((el) => {
+              const [key, val] = el.split(":");
+              return { key, value: val };
+            });
+
+            return metadata;
+          })
+          .superRefine((el, ctx) => {
+            if (el && !Array.isArray(el)) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Invalid secretMetadata format. Correct format is key1:value1,key2:value2"
+              });
+            }
+
+            if (el) {
+              for (const item of el) {
+                if (!item.key || !item.value) {
+                  ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message:
+                      "Invalid secretMetadata format, key or value is missing. Correct format is key1:value1,key2:value2"
+                  });
+                }
+              }
+            }
+          })
+          .describe(RAW_SECRETS.LIST.secretMetadata),
         workspaceId: z.string().trim().optional().describe(RAW_SECRETS.LIST.workspaceId),
         workspaceSlug: z.string().trim().optional().describe(RAW_SECRETS.LIST.workspaceSlug),
         environment: z.string().trim().optional().describe(RAW_SECRETS.LIST.environment),
@@ -281,6 +315,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         projectId: workspaceId,
         path: secretPath,
+        secretMetadata: req.query.secretMetadata,
         includeImports: req.query.include_imports,
         recursive: req.query.recursive,
         tagSlugs: req.query.tagSlugs
