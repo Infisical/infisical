@@ -73,7 +73,7 @@ const PageContent = () => {
   return (
     <>
       <div className="container mx-auto flex flex-col justify-between bg-bunker-800 font-inter text-white">
-        <div className="mx-auto mb-6 w-full max-w-7xl px-6 py-6">
+        <div className="mx-auto mb-6 w-full max-w-7xl">
           <Button
             variant="link"
             type="submit"
@@ -89,7 +89,6 @@ const PageContent = () => {
                 }
               });
             }}
-            className="mb-4"
           >
             Secret Syncs
           </Button>

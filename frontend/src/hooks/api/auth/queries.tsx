@@ -351,7 +351,7 @@ export const useSendPasswordSetupEmail = () => {
 
 export const useSetupPassword = () => {
   return useMutation({
-    mutationFn: async ({ verificationToken, ...payload }: SetupPasswordDTO) => {
+    mutationFn: async (payload: SetupPasswordDTO) => {
       const { data } = await apiRequest.post("/api/v1/password/password-setup", payload);
 
       return data;
