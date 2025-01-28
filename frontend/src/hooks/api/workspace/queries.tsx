@@ -245,7 +245,7 @@ export const useCreateWorkspace = () => {
         queryKey: workspaceKeys.getAllUserWorkspace(dto.data.project.type)
       });
       queryClient.invalidateQueries({
-        queryKey: subscriptionQueryKeys.getOrgSubsription(dto.data.project.orgId)
+        queryKey: subscriptionQueryKeys.getOrgSubscription(dto.data.project.orgId)
       });
     }
   });
@@ -339,7 +339,7 @@ export const useDeleteWorkspace = () => {
         queryKey: ["org-admin-projects"]
       });
       queryClient.invalidateQueries({
-        queryKey: subscriptionQueryKeys.getOrgSubsription(dto.orgId)
+        queryKey: subscriptionQueryKeys.getOrgSubscription(dto.orgId)
       });
     }
   });

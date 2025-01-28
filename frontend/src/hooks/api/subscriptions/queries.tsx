@@ -7,7 +7,7 @@ import { SubscriptionPlan } from "./types";
 // import { Workspace } from './types';
 
 export const subscriptionQueryKeys = {
-  getOrgSubsription: (orgID: string) => ["plan", { orgID }] as const
+  getOrgSubscription: (orgID: string) => ["plan", { orgID }] as const
 };
 
 export const fetchOrgSubscription = async (orgID: string) => {
@@ -24,7 +24,7 @@ type UseGetOrgSubscriptionProps = {
 
 export const useGetOrgSubscription = ({ orgID }: UseGetOrgSubscriptionProps) =>
   useQuery({
-    queryKey: subscriptionQueryKeys.getOrgSubsription(orgID),
+    queryKey: subscriptionQueryKeys.getOrgSubscription(orgID),
     queryFn: () => fetchOrgSubscription(orgID),
     enabled: Boolean(orgID)
   });

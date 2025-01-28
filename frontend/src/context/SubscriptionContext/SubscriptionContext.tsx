@@ -10,7 +10,7 @@ export const useSubscription = () => {
   });
 
   const { data: subscription } = useSuspenseQuery({
-    queryKey: subscriptionQueryKeys.getOrgSubsription(organizationId),
+    queryKey: subscriptionQueryKeys.getOrgSubscription(organizationId),
     queryFn: () => fetchOrgSubscription(organizationId),
     staleTime: Infinity
   });
