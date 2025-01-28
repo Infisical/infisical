@@ -30,6 +30,7 @@ export enum SmtpTemplates {
   NewDeviceJoin = "newDevice.handlebars",
   OrgInvite = "organizationInvitation.handlebars",
   ResetPassword = "passwordReset.handlebars",
+  SetupPassword = "passwordSetup.handlebars",
   SecretLeakIncident = "secretLeakIncident.handlebars",
   WorkspaceInvite = "workspaceInvitation.handlebars",
   ScimUserProvisioned = "scimUserProvisioned.handlebars",

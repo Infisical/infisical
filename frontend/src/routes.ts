@@ -335,6 +335,7 @@ export const routes = rootRoute("root.tsx", [
     route("/verify-email", "auth/VerifyEmailPage/route.tsx")
   ]),
   middleware("authenticate.tsx", [
+    route("/password-setup", "auth/PasswordSetupPage/route.tsx"),
     route("/personal-settings", [
       layout("user/layout.tsx", [index("user/PersonalSettingsPage/route.tsx")])
     ]),

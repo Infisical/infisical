@@ -23,6 +23,7 @@ import {
   MfaMethod,
   ResetPasswordDTO,
   SendMfaTokenDTO,
+  SetupPasswordDTO,
   SRP1DTO,
   SRPR1Res,
   TOauthTokenExchangeDTO,
@@ -286,7 +287,8 @@ export const useResetPassword = () => {
           encryptedPrivateKeyIV: details.encryptedPrivateKeyIV,
           encryptedPrivateKeyTag: details.encryptedPrivateKeyTag,
           salt: details.salt,
-          verifier: details.verifier
+          verifier: details.verifier,
+          password: details.password
         },
         {
           headers: {
@@ -335,4 +337,24 @@ export const checkUserTotpMfa = async () => {
   const { data } = await apiRequest.get<{ isVerified: boolean }>("/api/v2/auth/mfa/check/totp");
 
   return data.isVerified;
+};
+
+export const useSendPasswordSetupEmail = () => {
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await apiRequest.post("/api/v1/password/email/password-setup");
+
+      return data;
+    }
+  });
+};
+
+export const useSetupPassword = () => {
+  return useMutation({
+    mutationFn: async ({ verificationToken, ...payload }: SetupPasswordDTO) => {
+      const { data } = await apiRequest.post("/api/v1/password/password-setup", payload);
+
+      return data;
+    }
+  });
 };
