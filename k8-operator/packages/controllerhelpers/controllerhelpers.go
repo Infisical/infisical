@@ -59,6 +59,17 @@ func ReconcileDeploymentsWithManagedSecrets(ctx context.Context, client controll
 	return 0, nil
 }
 
+func ReconcileDeploymentsWithMultipleManagedSecrets(ctx context.Context, client controllerClient.Client, logger logr.Logger, managedSecrets []v1alpha1.ManagedKubeSecretConfig) (int, error) {
+	for _, managedSecret := range managedSecrets {
+		_, err := ReconcileDeploymentsWithManagedSecrets(ctx, client, logger, managedSecret)
+		if err != nil {
+			logger.Error(err, fmt.Sprintf("unable to reconcile deployments with managed secret [name=%v]", managedSecret.SecretName))
+			return 0, err
+		}
+	}
+	return 0, nil
+}
+
 // Check if the deployment uses managed secrets
 func IsDeploymentUsingManagedSecret(deployment v1.Deployment, managedSecret v1alpha1.ManagedKubeSecretConfig) bool {
 	managedSecretName := managedSecret.SecretName

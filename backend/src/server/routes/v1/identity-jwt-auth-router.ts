@@ -34,23 +34,12 @@ const CreateBaseSchema = z.object({
     .min(1)
     .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
     .describe(JWT_AUTH.ATTACH.accessTokenTrustedIps),
-  accessTokenTTL: z
-    .number()
-    .int()
-    .min(1)
-    .max(315360000)
-    .refine((value) => value !== 0, {
-      message: "accessTokenTTL must have a non zero number"
-    })
-    .default(2592000)
-    .describe(JWT_AUTH.ATTACH.accessTokenTTL),
+  accessTokenTTL: z.number().int().min(0).max(315360000).default(2592000).describe(JWT_AUTH.ATTACH.accessTokenTTL),
   accessTokenMaxTTL: z
     .number()
     .int()
+    .min(0)
     .max(315360000)
-    .refine((value) => value !== 0, {
-      message: "accessTokenMaxTTL must have a non zero number"
-    })
     .default(2592000)
     .describe(JWT_AUTH.ATTACH.accessTokenMaxTTL),
   accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(JWT_AUTH.ATTACH.accessTokenNumUsesLimit)
@@ -70,23 +59,12 @@ const UpdateBaseSchema = z
       .min(1)
       .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
       .describe(JWT_AUTH.UPDATE.accessTokenTrustedIps),
-    accessTokenTTL: z
-      .number()
-      .int()
-      .min(1)
-      .max(315360000)
-      .refine((value) => value !== 0, {
-        message: "accessTokenTTL must have a non zero number"
-      })
-      .default(2592000)
-      .describe(JWT_AUTH.UPDATE.accessTokenTTL),
+    accessTokenTTL: z.number().int().min(0).max(315360000).default(2592000).describe(JWT_AUTH.UPDATE.accessTokenTTL),
     accessTokenMaxTTL: z
       .number()
       .int()
+      .min(0)
       .max(315360000)
-      .refine((value) => value !== 0, {
-        message: "accessTokenMaxTTL must have a non zero number"
-      })
       .default(2592000)
       .describe(JWT_AUTH.UPDATE.accessTokenMaxTTL),
     accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(JWT_AUTH.UPDATE.accessTokenNumUsesLimit)

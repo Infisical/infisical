@@ -182,7 +182,7 @@ export const queryClient = new QueryClient({
         createNotification({
           title: "Bad Request",
           type: "error",
-          text: `${serverResponse.message}${serverResponse.message.endsWith(".") ? "" : "."}`,
+          text: `${serverResponse.message}${serverResponse.message?.endsWith(".") ? "" : "."}`,
           copyActions: [
             {
               value: serverResponse.reqId,
