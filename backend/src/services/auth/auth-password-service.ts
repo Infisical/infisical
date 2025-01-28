@@ -345,13 +345,15 @@ export const authPaswordServiceFactory = ({
       if (!user.isAccepted || !user.authMethods)
         throw new BadRequestError({ message: `You must complete signup to set a password` });
 
-      await userDAL.updateById(
-        actor.id,
-        {
-          authMethods: [...user.authMethods, AuthMethod.EMAIL]
-        },
-        tx
-      );
+      if (!user.authMethods.includes(AuthMethod.EMAIL)) {
+        await userDAL.updateById(
+          actor.id,
+          {
+            authMethods: [...user.authMethods, AuthMethod.EMAIL]
+          },
+          tx
+        );
+      }
 
       const cfg = getConfig();
 
