@@ -1,14 +1,19 @@
 import { z } from "zod";
 
 import { EventType, UserAgentType } from "@app/hooks/api/auditLogs/enums";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 export const auditLogFilterFormSchema = z
   .object({
     eventMetadata: z.object({}).optional(),
-    project: z.object({ id: z.string(), name: z.string() }).optional().nullable(),
+    project: z
+      .object({ id: z.string(), name: z.string(), type: z.nativeEnum(ProjectType) })
+      .optional()
+      .nullable(),
     eventType: z.nativeEnum(EventType).array(),
     actor: z.string().optional(),
     userAgentType: z.nativeEnum(UserAgentType),
+    secretPath: z.string().optional(),
     startDate: z.date().optional(),
     endDate: z.date().optional(),
     page: z.coerce.number().optional(),
