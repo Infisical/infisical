@@ -65,7 +65,7 @@ export const AzureDevopsAuthorizePage = () => {
           <div className="flex flex-row items-center">
             <div className="flex items-center">
               <img
-                src="/images/integrations/Amazon Web Services.png"
+                src="/images/integrations/Microsoft Azure.png"
                 height={35}
                 width={35}
                 alt="Azure DevOps logo"
