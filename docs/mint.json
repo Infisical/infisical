@@ -880,6 +880,7 @@
                 "api-reference/endpoints/secret-syncs/gcp-secret-manager/update",
                 "api-reference/endpoints/secret-syncs/gcp-secret-manager/delete",
                 "api-reference/endpoints/secret-syncs/gcp-secret-manager/sync-secrets",
+                "api-reference/endpoints/secret-syncs/gcp-secret-manager/import-secrets",
                 "api-reference/endpoints/secret-syncs/gcp-secret-manager/remove-secrets"
               ]
             }

@@ -103,7 +103,7 @@ export const GcpConnectionForm = ({ appConnection, onSubmit }: Props) => {
               isError={Boolean(error?.message)}
               label="Service Account Email"
               className="group"
-              helperText={`Service account email must be prefixed with "${currentOrg.id.split("-").slice(0, 2).join("-")}".`}
+              helperText={`Service account ID (the part of the email before '@') must be suffixed with "${currentOrg.id.split("-").slice(0, 2).join("-")}".`}
             >
               <SecretInput
                 containerClassName="text-gray-400 group-focus-within:!border-primary-400/50 border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"

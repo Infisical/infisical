@@ -25,7 +25,7 @@ export const getGcpAppConnectionListItem = () => {
   };
 };
 
-export const getAuthToken = async (appConnection: TGcpConnectionConfig) => {
+export const getGcpConnectionAuthToken = async (appConnection: TGcpConnectionConfig) => {
   const appCfg = getConfig();
   if (!appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL) {
     throw new InternalServerError({
@@ -78,7 +78,7 @@ export const getAuthToken = async (appConnection: TGcpConnectionConfig) => {
 };
 
 export const getGcpSecretManagerProjects = async (appConnection: TGcpConnection) => {
-  const accessToken = await getAuthToken(appConnection);
+  const accessToken = await getGcpConnectionAuthToken(appConnection);
 
   let gcpApps: GCPApp[] = [];
 
@@ -146,19 +146,19 @@ export const getGcpSecretManagerProjects = async (appConnection: TGcpConnection)
 };
 
 export const validateGcpConnectionCredentials = async (appConnection: TGcpConnectionConfig) => {
-  // Check if provided service account email prefix matches organization ID.
+  // Check if provided service account email suffix matches organization ID.
   // We do this to mitigate confused deputy attacks in multi-tenant instances
-  const expectedEmailPrefix = appConnection.orgId.split("-").slice(0, 2).join("-");
-  if (
-    appConnection.credentials.serviceAccountEmail &&
-    !appConnection.credentials.serviceAccountEmail.startsWith(expectedEmailPrefix)
-  ) {
-    throw new BadRequestError({
-      message: `GCP service account email must have a prefix of "${expectedEmailPrefix}"`
-    });
+  if (appConnection.credentials.serviceAccountEmail) {
+    const expectedAccountIdSuffix = appConnection.orgId.split("-").slice(0, 2).join("-");
+    const serviceAccountId = appConnection.credentials.serviceAccountEmail.split("@")[0];
+    if (!serviceAccountId.endsWith(expectedAccountIdSuffix)) {
+      throw new BadRequestError({
+        message: `GCP service account ID (the part of the email before '@') must have a suffix of "${expectedAccountIdSuffix}"`
+      });
+    }
   }
 
-  await getAuthToken(appConnection);
+  await getGcpConnectionAuthToken(appConnection);
 
   return appConnection.credentials;
 };

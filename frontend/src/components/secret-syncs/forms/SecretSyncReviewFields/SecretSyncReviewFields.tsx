@@ -8,7 +8,7 @@ import { SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP, SECRET_SYNC_MAP } from "@app/hel
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { AwsParameterStoreSyncReviewFields } from "./AwsParameterStoreSyncReviewFields";
-import { GcpSyncReviewFields } from "./GcpSyncReviewFIelds";
+import { GcpSyncReviewFields } from "./GcpSyncReviewFields";
 import { GitHubSyncReviewFields } from "./GitHubSyncReviewFields";
 
 export const SecretSyncReviewFields = () => {

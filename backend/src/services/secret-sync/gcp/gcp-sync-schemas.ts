@@ -9,10 +9,12 @@ import {
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
 import { SecretSync } from "../secret-sync-enums";
+import { GcpSyncScope } from "./gcp-sync-enums";
 
-const GcpSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };
+const GcpSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
 
 const GcpSyncDestinationConfigSchema = z.object({
+  scope: z.literal(GcpSyncScope.Global),
   projectId: z.string().min(1, "Project ID is required")
 });
 
@@ -39,5 +41,5 @@ export const GcpSyncListItemSchema = z.object({
   name: z.literal("GCP Secret Manager"),
   connection: z.literal(AppConnection.GCP),
   destination: z.literal(SecretSync.GCPSecretManager),
-  canImportSecrets: z.literal(false)
+  canImportSecrets: z.literal(true)
 });

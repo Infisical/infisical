@@ -1,9 +1,11 @@
+import { AxiosError } from "axios";
+
 import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
-import { getAuthToken } from "@app/services/app-connection/gcp";
+import { getGcpConnectionAuthToken } from "@app/services/app-connection/gcp";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
-import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
+import { SecretSyncError } from "../secret-sync-errors";
 import { TSecretMap } from "../secret-sync-types";
 import {
   GCPLatestSecretVersionAccess,
@@ -13,6 +15,8 @@ import {
 } from "./gcp-sync-types";
 
 const getGcpSecrets = async (accessToken: string, secretSync: TGcpSyncWithCredentials) => {
+  const { destinationConfig } = secretSync;
+
   let gcpSecrets: GCPSecret[] = [];
 
   const pageSize = 100;
@@ -48,21 +52,13 @@ const getGcpSecrets = async (accessToken: string, secretSync: TGcpSyncWithCreden
     pageToken = secretsRes.nextPageToken;
   }
 
-  return gcpSecrets;
-};
+  const res: { [key: string]: string } = {};
 
-export const GcpSyncFns = {
-  syncSecrets: async (secretSync: TGcpSyncWithCredentials, secretMap: TSecretMap) => {
-    const { destinationConfig, connection } = secretSync;
-    const accessToken = await getAuthToken(connection);
+  for await (const gcpSecret of gcpSecrets) {
+    const arr = gcpSecret.name.split("/");
+    const key = arr[arr.length - 1];
 
-    const gcpSecrets = await getGcpSecrets(accessToken, secretSync);
-    const res: { [key: string]: string } = {};
-
-    for await (const gcpSecret of gcpSecrets) {
-      const arr = gcpSecret.name.split("/");
-      const key = arr[arr.length - 1];
-
+    try {
       const { data: secretLatest } = await request.get<GCPLatestSecretVersionAccess>(
         `${IntegrationUrls.GCP_SECRET_MANAGER_URL}/v1/projects/${destinationConfig.projectId}/secrets/${key}/versions/latest:access`,
         {
@@ -74,100 +70,132 @@ export const GcpSyncFns = {
       );
 
       res[key] = Buffer.from(secretLatest.payload.data, "base64").toString("utf-8");
+    } catch (error) {
+      // when a secret in GCP has no versions, we treat it as if it's a blank value
+      if (error instanceof AxiosError && error.response?.status === 404) {
+        res[key] = "";
+      } else {
+        throw new SecretSyncError({
+          error,
+          secretKey: key
+        });
+      }
     }
+  }
+
+  return res;
+};
+
+export const GcpSyncFns = {
+  syncSecrets: async (secretSync: TGcpSyncWithCredentials, secretMap: TSecretMap) => {
+    const { destinationConfig, connection } = secretSync;
+    const accessToken = await getGcpConnectionAuthToken(connection);
+
+    const gcpSecrets = await getGcpSecrets(accessToken, secretSync);
 
     for await (const key of Object.keys(secretMap)) {
-      if (!(key in res)) {
-        // case: create secret
-        await request.post(
-          `${IntegrationUrls.GCP_SECRET_MANAGER_URL}/v1/projects/${destinationConfig.projectId}/secrets`,
-          {
-            replication: {
-              automatic: {}
-            }
-          },
-          {
-            params: {
-              secretId: key
+      try {
+        if (!(key in gcpSecrets)) {
+          // case: create secret
+          await request.post(
+            `${IntegrationUrls.GCP_SECRET_MANAGER_URL}/v1/projects/${destinationConfig.projectId}/secrets`,
+            {
+              replication: {
+                automatic: {}
+              }
             },
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "Accept-Encoding": "application/json"
+            {
+              params: {
+                secretId: key
+              },
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Accept-Encoding": "application/json"
+              }
             }
-          }
-        );
+          );
 
-        if (!secretMap[key].value) {
-          logger.warn(
-            `syncSecretsGcpsecretManager: create secret value in gcp where [key=${key}] and  [projectId=${destinationConfig.projectId}]`
+          await request.post(
+            `${IntegrationUrls.GCP_SECRET_MANAGER_URL}/v1/projects/${destinationConfig.projectId}/secrets/${key}:addVersion`,
+            {
+              payload: {
+                data: Buffer.from(secretMap[key].value).toString("base64")
+              }
+            },
+            {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Accept-Encoding": "application/json"
+              }
+            }
           );
         }
-
-        await request.post(
-          `${IntegrationUrls.GCP_SECRET_MANAGER_URL}/v1/projects/${destinationConfig.projectId}/secrets/${key}:addVersion`,
-          {
-            payload: {
-              data: Buffer.from(secretMap[key].value).toString("base64")
-            }
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "Accept-Encoding": "application/json"
-            }
-          }
-        );
+      } catch (error) {
+        throw new SecretSyncError({
+          error,
+          secretKey: key
+        });
       }
     }
 
-    for await (const key of Object.keys(res)) {
-      if (!(key in secretMap)) {
-        // case: delete secret
-        await request.delete(
-          `${IntegrationUrls.GCP_SECRET_MANAGER_URL}/v1/projects/${destinationConfig.projectId}/secrets/${key}`,
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "Accept-Encoding": "application/json"
+    for await (const key of Object.keys(gcpSecrets)) {
+      try {
+        if (!(key in secretMap)) {
+          // case: delete secret
+          await request.delete(
+            `${IntegrationUrls.GCP_SECRET_MANAGER_URL}/v1/projects/${destinationConfig.projectId}/secrets/${key}`,
+            {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Accept-Encoding": "application/json"
+              }
             }
+          );
+        } else if (secretMap[key].value !== gcpSecrets[key]) {
+          if (!secretMap[key].value) {
+            logger.warn(
+              `syncSecretsGcpsecretManager: update secret value in gcp where [key=${key}] and [projectId=${destinationConfig.projectId}]`
+            );
           }
-        );
-      } else if (secretMap[key].value !== res[key]) {
-        if (!secretMap[key].value) {
-          logger.warn(
-            `syncSecretsGcpsecretManager: update secret value in gcp where [key=${key}] and [projectId=${destinationConfig.projectId}]`
+
+          await request.post(
+            `${IntegrationUrls.GCP_SECRET_MANAGER_URL}/v1/projects/${destinationConfig.projectId}/secrets/${key}:addVersion`,
+            {
+              payload: {
+                data: Buffer.from(secretMap[key].value).toString("base64")
+              }
+            },
+            {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Accept-Encoding": "application/json"
+              }
+            }
           );
         }
-
-        await request.post(
-          `${IntegrationUrls.GCP_SECRET_MANAGER_URL}/v1/projects/${destinationConfig.projectId}/secrets/${key}:addVersion`,
-          {
-            payload: {
-              data: Buffer.from(secretMap[key].value).toString("base64")
-            }
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "Accept-Encoding": "application/json"
-            }
-          }
-        );
+      } catch (error) {
+        throw new SecretSyncError({
+          error,
+          secretKey: key
+        });
       }
     }
   },
+
   getSecrets: async (secretSync: TGcpSyncWithCredentials): Promise<TSecretMap> => {
-    throw new Error(`${SECRET_SYNC_NAME_MAP[secretSync.destination]} does not support importing secrets.`);
+    const { connection } = secretSync;
+    const accessToken = await getGcpConnectionAuthToken(connection);
+
+    const gcpSecrets = await getGcpSecrets(accessToken, secretSync);
+    return Object.fromEntries(Object.entries(gcpSecrets).map(([key, value]) => [key, { value: value ?? "" }]));
   },
 
   removeSecrets: async (secretSync: TGcpSyncWithCredentials, secretMap: TSecretMap) => {
     const { destinationConfig, connection } = secretSync;
-    const accessToken = await getAuthToken(connection);
+    const accessToken = await getGcpConnectionAuthToken(connection);
 
     const gcpSecrets = await getGcpSecrets(accessToken, secretSync);
-    for await (const entry of gcpSecrets) {
-      const arr = entry.name.split("/");
-      const key = arr[arr.length - 1];
+    for await (const [key] of Object.entries(gcpSecrets)) {
       if (key in secretMap) {
         await request.delete(
           `${IntegrationUrls.GCP_SECRET_MANAGER_URL}/v1/projects/${destinationConfig.projectId}/secrets/${key}`,

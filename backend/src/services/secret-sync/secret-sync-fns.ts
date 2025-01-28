@@ -126,7 +126,7 @@ export const parseSyncErrorMessage = (err: unknown): string => {
   if (err instanceof SecretSyncError) {
     return JSON.stringify({
       secretKey: err.secretKey,
-      error: err.message ?? parseSyncErrorMessage(err.error)
+      error: err.message || parseSyncErrorMessage(err.error)
     });
   }
 
