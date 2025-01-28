@@ -151,11 +151,10 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		api.API_CA_CERTIFICATE = ""
 	}
 
-	err = r.ReconcileInfisicalSecret(ctx, logger, infisicalSecretCRD, managedKubeSecretReferences)
-	r.SetReadyToSyncSecretsConditions(ctx, &infisicalSecretCRD, err)
+	secretsCount, err := r.ReconcileInfisicalSecret(ctx, logger, infisicalSecretCRD, managedKubeSecretReferences)
+	r.SetReadyToSyncSecretsConditions(ctx, &infisicalSecretCRD, secretsCount, err)
 
 	if err != nil {
-
 		logger.Error(err, fmt.Sprintf("unable to reconcile InfisicalSecret. Will requeue after [requeueTime=%v]", requeueTime))
 		return ctrl.Result{
 			RequeueAfter: requeueTime,
@@ -172,7 +171,7 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	// Sync again after the specified time
-	logger.Info(fmt.Sprintf("Operator will requeue after [%v]", requeueTime))
+	logger.Info(fmt.Sprintf("Successfully synced %d secrets. Operator will requeue after [%v]", secretsCount, requeueTime))
 	return ctrl.Result{
 		RequeueAfter: requeueTime,
 	}, nil
@@ -182,6 +181,10 @@ func (r *InfisicalSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&secretsv1alpha1.InfisicalSecret{}, builder.WithPredicates(predicate.Funcs{
 			UpdateFunc: func(e event.UpdateEvent) bool {
+				if e.ObjectOld.GetGeneration() == e.ObjectNew.GetGeneration() {
+					return false // Skip reconciliation for status-only changes
+				}
+
 				if infisicalSecretResourceVariablesMap != nil {
 					if rv, ok := infisicalSecretResourceVariablesMap[string(e.ObjectNew.GetUID())]; ok {
 						rv.CancelCtx()
