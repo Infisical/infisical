@@ -498,18 +498,6 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
         ]
       });
 
-      // if (secretMetadata) {
-      //   return data.filter((s) => {
-      //     if (!s.secretMetadata.length) return false;
-
-      //     return secretMetadata.every((m) => {
-      //       const secretMeta = s.secretMetadata.find((sm) => sm.key === m.key);
-      //       if (!secretMeta) return false;
-      //       return secretMeta.value === m.value;
-      //     });
-      //   });
-      // }
-
       return data;
     } catch (error) {
       throw new DatabaseError({ error, name: "get all secret" });
