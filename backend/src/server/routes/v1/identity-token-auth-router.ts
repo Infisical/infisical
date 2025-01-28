@@ -26,36 +26,41 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
       params: z.object({
         identityId: z.string().trim().describe(TOKEN_AUTH.ATTACH.identityId)
       }),
-      body: z.object({
-        accessTokenTrustedIps: z
-          .object({
-            ipAddress: z.string().trim()
-          })
-          .array()
-          .min(1)
-          .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
-          .describe(TOKEN_AUTH.ATTACH.accessTokenTrustedIps),
-        accessTokenTTL: z
-          .number()
-          .int()
-          .min(1)
-          .max(315360000)
-          .refine((value) => value !== 0, {
-            message: "accessTokenTTL must have a non zero number"
-          })
-          .default(2592000)
-          .describe(TOKEN_AUTH.ATTACH.accessTokenTTL),
-        accessTokenMaxTTL: z
-          .number()
-          .int()
-          .max(315360000)
-          .refine((value) => value !== 0, {
-            message: "accessTokenMaxTTL must have a non zero number"
-          })
-          .default(2592000)
-          .describe(TOKEN_AUTH.ATTACH.accessTokenMaxTTL),
-        accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(TOKEN_AUTH.ATTACH.accessTokenNumUsesLimit)
-      }),
+      body: z
+        .object({
+          accessTokenTrustedIps: z
+            .object({
+              ipAddress: z.string().trim()
+            })
+            .array()
+            .min(1)
+            .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
+            .describe(TOKEN_AUTH.ATTACH.accessTokenTrustedIps),
+          accessTokenTTL: z
+            .number()
+            .int()
+            .min(0)
+            .max(315360000)
+            .default(2592000)
+            .describe(TOKEN_AUTH.ATTACH.accessTokenTTL),
+          accessTokenMaxTTL: z
+            .number()
+            .int()
+            .min(0)
+            .max(315360000)
+            .default(2592000)
+            .describe(TOKEN_AUTH.ATTACH.accessTokenMaxTTL),
+          accessTokenNumUsesLimit: z
+            .number()
+            .int()
+            .min(0)
+            .default(0)
+            .describe(TOKEN_AUTH.ATTACH.accessTokenNumUsesLimit)
+        })
+        .refine(
+          (val) => val.accessTokenTTL <= val.accessTokenMaxTTL,
+          "Access Token TTL cannot be greater than Access Token Max TTL."
+        ),
       response: {
         200: z.object({
           identityTokenAuth: IdentityTokenAuthsSchema
@@ -110,27 +115,35 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
       params: z.object({
         identityId: z.string().trim().describe(TOKEN_AUTH.UPDATE.identityId)
       }),
-      body: z.object({
-        accessTokenTrustedIps: z
-          .object({
-            ipAddress: z.string().trim()
-          })
-          .array()
-          .min(1)
-          .optional()
-          .describe(TOKEN_AUTH.UPDATE.accessTokenTrustedIps),
-        accessTokenTTL: z.number().int().min(0).max(315360000).optional().describe(TOKEN_AUTH.UPDATE.accessTokenTTL),
-        accessTokenNumUsesLimit: z.number().int().min(0).optional().describe(TOKEN_AUTH.UPDATE.accessTokenNumUsesLimit),
-        accessTokenMaxTTL: z
-          .number()
-          .int()
-          .max(315360000)
-          .refine((value) => value !== 0, {
-            message: "accessTokenMaxTTL must have a non zero number"
-          })
-          .optional()
-          .describe(TOKEN_AUTH.UPDATE.accessTokenMaxTTL)
-      }),
+      body: z
+        .object({
+          accessTokenTrustedIps: z
+            .object({
+              ipAddress: z.string().trim()
+            })
+            .array()
+            .min(1)
+            .optional()
+            .describe(TOKEN_AUTH.UPDATE.accessTokenTrustedIps),
+          accessTokenTTL: z.number().int().min(0).max(315360000).optional().describe(TOKEN_AUTH.UPDATE.accessTokenTTL),
+          accessTokenNumUsesLimit: z
+            .number()
+            .int()
+            .min(0)
+            .optional()
+            .describe(TOKEN_AUTH.UPDATE.accessTokenNumUsesLimit),
+          accessTokenMaxTTL: z
+            .number()
+            .int()
+            .min(0)
+            .max(315360000)
+            .optional()
+            .describe(TOKEN_AUTH.UPDATE.accessTokenMaxTTL)
+        })
+        .refine(
+          (val) => (val.accessTokenMaxTTL && val.accessTokenTTL ? val.accessTokenTTL <= val.accessTokenMaxTTL : true),
+          "Access Token TTL cannot be greater than Access Token Max TTL."
+        ),
       response: {
         200: z.object({
           identityTokenAuth: IdentityTokenAuthsSchema

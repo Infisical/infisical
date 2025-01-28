@@ -1153,6 +1153,50 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
 
   server.route({
     method: "GET",
+    url: "/:integrationAuthId/vercel/custom-environments",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      querystring: z.object({
+        teamId: z.string().trim()
+      }),
+      params: z.object({
+        integrationAuthId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          environments: z
+            .object({
+              appId: z.string(),
+              customEnvironments: z
+                .object({
+                  id: z.string(),
+                  slug: z.string()
+                })
+                .array()
+            })
+            .array()
+        })
+      }
+    },
+    handler: async (req) => {
+      const environments = await server.services.integrationAuth.getVercelCustomEnvironments({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        id: req.params.integrationAuthId,
+        teamId: req.query.teamId
+      });
+
+      return { environments };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/:integrationAuthId/octopus-deploy/spaces",
     config: {
       rateLimit: readLimit

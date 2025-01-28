@@ -7,12 +7,14 @@ import {
 
 export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }> = {
   [SecretSync.AWSParameterStore]: { name: "Parameter Store", image: "Amazon Web Services.png" },
-  [SecretSync.GitHub]: { name: "GitHub", image: "GitHub.png" }
+  [SecretSync.GitHub]: { name: "GitHub", image: "GitHub.png" },
+  [SecretSync.GCPSecretManager]: { name: "GCP Secret Manager", image: "Google Cloud Platform.png" }
 };
 
 export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.AWSParameterStore]: AppConnection.AWS,
-  [SecretSync.GitHub]: AppConnection.GitHub
+  [SecretSync.GitHub]: AppConnection.GitHub,
+  [SecretSync.GCPSecretManager]: AppConnection.GCP
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<

@@ -1,4 +1,5 @@
 import { TAppConnections } from "@app/db/schemas/app-connections";
+import { generateHash } from "@app/lib/crypto/encryption";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactoryDep } from "@app/services/app-connection/app-connection-service";
 import { TAppConnection, TAppConnectionConfig } from "@app/services/app-connection/app-connection-types";
@@ -8,6 +9,11 @@ import {
   validateAwsConnectionCredentials
 } from "@app/services/app-connection/aws";
 import {
+  GcpConnectionMethod,
+  getGcpAppConnectionListItem,
+  validateGcpConnectionCredentials
+} from "@app/services/app-connection/gcp";
+import {
   getGitHubConnectionListItem,
   GitHubConnectionMethod,
   validateGitHubConnectionCredentials
@@ -15,7 +21,9 @@ import {
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 export const listAppConnectionOptions = () => {
-  return [getAwsAppConnectionListItem(), getGitHubConnectionListItem()].sort((a, b) => a.name.localeCompare(b.name));
+  return [getAwsAppConnectionListItem(), getGitHubConnectionListItem(), getGcpAppConnectionListItem()].sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
 };
 
 export const encryptAppConnectionCredentials = async ({
@@ -69,6 +77,8 @@ export const validateAppConnectionCredentials = async (
       return validateAwsConnectionCredentials(appConnection);
     case AppConnection.GitHub:
       return validateGitHubConnectionCredentials(appConnection);
+    case AppConnection.GCP:
+      return validateGcpConnectionCredentials(appConnection);
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection ${app}`);
@@ -85,6 +95,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "Access Key";
     case AwsConnectionMethod.AssumeRole:
       return "Assume Role";
+    case GcpConnectionMethod.ServiceAccountImpersonation:
+      return "Service Account Impersonation";
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection Method: ${method}`);
@@ -101,6 +113,7 @@ export const decryptAppConnection = async (
       encryptedCredentials: appConnection.encryptedCredentials,
       orgId: appConnection.orgId,
       kmsService
-    })
+    }),
+    credentialsHash: generateHash(appConnection.encryptedCredentials)
   } as TAppConnection;
 };

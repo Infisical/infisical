@@ -86,49 +86,49 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         identityId: z.string().trim().describe(UNIVERSAL_AUTH.ATTACH.identityId)
       }),
-      body: z.object({
-        clientSecretTrustedIps: z
-          .object({
-            ipAddress: z.string().trim()
-          })
-          .array()
-          .min(1)
-          .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
-          .describe(UNIVERSAL_AUTH.ATTACH.clientSecretTrustedIps),
-        accessTokenTrustedIps: z
-          .object({
-            ipAddress: z.string().trim()
-          })
-          .array()
-          .min(1)
-          .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
-          .describe(UNIVERSAL_AUTH.ATTACH.accessTokenTrustedIps),
-        accessTokenTTL: z
-          .number()
-          .int()
-          .min(1)
-          .max(315360000)
-          .refine((value) => value !== 0, {
-            message: "accessTokenTTL must have a non zero number"
-          })
-          .default(2592000)
-          .describe(UNIVERSAL_AUTH.ATTACH.accessTokenTTL), // 30 days
-        accessTokenMaxTTL: z
-          .number()
-          .int()
-          .max(315360000)
-          .refine((value) => value !== 0, {
-            message: "accessTokenMaxTTL must have a non zero number"
-          })
-          .default(2592000)
-          .describe(UNIVERSAL_AUTH.ATTACH.accessTokenMaxTTL), // 30 days
-        accessTokenNumUsesLimit: z
-          .number()
-          .int()
-          .min(0)
-          .default(0)
-          .describe(UNIVERSAL_AUTH.ATTACH.accessTokenNumUsesLimit)
-      }),
+      body: z
+        .object({
+          clientSecretTrustedIps: z
+            .object({
+              ipAddress: z.string().trim()
+            })
+            .array()
+            .min(1)
+            .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
+            .describe(UNIVERSAL_AUTH.ATTACH.clientSecretTrustedIps),
+          accessTokenTrustedIps: z
+            .object({
+              ipAddress: z.string().trim()
+            })
+            .array()
+            .min(1)
+            .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
+            .describe(UNIVERSAL_AUTH.ATTACH.accessTokenTrustedIps),
+          accessTokenTTL: z
+            .number()
+            .int()
+            .min(0)
+            .max(315360000)
+            .default(2592000)
+            .describe(UNIVERSAL_AUTH.ATTACH.accessTokenTTL), // 30 days
+          accessTokenMaxTTL: z
+            .number()
+            .int()
+            .min(0)
+            .max(315360000)
+            .default(2592000)
+            .describe(UNIVERSAL_AUTH.ATTACH.accessTokenMaxTTL), // 30 days
+          accessTokenNumUsesLimit: z
+            .number()
+            .int()
+            .min(0)
+            .default(0)
+            .describe(UNIVERSAL_AUTH.ATTACH.accessTokenNumUsesLimit)
+        })
+        .refine(
+          (val) => val.accessTokenTTL <= val.accessTokenMaxTTL,
+          "Access Token TTL cannot be greater than Access Token Max TTL."
+        ),
       response: {
         200: z.object({
           identityUniversalAuth: IdentityUniversalAuthsSchema
@@ -181,46 +181,49 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         identityId: z.string().describe(UNIVERSAL_AUTH.UPDATE.identityId)
       }),
-      body: z.object({
-        clientSecretTrustedIps: z
-          .object({
-            ipAddress: z.string().trim()
-          })
-          .array()
-          .min(1)
-          .optional()
-          .describe(UNIVERSAL_AUTH.UPDATE.clientSecretTrustedIps),
-        accessTokenTrustedIps: z
-          .object({
-            ipAddress: z.string().trim()
-          })
-          .array()
-          .min(1)
-          .optional()
-          .describe(UNIVERSAL_AUTH.UPDATE.accessTokenTrustedIps),
-        accessTokenTTL: z
-          .number()
-          .int()
-          .min(0)
-          .max(315360000)
-          .optional()
-          .describe(UNIVERSAL_AUTH.UPDATE.accessTokenTTL),
-        accessTokenNumUsesLimit: z
-          .number()
-          .int()
-          .min(0)
-          .optional()
-          .describe(UNIVERSAL_AUTH.UPDATE.accessTokenNumUsesLimit),
-        accessTokenMaxTTL: z
-          .number()
-          .int()
-          .max(315360000)
-          .refine((value) => value !== 0, {
-            message: "accessTokenMaxTTL must have a non zero number"
-          })
-          .optional()
-          .describe(UNIVERSAL_AUTH.UPDATE.accessTokenMaxTTL)
-      }),
+      body: z
+        .object({
+          clientSecretTrustedIps: z
+            .object({
+              ipAddress: z.string().trim()
+            })
+            .array()
+            .min(1)
+            .optional()
+            .describe(UNIVERSAL_AUTH.UPDATE.clientSecretTrustedIps),
+          accessTokenTrustedIps: z
+            .object({
+              ipAddress: z.string().trim()
+            })
+            .array()
+            .min(1)
+            .optional()
+            .describe(UNIVERSAL_AUTH.UPDATE.accessTokenTrustedIps),
+          accessTokenTTL: z
+            .number()
+            .int()
+            .min(0)
+            .max(315360000)
+            .optional()
+            .describe(UNIVERSAL_AUTH.UPDATE.accessTokenTTL),
+          accessTokenNumUsesLimit: z
+            .number()
+            .int()
+            .min(0)
+            .optional()
+            .describe(UNIVERSAL_AUTH.UPDATE.accessTokenNumUsesLimit),
+          accessTokenMaxTTL: z
+            .number()
+            .int()
+            .min(0)
+            .max(315360000)
+            .optional()
+            .describe(UNIVERSAL_AUTH.UPDATE.accessTokenMaxTTL)
+        })
+        .refine(
+          (val) => (val.accessTokenMaxTTL && val.accessTokenTTL ? val.accessTokenTTL <= val.accessTokenMaxTTL : true),
+          "Access Token TTL cannot be greater than Access Token Max TTL."
+        ),
       response: {
         200: z.object({
           identityUniversalAuth: IdentityUniversalAuthsSchema

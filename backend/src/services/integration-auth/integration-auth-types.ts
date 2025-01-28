@@ -284,3 +284,8 @@ export type TOctopusDeployVariableSet = {
     Self: string;
   };
 };
+
+export type GetVercelCustomEnvironmentsDTO = {
+  teamId: string;
+  id: string;
+} & Omit<TProjectPermission, "projectId">;

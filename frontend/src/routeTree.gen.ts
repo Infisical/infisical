@@ -24,6 +24,7 @@ import { Route as authSignUpInvitePageRouteImport } from './pages/auth/SignUpInv
 import { Route as authRequestNewInvitePageRouteImport } from './pages/auth/RequestNewInvitePage/route'
 import { Route as authPasswordResetPageRouteImport } from './pages/auth/PasswordResetPage/route'
 import { Route as authEmailNotVerifiedPageRouteImport } from './pages/auth/EmailNotVerifiedPage/route'
+import { Route as authPasswordSetupPageRouteImport } from './pages/auth/PasswordSetupPage/route'
 import { Route as userLayoutImport } from './pages/user/layout'
 import { Route as organizationLayoutImport } from './pages/organization/layout'
 import { Route as publicViewSharedSecretByIDPageRouteImport } from './pages/public/ViewSharedSecretByIDPage/route'
@@ -309,6 +310,14 @@ const authEmailNotVerifiedPageRouteRoute =
     path: '/email-not-verified',
     getParentRoute: () => middlewaresRestrictLoginSignupRoute,
   } as any)
+
+const authPasswordSetupPageRouteRoute = authPasswordSetupPageRouteImport.update(
+  {
+    id: '/password-setup',
+    path: '/password-setup',
+    getParentRoute: () => middlewaresAuthenticateRoute,
+  } as any,
+)
 
 const userLayoutRoute = userLayoutImport.update({
   id: '/_layout',
@@ -1576,6 +1585,13 @@ declare module '@tanstack/react-router' {
       fullPath: ''
       preLoaderRoute: typeof middlewaresRestrictLoginSignupImport
       parentRoute: typeof rootRoute
+    }
+    '/_authenticate/password-setup': {
+      id: '/_authenticate/password-setup'
+      path: '/password-setup'
+      fullPath: '/password-setup'
+      preLoaderRoute: typeof authPasswordSetupPageRouteImport
+      parentRoute: typeof middlewaresAuthenticateImport
     }
     '/_restrict-login-signup/email-not-verified': {
       id: '/_restrict-login-signup/email-not-verified'
@@ -3397,12 +3413,14 @@ const AuthenticatePersonalSettingsRouteWithChildren =
   )
 
 interface middlewaresAuthenticateRouteChildren {
+  authPasswordSetupPageRouteRoute: typeof authPasswordSetupPageRouteRoute
   middlewaresInjectOrgDetailsRoute: typeof middlewaresInjectOrgDetailsRouteWithChildren
   AuthenticatePersonalSettingsRoute: typeof AuthenticatePersonalSettingsRouteWithChildren
 }
 
 const middlewaresAuthenticateRouteChildren: middlewaresAuthenticateRouteChildren =
   {
+    authPasswordSetupPageRouteRoute: authPasswordSetupPageRouteRoute,
     middlewaresInjectOrgDetailsRoute:
       middlewaresInjectOrgDetailsRouteWithChildren,
     AuthenticatePersonalSettingsRoute:
@@ -3487,6 +3505,7 @@ export interface FileRoutesByFullPath {
   '/cli-redirect': typeof authCliRedirectPageRouteRoute
   '/share-secret': typeof publicShareSecretPageRouteRoute
   '': typeof organizationLayoutRouteWithChildren
+  '/password-setup': typeof authPasswordSetupPageRouteRoute
   '/email-not-verified': typeof authEmailNotVerifiedPageRouteRoute
   '/password-reset': typeof authPasswordResetPageRouteRoute
   '/requestnewinvite': typeof authRequestNewInvitePageRouteRoute
@@ -3657,6 +3676,7 @@ export interface FileRoutesByTo {
   '/cli-redirect': typeof authCliRedirectPageRouteRoute
   '/share-secret': typeof publicShareSecretPageRouteRoute
   '': typeof organizationLayoutRouteWithChildren
+  '/password-setup': typeof authPasswordSetupPageRouteRoute
   '/email-not-verified': typeof authEmailNotVerifiedPageRouteRoute
   '/password-reset': typeof authPasswordResetPageRouteRoute
   '/requestnewinvite': typeof authRequestNewInvitePageRouteRoute
@@ -3824,6 +3844,7 @@ export interface FileRoutesById {
   '/share-secret': typeof publicShareSecretPageRouteRoute
   '/_authenticate': typeof middlewaresAuthenticateRouteWithChildren
   '/_restrict-login-signup': typeof middlewaresRestrictLoginSignupRouteWithChildren
+  '/_authenticate/password-setup': typeof authPasswordSetupPageRouteRoute
   '/_restrict-login-signup/email-not-verified': typeof authEmailNotVerifiedPageRouteRoute
   '/_restrict-login-signup/password-reset': typeof authPasswordResetPageRouteRoute
   '/_restrict-login-signup/requestnewinvite': typeof authRequestNewInvitePageRouteRoute
@@ -4004,6 +4025,7 @@ export interface FileRouteTypes {
     | '/cli-redirect'
     | '/share-secret'
     | ''
+    | '/password-setup'
     | '/email-not-verified'
     | '/password-reset'
     | '/requestnewinvite'
@@ -4173,6 +4195,7 @@ export interface FileRouteTypes {
     | '/cli-redirect'
     | '/share-secret'
     | ''
+    | '/password-setup'
     | '/email-not-verified'
     | '/password-reset'
     | '/requestnewinvite'
@@ -4338,6 +4361,7 @@ export interface FileRouteTypes {
     | '/share-secret'
     | '/_authenticate'
     | '/_restrict-login-signup'
+    | '/_authenticate/password-setup'
     | '/_restrict-login-signup/email-not-verified'
     | '/_restrict-login-signup/password-reset'
     | '/_restrict-login-signup/requestnewinvite'
@@ -4562,6 +4586,7 @@ export const routeTree = rootRoute
     "/_authenticate": {
       "filePath": "middlewares/authenticate.tsx",
       "children": [
+        "/_authenticate/password-setup",
         "/_authenticate/_inject-org-details",
         "/_authenticate/personal-settings"
       ]
@@ -4578,6 +4603,10 @@ export const routeTree = rootRoute
         "/_restrict-login-signup/signup",
         "/_restrict-login-signup/admin/signup"
       ]
+    },
+    "/_authenticate/password-setup": {
+      "filePath": "auth/PasswordSetupPage/route.tsx",
+      "parent": "/_authenticate"
     },
     "/_restrict-login-signup/email-not-verified": {
       "filePath": "auth/EmailNotVerifiedPage/route.tsx",

@@ -203,7 +203,8 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
         encryptedPrivateKeyIV: z.string().trim(),
         encryptedPrivateKeyTag: z.string().trim(),
         salt: z.string().trim(),
-        verifier: z.string().trim()
+        verifier: z.string().trim(),
+        password: z.string().trim()
       }),
       response: {
         200: z.object({
@@ -218,7 +219,69 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
         userId: token.userId
       });
 
-      return { message: "Successfully updated backup private key" };
+      return { message: "Successfully reset password" };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/email/password-setup",
+    config: {
+      rateLimit: authRateLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    handler: async (req) => {
+      await server.services.password.sendPasswordSetupEmail(req.permission);
+
+      return {
+        message: "A password setup link has been sent"
+      };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/password-setup",
+    config: {
+      rateLimit: authRateLimit
+    },
+    schema: {
+      body: z.object({
+        protectedKey: z.string().trim(),
+        protectedKeyIV: z.string().trim(),
+        protectedKeyTag: z.string().trim(),
+        encryptedPrivateKey: z.string().trim(),
+        encryptedPrivateKeyIV: z.string().trim(),
+        encryptedPrivateKeyTag: z.string().trim(),
+        salt: z.string().trim(),
+        verifier: z.string().trim(),
+        password: z.string().trim(),
+        token: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    handler: async (req, res) => {
+      await server.services.password.setupPassword(req.body, req.permission);
+
+      const appCfg = getConfig();
+      void res.cookie("jid", "", {
+        httpOnly: true,
+        path: "/",
+        sameSite: "strict",
+        secure: appCfg.HTTPS_ENABLED
+      });
+
+      return { message: "Successfully setup password" };
     }
   });
 };

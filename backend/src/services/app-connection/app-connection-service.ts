@@ -2,6 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 
 import { OrgPermissionAppConnectionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { generateHash } from "@app/lib/crypto/encryption";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { DiscriminativePick, OrgServiceActor } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -26,6 +27,8 @@ import { githubConnectionService } from "@app/services/app-connection/github/git
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAppConnectionDALFactory } from "./app-connection-dal";
+import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
+import { gcpConnectionService } from "./gcp/gcp-connection-service";
 
 export type TAppConnectionServiceFactoryDep = {
   appConnectionDAL: TAppConnectionDALFactory;
@@ -37,7 +40,8 @@ export type TAppConnectionServiceFactory = ReturnType<typeof appConnectionServic
 
 const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAppConnectionCredentials> = {
   [AppConnection.AWS]: ValidateAwsConnectionCredentialsSchema,
-  [AppConnection.GitHub]: ValidateGitHubConnectionCredentialsSchema
+  [AppConnection.GitHub]: ValidateGitHubConnectionCredentialsSchema,
+  [AppConnection.GCP]: ValidateGcpConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -182,6 +186,7 @@ export const appConnectionServiceFactory = ({
 
       return {
         ...connection,
+        credentialsHash: generateHash(connection.encryptedCredentials),
         credentials: validatedCredentials
       };
     });
@@ -382,6 +387,7 @@ export const appConnectionServiceFactory = ({
     deleteAppConnection,
     connectAppConnectionById,
     listAvailableAppConnectionsForUser,
-    github: githubConnectionService(connectAppConnectionById)
+    github: githubConnectionService(connectAppConnectionById),
+    gcp: gcpConnectionService(connectAppConnectionById)
   };
 };

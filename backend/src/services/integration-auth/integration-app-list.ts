@@ -132,16 +132,26 @@ const getAppsHeroku = async ({ accessToken }: { accessToken: string }) => {
 
 /**
  * Return list of names of apps for Vercel integration
+ * This is re-used for getting custom environments for Vercel
  */
-const getAppsVercel = async ({ accessToken, teamId }: { teamId?: string | null; accessToken: string }) => {
-  const apps: Array<{ name: string; appId: string }> = [];
+export const getAppsVercel = async ({ accessToken, teamId }: { teamId?: string | null; accessToken: string }) => {
+  const apps: Array<{ name: string; appId: string; customEnvironments: Array<{ slug: string; id: string }> }> = [];
 
   const limit = "20";
   let hasMorePages = true;
   let next: number | null = null;
 
   interface Response {
-    projects: { name: string; id: string }[];
+    projects: {
+      name: string;
+      id: string;
+      customEnvironments?: {
+        id: string;
+        type: string;
+        description: string;
+        slug: string;
+      }[];
+    }[];
     pagination: {
       count: number;
       next: number | null;
@@ -173,7 +183,12 @@ const getAppsVercel = async ({ accessToken, teamId }: { teamId?: string | null; 
     data.projects.forEach((a) => {
       apps.push({
         name: a.name,
-        appId: a.id
+        appId: a.id,
+        customEnvironments:
+          a.customEnvironments?.map((env) => ({
+            slug: env.slug,
+            id: env.id
+          })) ?? []
       });
     });
 

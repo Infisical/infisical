@@ -4,18 +4,21 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AwsConnectionListItemSchema, SanitizedAwsConnectionSchema } from "@app/services/app-connection/aws";
+import { GcpConnectionListItemSchema, SanitizedGcpConnectionSchema } from "@app/services/app-connection/gcp";
 import { GitHubConnectionListItemSchema, SanitizedGitHubConnectionSchema } from "@app/services/app-connection/github";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 // can't use discriminated due to multiple schemas for certain apps
 const SanitizedAppConnectionSchema = z.union([
   ...SanitizedAwsConnectionSchema.options,
-  ...SanitizedGitHubConnectionSchema.options
+  ...SanitizedGitHubConnectionSchema.options,
+  ...SanitizedGcpConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   AwsConnectionListItemSchema,
-  GitHubConnectionListItemSchema
+  GitHubConnectionListItemSchema,
+  GcpConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

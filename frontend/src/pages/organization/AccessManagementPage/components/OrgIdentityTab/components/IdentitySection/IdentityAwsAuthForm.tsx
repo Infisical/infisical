@@ -259,7 +259,7 @@ export const IdentityAwsAuthForm = ({
                 isError={Boolean(error)}
                 errorText={error?.message}
               >
-                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
+                <Input {...field} placeholder="2592000" type="number" min="0" step="1" />
               </FormControl>
             )}
           />
@@ -273,7 +273,7 @@ export const IdentityAwsAuthForm = ({
                 isError={Boolean(error)}
                 errorText={error?.message}
               >
-                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
+                <Input {...field} placeholder="2592000" type="number" min="0" step="1" />
               </FormControl>
             )}
           />

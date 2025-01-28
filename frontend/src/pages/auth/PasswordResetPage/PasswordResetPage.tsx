@@ -136,7 +136,8 @@ export const PasswordResetPage = () => {
               encryptedPrivateKeyTag,
               salt: result.salt,
               verifier: result.verifier,
-              verificationToken
+              verificationToken,
+              password: newPassword
             });
 
             navigate({ to: "/login" });

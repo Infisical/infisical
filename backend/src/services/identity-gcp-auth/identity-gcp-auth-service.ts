@@ -138,12 +138,12 @@ export const identityGcpAuthServiceFactory = ({
         authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
       } as TIdentityAccessTokenJwtPayload,
       appCfg.AUTH_SECRET,
-      {
-        expiresIn:
-          Number(identityAccessToken.accessTokenMaxTTL) === 0
-            ? undefined
-            : Number(identityAccessToken.accessTokenMaxTTL)
-      }
+      // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
+      Number(identityAccessToken.accessTokenTTL) === 0
+        ? undefined
+        : {
+            expiresIn: Number(identityAccessToken.accessTokenTTL)
+          }
     );
 
     return { accessToken, identityGcpAuth, identityAccessToken, identityMembershipOrg };
