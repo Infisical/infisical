@@ -95,6 +95,12 @@ export const GcpSyncFns = {
 
     for await (const key of Object.keys(secretMap)) {
       try {
+        // we do not process secrets with no value because GCP secret manager does not allow it
+        if (!secretMap[key].value) {
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+
         if (!(key in gcpSecrets)) {
           // case: create secret
           await request.post(
@@ -140,7 +146,7 @@ export const GcpSyncFns = {
 
     for await (const key of Object.keys(gcpSecrets)) {
       try {
-        if (!(key in secretMap)) {
+        if (!(key in secretMap) || !secretMap[key].value) {
           // case: delete secret
           await request.delete(
             `${IntegrationUrls.GCP_SECRET_MANAGER_URL}/v1/projects/${destinationConfig.projectId}/secrets/${key}`,
