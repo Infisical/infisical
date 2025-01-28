@@ -3,7 +3,7 @@ import { PackRule, packRules, unpackRules } from "@casl/ability/extra";
 import ms from "ms";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { isAtLeastAsPrivileged } from "@app/lib/casl";
+import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { UnpackedPermissionSchema } from "@app/server/routes/santizedSchemas/permission";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -88,9 +88,13 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     // we need to validate that the privilege given is not higher than the assigning users permission
     // @ts-expect-error this is expected error because of one being really accurate rule definition other being a bit more broader. Both are valid casl rules
     targetIdentityPermission.update(targetIdentityPermission.rules.concat(customPermission));
-    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, targetIdentityPermission);
-    if (!hasRequiredPriviledges)
-      throw new ForbiddenRequestError({ message: "Failed to update more privileged identity" });
+    const permissionBoundary = validatePermissionBoundary(permission, targetIdentityPermission);
+    if (!permissionBoundary.isValid)
+      throw new ForbiddenRequestError({
+        name: "PermissionBoundaryError",
+        message: "Failed to update more privileged identity",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
+      });
 
     const existingSlug = await identityProjectAdditionalPrivilegeDAL.findOne({
       slug,
@@ -172,9 +176,13 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     // we need to validate that the privilege given is not higher than the assigning users permission
     // @ts-expect-error this is expected error because of one being really accurate rule definition other being a bit more broader. Both are valid casl rules
     targetIdentityPermission.update(targetIdentityPermission.rules.concat(data.permissions || []));
-    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, targetIdentityPermission);
-    if (!hasRequiredPriviledges)
-      throw new ForbiddenRequestError({ message: "Failed to update more privileged identity" });
+    const permissionBoundary = validatePermissionBoundary(permission, targetIdentityPermission);
+    if (!permissionBoundary.isValid)
+      throw new ForbiddenRequestError({
+        name: "PermissionBoundaryError",
+        message: "Failed to update more privileged identity",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
+      });
 
     const identityPrivilege = await identityProjectAdditionalPrivilegeDAL.findOne({
       slug,
@@ -268,9 +276,13 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, identityRolePermission);
-    if (!hasRequiredPriviledges)
-      throw new ForbiddenRequestError({ message: "Failed to edit more privileged identity" });
+    const permissionBoundary = validatePermissionBoundary(permission, identityRolePermission);
+    if (!permissionBoundary.isValid)
+      throw new ForbiddenRequestError({
+        name: "PermissionBoundaryError",
+        message: "Failed to edit more privileged identity",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
+      });
 
     const identityPrivilege = await identityProjectAdditionalPrivilegeDAL.findOne({
       slug,

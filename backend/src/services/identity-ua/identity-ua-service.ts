@@ -8,7 +8,7 @@ import { IdentityAuthMethod } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { isAtLeastAsPrivileged } from "@app/lib/casl";
+import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { checkIPAgainstBlocklist, extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
@@ -367,9 +367,12 @@ export const identityUaServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    if (!isAtLeastAsPrivileged(permission, rolePermission))
+    const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+    if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
-        message: "Failed to revoke universal auth of identity with more privileged role"
+        name: "PermissionBoundaryError",
+        message: "Failed to revoke universal auth of identity with more privileged role",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
     const revokedIdentityUniversalAuth = await identityUaDAL.transaction(async (tx) => {
@@ -414,10 +417,12 @@ export const identityUaServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    const hasPriviledge = isAtLeastAsPrivileged(permission, rolePermission);
-    if (!hasPriviledge)
+    const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+    if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
-        message: "Failed to add identity to project with more privileged role"
+        name: "PermissionBoundaryError",
+        message: "Failed to add identity to project with more privileged role",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
     const appCfg = getConfig();
@@ -475,9 +480,12 @@ export const identityUaServiceFactory = ({
       actorOrgId
     );
 
-    if (!isAtLeastAsPrivileged(permission, rolePermission))
+    const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+    if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
-        message: "Failed to add identity to project with more privileged role"
+        name: "PermissionBoundaryError",
+        message: "Failed to get identity with more privileged role",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
     const identityUniversalAuth = await identityUaDAL.findOne({
@@ -524,9 +532,12 @@ export const identityUaServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    if (!isAtLeastAsPrivileged(permission, rolePermission))
+    const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+    if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
-        message: "Failed to read identity client secret of project with more privileged role"
+        name: "PermissionBoundaryError",
+        message: "Failed to read identity client secret of project with more privileged role",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
     const clientSecret = await identityUaClientSecretDAL.findById(clientSecretId);
@@ -566,10 +577,12 @@ export const identityUaServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-
-    if (!isAtLeastAsPrivileged(permission, rolePermission))
+    const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+    if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
-        message: "Failed to revoke identity client secret with more privileged role"
+        name: "PermissionBoundaryError",
+        message: "Failed to revoke identity client secret with more privileged role",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
     const clientSecret = await identityUaClientSecretDAL.updateById(clientSecretId, {

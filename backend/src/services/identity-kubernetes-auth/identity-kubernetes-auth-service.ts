@@ -7,7 +7,7 @@ import { IdentityAuthMethod, SecretKeyEncoding, TIdentityKubernetesAuthsUpdate }
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { isAtLeastAsPrivileged } from "@app/lib/casl";
+import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { getConfig } from "@app/lib/config/env";
 import {
   decryptSymmetric,
@@ -616,9 +616,12 @@ export const identityKubernetesAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    if (!isAtLeastAsPrivileged(permission, rolePermission))
+    const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+    if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
-        message: "Failed to revoke kubernetes auth of identity with more privileged role"
+        name: "PermissionBoundaryError",
+        message: "Failed to revoke kubernetes auth of identity with more privileged role",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
     const revokedIdentityKubernetesAuth = await identityKubernetesAuthDAL.transaction(async (tx) => {

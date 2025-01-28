@@ -4,7 +4,7 @@ import { OrgMembershipRole, TableName, TOrgRoles } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { isAtLeastAsPrivileged } from "@app/lib/casl";
+import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 
@@ -58,9 +58,13 @@ export const identityServiceFactory = ({
       orgId
     );
     const isCustomRole = Boolean(customRole);
-    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, rolePermission);
-    if (!hasRequiredPriviledges)
-      throw new ForbiddenRequestError({ message: "Failed to create a more privileged identity" });
+    const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+    if (!permissionBoundary.isValid)
+      throw new ForbiddenRequestError({
+        name: "PermissionBoundaryError",
+        message: "Failed to create a more privileged identity",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
+      });
 
     const plan = await licenseService.getPlan(orgId);
 
@@ -129,9 +133,13 @@ export const identityServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, identityRolePermission);
-    if (!hasRequiredPriviledges)
-      throw new ForbiddenRequestError({ message: "Failed to delete more privileged identity" });
+    const permissionBoundary = validatePermissionBoundary(permission, identityRolePermission);
+    if (!permissionBoundary.isValid)
+      throw new ForbiddenRequestError({
+        name: "PermissionBoundaryError",
+        message: "Failed to delete a more privileged identity",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
+      });
 
     let customRole: TOrgRoles | undefined;
     if (role) {
@@ -141,9 +149,13 @@ export const identityServiceFactory = ({
       );
 
       const isCustomRole = Boolean(customOrgRole);
-      const hasRequiredNewRolePermission = isAtLeastAsPrivileged(permission, rolePermission);
-      if (!hasRequiredNewRolePermission)
-        throw new ForbiddenRequestError({ message: "Failed to create a more privileged identity" });
+      const appliedRolePermissionBoundary = validatePermissionBoundary(permission, rolePermission);
+      if (!appliedRolePermissionBoundary.isValid)
+        throw new ForbiddenRequestError({
+          name: "PermissionBoundaryError",
+          message: "Failed to create a more privileged identity",
+          details: { missingPermissions: appliedRolePermissionBoundary.missingPermissions }
+        });
       if (isCustomRole) customRole = customOrgRole;
     }
 
@@ -216,9 +228,13 @@ export const identityServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, identityRolePermission);
-    if (!hasRequiredPriviledges)
-      throw new ForbiddenRequestError({ message: "Failed to delete more privileged identity" });
+    const permissionBoundary = validatePermissionBoundary(permission, identityRolePermission);
+    if (!permissionBoundary.isValid)
+      throw new ForbiddenRequestError({
+        name: "PermissionBoundaryError",
+        message: "Failed to delete more privileged user",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
+      });
 
     const deletedIdentity = await identityDAL.deleteById(id);
 

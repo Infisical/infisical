@@ -3,7 +3,7 @@ import slugify from "@sindresorhus/slugify";
 
 import { OrgMembershipRole, TOrgRoles } from "@app/db/schemas";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
-import { isAtLeastAsPrivileged } from "@app/lib/casl";
+import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
@@ -87,9 +87,14 @@ export const groupServiceFactory = ({
       actorOrgId
     );
     const isCustomRole = Boolean(customRole);
-    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, rolePermission);
-    if (!hasRequiredPriviledges)
-      throw new ForbiddenRequestError({ message: "Failed to create a more privileged group" });
+
+    const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+    if (!permissionBoundary.isValid)
+      throw new ForbiddenRequestError({
+        name: "PermissionBoundaryError",
+        message: "Failed to create a more privileged group",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
+      });
 
     const group = await groupDAL.transaction(async (tx) => {
       const existingGroup = await groupDAL.findOne({ orgId: actorOrgId, name }, tx);
@@ -156,9 +161,13 @@ export const groupServiceFactory = ({
       );
 
       const isCustomRole = Boolean(customOrgRole);
-      const hasRequiredNewRolePermission = isAtLeastAsPrivileged(permission, rolePermission);
-      if (!hasRequiredNewRolePermission)
-        throw new ForbiddenRequestError({ message: "Failed to create a more privileged group" });
+      const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+      if (!permissionBoundary.isValid)
+        throw new ForbiddenRequestError({
+          name: "PermissionBoundaryError",
+          message: "Failed to create a more privileged group",
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
       if (isCustomRole) customRole = customOrgRole;
     }
 
@@ -329,9 +338,13 @@ export const groupServiceFactory = ({
     const { permission: groupRolePermission } = await permissionService.getOrgPermissionByRole(group.role, actorOrgId);
 
     // check if user has broader or equal to privileges than group
-    const hasRequiredPrivileges = isAtLeastAsPrivileged(permission, groupRolePermission);
-    if (!hasRequiredPrivileges)
-      throw new ForbiddenRequestError({ message: "Failed to add user to more privileged group" });
+    const permissionBoundary = validatePermissionBoundary(permission, groupRolePermission);
+    if (!permissionBoundary.isValid)
+      throw new ForbiddenRequestError({
+        name: "PermissionBoundaryError",
+        message: "Failed to add user to more privileged group",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
+      });
 
     const user = await userDAL.findOne({ username });
     if (!user) throw new NotFoundError({ message: `Failed to find user with username ${username}` });
@@ -396,9 +409,13 @@ export const groupServiceFactory = ({
     const { permission: groupRolePermission } = await permissionService.getOrgPermissionByRole(group.role, actorOrgId);
 
     // check if user has broader or equal to privileges than group
-    const hasRequiredPrivileges = isAtLeastAsPrivileged(permission, groupRolePermission);
-    if (!hasRequiredPrivileges)
-      throw new ForbiddenRequestError({ message: "Failed to delete user from more privileged group" });
+    const permissionBoundary = validatePermissionBoundary(permission, groupRolePermission);
+    if (!permissionBoundary.isValid)
+      throw new ForbiddenRequestError({
+        name: "PermissionBoundaryError",
+        message: "Failed to delete user from more privileged group",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
+      });
 
     const user = await userDAL.findOne({ username });
     if (!user) throw new NotFoundError({ message: `Failed to find user with username ${username}` });
