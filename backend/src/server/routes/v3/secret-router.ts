@@ -194,16 +194,23 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
 
             return metadata;
           })
-          .superRefine((el, ctx) => {
-            if (el && !Array.isArray(el)) {
+          .superRefine((metadata, ctx) => {
+            if (metadata && !Array.isArray(metadata)) {
               ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 message: "Invalid secretMetadata format. Correct format is key1:value1,key2:value2"
               });
             }
 
-            if (el) {
-              for (const item of el) {
+            if (metadata) {
+              if (metadata.length > 10) {
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message: "You can only filter by up to 10 metadata fields"
+                });
+              }
+
+              for (const item of metadata) {
                 if (!item.key || !item.value) {
                   ctx.addIssue({
                     code: z.ZodIssueCode.custom,
