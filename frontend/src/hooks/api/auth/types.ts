@@ -133,6 +133,20 @@ export type ResetPasswordDTO = {
   salt: string;
   verifier: string;
   verificationToken: string;
+  password: string;
+};
+
+export type SetupPasswordDTO = {
+  protectedKey: string;
+  protectedKeyIV: string;
+  protectedKeyTag: string;
+  encryptedPrivateKey: string;
+  encryptedPrivateKeyIV: string;
+  encryptedPrivateKeyTag: string;
+  salt: string;
+  verifier: string;
+  token: string;
+  password: string;
 };
 
 export type IssueBackupPrivateKeyDTO = {

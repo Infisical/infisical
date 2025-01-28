@@ -23,6 +23,20 @@ export type TResetPasswordViaBackupKeyDTO = {
   encryptedPrivateKeyTag: string;
   salt: string;
   verifier: string;
+  password: string;
+};
+
+export type TSetupPasswordViaBackupKeyDTO = {
+  protectedKey: string;
+  protectedKeyIV: string;
+  protectedKeyTag: string;
+  encryptedPrivateKey: string;
+  encryptedPrivateKeyIV: string;
+  encryptedPrivateKeyTag: string;
+  salt: string;
+  verifier: string;
+  password: string;
+  token: string;
 };
 
 export type TCreateBackupPrivateKeyDTO = {

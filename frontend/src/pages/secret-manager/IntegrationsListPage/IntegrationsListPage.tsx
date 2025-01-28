@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Badge, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { Badge, PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
@@ -45,14 +45,12 @@ export const IntegrationsListPage = () => {
         <meta name="og:description" content={t("integrations.description") as string} />
       </Helmet>
       <div className="container relative mx-auto max-w-7xl pb-12 text-white">
-        <div className="mx-6 mb-8">
-          <div className="mb-4 mt-6 flex flex-col items-start justify-between px-2 text-xl">
-            <h1 className="text-3xl font-semibold">Integrations</h1>
-            <p className="text-base text-bunker-300">
-              Manage integrations with third-party services.
-            </p>
-          </div>
-          <div className="mx-2 mb-4 flex flex-col rounded-r border-l-2 border-l-primary bg-mineshaft-300/5 px-4 py-2.5">
+        <div className="mb-8">
+          <PageHeader
+            title="Integrations"
+            description="Manage integrations with third-party services."
+          />
+          <div className="mb-4 mt-4 flex flex-col rounded-r border-l-2 border-l-primary bg-mineshaft-300/5 px-4 py-2.5">
             <div className="mb-1 flex items-center text-sm">
               <FontAwesomeIcon icon={faInfoCircle} size="sm" className="mr-1 text-primary" />
               Integrations Update
