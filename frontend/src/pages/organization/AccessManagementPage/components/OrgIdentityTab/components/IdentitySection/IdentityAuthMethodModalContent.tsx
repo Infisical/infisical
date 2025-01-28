@@ -4,30 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
-import { createNotification } from "@app/components/notifications";
-import {
-  Badge,
-  DeleteActionModal,
-  FormControl,
-  Select,
-  SelectItem,
-  Tooltip
-} from "@app/components/v2";
-import { useOrganization } from "@app/context";
-import {
-  useDeleteIdentityAwsAuth,
-  useDeleteIdentityAzureAuth,
-  useDeleteIdentityGcpAuth,
-  useDeleteIdentityKubernetesAuth,
-  useDeleteIdentityOidcAuth,
-  useDeleteIdentityTokenAuth,
-  useDeleteIdentityUniversalAuth
-} from "@app/hooks/api";
-import {
-  IdentityAuthMethod,
-  identityAuthToNameMap,
-  useDeleteIdentityJwtAuth
-} from "@app/hooks/api/identities";
+import { Badge, FormControl, Select, SelectItem, Tooltip } from "@app/components/v2";
+import { IdentityAuthMethod } from "@app/hooks/api/identities";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { IdentityAwsAuthForm } from "./IdentityAwsAuthForm";
@@ -40,10 +18,10 @@ import { IdentityTokenAuthForm } from "./IdentityTokenAuthForm";
 import { IdentityUniversalAuthForm } from "./IdentityUniversalAuthForm";
 
 type Props = {
-  popUp: UsePopUpState<["identityAuthMethod", "upgradePlan", "revokeAuthMethod"]>;
+  popUp: UsePopUpState<["identityAuthMethod", "upgradePlan"]>;
   handlePopUpOpen: (popUpName: keyof UsePopUpState<["upgradePlan"]>) => void;
   handlePopUpToggle: (
-    popUpName: keyof UsePopUpState<["identityAuthMethod", "upgradePlan", "revokeAuthMethod"]>,
+    popUpName: keyof UsePopUpState<["identityAuthMethod", "upgradePlan"]>,
     state?: boolean
   ) => void;
 
@@ -56,13 +34,7 @@ type Props = {
   setSelectedAuthMethod: (authMethod: IdentityAuthMethod) => void;
 };
 
-type TRevokeOptions = {
-  identityId: string;
-  organizationId: string;
-};
-
 type TRevokeMethods = {
-  revokeMethod: (revokeOptions: TRevokeOptions) => Promise<any>;
   render: () => JSX.Element;
 };
 
@@ -96,18 +68,6 @@ export const IdentityAuthMethodModalContent = ({
   initialAuthMethod,
   setSelectedAuthMethod
 }: Props) => {
-  const { currentOrg } = useOrganization();
-  const orgId = currentOrg?.id || "";
-
-  const { mutateAsync: revokeUniversalAuth } = useDeleteIdentityUniversalAuth();
-  const { mutateAsync: revokeTokenAuth } = useDeleteIdentityTokenAuth();
-  const { mutateAsync: revokeKubernetesAuth } = useDeleteIdentityKubernetesAuth();
-  const { mutateAsync: revokeGcpAuth } = useDeleteIdentityGcpAuth();
-  const { mutateAsync: revokeAwsAuth } = useDeleteIdentityAwsAuth();
-  const { mutateAsync: revokeAzureAuth } = useDeleteIdentityAzureAuth();
-  const { mutateAsync: revokeOidcAuth } = useDeleteIdentityOidcAuth();
-  const { mutateAsync: revokeJwtAuth } = useDeleteIdentityJwtAuth();
-
   const { control, watch } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: async () => {
@@ -149,10 +109,9 @@ export const IdentityAuthMethodModalContent = ({
 
   const methodMap: Record<IdentityAuthMethod, TRevokeMethods | undefined> = {
     [IdentityAuthMethod.UNIVERSAL_AUTH]: {
-      revokeMethod: revokeUniversalAuth,
       render: () => (
         <IdentityUniversalAuthForm
-          identityAuthMethodData={identityAuthMethodData}
+          identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
         />
@@ -160,10 +119,9 @@ export const IdentityAuthMethodModalContent = ({
     },
 
     [IdentityAuthMethod.OIDC_AUTH]: {
-      revokeMethod: revokeOidcAuth,
       render: () => (
         <IdentityOidcAuthForm
-          identityAuthMethodData={identityAuthMethodData}
+          identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
         />
@@ -171,10 +129,9 @@ export const IdentityAuthMethodModalContent = ({
     },
 
     [IdentityAuthMethod.TOKEN_AUTH]: {
-      revokeMethod: revokeTokenAuth,
       render: () => (
         <IdentityTokenAuthForm
-          identityAuthMethodData={identityAuthMethodData}
+          identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
         />
@@ -182,10 +139,9 @@ export const IdentityAuthMethodModalContent = ({
     },
 
     [IdentityAuthMethod.AZURE_AUTH]: {
-      revokeMethod: revokeAzureAuth,
       render: () => (
         <IdentityAzureAuthForm
-          identityAuthMethodData={identityAuthMethodData}
+          identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
         />
@@ -193,10 +149,9 @@ export const IdentityAuthMethodModalContent = ({
     },
 
     [IdentityAuthMethod.GCP_AUTH]: {
-      revokeMethod: revokeGcpAuth,
       render: () => (
         <IdentityGcpAuthForm
-          identityAuthMethodData={identityAuthMethodData}
+          identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
         />
@@ -204,10 +159,9 @@ export const IdentityAuthMethodModalContent = ({
     },
 
     [IdentityAuthMethod.KUBERNETES_AUTH]: {
-      revokeMethod: revokeKubernetesAuth,
       render: () => (
         <IdentityKubernetesAuthForm
-          identityAuthMethodData={identityAuthMethodData}
+          identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
         />
@@ -215,10 +169,9 @@ export const IdentityAuthMethodModalContent = ({
     },
 
     [IdentityAuthMethod.AWS_AUTH]: {
-      revokeMethod: revokeAwsAuth,
       render: () => (
         <IdentityAwsAuthForm
-          identityAuthMethodData={identityAuthMethodData}
+          identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
         />
@@ -226,10 +179,9 @@ export const IdentityAuthMethodModalContent = ({
     },
 
     [IdentityAuthMethod.JWT_AUTH]: {
-      revokeMethod: revokeJwtAuth,
       render: () => (
         <IdentityJwtAuthForm
-          identityAuthMethodData={identityAuthMethodData}
+          identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
         />
@@ -293,42 +245,6 @@ export const IdentityAuthMethodModalContent = ({
         isOpen={popUp?.upgradePlan?.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="You can use IP allowlisting if you switch to Infisical's Pro plan."
-      />
-      <DeleteActionModal
-        isOpen={popUp?.revokeAuthMethod?.isOpen}
-        title={`Are you sure want to remove ${
-          identityAuthMethodData?.authMethod
-            ? identityAuthToNameMap[identityAuthMethodData.authMethod]
-            : "the auth method"
-        } on ${identityAuthMethodData?.name ?? ""}?`}
-        onChange={(isOpen) => handlePopUpToggle("revokeAuthMethod", isOpen)}
-        deleteKey="confirm"
-        buttonText="Remove"
-        onDeleteApproved={async () => {
-          if (!identityAuthMethodData.authMethod || !orgId || !selectedMethodItem) {
-            return;
-          }
-
-          try {
-            await selectedMethodItem.revokeMethod({
-              identityId: identityAuthMethodData.identityId,
-              organizationId: orgId
-            });
-
-            createNotification({
-              text: "Successfully removed auth method",
-              type: "success"
-            });
-
-            handlePopUpToggle("revokeAuthMethod", false);
-            handlePopUpToggle("identityAuthMethod", false);
-          } catch {
-            createNotification({
-              text: "Failed to remove auth method",
-              type: "error"
-            });
-          }
-        }}
       />
     </>
   );

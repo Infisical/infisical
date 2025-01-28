@@ -1,4 +1,4 @@
-import { faEllipsis, faKey } from "@fortawesome/free-solid-svg-icons";
+import { faEllipsisVertical, faKey } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
@@ -8,6 +8,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  IconButton,
   Tooltip
 } from "@app/components/v2";
 import { useGetIdentityById, useGetIdentityTokensTokenAuth } from "@app/hooks/api";
@@ -27,10 +28,13 @@ export const IdentityTokens = ({ identityId, handlePopUpOpen }: Props) => {
   return (
     <div>
       {tokens?.length ? (
-        <div className="flex justify-between">
-          <p className="text-sm font-semibold text-mineshaft-300">{`Access Tokens (${tokens.length})`}</p>
+        <div className="flex items-center justify-between border-b border-bunker-400 pb-1">
+          <p className="text-sm font-medium text-bunker-300">{`Access Tokens (${tokens.length})`}</p>
           <Button
-            variant="link"
+            size="xs"
+            className="underline"
+            variant="plain"
+            colorSchema="secondary"
             onClick={() => {
               handlePopUpOpen("tokenList", {
                 identityId,
@@ -50,16 +54,16 @@ export const IdentityTokens = ({ identityId, handlePopUpOpen }: Props) => {
         );
         return (
           <div
-            className="group flex items-center justify-between py-2 last:pb-0"
+            className="group flex items-center justify-between border-b border-mineshaft-500 px-2 py-2 last:pb-0"
             key={`identity-token-${token.id}`}
           >
             <div className="flex items-center">
-              <FontAwesomeIcon size="1x" icon={faKey} />
-              <div className="ml-4">
-                <p className="text-sm font-semibold text-mineshaft-300">
+              <FontAwesomeIcon size="xs" className="text-mineshaft-400" icon={faKey} />
+              <div className="ml-3">
+                <p className="text-sm font-medium text-mineshaft-300">
                   {token.name ? token.name : "-"}
                 </p>
-                <p className="text-sm text-mineshaft-300">
+                <p className="text-xs text-mineshaft-400">
                   {token.isAccessTokenRevoked
                     ? "Revoked"
                     : `Expires on ${format(expiresAt, "yyyy-MM-dd")}`}
@@ -67,14 +71,19 @@ export const IdentityTokens = ({ identityId, handlePopUpOpen }: Props) => {
               </div>
             </div>
             <DropdownMenu>
-              <DropdownMenuTrigger asChild className="rounded-lg">
-                <div className="opacity-0 transition-opacity duration-300 hover:text-primary-400 group-hover:opacity-100 data-[state=open]:text-primary-400">
-                  <Tooltip content="More options">
-                    <FontAwesomeIcon size="sm" icon={faEllipsis} />
-                  </Tooltip>
-                </div>
+              <DropdownMenuTrigger asChild>
+                <Tooltip side="right" content="More options">
+                  <IconButton
+                    colorSchema="secondary"
+                    variant="plain"
+                    size="xs"
+                    ariaLabel="More options"
+                  >
+                    <FontAwesomeIcon icon={faEllipsisVertical} />
+                  </IconButton>
+                </Tooltip>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="p-1">
+              <DropdownMenuContent align="start" className="z-[101] p-1">
                 <DropdownMenuItem
                   onClick={async () => {
                     handlePopUpOpen("token", {
@@ -106,8 +115,9 @@ export const IdentityTokens = ({ identityId, handlePopUpOpen }: Props) => {
       })}
       <Button
         className="mr-4 mt-4 w-full"
-        colorSchema="primary"
+        colorSchema="secondary"
         type="submit"
+        size="xs"
         onClick={() => {
           handlePopUpOpen("token", {
             identityId

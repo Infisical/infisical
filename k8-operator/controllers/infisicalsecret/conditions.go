@@ -21,14 +21,14 @@ func (r *InfisicalSecretReconciler) SetReadyToSyncSecretsConditions(ctx context.
 			Type:    "secrets.infisical.com/ReadyToSyncSecrets",
 			Status:  metav1.ConditionFalse,
 			Reason:  "Error",
-			Message: "Failed to sync secrets. This can be caused by invalid service token or an invalid API host that is set. Check operator logs for more info",
+			Message: fmt.Sprintf("Failed to sync secrets. This can be caused by invalid access token or an invalid API host that is set. Error: %v", errorToConditionOn),
 		})
 
 		meta.SetStatusCondition(&infisicalSecret.Status.Conditions, metav1.Condition{
 			Type:    "secrets.infisical.com/AutoRedeployReady",
 			Status:  metav1.ConditionFalse,
 			Reason:  "Stopped",
-			Message: "Auto redeployment has been stopped because the operator failed to sync secrets",
+			Message: fmt.Sprintf("Auto redeployment has been stopped because the operator failed to sync secrets. Error: %v", errorToConditionOn),
 		})
 	} else {
 		meta.SetStatusCondition(&infisicalSecret.Status.Conditions, metav1.Condition{

@@ -7,10 +7,10 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 import { IdentityAuthMethodModalContent } from "./IdentityAuthMethodModalContent";
 
 type Props = {
-  popUp: UsePopUpState<["identityAuthMethod", "upgradePlan", "revokeAuthMethod"]>;
+  popUp: UsePopUpState<["identityAuthMethod", "upgradePlan"]>;
   handlePopUpOpen: (popUpName: keyof UsePopUpState<["upgradePlan"]>) => void;
   handlePopUpToggle: (
-    popUpName: keyof UsePopUpState<["identityAuthMethod", "upgradePlan", "revokeAuthMethod"]>,
+    popUpName: keyof UsePopUpState<["identityAuthMethod", "upgradePlan"]>,
     state?: boolean
   ) => void;
 };
@@ -34,7 +34,7 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
         title={
           isSelectedAuthAlreadyConfigured
             ? `Edit ${identityAuthToNameMap[selectedAuthMethod!] ?? ""}`
-            : `Create new ${identityAuthToNameMap[selectedAuthMethod!] ?? ""}`
+            : `Add ${identityAuthToNameMap[selectedAuthMethod!] ?? ""}`
         }
       >
         <IdentityAuthMethodModalContent
