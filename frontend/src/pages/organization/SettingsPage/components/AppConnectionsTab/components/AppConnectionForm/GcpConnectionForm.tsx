@@ -146,9 +146,9 @@ export const GcpConnectionForm = ({ appConnection, onSubmit }: Props) => {
                   </div>
                   <div>
                     Example:
-                    <span className="ml-1 font-semibold">
-                      {`service-account-${expectedAccountIdSuffix}@my-project.iam.gserviceaccount.com`}
-                    </span>
+                    <span className="ml-1">service-account-</span>
+                    <span className="font-semibold">{expectedAccountIdSuffix}</span>
+                    <span>@my-project.iam.gserviceaccount.com</span>
                   </div>
                 </>
               }
