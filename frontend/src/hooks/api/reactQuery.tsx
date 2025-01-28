@@ -74,6 +74,107 @@ export const queryClient = new QueryClient({
           );
           return;
         }
+        if (serverResponse?.error === ApiErrorTypes.PermissionBoundaryError) {
+          createNotification(
+            {
+              title: "Forbidden Access",
+              type: "error",
+              text: `${serverResponse.message}.`,
+              callToAction: serverResponse?.details?.missingPermissions?.length ? (
+                <Modal>
+                  <ModalTrigger asChild>
+                    <Button variant="outline_bg" size="xs">
+                      Show more
+                    </Button>
+                  </ModalTrigger>
+                  <ModalContent title="Missing Permission">
+                    <div className="flex flex-col gap-2">
+                      {serverResponse.details?.missingPermissions?.map((el, index) => {
+                        const hasConditions = Boolean(Object.keys(el.conditions || {}).length);
+                        return (
+                          <div
+                            key={`Forbidden-error-details-${index + 1}`}
+                            className="rounded-md border border-gray-600 p-4"
+                          >
+                            <div>
+                              You are not authorized to perform the <b>{el.action}</b> action on the{" "}
+                              <b>{el.subject}</b> resource.{" "}
+                              {hasConditions &&
+                                "Your permission does not allow access to the following conditions:"}
+                            </div>
+                            {hasConditions && (
+                              <ul className="flex list-disc flex-col gap-1 pl-5 pt-2 text-sm">
+                                {Object.keys(el.conditions || {}).flatMap((field, fieldIndex) => {
+                                  const operators = (
+                                    el.conditions as Record<
+                                      string,
+                                      | string
+                                      | { [K in PermissionConditionOperators]: string | string[] }
+                                    >
+                                  )[field];
+
+                                  const formattedFieldName = camelCaseToSpaces(field).toLowerCase();
+                                  if (typeof operators === "string") {
+                                    return (
+                                      <li
+                                        key={`Forbidden-error-details-${index + 1}-${
+                                          fieldIndex + 1
+                                        }`}
+                                      >
+                                        <span className="font-bold capitalize">
+                                          {formattedFieldName}
+                                        </span>{" "}
+                                        <span className="text-mineshaft-200">equal to</span>{" "}
+                                        <span className="text-yellow-600">{operators}</span>
+                                      </li>
+                                    );
+                                  }
+
+                                  return Object.keys(operators).map((operator, operatorIndex) => (
+                                    <li
+                                      key={`Forbidden-error-details-${index + 1}-${
+                                        fieldIndex + 1
+                                      }-${operatorIndex + 1}`}
+                                    >
+                                      <span className="font-bold capitalize">
+                                        {formattedFieldName}
+                                      </span>{" "}
+                                      <span className="text-mineshaft-200">
+                                        {
+                                          formatedConditionsOperatorNames[
+                                            operator as PermissionConditionOperators
+                                          ]
+                                        }
+                                      </span>{" "}
+                                      <span className="text-yellow-600">
+                                        {operators[
+                                          operator as PermissionConditionOperators
+                                        ].toString()}
+                                      </span>
+                                    </li>
+                                  ));
+                                })}
+                              </ul>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </ModalContent>
+                </Modal>
+              ) : undefined,
+              copyActions: [
+                {
+                  value: serverResponse.reqId,
+                  name: "Request ID",
+                  label: `Request ID: ${serverResponse.reqId}`
+                }
+              ]
+            },
+            { closeOnClick: false }
+          );
+          return;
+        }
         if (serverResponse?.error === ApiErrorTypes.ForbiddenError) {
           createNotification(
             {
