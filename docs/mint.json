@@ -352,7 +352,8 @@
           "group": "Connections",
           "pages": [
             "integrations/app-connections/aws",
-            "integrations/app-connections/github"
+            "integrations/app-connections/github",
+            "integrations/app-connections/gcp"
           ]
         }
       ]
@@ -365,7 +366,8 @@
           "group": "Syncs",
           "pages": [
             "integrations/secret-syncs/aws-parameter-store",
-            "integrations/secret-syncs/github"
+            "integrations/secret-syncs/github",
+            "integrations/secret-syncs/gcp-secret-manager"
           ]
         }
       ]
@@ -799,7 +801,8 @@
           "pages": [
             "api-reference/endpoints/app-connections/list",
             "api-reference/endpoints/app-connections/options",
-            { "group":  "AWS",
+            {
+              "group": "AWS",
               "pages": [
                 "api-reference/endpoints/app-connections/aws/list",
                 "api-reference/endpoints/app-connections/aws/available",
@@ -810,7 +813,8 @@
                 "api-reference/endpoints/app-connections/aws/delete"
               ]
             },
-            { "group":  "GitHub",
+            {
+              "group": "GitHub",
               "pages": [
                 "api-reference/endpoints/app-connections/github/list",
                 "api-reference/endpoints/app-connections/github/available",
@@ -820,6 +824,18 @@
                 "api-reference/endpoints/app-connections/github/update",
                 "api-reference/endpoints/app-connections/github/delete"
               ]
+            },
+            {
+              "group": "GCP",
+              "pages": [
+                "api-reference/endpoints/app-connections/gcp/list",
+                "api-reference/endpoints/app-connections/gcp/available",
+                "api-reference/endpoints/app-connections/gcp/get-by-id",
+                "api-reference/endpoints/app-connections/gcp/get-by-name",
+                "api-reference/endpoints/app-connections/gcp/create",
+                "api-reference/endpoints/app-connections/gcp/update",
+                "api-reference/endpoints/app-connections/gcp/delete"
+              ]
             }
           ]
         },
@@ -828,7 +844,8 @@
           "pages": [
             "api-reference/endpoints/secret-syncs/list",
             "api-reference/endpoints/secret-syncs/options",
-            { "group":  "AWS Parameter Store",
+            {
+              "group": "AWS Parameter Store",
               "pages": [
                 "api-reference/endpoints/secret-syncs/aws-parameter-store/list",
                 "api-reference/endpoints/secret-syncs/aws-parameter-store/get-by-id",
@@ -841,7 +858,8 @@
                 "api-reference/endpoints/secret-syncs/aws-parameter-store/remove-secrets"
               ]
             },
-            { "group":  "GitHub",
+            {
+              "group": "GitHub",
               "pages": [
                 "api-reference/endpoints/secret-syncs/github/list",
                 "api-reference/endpoints/secret-syncs/github/get-by-id",
@@ -851,6 +869,20 @@
                 "api-reference/endpoints/secret-syncs/github/delete",
                 "api-reference/endpoints/secret-syncs/github/sync-secrets",
                 "api-reference/endpoints/secret-syncs/github/remove-secrets"
+              ]
+            },
+            {
+              "group": "GCP Secret Manager",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/gcp-secret-manager/list",
+                "api-reference/endpoints/secret-syncs/gcp-secret-manager/get-by-id",
+                "api-reference/endpoints/secret-syncs/gcp-secret-manager/get-by-name",
+                "api-reference/endpoints/secret-syncs/gcp-secret-manager/create",
+                "api-reference/endpoints/secret-syncs/gcp-secret-manager/update",
+                "api-reference/endpoints/secret-syncs/gcp-secret-manager/delete",
+                "api-reference/endpoints/secret-syncs/gcp-secret-manager/sync-secrets",
+                "api-reference/endpoints/secret-syncs/gcp-secret-manager/import-secrets",
+                "api-reference/endpoints/secret-syncs/gcp-secret-manager/remove-secrets"
               ]
             }
           ]

@@ -10,6 +10,7 @@ import { DiscriminativePick } from "@app/types";
 
 import { AppConnectionHeader } from "../AppConnectionHeader";
 import { AwsConnectionForm } from "./AwsConnectionForm";
+import { GcpConnectionForm } from "./GcpConnectionForm";
 import { GitHubConnectionForm } from "./GitHubConnectionForm";
 
 type FormProps = {
@@ -50,6 +51,8 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <AwsConnectionForm onSubmit={onSubmit} />;
     case AppConnection.GitHub:
       return <GitHubConnectionForm />;
+    case AppConnection.GCP:
+      return <GcpConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -87,6 +90,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <AwsConnectionForm appConnection={appConnection} onSubmit={onSubmit} />;
     case AppConnection.GitHub:
       return <GitHubConnectionForm appConnection={appConnection} />;
+    case AppConnection.GCP:
+      return <GcpConnectionForm appConnection={appConnection} onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

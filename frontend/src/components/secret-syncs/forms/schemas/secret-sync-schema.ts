@@ -5,6 +5,7 @@ import { SecretSyncInitialSyncBehavior } from "@app/hooks/api/secretSyncs";
 import { slugSchema } from "@app/lib/schemas";
 
 import { AwsParameterStoreSyncDestinationSchema } from "./aws-parameter-store-sync-destination-schema";
+import { GcpSyncDestinationSchema } from "./gcp-sync-destination-schema";
 
 const BaseSecretSyncSchema = z.object({
   name: slugSchema({ field: "Name" }),
@@ -31,7 +32,8 @@ const BaseSecretSyncSchema = z.object({
 
 const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   AwsParameterStoreSyncDestinationSchema,
-  GitHubSyncDestinationSchema
+  GitHubSyncDestinationSchema,
+  GcpSyncDestinationSchema
 ]);
 
 export const SecretSyncFormSchema = SecretSyncUnionSchema.and(BaseSecretSyncSchema);

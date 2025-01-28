@@ -10,6 +10,8 @@ export const BaseAppConnectionSchema = AppConnectionsSchema.omit({
   encryptedCredentials: true,
   app: true,
   method: true
+}).extend({
+  credentialsHash: z.string().optional()
 });
 
 export const GenericCreateAppConnectionFieldsSchema = (app: AppConnection) =>

@@ -4,13 +4,18 @@ import { faKey, faPassport, faUser } from "@fortawesome/free-solid-svg-icons";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   AwsConnectionMethod,
+  GcpConnectionMethod,
   GitHubConnectionMethod,
   TAppConnection
 } from "@app/hooks/api/appConnections/types";
 
 export const APP_CONNECTION_MAP: Record<AppConnection, { name: string; image: string }> = {
   [AppConnection.AWS]: { name: "AWS", image: "Amazon Web Services.png" },
-  [AppConnection.GitHub]: { name: "GitHub", image: "GitHub.png" }
+  [AppConnection.GitHub]: { name: "GitHub", image: "GitHub.png" },
+  [AppConnection.GCP]: {
+    name: "GCP",
+    image: "Google Cloud Platform.png"
+  }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -23,6 +28,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "Access Key", icon: faKey };
     case AwsConnectionMethod.AssumeRole:
       return { name: "Assume Role", icon: faUser };
+    case GcpConnectionMethod.ServiceAccountImpersonation:
+      return { name: "Service Account Impersonation", icon: faUser };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }

@@ -12,6 +12,8 @@ import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
 import { AwsParameterStoreSyncDestinationSection } from "@app/pages/secret-manager/SecretSyncDetailsByIDPage/components/SecretSyncDestinationSection/AwsParameterStoreSyncDestinationSection";
 import { GitHubSyncDestinationSection } from "@app/pages/secret-manager/SecretSyncDetailsByIDPage/components/SecretSyncDestinationSection/GitHubSyncDestinationSection";
 
+import { GcpSyncDestinationSection } from "./GcpSyncDestinationSection";
+
 type Props = {
   secretSync: TSecretSync;
   onEditDestination: VoidFunction;
@@ -29,6 +31,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       break;
     case SecretSync.GitHub:
       DestinationComponents = <GitHubSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.GCPSecretManager:
+      DestinationComponents = <GcpSyncDestinationSection secretSync={secretSync} />;
       break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);

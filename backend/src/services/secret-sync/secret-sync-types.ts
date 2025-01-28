@@ -17,14 +17,18 @@ import {
   TAwsParameterStoreSyncListItem,
   TAwsParameterStoreSyncWithCredentials
 } from "./aws-parameter-store";
+import { TGcpSync, TGcpSyncInput, TGcpSyncListItem, TGcpSyncWithCredentials } from "./gcp";
 
-export type TSecretSync = TAwsParameterStoreSync | TGitHubSync;
+export type TSecretSync = TAwsParameterStoreSync | TGitHubSync | TGcpSync;
 
-export type TSecretSyncWithCredentials = TAwsParameterStoreSyncWithCredentials | TGitHubSyncWithCredentials;
+export type TSecretSyncWithCredentials =
+  | TAwsParameterStoreSyncWithCredentials
+  | TGitHubSyncWithCredentials
+  | TGcpSyncWithCredentials;
 
-export type TSecretSyncInput = TAwsParameterStoreSyncInput | TGitHubSyncInput;
+export type TSecretSyncInput = TAwsParameterStoreSyncInput | TGitHubSyncInput | TGcpSyncInput;
 
-export type TSecretSyncListItem = TAwsParameterStoreSyncListItem | TGitHubSyncListItem;
+export type TSecretSyncListItem = TAwsParameterStoreSyncListItem | TGitHubSyncListItem | TGcpSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;
