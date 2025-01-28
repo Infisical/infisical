@@ -301,7 +301,8 @@
           "group": "Reference architectures",
           "pages": [
             "self-hosting/reference-architectures/aws-ecs",
-            "self-hosting/reference-architectures/linux-deployment-ha"
+            "self-hosting/reference-architectures/linux-deployment-ha",
+            "self-hosting/reference-architectures/on-prem-k8s-ha"
           ]
         },
         "self-hosting/ee",
