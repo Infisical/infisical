@@ -228,7 +228,6 @@ export const createWorkspace = (
   return apiRequest.post("/api/v2/workspace", dto);
 };
 
-// add in the invalidate subscription query
 export const useCreateWorkspace = () => {
   const queryClient = useQueryClient();
 
@@ -242,8 +241,6 @@ export const useCreateWorkspace = () => {
         type
       }),
     onSuccess: (dto) => {
-      // remove this before merge
-      console.log("workspace created", dto);
       queryClient.invalidateQueries({
         queryKey: workspaceKeys.getAllUserWorkspace(dto.data.project.type)
       });
@@ -328,7 +325,6 @@ export const useUpdateWorkspaceAuditLogsRetention = () => {
   });
 };
 
-// add the invalidation to the subscription to this query
 export const useDeleteWorkspace = () => {
   const queryClient = useQueryClient();
 
@@ -338,8 +334,6 @@ export const useDeleteWorkspace = () => {
       return data.workspace;
     },
     onSuccess: (dto) => {
-      //Remove this before PR is merged
-      console.log("deleted workspace", dto);
       queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace(dto.type) });
       queryClient.invalidateQueries({
         queryKey: ["org-admin-projects"]
