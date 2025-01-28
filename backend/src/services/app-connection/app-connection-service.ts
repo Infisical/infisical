@@ -2,6 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 
 import { OrgPermissionAppConnectionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { generateHash } from "@app/lib/crypto/encryption";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { DiscriminativePick, OrgServiceActor } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -185,6 +186,7 @@ export const appConnectionServiceFactory = ({
 
       return {
         ...connection,
+        credentialsHash: generateHash(connection.encryptedCredentials),
         credentials: validatedCredentials
       };
     });

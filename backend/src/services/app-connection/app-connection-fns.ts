@@ -1,4 +1,5 @@
 import { TAppConnections } from "@app/db/schemas/app-connections";
+import { generateHash } from "@app/lib/crypto/encryption";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactoryDep } from "@app/services/app-connection/app-connection-service";
 import { TAppConnection, TAppConnectionConfig } from "@app/services/app-connection/app-connection-types";
@@ -112,6 +113,7 @@ export const decryptAppConnection = async (
       encryptedCredentials: appConnection.encryptedCredentials,
       orgId: appConnection.orgId,
       kmsService
-    })
+    }),
+    credentialsHash: generateHash(appConnection.encryptedCredentials)
   } as TAppConnection;
 };
