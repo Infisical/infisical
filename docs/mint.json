@@ -345,34 +345,6 @@
       ]
     },
     {
-      "group": "App Connections",
-      "pages": [
-        "integrations/app-connections/overview",
-        {
-          "group": "Connections",
-          "pages": [
-            "integrations/app-connections/aws",
-            "integrations/app-connections/github",
-            "integrations/app-connections/gcp"
-          ]
-        }
-      ]
-    },
-    {
-      "group": "Secret Syncs",
-      "pages": [
-        "integrations/secret-syncs/overview",
-        {
-          "group": "Syncs",
-          "pages": [
-            "integrations/secret-syncs/aws-parameter-store",
-            "integrations/secret-syncs/github",
-            "integrations/secret-syncs/gcp-secret-manager"
-          ]
-        }
-      ]
-    },
-    {
       "group": "Infrastructure Integrations",
       "pages": [
         {
@@ -404,6 +376,34 @@
         },
         "integrations/frameworks/terraform",
         "integrations/platforms/ansible"
+      ]
+    },
+    {
+      "group": "App Connections",
+      "pages": [
+        "integrations/app-connections/overview",
+        {
+          "group": "Connections",
+          "pages": [
+            "integrations/app-connections/aws",
+            "integrations/app-connections/github",
+            "integrations/app-connections/gcp"
+          ]
+        }
+      ]
+    },
+    {
+      "group": "Secret Syncs",
+      "pages": [
+        "integrations/secret-syncs/overview",
+        {
+          "group": "Syncs",
+          "pages": [
+            "integrations/secret-syncs/aws-parameter-store",
+            "integrations/secret-syncs/github",
+            "integrations/secret-syncs/gcp-secret-manager"
+          ]
+        }
       ]
     },
     {
