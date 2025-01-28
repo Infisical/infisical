@@ -87,47 +87,47 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
       params: z.object({
         identityId: z.string().trim().describe(KUBERNETES_AUTH.ATTACH.identityId)
       }),
-      body: z.object({
-        kubernetesHost: z.string().trim().min(1).describe(KUBERNETES_AUTH.ATTACH.kubernetesHost),
-        caCert: z.string().trim().default("").describe(KUBERNETES_AUTH.ATTACH.caCert),
-        tokenReviewerJwt: z.string().trim().min(1).describe(KUBERNETES_AUTH.ATTACH.tokenReviewerJwt),
-        allowedNamespaces: z.string().describe(KUBERNETES_AUTH.ATTACH.allowedNamespaces), // TODO: validation
-        allowedNames: z.string().describe(KUBERNETES_AUTH.ATTACH.allowedNames),
-        allowedAudience: z.string().describe(KUBERNETES_AUTH.ATTACH.allowedAudience),
-        accessTokenTrustedIps: z
-          .object({
-            ipAddress: z.string().trim()
-          })
-          .array()
-          .min(1)
-          .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
-          .describe(KUBERNETES_AUTH.ATTACH.accessTokenTrustedIps),
-        accessTokenTTL: z
-          .number()
-          .int()
-          .min(1)
-          .max(315360000)
-          .refine((value) => value !== 0, {
-            message: "accessTokenTTL must have a non zero number"
-          })
-          .default(2592000)
-          .describe(KUBERNETES_AUTH.ATTACH.accessTokenTTL),
-        accessTokenMaxTTL: z
-          .number()
-          .int()
-          .max(315360000)
-          .refine((value) => value !== 0, {
-            message: "accessTokenMaxTTL must have a non zero number"
-          })
-          .default(2592000)
-          .describe(KUBERNETES_AUTH.ATTACH.accessTokenMaxTTL),
-        accessTokenNumUsesLimit: z
-          .number()
-          .int()
-          .min(0)
-          .default(0)
-          .describe(KUBERNETES_AUTH.ATTACH.accessTokenNumUsesLimit)
-      }),
+      body: z
+        .object({
+          kubernetesHost: z.string().trim().min(1).describe(KUBERNETES_AUTH.ATTACH.kubernetesHost),
+          caCert: z.string().trim().default("").describe(KUBERNETES_AUTH.ATTACH.caCert),
+          tokenReviewerJwt: z.string().trim().min(1).describe(KUBERNETES_AUTH.ATTACH.tokenReviewerJwt),
+          allowedNamespaces: z.string().describe(KUBERNETES_AUTH.ATTACH.allowedNamespaces), // TODO: validation
+          allowedNames: z.string().describe(KUBERNETES_AUTH.ATTACH.allowedNames),
+          allowedAudience: z.string().describe(KUBERNETES_AUTH.ATTACH.allowedAudience),
+          accessTokenTrustedIps: z
+            .object({
+              ipAddress: z.string().trim()
+            })
+            .array()
+            .min(1)
+            .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
+            .describe(KUBERNETES_AUTH.ATTACH.accessTokenTrustedIps),
+          accessTokenTTL: z
+            .number()
+            .int()
+            .min(0)
+            .max(315360000)
+            .default(2592000)
+            .describe(KUBERNETES_AUTH.ATTACH.accessTokenTTL),
+          accessTokenMaxTTL: z
+            .number()
+            .int()
+            .min(0)
+            .max(315360000)
+            .default(2592000)
+            .describe(KUBERNETES_AUTH.ATTACH.accessTokenMaxTTL),
+          accessTokenNumUsesLimit: z
+            .number()
+            .int()
+            .min(0)
+            .default(0)
+            .describe(KUBERNETES_AUTH.ATTACH.accessTokenNumUsesLimit)
+        })
+        .refine(
+          (val) => val.accessTokenTTL <= val.accessTokenMaxTTL,
+          "Access Token TTL cannot be greater than Access Token Max TTL."
+        ),
       response: {
         200: z.object({
           identityKubernetesAuth: IdentityKubernetesAuthResponseSchema
@@ -183,44 +183,47 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
       params: z.object({
         identityId: z.string().describe(KUBERNETES_AUTH.UPDATE.identityId)
       }),
-      body: z.object({
-        kubernetesHost: z.string().trim().min(1).optional().describe(KUBERNETES_AUTH.UPDATE.kubernetesHost),
-        caCert: z.string().trim().optional().describe(KUBERNETES_AUTH.UPDATE.caCert),
-        tokenReviewerJwt: z.string().trim().min(1).optional().describe(KUBERNETES_AUTH.UPDATE.tokenReviewerJwt),
-        allowedNamespaces: z.string().optional().describe(KUBERNETES_AUTH.UPDATE.allowedNamespaces), // TODO: validation
-        allowedNames: z.string().optional().describe(KUBERNETES_AUTH.UPDATE.allowedNames),
-        allowedAudience: z.string().optional().describe(KUBERNETES_AUTH.UPDATE.allowedAudience),
-        accessTokenTrustedIps: z
-          .object({
-            ipAddress: z.string().trim()
-          })
-          .array()
-          .min(1)
-          .optional()
-          .describe(KUBERNETES_AUTH.UPDATE.accessTokenTrustedIps),
-        accessTokenTTL: z
-          .number()
-          .int()
-          .min(0)
-          .max(315360000)
-          .optional()
-          .describe(KUBERNETES_AUTH.UPDATE.accessTokenTTL),
-        accessTokenNumUsesLimit: z
-          .number()
-          .int()
-          .min(0)
-          .optional()
-          .describe(KUBERNETES_AUTH.UPDATE.accessTokenNumUsesLimit),
-        accessTokenMaxTTL: z
-          .number()
-          .int()
-          .max(315360000)
-          .refine((value) => value !== 0, {
-            message: "accessTokenMaxTTL must have a non zero number"
-          })
-          .optional()
-          .describe(KUBERNETES_AUTH.UPDATE.accessTokenMaxTTL)
-      }),
+      body: z
+        .object({
+          kubernetesHost: z.string().trim().min(1).optional().describe(KUBERNETES_AUTH.UPDATE.kubernetesHost),
+          caCert: z.string().trim().optional().describe(KUBERNETES_AUTH.UPDATE.caCert),
+          tokenReviewerJwt: z.string().trim().min(1).optional().describe(KUBERNETES_AUTH.UPDATE.tokenReviewerJwt),
+          allowedNamespaces: z.string().optional().describe(KUBERNETES_AUTH.UPDATE.allowedNamespaces), // TODO: validation
+          allowedNames: z.string().optional().describe(KUBERNETES_AUTH.UPDATE.allowedNames),
+          allowedAudience: z.string().optional().describe(KUBERNETES_AUTH.UPDATE.allowedAudience),
+          accessTokenTrustedIps: z
+            .object({
+              ipAddress: z.string().trim()
+            })
+            .array()
+            .min(1)
+            .optional()
+            .describe(KUBERNETES_AUTH.UPDATE.accessTokenTrustedIps),
+          accessTokenTTL: z
+            .number()
+            .int()
+            .min(0)
+            .max(315360000)
+            .optional()
+            .describe(KUBERNETES_AUTH.UPDATE.accessTokenTTL),
+          accessTokenNumUsesLimit: z
+            .number()
+            .int()
+            .min(0)
+            .optional()
+            .describe(KUBERNETES_AUTH.UPDATE.accessTokenNumUsesLimit),
+          accessTokenMaxTTL: z
+            .number()
+            .int()
+            .min(0)
+            .max(315360000)
+            .optional()
+            .describe(KUBERNETES_AUTH.UPDATE.accessTokenMaxTTL)
+        })
+        .refine(
+          (val) => (val.accessTokenMaxTTL && val.accessTokenTTL ? val.accessTokenTTL <= val.accessTokenMaxTTL : true),
+          "Access Token TTL cannot be greater than Access Token Max TTL."
+        ),
       response: {
         200: z.object({
           identityKubernetesAuth: IdentityKubernetesAuthResponseSchema

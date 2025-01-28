@@ -305,7 +305,7 @@ export const IdentityKubernetesAuthForm = ({
                 isError={Boolean(error)}
                 errorText={error?.message}
               >
-                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
+                <Input {...field} placeholder="2592000" type="number" min="0" step="1" />
               </FormControl>
             )}
           />
@@ -320,7 +320,7 @@ export const IdentityKubernetesAuthForm = ({
                 errorText={error?.message}
                 tooltipText="The maximum lifetime for an access token in seconds. This value will be referenced at renewal time."
               >
-                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
+                <Input {...field} placeholder="2592000" type="number" min="0" step="1" />
               </FormControl>
             )}
           />
