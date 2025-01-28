@@ -128,7 +128,6 @@ export const LogsFilter = ({
                   value={value}
                   isClearable
                   onChange={(e) => {
-                    console.log(e);
                     if (e === null) {
                       setValue("secretPath", "");
                     }

@@ -9,11 +9,11 @@ export const auditLogFilterFormSchema = z
     eventType: z.nativeEnum(EventType).array(),
     actor: z.string().optional(),
     userAgentType: z.nativeEnum(UserAgentType),
+    secretPath: z.string().optional(),
     startDate: z.date().optional(),
     endDate: z.date().optional(),
     page: z.coerce.number().optional(),
-    perPage: z.coerce.number().optional(),
-    secretPath: z.string().optional()
+    perPage: z.coerce.number().optional()
   })
   .superRefine((el, ctx) => {
     if (el.endDate && el.startDate && el.endDate < el.startDate) {
