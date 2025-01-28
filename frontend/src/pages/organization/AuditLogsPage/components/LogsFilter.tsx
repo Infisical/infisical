@@ -23,6 +23,7 @@ import { useGetAuditLogActorFilterOpts, useGetUserWorkspaces } from "@app/hooks/
 import { eventToNameMap, userAgentTTypeoNameMap } from "@app/hooks/api/auditLogs/constants";
 import { ActorType, EventType } from "@app/hooks/api/auditLogs/enums";
 import { Actor } from "@app/hooks/api/auditLogs/types";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { AuditLogFilterFormData } from "./types";
 
@@ -103,7 +104,7 @@ export const LogsFilter = ({
   };
 
   const selectedEventTypes = watch("eventType") as EventType[] | undefined;
-  const selectedProjectId = watch("project")?.id;
+  const selectedProject = watch("project");
 
   return (
     <div
@@ -134,7 +135,7 @@ export const LogsFilter = ({
                     onChange(e);
                   }}
                   placeholder="Select a project..."
-                  options={workspacesInOrg.map(({ name, id }) => ({ name, id }))}
+                  options={workspacesInOrg.map(({ name, id, type }) => ({ name, id, type }))}
                   getOptionValue={(option) => option.id}
                   getOptionLabel={(option) => option.name}
                 />
@@ -142,7 +143,7 @@ export const LogsFilter = ({
             )}
           />
         )}
-        {selectedProjectId && (
+        {selectedProject?.type === ProjectType.SecretManager && (
           <Controller
             control={control}
             name="secretPath"
