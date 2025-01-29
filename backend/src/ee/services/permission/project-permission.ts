@@ -163,6 +163,30 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Kms];
 
+const SECRET_PATH_MISSING_SLASH_ERR_MSG = "Invalid Secret Path; it must start with a '/'";
+const SECRET_PATH_PERMISSION_OPERATOR_SCHEMA = z.union([
+  z.string().refine((val) => val.startsWith("/"), SECRET_PATH_MISSING_SLASH_ERR_MSG),
+  z
+    .object({
+      [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ].refine(
+        (val) => val.startsWith("/"),
+        SECRET_PATH_MISSING_SLASH_ERR_MSG
+      ),
+      [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ].refine(
+        (val) => val.startsWith("/"),
+        SECRET_PATH_MISSING_SLASH_ERR_MSG
+      ),
+      [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN].refine(
+        (val) => val.every((el) => el.startsWith("/")),
+        SECRET_PATH_MISSING_SLASH_ERR_MSG
+      ),
+      [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB].refine(
+        (val) => val.startsWith("/"),
+        SECRET_PATH_MISSING_SLASH_ERR_MSG
+      )
+    })
+    .partial()
+]);
 // akhilmhdh: don't modify this for v2
 // if you want to update create a new schema
 const SecretConditionV1Schema = z
@@ -177,17 +201,7 @@ const SecretConditionV1Schema = z
         })
         .partial()
     ]),
-    secretPath: z.union([
-      z.string(),
-      z
-        .object({
-          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
-          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
-          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
-        })
-        .partial()
-    ])
+    secretPath: SECRET_PATH_PERMISSION_OPERATOR_SCHEMA
   })
   .partial();
 
@@ -204,17 +218,7 @@ const SecretConditionV2Schema = z
         })
         .partial()
     ]),
-    secretPath: z.union([
-      z.string(),
-      z
-        .object({
-          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
-          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
-          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
-        })
-        .partial()
-    ]),
+    secretPath: SECRET_PATH_PERMISSION_OPERATOR_SCHEMA,
     secretName: z.union([
       z.string(),
       z

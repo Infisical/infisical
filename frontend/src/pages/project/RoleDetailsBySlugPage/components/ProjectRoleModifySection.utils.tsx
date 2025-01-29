@@ -80,6 +80,10 @@ const ConditionSchema = z
       return true;
     },
     { message: "Duplicate operator found for a condition" }
+  )
+  .refine(
+    (val) => val.filter((el) => el.lhs === "secretPath").every((el) => el.rhs.startsWith("/")),
+    { message: "Invalid Secret Path. Must start with '/'" }
   );
 
 export const projectRoleFormSchema = z.object({
