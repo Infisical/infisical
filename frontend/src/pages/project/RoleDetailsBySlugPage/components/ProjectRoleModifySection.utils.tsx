@@ -82,7 +82,14 @@ const ConditionSchema = z
     { message: "Duplicate operator found for a condition" }
   )
   .refine(
-    (val) => val.filter((el) => el.lhs === "secretPath").every((el) => el.rhs.startsWith("/")),
+    (val) =>
+      val
+        .filter((el) => el.lhs === "secretPath")
+        .every((el) =>
+          el.operator === PermissionConditionOperators.$IN
+            ? el.rhs.split(",").every((i) => i.trim().startsWith("/"))
+            : el.rhs.trim().startsWith("/")
+        ),
     { message: "Invalid Secret Path. Must start with '/'" }
   );
 
