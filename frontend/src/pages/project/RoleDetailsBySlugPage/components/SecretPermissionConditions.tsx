@@ -36,6 +36,10 @@ export const SecretPermissionConditions = ({ position = 0, isDisabled }: Props) 
     name: `permissions.secrets.${position}.conditions`
   });
 
+  const conditionErrorMessage =
+    errors?.permissions?.secrets?.[position]?.conditions?.message ||
+    errors?.permissions?.secrets?.[position]?.conditions?.root?.message;
+
   return (
     <div className="mt-6 border-t border-t-mineshaft-600 bg-mineshaft-800 pt-2">
       <p className="mt-2 text-gray-300">Conditions</p>
@@ -147,10 +151,10 @@ export const SecretPermissionConditions = ({ position = 0, isDisabled }: Props) 
           );
         })}
       </div>
-      {errors?.permissions?.secrets?.[position]?.conditions?.message && (
+      {conditionErrorMessage && (
         <div className="flex items-center space-x-2 py-2 text-sm text-gray-400">
           <FontAwesomeIcon icon={faWarning} className="text-red" />
-          <span>{errors?.permissions?.secrets?.[position]?.conditions?.message}</span>
+          <span>{conditionErrorMessage}</span>
         </div>
       )}
       <div>
