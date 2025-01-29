@@ -414,18 +414,12 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
           `${TableName.SecretTag}.id`
         )
         .leftJoin(TableName.ResourceMetadata, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
-        .where((bd) => {
-          if (filters?.secretMetadata && filters.secretMetadata?.length > 0) {
+        .where((qb) => {
+          if (filters?.secretMetadata && filters.secretMetadata.length > 0) {
             filters.secretMetadata.forEach((meta) => {
-              void bd.whereExists((qb) => {
-                void qb
-                  .select("secretId")
-                  .from(TableName.ResourceMetadata)
-                  .whereRaw(`"${TableName.ResourceMetadata}"."secretId" = "${TableName.SecretV2}"."id"`)
-                  .where({
-                    [`${TableName.ResourceMetadata}.key` as string]: meta.key,
-                    [`${TableName.ResourceMetadata}.value` as string]: meta.value
-                  });
+              void qb.where({
+                [`${TableName.ResourceMetadata}.key` as string]: meta.key,
+                [`${TableName.ResourceMetadata}.value` as string]: meta.value
               });
             });
           }
