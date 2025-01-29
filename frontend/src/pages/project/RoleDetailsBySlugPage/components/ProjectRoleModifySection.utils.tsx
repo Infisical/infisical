@@ -84,7 +84,9 @@ const ConditionSchema = z
   .refine(
     (val) =>
       val
-        .filter((el) => el.lhs === "secretPath")
+        .filter(
+          (el) => el.lhs === "secretPath" && el.operator !== PermissionConditionOperators.$GLOB
+        )
         .every((el) =>
           el.operator === PermissionConditionOperators.$IN
             ? el.rhs.split(",").every((i) => i.trim().startsWith("/"))

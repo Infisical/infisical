@@ -180,10 +180,7 @@ const SECRET_PATH_PERMISSION_OPERATOR_SCHEMA = z.union([
         (val) => val.every((el) => el.startsWith("/")),
         SECRET_PATH_MISSING_SLASH_ERR_MSG
       ),
-      [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB].refine(
-        (val) => val.startsWith("/"),
-        SECRET_PATH_MISSING_SLASH_ERR_MSG
-      )
+      [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
     })
     .partial()
 ]);
