@@ -42,7 +42,7 @@ namespace Example
                 ProjectId = "PROJECT_ID",
                 Environment = "dev",
             };
-            var secret = infisical.GetSecret(getSecretOptions);
+            var secret = infisicalClient.GetSecret(getSecretOptions);
 
 
             Console.WriteLine($"The value of secret '{secret.SecretKey}', is: {secret.SecretValue}");
