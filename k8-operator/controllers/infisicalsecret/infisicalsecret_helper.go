@@ -424,11 +424,6 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 			return errors.New("no authentication method provided. Please configure a authentication method then try again")
 		}
 
-		if !updateDetails.Modified {
-			logger.Info("ReconcileInfisicalSecret: No secrets modified so reconcile not needed")
-			continue
-		}
-
 		if managedKubeSecret == nil {
 			if err := r.createInfisicalManagedKubeSecret(ctx, logger, infisicalSecret, managedSecretReference, plainTextSecretsFromApi, updateDetails.ETag); err != nil {
 				return fmt.Errorf("failed to create managed secret [err=%s]", err)
