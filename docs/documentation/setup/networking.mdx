@@ -1,0 +1,36 @@
+---
+title: "Networking"
+sidebarTitle: "Networking"
+description: "Network configuration details for Infisical Cloud"
+---
+
+## Overview
+
+When integrating your infrastructure with Infisical Cloud, you may need to configure network access controls. This page provides the IP addresses that Infisical uses to communicate with your services.
+
+## Egress IP Addresses
+
+Infisical Cloud operates from two regions: US and EU. Depending on your region and security requirements, you may need to whitelist specific IP addresses to allow Infisical to communicate with your services.
+
+### US Region
+
+If you need Infisical US to reach your network, whitelist these IP addresses:
+
+- `3.213.63.16`
+- `54.164.68.7`
+
+### EU Region
+
+If you need Infisical EU to reach your network, whitelist these IP addresses:
+
+- `3.77.89.19`
+- `3.125.209.189`
+
+## Common Use Cases
+
+You might need to configure these IP addresses if you operate in a restricted network with the following Infisical features:
+
+- Secret rotation - When Infisical needs to send requests to your systems to automatically rotate credentials
+- Dynamic secrets - When Infisical generates and manages temporary credentials for your cloud services
+- Secret integrations - When syncing secrets with third-party services like Azure Key Vault
+- Native authentication with machine identities - When using methods like Kubernetes authentication
