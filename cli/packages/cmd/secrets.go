@@ -110,7 +110,7 @@ var secretsCmd = &cobra.Command{
 
 		if plainOutput {
 			for _, secret := range secrets {
-				fmt.Println(secret.Value)
+				fmt.Println(fmt.Sprintf("%s=%s", secret.Key, secret.Value))
 			}
 		} else {
 			visualize.PrintAllSecretDetails(secrets)
