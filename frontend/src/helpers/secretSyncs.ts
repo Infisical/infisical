@@ -27,11 +27,11 @@ export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<
   }),
   [SecretSyncInitialSyncBehavior.ImportPrioritizeSource]: (destinationName: string) => ({
     name: "Import Destination Secrets - Prioritize Infisical Values",
-    description: `Infisical will import any secrets present in the ${destinationName} destination prior to syncing, prioritizing values present in Infisical over ${destinationName}.`
+    description: `Infisical will import any secrets present in the ${destinationName} destination prior to syncing, prioritizing values from Infisical over ${destinationName} when keys conflict.`
   }),
   [SecretSyncInitialSyncBehavior.ImportPrioritizeDestination]: (destinationName: string) => ({
     name: `Import Destination Secrets - Prioritize ${destinationName} Values`,
-    description: `Infisical will import any secrets present in the ${destinationName} destination prior to syncing, prioritizing values present in ${destinationName} over Infisical.`
+    description: `Infisical will import any secrets present in the ${destinationName} destination prior to syncing, prioritizing values from ${destinationName} over Infisical when keys conflict.`
   })
 };
 
@@ -41,10 +41,10 @@ export const SECRET_SYNC_IMPORT_BEHAVIOR_MAP: Record<
 > = {
   [SecretSyncImportBehavior.PrioritizeSource]: (destinationName: string) => ({
     name: "Prioritize Infisical Values",
-    description: `Infisical will import any secrets present in the ${destinationName} destination, prioritizing values present in Infisical over ${destinationName}.`
+    description: `Infisical will import any secrets present in the ${destinationName} destination, prioritizing values from Infisical over ${destinationName} when keys conflict.`
   }),
   [SecretSyncImportBehavior.PrioritizeDestination]: (destinationName: string) => ({
     name: `Prioritize ${destinationName} Values`,
-    description: `Infisical will import any secrets present in the ${destinationName} destination, prioritizing values present in ${destinationName} over Infisical.`
+    description: `Infisical will import any secrets present in the ${destinationName} destination, prioritizing values from ${destinationName} over Infisical when keys conflict.`
   })
 };

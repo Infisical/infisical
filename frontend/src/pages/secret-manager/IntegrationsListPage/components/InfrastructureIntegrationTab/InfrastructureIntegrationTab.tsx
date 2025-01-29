@@ -5,13 +5,12 @@ export const InfrastructureIntegrationTab = () => {
 
   return (
     <>
-      <div className="mx-4 mb-4 flex flex-col items-start justify-between px-2 text-xl">
-        <h1 className="text-3xl font-semibold">Infrastructure Integrations</h1>
+      <div className="mb-4 flex flex-col items-start justify-between px-2 text-xl">
         <p className="text-base text-gray-400">
-          Click on of the integration to read the documentation.
+          Click on an integration to read the documentation.
         </p>
       </div>
-      <div className="mx-6 grid grid-cols-2 gap-4 lg:grid-cols-3 2xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 2xl:grid-cols-4">
         {sortedIntegrations.map((integration) => (
           <a
             key={`framework-integration-${integration.slug}`}

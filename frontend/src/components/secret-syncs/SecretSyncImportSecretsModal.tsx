@@ -87,7 +87,7 @@ const Content = ({ secretSync, onComplete }: ContentProps) => {
             tooltipText={
               <div className="flex flex-col gap-3">
                 <p>
-                  Specify how Infisical should resolve the initial sync to {destinationName}. The
+                  Specify how Infisical should resolve importing secrets from {destinationName}. The
                   following options are available:
                 </p>
                 <ul className="flex list-disc flex-col gap-3 pl-4">
