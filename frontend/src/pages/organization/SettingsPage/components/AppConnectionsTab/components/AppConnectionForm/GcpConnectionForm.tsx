@@ -114,36 +114,42 @@ export const GcpConnectionForm = ({ appConnection, onSubmit }: Props) => {
               className="group"
               helperText={
                 <>
-                  <span>
-                    {`Service account ID (the part of the email before '@') must be suffixed with "${expectedAccountIdSuffix}"`}
-                  </span>
-                  <Tooltip className="relative right-2" position="bottom" content="Copy">
-                    <IconButton
-                      variant="plain"
-                      ariaLabel="copy"
-                      onClick={() => {
-                        if (isCopied) {
-                          return;
-                        }
+                  <div>
+                    {`Service account ID must be suffixed with "${expectedAccountIdSuffix}"`}
+                    <Tooltip className="relative right-2" position="bottom" content="Copy">
+                      <IconButton
+                        variant="plain"
+                        ariaLabel="copy"
+                        onClick={() => {
+                          if (isCopied) {
+                            return;
+                          }
 
-                        navigator.clipboard.writeText(expectedAccountIdSuffix);
+                          navigator.clipboard.writeText(expectedAccountIdSuffix);
 
-                        createNotification({
-                          text: "Copied to clipboard",
-                          type: "info"
-                        });
+                          createNotification({
+                            text: "Copied to clipboard",
+                            type: "info"
+                          });
 
-                        toggleIsCopied(2000);
-                      }}
-                      className="hover:bg-bunker-100/10"
-                    >
-                      <FontAwesomeIcon
-                        icon={!isCopied ? faCopy : faCheck}
-                        size="sm"
-                        className="cursor-pointer"
-                      />
-                    </IconButton>
-                  </Tooltip>
+                          toggleIsCopied(2000);
+                        }}
+                        className="hover:bg-bunker-100/10"
+                      >
+                        <FontAwesomeIcon
+                          icon={!isCopied ? faCopy : faCheck}
+                          size="sm"
+                          className="cursor-pointer"
+                        />
+                      </IconButton>
+                    </Tooltip>
+                  </div>
+                  <div>
+                    Example:
+                    <span className="ml-1">service-account-</span>
+                    <span className="font-semibold">{expectedAccountIdSuffix}</span>
+                    <span>@my-project.iam.gserviceaccount.com</span>
+                  </div>
                 </>
               }
             >
