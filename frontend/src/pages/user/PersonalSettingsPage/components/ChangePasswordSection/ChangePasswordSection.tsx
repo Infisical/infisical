@@ -11,6 +11,7 @@ import attemptChangePassword from "@app/components/utilities/attemptChangePasswo
 import checkPassword from "@app/components/utilities/checks/password/checkPassword";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { useUser } from "@app/context";
+import { useSendPasswordSetupEmail } from "@app/hooks/api/auth/queries";
 
 type Errors = {
   tooShort?: string;
@@ -45,6 +46,7 @@ export const ChangePasswordSection = () => {
   });
   const [errors, setErrors] = useState<Errors>({});
   const [isLoading, setIsLoading] = useState(false);
+  const sendSetupPasswordEmail = useSendPasswordSetupEmail();
 
   const onFormSubmit = async ({ oldPassword, newPassword }: FormData) => {
     try {
@@ -75,6 +77,24 @@ export const ChangePasswordSection = () => {
       setIsLoading(false);
       createNotification({
         text: "Failed to change password",
+        type: "error"
+      });
+    }
+  };
+
+  const onSetupPassword = async () => {
+    try {
+      await sendSetupPasswordEmail.mutateAsync();
+
+      createNotification({
+        title: "Password setup verification email sent",
+        text: "Check your email to confirm password setup",
+        type: "info"
+      });
+    } catch (err) {
+      console.error(err);
+      createNotification({
+        text: "Failed to send password setup email",
         type: "error"
       });
     }
@@ -142,6 +162,16 @@ export const ChangePasswordSection = () => {
       <Button type="submit" colorSchema="secondary" isLoading={isLoading} isDisabled={isLoading}>
         Save
       </Button>
+      <p className="mt-2 font-inter text-sm text-mineshaft-400">
+        Need to setup a password?{" "}
+        <button
+          onClick={onSetupPassword}
+          type="button"
+          className="underline underline-offset-2 hover:text-mineshaft-200"
+        >
+          Click here
+        </button>
+      </p>
     </form>
   );
 };

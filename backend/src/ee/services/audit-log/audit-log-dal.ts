@@ -39,11 +39,13 @@ export const auditLogDALFactory = (db: TDbClient) => {
       offset = 0,
       actorId,
       actorType,
+      secretPath,
       eventType,
       eventMetadata
     }: Omit<TFindQuery, "actor" | "eventType"> & {
       actorId?: string;
       actorType?: ActorType;
+      secretPath?: string;
       eventType?: EventType[];
       eventMetadata?: Record<string, string>;
     },
@@ -86,6 +88,10 @@ export const auditLogDALFactory = (db: TDbClient) => {
         Object.entries(eventMetadata).forEach(([key, value]) => {
           void sqlQuery.whereRaw(`"eventMetadata" @> jsonb_build_object(?::text, ?::text)`, [key, value]);
         });
+      }
+
+      if (projectId && secretPath) {
+        void sqlQuery.whereRaw(`"eventMetadata" @> jsonb_build_object('secretPath', ?::text)`, [secretPath]);
       }
 
       // Filter by actor type

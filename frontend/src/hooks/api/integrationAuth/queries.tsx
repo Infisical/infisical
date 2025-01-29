@@ -21,7 +21,8 @@ import {
   Team,
   TeamCityBuildConfig,
   TGetIntegrationAuthOctopusDeployScopeValuesDTO,
-  TOctopusDeployVariableSetScopeValues
+  TOctopusDeployVariableSetScopeValues,
+  VercelEnvironment
 } from "./types";
 
 const integrationAuthKeys = {
@@ -132,7 +133,9 @@ const integrationAuthKeys = {
   }: TGetIntegrationAuthOctopusDeployScopeValuesDTO) =>
     [{ integrationAuthId }, "getIntegrationAuthOctopusDeployScopeValues", params] as const,
   getIntegrationAuthCircleCIOrganizations: (integrationAuthId: string) =>
-    [{ integrationAuthId }, "getIntegrationAuthCircleCIOrganizations"] as const
+    [{ integrationAuthId }, "getIntegrationAuthCircleCIOrganizations"] as const,
+  getIntegrationAuthVercelCustomEnv: (integrationAuthId: string, teamId: string) =>
+    [{ integrationAuthId, teamId }, "integrationAuthVercelCustomEnv"] as const
 };
 
 const fetchIntegrationAuthById = async (integrationAuthId: string) => {
@@ -360,6 +363,29 @@ const fetchIntegrationAuthQoveryScopes = async ({
   }
 
   return undefined;
+};
+
+const fetchIntegrationAuthVercelCustomEnvironments = async ({
+  integrationAuthId,
+  teamId
+}: {
+  integrationAuthId: string;
+  teamId: string;
+}) => {
+  const {
+    data: { environments }
+  } = await apiRequest.get<{
+    environments: {
+      appId: string;
+      customEnvironments: VercelEnvironment[];
+    }[];
+  }>(`/api/v1/integration-auth/${integrationAuthId}/vercel/custom-environments`, {
+    params: {
+      teamId
+    }
+  });
+
+  return environments;
 };
 
 const fetchIntegrationAuthHerokuPipelines = async ({
@@ -727,6 +753,24 @@ export const useGetIntegrationAuthQoveryScopes = ({
         scope
       }),
     enabled: true
+  });
+};
+
+export const useGetIntegrationAuthVercelCustomEnvironments = ({
+  integrationAuthId,
+  teamId
+}: {
+  integrationAuthId: string;
+  teamId: string;
+}) => {
+  return useQuery({
+    queryKey: integrationAuthKeys.getIntegrationAuthVercelCustomEnv(integrationAuthId, teamId),
+    queryFn: () =>
+      fetchIntegrationAuthVercelCustomEnvironments({
+        integrationAuthId,
+        teamId
+      }),
+    enabled: Boolean(teamId && integrationAuthId)
   });
 };
 

@@ -25,11 +25,12 @@ import { TIntegrationDALFactory } from "../integration/integration-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
-import { getApps } from "./integration-app-list";
+import { getApps, getAppsVercel } from "./integration-app-list";
 import { TCircleCIContext } from "./integration-app-types";
 import { TIntegrationAuthDALFactory } from "./integration-auth-dal";
 import { IntegrationAuthMetadataSchema, TIntegrationAuthMetadata } from "./integration-auth-schema";
 import {
+  GetVercelCustomEnvironmentsDTO,
   OctopusDeployScope,
   TBitbucketEnvironment,
   TBitbucketWorkspace,
@@ -1825,6 +1826,41 @@ export const integrationAuthServiceFactory = ({
     return integrationAuthDAL.create(newIntegrationAuth);
   };
 
+  const getVercelCustomEnvironments = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    teamId,
+    id
+  }: GetVercelCustomEnvironmentsDTO) => {
+    const integrationAuth = await integrationAuthDAL.findById(id);
+    if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: integrationAuth.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
+
+    const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
+
+    const vercelApps = await getAppsVercel({
+      accessToken,
+      teamId
+    });
+
+    return vercelApps.map((app) => ({
+      customEnvironments: app.customEnvironments,
+      appId: app.appId
+    }));
+  };
+
   const getOctopusDeploySpaces = async ({
     actorId,
     actor,
@@ -1944,6 +1980,7 @@ export const integrationAuthServiceFactory = ({
     getIntegrationAccessToken,
     duplicateIntegrationAuth,
     getOctopusDeploySpaces,
-    getOctopusDeployScopeValues
+    getOctopusDeployScopeValues,
+    getVercelCustomEnvironments
   };
 };

@@ -47,7 +47,12 @@ export function AzureKeyVaultAuthorizePage() {
         >
           <div className="flex flex-row items-center">
             <div className="flex items-center pb-0.5">
-              <img src="/images/integrations/GitHub.png" height={30} width={30} alt="Github logo" />
+              <img
+                src="/images/integrations/Microsoft Azure.png"
+                height={30}
+                width={30}
+                alt="Azure Key Vault logo"
+              />
             </div>
             <span className="ml-2.5">Azure Key Vault Integration </span>
             <a
