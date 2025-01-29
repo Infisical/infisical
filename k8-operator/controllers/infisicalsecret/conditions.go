@@ -11,7 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (r *InfisicalSecretReconciler) SetReadyToSyncSecretsConditions(ctx context.Context, infisicalSecret *v1alpha1.InfisicalSecret, errorToConditionOn error) error {
+func (r *InfisicalSecretReconciler) SetReadyToSyncSecretsConditions(ctx context.Context, infisicalSecret *v1alpha1.InfisicalSecret, secretsCount int, errorToConditionOn error) error {
 	if infisicalSecret.Status.Conditions == nil {
 		infisicalSecret.Status.Conditions = []metav1.Condition{}
 	}
@@ -35,7 +35,7 @@ func (r *InfisicalSecretReconciler) SetReadyToSyncSecretsConditions(ctx context.
 			Type:    "secrets.infisical.com/ReadyToSyncSecrets",
 			Status:  metav1.ConditionTrue,
 			Reason:  "OK",
-			Message: "Infisical controller has started syncing your secrets",
+			Message: fmt.Sprintf("Infisical controller has started syncing your secrets. Last reconcile synced %d secrets", secretsCount),
 		})
 	}
 
