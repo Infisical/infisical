@@ -6,6 +6,8 @@ import { EFilterReturnedUsers, TGroup, TGroupUser } from "./types";
 
 export const groupKeys = {
   getGroupById: (groupId: string) => [{ groupId }, "group"] as const,
+  isGroupMembershipManagementDisabled: (orgId: string) =>
+    ["group-memberships-management-disabled", orgId] as const,
   allGroupUserMemberships: () => ["group-user-memberships"] as const,
   forGroupUserMemberships: (slug: string) =>
     [...groupKeys.allGroupUserMemberships(), slug] as const,

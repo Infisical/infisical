@@ -5,6 +5,9 @@ import { Issuer, Issuer as OpenIdIssuer, Strategy as OpenIdStrategy, TokenSet } 
 
 import { OrgMembershipStatus, SecretKeyEncoding, TableName, TUsers } from "@app/db/schemas";
 import { TOidcConfigsUpdate } from "@app/db/schemas/oidc-configs";
+import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
+import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -18,13 +21,18 @@ import {
   infisicalSymmetricEncypt
 } from "@app/lib/crypto/encryption";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
+import { OrgServiceActor } from "@app/lib/types";
 import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
+import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TOrgBotDALFactory } from "@app/services/org/org-bot-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { getDefaultOrgMembershipRole } from "@app/services/org/org-role-fns";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
+import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
@@ -45,7 +53,14 @@ import {
 type TOidcConfigServiceFactoryDep = {
   userDAL: Pick<
     TUserDALFactory,
-    "create" | "findOne" | "transaction" | "updateById" | "findById" | "findUserEncKeyByUserId"
+    | "create"
+    | "findOne"
+    | "updateById"
+    | "findById"
+    | "findUserEncKeyByUserId"
+    | "findUserEncKeyByUserIdsBatch"
+    | "find"
+    | "transaction"
   >;
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne">;
   orgDAL: Pick<
@@ -57,8 +72,22 @@ type TOidcConfigServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail" | "verify">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getUserOrgPermission">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne" | "update" | "create">;
+  groupDAL: Pick<TGroupDALFactory, "findByOrgId">;
+  userGroupMembershipDAL: Pick<
+    TUserGroupMembershipDALFactory,
+    | "find"
+    | "transaction"
+    | "insertMany"
+    | "findGroupMembershipsByUserIdInOrg"
+    | "delete"
+    | "filterProjectsByUserMembership"
+  >;
+  groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
+  projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
+  projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser">;
+  projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
 };
 
 export type TOidcConfigServiceFactory = ReturnType<typeof oidcConfigServiceFactory>;
@@ -73,7 +102,13 @@ export const oidcConfigServiceFactory = ({
   tokenService,
   orgBotDAL,
   smtpService,
-  oidcConfigDAL
+  oidcConfigDAL,
+  userGroupMembershipDAL,
+  groupDAL,
+  groupProjectDAL,
+  projectKeyDAL,
+  projectDAL,
+  projectBotDAL
 }: TOidcConfigServiceFactoryDep) => {
   const getOidc = async (dto: TGetOidcCfgDTO) => {
     const org = await orgDAL.findOne({ slug: dto.orgSlug });
@@ -156,11 +191,21 @@ export const oidcConfigServiceFactory = ({
       isActive: oidcCfg.isActive,
       allowedEmailDomains: oidcCfg.allowedEmailDomains,
       clientId,
-      clientSecret
+      clientSecret,
+      manageGroupMemberships: oidcCfg.manageGroupMemberships
     };
   };
 
-  const oidcLogin = async ({ externalId, email, firstName, lastName, orgId, callbackPort }: TOidcLoginDTO) => {
+  const oidcLogin = async ({
+    externalId,
+    email,
+    firstName,
+    lastName,
+    orgId,
+    callbackPort,
+    groups = [],
+    manageGroupMemberships
+  }: TOidcLoginDTO) => {
     const serverCfg = await getServerCfg();
 
     if (serverCfg.enabledLoginMethods && !serverCfg.enabledLoginMethods.includes(LoginMethod.OIDC)) {
@@ -315,6 +360,45 @@ export const oidcConfigServiceFactory = ({
       });
     }
 
+    if (manageGroupMemberships) {
+      const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(user.id, orgId);
+      const orgGroups = await groupDAL.findByOrgId(orgId);
+
+      const userGroupsNames = userGroups.map((membership) => membership.groupName);
+      const missingGroupsMemberships = groups.filter((groupName) => !userGroupsNames.includes(groupName));
+      const groupsToAddUserTo = orgGroups.filter((group) => missingGroupsMemberships.includes(group.name));
+
+      for await (const group of groupsToAddUserTo) {
+        await addUsersToGroupByUserIds({
+          userIds: [user.id],
+          group,
+          userDAL,
+          userGroupMembershipDAL,
+          orgDAL,
+          groupProjectDAL,
+          projectKeyDAL,
+          projectDAL,
+          projectBotDAL
+        });
+      }
+
+      const membershipsToRemove = userGroups
+        .filter((membership) => !groups.includes(membership.groupName))
+        .map((membership) => membership.groupId);
+      const groupsToRemoveUserFrom = orgGroups.filter((group) => membershipsToRemove.includes(group.id));
+
+      for await (const group of groupsToRemoveUserFrom) {
+        await removeUsersFromGroupByUserIds({
+          userIds: [user.id],
+          group,
+          userDAL,
+          userGroupMembershipDAL,
+          groupProjectDAL,
+          projectKeyDAL
+        });
+      }
+    }
+
     await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 
     const userEnc = await userDAL.findUserEncKeyByUserId(user.id);
@@ -385,7 +469,8 @@ export const oidcConfigServiceFactory = ({
     tokenEndpoint,
     userinfoEndpoint,
     clientId,
-    clientSecret
+    clientSecret,
+    manageGroupMemberships
   }: TUpdateOidcCfgDTO) => {
     const org = await orgDAL.findOne({
       slug: orgSlug
@@ -448,7 +533,8 @@ export const oidcConfigServiceFactory = ({
       userinfoEndpoint,
       jwksUri,
       isActive,
-      lastUsed: null
+      lastUsed: null,
+      manageGroupMemberships
     };
 
     if (clientId !== undefined) {
@@ -491,7 +577,8 @@ export const oidcConfigServiceFactory = ({
     tokenEndpoint,
     userinfoEndpoint,
     clientId,
-    clientSecret
+    clientSecret,
+    manageGroupMemberships
   }: TCreateOidcCfgDTO) => {
     const org = await orgDAL.findOne({
       slug: orgSlug
@@ -589,7 +676,8 @@ export const oidcConfigServiceFactory = ({
       clientIdTag,
       encryptedClientSecret,
       clientSecretIV,
-      clientSecretTag
+      clientSecretTag,
+      manageGroupMemberships
     });
 
     return oidcCfg;
@@ -683,7 +771,9 @@ export const oidcConfigServiceFactory = ({
           firstName: claims.given_name ?? "",
           lastName: claims.family_name ?? "",
           orgId: org.id,
-          callbackPort
+          groups: claims.groups as string[] | undefined,
+          callbackPort,
+          manageGroupMemberships: oidcCfg.manageGroupMemberships
         })
           .then(({ isUserCompleted, providerAuthToken }) => {
             cb(null, { isUserCompleted, providerAuthToken });
@@ -697,5 +787,16 @@ export const oidcConfigServiceFactory = ({
     return strategy;
   };
 
-  return { oidcLogin, getOrgAuthStrategy, getOidc, updateOidcCfg, createOidcCfg };
+  const isOidcManageGroupMembershipsEnabled = async (orgId: string, actor: OrgServiceActor) => {
+    await permissionService.getUserOrgPermission(actor.id, orgId, actor.authMethod, actor.orgId);
+
+    const oidcConfig = await oidcConfigDAL.findOne({
+      orgId,
+      isActive: true
+    });
+
+    return Boolean(oidcConfig?.manageGroupMemberships);
+  };
+
+  return { oidcLogin, getOrgAuthStrategy, getOidc, updateOidcCfg, createOidcCfg, isOidcManageGroupMembershipsEnabled };
 };

@@ -467,7 +467,8 @@ export const registerRoutes = async (
     projectBotDAL,
     projectKeyDAL,
     permissionService,
-    licenseService
+    licenseService,
+    oidcConfigDAL
   });
   const groupProjectService = groupProjectServiceFactory({
     groupDAL,
@@ -1337,7 +1338,13 @@ export const registerRoutes = async (
     smtpService,
     orgBotDAL,
     permissionService,
-    oidcConfigDAL
+    oidcConfigDAL,
+    projectBotDAL,
+    projectKeyDAL,
+    projectDAL,
+    userGroupMembershipDAL,
+    groupProjectDAL,
+    groupDAL
   });
 
   const userEngagementService = userEngagementServiceFactory({

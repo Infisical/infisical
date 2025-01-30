@@ -21,11 +21,12 @@ import {
   TBody,
   Th,
   THead,
+  Tooltip,
   Tr
 } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { usePagination, useResetPageHelper } from "@app/hooks";
-import { useListGroupUsers } from "@app/hooks/api";
+import { useListGroupUsers, useOidcManageGroupMembershipsEnabled } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { EFilterReturnedUsers } from "@app/hooks/api/groups/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -57,6 +58,11 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
     orderDirection,
     toggleOrderDirection
   } = usePagination(GroupMembersOrderBy.Name, { initPerPage: 10 });
+
+  const { currentOrg } = useOrganization();
+
+  const { data: isOidcManageGroupMembershipsEnabled = false } =
+    useOidcManageGroupMembershipsEnabled(currentOrg.id);
 
   const { data: groupMemberships, isPending } = useListGroupUsers({
     id: groupId,
@@ -173,19 +179,30 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
         {!groupMemberships?.users.length && (
           <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Groups}>
             {(isAllowed) => (
-              <div className="mb-4 flex items-center justify-center">
-                <Button
-                  isDisabled={!isAllowed}
-                  onClick={() => {
-                    handlePopUpOpen("addGroupMembers", {
-                      groupId,
-                      slug: groupSlug
-                    });
-                  }}
-                >
-                  Add members
-                </Button>
-              </div>
+              <Tooltip
+                className="text-center"
+                content={
+                  isOidcManageGroupMembershipsEnabled
+                    ? "OIDC Group Membership Mapping Enabled. Disable to manually manage user groups."
+                    : undefined
+                }
+              >
+                <div className="mb-4 flex items-center justify-center">
+                  <Button
+                    variant="solid"
+                    colorSchema="secondary"
+                    isDisabled={isOidcManageGroupMembershipsEnabled || !isAllowed}
+                    onClick={() => {
+                      handlePopUpOpen("addGroupMembers", {
+                        groupId,
+                        slug: groupSlug
+                      });
+                    }}
+                  >
+                    Add members
+                  </Button>
+                </div>
+              </Tooltip>
             )}
           </OrgPermissionCan>
         )}

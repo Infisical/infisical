@@ -12,4 +12,5 @@ export type OIDCConfigData = {
   clientId: string;
   clientSecret: string;
   allowedEmailDomains?: string;
+  manageGroupMemberships: boolean;
 };

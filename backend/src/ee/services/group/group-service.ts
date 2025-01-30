@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
 import { OrgMembershipRole, TOrgRoles } from "@app/db/schemas";
+import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -45,6 +46,7 @@ type TGroupServiceFactoryDep = {
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "findLatestProjectKey" | "insertMany">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRole">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
 };
 
 export type TGroupServiceFactory = ReturnType<typeof groupServiceFactory>;
@@ -59,7 +61,8 @@ export const groupServiceFactory = ({
   projectBotDAL,
   projectKeyDAL,
   permissionService,
-  licenseService
+  licenseService,
+  oidcConfigDAL
 }: TGroupServiceFactoryDep) => {
   const createGroup = async ({ name, slug, role, actor, actorId, actorAuthMethod, actorOrgId }: TCreateGroupDTO) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
@@ -311,6 +314,15 @@ export const groupServiceFactory = ({
         message: `Failed to find group with ID ${id}`
       });
 
+    const oidcConfig = await oidcConfigDAL.findOne({
+      orgId: group.orgId,
+      isActive: true
+    });
+
+    if (oidcConfig?.manageGroupMemberships) {
+      throw new BadRequestError({ message: "Cannot add user to group: OIDC group membership mapping is enabled." });
+    }
+
     const { permission: groupRolePermission } = await permissionService.getOrgPermissionByRole(group.role, actorOrgId);
 
     // check if user has broader or equal to privileges than group
@@ -365,6 +377,17 @@ export const groupServiceFactory = ({
       throw new NotFoundError({
         message: `Failed to find group with ID ${id}`
       });
+
+    const oidcConfig = await oidcConfigDAL.findOne({
+      orgId: group.orgId,
+      isActive: true
+    });
+
+    if (oidcConfig?.manageGroupMemberships) {
+      throw new BadRequestError({
+        message: "Cannot remove user from group: OIDC group membership mapping is enabled."
+      });
+    }
 
     const { permission: groupRolePermission } = await permissionService.getOrgPermissionByRole(group.role, actorOrgId);
 

@@ -52,6 +52,7 @@ Refer to the table below for a list of subjects and the actions they support.
 | `pki-collections`         | `read`, `create`, `edit`, `delete`                                                                          |
 | `kms`                     | `edit`                                                                                                      |
 | `cmek`                    | `read`, `create`, `edit`, `delete`, `encrypt`, `decrypt`                                                    |
+| `secret-syncs`            | `read`, `create`, `edit`, `delete`, `sync-secrets`, `import-secrets`, `remove-secrets`                      |
 
 </Tab>
 
@@ -63,21 +64,23 @@ Refer to the table below for a list of subjects and the actions they support.
   `read`, `create`, `edit`, `delete`.
 </Note>
 
-| Subject            | Actions                            |
-| ------------------ | ---------------------------------- |
-| `workspace`        | `read`, `create`                   |
-| `role`             | `read`, `create`, `edit`, `delete` |
-| `member`           | `read`, `create`, `edit`, `delete` |
-| `secret-scanning`  | `read`, `create`, `edit`, `delete` |
-| `settings`         | `read`, `create`, `edit`, `delete` |
-| `incident-account` | `read`, `create`, `edit`, `delete` |
-| `sso`              | `read`, `create`, `edit`, `delete` |
-| `scim`             | `read`, `create`, `edit`, `delete` |
-| `ldap`             | `read`, `create`, `edit`, `delete` |
-| `groups`           | `read`, `create`, `edit`, `delete` |
-| `billing`          | `read`, `create`, `edit`, `delete` |
-| `identity`         | `read`, `create`, `edit`, `delete` |
-| `kms`              | `read`                             |
+| Subject               | Actions                                          |
+| --------------------- | ------------------------------------------------ |
+| `workspace`           | `read`, `create`                                 |
+| `role`                | `read`, `create`, `edit`, `delete`               |
+| `member`              | `read`, `create`, `edit`, `delete`               |
+| `secret-scanning`     | `read`, `create`, `edit`, `delete`               |
+| `settings`            | `read`, `create`, `edit`, `delete`               |
+| `incident-account`    | `read`, `create`, `edit`, `delete`               |
+| `sso`                 | `read`, `create`, `edit`, `delete`               |
+| `scim`                | `read`, `create`, `edit`, `delete`               |
+| `ldap`                | `read`, `create`, `edit`, `delete`               |
+| `groups`              | `read`, `create`, `edit`, `delete`               |
+| `billing`             | `read`, `create`, `edit`, `delete`               |
+| `identity`            | `read`, `create`, `edit`, `delete`               |
+| `project-templates`   | `read`, `create`, `edit`, `delete`               |
+| `app-connections`     | `read`, `create`, `edit`, `delete`, `connect`    |
+| `kms`                 | `read`                                           |
 
 </Tab>
 </Tabs>
