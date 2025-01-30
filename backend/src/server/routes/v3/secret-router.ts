@@ -184,15 +184,36 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretMetadata: z
           .string()
           .optional()
-          .transform((value) => {
-            if (!value) return undefined;
+          .transform((val) => {
+            if (!val) return undefined;
 
-            const metadata = value.split(",").map((el) => {
-              const [key, val] = el.split(":");
-              return { key, value: val };
-            });
+            const result: { key?: string; value?: string }[] = [];
+            const pairs = val.split(",");
 
-            return metadata;
+            for (const pair of pairs) {
+              const pairResult: { key?: string; value?: string } = {};
+              const parts = pair.split(/[:=]/).map((part) => part.trim());
+
+              for (let i = 0; i < parts.length - 1; i += 1) {
+                const current = parts[i].toLowerCase();
+                const next = parts[i + 1];
+
+                if (current === "key" && next) {
+                  pairResult.key = next;
+                } else if (current === "value" && next) {
+                  pairResult.value = next;
+                }
+              }
+
+              // Only add pair if at least one of key or value is present
+              if (pairResult.key || pairResult.value) {
+                result.push(pairResult);
+              }
+            }
+
+            if (!result.length) return undefined;
+
+            return result;
           })
           .superRefine((metadata, ctx) => {
             if (metadata && !Array.isArray(metadata)) {
@@ -211,11 +232,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               }
 
               for (const item of metadata) {
-                if (!item.key || !item.value) {
+                if (!item.key && !item.value) {
                   ctx.addIssue({
                     code: z.ZodIssueCode.custom,
                     message:
-                      "Invalid secretMetadata format, key or value is missing. Correct format is key1:value1,key2:value2"
+                      "Invalid secretMetadata format, key or value must be provided. Correct format is key1:value1,key2:value2"
                   });
                 }
               }

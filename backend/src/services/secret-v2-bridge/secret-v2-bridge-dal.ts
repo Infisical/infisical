@@ -418,8 +418,8 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
           if (filters?.secretMetadata && filters.secretMetadata.length > 0) {
             filters.secretMetadata.forEach((meta) => {
               void qb.where({
-                [`${TableName.ResourceMetadata}.key` as string]: meta.key,
-                [`${TableName.ResourceMetadata}.value` as string]: meta.value
+                ...(meta.key ? { [`${TableName.ResourceMetadata}.key` as string]: meta.key } : {}),
+                ...(meta.value ? { [`${TableName.ResourceMetadata}.value` as string]: meta.value } : {})
               });
             });
           }
