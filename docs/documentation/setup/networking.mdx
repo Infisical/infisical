@@ -10,25 +10,25 @@ When integrating your infrastructure with Infisical Cloud, you may need to confi
 
 ## Egress IP Addresses
 
-Infisical Cloud operates from two regions: US and EU. Depending on your region and security requirements, you may need to whitelist specific IP addresses to allow Infisical to communicate with your services.
+Infisical Cloud operates from two regions: US and EU. If your infrastructure has strict network policies, you may need to allow traffic from Infisical by adding the following IP addresses to your ingress rules. These are the egress IPs Infisical uses when making outbound requests to your services.
 
 ### US Region
 
-If you need Infisical US to reach your network, whitelist these IP addresses:
+To allow connections from Infisical US, add these IP addresses to your ingress rules:
 
 - `3.213.63.16`
 - `54.164.68.7`
 
 ### EU Region
 
-If you need Infisical EU to reach your network, whitelist these IP addresses:
+To allow connections from Infisical EU, add these IP addresses to your ingress rules:
 
 - `3.77.89.19`
 - `3.125.209.189`
 
 ## Common Use Cases
 
-You might need to configure these IP addresses if you operate in a restricted network with the following Infisical features:
+You may need to allow Infisical’s egress IPs if your services require inbound connections for:
 
 - Secret rotation - When Infisical needs to send requests to your systems to automatically rotate credentials
 - Dynamic secrets - When Infisical generates and manages temporary credentials for your cloud services
