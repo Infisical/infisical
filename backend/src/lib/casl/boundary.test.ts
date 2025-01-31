@@ -72,6 +72,10 @@ describe("Validate Permission Boundary Function", () => {
         {
           action: ["create"],
           subject: "members"
+        },
+        {
+          action: ["create"],
+          subject: "secrets"
         }
       ]),
       expectValid: true,
