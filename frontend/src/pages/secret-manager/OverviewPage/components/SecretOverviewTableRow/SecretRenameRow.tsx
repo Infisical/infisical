@@ -189,17 +189,19 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
                 animate={{ x: 0, opacity: 1 }}
                 exit={{ x: 10, opacity: 0 }}
               >
-                <Tooltip content="Copy secret name">
-                  <IconButton
-                    ariaLabel="copy-value"
-                    variant="plain"
-                    size="sm"
-                    className="p-0 opacity-0 group-hover:opacity-100"
-                    onClick={copyTokenToClipboard}
-                  >
-                    <FontAwesomeIcon icon={isSecNameCopied ? faCheck : faCopy} />
-                  </IconButton>
-                </Tooltip>
+                <div className="relative">
+                  <Tooltip content="Copy secret name">
+                    <IconButton
+                      ariaLabel="copy-value"
+                      variant="plain"
+                      size="sm"
+                      className="p-0 opacity-100"
+                      onClick={copyTokenToClipboard}
+                    >
+                      <FontAwesomeIcon icon={isSecNameCopied ? faCheck : faCopy} />
+                    </IconButton>
+                  </Tooltip>
+                </div>
               </motion.div>
             ) : (
               <motion.div
@@ -209,44 +211,48 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
                 animate={{ x: 0, opacity: 1 }}
                 exit={{ x: -10, opacity: 0 }}
               >
-                <Tooltip content={errors.key ? errors.key.message : "Save"}>
-                  <IconButton
-                    ariaLabel="more"
-                    variant="plain"
-                    type="submit"
-                    size="md"
-                    className={twMerge(
-                      "p-0 text-primary opacity-0 group-hover:opacity-100",
-                      isDirty && "opacity-100"
-                    )}
-                    isDisabled={isSubmitting || Boolean(errors.key)}
-                  >
-                    {isSubmitting ? (
-                      <Spinner className="m-0 h-4 w-4 p-0" />
-                    ) : (
-                      <FontAwesomeIcon
-                        icon={faCheck}
-                        size="lg"
-                        className={twMerge("text-primary", errors.key && "text-mineshaft-400")}
-                      />
-                    )}
-                  </IconButton>
-                </Tooltip>
-                <Tooltip content="Cancel">
-                  <IconButton
-                    ariaLabel="more"
-                    variant="plain"
-                    size="md"
-                    className={twMerge(
-                      "p-0 opacity-0 group-hover:opacity-100",
-                      isDirty && "opacity-100"
-                    )}
-                    onClick={() => reset()}
-                    isDisabled={isSubmitting}
-                  >
-                    <FontAwesomeIcon icon={faClose} size="lg" />
-                  </IconButton>
-                </Tooltip>
+                <div className="relative">
+                  <Tooltip content={errors.key ? errors.key.message : "Save"}>
+                    <IconButton
+                      ariaLabel="more"
+                      variant="plain"
+                      type="submit"
+                      size="md"
+                      className={twMerge(
+                        "p-0 text-primary opacity-0 group-hover:opacity-100",
+                        isDirty && "opacity-100"
+                      )}
+                      isDisabled={isSubmitting || Boolean(errors.key)}
+                    >
+                      {isSubmitting ? (
+                        <Spinner className="m-0 h-4 w-4 p-0" />
+                      ) : (
+                        <FontAwesomeIcon
+                          icon={faCheck}
+                          size="lg"
+                          className={twMerge("text-primary", errors.key && "text-mineshaft-400")}
+                        />
+                      )}
+                    </IconButton>
+                  </Tooltip>
+                </div>
+                <div className="relative">
+                  <Tooltip content="Cancel">
+                    <IconButton
+                      ariaLabel="more"
+                      variant="plain"
+                      size="md"
+                      className={twMerge(
+                        "p-0 opacity-0 group-hover:opacity-100",
+                        isDirty && "opacity-100"
+                      )}
+                      onClick={() => reset()}
+                      isDisabled={isSubmitting}
+                    >
+                      <FontAwesomeIcon icon={faClose} size="lg" />
+                    </IconButton>
+                  </Tooltip>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
