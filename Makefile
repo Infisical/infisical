@@ -30,3 +30,6 @@ reviewable-api:
 	npm run type:check
 
 reviewable: reviewable-ui reviewable-api
+
+up-dev-sso:
+	docker compose -f docker-compose.dev.yml --profile sso up --build

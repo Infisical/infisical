@@ -114,7 +114,11 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.DELETE_SECRET_SYNC]: "Delete Secret Sync",
   [EventType.SECRET_SYNC_SYNC_SECRETS]: "Secret Sync synced secrets",
   [EventType.SECRET_SYNC_IMPORT_SECRETS]: "Secret Sync imported secrets",
-  [EventType.SECRET_SYNC_REMOVE_SECRETS]: "Secret Sync removed secrets"
+  [EventType.SECRET_SYNC_REMOVE_SECRETS]: "Secret Sync removed secrets",
+  [EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER]:
+    "OIDC group membership mapping assigned user to groups",
+  [EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER]:
+    "OIDC group membership mapping removed user from groups"
 };
 
 export const userAgentTTypeoNameMap: { [K in UserAgentType]: string } = {

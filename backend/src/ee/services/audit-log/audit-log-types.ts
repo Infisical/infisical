@@ -249,7 +249,9 @@ export enum EventType {
   DELETE_SECRET_SYNC = "delete-secret-sync",
   SECRET_SYNC_SYNC_SECRETS = "secret-sync-sync-secrets",
   SECRET_SYNC_IMPORT_SECRETS = "secret-sync-import-secrets",
-  SECRET_SYNC_REMOVE_SECRETS = "secret-sync-remove-secrets"
+  SECRET_SYNC_REMOVE_SECRETS = "secret-sync-remove-secrets",
+  OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER = "oidc-group-membership-mapping-assign-user",
+  OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER = "oidc-group-membership-mapping-remove-user"
 }
 
 interface UserActorMetadata {
@@ -2044,6 +2046,26 @@ interface SecretSyncRemoveSecretsEvent {
   };
 }
 
+interface OidcGroupMembershipMappingAssignUserEvent {
+  type: EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER;
+  metadata: {
+    assignedToGroups: { id: string; name: string }[];
+    userId: string;
+    userEmail: string;
+    userGroupsClaim: string[];
+  };
+}
+
+interface OidcGroupMembershipMappingRemoveUserEvent {
+  type: EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER;
+  metadata: {
+    removedFromGroups: { id: string; name: string }[];
+    userId: string;
+    userEmail: string;
+    userGroupsClaim: string[];
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -2232,4 +2254,6 @@ export type Event =
   | DeleteSecretSyncEvent
   | SecretSyncSyncSecretsEvent
   | SecretSyncImportSecretsEvent
-  | SecretSyncRemoveSecretsEvent;
+  | SecretSyncRemoveSecretsEvent
+  | OidcGroupMembershipMappingAssignUserEvent
+  | OidcGroupMembershipMappingRemoveUserEvent;

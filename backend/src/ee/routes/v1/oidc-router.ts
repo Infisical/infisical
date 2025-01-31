@@ -153,7 +153,8 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           discoveryURL: true,
           isActive: true,
           orgId: true,
-          allowedEmailDomains: true
+          allowedEmailDomains: true,
+          manageGroupMemberships: true
         }).extend({
           clientId: z.string(),
           clientSecret: z.string()
@@ -207,7 +208,8 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           userinfoEndpoint: z.string().trim(),
           clientId: z.string().trim(),
           clientSecret: z.string().trim(),
-          isActive: z.boolean()
+          isActive: z.boolean(),
+          manageGroupMemberships: z.boolean().optional()
         })
         .partial()
         .merge(z.object({ orgSlug: z.string() })),
@@ -223,7 +225,8 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           userinfoEndpoint: true,
           orgId: true,
           allowedEmailDomains: true,
-          isActive: true
+          isActive: true,
+          manageGroupMemberships: true
         })
       }
     },
@@ -272,7 +275,8 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           clientId: z.string().trim(),
           clientSecret: z.string().trim(),
           isActive: z.boolean(),
-          orgSlug: z.string().trim()
+          orgSlug: z.string().trim(),
+          manageGroupMemberships: z.boolean().optional().default(false)
         })
         .superRefine((data, ctx) => {
           if (data.configurationType === OIDCConfigurationType.CUSTOM) {
@@ -334,7 +338,8 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           userinfoEndpoint: true,
           orgId: true,
           isActive: true,
-          allowedEmailDomains: true
+          allowedEmailDomains: true,
+          manageGroupMemberships: true
         })
       }
     },
@@ -348,6 +353,27 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
         ...req.body
       });
       return oidc;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/manage-group-memberships",
+    schema: {
+      querystring: z.object({
+        orgId: z.string().trim().min(1, "Org ID is required")
+      }),
+      response: {
+        200: z.object({
+          isEnabled: z.boolean()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const isEnabled = await server.services.oidc.isOidcManageGroupMembershipsEnabled(req.query.orgId, req.permission);
+
+      return { isEnabled };
     }
   });
 };

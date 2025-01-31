@@ -127,5 +127,7 @@ export enum EventType {
   DELETE_SECRET_SYNC = "delete-secret-sync",
   SECRET_SYNC_SYNC_SECRETS = "secret-sync-sync-secrets",
   SECRET_SYNC_IMPORT_SECRETS = "secret-sync-import-secrets",
-  SECRET_SYNC_REMOVE_SECRETS = "secret-sync-remove-secrets"
+  SECRET_SYNC_REMOVE_SECRETS = "secret-sync-remove-secrets",
+  OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER = "oidc-group-membership-mapping-assign-user",
+  OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER = "oidc-group-membership-mapping-remove-user"
 }

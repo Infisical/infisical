@@ -12,6 +12,8 @@ export type TOidcLoginDTO = {
   lastName?: string;
   orgId: string;
   callbackPort?: string;
+  groups?: string[];
+  manageGroupMemberships?: boolean | null;
 };
 
 export type TGetOidcCfgDTO =
@@ -37,6 +39,7 @@ export type TCreateOidcCfgDTO = {
   clientSecret: string;
   isActive: boolean;
   orgSlug: string;
+  manageGroupMemberships: boolean;
 } & TGenericPermission;
 
 export type TUpdateOidcCfgDTO = Partial<{
@@ -52,5 +55,6 @@ export type TUpdateOidcCfgDTO = Partial<{
   clientSecret: string;
   isActive: boolean;
   orgSlug: string;
+  manageGroupMemberships: boolean;
 }> &
   TGenericPermission;

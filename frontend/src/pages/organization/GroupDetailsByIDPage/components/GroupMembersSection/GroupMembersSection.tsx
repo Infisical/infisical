@@ -2,8 +2,10 @@ import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal, IconButton } from "@app/components/v2";
-import { useRemoveUserFromGroup } from "@app/hooks/api";
+import { OrgPermissionCan } from "@app/components/permissions";
+import { DeleteActionModal, IconButton, Tooltip } from "@app/components/v2";
+import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import { useOidcManageGroupMembershipsEnabled, useRemoveUserFromGroup } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AddGroupMembersModal } from "../AddGroupMemberModal";
@@ -19,6 +21,11 @@ export const GroupMembersSection = ({ groupId, groupSlug }: Props) => {
     "addGroupMembers",
     "removeMemberFromGroup"
   ] as const);
+
+  const { currentOrg } = useOrganization();
+
+  const { data: isOidcManageGroupMembershipsEnabled = false } =
+    useOidcManageGroupMembershipsEnabled(currentOrg.id);
 
   const { mutateAsync: removeUserFromGroupMutateAsync } = useRemoveUserFromGroup();
   const handleRemoveUserFromGroup = async (username: string) => {
@@ -47,19 +54,35 @@ export const GroupMembersSection = ({ groupId, groupSlug }: Props) => {
     <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
         <h3 className="text-lg font-semibold text-mineshaft-100">Group Members</h3>
-        <IconButton
-          ariaLabel="copy icon"
-          variant="plain"
-          className="group relative"
-          onClick={() => {
-            handlePopUpOpen("addGroupMembers", {
-              groupId,
-              slug: groupSlug
-            });
-          }}
-        >
-          <FontAwesomeIcon icon={faPlus} />
-        </IconButton>
+        <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Groups}>
+          {(isAllowed) => (
+            <Tooltip
+              className="text-center"
+              content={
+                isOidcManageGroupMembershipsEnabled
+                  ? "OIDC Group Membership Mapping Enabled. Assign users to this group in your OIDC provider."
+                  : undefined
+              }
+            >
+              <div className="mb-4 flex items-center justify-center">
+                <IconButton
+                  isDisabled={isOidcManageGroupMembershipsEnabled || !isAllowed}
+                  ariaLabel="copy icon"
+                  variant="plain"
+                  className="group relative"
+                  onClick={() => {
+                    handlePopUpOpen("addGroupMembers", {
+                      groupId,
+                      slug: groupSlug
+                    });
+                  }}
+                >
+                  <FontAwesomeIcon icon={faPlus} />
+                </IconButton>
+              </div>
+            </Tooltip>
+          )}
+        </OrgPermissionCan>
       </div>
       <div className="py-4">
         <GroupMembersTable

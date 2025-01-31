@@ -192,6 +192,17 @@ services:
     depends_on:
       - openldap
     profiles: [ldap]
+    
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.1.0
+    restart: always
+    environment:
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=admin
+      - KC_BOOTSTRAP_ADMIN_USERNAME=admin
+    command: start-dev
+    ports:
+      - 8088:8080
+    profiles: [ sso ]
 
 volumes:
   postgres-data:
