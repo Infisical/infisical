@@ -40,6 +40,12 @@ export const LogsTableRow = ({ auditLog, isOrgAuditLogs, showActorColumn }: Prop
             <p>Machine Identity</p>
           </Td>
         );
+      case ActorType.PLATFORM:
+        return (
+          <Td>
+            <p>Platform</p>
+          </Td>
+        );
       case ActorType.UNKNOWN_USER:
         return (
           <Td>

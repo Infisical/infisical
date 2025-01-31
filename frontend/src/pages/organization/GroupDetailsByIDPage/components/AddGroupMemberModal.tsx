@@ -82,9 +82,9 @@ export const AddGroupMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
         text: "Successfully assigned user to the group",
         type: "success"
       });
-    } catch (error) {
+    } catch {
       createNotification({
-        text: (error as Error)?.message ?? "Failed to assign user to the group",
+        text: "Failed to assign user to the group",
         type: "error"
       });
     }

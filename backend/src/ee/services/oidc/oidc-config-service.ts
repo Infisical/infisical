@@ -5,6 +5,8 @@ import { Issuer, Issuer as OpenIdIssuer, Strategy as OpenIdStrategy, TokenSet } 
 
 import { OrgMembershipStatus, SecretKeyEncoding, TableName, TUsers } from "@app/db/schemas";
 import { TOidcConfigsUpdate } from "@app/db/schemas/oidc-configs";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -22,7 +24,7 @@ import {
 } from "@app/lib/crypto/encryption";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
-import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
+import { ActorType, AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
@@ -88,6 +90,7 @@ type TOidcConfigServiceFactoryDep = {
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
   projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
 export type TOidcConfigServiceFactory = ReturnType<typeof oidcConfigServiceFactory>;
@@ -108,7 +111,8 @@ export const oidcConfigServiceFactory = ({
   groupProjectDAL,
   projectKeyDAL,
   projectDAL,
-  projectBotDAL
+  projectBotDAL,
+  auditLogService
 }: TOidcConfigServiceFactoryDep) => {
   const getOidc = async (dto: TGetOidcCfgDTO) => {
     const org = await orgDAL.findOne({ slug: dto.orgSlug });
@@ -382,6 +386,25 @@ export const oidcConfigServiceFactory = ({
         });
       }
 
+      if (groupsToAddUserTo.length) {
+        await auditLogService.createAuditLog({
+          actor: {
+            type: ActorType.PLATFORM,
+            metadata: {}
+          },
+          orgId,
+          event: {
+            type: EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER,
+            metadata: {
+              userId: user.id,
+              userEmail: user.email ?? user.username,
+              assignedToGroups: groupsToAddUserTo.map(({ id, name }) => ({ id, name })),
+              userGroupsClaim: groups
+            }
+          }
+        });
+      }
+
       const membershipsToRemove = userGroups
         .filter((membership) => !groups.includes(membership.groupName))
         .map((membership) => membership.groupId);
@@ -395,6 +418,25 @@ export const oidcConfigServiceFactory = ({
           userGroupMembershipDAL,
           groupProjectDAL,
           projectKeyDAL
+        });
+      }
+
+      if (groupsToRemoveUserFrom.length) {
+        await auditLogService.createAuditLog({
+          actor: {
+            type: ActorType.PLATFORM,
+            metadata: {}
+          },
+          orgId,
+          event: {
+            type: EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER,
+            metadata: {
+              userId: user.id,
+              userEmail: user.email ?? user.username,
+              removedFromGroups: groupsToRemoveUserFrom.map(({ id, name }) => ({ id, name })),
+              userGroupsClaim: groups
+            }
+          }
         });
       }
     }

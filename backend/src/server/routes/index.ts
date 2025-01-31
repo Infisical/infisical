@@ -1344,7 +1344,8 @@ export const registerRoutes = async (
     projectDAL,
     userGroupMembershipDAL,
     groupProjectDAL,
-    groupDAL
+    groupDAL,
+    auditLogService
   });
 
   const userEngagementService = userEngagementServiceFactory({

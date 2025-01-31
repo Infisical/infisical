@@ -320,7 +320,10 @@ export const groupServiceFactory = ({
     });
 
     if (oidcConfig?.manageGroupMemberships) {
-      throw new BadRequestError({ message: "Cannot add user to group: OIDC group membership mapping is enabled." });
+      throw new BadRequestError({
+        message:
+          "Cannot add user to group: OIDC group membership mapping is enabled - user must be assigned to this group in your OIDC provider."
+      });
     }
 
     const { permission: groupRolePermission } = await permissionService.getOrgPermissionByRole(group.role, actorOrgId);
@@ -385,7 +388,8 @@ export const groupServiceFactory = ({
 
     if (oidcConfig?.manageGroupMemberships) {
       throw new BadRequestError({
-        message: "Cannot remove user from group: OIDC group membership mapping is enabled."
+        message:
+          "Cannot remove user from group: OIDC group membership mapping is enabled - user must be removed from this group in your OIDC provider."
       });
     }
 

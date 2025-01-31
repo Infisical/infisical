@@ -16,7 +16,8 @@ Infisical groups not present in their groups claim.
 
 <Warning>
     Group membership changes in the Keycloak only sync with Infisical when a
-    user logs in. For example, if you remove a user from a group in Keycloak, this change will not be reflected in Infisical until their next login.
+    user logs in via OIDC. For example, if you remove a user from a group in Keycloak, this change will not be reflected in Infisical until their next OIDC login. To ensure this behavior, Infisical recommends enabling Enforce OIDC
+    SSO in the OIDC settings.
 </Warning>
 
 

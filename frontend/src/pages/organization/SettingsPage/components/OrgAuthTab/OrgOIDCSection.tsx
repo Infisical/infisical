@@ -203,8 +203,10 @@ export const OrgOIDCSection = (): JSX.Element => {
                   <p className="mt-4 text-yellow">
                     <FontAwesomeIcon className="mr-1" icon={faWarning} />
                     Group membership changes in the OIDC provider only sync with Infisical when a
-                    user logs in. For example, if you remove a user from a group in the OIDC
-                    provider, this change will not be reflected in Infisical until their next login.
+                    user logs in via OIDC. For example, if you remove a user from a group in the
+                    OIDC provider, this change will not be reflected in Infisical until their next
+                    OIDC login. To ensure this behavior, Infisical recommends enabling Enforce OIDC
+                    SSO.
                   </p>
                 </>
               }
