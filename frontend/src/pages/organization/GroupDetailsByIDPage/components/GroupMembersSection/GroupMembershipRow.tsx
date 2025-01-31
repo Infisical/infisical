@@ -45,7 +45,7 @@ export const GroupMembershipRow = ({
               <Tooltip
                 content={
                   isOidcManageGroupMembershipsEnabled
-                    ? "OIDC Group Membership Mapping Enabled. Remove user from group in OIDC provider."
+                    ? "OIDC Group Membership Mapping Enabled. Remove user from this group in your OIDC provider."
                     : "Remove user from group"
                 }
               >
