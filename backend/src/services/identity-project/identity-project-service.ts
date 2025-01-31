@@ -95,7 +95,7 @@ export const identityProjectServiceFactory = ({
       if (!permissionBoundary.isValid)
         throw new ForbiddenRequestError({
           name: "PermissionBoundaryError",
-          message: "Failed to change to a more privileged role",
+          message: "Failed to assign to a more privileged role",
           details: { missingPermissions: permissionBoundary.missingPermissions }
         });
     }
@@ -287,7 +287,7 @@ export const identityProjectServiceFactory = ({
     if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",
-        message: "Failed to delete more privileged identity",
+        message: "Failed to remove more privileged identity",
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 

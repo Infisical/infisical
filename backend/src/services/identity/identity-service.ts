@@ -137,7 +137,7 @@ export const identityServiceFactory = ({
     if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",
-        message: "Failed to delete a more privileged identity",
+        message: "Failed to update a more privileged identity",
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
@@ -232,7 +232,7 @@ export const identityServiceFactory = ({
     if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",
-        message: "Failed to delete more privileged user",
+        message: "Failed to delete more privileged identity",
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 

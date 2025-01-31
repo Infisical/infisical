@@ -421,7 +421,7 @@ export const identityUaServiceFactory = ({
     if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",
-        message: "Failed to add identity to project with more privileged role",
+        message: "Failed to create client secret for a more privileged identity.",
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
@@ -484,7 +484,7 @@ export const identityUaServiceFactory = ({
     if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",
-        message: "Failed to get identity with more privileged role",
+        message: "Failed to get identity client secret with more privileged role",
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
@@ -536,7 +536,7 @@ export const identityUaServiceFactory = ({
     if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",
-        message: "Failed to read identity client secret of project with more privileged role",
+        message: "Failed to read identity client secret of identity with more privileged role",
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 

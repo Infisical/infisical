@@ -29,7 +29,7 @@ const isOperatorsASubset = (parentSet: TPermissionConditionShape, subset: TPermi
   // we compute each operator against each other in left hand side and right hand side
   if (subset[PermissionConditionOperators.$EQ] || subset[PermissionConditionOperators.$NEQ]) {
     const subsetOperatorValue = subset[PermissionConditionOperators.$EQ] || subset[PermissionConditionOperators.$NEQ];
-    const isInverted = Boolean(subset[PermissionConditionOperators.$NEQ]);
+    const isInverted = !subset[PermissionConditionOperators.$EQ];
     if (
       parentSet[PermissionConditionOperators.$EQ] &&
       invertTheOperation(isInverted, parentSet[PermissionConditionOperators.$EQ] !== subsetOperatorValue)

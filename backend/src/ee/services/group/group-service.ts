@@ -165,7 +165,7 @@ export const groupServiceFactory = ({
       if (!permissionBoundary.isValid)
         throw new ForbiddenRequestError({
           name: "PermissionBoundaryError",
-          message: "Failed to create a more privileged group",
+          message: "Failed to update a more privileged group",
           details: { missingPermissions: permissionBoundary.missingPermissions }
         });
       if (isCustomRole) customRole = customOrgRole;
