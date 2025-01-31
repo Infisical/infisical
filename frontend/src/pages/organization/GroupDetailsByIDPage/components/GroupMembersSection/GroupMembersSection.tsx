@@ -60,7 +60,7 @@ export const GroupMembersSection = ({ groupId, groupSlug }: Props) => {
               className="text-center"
               content={
                 isOidcManageGroupMembershipsEnabled
-                  ? "OIDC Group Membership Mapping Enabled. Disable to manually manage user groups."
+                  ? "OIDC Group Membership Mapping Enabled. Assign users to this group in your OIDC provider."
                   : undefined
               }
             >
