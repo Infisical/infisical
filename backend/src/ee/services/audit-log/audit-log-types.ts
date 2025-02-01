@@ -325,6 +325,7 @@ interface GetSecretEvent {
     secretId: string;
     secretKey: string;
     secretVersion: number;
+    secretMetadata?: unknown;
   };
 }
 
@@ -336,6 +337,7 @@ interface CreateSecretEvent {
     secretId: string;
     secretKey: string;
     secretVersion: number;
+    secretMetadata?: unknown;
   };
 }
 
@@ -344,7 +346,7 @@ interface CreateSecretBatchEvent {
   metadata: {
     environment: string;
     secretPath: string;
-    secrets: Array<{ secretId: string; secretKey: string; secretVersion: number }>;
+    secrets: Array<{ secretId: string; secretKey: string; secretVersion: number; secretMetadata?: unknown }>;
   };
 }
 
@@ -356,6 +358,7 @@ interface UpdateSecretEvent {
     secretId: string;
     secretKey: string;
     secretVersion: number;
+    secretMetadata?: unknown;
   };
 }
 
@@ -364,7 +367,7 @@ interface UpdateSecretBatchEvent {
   metadata: {
     environment: string;
     secretPath: string;
-    secrets: Array<{ secretId: string; secretKey: string; secretVersion: number }>;
+    secrets: Array<{ secretId: string; secretKey: string; secretVersion: number; secretMetadata?: unknown }>;
   };
 }
 
