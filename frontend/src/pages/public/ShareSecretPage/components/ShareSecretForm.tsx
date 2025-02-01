@@ -41,9 +41,10 @@ export type FormData = z.infer<typeof schema>;
 type Props = {
   isPublic: boolean; // whether or not this is a public (non-authenticated) secret sharing form
   value?: string;
+  name?: string;
 };
 
-export const ShareSecretForm = ({ isPublic, value }: Props) => {
+export const ShareSecretForm = ({ isPublic, value,name }: Props) => {
   const [secretLink, setSecretLink] = useState("");
   const [, isCopyingSecret, setCopyTextSecret] = useTimedReset<string>({
     initialState: "Copy to clipboard"
@@ -61,7 +62,8 @@ export const ShareSecretForm = ({ isPublic, value }: Props) => {
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      secret: value || ""
+      secret: value || "",
+      name:name || ""
     }
   });
 
