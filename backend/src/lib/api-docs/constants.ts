@@ -721,6 +721,7 @@ export const RAW_SECRETS = {
     secretName: "The name of the secret to update.",
     secretComment: "Update comment to the secret.",
     environment: "The slug of the environment where the secret is located.",
+    mode: "Defines how the system should handle missing secrets during an update.",
     secretPath: "The path of the secret to update.",
     secretValue: "The new value of the secret.",
     skipMultilineEncoding: "Skip multiline encoding for the secret value.",

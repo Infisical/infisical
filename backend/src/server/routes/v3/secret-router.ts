@@ -20,6 +20,7 @@ import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { ProjectFilterType } from "@app/services/project/project-types";
 import { ResourceMetadataSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import { SecretOperations, SecretProtectionType } from "@app/services/secret/secret-types";
+import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { secretRawSchema } from "../sanitizedSchemas";
@@ -2030,6 +2031,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .default("/")
           .transform(removeTrailingSlash)
           .describe(RAW_SECRETS.UPDATE.secretPath),
+        mode: z
+          .nativeEnum(SecretUpdateMode)
+          .optional()
+          .default(SecretUpdateMode.FailOnNotFound)
+          .describe(RAW_SECRETS.UPDATE.environment),
         secrets: z
           .object({
             secretKey: SecretNameSchema.describe(RAW_SECRETS.UPDATE.secretName),
@@ -2037,6 +2043,12 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               .string()
               .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
               .describe(RAW_SECRETS.UPDATE.secretValue),
+            secretPath: z
+              .string()
+              .trim()
+              .transform(removeTrailingSlash)
+              .optional()
+              .describe(RAW_SECRETS.UPDATE.secretPath),
             secretComment: z.string().trim().optional().describe(RAW_SECRETS.UPDATE.secretComment),
             skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.UPDATE.skipMultilineEncoding),
             newSecretName: SecretNameSchema.optional().describe(RAW_SECRETS.UPDATE.newSecretName),
@@ -2073,7 +2085,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         environment,
         projectSlug,
         projectId: req.body.workspaceId,
-        secrets: inputSecrets
+        secrets: inputSecrets,
+        mode: req.body.mode
       });
       if (secretOperation.type === SecretProtectionType.Approval) {
         return { approval: secretOperation.approval };

@@ -1,7 +1,15 @@
 import { ForbiddenError, PureAbility, subject } from "@casl/ability";
+import { Knex } from "knex";
 import { z } from "zod";
 
-import { ActionProjectType, ProjectMembershipRole, SecretsV2Schema, SecretType, TableName } from "@app/db/schemas";
+import {
+  ActionProjectType,
+  ProjectMembershipRole,
+  SecretsV2Schema,
+  SecretType,
+  TableName,
+  TSecretsV2
+} from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
@@ -36,6 +44,7 @@ import {
 } from "./secret-v2-bridge-fns";
 import {
   SecretOperations,
+  SecretUpdateMode,
   TBackFillSecretReferencesDTO,
   TCreateManySecretDTO,
   TCreateSecretDTO,
@@ -103,12 +112,13 @@ export const secretV2BridgeServiceFactory = ({
   const $validateSecretReferences = async (
     projectId: string,
     permission: PureAbility,
-    references: ReturnType<typeof getAllSecretReferences>["nestedReferences"]
+    references: ReturnType<typeof getAllSecretReferences>["nestedReferences"],
+    tx?: Knex
   ) => {
     if (!references.length) return;
 
     const uniqueReferenceEnvironmentSlugs = Array.from(new Set(references.map((el) => el.environment)));
-    const referencesEnvironments = await projectEnvDAL.findBySlugs(projectId, uniqueReferenceEnvironmentSlugs);
+    const referencesEnvironments = await projectEnvDAL.findBySlugs(projectId, uniqueReferenceEnvironmentSlugs, tx);
     if (referencesEnvironments.length !== uniqueReferenceEnvironmentSlugs.length)
       throw new BadRequestError({
         message: `Referenced environment not found. Missing ${diff(
@@ -122,36 +132,41 @@ export const secretV2BridgeServiceFactory = ({
       references.map((el) => ({
         secretPath: el.secretPath,
         envId: referencesEnvironmentGroupBySlug[el.environment][0].id
-      }))
+      })),
+      tx
     );
     const referencesFolderGroupByPath = groupBy(referredFolders.filter(Boolean), (i) => `${i?.envId}-${i?.path}`);
-    const referredSecrets = await secretDAL.find({
-      $complex: {
-        operator: "or",
-        value: references.map((el) => {
-          const folderId =
-            referencesFolderGroupByPath[`${referencesEnvironmentGroupBySlug[el.environment][0].id}-${el.secretPath}`][0]
-              ?.id;
-          if (!folderId) throw new BadRequestError({ message: `Referenced path ${el.secretPath} doesn't exist` });
+    const referredSecrets = await secretDAL.find(
+      {
+        $complex: {
+          operator: "or",
+          value: references.map((el) => {
+            const folderId =
+              referencesFolderGroupByPath[
+                `${referencesEnvironmentGroupBySlug[el.environment][0].id}-${el.secretPath}`
+              ][0]?.id;
+            if (!folderId) throw new BadRequestError({ message: `Referenced path ${el.secretPath} doesn't exist` });
 
-          return {
-            operator: "and",
-            value: [
-              {
-                operator: "eq",
-                field: "folderId",
-                value: folderId
-              },
-              {
-                operator: "eq",
-                field: `${TableName.SecretV2}.key` as "key",
-                value: el.secretKey
-              }
-            ]
-          };
-        })
-      }
-    });
+            return {
+              operator: "and",
+              value: [
+                {
+                  operator: "eq",
+                  field: "folderId",
+                  value: folderId
+                },
+                {
+                  operator: "eq",
+                  field: `${TableName.SecretV2}.key` as "key",
+                  value: el.secretKey
+                }
+              ]
+            };
+          })
+        }
+      },
+      { tx }
+    );
 
     if (
       referredSecrets.length !==
@@ -1245,8 +1260,9 @@ export const secretV2BridgeServiceFactory = ({
     actorAuthMethod,
     environment,
     projectId,
-    secretPath,
-    secrets: inputSecrets
+    secretPath: defaultSecretPath = "/",
+    secrets: inputSecrets,
+    mode: updateMode
   }: TUpdateManySecretDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -1257,196 +1273,282 @@ export const secretV2BridgeServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-    if (!folder)
+    const secretsToUpdateGroupByPath = groupBy(inputSecrets, (el) => el.secretPath || defaultSecretPath);
+    const projectEnvironment = await projectEnvDAL.findOne({ projectId, slug: environment });
+    if (!projectEnvironment) {
       throw new NotFoundError({
-        message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`,
+        message: `Environment with slug '${environment}' in project with ID '${projectId}' not found`
+      });
+    }
+
+    const folders = await folderDAL.findByManySecretPath(
+      Object.keys(secretsToUpdateGroupByPath).map((el) => ({ envId: projectEnvironment.id, secretPath: el }))
+    );
+    if (folders.length !== Object.keys(secretsToUpdateGroupByPath).length)
+      throw new NotFoundError({
+        message: `Folder with path '${null}' in environment with slug '${environment}' not found`,
         name: "UpdateManySecret"
       });
-    const folderId = folder.id;
-
-    const secretsToUpdate = await secretDAL.find({
-      folderId,
-      $complex: {
-        operator: "and",
-        value: [
-          {
-            operator: "or",
-            value: inputSecrets.map((el) => ({
-              operator: "and",
-              value: [
-                {
-                  operator: "eq",
-                  field: `${TableName.SecretV2}.key` as "key",
-                  value: el.secretKey
-                },
-                {
-                  operator: "eq",
-                  field: "type",
-                  value: SecretType.Shared
-                }
-              ]
-            }))
-          }
-        ]
-      }
-    });
-    if (secretsToUpdate.length !== inputSecrets.length) {
-      const secretsToUpdateNames = secretsToUpdate.map((secret) => secret.key);
-      const invalidSecrets = inputSecrets.filter((secret) => !secretsToUpdateNames.includes(secret.secretKey));
-      throw new NotFoundError({
-        message: `Secret does not exist: ${invalidSecrets.map((el) => el.secretKey).join(",")}`
-      });
-    }
-    const secretsToUpdateInDBGroupedByKey = groupBy(secretsToUpdate, (i) => i.key);
-
-    secretsToUpdate.forEach((el) => {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionActions.Edit,
-        subject(ProjectPermissionSub.Secrets, {
-          environment,
-          secretPath,
-          secretName: el.key,
-          secretTags: el.tags.map((i) => i.slug)
-        })
-      );
-    });
-
-    // get all tags
-    const sanitizedTagIds = inputSecrets.flatMap(({ tagIds = [] }) => tagIds);
-    const tags = sanitizedTagIds.length ? await secretTagDAL.findManyTagsById(projectId, sanitizedTagIds) : [];
-    if (tags.length !== sanitizedTagIds.length) throw new NotFoundError({ message: "Tag not found" });
-    const tagsGroupByID = groupBy(tags, (i) => i.id);
-
-    // check again to avoid non authorized tags are removed
-    inputSecrets.forEach((el) => {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionActions.Edit,
-        subject(ProjectPermissionSub.Secrets, {
-          environment,
-          secretPath,
-          secretName: el.secretKey,
-          secretTags: (el.tagIds || []).map((i) => tagsGroupByID[i][0].slug)
-        })
-      );
-    });
-
-    // now find any secret that needs to update its name
-    // same process as above
-    const secretsWithNewName = inputSecrets.filter(({ newSecretName }) => Boolean(newSecretName));
-    if (secretsWithNewName.length) {
-      const secrets = await secretDAL.find({
-        folderId,
-        $complex: {
-          operator: "and",
-          value: [
-            {
-              operator: "or",
-              value: secretsWithNewName.map((el) => ({
-                operator: "and",
-                value: [
-                  {
-                    operator: "eq",
-                    field: `${TableName.SecretV2}.key` as "key",
-                    value: el.secretKey
-                  },
-                  {
-                    operator: "eq",
-                    field: "type",
-                    value: SecretType.Shared
-                  }
-                ]
-              }))
-            }
-          ]
-        }
-      });
-      if (secrets.length)
-        throw new BadRequestError({
-          message: `Secret with new name already exists: ${secretsWithNewName.map((el) => el.newSecretName).join(",")}`
-        });
-
-      secretsWithNewName.forEach((el) => {
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionActions.Create,
-          subject(ProjectPermissionSub.Secrets, {
-            environment,
-            secretPath,
-            secretName: el.newSecretName as string,
-            secretTags: (el.tagIds || []).map((i) => tagsGroupByID[i][0].slug)
-          })
-        );
-      });
-    }
-    // now get all secret references made and validate the permission
-    const secretReferencesGroupByInputSecretKey: Record<string, ReturnType<typeof getAllSecretReferences>> = {};
-    const secretReferences: TSecretReference[] = [];
-    inputSecrets.forEach((el) => {
-      if (el.secretValue) {
-        const references = getAllSecretReferences(el.secretValue);
-        secretReferencesGroupByInputSecretKey[el.secretKey] = references;
-        secretReferences.push(...references.nestedReferences);
-        references.localReferences.forEach((localRefKey) => {
-          secretReferences.push({ secretKey: localRefKey, secretPath, environment });
-        });
-      }
-    });
-    await $validateSecretReferences(projectId, permission, secretReferences);
 
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
       await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
-    const secrets = await secretDAL.transaction(async (tx) =>
-      fnSecretBulkUpdate({
-        folderId,
-        orgId: actorOrgId,
-        tx,
-        inputSecrets: inputSecrets.map((el) => {
-          const originalSecret = secretsToUpdateInDBGroupedByKey[el.secretKey][0];
-          const encryptedValue =
-            typeof el.secretValue !== "undefined"
-              ? {
-                  encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(el.secretValue) }).cipherTextBlob,
-                  references: secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences
-                }
-              : {};
+    const updatedSecrets: Array<TSecretsV2 & { secretPath: string }> = [];
+    /* eslint-disable no-await-in-loop */
+    await secretDAL.transaction(async (tx) => {
+      for (const folder of folders) {
+        if (!folder) throw new NotFoundError({ message: "Folder not found" });
 
-          return {
-            filter: { id: originalSecret.id, type: SecretType.Shared },
-            data: {
-              reminderRepeatDays: el.secretReminderRepeatDays,
-              encryptedComment: setKnexStringValue(
-                el.secretComment,
-                (value) => secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob
-              ),
-              reminderNote: el.secretReminderNote,
-              skipMultilineEncoding: el.skipMultilineEncoding,
-              key: el.newSecretName || el.secretKey,
-              tags: el.tagIds,
-              secretMetadata: el.secretMetadata,
-              ...encryptedValue
+        const folderId = folder.id;
+        const secretPath = folder.path;
+        let secretsToUpdate = secretsToUpdateGroupByPath[secretPath];
+        const secretsToUpdateInDB = await secretDAL.find(
+          {
+            folderId,
+            $complex: {
+              operator: "and",
+              value: [
+                {
+                  operator: "or",
+                  value: secretsToUpdate.map((el) => ({
+                    operator: "and",
+                    value: [
+                      {
+                        operator: "eq",
+                        field: `${TableName.SecretV2}.key` as "key",
+                        value: el.secretKey
+                      },
+                      {
+                        operator: "eq",
+                        field: "type",
+                        value: SecretType.Shared
+                      }
+                    ]
+                  }))
+                }
+              ]
             }
-          };
-        }),
-        secretDAL,
-        secretVersionDAL,
-        secretTagDAL,
-        secretVersionTagDAL,
-        resourceMetadataDAL
-      })
-    );
-    await snapshotService.performSnapshot(folderId);
-    await secretQueueService.syncSecrets({
-      actor,
-      actorId,
-      secretPath,
-      projectId,
-      orgId: actorOrgId,
-      environmentSlug: folder.environment.slug
+          },
+          { tx }
+        );
+        if (secretsToUpdateInDB.length !== secretsToUpdate.length && updateMode === SecretUpdateMode.FailOnNotFound)
+          throw new NotFoundError({
+            message: `Secret does not exist: ${diff(
+              secretsToUpdate.map((el) => el.secretKey),
+              secretsToUpdateInDB.map((el) => el.key)
+            ).join(",")} in path ${folder.path}`
+          });
+
+        const secretsToUpdateInDBGroupedByKey = groupBy(secretsToUpdateInDB, (i) => i.key);
+        const secretsToCreate = secretsToUpdate.filter((el) => !secretsToUpdateInDBGroupedByKey?.[el.secretKey]);
+        secretsToUpdate = secretsToUpdate.filter((el) => secretsToUpdateInDBGroupedByKey?.[el.secretKey]);
+
+        secretsToUpdateInDB.forEach((el) => {
+          ForbiddenError.from(permission).throwUnlessCan(
+            ProjectPermissionActions.Edit,
+            subject(ProjectPermissionSub.Secrets, {
+              environment,
+              secretPath,
+              secretName: el.key,
+              secretTags: el.tags.map((i) => i.slug)
+            })
+          );
+        });
+
+        // get all tags
+        const sanitizedTagIds = secretsToUpdate.flatMap(({ tagIds = [] }) => tagIds);
+        const tags = sanitizedTagIds.length ? await secretTagDAL.findManyTagsById(projectId, sanitizedTagIds, tx) : [];
+        if (tags.length !== sanitizedTagIds.length) throw new NotFoundError({ message: "Tag not found" });
+        const tagsGroupByID = groupBy(tags, (i) => i.id);
+
+        // check create permission allowed in upsert mode
+        if (updateMode === SecretUpdateMode.Upsert) {
+          secretsToCreate.forEach((el) => {
+            ForbiddenError.from(permission).throwUnlessCan(
+              ProjectPermissionActions.Create,
+              subject(ProjectPermissionSub.Secrets, {
+                environment,
+                secretPath,
+                secretName: el.secretKey,
+                secretTags: (el.tagIds || []).map((i) => tagsGroupByID[i][0].slug)
+              })
+            );
+          });
+        }
+
+        // check again to avoid non authorized tags are removed
+        secretsToUpdate.forEach((el) => {
+          ForbiddenError.from(permission).throwUnlessCan(
+            ProjectPermissionActions.Edit,
+            subject(ProjectPermissionSub.Secrets, {
+              environment,
+              secretPath,
+              secretName: el.secretKey,
+              secretTags: (el.tagIds || []).map((i) => tagsGroupByID[i][0].slug)
+            })
+          );
+        });
+
+        // now find any secret that needs to update its name
+        // same process as above
+        const secretsWithNewName = secretsToUpdate.filter(({ newSecretName }) => Boolean(newSecretName));
+        if (secretsWithNewName.length) {
+          const secrets = await secretDAL.find(
+            {
+              folderId,
+              $complex: {
+                operator: "and",
+                value: [
+                  {
+                    operator: "or",
+                    value: secretsWithNewName.map((el) => ({
+                      operator: "and",
+                      value: [
+                        {
+                          operator: "eq",
+                          field: `${TableName.SecretV2}.key` as "key",
+                          value: el.secretKey
+                        },
+                        {
+                          operator: "eq",
+                          field: "type",
+                          value: SecretType.Shared
+                        }
+                      ]
+                    }))
+                  }
+                ]
+              }
+            },
+            { tx }
+          );
+          if (secrets.length)
+            throw new BadRequestError({
+              message: `Secret with new name already exists: ${secretsWithNewName
+                .map((el) => el.newSecretName)
+                .join(",")}`
+            });
+
+          secretsWithNewName.forEach((el) => {
+            ForbiddenError.from(permission).throwUnlessCan(
+              ProjectPermissionActions.Create,
+              subject(ProjectPermissionSub.Secrets, {
+                environment,
+                secretPath,
+                secretName: el.newSecretName as string,
+                secretTags: (el.tagIds || []).map((i) => tagsGroupByID[i][0].slug)
+              })
+            );
+          });
+        }
+        // now get all secret references made and validate the permission
+        const secretReferencesGroupByInputSecretKey: Record<string, ReturnType<typeof getAllSecretReferences>> = {};
+        const secretReferences: TSecretReference[] = [];
+        secretsToUpdate.concat(SecretUpdateMode.Upsert === updateMode ? secretsToCreate : []).forEach((el) => {
+          if (el.secretValue) {
+            const references = getAllSecretReferences(el.secretValue);
+            secretReferencesGroupByInputSecretKey[el.secretKey] = references;
+            secretReferences.push(...references.nestedReferences);
+            references.localReferences.forEach((localRefKey) => {
+              secretReferences.push({ secretKey: localRefKey, secretPath, environment });
+            });
+          }
+        });
+        await $validateSecretReferences(projectId, permission, secretReferences, tx);
+
+        const bulkUpdatedSecrets = await fnSecretBulkUpdate({
+          folderId,
+          orgId: actorOrgId,
+          tx,
+          inputSecrets: secretsToUpdate.map((el) => {
+            const originalSecret = secretsToUpdateInDBGroupedByKey[el.secretKey][0];
+            const encryptedValue =
+              typeof el.secretValue !== "undefined"
+                ? {
+                    encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(el.secretValue) }).cipherTextBlob,
+                    references: secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences
+                  }
+                : {};
+
+            return {
+              filter: { id: originalSecret.id, type: SecretType.Shared },
+              data: {
+                reminderRepeatDays: el.secretReminderRepeatDays,
+                encryptedComment: setKnexStringValue(
+                  el.secretComment,
+                  (value) => secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob
+                ),
+                reminderNote: el.secretReminderNote,
+                skipMultilineEncoding: el.skipMultilineEncoding,
+                key: el.newSecretName || el.secretKey,
+                tags: el.tagIds,
+                secretMetadata: el.secretMetadata,
+                ...encryptedValue
+              }
+            };
+          }),
+          secretDAL,
+          secretVersionDAL,
+          secretTagDAL,
+          secretVersionTagDAL,
+          resourceMetadataDAL
+        });
+        updatedSecrets.push(...bulkUpdatedSecrets.map((el) => ({ ...el, secretPath: folder.path })));
+        if (updateMode === SecretUpdateMode.Upsert) {
+          const bulkInsertedSecrets = await fnSecretBulkInsert({
+            inputSecrets: secretsToCreate.map((el) => {
+              const references = secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences;
+
+              return {
+                version: 1,
+                encryptedComment: setKnexStringValue(
+                  el.secretComment,
+                  (value) => secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob
+                ),
+                encryptedValue: el.secretValue
+                  ? secretManagerEncryptor({ plainText: Buffer.from(el.secretValue) }).cipherTextBlob
+                  : undefined,
+                skipMultilineEncoding: el.skipMultilineEncoding,
+                key: el.secretKey,
+                tagIds: el.tagIds,
+                references,
+                secretMetadata: el.secretMetadata,
+                type: SecretType.Shared
+              };
+            }),
+            folderId,
+            orgId: actorOrgId,
+            secretDAL,
+            resourceMetadataDAL,
+            secretVersionDAL,
+            secretTagDAL,
+            secretVersionTagDAL,
+            tx
+          });
+          updatedSecrets.push(...bulkInsertedSecrets.map((el) => ({ ...el, secretPath: folder.path })));
+        }
+      }
     });
 
-    return secrets.map((el) =>
-      reshapeBridgeSecret(projectId, environment, secretPath, {
+    /* eslint-enable */
+    await Promise.allSettled(folders.map((el) => (el?.id ? snapshotService.performSnapshot(el.id) : undefined)));
+    await Promise.allSettled(
+      folders.map((el) =>
+        el
+          ? secretQueueService.syncSecrets({
+              actor,
+              actorId,
+              secretPath: el.path,
+              projectId,
+              orgId: actorOrgId,
+              environmentSlug: environment
+            })
+          : undefined
+      )
+    );
+
+    return updatedSecrets.map((el) =>
+      reshapeBridgeSecret(projectId, environment, el.secretPath, {
         ...el,
         value: el.encryptedValue ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString() : "",
         comment: el.encryptedComment ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString() : ""
