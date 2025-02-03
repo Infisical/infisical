@@ -1,4 +1,4 @@
-export const newRingBuffer = <T>(bufferSize = 10) => {
+export const createCircularCache = <T>(bufferSize = 10) => {
   const bufferItems: { id: string; item: T }[] = [];
   let bufferIndex = 0;
 

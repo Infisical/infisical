@@ -8,7 +8,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { SecretKeyEncoding, TableName, TOrgBots } from "../schemas";
 import { getMigrationEnvConfig } from "./utils/env-config";
-import { newRingBuffer } from "./utils/ring-buffer";
+import { createCircularCache } from "./utils/ring-buffer";
 import { getMigrationEncryptionServices } from "./utils/services";
 
 const BATCH_SIZE = 500;
@@ -38,7 +38,7 @@ const reencryptIdentityOidcAuth = async (knex: Knex) => {
   const keyStore = inMemoryKeyStore();
   const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
   const orgEncryptionRingBuffer =
-    newRingBuffer<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
+    createCircularCache<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
 
   const identityOidcConfig = await knex(TableName.IdentityOidcAuth)
     .join(
@@ -54,7 +54,8 @@ const reencryptIdentityOidcAuth = async (knex: Knex) => {
       knex.ref("symmetricKeyTag").withSchema(TableName.OrgBot),
       knex.ref("symmetricKeyKeyEncoding").withSchema(TableName.OrgBot),
       knex.ref("orgId").withSchema(TableName.OrgBot)
-    );
+    )
+    .orderBy(`${TableName.OrgBot}.orgId` as "orgId");
 
   const updatedIdentityOidcConfigs = await Promise.all(
     identityOidcConfig.map(

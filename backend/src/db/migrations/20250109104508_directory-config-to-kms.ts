@@ -8,7 +8,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { SecretKeyEncoding, TableName } from "../schemas";
 import { getMigrationEnvConfig } from "./utils/env-config";
-import { newRingBuffer } from "./utils/ring-buffer";
+import { createCircularCache } from "./utils/ring-buffer";
 import { getMigrationEncryptionServices } from "./utils/services";
 
 const BATCH_SIZE = 500;
@@ -31,7 +31,7 @@ const reencryptSamlConfig = async (knex: Knex) => {
   const keyStore = inMemoryKeyStore();
   const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
   const orgEncryptionRingBuffer =
-    newRingBuffer<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
+    createCircularCache<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
 
   const samlConfigs = await knex(TableName.SamlConfig)
     .join(TableName.OrgBot, `${TableName.OrgBot}.orgId`, `${TableName.SamlConfig}.orgId`)
@@ -41,7 +41,8 @@ const reencryptSamlConfig = async (knex: Knex) => {
       knex.ref("symmetricKeyIV").withSchema(TableName.OrgBot),
       knex.ref("symmetricKeyTag").withSchema(TableName.OrgBot),
       knex.ref("symmetricKeyKeyEncoding").withSchema(TableName.OrgBot)
-    );
+    )
+    .orderBy(`${TableName.OrgBot}.orgId` as "orgId");
 
   const updatedSamlConfigs = await Promise.all(
     samlConfigs.map(
@@ -185,7 +186,7 @@ const reencryptLdapConfig = async (knex: Knex) => {
   const keyStore = inMemoryKeyStore();
   const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
   const orgEncryptionRingBuffer =
-    newRingBuffer<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
+    createCircularCache<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
 
   const ldapConfigs = await knex(TableName.LdapConfig)
     .join(TableName.OrgBot, `${TableName.OrgBot}.orgId`, `${TableName.LdapConfig}.orgId`)
@@ -195,7 +196,8 @@ const reencryptLdapConfig = async (knex: Knex) => {
       knex.ref("symmetricKeyIV").withSchema(TableName.OrgBot),
       knex.ref("symmetricKeyTag").withSchema(TableName.OrgBot),
       knex.ref("symmetricKeyKeyEncoding").withSchema(TableName.OrgBot)
-    );
+    )
+    .orderBy(`${TableName.OrgBot}.orgId` as "orgId");
 
   const updatedLdapConfigs = await Promise.all(
     ldapConfigs.map(
@@ -334,7 +336,7 @@ const reencryptOidcConfig = async (knex: Knex) => {
   const keyStore = inMemoryKeyStore();
   const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
   const orgEncryptionRingBuffer =
-    newRingBuffer<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
+    createCircularCache<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
 
   const oidcConfigs = await knex(TableName.OidcConfig)
     .join(TableName.OrgBot, `${TableName.OrgBot}.orgId`, `${TableName.OidcConfig}.orgId`)
@@ -344,7 +346,8 @@ const reencryptOidcConfig = async (knex: Knex) => {
       knex.ref("symmetricKeyIV").withSchema(TableName.OrgBot),
       knex.ref("symmetricKeyTag").withSchema(TableName.OrgBot),
       knex.ref("symmetricKeyKeyEncoding").withSchema(TableName.OrgBot)
-    );
+    )
+    .orderBy(`${TableName.OrgBot}.orgId` as "orgId");
 
   const updatedOidcConfigs = await Promise.all(
     oidcConfigs.map(

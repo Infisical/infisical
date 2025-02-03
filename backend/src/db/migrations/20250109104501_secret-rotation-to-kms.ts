@@ -8,7 +8,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { SecretKeyEncoding, TableName } from "../schemas";
 import { getMigrationEnvConfig } from "./utils/env-config";
-import { newRingBuffer } from "./utils/ring-buffer";
+import { createCircularCache } from "./utils/ring-buffer";
 import { getMigrationEncryptionServices } from "./utils/services";
 
 const BATCH_SIZE = 500;
@@ -27,12 +27,13 @@ export async function up(knex: Knex): Promise<void> {
   const keyStore = inMemoryKeyStore();
   const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
   const projectEncryptionRingBuffer =
-    newRingBuffer<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
+    createCircularCache<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
 
   const secretRotations = await knex(TableName.SecretRotation)
     .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretRotation}.envId`)
     .select(selectAllTableCols(TableName.SecretRotation))
-    .select(knex.ref("projectId").withSchema(TableName.Environment));
+    .select(knex.ref("projectId").withSchema(TableName.Environment))
+    .orderBy(`${TableName.Environment}.projectId` as "projectId");
 
   const updatedRotationData = await Promise.all(
     secretRotations.map(async ({ projectId, ...el }) => {
