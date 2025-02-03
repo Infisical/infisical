@@ -181,81 +181,68 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       ],
       querystring: z.object({
-        filters: z
+        secretMetadata: z
           .string()
           .optional()
           .transform((val) => {
-            // TODO: Add support for more filtering fields & operators.
-            // Currently only supports secretMetadata filtering in a specific format to allow for further expansion of filtering in the future.
-
             if (!val) return undefined;
-            const secretMetadataSection = [val].find((section) => section.startsWith("secretMetadata="));
 
-            if (!secretMetadataSection) return undefined;
+            const result: { key?: string; value?: string }[] = [];
+            const pairs = val.split(",");
 
-            const metadataContent = secretMetadataSection.replace("secretMetadata=", "");
+            for (const pair of pairs) {
+              const pairResult: { key?: string; value?: string } = {};
+              const parts = pair.split(/[:=]/).map((part) => part.trim());
 
-            const secretMetadataResult: { key?: string; value?: string }[] = [];
-            let currentPair: { key?: string; value?: string } = {};
+              for (let i = 0; i < parts.length - 1; i += 1) {
+                const current = parts[i].toLowerCase();
+                const next = parts[i + 1];
 
-            const parts = metadataContent.split(/(?<!=),(?!=)/);
-
-            for (const part of parts) {
-              const [type, value] = part.split("=");
-
-              if (type === "key") {
-                if (currentPair.key || currentPair.value) {
-                  secretMetadataResult.push(currentPair);
-                  currentPair = {};
+                if (current === "key" && next) {
+                  pairResult.key = next;
+                } else if (current === "value" && next) {
+                  pairResult.value = next;
                 }
-                currentPair.key = value;
-              } else if (type === "value") {
-                currentPair.value = value;
-                secretMetadataResult.push(currentPair);
-                currentPair = {};
+              }
+
+              // Only add pair if at least one of key or value is present
+              if (pairResult.key || pairResult.value) {
+                result.push(pairResult);
               }
             }
 
-            if (currentPair.key || currentPair.value) {
-              secretMetadataResult.push(currentPair);
-            }
+            if (!result.length) return undefined;
 
-            if (!secretMetadataResult.length) return undefined;
-
-            return {
-              secretMetadata: secretMetadataResult
-            };
+            return result;
           })
-          .superRefine((filters, ctx) => {
-            if (filters?.secretMetadata) {
-              if (!Array.isArray(filters.secretMetadata)) {
-                ctx.addIssue({
-                  code: z.ZodIssueCode.custom,
-                  message:
-                    "Invalid secretMetadata format in filters. Correct format is filters=secretMetadata=key=key1,value=val1"
-                });
-              }
+          .superRefine((metadata, ctx) => {
+            if (metadata && !Array.isArray(metadata)) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Invalid secretMetadata format. Correct format is key1:value1,key2:value2"
+              });
+            }
 
-              if (filters.secretMetadata.length > 10) {
+            if (metadata) {
+              if (metadata.length > 10) {
                 ctx.addIssue({
                   code: z.ZodIssueCode.custom,
                   message: "You can only filter by up to 10 metadata fields"
                 });
               }
 
-              for (const item of filters.secretMetadata) {
+              for (const item of metadata) {
                 if (!item.key && !item.value) {
                   ctx.addIssue({
                     code: z.ZodIssueCode.custom,
                     message:
-                      "Invalid secretMetadata format in filters, key or value must be provided. Correct format is filters=secretMetadata=key=key1,value=val1"
+                      "Invalid secretMetadata format, key or value must be provided. Correct format is key1:value1,key2:value2"
                   });
                 }
               }
             }
           })
           .describe(RAW_SECRETS.LIST.secretMetadata),
-
         workspaceId: z.string().trim().optional().describe(RAW_SECRETS.LIST.workspaceId),
         workspaceSlug: z.string().trim().optional().describe(RAW_SECRETS.LIST.workspaceSlug),
         environment: z.string().trim().optional().describe(RAW_SECRETS.LIST.environment),
@@ -356,7 +343,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         projectId: workspaceId,
         path: secretPath,
-        secretMetadata: req.query.filters?.secretMetadata,
+        secretMetadata: req.query.secretMetadata,
         includeImports: req.query.include_imports,
         recursive: req.query.recursive,
         tagSlugs: req.query.tagSlugs
