@@ -125,7 +125,7 @@ Install pre commit hook to scan each commit before you push to your repository
 infisical scan install --pre-commit-hook
 ```
 
-Lean about Infisical's code scanning feature [here](https://infisical.com/docs/cli/scanning-overview)
+Learn about Infisical's code scanning feature [here](https://infisical.com/docs/cli/scanning-overview)
 
 ## Open-source vs. paid
 
