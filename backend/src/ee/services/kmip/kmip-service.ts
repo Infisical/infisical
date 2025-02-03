@@ -5,7 +5,13 @@ import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { ProjectPermissionKmipActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TKmipClientDALFactory } from "./kmip-client-dal";
-import { TCreateKmipClientDTO, TDeleteKmipClientDTO, TGetKmipClientDTO, TUpdateKmipClientDTO } from "./kmip-types";
+import {
+  TCreateKmipClientDTO,
+  TDeleteKmipClientDTO,
+  TGetKmipClientDTO,
+  TListKmipClientsByProjectIdDTO,
+  TUpdateKmipClientDTO
+} from "./kmip-types";
 
 type TKmipServiceFactoryDep = {
   kmipClientDAL: TKmipClientDALFactory;
@@ -123,5 +129,27 @@ export const kmipServiceFactory = ({ kmipClientDAL, permissionService }: TKmipSe
     return kmipClient;
   };
 
-  return { createKmipClient, updateKmipClient, deleteKmipClient, getKmipClient };
+  const listKmipClientsByProjectId = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    projectId,
+    ...rest
+  }: TListKmipClientsByProjectIdDTO) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.KMS
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionKmipActions.ReadClients, ProjectPermissionSub.Kmip);
+
+    return kmipClientDAL.findByProjectId({ projectId, ...rest });
+  };
+
+  return { createKmipClient, updateKmipClient, deleteKmipClient, getKmipClient, listKmipClientsByProjectId };
 };

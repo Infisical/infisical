@@ -82,6 +82,7 @@ import { Route as secretManagerSecretApprovalsPageRouteImport } from './pages/se
 import { Route as secretManagerIPAllowlistPageRouteImport } from './pages/secret-manager/IPAllowlistPage/route'
 import { Route as kmsSettingsPageRouteImport } from './pages/kms/SettingsPage/route'
 import { Route as kmsOverviewPageRouteImport } from './pages/kms/OverviewPage/route'
+import { Route as kmsKmipPageRouteImport } from './pages/kms/KmipPage/route'
 import { Route as certManagerSettingsPageRouteImport } from './pages/cert-manager/SettingsPage/route'
 import { Route as certManagerCertificatesPageRouteImport } from './pages/cert-manager/CertificatesPage/route'
 import { Route as projectRoleDetailsBySlugPageRouteSshImport } from './pages/project/RoleDetailsBySlugPage/route-ssh'
@@ -779,6 +780,12 @@ const kmsSettingsPageRouteRoute = kmsSettingsPageRouteImport.update({
 const kmsOverviewPageRouteRoute = kmsOverviewPageRouteImport.update({
   id: '/overview',
   path: '/overview',
+  getParentRoute: () => kmsLayoutRoute,
+} as any)
+
+const kmsKmipPageRouteRoute = kmsKmipPageRouteImport.update({
+  id: '/kmip',
+  path: '/kmip',
   getParentRoute: () => kmsLayoutRoute,
 } as any)
 
@@ -1964,6 +1971,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof certManagerSettingsPageRouteImport
       parentRoute: typeof certManagerLayoutImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout/kmip': {
+      id: '/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout/kmip'
+      path: '/kmip'
+      fullPath: '/kms/$projectId/kmip'
+      preLoaderRoute: typeof kmsKmipPageRouteImport
+      parentRoute: typeof kmsLayoutImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout/overview': {
       id: '/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout/overview'
       path: '/overview'
@@ -2937,6 +2951,7 @@ const AuthenticateInjectOrgDetailsOrgLayoutCertManagerProjectIdRouteWithChildren
   )
 
 interface kmsLayoutRouteChildren {
+  kmsKmipPageRouteRoute: typeof kmsKmipPageRouteRoute
   kmsOverviewPageRouteRoute: typeof kmsOverviewPageRouteRoute
   kmsSettingsPageRouteRoute: typeof kmsSettingsPageRouteRoute
   projectAccessControlPageRouteKmsRoute: typeof projectAccessControlPageRouteKmsRoute
@@ -2946,6 +2961,7 @@ interface kmsLayoutRouteChildren {
 }
 
 const kmsLayoutRouteChildren: kmsLayoutRouteChildren = {
+  kmsKmipPageRouteRoute: kmsKmipPageRouteRoute,
   kmsOverviewPageRouteRoute: kmsOverviewPageRouteRoute,
   kmsSettingsPageRouteRoute: kmsSettingsPageRouteRoute,
   projectAccessControlPageRouteKmsRoute: projectAccessControlPageRouteKmsRoute,
@@ -3551,6 +3567,7 @@ export interface FileRoutesByFullPath {
   '/organization/ssh/overview': typeof organizationSshOverviewPageRouteRoute
   '/cert-manager/$projectId/overview': typeof certManagerCertificatesPageRouteRoute
   '/cert-manager/$projectId/settings': typeof certManagerSettingsPageRouteRoute
+  '/kms/$projectId/kmip': typeof kmsKmipPageRouteRoute
   '/kms/$projectId/overview': typeof kmsOverviewPageRouteRoute
   '/kms/$projectId/settings': typeof kmsSettingsPageRouteRoute
   '/secret-manager/$projectId/allowlist': typeof secretManagerIPAllowlistPageRouteRoute
@@ -3718,6 +3735,7 @@ export interface FileRoutesByTo {
   '/organization/ssh/overview': typeof organizationSshOverviewPageRouteRoute
   '/cert-manager/$projectId/overview': typeof certManagerCertificatesPageRouteRoute
   '/cert-manager/$projectId/settings': typeof certManagerSettingsPageRouteRoute
+  '/kms/$projectId/kmip': typeof kmsKmipPageRouteRoute
   '/kms/$projectId/overview': typeof kmsOverviewPageRouteRoute
   '/kms/$projectId/settings': typeof kmsSettingsPageRouteRoute
   '/secret-manager/$projectId/allowlist': typeof secretManagerIPAllowlistPageRouteRoute
@@ -3898,6 +3916,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout': typeof sshLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/overview': typeof certManagerCertificatesPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/settings': typeof certManagerSettingsPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout/kmip': typeof kmsKmipPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout/overview': typeof kmsOverviewPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout/settings': typeof kmsSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/allowlist': typeof secretManagerIPAllowlistPageRouteRoute
@@ -4071,6 +4090,7 @@ export interface FileRouteTypes {
     | '/organization/ssh/overview'
     | '/cert-manager/$projectId/overview'
     | '/cert-manager/$projectId/settings'
+    | '/kms/$projectId/kmip'
     | '/kms/$projectId/overview'
     | '/kms/$projectId/settings'
     | '/secret-manager/$projectId/allowlist'
@@ -4237,6 +4257,7 @@ export interface FileRouteTypes {
     | '/organization/ssh/overview'
     | '/cert-manager/$projectId/overview'
     | '/cert-manager/$projectId/settings'
+    | '/kms/$projectId/kmip'
     | '/kms/$projectId/overview'
     | '/kms/$projectId/settings'
     | '/secret-manager/$projectId/allowlist'
@@ -4415,6 +4436,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout'
     | '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/overview'
     | '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/settings'
+    | '/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout/kmip'
     | '/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout/overview'
     | '/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout/settings'
     | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/allowlist'
@@ -4891,6 +4913,7 @@ export const routeTree = rootRoute
       "filePath": "kms/layout.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/kms/$projectId",
       "children": [
+        "/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout/kmip",
         "/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout/overview",
         "/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout/settings",
         "/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout/access-management",
@@ -4936,6 +4959,10 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/settings": {
       "filePath": "cert-manager/SettingsPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout/kmip": {
+      "filePath": "kms/KmipPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout/overview": {
       "filePath": "kms/OverviewPage/route.tsx",

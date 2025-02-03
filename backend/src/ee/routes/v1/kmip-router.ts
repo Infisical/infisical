@@ -3,6 +3,8 @@ import { z } from "zod";
 import { KmipClientsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { KmipPermission } from "@app/ee/services/kmip/kmip-enum";
+import { KmipClientOrderBy } from "@app/ee/services/kmip/kmip-types";
+import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -178,6 +180,58 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/clients",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "List KMIP clients",
+      querystring: z.object({
+        projectId: z.string(),
+        offset: z.coerce.number().min(0).optional().default(0),
+        limit: z.coerce.number().min(1).max(100).optional().default(100),
+        orderBy: z.nativeEnum(KmipClientOrderBy).optional().default(KmipClientOrderBy.Name),
+        orderDirection: z.nativeEnum(OrderByDirection).optional().default(OrderByDirection.ASC),
+        search: z.string().trim().optional()
+      }),
+      response: {
+        200: z.object({
+          kmipClients: KmipClientResponseSchema.array(),
+          totalCount: z.number()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const {
+        query: { projectId }
+      } = req;
+
+      const { kmipClients, totalCount } = await server.services.kmip.listKmipClientsByProjectId({
+        projectId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.GET_KMIP_CLIENTS,
+          metadata: {
+            ids: kmipClients.map((key) => key.id)
+          }
+        }
+      });
+
+      return { kmipClients, totalCount };
     }
   });
 };

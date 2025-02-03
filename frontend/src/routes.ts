@@ -289,6 +289,7 @@ const certManagerRoutes = route("/cert-manager/$projectId", [
 const kmsRoutes = route("/kms/$projectId", [
   layout("kms-layout", "kms/layout.tsx", [
     route("/overview", "kms/OverviewPage/route.tsx"),
+    route("/kmip", "kms/KmipPage/route.tsx"),
     route("/settings", "kms/SettingsPage/route.tsx"),
     route("/access-management", "project/AccessControlPage/route-kms.tsx"),
     route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-kms.tsx"),

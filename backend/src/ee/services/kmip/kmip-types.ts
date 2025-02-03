@@ -1,4 +1,4 @@
-import { TProjectPermission } from "@app/lib/types";
+import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 
 import { KmipPermission } from "./kmip-enum";
 
@@ -22,3 +22,15 @@ export type TDeleteKmipClientDTO = {
 export type TGetKmipClientDTO = {
   id: string;
 } & Omit<TProjectPermission, "projectId">;
+
+export enum KmipClientOrderBy {
+  Name = "name"
+}
+
+export type TListKmipClientsByProjectIdDTO = {
+  offset?: number;
+  limit?: number;
+  orderBy?: KmipClientOrderBy;
+  orderDirection?: OrderByDirection;
+  search?: string;
+} & TProjectPermission;

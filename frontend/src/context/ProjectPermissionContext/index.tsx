@@ -4,5 +4,6 @@ export {
   ProjectPermissionActions,
   ProjectPermissionCmekActions,
   ProjectPermissionDynamicSecretActions,
+  ProjectPermissionKmipActions,
   ProjectPermissionSub
 } from "./types";
