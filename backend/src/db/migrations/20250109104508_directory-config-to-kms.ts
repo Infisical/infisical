@@ -296,7 +296,7 @@ const reencryptLdapConfig = async (knex: Knex) => {
     await knex.schema.alterTable(TableName.LdapConfig, (t) => {
       if (!hasEncryptedLdapBindPassColumn) t.binary("encryptedLdapBindPass").notNullable().alter();
       if (!hasEncryptedLdapBindDNColum) t.binary("encryptedLdapBindDN").notNullable().alter();
-      if (!hasEncryptedCertificateColumn) t.binary("encryptedLdapCaCertificate").notNullable().alter();
+      if (!hasEncryptedCertificateColumn) t.binary("encryptedLdapCaCertificate");
     });
   }
 };
