@@ -182,7 +182,7 @@ export type TGetSecretsRawDTO = {
   includeImports?: boolean;
   recursive?: boolean;
   tagSlugs?: string[];
-  secretMetadata?: {
+  metadataFilter?: {
     key?: string;
     value?: string;
   }[];

@@ -1263,7 +1263,7 @@ export const secretServiceFactory = ({
         name: "bot_not_found_error"
       });
 
-    if (paramsV2.secretMetadata) {
+    if (paramsV2.metadataFilter) {
       throw new BadRequestError({
         message: "Please upgrade your project to filter secrets by metadata",
         name: "SecretMetadataNotSupported"

@@ -181,7 +181,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       ],
       querystring: z.object({
-        secretMetadata: z
+        metadataFilter: z
           .string()
           .optional()
           .transform((val) => {
@@ -343,7 +343,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         projectId: workspaceId,
         path: secretPath,
-        secretMetadata: req.query.secretMetadata,
+        secretMetadata: req.query.metadataFilter,
         includeImports: req.query.include_imports,
         recursive: req.query.recursive,
         tagSlugs: req.query.tagSlugs
