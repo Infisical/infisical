@@ -30,7 +30,7 @@ export const OidcConfigsSchema = z.object({
   updatedAt: z.date(),
   orgId: z.string().uuid(),
   lastUsed: z.date().nullable().optional(),
-  manageGroupMemberships: z.boolean().default(false)
+  manageGroupMemberships: z.boolean().default(false),
   encryptedOidcClientId: zodBuffer,
   encryptedOidcClientSecret: zodBuffer
 });

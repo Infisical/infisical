@@ -612,7 +612,7 @@ export const oidcConfigServiceFactory = ({
       tokenEndpoint,
       userinfoEndpoint,
       orgId: org.id,
-      manageGroupMemberships
+      manageGroupMemberships,
       encryptedOidcClientId: encryptor({ plainText: Buffer.from(clientId) }).cipherTextBlob,
       encryptedOidcClientSecret: encryptor({ plainText: Buffer.from(clientSecret) }).cipherTextBlob
     });
