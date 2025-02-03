@@ -44,6 +44,13 @@ export enum ProjectPermissionSecretSyncActions {
   RemoveSecrets = "remove-secrets"
 }
 
+export enum ProjectPermissionKmipActions {
+  CreateClients = "create-clients",
+  UpdateClients = "update-clients",
+  DeleteClients = "delete-clients",
+  ReadClients = "read-clients"
+}
+
 export enum ProjectPermissionSub {
   Role = "role",
   Member = "member",
@@ -75,7 +82,8 @@ export enum ProjectPermissionSub {
   PkiCollections = "pki-collections",
   Kms = "kms",
   Cmek = "cmek",
-  SecretSyncs = "secret-syncs"
+  SecretSyncs = "secret-syncs",
+  Kmip = "kmip"
 }
 
 export type SecretSubjectFields = {
@@ -156,6 +164,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
   | [ProjectPermissionSecretSyncActions, ProjectPermissionSub.SecretSyncs]
+  | [ProjectPermissionKmipActions, ProjectPermissionSub.Kmip]
   | [ProjectPermissionCmekActions, ProjectPermissionSub.Cmek]
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Project]
@@ -575,6 +584,17 @@ const buildAdminPermissionRules = () => {
     ],
     ProjectPermissionSub.SecretSyncs
   );
+
+  can(
+    [
+      ProjectPermissionKmipActions.CreateClients,
+      ProjectPermissionKmipActions.UpdateClients,
+      ProjectPermissionKmipActions.DeleteClients,
+      ProjectPermissionKmipActions.ReadClients
+    ],
+    ProjectPermissionSub.Kmip
+  );
+
   return rules;
 };
 

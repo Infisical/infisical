@@ -21,6 +21,8 @@ import {
   TUpdateSecretSyncDTO
 } from "@app/services/secret-sync/secret-sync-types";
 
+import { KmipPermission } from "../kmip/kmip-enum";
+
 export type TListProjectAuditLogDTO = {
   filter: {
     userAgentType?: UserAgentType;
@@ -251,7 +253,11 @@ export enum EventType {
   SECRET_SYNC_IMPORT_SECRETS = "secret-sync-import-secrets",
   SECRET_SYNC_REMOVE_SECRETS = "secret-sync-remove-secrets",
   OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER = "oidc-group-membership-mapping-assign-user",
-  OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER = "oidc-group-membership-mapping-remove-user"
+  OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER = "oidc-group-membership-mapping-remove-user",
+  CREATE_KMIP_CLIENT = "create-kmip-client",
+  UPDATE_KMIP_CLIENT = "update-kmip-client",
+  DELETE_KMIP_CLIENT = "delete-kmip-client",
+  GET_KMIP_CLIENT = "get-kmip-client"
 }
 
 interface UserActorMetadata {
@@ -2066,6 +2072,38 @@ interface OidcGroupMembershipMappingRemoveUserEvent {
   };
 }
 
+interface CreateKmipClientEvent {
+  type: EventType.CREATE_KMIP_CLIENT;
+  metadata: {
+    name: string;
+    id: string;
+    permissions: KmipPermission[];
+  };
+}
+
+interface UpdateKmipClientEvent {
+  type: EventType.UPDATE_KMIP_CLIENT;
+  metadata: {
+    name: string;
+    id: string;
+    permissions: KmipPermission[];
+  };
+}
+
+interface DeleteKmipClientEvent {
+  type: EventType.DELETE_KMIP_CLIENT;
+  metadata: {
+    id: string;
+  };
+}
+
+interface GetKmipClientEvent {
+  type: EventType.GET_KMIP_CLIENT;
+  metadata: {
+    id: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -2256,4 +2294,8 @@ export type Event =
   | SecretSyncImportSecretsEvent
   | SecretSyncRemoveSecretsEvent
   | OidcGroupMembershipMappingAssignUserEvent
-  | OidcGroupMembershipMappingRemoveUserEvent;
+  | OidcGroupMembershipMappingRemoveUserEvent
+  | CreateKmipClientEvent
+  | UpdateKmipClientEvent
+  | DeleteKmipClientEvent
+  | GetKmipClientEvent;

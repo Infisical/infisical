@@ -45,6 +45,7 @@ export * from "./incident-contacts";
 export * from "./integration-auths";
 export * from "./integrations";
 export * from "./internal-kms";
+export * from "./kmip-clients";
 export * from "./kms-key-versions";
 export * from "./kms-keys";
 export * from "./kms-root-config";

@@ -9,6 +9,7 @@ import { registerDynamicSecretRouter } from "./dynamic-secret-router";
 import { registerExternalKmsRouter } from "./external-kms-router";
 import { registerGroupRouter } from "./group-router";
 import { registerIdentityProjectAdditionalPrivilegeRouter } from "./identity-project-additional-privilege-router";
+import { registerKmipRouter } from "./kmip-router";
 import { registerLdapRouter } from "./ldap-router";
 import { registerLicenseRouter } from "./license-router";
 import { registerOidcRouter } from "./oidc-router";
@@ -110,4 +111,5 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   });
 
   await server.register(registerProjectTemplateRouter, { prefix: "/project-templates" });
+  await server.register(registerKmipRouter, { prefix: "/kmip" });
 };

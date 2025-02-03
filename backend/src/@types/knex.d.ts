@@ -143,6 +143,9 @@ import {
   TInternalKms,
   TInternalKmsInsert,
   TInternalKmsUpdate,
+  TKmipClients,
+  TKmipClientsInsert,
+  TKmipClientsUpdate,
   TKmsKeys,
   TKmsKeysInsert,
   TKmsKeysUpdate,
@@ -902,5 +905,6 @@ declare module "knex/types/tables" {
       TAppConnectionsUpdate
     >;
     [TableName.SecretSync]: KnexOriginal.CompositeTableType<TSecretSyncs, TSecretSyncsInsert, TSecretSyncsUpdate>;
+    [TableName.KmipClient]: KnexOriginal.CompositeTableType<TKmipClients, TKmipClientsInsert, TKmipClientsUpdate>;
   }
 }
