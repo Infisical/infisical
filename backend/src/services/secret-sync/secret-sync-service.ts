@@ -8,7 +8,8 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
+import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
@@ -197,37 +198,26 @@ export const secretSyncServiceFactory = ({
     // validates permission to connect and app is valid for sync destination
     await appConnectionService.connectAppConnectionById(destinationApp, params.connectionId, actor);
 
-    const secretSync = await secretSyncDAL.transaction(async (tx) => {
-      const isConflictingName = Boolean(
-        (
-          await secretSyncDAL.find(
-            {
-              name: params.name,
-              projectId
-            },
-            tx
-          )
-        ).length
-      );
-
-      if (isConflictingName)
-        throw new BadRequestError({
-          message: `A Secret Sync with the name "${params.name}" already exists for the project with ID "${folder.projectId}"`
-        });
-
-      const sync = await secretSyncDAL.create({
+    try {
+      const secretSync = await secretSyncDAL.create({
         folderId: folder.id,
         ...params,
         ...(params.isAutoSyncEnabled && { syncStatus: SecretSyncStatus.Pending }),
         projectId
       });
 
-      return sync;
-    });
+      if (secretSync.isAutoSyncEnabled) await secretSyncQueue.queueSecretSyncSyncSecretsById({ syncId: secretSync.id });
 
-    if (secretSync.isAutoSyncEnabled) await secretSyncQueue.queueSecretSyncSyncSecretsById({ syncId: secretSync.id });
+      return secretSync as TSecretSync;
+    } catch (err) {
+      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
+        throw new BadRequestError({
+          message: `A Secret Sync with the name "${params.name}" already exists for the project with ID "${folder.projectId}"`
+        });
+      }
 
-    return secretSync as TSecretSync;
+      throw err;
+    }
   };
 
   const updateSecretSync = async (
@@ -260,78 +250,65 @@ export const secretSyncServiceFactory = ({
         message: `Secret sync with ID "${secretSync.id}" is not configured for ${SECRET_SYNC_NAME_MAP[destination]}`
       });
 
-    const updatedSecretSync = await secretSyncDAL.transaction(async (tx) => {
-      let { folderId } = secretSync;
+    let { folderId } = secretSync;
 
-      if (params.connectionId) {
-        const destinationApp = SECRET_SYNC_CONNECTION_MAP[secretSync.destination as SecretSync];
+    if (params.connectionId) {
+      const destinationApp = SECRET_SYNC_CONNECTION_MAP[secretSync.destination as SecretSync];
 
-        // validates permission to connect and app is valid for sync destination
-        await appConnectionService.connectAppConnectionById(destinationApp, params.connectionId, actor);
-      }
+      // validates permission to connect and app is valid for sync destination
+      await appConnectionService.connectAppConnectionById(destinationApp, params.connectionId, actor);
+    }
 
-      if (
-        (secretPath && secretPath !== secretSync.folder?.path) ||
-        (environment && environment !== secretSync.environment?.slug)
-      ) {
-        const updatedEnvironment = environment ?? secretSync.environment?.slug;
-        const updatedSecretPath = secretPath ?? secretSync.folder?.path;
+    if (
+      (secretPath && secretPath !== secretSync.folder?.path) ||
+      (environment && environment !== secretSync.environment?.slug)
+    ) {
+      const updatedEnvironment = environment ?? secretSync.environment?.slug;
+      const updatedSecretPath = secretPath ?? secretSync.folder?.path;
 
-        if (!updatedEnvironment || !updatedSecretPath)
-          throw new BadRequestError({ message: "Must specify both source environment and secret path" });
+      if (!updatedEnvironment || !updatedSecretPath)
+        throw new BadRequestError({ message: "Must specify both source environment and secret path" });
 
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionActions.Read,
-          subject(ProjectPermissionSub.Secrets, {
-            environment: updatedEnvironment,
-            secretPath: updatedSecretPath
-          })
-        );
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Read,
+        subject(ProjectPermissionSub.Secrets, {
+          environment: updatedEnvironment,
+          secretPath: updatedSecretPath
+        })
+      );
 
-        const newFolder = await folderDAL.findBySecretPath(secretSync.projectId, updatedEnvironment, updatedSecretPath);
+      const newFolder = await folderDAL.findBySecretPath(secretSync.projectId, updatedEnvironment, updatedSecretPath);
 
-        if (!newFolder)
-          throw new BadRequestError({
-            message: `Could not find folder with path "${secretPath}" in environment "${environment}" for project with ID "${secretSync.projectId}"`
-          });
+      if (!newFolder)
+        throw new BadRequestError({
+          message: `Could not find folder with path "${secretPath}" in environment "${environment}" for project with ID "${secretSync.projectId}"`
+        });
 
-        folderId = newFolder.id;
-      }
+      folderId = newFolder.id;
+    }
 
-      if (params.name && secretSync.name !== params.name) {
-        const isConflictingName = Boolean(
-          (
-            await secretSyncDAL.find(
-              {
-                name: params.name,
-                projectId: secretSync.projectId
-              },
-              tx
-            )
-          ).length
-        );
+    const isAutoSyncEnabled = params.isAutoSyncEnabled ?? secretSync.isAutoSyncEnabled;
 
-        if (isConflictingName)
-          throw new BadRequestError({
-            message: `A Secret Sync with the name "${params.name}" already exists for project with ID "${secretSync.projectId}"`
-          });
-      }
-
-      const isAutoSyncEnabled = params.isAutoSyncEnabled ?? secretSync.isAutoSyncEnabled;
-
-      const updatedSync = await secretSyncDAL.updateById(syncId, {
+    try {
+      const updatedSecretSync = await secretSyncDAL.updateById(syncId, {
         ...params,
         ...(isAutoSyncEnabled && folderId && { syncStatus: SecretSyncStatus.Pending }),
         folderId
       });
 
-      return updatedSync;
-    });
+      if (updatedSecretSync.isAutoSyncEnabled)
+        await secretSyncQueue.queueSecretSyncSyncSecretsById({ syncId: secretSync.id });
 
-    if (updatedSecretSync.isAutoSyncEnabled)
-      await secretSyncQueue.queueSecretSyncSyncSecretsById({ syncId: secretSync.id });
+      return updatedSecretSync as TSecretSync;
+    } catch (err) {
+      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
+        throw new BadRequestError({
+          message: `A Secret Sync with the name "${params.name}" already exists for the project with ID "${secretSync.projectId}"`
+        });
+      }
 
-    return updatedSecretSync as TSecretSync;
+      throw err;
+    }
   };
 
   const deleteSecretSync = async (
