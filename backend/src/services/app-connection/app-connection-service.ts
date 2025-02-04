@@ -144,54 +144,40 @@ export const appConnectionServiceFactory = ({
       OrgPermissionSubjects.AppConnections
     );
 
-    const appConnection = await appConnectionDAL.transaction(async (tx) => {
-      const isConflictingName = Boolean(
-        await appConnectionDAL.findOne(
-          {
-            name: params.name,
-            orgId: actor.orgId
-          },
-          tx
-        )
-      );
+    const validatedCredentials = await validateAppConnectionCredentials({
+      app,
+      credentials,
+      method,
+      orgId: actor.orgId
+    } as TAppConnectionConfig);
 
-      if (isConflictingName)
-        throw new BadRequestError({
-          message: `An App Connection with the name "${params.name}" already exists`
-        });
+    const encryptedCredentials = await encryptAppConnectionCredentials({
+      credentials: validatedCredentials,
+      orgId: actor.orgId,
+      kmsService
+    });
 
-      const validatedCredentials = await validateAppConnectionCredentials({
-        app,
-        credentials,
-        method,
-        orgId: actor.orgId
-      } as TAppConnectionConfig);
-
-      const encryptedCredentials = await encryptAppConnectionCredentials({
-        credentials: validatedCredentials,
+    try {
+      const connection = await appConnectionDAL.create({
         orgId: actor.orgId,
-        kmsService
+        encryptedCredentials,
+        method,
+        app,
+        ...params
       });
-
-      const connection = await appConnectionDAL.create(
-        {
-          orgId: actor.orgId,
-          encryptedCredentials,
-          method,
-          app,
-          ...params
-        },
-        tx
-      );
 
       return {
         ...connection,
         credentialsHash: generateHash(connection.encryptedCredentials),
         credentials: validatedCredentials
-      };
-    });
+      } as TAppConnection;
+    } catch (err) {
+      if (err instanceof DatabaseError && (err.error as { code: string })?.code === "23505") {
+        throw new BadRequestError({ message: `An App Connection with the name "${params.name}" already exists` });
+      }
 
-    return appConnection as TAppConnection;
+      throw err;
+    }
   };
 
   const updateAppConnection = async (
@@ -215,72 +201,55 @@ export const appConnectionServiceFactory = ({
       OrgPermissionSubjects.AppConnections
     );
 
-    const updatedAppConnection = await appConnectionDAL.transaction(async (tx) => {
-      if (params.name && appConnection.name !== params.name) {
-        const isConflictingName = Boolean(
-          await appConnectionDAL.findOne(
-            {
-              name: params.name,
-              orgId: appConnection.orgId
-            },
-            tx
-          )
-        );
+    let encryptedCredentials: undefined | Buffer;
 
-        if (isConflictingName)
-          throw new BadRequestError({
-            message: `An App Connection with the name "${params.name}" already exists`
-          });
-      }
+    if (credentials) {
+      const { app, method } = appConnection as DiscriminativePick<TAppConnectionConfig, "app" | "method">;
 
-      let encryptedCredentials: undefined | Buffer;
-
-      if (credentials) {
-        const { app, method } = appConnection as DiscriminativePick<TAppConnectionConfig, "app" | "method">;
-
-        if (
-          !VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[app].safeParse({
-            method,
-            credentials
-          }).success
-        )
-          throw new BadRequestError({
-            message: `Invalid credential format for ${
-              APP_CONNECTION_NAME_MAP[app]
-            } Connection with method ${getAppConnectionMethodName(method)}`
-          });
-
-        const validatedCredentials = await validateAppConnectionCredentials({
-          app,
-          orgId: actor.orgId,
-          credentials,
-          method
-        } as TAppConnectionConfig);
-
-        if (!validatedCredentials)
-          throw new BadRequestError({ message: "Unable to validate connection - check credentials" });
-
-        encryptedCredentials = await encryptAppConnectionCredentials({
-          credentials: validatedCredentials,
-          orgId: actor.orgId,
-          kmsService
+      if (
+        !VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[app].safeParse({
+          method,
+          credentials
+        }).success
+      )
+        throw new BadRequestError({
+          message: `Invalid credential format for ${
+            APP_CONNECTION_NAME_MAP[app]
+          } Connection with method ${getAppConnectionMethodName(method)}`
         });
+
+      const validatedCredentials = await validateAppConnectionCredentials({
+        app,
+        orgId: actor.orgId,
+        credentials,
+        method
+      } as TAppConnectionConfig);
+
+      if (!validatedCredentials)
+        throw new BadRequestError({ message: "Unable to validate connection - check credentials" });
+
+      encryptedCredentials = await encryptAppConnectionCredentials({
+        credentials: validatedCredentials,
+        orgId: actor.orgId,
+        kmsService
+      });
+    }
+
+    try {
+      const updatedConnection = await appConnectionDAL.updateById(connectionId, {
+        orgId: actor.orgId,
+        encryptedCredentials,
+        ...params
+      });
+
+      return await decryptAppConnection(updatedConnection, kmsService);
+    } catch (err) {
+      if (err instanceof DatabaseError && (err.error as { code: string })?.code === "23505") {
+        throw new BadRequestError({ message: `An App Connection with the name "${params.name}" already exists` });
       }
 
-      const updatedConnection = await appConnectionDAL.updateById(
-        connectionId,
-        {
-          orgId: actor.orgId,
-          encryptedCredentials,
-          ...params
-        },
-        tx
-      );
-
-      return updatedConnection;
-    });
-
-    return decryptAppConnection(updatedAppConnection, kmsService);
+      throw err;
+    }
   };
 
   const deleteAppConnection = async (app: AppConnection, connectionId: string, actor: OrgServiceActor) => {
