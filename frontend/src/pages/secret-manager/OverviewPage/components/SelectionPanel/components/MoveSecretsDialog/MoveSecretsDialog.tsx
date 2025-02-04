@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SingleValue } from "react-select";
 import { subject } from "@casl/ability";
 import { IconDefinition } from "@fortawesome/free-brands-svg-icons";
@@ -235,6 +235,12 @@ const Content = ({
 
     setMoveResults(results);
   };
+
+  useEffect(() => {
+    return () => {
+      if (moveResults) onComplete();
+    };
+  }, [moveResults]);
 
   if (moveResults) {
     return (
