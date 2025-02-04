@@ -3,6 +3,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { OrgPermissionAppConnectionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { generateHash } from "@app/lib/crypto/encryption";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { DiscriminativePick, OrgServiceActor } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -172,7 +173,7 @@ export const appConnectionServiceFactory = ({
         credentials: validatedCredentials
       } as TAppConnection;
     } catch (err) {
-      if (err instanceof DatabaseError && (err.error as { code: string })?.code === "23505") {
+      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({ message: `An App Connection with the name "${params.name}" already exists` });
       }
 
@@ -244,7 +245,7 @@ export const appConnectionServiceFactory = ({
 
       return await decryptAppConnection(updatedConnection, kmsService);
     } catch (err) {
-      if (err instanceof DatabaseError && (err.error as { code: string })?.code === "23505") {
+      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({ message: `An App Connection with the name "${params.name}" already exists` });
       }
 
@@ -280,7 +281,10 @@ export const appConnectionServiceFactory = ({
 
       return await decryptAppConnection(deletedAppConnection, kmsService);
     } catch (err) {
-      if (err instanceof DatabaseError && (err.error as { code: string })?.code === "23503") {
+      if (
+        err instanceof DatabaseError &&
+        (err.error as { code: string })?.code === DatabaseErrorCode.ForeignKeyViolation
+      ) {
         throw new BadRequestError({
           message:
             "Cannot delete App Connection with existing connections. Remove all existing connections and try again."

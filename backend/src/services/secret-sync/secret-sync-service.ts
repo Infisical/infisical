@@ -8,6 +8,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
@@ -209,7 +210,7 @@ export const secretSyncServiceFactory = ({
 
       return secretSync as TSecretSync;
     } catch (err) {
-      if (err instanceof DatabaseError && (err.error as { code: string })?.code === "23505") {
+      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({
           message: `A Secret Sync with the name "${params.name}" already exists for the project with ID "${folder.projectId}"`
         });
@@ -300,7 +301,7 @@ export const secretSyncServiceFactory = ({
 
       return updatedSecretSync as TSecretSync;
     } catch (err) {
-      if (err instanceof DatabaseError && (err.error as { code: string })?.code === "23505") {
+      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({
           message: `A Secret Sync with the name "${params.name}" already exists for the project with ID "${secretSync.projectId}"`
         });
