@@ -156,12 +156,12 @@ func (r *InfisicalSecretReconciler) getInfisicalServiceAccountCredentialsFromKub
 }
 
 var infisicalSecretTemplateFunctions = template.FuncMap{
-	"decodeBase64ToBytes": func(encodedString string) []byte {
+	"decodeBase64ToBytes": func(encodedString string) string {
 		decoded, err := base64.StdEncoding.DecodeString(encodedString)
 		if err != nil {
 			panic(fmt.Sprintf("Error: %v", err))
 		}
-		return decoded
+		return string(decoded)
 	},
 }
 
@@ -222,7 +222,6 @@ func (r *InfisicalSecretReconciler) createInfisicalManagedKubeSecret(ctx context
 	}
 
 	annotations[constants.SECRET_VERSION_ANNOTATION] = ETag
-
 	// create a new secret as specified by the managed secret spec of CRD
 	newKubeSecretInstance := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
