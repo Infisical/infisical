@@ -1,4 +1,4 @@
-name: Release Docker image for K8 operator
+name: Release image + Helm chart K8s Operator
 on:
   push:
     tags:
@@ -35,3 +35,18 @@ jobs:
           tags: |
             infisical/kubernetes-operator:latest
             infisical/kubernetes-operator:${{ steps.extract_version.outputs.version }}
+
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.10.0
+      - name: Install python
+        uses: actions/setup-python@v4
+      - name: Install Cloudsmith CLI
+        run: pip install --upgrade cloudsmith-cli
+      - name: Build and push helm package to Cloudsmith
+        run: cd helm-charts && sh upload-k8s-operator-cloudsmith.sh
+        env:
+          CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
