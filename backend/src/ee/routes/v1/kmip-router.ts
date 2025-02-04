@@ -208,21 +208,17 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const {
-        query: { projectId }
-      } = req;
-
       const { kmipClients, totalCount } = await server.services.kmip.listKmipClientsByProjectId({
-        projectId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actorOrgId: req.permission.orgId,
+        ...req.query
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId,
+        projectId: req.query.projectId,
         event: {
           type: EventType.GET_KMIP_CLIENTS,
           metadata: {
