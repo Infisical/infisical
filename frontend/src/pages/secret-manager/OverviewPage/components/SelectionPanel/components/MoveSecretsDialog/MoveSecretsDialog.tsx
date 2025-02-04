@@ -240,7 +240,7 @@ const Content = ({
     return (
       <div className="w-full">
         <div className="mb-2">Results</div>
-        <div className="mb-4 flex flex-col divide-y divide-mineshaft-600 rounded">
+        <div className="mb-4 flex flex-col divide-y divide-mineshaft-600 rounded bg-mineshaft-900 px-3 py-2">
           {moveResults.map(({ id, name, status, message }) => {
             let className: string;
             let icon: IconDefinition;
