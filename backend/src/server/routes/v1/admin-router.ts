@@ -1,3 +1,4 @@
+import ms from "ms";
 import { z } from "zod";
 
 import { OrganizationsSchema, SuperAdminSchema, UsersSchema } from "@app/db/schemas";
@@ -7,6 +8,8 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
+import { validateAltNamesField } from "@app/services/certificate-authority/certificate-authority-validators";
 import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
@@ -314,6 +317,90 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         organization,
         new: "123"
       };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/kmip",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      body: z.object({
+        caKeyAlgorithm: z.nativeEnum(CertKeyAlgorithm)
+      }),
+      response: {
+        200: z.object({
+          serverCertificateChain: z.string()
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      return server.services.superAdmin.setupInstanceKmip({
+        ...req.body
+      });
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/kmip",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          serverCertificateChain: z.string()
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async () => {
+      return server.services.superAdmin.getInstanceKmip();
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/kmip/server-certificates",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      body: z.object({
+        commonName: z.string().trim().min(1),
+        altNames: validateAltNamesField,
+        keyAlgorithm: z.nativeEnum(CertKeyAlgorithm),
+        ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number")
+      }),
+      response: {
+        200: z.object({
+          certificateChain: z.string(),
+          certificate: z.string(),
+          privateKey: z.string()
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      return server.services.superAdmin.generateInstanceKmipServerCertificate({
+        ...req.body
+      });
     }
   });
 };

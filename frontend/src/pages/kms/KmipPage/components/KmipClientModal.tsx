@@ -128,7 +128,7 @@ const KmipClientForm = ({ onComplete, kmipClient }: FormProps) => {
         name="permissions"
         render={({ field: { onChange, value }, fieldState: { error } }) => {
           return (
-            <FormControl label="Key Usage" errorText={error?.message} isError={Boolean(error)}>
+            <FormControl label="Permissions" errorText={error?.message} isError={Boolean(error)}>
               <div className="mb-7 mt-2 grid grid-cols-2 gap-2">
                 {KMIP_PERMISSIONS_OPTIONS.map(({ label, value: optionValue }) => {
                   return (

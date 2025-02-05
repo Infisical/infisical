@@ -10,6 +10,7 @@ import {
   RootKeyEncryptionStrategy,
   TCreateAdminUserDTO,
   TServerConfig,
+  TSetupInstanceKmipDTO,
   TUpdateAdminSlackConfigDTO
 } from "./types";
 
@@ -95,6 +96,18 @@ export const useUpdateServerEncryptionStrategy = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.getServerEncryptionStrategies() });
+    }
+  });
+};
+
+export const useSetupInstanceKmip = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: TSetupInstanceKmipDTO) => {
+      await apiRequest.post("/api/v1/admin/kmip", payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.getInstanceKmip() });
     }
   });
 };

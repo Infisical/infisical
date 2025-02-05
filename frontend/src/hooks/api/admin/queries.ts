@@ -6,6 +6,7 @@ import { User } from "../types";
 import {
   AdminGetUsersFilters,
   AdminSlackConfig,
+  InstanceKmipConfig,
   TGetServerRootKmsEncryptionDetails,
   TServerConfig
 } from "./types";
@@ -18,7 +19,8 @@ export const adminQueryKeys = {
   serverConfig: () => ["server-config"] as const,
   getUsers: (filters: AdminGetUsersFilters) => [adminStandaloneKeys.getUsers, { filters }] as const,
   getAdminSlackConfig: () => ["admin-slack-config"] as const,
-  getServerEncryptionStrategies: () => ["server-encryption-strategies"] as const
+  getServerEncryptionStrategies: () => ["server-encryption-strategies"] as const,
+  getInstanceKmip: () => ["instance-kmip"] as const
 };
 
 export const fetchServerConfig = async () => {
@@ -88,6 +90,17 @@ export const useGetServerRootKmsEncryptionDetails = () => {
       const { data } = await apiRequest.get<TGetServerRootKmsEncryptionDetails>(
         "/api/v1/admin/encryption-strategies"
       );
+
+      return data;
+    }
+  });
+};
+
+export const useGetInstanceKmipConfig = () => {
+  return useQuery({
+    queryKey: adminQueryKeys.getInstanceKmip(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<InstanceKmipConfig>("/api/v1/admin/kmip");
 
       return data;
     }

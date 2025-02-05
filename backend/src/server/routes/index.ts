@@ -36,6 +36,8 @@ import { identityProjectAdditionalPrivilegeDALFactory } from "@app/ee/services/i
 import { identityProjectAdditionalPrivilegeServiceFactory } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-service";
 import { identityProjectAdditionalPrivilegeV2ServiceFactory } from "@app/ee/services/identity-project-additional-privilege-v2/identity-project-additional-privilege-v2-service";
 import { kmipClientDALFactory } from "@app/ee/services/kmip/kmip-client-dal";
+import { kmipInstanceConfigDALFactory } from "@app/ee/services/kmip/kmip-instance-config-dal";
+import { kmipInstanceServerCertificateDALFactory } from "@app/ee/services/kmip/kmip-instance-server-certificate-dal";
 import { kmipServiceFactory } from "@app/ee/services/kmip/kmip-service";
 import { ldapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";
 import { ldapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
@@ -383,6 +385,8 @@ export const registerRoutes = async (
   const projectTemplateDAL = projectTemplateDALFactory(db);
   const resourceMetadataDAL = resourceMetadataDALFactory(db);
   const kmipClientDAL = kmipClientDALFactory(db);
+  const kmipInstanceConfigDAL = kmipInstanceConfigDALFactory(db);
+  const kmipInstanceServerCertificateDAL = kmipInstanceServerCertificateDALFactory(db);
 
   const permissionService = permissionServiceFactory({
     permissionDAL,
@@ -623,7 +627,9 @@ export const registerRoutes = async (
     orgService,
     keyStore,
     licenseService,
-    kmsService
+    kmsService,
+    kmipInstanceConfigDAL,
+    kmipInstanceServerCertificateDAL
   });
 
   const orgAdminService = orgAdminServiceFactory({

@@ -31,6 +31,7 @@ import {
 import { AuthPanel } from "./components/AuthPanel";
 import { EncryptionPanel } from "./components/EncryptionPanel";
 import { IntegrationPanel } from "./components/IntegrationPanel";
+import { KmipPanel } from "./components/KmipPanel";
 import { RateLimitPanel } from "./components/RateLimitPanel";
 import { UserPanel } from "./components/UserPanel";
 
@@ -40,7 +41,8 @@ enum TabSections {
   Auth = "auth",
   RateLimit = "rate-limit",
   Integrations = "integrations",
-  Users = "users"
+  Users = "users",
+  Kmip = "kmip"
 }
 
 enum SignUpModes {
@@ -149,6 +151,7 @@ export const OverviewPage = () => {
                     <Tab value={TabSections.RateLimit}>Rate Limit</Tab>
                     <Tab value={TabSections.Integrations}>Integrations</Tab>
                     <Tab value={TabSections.Users}>Users</Tab>
+                    <Tab value={TabSections.Kmip}>KMIP</Tab>
                   </div>
                 </TabList>
                 <TabPanel value={TabSections.Settings}>
@@ -346,6 +349,9 @@ export const OverviewPage = () => {
                 </TabPanel>
                 <TabPanel value={TabSections.Users}>
                   <UserPanel />
+                </TabPanel>
+                <TabPanel value={TabSections.Kmip}>
+                  <KmipPanel />
                 </TabPanel>
               </Tabs>
             </div>

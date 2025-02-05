@@ -46,6 +46,8 @@ export * from "./integration-auths";
 export * from "./integrations";
 export * from "./internal-kms";
 export * from "./kmip-clients";
+export * from "./kmip-instance-configs";
+export * from "./kmip-instance-server-certificates";
 export * from "./kms-key-versions";
 export * from "./kms-keys";
 export * from "./kms-root-config";

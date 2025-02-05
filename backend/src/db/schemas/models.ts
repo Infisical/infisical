@@ -133,7 +133,9 @@ export enum TableName {
   ProjectSlackConfigs = "project_slack_configs",
   AppConnection = "app_connections",
   SecretSync = "secret_syncs",
-  KmipClient = "kmip_clients"
+  KmipClient = "kmip_clients",
+  KmipInstanceConfig = "kmip_instance_configs",
+  KmipInstanceServerCertificates = "kmip_instance_server_certificates"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt";
