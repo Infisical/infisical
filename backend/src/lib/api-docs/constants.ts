@@ -1719,6 +1719,12 @@ export const SecretSyncs = {
       REGION: "The AWS region to sync secrets to.",
       PATH: "The Parameter Store path to sync secrets to."
     },
+    AWS_SECRETS_MANAGER: {
+      REGION: "The AWS region to sync secrets to.",
+      MAPPING_BEHAVIOR:
+        "How secrets from Infisical should be mapped to AWS Secrets Manager; one-to-one or many-to-one.",
+      SECRET_NAME: "The secret name in AWS Secrets Manager to sync to when using mapping behavior many-to-one."
+    },
     GITHUB: {
       ORG: "The name of the GitHub organization.",
       OWNER: "The name of the GitHub account owner of the repository.",

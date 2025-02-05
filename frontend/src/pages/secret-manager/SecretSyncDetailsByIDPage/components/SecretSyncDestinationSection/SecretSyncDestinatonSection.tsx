@@ -10,6 +10,7 @@ import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissi
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
 import { AwsParameterStoreSyncDestinationSection } from "@app/pages/secret-manager/SecretSyncDetailsByIDPage/components/SecretSyncDestinationSection/AwsParameterStoreSyncDestinationSection";
+import { AwsSecretsManagerSyncDestinationSection } from "@app/pages/secret-manager/SecretSyncDetailsByIDPage/components/SecretSyncDestinationSection/AwsSecretsManagerSyncDestinationSection";
 import { GitHubSyncDestinationSection } from "@app/pages/secret-manager/SecretSyncDetailsByIDPage/components/SecretSyncDestinationSection/GitHubSyncDestinationSection";
 
 import { GcpSyncDestinationSection } from "./GcpSyncDestinationSection";
@@ -28,6 +29,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
   switch (secretSync.destination) {
     case SecretSync.AWSParameterStore:
       DestinationComponents = <AwsParameterStoreSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.AWSSecretsManager:
+      DestinationComponents = <AwsSecretsManagerSyncDestinationSection secretSync={secretSync} />;
       break;
     case SecretSync.GitHub:
       DestinationComponents = <GitHubSyncDestinationSection secretSync={secretSync} />;

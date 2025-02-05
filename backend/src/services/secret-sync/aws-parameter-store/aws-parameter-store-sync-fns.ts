@@ -69,6 +69,8 @@ const getParametersByPath = async (ssm: AWS.SSM, path: string): Promise<TAWSPara
         attempt += 1;
         // eslint-disable-next-line no-await-in-loop
         await sleep();
+        // eslint-disable-next-line no-continue
+        continue;
       }
 
       throw e;

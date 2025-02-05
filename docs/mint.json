@@ -406,6 +406,7 @@
           "group": "Syncs",
           "pages": [
             "integrations/secret-syncs/aws-parameter-store",
+            "integrations/secret-syncs/aws-secrets-manager",
             "integrations/secret-syncs/github",
             "integrations/secret-syncs/gcp-secret-manager"
           ]
@@ -862,6 +863,20 @@
                 "api-reference/endpoints/secret-syncs/aws-parameter-store/sync-secrets",
                 "api-reference/endpoints/secret-syncs/aws-parameter-store/import-secrets",
                 "api-reference/endpoints/secret-syncs/aws-parameter-store/remove-secrets"
+              ]
+            },
+            {
+              "group": "AWS Secrets Manager",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/aws-secrets-manager/list",
+                "api-reference/endpoints/secret-syncs/aws-secrets-manager/get-by-id",
+                "api-reference/endpoints/secret-syncs/aws-secrets-manager/get-by-name",
+                "api-reference/endpoints/secret-syncs/aws-secrets-manager/create",
+                "api-reference/endpoints/secret-syncs/aws-secrets-manager/update",
+                "api-reference/endpoints/secret-syncs/aws-secrets-manager/delete",
+                "api-reference/endpoints/secret-syncs/aws-secrets-manager/sync-secrets",
+                "api-reference/endpoints/secret-syncs/aws-secrets-manager/import-secrets",
+                "api-reference/endpoints/secret-syncs/aws-secrets-manager/remove-secrets"
               ]
             },
             {
