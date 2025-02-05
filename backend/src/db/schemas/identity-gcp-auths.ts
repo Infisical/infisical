@@ -17,9 +17,9 @@ export const IdentityGcpAuthsSchema = z.object({
   updatedAt: z.date(),
   identityId: z.string().uuid(),
   type: z.string(),
-  allowedServiceAccounts: z.string(),
-  allowedProjects: z.string(),
-  allowedZones: z.string()
+  allowedServiceAccounts: z.string().nullable().optional(),
+  allowedProjects: z.string().nullable().optional(),
+  allowedZones: z.string().nullable().optional()
 });
 
 export type TIdentityGcpAuths = z.infer<typeof IdentityGcpAuthsSchema>;
