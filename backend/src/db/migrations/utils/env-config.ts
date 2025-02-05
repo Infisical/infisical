@@ -41,6 +41,10 @@ export const getMigrationEnvConfig = () => {
     // eslint-disable-next-line no-console
     console.error("Invalid environment variables. Check the error below");
     // eslint-disable-next-line no-console
+    console.error(
+      "Migration is now automatic at startup. Please remove this step from your workflow and start the application as normal."
+    );
+    // eslint-disable-next-line no-console
     console.error(parsedEnv.error.issues);
     process.exit(-1);
   }
