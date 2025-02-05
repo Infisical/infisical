@@ -33,7 +33,7 @@ const reencryptIdentityOidcAuth = async (knex: Knex) => {
     });
   }
 
-  await initLogger();
+  initLogger();
   const envConfig = getMigrationEnvConfig();
   const keyStore = inMemoryKeyStore();
   const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });

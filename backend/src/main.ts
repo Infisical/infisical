@@ -2,14 +2,13 @@ import "./lib/telemetry/instrumentation";
 
 import dotenv from "dotenv";
 import { Redis } from "ioredis";
-import path from "path";
 
 import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
 
+import { runMigrations } from "./auto-start-migrations";
 import { initAuditLogDbConnection, initDbConnection } from "./db";
 import { keyStoreFactory } from "./keystore/keystore";
-import { formatSmtpConfig, initEnvConfig, IS_PACKAGED } from "./lib/config/env";
-import { isMigrationMode } from "./lib/fn";
+import { formatSmtpConfig, initEnvConfig } from "./lib/config/env";
 import { initLogger } from "./lib/logger";
 import { queueServiceFactory } from "./queue";
 import { main } from "./server/app";
@@ -19,7 +18,7 @@ import { smtpServiceFactory } from "./services/smtp/smtp-service";
 dotenv.config();
 
 const run = async () => {
-  const logger = await initLogger();
+  const logger = initLogger();
   const envConfig = initEnvConfig(logger);
 
   const db = initDbConnection({
@@ -38,22 +37,7 @@ const run = async () => {
       })
     : undefined;
 
-  // Case: App is running in packaged mode (binary), and migration mode is enabled.
-  // Run the migrations and exit the process after completion.
-  if (IS_PACKAGED && isMigrationMode()) {
-    try {
-      logger.info("Running Postgres migrations..");
-      await db.migrate.latest({
-        directory: path.join(__dirname, "./db/migrations")
-      });
-      logger.info("Postgres migrations completed");
-    } catch (err) {
-      logger.error(err, "Failed to run migrations");
-      process.exit(1);
-    }
-
-    process.exit(0);
-  }
+  await runMigrations({ applicationDb: db, auditLogDb, logger });
 
   const smtp = smtpServiceFactory(formatSmtpConfig());
 

@@ -28,7 +28,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  await initLogger();
+  initLogger();
   const envConfig = getMigrationEnvConfig();
   const keyStore = inMemoryKeyStore();
   const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });

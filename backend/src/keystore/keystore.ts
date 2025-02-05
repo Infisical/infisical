@@ -2,6 +2,11 @@ import { Redis } from "ioredis";
 
 import { Redlock, Settings } from "@app/lib/red-lock";
 
+export enum PgSqlLock {
+  BootUpMigration = 2023,
+  SuperAdminInit = 2024
+}
+
 export type TKeyStoreFactory = ReturnType<typeof keyStoreFactory>;
 
 // all the key prefixes used must be set here to avoid conflict

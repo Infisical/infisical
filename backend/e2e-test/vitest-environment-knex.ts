@@ -23,7 +23,7 @@ export default {
   name: "knex-env",
   transformMode: "ssr",
   async setup() {
-    const logger = await initLogger();
+    const logger = initLogger();
     const envConfig = initEnvConfig(logger);
     const db = initDbConnection({
       dbConnectionUri: envConfig.DB_CONNECTION_URI,
@@ -120,3 +120,4 @@ export default {
     };
   }
 };
+
