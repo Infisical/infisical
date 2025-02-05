@@ -295,7 +295,7 @@ const Content = ({
   return (
     <>
       <FormControl
-        label="Secret Path"
+        label="Select New Location"
         helperText="Nested folders will be displayed as secret path is typed"
       >
         <FilterableSelect
@@ -383,7 +383,11 @@ const Content = ({
 export const MoveSecretsModal = ({ isOpen, onOpenChange, ...props }: Props) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent bodyClassName="overflow-visible" title="Move Secrets">
+      <ModalContent
+        bodyClassName="overflow-visible"
+        title="Move Secrets Folder Location"
+        subTitle="Move the selected secrets across all environments to a new folder location"
+      >
         <Content {...props} />
       </ModalContent>
     </Modal>
