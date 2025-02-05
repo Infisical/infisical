@@ -110,7 +110,6 @@ export const secretRawSchema = z.object({
   secretReminderNote: z.string().nullable().optional(),
   secretReminderRepeatDays: z.number().nullable().optional(),
   skipMultilineEncoding: z.boolean().default(false).nullable().optional(),
-  metadata: z.unknown().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });
