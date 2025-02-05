@@ -57,7 +57,7 @@ services:
       POSTGRES_DB: infisical-test
 
   backend:
-    # container_name: infisical-dev-api
+    container_name: infisical-dev-api
     build:
       context: ./backend
       dockerfile: Dockerfile.dev
@@ -69,8 +69,8 @@ services:
     env_file:
       - .env
     ports:
-      - 4000-4010:4000
-      # - 9464:9464 # for OTEL collection of Prometheus metrics
+      - 4000:4000
+      - 9464:9464 # for OTEL collection of Prometheus metrics
     environment:
       - NODE_ENV=development
       - DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
