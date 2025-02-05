@@ -75,7 +75,7 @@ export type TGetDashboardProjectSecretsDetailsDTO = Omit<
 };
 
 export type TDashboardProjectSecretsQuickSearchResponse = {
-  folders: (TSecretFolder & { environment: string; path: string })[];
+  folders: (TSecretFolder & { envId: string; path: string })[];
   dynamicSecrets: (TDynamicSecret & { environment: string; path: string })[];
   secrets: SecretV3Raw[];
 };
@@ -83,7 +83,7 @@ export type TDashboardProjectSecretsQuickSearchResponse = {
 export type TDashboardProjectSecretsQuickSearch = {
   folders: Record<string, TDashboardProjectSecretsQuickSearchResponse["folders"]>;
   secrets: Record<string, SecretV3RawSanitized[]>;
-  dynamicSecrets: Record<string, TDashboardProjectSecretsQuickSearchResponse["folders"]>;
+  dynamicSecrets: Record<string, TDashboardProjectSecretsQuickSearchResponse["dynamicSecrets"]>;
 };
 
 export type TGetDashboardProjectSecretsQuickSearchDTO = {
