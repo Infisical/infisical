@@ -493,6 +493,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
                   db.ref("parents.environment")
                 )
                 .from(TableName.SecretFolder)
+                .where(`${TableName.SecretFolder}.isReserved`, false)
                 .join("parents", `${TableName.SecretFolder}.parentId`, "parents.id");
             })
         )
