@@ -1,5 +1,5 @@
 import { subject } from "@casl/ability";
-import { faMinusSquare, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faAnglesRight, faMinusSquare, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
@@ -19,6 +19,7 @@ import {
   TDeleteSecretBatchDTO,
   TSecretFolder
 } from "@app/hooks/api/types";
+import { MoveSecretsModal } from "@app/pages/secret-manager/OverviewPage/components/SelectionPanel/components";
 
 export enum EntryType {
   FOLDER = "folder",
@@ -38,7 +39,8 @@ export const SelectionPanel = ({ secretPath, resetSelectedEntries, selectedEntri
   const { permission } = useProjectPermission();
 
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
-    "bulkDeleteEntries"
+    "bulkDeleteEntries",
+    "bulkMoveSecrets"
   ] as const);
 
   const selectedFolderCount = Object.keys(selectedEntries.folder).length;
@@ -165,6 +167,8 @@ export const SelectionPanel = ({ secretPath, resetSelectedEntries, selectedEntri
     }
   };
 
+  const areFoldersSelected = Boolean(Object.keys(selectedEntries[EntryType.FOLDER]).length);
+
   return (
     <>
       <div
@@ -181,19 +185,46 @@ export const SelectionPanel = ({ secretPath, resetSelectedEntries, selectedEntri
           </Tooltip>
           <div className="ml-1 flex-grow px-2 text-sm">{selectedCount} Selected</div>
           {shouldShowDelete && (
-            <Button
-              variant="outline_bg"
-              colorSchema="danger"
-              leftIcon={<FontAwesomeIcon icon={faTrash} />}
-              className="ml-4"
-              onClick={() => handlePopUpOpen("bulkDeleteEntries")}
-              size="xs"
-            >
-              Delete
-            </Button>
+            <>
+              <Tooltip content={areFoldersSelected ? "Moving folders is not supported" : undefined}>
+                <div>
+                  <Button
+                    isDisabled={areFoldersSelected}
+                    variant="outline_bg"
+                    colorSchema="primary"
+                    leftIcon={<FontAwesomeIcon icon={faAnglesRight} />}
+                    className="ml-4"
+                    onClick={() => handlePopUpOpen("bulkMoveSecrets")}
+                    size="xs"
+                  >
+                    Move
+                  </Button>
+                </div>
+              </Tooltip>
+              <Button
+                variant="outline_bg"
+                colorSchema="danger"
+                leftIcon={<FontAwesomeIcon icon={faTrash} />}
+                className="ml-4"
+                onClick={() => handlePopUpOpen("bulkDeleteEntries")}
+                size="xs"
+              >
+                Delete
+              </Button>
+            </>
           )}
         </div>
       </div>
+      <MoveSecretsModal
+        isOpen={popUp.bulkMoveSecrets.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("bulkMoveSecrets", isOpen)}
+        environments={userAvailableEnvs}
+        projectId={workspaceId}
+        projectSlug={currentWorkspace.slug}
+        sourceSecretPath={secretPath}
+        secrets={selectedEntries[EntryType.SECRET]}
+        onComplete={resetSelectedEntries}
+      />
       <DeleteActionModal
         isOpen={popUp.bulkDeleteEntries.isOpen}
         deleteKey="delete"

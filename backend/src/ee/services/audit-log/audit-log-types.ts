@@ -770,9 +770,9 @@ interface AddIdentityGcpAuthEvent {
   metadata: {
     identityId: string;
     type: string;
-    allowedServiceAccounts: string;
-    allowedProjects: string;
-    allowedZones: string;
+    allowedServiceAccounts?: string | null;
+    allowedProjects?: string | null;
+    allowedZones?: string | null;
     accessTokenTTL: number;
     accessTokenMaxTTL: number;
     accessTokenNumUsesLimit: number;
@@ -792,9 +792,9 @@ interface UpdateIdentityGcpAuthEvent {
   metadata: {
     identityId: string;
     type?: string;
-    allowedServiceAccounts?: string;
-    allowedProjects?: string;
-    allowedZones?: string;
+    allowedServiceAccounts?: string | null;
+    allowedProjects?: string | null;
+    allowedZones?: string | null;
     accessTokenTTL?: number;
     accessTokenMaxTTL?: number;
     accessTokenNumUsesLimit?: number;

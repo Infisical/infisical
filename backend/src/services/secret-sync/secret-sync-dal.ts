@@ -123,47 +123,39 @@ export const secretSyncDALFactory = (
   };
 
   const create = async (data: Parameters<(typeof secretSyncOrm)["create"]>[0]) => {
-    try {
-      const secretSync = (await secretSyncOrm.transaction(async (tx) => {
-        const sync = await secretSyncOrm.create(data, tx);
+    const secretSync = (await secretSyncOrm.transaction(async (tx) => {
+      const sync = await secretSyncOrm.create(data, tx);
 
-        return baseSecretSyncQuery({
-          filter: { id: sync.id },
-          db,
-          tx
-        }).first();
-      }))!;
+      return baseSecretSyncQuery({
+        filter: { id: sync.id },
+        db,
+        tx
+      }).first();
+    }))!;
 
-      // TODO (scott): replace with cached folder path once implemented
-      const [folderWithPath] = secretSync.folderId
-        ? await folderDAL.findSecretPathByFolderIds(secretSync.projectId, [secretSync.folderId])
-        : [];
-      return expandSecretSync(secretSync, folderWithPath);
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Create - Secret Sync" });
-    }
+    // TODO (scott): replace with cached folder path once implemented
+    const [folderWithPath] = secretSync.folderId
+      ? await folderDAL.findSecretPathByFolderIds(secretSync.projectId, [secretSync.folderId])
+      : [];
+    return expandSecretSync(secretSync, folderWithPath);
   };
 
   const updateById = async (syncId: string, data: Parameters<(typeof secretSyncOrm)["updateById"]>[1]) => {
-    try {
-      const secretSync = (await secretSyncOrm.transaction(async (tx) => {
-        const sync = await secretSyncOrm.updateById(syncId, data, tx);
+    const secretSync = (await secretSyncOrm.transaction(async (tx) => {
+      const sync = await secretSyncOrm.updateById(syncId, data, tx);
 
-        return baseSecretSyncQuery({
-          filter: { id: sync.id },
-          db,
-          tx
-        }).first();
-      }))!;
+      return baseSecretSyncQuery({
+        filter: { id: sync.id },
+        db,
+        tx
+      }).first();
+    }))!;
 
-      // TODO (scott): replace with cached folder path once implemented
-      const [folderWithPath] = secretSync.folderId
-        ? await folderDAL.findSecretPathByFolderIds(secretSync.projectId, [secretSync.folderId])
-        : [];
-      return expandSecretSync(secretSync, folderWithPath);
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Update by ID - Secret Sync" });
-    }
+    // TODO (scott): replace with cached folder path once implemented
+    const [folderWithPath] = secretSync.folderId
+      ? await folderDAL.findSecretPathByFolderIds(secretSync.projectId, [secretSync.folderId])
+      : [];
+    return expandSecretSync(secretSync, folderWithPath);
   };
 
   const findOne = async (filter: Parameters<(typeof secretSyncOrm)["findOne"]>[0], tx?: Knex) => {

@@ -1039,7 +1039,6 @@
         "internals/overview",
         "internals/permissions",
         "internals/components",
-        "internals/flows",
         "internals/security",
         "internals/service-tokens"
       ]

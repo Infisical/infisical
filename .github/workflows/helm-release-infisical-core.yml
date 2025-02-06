@@ -1,4 +1,4 @@
-name: Release Helm Charts
+name: Release Infisical Core Helm chart
 
 on: [workflow_dispatch]
 
@@ -17,6 +17,6 @@ jobs:
       - name: Install Cloudsmith CLI
         run: pip install --upgrade cloudsmith-cli
       - name: Build and push helm package to Cloudsmith
-        run: cd helm-charts && sh upload-to-cloudsmith.sh
+        run: cd helm-charts && sh upload-infisical-core-helm-cloudsmith.sh
         env:
           CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
