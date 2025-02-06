@@ -1,3 +1,4 @@
+import ms from "ms";
 import { z } from "zod";
 
 import { KmipClientsSchema } from "@app/db/schemas";
@@ -8,6 +9,7 @@ import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
 const KmipClientResponseSchema = KmipClientsSchema.pick({
   projectId: true,
@@ -228,6 +230,59 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
       });
 
       return { kmipClients, totalCount };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/clients/:id/certificates",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        id: z.string()
+      }),
+      body: z.object({
+        keyAlgorithm: z.nativeEnum(CertKeyAlgorithm),
+        ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number")
+      }),
+      response: {
+        200: z.object({
+          serialNumber: z.string(),
+          certificateChain: z.string(),
+          certificate: z.string(),
+          privateKey: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const certificate = await server.services.kmip.createKmipClientCertificate({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        clientId: req.params.id,
+        ...req.body
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: certificate.projectId,
+        event: {
+          type: EventType.CREATE_KMIP_CLIENT_CERTIFICATE,
+          metadata: {
+            clientId: req.params.id,
+            serialNumber: certificate.serialNumber,
+            ttl: req.body.ttl,
+            keyAlgorithm: req.body.keyAlgorithm
+          }
+        }
+      });
+
+      return certificate;
     }
   });
 };

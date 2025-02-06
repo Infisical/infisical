@@ -2,6 +2,7 @@ import {
   faArrowDown,
   faArrowUp,
   faArrowUpRightFromSquare,
+  faCertificate,
   faEdit,
   faEllipsis,
   faMagnifyingGlass,
@@ -45,7 +46,9 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { useGetKmipClientsByProjectId } from "@app/hooks/api/kmip";
 import { KmipClientOrderBy, TKmipClient } from "@app/hooks/api/kmip/types";
 
+import { CreateKmipClientCertificateModal } from "./CreateKmipClientCertificateModal";
 import { DeleteKmipClientModal } from "./DeleteKmipClientModal";
+import { KmipClientCertificateModal } from "./KmipClientCertificateModal";
 import { KmipClientModal } from "./KmipClientModal";
 
 export const KmipClientTable = () => {
@@ -88,7 +91,9 @@ export const KmipClientTable = () => {
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "upsertKmipClient",
-    "deleteKmipClient"
+    "deleteKmipClient",
+    "generateKmipClientCert",
+    "displayKmipClientCert"
   ] as const);
 
   const handleSort = () => {
@@ -104,6 +109,11 @@ export const KmipClientTable = () => {
 
   const cannotDeleteKmipClient = permission.cannot(
     ProjectPermissionKmipActions.DeleteClients,
+    ProjectPermissionSub.Kmip
+  );
+
+  const cannotGenerateKmipClientCertificate = permission.cannot(
+    ProjectPermissionKmipActions.GenerateClientCertificates,
     ProjectPermissionSub.Kmip
   );
 
@@ -207,6 +217,25 @@ export const KmipClientTable = () => {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent className="min-w-[160px]">
                             <Tooltip
+                              content={
+                                cannotGenerateKmipClientCertificate ? "Access Restricted" : ""
+                              }
+                              position="left"
+                            >
+                              <div>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handlePopUpOpen("generateKmipClientCert", kmipClient)
+                                  }
+                                  icon={<FontAwesomeIcon icon={faCertificate} />}
+                                  iconPos="left"
+                                  isDisabled={cannotGenerateKmipClientCertificate}
+                                >
+                                  Generate Certificate
+                                </DropdownMenuItem>
+                              </div>
+                            </Tooltip>
+                            <Tooltip
                               content={cannotEditKmipClient ? "Access Restricted" : ""}
                               position="left"
                             >
@@ -273,6 +302,19 @@ export const KmipClientTable = () => {
           isOpen={popUp.upsertKmipClient.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upsertKmipClient", isOpen)}
           kmipClient={popUp.upsertKmipClient.data as TKmipClient | null}
+        />
+        <CreateKmipClientCertificateModal
+          isOpen={popUp.generateKmipClientCert.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("generateKmipClientCert", isOpen)}
+          kmipClient={popUp.generateKmipClientCert.data as TKmipClient | null}
+          displayNewClientCertificate={(certificate) =>
+            handlePopUpOpen("displayKmipClientCert", certificate)
+          }
+        />
+        <KmipClientCertificateModal
+          isOpen={popUp.displayKmipClientCert.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("displayKmipClientCert", isOpen)}
+          certificate={popUp.displayKmipClientCert.data}
         />
       </div>
     </motion.div>

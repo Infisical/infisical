@@ -28,7 +28,8 @@ export enum ProjectPermissionKmipActions {
   CreateClients = "create-clients",
   UpdateClients = "update-clients",
   DeleteClients = "delete-clients",
-  ReadClients = "read-clients"
+  ReadClients = "read-clients",
+  GenerateClientCertificates = "generate-client-certificates"
 }
 
 export enum ProjectPermissionSecretSyncActions {

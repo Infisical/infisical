@@ -1,3 +1,4 @@
+import { CertKeyAlgorithm } from "../certificates/enums";
 import { OrderByDirection } from "../generic/types";
 
 export enum KmipPermission {
@@ -28,6 +29,19 @@ export type TUpdateKmipClient = KeyRef &
 export type TProjectKmipClientList = {
   kmipClients: TKmipClient[];
   totalCount: number;
+};
+
+export type TGenerateKmipClientCertificate = {
+  keyAlgorithm: CertKeyAlgorithm;
+  ttl: string;
+  clientId: string;
+};
+
+export type KmipClientCertificate = {
+  serialNumber: string;
+  certificate: string;
+  certificateChain: string;
+  privateKey: string;
 };
 
 export type TDeleteKmipClient = KeyRef & ProjectRef;

@@ -48,7 +48,8 @@ export enum ProjectPermissionKmipActions {
   CreateClients = "create-clients",
   UpdateClients = "update-clients",
   DeleteClients = "delete-clients",
-  ReadClients = "read-clients"
+  ReadClients = "read-clients",
+  GenerateClientCertificates = "generate-client-certificates"
 }
 
 export enum ProjectPermissionSub {
@@ -596,7 +597,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionKmipActions.CreateClients,
       ProjectPermissionKmipActions.UpdateClients,
       ProjectPermissionKmipActions.DeleteClients,
-      ProjectPermissionKmipActions.ReadClients
+      ProjectPermissionKmipActions.ReadClients,
+      ProjectPermissionKmipActions.GenerateClientCertificates
     ],
     ProjectPermissionSub.Kmip
   );

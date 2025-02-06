@@ -11,7 +11,7 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { isValidIp } from "@app/lib/ip";
 
 import { TAuthLoginFactory } from "../auth/auth-login-service";
@@ -562,7 +562,7 @@ export const superAdminServiceFactory = ({
   }: TGenerateInstanceKmipServerCertificateDTO) => {
     const kmipInstanceConfig = await kmipInstanceConfigDAL.findById(ADMIN_CONFIG_DB_UUID);
     if (!kmipInstanceConfig) {
-      throw new BadRequestError({
+      throw new InternalServerError({
         message: "KMIP has not been configured for the instance"
       });
     }

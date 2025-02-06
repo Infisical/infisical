@@ -3,7 +3,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { kmipKeys } from "./queries";
-import { TCreateKmipClient, TDeleteKmipClient, TUpdateKmipClient } from "./types";
+import {
+  KmipClientCertificate,
+  TCreateKmipClient,
+  TDeleteKmipClient,
+  TGenerateKmipClientCertificate,
+  TUpdateKmipClient
+} from "./types";
 
 export const useCreateKmipClient = () => {
   const queryClient = useQueryClient();
@@ -53,6 +59,19 @@ export const useDeleteKmipClients = () => {
       queryClient.invalidateQueries({
         queryKey: kmipKeys.getKmipClientsByProjectId({ projectId })
       });
+    }
+  });
+};
+
+export const useGenerateKmipClientCertificate = () => {
+  return useMutation({
+    mutationFn: async (payload: TGenerateKmipClientCertificate) => {
+      const { data } = await apiRequest.post<KmipClientCertificate>(
+        `/api/v1/kmip/clients/${payload.clientId}/certificates`,
+        payload
+      );
+
+      return data;
     }
   });
 };

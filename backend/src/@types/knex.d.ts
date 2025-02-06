@@ -143,6 +143,9 @@ import {
   TInternalKms,
   TInternalKmsInsert,
   TInternalKmsUpdate,
+  TKmipClientCertificates,
+  TKmipClientCertificatesInsert,
+  TKmipClientCertificatesUpdate,
   TKmipClients,
   TKmipClientsInsert,
   TKmipClientsUpdate,
@@ -921,6 +924,11 @@ declare module "knex/types/tables" {
       TKmipInstanceServerCertificates,
       TKmipInstanceServerCertificatesInsert,
       TKmipInstanceServerCertificatesUpdate
+    >;
+    [TableName.KmipClientCertificates]: KnexOriginal.CompositeTableType<
+      TKmipClientCertificates,
+      TKmipClientCertificatesInsert,
+      TKmipClientCertificatesUpdate
     >;
   }
 }

@@ -35,6 +35,7 @@ import { HsmModule } from "@app/ee/services/hsm/hsm-types";
 import { identityProjectAdditionalPrivilegeDALFactory } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-dal";
 import { identityProjectAdditionalPrivilegeServiceFactory } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-service";
 import { identityProjectAdditionalPrivilegeV2ServiceFactory } from "@app/ee/services/identity-project-additional-privilege-v2/identity-project-additional-privilege-v2-service";
+import { kmipClientCertificateDALFactory } from "@app/ee/services/kmip/kmip-client-certificate-dal";
 import { kmipClientDALFactory } from "@app/ee/services/kmip/kmip-client-dal";
 import { kmipInstanceConfigDALFactory } from "@app/ee/services/kmip/kmip-instance-config-dal";
 import { kmipInstanceServerCertificateDALFactory } from "@app/ee/services/kmip/kmip-instance-server-certificate-dal";
@@ -385,6 +386,7 @@ export const registerRoutes = async (
   const projectTemplateDAL = projectTemplateDALFactory(db);
   const resourceMetadataDAL = resourceMetadataDALFactory(db);
   const kmipClientDAL = kmipClientDALFactory(db);
+  const kmipClientCertificateDAL = kmipClientCertificateDALFactory(db);
   const kmipInstanceConfigDAL = kmipInstanceConfigDALFactory(db);
   const kmipInstanceServerCertificateDAL = kmipInstanceServerCertificateDALFactory(db);
 
@@ -1429,7 +1431,10 @@ export const registerRoutes = async (
 
   const kmipService = kmipServiceFactory({
     kmipClientDAL,
-    permissionService
+    permissionService,
+    kmipClientCertificateDAL,
+    kmipInstanceConfigDAL,
+    kmsService
   });
 
   await superAdminService.initServerCfg();

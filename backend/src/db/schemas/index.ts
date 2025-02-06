@@ -45,6 +45,7 @@ export * from "./incident-contacts";
 export * from "./integration-auths";
 export * from "./integrations";
 export * from "./internal-kms";
+export * from "./kmip-client-certificates";
 export * from "./kmip-clients";
 export * from "./kmip-instance-configs";
 export * from "./kmip-instance-server-certificates";

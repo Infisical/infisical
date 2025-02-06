@@ -258,7 +258,8 @@ export enum EventType {
   UPDATE_KMIP_CLIENT = "update-kmip-client",
   DELETE_KMIP_CLIENT = "delete-kmip-client",
   GET_KMIP_CLIENT = "get-kmip-client",
-  GET_KMIP_CLIENTS = "get-kmip-clients"
+  GET_KMIP_CLIENTS = "get-kmip-clients",
+  CREATE_KMIP_CLIENT_CERTIFICATE = "create-kmip-client-certificate"
 }
 
 interface UserActorMetadata {
@@ -2112,6 +2113,16 @@ interface GetKmipClientsEvent {
   };
 }
 
+interface CreateKmipClientCertificateEvent {
+  type: EventType.CREATE_KMIP_CLIENT_CERTIFICATE;
+  metadata: {
+    clientId: string;
+    ttl: string;
+    keyAlgorithm: string;
+    serialNumber: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -2307,4 +2318,5 @@ export type Event =
   | UpdateKmipClientEvent
   | DeleteKmipClientEvent
   | GetKmipClientEvent
-  | GetKmipClientsEvent;
+  | GetKmipClientsEvent
+  | CreateKmipClientCertificateEvent;

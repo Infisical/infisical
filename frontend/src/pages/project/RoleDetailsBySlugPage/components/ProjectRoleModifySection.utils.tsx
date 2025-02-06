@@ -53,7 +53,8 @@ const KmipPolicyActionSchema = z.object({
   [ProjectPermissionKmipActions.ReadClients]: z.boolean().optional(),
   [ProjectPermissionKmipActions.CreateClients]: z.boolean().optional(),
   [ProjectPermissionKmipActions.UpdateClients]: z.boolean().optional(),
-  [ProjectPermissionKmipActions.DeleteClients]: z.boolean().optional()
+  [ProjectPermissionKmipActions.DeleteClients]: z.boolean().optional(),
+  [ProjectPermissionKmipActions.GenerateClientCertificates]: z.boolean().optional()
 });
 
 const SecretRollbackPolicyActionSchema = z.object({
@@ -373,6 +374,9 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       const canEditClients = action.includes(ProjectPermissionKmipActions.UpdateClients);
       const canDeleteClients = action.includes(ProjectPermissionKmipActions.DeleteClients);
       const canCreateClients = action.includes(ProjectPermissionKmipActions.CreateClients);
+      const canGenerateClientCerts = action.includes(
+        ProjectPermissionKmipActions.GenerateClientCertificates
+      );
 
       if (!formVal[subject]) formVal[subject] = [{}];
 
@@ -381,6 +385,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canEditClients) formVal[subject]![0][ProjectPermissionKmipActions.UpdateClients] = true;
       if (canCreateClients) formVal[subject]![0][ProjectPermissionKmipActions.CreateClients] = true;
       if (canDeleteClients) formVal[subject]![0][ProjectPermissionKmipActions.DeleteClients] = true;
+      if (canGenerateClientCerts)
+        formVal[subject]![0][ProjectPermissionKmipActions.GenerateClientCertificates] = true;
 
       return;
     }
@@ -783,6 +789,10 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       {
         label: "Delete clients",
         value: ProjectPermissionKmipActions.DeleteClients
+      },
+      {
+        label: "Generate client certificates",
+        value: ProjectPermissionKmipActions.GenerateClientCertificates
       }
     ]
   }

@@ -135,7 +135,8 @@ export enum TableName {
   SecretSync = "secret_syncs",
   KmipClient = "kmip_clients",
   KmipInstanceConfig = "kmip_instance_configs",
-  KmipInstanceServerCertificates = "kmip_instance_server_certificates"
+  KmipInstanceServerCertificates = "kmip_instance_server_certificates",
+  KmipClientCertificates = "kmip_client_certificates"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt";

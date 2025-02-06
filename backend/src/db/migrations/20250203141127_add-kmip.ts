@@ -63,6 +63,19 @@ export async function up(knex: Knex): Promise<void> {
       t.binary("encryptedChain").notNullable();
     });
   }
+
+  const hasKmipClientCertTable = await knex.schema.hasTable(TableName.KmipClientCertificates);
+  if (!hasKmipClientCertTable) {
+    await knex.schema.createTable(TableName.KmipClientCertificates, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.uuid("kmipClientId").notNullable();
+      t.foreign("kmipClientId").references("id").inTable(TableName.KmipClient).onDelete("CASCADE");
+      t.string("serialNumber").notNullable();
+      t.string("keyAlgorithm").notNullable();
+      t.datetime("issuedAt").notNullable();
+      t.datetime("expiration").notNullable();
+    });
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {
@@ -80,5 +93,10 @@ export async function down(knex: Knex): Promise<void> {
   const hasKmipInstanceServerCertTable = await knex.schema.hasTable(TableName.KmipInstanceServerCertificates);
   if (hasKmipInstanceServerCertTable) {
     await knex.schema.dropTable(TableName.KmipInstanceServerCertificates);
+  }
+
+  const hasKmipClientCertTable = await knex.schema.hasTable(TableName.KmipClientCertificates);
+  if (hasKmipClientCertTable) {
+    await knex.schema.dropTable(TableName.KmipClientCertificates);
   }
 }

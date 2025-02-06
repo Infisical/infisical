@@ -1,6 +1,13 @@
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
+import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
 import { KmipPermission } from "./kmip-enum";
+
+export type TCreateKmipClientCertificateDTO = {
+  clientId: string;
+  keyAlgorithm: CertKeyAlgorithm;
+  ttl: string;
+} & Omit<TProjectPermission, "projectId">;
 
 export type TCreateKmipClientDTO = {
   name: string;
