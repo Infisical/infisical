@@ -86,13 +86,23 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Edit, ProjectPermissionSub.Cmek);
 
-    const cmek = await kmsDAL.updateById(keyId, data);
+    try {
+      const cmek = await kmsDAL.updateById(keyId, data);
 
-    return {
-      ...cmek,
-      version: key.version,
-      encryptionAlgorithm: key.encryptionAlgorithm
-    };
+      return {
+        ...cmek,
+        version: key.version,
+        encryptionAlgorithm: key.encryptionAlgorithm
+      };
+    } catch (err) {
+      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
+        throw new BadRequestError({
+          message: `A KMS key with the name "${data.name!}" already exists for the project with ID "${key.projectId}"`
+        });
+      }
+
+      throw err;
+    }
   };
 
   const deleteCmekById = async (keyId: string, actor: OrgServiceActor) => {
