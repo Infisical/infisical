@@ -875,7 +875,7 @@ export const kmsServiceFactory = ({
     const kmsRootConfig = await kmsRootConfigDAL.transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsRootKeyInit]);
       // check if KMS root key was already generated and saved in DB
-      const existingRootConfig = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID, tx);
+      const existingRootConfig = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID);
       if (existingRootConfig) return existingRootConfig;
 
       logger.info("KMS: Generating new ROOT Key");
@@ -885,15 +885,12 @@ export const kmsServiceFactory = ({
         throw err;
       });
 
-      const newRootConfig = await kmsRootConfigDAL.create(
-        {
-          // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
-          id: KMS_ROOT_CONFIG_UUID,
-          encryptedRootKey,
-          encryptionStrategy: RootKeyEncryptionStrategy.Software
-        },
-        tx
-      );
+      const newRootConfig = await kmsRootConfigDAL.create({
+        // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
+        id: KMS_ROOT_CONFIG_UUID,
+        encryptedRootKey,
+        encryptionStrategy: RootKeyEncryptionStrategy.Software
+      });
       return newRootConfig;
     });
 

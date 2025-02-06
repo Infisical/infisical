@@ -89,19 +89,16 @@ export const superAdminServiceFactory = ({
     await keyStore.deleteItem(ADMIN_CONFIG_KEY);
     const serverCfg = await serverCfgDAL.transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SuperAdminInit]);
-      const serverCfgInDB = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID, tx);
+      const serverCfgInDB = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
       if (serverCfgInDB) return serverCfgInDB;
 
-      const newCfg = await serverCfgDAL.create(
-        {
-          // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
-          id: ADMIN_CONFIG_DB_UUID,
-          initialized: false,
-          allowSignUp: true,
-          defaultAuthOrgId: null
-        },
-        tx
-      );
+      const newCfg = await serverCfgDAL.create({
+        // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
+        id: ADMIN_CONFIG_DB_UUID,
+        initialized: false,
+        allowSignUp: true,
+        defaultAuthOrgId: null
+      });
       return newCfg;
     });
     return serverCfg;
