@@ -79,11 +79,6 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const hasKmipClientTable = await knex.schema.hasTable(TableName.KmipClient);
-  if (hasKmipClientTable) {
-    await knex.schema.dropTable(TableName.KmipClient);
-  }
-
   const hasKmipInstanceConfigTable = await knex.schema.hasTable(TableName.KmipInstanceConfig);
   if (hasKmipInstanceConfigTable) {
     await knex.schema.dropTable(TableName.KmipInstanceConfig);
@@ -98,5 +93,10 @@ export async function down(knex: Knex): Promise<void> {
   const hasKmipClientCertTable = await knex.schema.hasTable(TableName.KmipClientCertificates);
   if (hasKmipClientCertTable) {
     await knex.schema.dropTable(TableName.KmipClientCertificates);
+  }
+
+  const hasKmipClientTable = await knex.schema.hasTable(TableName.KmipClient);
+  if (hasKmipClientTable) {
+    await knex.schema.dropTable(TableName.KmipClient);
   }
 }
