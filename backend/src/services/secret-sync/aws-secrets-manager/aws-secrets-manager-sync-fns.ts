@@ -203,9 +203,15 @@ export const AwsSecretsManagerSyncFns = {
       for await (const entry of Object.entries(secretMap)) {
         const [key, { value }] = entry;
 
+        // skip secrets that don't have a value set
+        if (!value) {
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+
         if (awsSecretsRecord[key]) {
-          // skip secrets that haven't changed or don't have a value set
-          if (!value || awsValuesRecord[key]?.SecretString === value) {
+          // skip secrets that haven't changed
+          if (awsValuesRecord[key]?.SecretString === value) {
             // eslint-disable-next-line no-continue
             continue;
           }
