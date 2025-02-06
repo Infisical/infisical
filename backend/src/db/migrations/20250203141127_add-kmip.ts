@@ -61,7 +61,6 @@ export async function up(knex: Knex): Promise<void> {
       t.datetime("expiration").notNullable();
       t.binary("encryptedCertificate").notNullable();
       t.binary("encryptedChain").notNullable();
-      t.binary("encryptedPrivateKey").notNullable();
     });
   }
 }

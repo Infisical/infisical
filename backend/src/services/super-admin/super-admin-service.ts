@@ -2,7 +2,6 @@ import * as x509 from "@peculiar/x509";
 import bcrypt from "bcrypt";
 import crypto, { KeyObject } from "crypto";
 import ms from "ms";
-import z from "zod";
 
 import { TSuperAdmin, TSuperAdminUpdate } from "@app/db/schemas";
 import { TKmipInstanceConfigDALFactory } from "@app/ee/services/kmip/kmip-instance-config-dal";
@@ -13,6 +12,7 @@ import { getConfig } from "@app/lib/config/env";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { isValidIp } from "@app/lib/ip";
 
 import { TAuthLoginFactory } from "../auth/auth-login-service";
 import { AuthMethod } from "../auth/auth-type";
@@ -526,8 +526,8 @@ export const superAdminServiceFactory = ({
     });
 
     return {
-      // the order of the cert is intentional - for client chains, ordering should be from intermediate to root
-      serverCertificateChain: `${serverIntermediateCaCert.toString("pem")}\n${rootCaCert.toString("pem")}`.trim()
+      serverCertificateChain: `${serverIntermediateCaCert.toString("pem")}\n${rootCaCert.toString("pem")}`.trim(),
+      clientCertificateChain: `${clientIntermediateCaCert.toString("pem")}\n${rootCaCert.toString("pem")}`.trim()
     };
   };
 
@@ -544,10 +544,13 @@ export const superAdminServiceFactory = ({
     const serverIntermediateCaCert = new x509.X509Certificate(
       decryptWithRoot(kmipInstanceConfig.encryptedServerIntermediateCaCertificate)
     );
+    const clientIntermediateCaCert = new x509.X509Certificate(
+      decryptWithRoot(kmipInstanceConfig.encryptedClientIntermediateCaCertificate)
+    );
 
     return {
-      // the order of the cert is intentional - for client chains, ordering should be from intermediate to root
-      serverCertificateChain: `${serverIntermediateCaCert.toString("pem")}\n${rootCaCert.toString("pem")}`.trim()
+      serverCertificateChain: `${serverIntermediateCaCert.toString("pem")}\n${rootCaCert.toString("pem")}`.trim(),
+      clientCertificateChain: `${clientIntermediateCaCert.toString("pem")}\n${rootCaCert.toString("pem")}`.trim()
     };
   };
 
@@ -604,20 +607,12 @@ export const superAdminServiceFactory = ({
     ];
 
     const altNamesArray: {
-      type: "email" | "dns";
+      type: "email" | "dns" | "ip";
       value: string;
     }[] = altNames
       .split(",")
       .map((name) => name.trim())
       .map((altName) => {
-        // check if the altName is a valid email
-        if (z.string().email().safeParse(altName).success) {
-          return {
-            type: "email",
-            value: altName
-          };
-        }
-
         // check if the altName is a valid hostname
         if (hostnameRegex.test(altName)) {
           return {
@@ -626,7 +621,14 @@ export const superAdminServiceFactory = ({
           };
         }
 
-        // If altName is neither a valid email nor a valid hostname, throw an error or handle it accordingly
+        // check if the altName is a valid IP
+        if (isValidIp(altName)) {
+          return {
+            type: "ip",
+            value: altName
+          };
+        }
+
         throw new Error(`Invalid altName: ${altName}`);
       });
 
@@ -668,8 +670,9 @@ export const superAdminServiceFactory = ({
 
     const encryptWithRoot = kmsService.encryptWithRootKey();
     const skLeafObj = KeyObject.from(leafKeys.privateKey);
+    const certificateChain = `${caCertObj.toString("pem")}\n${decryptedCaCertChain}`.trim();
 
-    const serverCert = await kmipInstanceServerCertificateDAL.create({
+    await kmipInstanceServerCertificateDAL.create({
       keyAlgorithm,
       issuedAt: notBeforeDate,
       expiration: notAfterDate,
@@ -677,11 +680,15 @@ export const superAdminServiceFactory = ({
       commonName,
       altNames,
       encryptedCertificate: encryptWithRoot(Buffer.from(new Uint8Array(leafCert.rawData))),
-      encryptedPrivateKey: encryptWithRoot(skLeafObj.export({ format: "der", type: "pkcs8" })),
-      encryptedChain: encryptWithRoot(Buffer.from(`${decryptedCaCertChain}\n${caCertObj.toString("pem")}`.trim()))
+      encryptedChain: encryptWithRoot(Buffer.from(certificateChain))
     });
 
-    return serverCert;
+    return {
+      serialNumber,
+      privateKey: skLeafObj.export({ format: "pem", type: "pkcs8" }) as string,
+      certificate: leafCert.toString("pem"),
+      certificateChain
+    };
   };
 
   return {

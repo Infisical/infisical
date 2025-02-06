@@ -332,7 +332,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          serverCertificateChain: z.string()
+          serverCertificateChain: z.string(),
+          clientCertificateChain: z.string()
         })
       }
     },
@@ -357,7 +358,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     schema: {
       response: {
         200: z.object({
-          serverCertificateChain: z.string()
+          serverCertificateChain: z.string(),
+          clientCertificateChain: z.string()
         })
       }
     },
@@ -386,6 +388,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
+          serialNumber: z.string(),
           certificateChain: z.string(),
           certificate: z.string(),
           privateKey: z.string()

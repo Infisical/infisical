@@ -7,8 +7,10 @@ import { User } from "../users/types";
 import { adminQueryKeys, adminStandaloneKeys } from "./queries";
 import {
   AdminSlackConfig,
+  InstanceKmipServerCert,
   RootKeyEncryptionStrategy,
   TCreateAdminUserDTO,
+  TGenerateInstanceKmipServerCertDTO,
   TServerConfig,
   TSetupInstanceKmipDTO,
   TUpdateAdminSlackConfigDTO
@@ -108,6 +110,17 @@ export const useSetupInstanceKmip = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.getInstanceKmip() });
+    }
+  });
+};
+
+export const useGenerateInstanceKmipServerCert = () => {
+  return useMutation({
+    mutationFn: async (payload: TGenerateInstanceKmipServerCertDTO) => {
+      return apiRequest.post<InstanceKmipServerCert>(
+        "/api/v1/admin/kmip/server-certificates",
+        payload
+      );
     }
   });
 };

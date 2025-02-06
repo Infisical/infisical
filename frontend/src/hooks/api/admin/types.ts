@@ -66,6 +66,7 @@ export type TGetServerRootKmsEncryptionDetails = {
 
 export type InstanceKmipConfig = {
   serverCertificateChain: string;
+  clientCertificateChain: string;
 };
 
 export enum RootKeyEncryptionStrategy {
@@ -75,4 +76,18 @@ export enum RootKeyEncryptionStrategy {
 
 export type TSetupInstanceKmipDTO = {
   caKeyAlgorithm: CertKeyAlgorithm;
+};
+
+export type TGenerateInstanceKmipServerCertDTO = {
+  commonName: string;
+  keyAlgorithm: CertKeyAlgorithm;
+  altNames: string;
+  ttl: string;
+};
+
+export type InstanceKmipServerCert = {
+  serialNumber: string;
+  certificate: string;
+  certificateChain: string;
+  privateKey: string;
 };

@@ -103,6 +103,10 @@ export const isValidIpOrCidr = (ip: string): boolean => {
   return false;
 };
 
+export const isValidIp = (ip: string) => {
+  return net.isIPv4(ip) || net.isIPv6(ip);
+};
+
 export type TIp = {
   ipAddress: string;
   type: IPType;

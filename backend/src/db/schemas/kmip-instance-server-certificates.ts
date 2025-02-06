@@ -18,8 +18,7 @@ export const KmipInstanceServerCertificatesSchema = z.object({
   issuedAt: z.date(),
   expiration: z.date(),
   encryptedCertificate: zodBuffer,
-  encryptedChain: zodBuffer,
-  encryptedPrivateKey: zodBuffer
+  encryptedChain: zodBuffer
 });
 
 export type TKmipInstanceServerCertificates = z.infer<typeof KmipInstanceServerCertificatesSchema>;
