@@ -317,6 +317,8 @@ interface GetSecretsEvent {
   };
 }
 
+type TSecretMetadata = { key: string; value: string }[];
+
 interface GetSecretEvent {
   type: EventType.GET_SECRET;
   metadata: {
@@ -325,6 +327,7 @@ interface GetSecretEvent {
     secretId: string;
     secretKey: string;
     secretVersion: number;
+    secretMetadata?: TSecretMetadata;
   };
 }
 
@@ -336,6 +339,7 @@ interface CreateSecretEvent {
     secretId: string;
     secretKey: string;
     secretVersion: number;
+    secretMetadata?: TSecretMetadata;
   };
 }
 
@@ -344,7 +348,12 @@ interface CreateSecretBatchEvent {
   metadata: {
     environment: string;
     secretPath: string;
-    secrets: Array<{ secretId: string; secretKey: string; secretVersion: number }>;
+    secrets: Array<{
+      secretId: string;
+      secretKey: string;
+      secretVersion: number;
+      secretMetadata?: TSecretMetadata;
+    }>;
   };
 }
 
@@ -356,6 +365,7 @@ interface UpdateSecretEvent {
     secretId: string;
     secretKey: string;
     secretVersion: number;
+    secretMetadata?: TSecretMetadata;
   };
 }
 
@@ -364,7 +374,7 @@ interface UpdateSecretBatchEvent {
   metadata: {
     environment: string;
     secretPath: string;
-    secrets: Array<{ secretId: string; secretKey: string; secretVersion: number }>;
+    secrets: Array<{ secretId: string; secretKey: string; secretVersion: number; secretMetadata?: TSecretMetadata }>;
   };
 }
 
