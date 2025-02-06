@@ -393,7 +393,8 @@
           "pages": [
             "integrations/app-connections/aws",
             "integrations/app-connections/github",
-            "integrations/app-connections/gcp"
+            "integrations/app-connections/gcp",
+            "integrations/app-connections/azure"
           ]
         }
       ]
@@ -408,7 +409,9 @@
             "integrations/secret-syncs/aws-parameter-store",
             "integrations/secret-syncs/aws-secrets-manager",
             "integrations/secret-syncs/github",
-            "integrations/secret-syncs/gcp-secret-manager"
+            "integrations/secret-syncs/gcp-secret-manager",
+            "integrations/secret-syncs/azure-key-vault",
+            "integrations/secret-syncs/azure-app-configuration"
           ]
         }
       ]

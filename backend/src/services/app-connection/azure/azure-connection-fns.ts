@@ -14,7 +14,11 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { AppConnection } from "../app-connection-enums";
 import { AzureConnectionMethod, AzureResources } from "./azure-connection-enums";
-import { TAzureConnectionConfig, TAzureConnectionCredentials } from "./azure-connection-types";
+import {
+  ExchangeCodeAzureResponse,
+  TAzureConnectionConfig,
+  TAzureConnectionCredentials
+} from "./azure-connection-types";
 
 const resourceScopes: Record<AzureResources, string> = {
   [AzureResources.AppConfiguration]: "https://azconfig.io/.default",
@@ -49,8 +53,8 @@ export const getAzureConnectionAccessToken = async (
     new URLSearchParams({
       grant_type: "refresh_token",
       scope: `openid offline_access`,
-      client_id: appCfg.CLIENT_ID_AZURE!,
-      client_secret: appCfg.CLIENT_SECRET_AZURE!,
+      client_id: appCfg.INF_APP_CONNECTION_AZURE_CLIENT_ID!,
+      client_secret: appCfg.INF_APP_CONNECTION_AZURE_CLIENT_SECRET!,
       refresh_token: credentials.refreshToken
     })
   );
@@ -84,32 +88,22 @@ export const getAzureConnectionAccessToken = async (
 };
 
 export const getAzureConnectionListItem = () => {
-  const { CLIENT_ID_AZURE } = getConfig();
+  const { INF_APP_CONNECTION_AZURE_CLIENT_ID } = getConfig();
 
   return {
     name: "Azure" as const,
     app: AppConnection.Azure as const,
     methods: Object.values(AzureConnectionMethod) as [AzureConnectionMethod.OAuth],
-    oauthClientId: CLIENT_ID_AZURE
+    oauthClientId: INF_APP_CONNECTION_AZURE_CLIENT_ID
   };
-};
-
-type ExchangeCodeAzureResponse = {
-  token_type: string;
-  scope: string;
-  expires_in: number;
-  ext_expires_in: number;
-  access_token: string;
-  refresh_token: string;
-  id_token: string;
 };
 
 export const validateAzureConnectionCredentials = async (config: TAzureConnectionConfig) => {
   const { credentials: inputCredentials, method } = config;
 
-  const { CLIENT_ID_AZURE, CLIENT_SECRET_AZURE } = getConfig();
+  const { INF_APP_CONNECTION_AZURE_CLIENT_ID, INF_APP_CONNECTION_AZURE_CLIENT_SECRET, SITE_URL } = getConfig();
 
-  if (!CLIENT_ID_AZURE || !CLIENT_SECRET_AZURE) {
+  if (!INF_APP_CONNECTION_AZURE_CLIENT_ID || !INF_APP_CONNECTION_AZURE_CLIENT_SECRET) {
     throw new InternalServerError({
       message: `Azure ${getAppConnectionMethodName(method)} environment variables have not been configured`
     });
@@ -119,23 +113,17 @@ export const validateAzureConnectionCredentials = async (config: TAzureConnectio
   let tokenError: AxiosError | null = null;
 
   try {
-    const appCfg = getConfig();
-    if (!appCfg.CLIENT_ID_AZURE || !appCfg.CLIENT_SECRET_AZURE) {
-      throw new BadRequestError({ message: "Missing client id and client secret" });
-    }
-
     tokenResp = await request.post<ExchangeCodeAzureResponse>(
       IntegrationUrls.AZURE_TOKEN_URL.replace("common", inputCredentials.tenantId || "common"),
       new URLSearchParams({
         grant_type: "authorization_code",
         code: inputCredentials.code,
         scope: `openid offline_access ${resourceScopes[inputCredentials.resource]}`,
-        client_id: appCfg.CLIENT_ID_AZURE,
-        client_secret: appCfg.CLIENT_SECRET_AZURE,
-        redirect_uri: `${appCfg.SITE_URL}/organization/app-connections/azure/oauth/callback`
+        client_id: INF_APP_CONNECTION_AZURE_CLIENT_ID,
+        client_secret: INF_APP_CONNECTION_AZURE_CLIENT_SECRET,
+        redirect_uri: `${SITE_URL}/organization/app-connections/azure/oauth/callback`
       })
     );
-    // TODO(daniel): handle token refreshing
   } catch (e: unknown) {
     if (e instanceof AxiosError) {
       tokenError = e;
