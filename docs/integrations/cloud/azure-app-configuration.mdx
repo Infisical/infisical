@@ -75,7 +75,7 @@ description: "How to sync secrets from Infisical to Azure App Configuration"
       <Step title="Create an application in Azure">
         Navigate to Azure Active Directory > App registrations to create a new application.
 
-        <Info>
+        <Warning>
           Azure Active Directory is now Microsoft Entra ID.
         </Info>
         ![integrations Azure app config](../../images/integrations/azure-app-configuration/config-aad.png)
@@ -91,7 +91,7 @@ description: "How to sync secrets from Infisical to Azure App Configuration"
         After registration, set the API permissions of the app to include the following Azure App Configuration permissions: KeyValue.Delete, KeyValue.Read, and KeyValue.Write.
         ![integrations Azure app config](../../images/integrations/azure-app-configuration/app-api-permissions.png)
 
-      </Step>
+      </Warning>
       <Step title="Add your application credentials to Infisical">
         Obtain the **Application (Client) ID** in Overview and generate a **Client Secret** in Certificate & secrets for your Azure application.
 
