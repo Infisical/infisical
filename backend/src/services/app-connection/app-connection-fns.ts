@@ -20,10 +20,15 @@ import {
 } from "@app/services/app-connection/github";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
+import { AzureConnectionMethod, getAzureConnectionListItem, validateAzureConnectionCredentials } from "./azure";
+
 export const listAppConnectionOptions = () => {
-  return [getAwsAppConnectionListItem(), getGitHubConnectionListItem(), getGcpAppConnectionListItem()].sort((a, b) =>
-    a.name.localeCompare(b.name)
-  );
+  return [
+    getAwsAppConnectionListItem(),
+    getGitHubConnectionListItem(),
+    getGcpAppConnectionListItem(),
+    getAzureConnectionListItem()
+  ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
 export const encryptAppConnectionCredentials = async ({
@@ -79,6 +84,8 @@ export const validateAppConnectionCredentials = async (
       return validateGitHubConnectionCredentials(appConnection);
     case AppConnection.GCP:
       return validateGcpConnectionCredentials(appConnection);
+    case AppConnection.Azure:
+      return validateAzureConnectionCredentials(appConnection);
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection ${app}`);
@@ -89,6 +96,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
   switch (method) {
     case GitHubConnectionMethod.App:
       return "GitHub App";
+    case AzureConnectionMethod.OAuth:
     case GitHubConnectionMethod.OAuth:
       return "OAuth";
     case AwsConnectionMethod.AccessKey:

@@ -9,6 +9,8 @@ import { SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP, SECRET_SYNC_MAP } from "@app/hel
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { AwsParameterStoreSyncReviewFields } from "./AwsParameterStoreSyncReviewFields";
+import { AzureAppConfigurationSyncReviewFields } from "./AzureAppConfigurationSyncReviewFields";
+import { AzureKeyVaultSyncReviewFields } from "./AzureKeyVaultSyncReviewFields";
 import { GcpSyncReviewFields } from "./GcpSyncReviewFields";
 import { GitHubSyncReviewFields } from "./GitHubSyncReviewFields";
 
@@ -45,6 +47,12 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.GCPSecretManager:
       DestinationFieldsComponent = <GcpSyncReviewFields />;
+      break;
+    case SecretSync.AzureKeyVault:
+      DestinationFieldsComponent = <AzureKeyVaultSyncReviewFields />;
+      break;
+    case SecretSync.AzureAppConfiguration:
+      DestinationFieldsComponent = <AzureAppConfigurationSyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

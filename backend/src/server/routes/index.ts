@@ -849,7 +849,8 @@ export const registerRoutes = async (
     secretVersionTagDAL,
     secretVersionV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
-    resourceMetadataDAL
+    resourceMetadataDAL,
+    appConnectionDAL
   });
 
   const secretQueueService = secretQueueFactory({

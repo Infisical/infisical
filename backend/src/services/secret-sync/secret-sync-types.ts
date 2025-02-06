@@ -23,27 +23,51 @@ import {
   TAwsParameterStoreSyncListItem,
   TAwsParameterStoreSyncWithCredentials
 } from "./aws-parameter-store";
+import {
+  TAzureAppConfigurationSync,
+  TAzureAppConfigurationSyncInput,
+  TAzureAppConfigurationSyncListItem,
+  TAzureAppConfigurationSyncWithCredentials
+} from "./azure-app-configuration";
+import {
+  TAzureKeyVaultSync,
+  TAzureKeyVaultSyncInput,
+  TAzureKeyVaultSyncListItem,
+  TAzureKeyVaultSyncWithCredentials
+} from "./azure-key-vault";
 import { TGcpSync, TGcpSyncInput, TGcpSyncListItem, TGcpSyncWithCredentials } from "./gcp";
 
-export type TSecretSync = TAwsParameterStoreSync | TAwsSecretsManagerSync | TGitHubSync | TGcpSync;
+export type TSecretSync =
+  | TAwsParameterStoreSync
+  | TAwsSecretsManagerSync
+  | TGitHubSync
+  | TGcpSync
+  | TAzureKeyVaultSync
+  | TAzureAppConfigurationSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
   | TAwsSecretsManagerSyncWithCredentials
   | TGitHubSyncWithCredentials
-  | TGcpSyncWithCredentials;
+  | TGcpSyncWithCredentials
+  | TAzureKeyVaultSyncWithCredentials
+  | TAzureAppConfigurationSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
   | TAwsSecretsManagerSyncInput
   | TGitHubSyncInput
-  | TGcpSyncInput;
+  | TGcpSyncInput
+  | TAzureKeyVaultSyncInput
+  | TAzureAppConfigurationSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
   | TAwsSecretsManagerSyncListItem
   | TGitHubSyncListItem
-  | TGcpSyncListItem;
+  | TGcpSyncListItem
+  | TAzureKeyVaultSyncListItem
+  | TAzureAppConfigurationSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

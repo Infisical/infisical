@@ -47,6 +47,15 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.projectId;
       secondaryText = "Global";
       break;
+    case SecretSync.AzureKeyVault:
+      primaryText = destinationConfig.vaultBaseUrl;
+      break;
+    case SecretSync.AzureAppConfiguration:
+      primaryText = destinationConfig.configurationUrl;
+      if (destinationConfig.label) {
+        secondaryText = `Label - ${destinationConfig.label}`;
+      }
+      break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
   }

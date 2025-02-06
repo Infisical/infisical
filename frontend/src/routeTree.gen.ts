@@ -101,7 +101,7 @@ import { Route as sshSshCaByIDPageRouteImport } from './pages/ssh/SshCaByIDPage/
 import { Route as secretManagerSecretDashboardPageRouteImport } from './pages/secret-manager/SecretDashboardPage/route'
 import { Route as secretManagerIntegrationsSelectIntegrationAuthPageRouteImport } from './pages/secret-manager/integrations/SelectIntegrationAuthPage/route'
 import { Route as secretManagerIntegrationsDetailsByIDPageRouteImport } from './pages/secret-manager/IntegrationsDetailsByIDPage/route'
-import { Route as organizationAppConnectionsGithubOauthCallbackPageRouteImport } from './pages/organization/AppConnections/GithubOauthCallbackPage/route'
+import { Route as organizationAppConnectionsOauthCallbackPageRouteImport } from './pages/organization/AppConnections/OauthCallbackPage/route'
 import { Route as certManagerCertAuthDetailsByIDPageRouteImport } from './pages/cert-manager/CertAuthDetailsByIDPage/route'
 import { Route as secretManagerIntegrationsListPageRouteImport } from './pages/secret-manager/IntegrationsListPage/route'
 import { Route as secretManagerIntegrationsWindmillConfigurePageRouteImport } from './pages/secret-manager/integrations/WindmillConfigurePage/route'
@@ -916,10 +916,10 @@ const secretManagerIntegrationsDetailsByIDPageRouteRoute =
       AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdSecretManagerLayoutIntegrationsRoute,
   } as any)
 
-const organizationAppConnectionsGithubOauthCallbackPageRouteRoute =
-  organizationAppConnectionsGithubOauthCallbackPageRouteImport.update({
-    id: '/app-connections/github/oauth/callback',
-    path: '/app-connections/github/oauth/callback',
+const organizationAppConnectionsOauthCallbackPageRouteRoute =
+  organizationAppConnectionsOauthCallbackPageRouteImport.update({
+    id: '/app-connections/$appConnection/oauth/callback',
+    path: '/app-connections/$appConnection/oauth/callback',
     getParentRoute: () =>
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationRoute,
   } as any)
@@ -2139,11 +2139,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof certManagerCertAuthDetailsByIDPageRouteImport
       parentRoute: typeof certManagerLayoutImport
     }
-    '/_authenticate/_inject-org-details/_org-layout/organization/app-connections/github/oauth/callback': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organization/app-connections/github/oauth/callback'
-      path: '/app-connections/github/oauth/callback'
-      fullPath: '/organization/app-connections/github/oauth/callback'
-      preLoaderRoute: typeof organizationAppConnectionsGithubOauthCallbackPageRouteImport
+    '/_authenticate/_inject-org-details/_org-layout/organization/app-connections/$appConnection/oauth/callback': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organization/app-connections/$appConnection/oauth/callback'
+      path: '/app-connections/$appConnection/oauth/callback'
+      fullPath: '/organization/app-connections/$appConnection/oauth/callback'
+      preLoaderRoute: typeof organizationAppConnectionsOauthCallbackPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationImport
     }
     '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/$integrationId': {
@@ -2851,7 +2851,7 @@ interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren {
   organizationRoleByIDPageRouteRoute: typeof organizationRoleByIDPageRouteRoute
   organizationSecretManagerOverviewPageRouteRoute: typeof organizationSecretManagerOverviewPageRouteRoute
   organizationSshOverviewPageRouteRoute: typeof organizationSshOverviewPageRouteRoute
-  organizationAppConnectionsGithubOauthCallbackPageRouteRoute: typeof organizationAppConnectionsGithubOauthCallbackPageRouteRoute
+  organizationAppConnectionsOauthCallbackPageRouteRoute: typeof organizationAppConnectionsOauthCallbackPageRouteRoute
 }
 
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren: AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren =
@@ -2882,8 +2882,8 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren: Authentica
       organizationSecretManagerOverviewPageRouteRoute,
     organizationSshOverviewPageRouteRoute:
       organizationSshOverviewPageRouteRoute,
-    organizationAppConnectionsGithubOauthCallbackPageRouteRoute:
-      organizationAppConnectionsGithubOauthCallbackPageRouteRoute,
+    organizationAppConnectionsOauthCallbackPageRouteRoute:
+      organizationAppConnectionsOauthCallbackPageRouteRoute,
   }
 
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteWithChildren =
@@ -3576,7 +3576,7 @@ export interface FileRoutesByFullPath {
   '/ssh/$projectId/access-management': typeof projectAccessControlPageRouteSshRoute
   '/secret-manager/$projectId/integrations/': typeof secretManagerIntegrationsListPageRouteRoute
   '/cert-manager/$projectId/ca/$caId': typeof certManagerCertAuthDetailsByIDPageRouteRoute
-  '/organization/app-connections/github/oauth/callback': typeof organizationAppConnectionsGithubOauthCallbackPageRouteRoute
+  '/organization/app-connections/$appConnection/oauth/callback': typeof organizationAppConnectionsOauthCallbackPageRouteRoute
   '/secret-manager/$projectId/integrations/$integrationId': typeof secretManagerIntegrationsDetailsByIDPageRouteRoute
   '/secret-manager/$projectId/integrations/select-integration-auth': typeof secretManagerIntegrationsSelectIntegrationAuthPageRouteRoute
   '/secret-manager/$projectId/secrets/$envSlug': typeof secretManagerSecretDashboardPageRouteRoute
@@ -3742,7 +3742,7 @@ export interface FileRoutesByTo {
   '/ssh/$projectId/access-management': typeof projectAccessControlPageRouteSshRoute
   '/secret-manager/$projectId/integrations': typeof secretManagerIntegrationsListPageRouteRoute
   '/cert-manager/$projectId/ca/$caId': typeof certManagerCertAuthDetailsByIDPageRouteRoute
-  '/organization/app-connections/github/oauth/callback': typeof organizationAppConnectionsGithubOauthCallbackPageRouteRoute
+  '/organization/app-connections/$appConnection/oauth/callback': typeof organizationAppConnectionsOauthCallbackPageRouteRoute
   '/secret-manager/$projectId/integrations/$integrationId': typeof secretManagerIntegrationsDetailsByIDPageRouteRoute
   '/secret-manager/$projectId/integrations/select-integration-auth': typeof secretManagerIntegrationsSelectIntegrationAuthPageRouteRoute
   '/secret-manager/$projectId/secrets/$envSlug': typeof secretManagerSecretDashboardPageRouteRoute
@@ -3923,7 +3923,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/access-management': typeof projectAccessControlPageRouteSshRoute
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/': typeof secretManagerIntegrationsListPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/ca/$caId': typeof certManagerCertAuthDetailsByIDPageRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/organization/app-connections/github/oauth/callback': typeof organizationAppConnectionsGithubOauthCallbackPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organization/app-connections/$appConnection/oauth/callback': typeof organizationAppConnectionsOauthCallbackPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/$integrationId': typeof secretManagerIntegrationsDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/select-integration-auth': typeof secretManagerIntegrationsSelectIntegrationAuthPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/secrets/$envSlug': typeof secretManagerSecretDashboardPageRouteRoute
@@ -4096,7 +4096,7 @@ export interface FileRouteTypes {
     | '/ssh/$projectId/access-management'
     | '/secret-manager/$projectId/integrations/'
     | '/cert-manager/$projectId/ca/$caId'
-    | '/organization/app-connections/github/oauth/callback'
+    | '/organization/app-connections/$appConnection/oauth/callback'
     | '/secret-manager/$projectId/integrations/$integrationId'
     | '/secret-manager/$projectId/integrations/select-integration-auth'
     | '/secret-manager/$projectId/secrets/$envSlug'
@@ -4261,7 +4261,7 @@ export interface FileRouteTypes {
     | '/ssh/$projectId/access-management'
     | '/secret-manager/$projectId/integrations'
     | '/cert-manager/$projectId/ca/$caId'
-    | '/organization/app-connections/github/oauth/callback'
+    | '/organization/app-connections/$appConnection/oauth/callback'
     | '/secret-manager/$projectId/integrations/$integrationId'
     | '/secret-manager/$projectId/integrations/select-integration-auth'
     | '/secret-manager/$projectId/secrets/$envSlug'
@@ -4440,7 +4440,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/access-management'
     | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/'
     | '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/ca/$caId'
-    | '/_authenticate/_inject-org-details/_org-layout/organization/app-connections/github/oauth/callback'
+    | '/_authenticate/_inject-org-details/_org-layout/organization/app-connections/$appConnection/oauth/callback'
     | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/$integrationId'
     | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/select-integration-auth'
     | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/secrets/$envSlug'
@@ -4767,7 +4767,7 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organization/roles/$roleId",
         "/_authenticate/_inject-org-details/_org-layout/organization/secret-manager/overview",
         "/_authenticate/_inject-org-details/_org-layout/organization/ssh/overview",
-        "/_authenticate/_inject-org-details/_org-layout/organization/app-connections/github/oauth/callback"
+        "/_authenticate/_inject-org-details/_org-layout/organization/app-connections/$appConnection/oauth/callback"
       ]
     },
     "/_authenticate/_inject-org-details/admin/_admin-layout": {
@@ -5117,8 +5117,8 @@ export const routeTree = rootRoute
       "filePath": "cert-manager/CertAuthDetailsByIDPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout"
     },
-    "/_authenticate/_inject-org-details/_org-layout/organization/app-connections/github/oauth/callback": {
-      "filePath": "organization/AppConnections/GithubOauthCallbackPage/route.tsx",
+    "/_authenticate/_inject-org-details/_org-layout/organization/app-connections/$appConnection/oauth/callback": {
+      "filePath": "organization/AppConnections/OauthCallbackPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organization"
     },
     "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/$integrationId": {

@@ -4,6 +4,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AwsConnectionListItemSchema, SanitizedAwsConnectionSchema } from "@app/services/app-connection/aws";
+import { AzureConnectionListItemSchema, SanitizedAzureConnectionSchema } from "@app/services/app-connection/azure";
 import { GcpConnectionListItemSchema, SanitizedGcpConnectionSchema } from "@app/services/app-connection/gcp";
 import { GitHubConnectionListItemSchema, SanitizedGitHubConnectionSchema } from "@app/services/app-connection/github";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -12,13 +13,15 @@ import { AuthMode } from "@app/services/auth/auth-type";
 const SanitizedAppConnectionSchema = z.union([
   ...SanitizedAwsConnectionSchema.options,
   ...SanitizedGitHubConnectionSchema.options,
-  ...SanitizedGcpConnectionSchema.options
+  ...SanitizedGcpConnectionSchema.options,
+  ...SanitizedAzureConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   AwsConnectionListItemSchema,
   GitHubConnectionListItemSchema,
-  GcpConnectionListItemSchema
+  GcpConnectionListItemSchema,
+  AzureConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

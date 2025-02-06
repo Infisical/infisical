@@ -20,10 +20,16 @@ export type TGcpConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.GCP;
 };
 
+export type TAzureConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Azure;
+  oauthClientId?: string;
+};
+
 export type TAppConnectionOption = TAwsConnectionOption | TGitHubConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
   [AppConnection.GitHub]: TGitHubConnectionOption;
   [AppConnection.GCP]: TGcpConnectionOption;
+  [AppConnection.Azure]: TAzureConnectionOption;
 };

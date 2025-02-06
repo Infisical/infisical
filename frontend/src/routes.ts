@@ -24,9 +24,10 @@ const organizationRoutes = route("/organization", [
   route("/members/$membershipId", "organization/UserDetailsByIDPage/route.tsx"),
   route("/roles/$roleId", "organization/RoleByIDPage/route.tsx"),
   route("/identities/$identityId", "organization/IdentityDetailsByIDPage/route.tsx"),
+
   route(
-    "/app-connections/github/oauth/callback",
-    "organization/AppConnections/GithubOauthCallbackPage/route.tsx"
+    "/app-connections/$appConnection/oauth/callback",
+    "organization/AppConnections/OauthCallbackPage/route.tsx"
   )
 ]);
 

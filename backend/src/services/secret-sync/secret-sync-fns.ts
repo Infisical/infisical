@@ -17,6 +17,13 @@ import {
   TSecretSyncWithCredentials
 } from "@app/services/secret-sync/secret-sync-types";
 
+import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
+import { TKmsServiceFactory } from "../kms/kms-service";
+import {
+  AZURE_APP_CONFIGURATION_SYNC_LIST_OPTION,
+  azureAppConfigurationSecretSyncFactory
+} from "./azure-app-configuration";
+import { AZURE_KEY_VAULT_SYNC_LIST_OPTION, azureKeyVaultSecretSyncFactory } from "./azure-key-vault";
 import { GCP_SYNC_LIST_OPTION } from "./gcp";
 import { GcpSyncFns } from "./gcp/gcp-sync-fns";
 
@@ -24,11 +31,18 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.AWSParameterStore]: AWS_PARAMETER_STORE_SYNC_LIST_OPTION,
   [SecretSync.AWSSecretsManager]: AWS_SECRETS_MANAGER_SYNC_LIST_OPTION,
   [SecretSync.GitHub]: GITHUB_SYNC_LIST_OPTION,
-  [SecretSync.GCPSecretManager]: GCP_SYNC_LIST_OPTION
+  [SecretSync.GCPSecretManager]: GCP_SYNC_LIST_OPTION,
+  [SecretSync.AzureKeyVault]: AZURE_KEY_VAULT_SYNC_LIST_OPTION,
+  [SecretSync.AzureAppConfiguration]: AZURE_APP_CONFIGURATION_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
   return Object.values(SECRET_SYNC_LIST_OPTIONS).sort((a, b) => a.name.localeCompare(b.name));
+};
+
+type TSyncSecretDeps = {
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
 // const addAffixes = (secretSync: TSecretSyncWithCredentials, unprocessedSecretMap: TSecretMap) => {
@@ -72,8 +86,22 @@ export const listSecretSyncOptions = () => {
 // };
 
 export const SecretSyncFns = {
-  syncSecrets: (secretSync: TSecretSyncWithCredentials, secretMap: TSecretMap): Promise<void> => {
+  syncSecrets: (
+    secretSync: TSecretSyncWithCredentials,
+    secretMap: TSecretMap,
+    { kmsService, appConnectionDAL }: TSyncSecretDeps
+  ): Promise<void> => {
     // const affixedSecretMap = addAffixes(secretSync, secretMap);
+
+    const azureKeyVaultSecretSync = azureKeyVaultSecretSyncFactory({
+      appConnectionDAL,
+      kmsService
+    });
+
+    const azureAppConfigurationSecretSync = azureAppConfigurationSecretSyncFactory({
+      appConnectionDAL,
+      kmsService
+    });
 
     switch (secretSync.destination) {
       case SecretSync.AWSParameterStore:
@@ -84,13 +112,25 @@ export const SecretSyncFns = {
         return GithubSyncFns.syncSecrets(secretSync, secretMap);
       case SecretSync.GCPSecretManager:
         return GcpSyncFns.syncSecrets(secretSync, secretMap);
+      case SecretSync.AzureKeyVault:
+        return azureKeyVaultSecretSync.syncSecrets(secretSync, secretMap);
+      case SecretSync.AzureAppConfiguration:
+        return azureAppConfigurationSecretSync.syncSecrets(secretSync, secretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
         );
     }
   },
-  getSecrets: async (secretSync: TSecretSyncWithCredentials): Promise<TSecretMap> => {
+  getSecrets: async (
+    secretSync: TSecretSyncWithCredentials,
+    { kmsService, appConnectionDAL }: TSyncSecretDeps
+  ): Promise<TSecretMap> => {
+    const azureKeyVaultSecretSync = azureKeyVaultSecretSyncFactory({
+      appConnectionDAL,
+      kmsService
+    });
+
     let secretMap: TSecretMap;
     switch (secretSync.destination) {
       case SecretSync.AWSParameterStore:
@@ -105,6 +145,10 @@ export const SecretSyncFns = {
       case SecretSync.GCPSecretManager:
         secretMap = await GcpSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.AzureKeyVault:
+        secretMap = await azureKeyVaultSecretSync.getSecrets(secretSync);
+        break;
+
       default:
         throw new Error(
           `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -114,8 +158,17 @@ export const SecretSyncFns = {
     return secretMap;
     // return stripAffixes(secretSync, secretMap);
   },
-  removeSecrets: (secretSync: TSecretSyncWithCredentials, secretMap: TSecretMap): Promise<void> => {
+  removeSecrets: (
+    secretSync: TSecretSyncWithCredentials,
+    secretMap: TSecretMap,
+    { kmsService, appConnectionDAL }: TSyncSecretDeps
+  ): Promise<void> => {
     // const affixedSecretMap = addAffixes(secretSync, secretMap);
+
+    const azureKeyVaultSecretSync = azureKeyVaultSecretSyncFactory({
+      appConnectionDAL,
+      kmsService
+    });
 
     switch (secretSync.destination) {
       case SecretSync.AWSParameterStore:
@@ -126,6 +179,8 @@ export const SecretSyncFns = {
         return GithubSyncFns.removeSecrets(secretSync, secretMap);
       case SecretSync.GCPSecretManager:
         return GcpSyncFns.removeSecrets(secretSync, secretMap);
+      case SecretSync.AzureKeyVault:
+        return azureKeyVaultSecretSync.removeSecrets(secretSync, secretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

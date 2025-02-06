@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -8,22 +9,28 @@ import { OrgPermissionSubjects, useOrgPermission } from "@app/context";
 import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { SECRET_SYNC_CONNECTION_MAP } from "@app/helpers/secretSyncs";
-import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
+import {
+  TAvailableAppConnection,
+  useListAvailableAppConnections
+} from "@app/hooks/api/appConnections";
 
 import { TSecretSyncForm } from "./schemas";
 
 type Props = {
   onChange?: VoidFunction;
+  filterConnections?: (
+    connections?: TAvailableAppConnection[]
+  ) => TAvailableAppConnection[] | undefined;
 };
 
-export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
+export const SecretSyncConnectionField = ({ onChange: callback, filterConnections }: Props) => {
   const { permission } = useOrgPermission();
   const { control, watch } = useFormContext<TSecretSyncForm>();
 
   const destination = watch("destination");
   const app = SECRET_SYNC_CONNECTION_MAP[destination];
 
-  const { data: options, isLoading } = useListAvailableAppConnections(app);
+  const { data: allConnections, isLoading } = useListAvailableAppConnections(app);
 
   const connectionName = APP_CONNECTION_MAP[app].name;
 
@@ -31,6 +38,10 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
     OrgPermissionAppConnectionActions.Create,
     OrgPermissionSubjects.AppConnections
   );
+
+  const availableConnections = useMemo(() => {
+    return filterConnections ? filterConnections(allConnections) : allConnections;
+  }, [allConnections]);
 
   const appName = APP_CONNECTION_MAP[SECRET_SYNC_CONNECTION_MAP[destination]].name;
 
@@ -55,7 +66,7 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
                 if (callback) callback();
               }}
               isLoading={isLoading}
-              options={options}
+              options={availableConnections}
               placeholder="Select connection..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
@@ -65,7 +76,7 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
         control={control}
         name="connection"
       />
-      {options?.length === 0 && (
+      {availableConnections?.length === 0 && (
         <p className="-mt-2.5 mb-2.5 text-xs text-yellow">
           <FontAwesomeIcon className="mr-1" size="xs" icon={faInfoCircle} />
           {canCreateConnection ? (

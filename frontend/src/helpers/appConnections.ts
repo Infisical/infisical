@@ -15,7 +15,8 @@ export const APP_CONNECTION_MAP: Record<AppConnection, { name: string; image: st
   [AppConnection.GCP]: {
     name: "GCP",
     image: "Google Cloud Platform.png"
-  }
+  },
+  [AppConnection.Azure]: { name: "Azure", image: "Microsoft Azure.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
