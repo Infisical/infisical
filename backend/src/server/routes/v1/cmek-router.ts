@@ -15,6 +15,10 @@ import { CmekOrderBy } from "@app/services/cmek/cmek-types";
 const keyNameSchema = slugSchema({ min: 1, max: 32, field: "Name" });
 const keyDescriptionSchema = z.string().trim().max(500).optional();
 
+const CmekSchema = KmsKeysSchema.merge(InternalKmsSchema.pick({ version: true, encryptionAlgorithm: true })).omit({
+  isReserved: true
+});
+
 const base64Schema = z.string().superRefine((val, ctx) => {
   if (!isBase64(val)) {
     ctx.addIssue({
@@ -53,7 +57,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          key: KmsKeysSchema
+          key: CmekSchema
         })
       }
     },
@@ -106,7 +110,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          key: KmsKeysSchema
+          key: CmekSchema
         })
       }
     },
@@ -150,7 +154,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          key: KmsKeysSchema
+          key: CmekSchema
         })
       }
     },
@@ -201,7 +205,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          keys: KmsKeysSchema.merge(InternalKmsSchema.pick({ version: true, encryptionAlgorithm: true })).array(),
+          keys: CmekSchema.array(),
           totalCount: z.number()
         })
       }
@@ -227,6 +231,92 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       });
 
       return { keys: cmeks, totalCount };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/keys/:keyId",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "Get KMS key by ID",
+      params: z.object({
+        keyId: z.string().uuid().describe(KMS.GET_KEY_BY_ID.keyId)
+      }),
+      response: {
+        200: z.object({
+          key: CmekSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const {
+        params: { keyId },
+        permission
+      } = req;
+
+      const key = await server.services.cmek.findCmekById(keyId, permission);
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: key.projectId!,
+        event: {
+          type: EventType.GET_CMEK,
+          metadata: {
+            keyId: key.id
+          }
+        }
+      });
+
+      return { key };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/keys/key-name/:keyName",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "Get KMS key by Name",
+      params: z.object({
+        keyName: slugSchema({ field: "Key name" }).describe(KMS.GET_KEY_BY_NAME.keyName)
+      }),
+      querystring: z.object({
+        projectId: z.string().min(1, "Project ID is required").describe(KMS.GET_KEY_BY_NAME.projectId)
+      }),
+      response: {
+        200: z.object({
+          key: CmekSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const {
+        params: { keyName },
+        query: { projectId },
+        permission
+      } = req;
+
+      const key = await server.services.cmek.findCmekByName(keyName, projectId, permission);
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: key.projectId!,
+        event: {
+          type: EventType.GET_CMEK,
+          metadata: {
+            keyId: key.id
+          }
+        }
+      });
+
+      return { key };
     }
   });
 

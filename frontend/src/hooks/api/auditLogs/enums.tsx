@@ -104,6 +104,7 @@ export enum EventType {
   UPDATE_CMEK = "update-cmek",
   DELETE_CMEK = "delete-cmek",
   GET_CMEKS = "get-cmeks",
+  GET_CMEK = "get-cmek",
   CMEK_ENCRYPT = "cmek-encrypt",
   CMEK_DECRYPT = "cmek-decrypt",
   UPDATE_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "update-external-group-org-role-mapping",
