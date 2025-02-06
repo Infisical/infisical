@@ -131,6 +131,11 @@ export const SecretSyncFns = {
       kmsService
     });
 
+    const azureAppConfigurationSecretSync = azureAppConfigurationSecretSyncFactory({
+      appConnectionDAL,
+      kmsService
+    });
+
     let secretMap: TSecretMap;
     switch (secretSync.destination) {
       case SecretSync.AWSParameterStore:
@@ -148,7 +153,9 @@ export const SecretSyncFns = {
       case SecretSync.AzureKeyVault:
         secretMap = await azureKeyVaultSecretSync.getSecrets(secretSync);
         break;
-
+      case SecretSync.AzureAppConfiguration:
+        secretMap = await azureAppConfigurationSecretSync.getSecrets(secretSync);
+        break;
       default:
         throw new Error(
           `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -170,6 +177,11 @@ export const SecretSyncFns = {
       kmsService
     });
 
+    const azureAppConfigurationSecretSync = azureAppConfigurationSecretSyncFactory({
+      appConnectionDAL,
+      kmsService
+    });
+
     switch (secretSync.destination) {
       case SecretSync.AWSParameterStore:
         return AwsParameterStoreSyncFns.removeSecrets(secretSync, secretMap);
@@ -181,6 +193,8 @@ export const SecretSyncFns = {
         return GcpSyncFns.removeSecrets(secretSync, secretMap);
       case SecretSync.AzureKeyVault:
         return azureKeyVaultSecretSync.removeSecrets(secretSync, secretMap);
+      case SecretSync.AzureAppConfiguration:
+        return azureAppConfigurationSecretSync.removeSecrets(secretSync, secretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

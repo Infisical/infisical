@@ -50,11 +50,16 @@ export const AzureConnectionForm = ({ appConnection }: Props) => {
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
-    defaultValues: appConnection ?? {
-      app: AppConnection.Azure,
-      method: AzureConnectionMethod.OAuth,
-      resource: AzureResources.KeyVault
-    }
+    defaultValues: appConnection
+      ? {
+          ...appConnection,
+          resource: appConnection?.credentials.resource
+        }
+      : {
+          app: AppConnection.Azure,
+          method: AzureConnectionMethod.OAuth,
+          resource: AzureResources.KeyVault
+        }
   });
 
   const {

@@ -36,7 +36,7 @@ export const AzureAppConfigurationSyncFields = () => {
           <FormControl
             isError={Boolean(error)}
             errorText={error?.message}
-            label="Vault Base URL"
+            label="Configuration URL"
             tooltipText="Enter your Azure App Configuration URL. This is the base URL for your Azure App Configuration, e.g. https://resource-name-here.azconfig.io."
           >
             <Input {...field} placeholder="https://resource-name-here.azconfig.io" />

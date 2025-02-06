@@ -15,6 +15,4 @@ export const registerAzureConnectionRouter = async (server: FastifyZodProvider) 
     createSchema: CreateAzureConnectionSchema,
     updateSchema: UpdateAzureConnectionSchema
   });
-
-  // The below endpoints are not exposed and for Infisical App use
 };

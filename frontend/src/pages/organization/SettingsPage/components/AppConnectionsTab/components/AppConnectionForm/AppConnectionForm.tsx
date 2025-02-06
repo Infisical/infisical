@@ -95,6 +95,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <GitHubConnectionForm appConnection={appConnection} />;
     case AppConnection.GCP:
       return <GcpConnectionForm appConnection={appConnection} onSubmit={onSubmit} />;
+    case AppConnection.Azure:
+      return <AzureConnectionForm appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }
