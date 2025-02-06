@@ -3,6 +3,12 @@ import { Job } from "bullmq";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { QueueJobs } from "@app/queue";
 import {
+  TAwsSecretsManagerSync,
+  TAwsSecretsManagerSyncInput,
+  TAwsSecretsManagerSyncListItem,
+  TAwsSecretsManagerSyncWithCredentials
+} from "@app/services/secret-sync/aws-secrets-manager";
+import {
   TGitHubSync,
   TGitHubSyncInput,
   TGitHubSyncListItem,
@@ -19,16 +25,25 @@ import {
 } from "./aws-parameter-store";
 import { TGcpSync, TGcpSyncInput, TGcpSyncListItem, TGcpSyncWithCredentials } from "./gcp";
 
-export type TSecretSync = TAwsParameterStoreSync | TGitHubSync | TGcpSync;
+export type TSecretSync = TAwsParameterStoreSync | TAwsSecretsManagerSync | TGitHubSync | TGcpSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
+  | TAwsSecretsManagerSyncWithCredentials
   | TGitHubSyncWithCredentials
   | TGcpSyncWithCredentials;
 
-export type TSecretSyncInput = TAwsParameterStoreSyncInput | TGitHubSyncInput | TGcpSyncInput;
+export type TSecretSyncInput =
+  | TAwsParameterStoreSyncInput
+  | TAwsSecretsManagerSyncInput
+  | TGitHubSyncInput
+  | TGcpSyncInput;
 
-export type TSecretSyncListItem = TAwsParameterStoreSyncListItem | TGitHubSyncListItem | TGcpSyncListItem;
+export type TSecretSyncListItem =
+  | TAwsParameterStoreSyncListItem
+  | TAwsSecretsManagerSyncListItem
+  | TGitHubSyncListItem
+  | TGcpSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

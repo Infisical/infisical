@@ -9,17 +9,23 @@ import {
   AwsParameterStoreSyncListItemSchema,
   AwsParameterStoreSyncSchema
 } from "@app/services/secret-sync/aws-parameter-store";
+import {
+  AwsSecretsManagerSyncListItemSchema,
+  AwsSecretsManagerSyncSchema
+} from "@app/services/secret-sync/aws-secrets-manager";
 import { GcpSyncListItemSchema, GcpSyncSchema } from "@app/services/secret-sync/gcp";
 import { GitHubSyncListItemSchema, GitHubSyncSchema } from "@app/services/secret-sync/github";
 
 const SecretSyncSchema = z.discriminatedUnion("destination", [
   AwsParameterStoreSyncSchema,
+  AwsSecretsManagerSyncSchema,
   GitHubSyncSchema,
   GcpSyncSchema
 ]);
 
 const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   AwsParameterStoreSyncListItemSchema,
+  AwsSecretsManagerSyncListItemSchema,
   GitHubSyncListItemSchema,
   GcpSyncListItemSchema
 ]);

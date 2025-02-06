@@ -1,6 +1,7 @@
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
 
 import { AwsParameterStoreSyncDestinationCol } from "./AwsParameterStoreSyncDestinationCol";
+import { AwsSecretsManagerSyncDestinationCol } from "./AwsSecretsManagerSyncDestinationCol";
 import { GcpSyncDestinationCol } from "./GcpSyncDestinationCol";
 import { GitHubSyncDestinationCol } from "./GitHubSyncDestinationCol";
 
@@ -12,6 +13,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
   switch (secretSync.destination) {
     case SecretSync.AWSParameterStore:
       return <AwsParameterStoreSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.AWSSecretsManager:
+      return <AwsSecretsManagerSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.GitHub:
       return <GitHubSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.GCPSecretManager:

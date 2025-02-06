@@ -30,7 +30,11 @@ export const SecretSyncTableCell = ({
         content={
           <>
             <p className="text-sm">{primaryText}</p>
-            {secondaryText && <p className="text-xs leading-3 text-bunker-300">{secondaryText}</p>}
+            {secondaryText && (
+              <p className={twMerge("text-xs leading-3 text-bunker-300", secondaryClassName)}>
+                {secondaryText}
+              </p>
+            )}
             {additionalTooltipContent}
           </>
         }

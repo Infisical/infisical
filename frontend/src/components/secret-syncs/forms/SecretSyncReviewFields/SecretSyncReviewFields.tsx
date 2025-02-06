@@ -3,6 +3,7 @@ import { useFormContext } from "react-hook-form";
 
 import { SecretSyncLabel } from "@app/components/secret-syncs";
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
+import { AwsSecretsManagerSyncReviewFields } from "@app/components/secret-syncs/forms/SecretSyncReviewFields/AwsSecretsManagerSyncReviewFields";
 import { Badge } from "@app/components/v2";
 import { SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP, SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
@@ -35,6 +36,9 @@ export const SecretSyncReviewFields = () => {
   switch (destination) {
     case SecretSync.AWSParameterStore:
       DestinationFieldsComponent = <AwsParameterStoreSyncReviewFields />;
+      break;
+    case SecretSync.AWSSecretsManager:
+      DestinationFieldsComponent = <AwsSecretsManagerSyncReviewFields />;
       break;
     case SecretSync.GitHub:
       DestinationFieldsComponent = <GitHubSyncReviewFields />;

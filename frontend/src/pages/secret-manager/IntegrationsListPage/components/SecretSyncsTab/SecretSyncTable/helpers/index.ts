@@ -17,6 +17,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.path;
       secondaryText = destinationConfig.region;
       break;
+    case SecretSync.AWSSecretsManager:
+      primaryText = destinationConfig.region;
+      secondaryText = destinationConfig.mappingBehavior;
+      break;
     case SecretSync.GitHub:
       switch (destinationConfig.scope) {
         case GitHubSyncScope.Organization:

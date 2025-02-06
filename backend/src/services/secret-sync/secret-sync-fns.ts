@@ -4,6 +4,10 @@ import {
   AWS_PARAMETER_STORE_SYNC_LIST_OPTION,
   AwsParameterStoreSyncFns
 } from "@app/services/secret-sync/aws-parameter-store";
+import {
+  AWS_SECRETS_MANAGER_SYNC_LIST_OPTION,
+  AwsSecretsManagerSyncFns
+} from "@app/services/secret-sync/aws-secrets-manager";
 import { GITHUB_SYNC_LIST_OPTION, GithubSyncFns } from "@app/services/secret-sync/github";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
@@ -18,6 +22,7 @@ import { GcpSyncFns } from "./gcp/gcp-sync-fns";
 
 const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.AWSParameterStore]: AWS_PARAMETER_STORE_SYNC_LIST_OPTION,
+  [SecretSync.AWSSecretsManager]: AWS_SECRETS_MANAGER_SYNC_LIST_OPTION,
   [SecretSync.GitHub]: GITHUB_SYNC_LIST_OPTION,
   [SecretSync.GCPSecretManager]: GCP_SYNC_LIST_OPTION
 };
@@ -73,6 +78,8 @@ export const SecretSyncFns = {
     switch (secretSync.destination) {
       case SecretSync.AWSParameterStore:
         return AwsParameterStoreSyncFns.syncSecrets(secretSync, secretMap);
+      case SecretSync.AWSSecretsManager:
+        return AwsSecretsManagerSyncFns.syncSecrets(secretSync, secretMap);
       case SecretSync.GitHub:
         return GithubSyncFns.syncSecrets(secretSync, secretMap);
       case SecretSync.GCPSecretManager:
@@ -88,6 +95,9 @@ export const SecretSyncFns = {
     switch (secretSync.destination) {
       case SecretSync.AWSParameterStore:
         secretMap = await AwsParameterStoreSyncFns.getSecrets(secretSync);
+        break;
+      case SecretSync.AWSSecretsManager:
+        secretMap = await AwsSecretsManagerSyncFns.getSecrets(secretSync);
         break;
       case SecretSync.GitHub:
         secretMap = await GithubSyncFns.getSecrets(secretSync);
@@ -110,6 +120,8 @@ export const SecretSyncFns = {
     switch (secretSync.destination) {
       case SecretSync.AWSParameterStore:
         return AwsParameterStoreSyncFns.removeSecrets(secretSync, secretMap);
+      case SecretSync.AWSSecretsManager:
+        return AwsSecretsManagerSyncFns.removeSecrets(secretSync, secretMap);
       case SecretSync.GitHub:
         return GithubSyncFns.removeSecrets(secretSync, secretMap);
       case SecretSync.GCPSecretManager:

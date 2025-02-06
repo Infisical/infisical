@@ -6,13 +6,15 @@ import {
 } from "@app/hooks/api/secretSyncs";
 
 export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }> = {
-  [SecretSync.AWSParameterStore]: { name: "Parameter Store", image: "Amazon Web Services.png" },
+  [SecretSync.AWSParameterStore]: { name: "AWS Parameter Store", image: "Amazon Web Services.png" },
+  [SecretSync.AWSSecretsManager]: { name: "AWS Secrets Manager", image: "Amazon Web Services.png" },
   [SecretSync.GitHub]: { name: "GitHub", image: "GitHub.png" },
   [SecretSync.GCPSecretManager]: { name: "GCP Secret Manager", image: "Google Cloud Platform.png" }
 };
 
 export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.AWSParameterStore]: AppConnection.AWS,
+  [SecretSync.AWSSecretsManager]: AppConnection.AWS,
   [SecretSync.GitHub]: AppConnection.GitHub,
   [SecretSync.GCPSecretManager]: AppConnection.GCP
 };

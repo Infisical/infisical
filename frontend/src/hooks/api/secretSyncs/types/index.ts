@@ -3,6 +3,7 @@ import { TAwsParameterStoreSync } from "@app/hooks/api/secretSyncs/types/aws-par
 import { TGitHubSync } from "@app/hooks/api/secretSyncs/types/github-sync";
 import { DiscriminativePick } from "@app/types";
 
+import { TAwsSecretsManagerSync } from "./aws-secrets-manager-sync";
 import { TGcpSync } from "./gcp-sync";
 
 export type TSecretSyncOption = {
@@ -11,7 +12,7 @@ export type TSecretSyncOption = {
   canImportSecrets: boolean;
 };
 
-export type TSecretSync = TAwsParameterStoreSync | TGitHubSync | TGcpSync;
+export type TSecretSync = TAwsParameterStoreSync | TAwsSecretsManagerSync | TGitHubSync | TGcpSync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 

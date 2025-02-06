@@ -52,7 +52,7 @@ export const IntegrationsListPage = () => {
           />
           <div className="mb-4 mt-4 flex flex-col rounded-r border-l-2 border-l-primary bg-mineshaft-300/5 px-4 py-2.5">
             <div className="mb-1 flex items-center text-sm">
-              <FontAwesomeIcon icon={faInfoCircle} size="sm" className="mr-1 text-primary" />
+              <FontAwesomeIcon icon={faInfoCircle} size="sm" className="mr-1.5 text-primary" />
               Integrations Update
             </div>
             <p className="mb-2 mt-1 text-sm text-bunker-300">
