@@ -1444,7 +1444,7 @@ export const secretServiceFactory = ({
       decryptedSecret.secretValue = expandedSecretValue || "";
     }
 
-    return decryptedSecret as typeof decryptedSecret & { secretMetadata: undefined };
+    return { secretMetadata: undefined, ...decryptedSecret };
   };
 
   const createSecretRaw = async ({
