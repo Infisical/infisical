@@ -188,32 +188,29 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             if (!val) return undefined;
 
             const result: { key?: string; value?: string }[] = [];
-            const pairs = val.split(",");
+            const pairs = val.split("|");
 
             for (const pair of pairs) {
-              const pairResult: { key?: string; value?: string } = {};
-              const parts = pair.split(/[:=]/).map((part) => part.trim());
+              const keyValuePair: { key?: string; value?: string } = {};
+              const parts = pair.split(/[,=]/);
 
-              for (let i = 0; i < parts.length - 1; i += 1) {
-                const current = parts[i].toLowerCase();
-                const next = parts[i + 1];
+              for (let i = 0; i < parts.length; i += 2) {
+                const identifier = parts[i].trim().toLowerCase();
+                const value = parts[i + 1]?.trim();
 
-                if (current === "key" && next) {
-                  pairResult.key = next;
-                } else if (current === "value" && next) {
-                  pairResult.value = next;
+                if (identifier === "key" && value) {
+                  keyValuePair.key = value;
+                } else if (identifier === "value" && value) {
+                  keyValuePair.value = value;
                 }
               }
 
-              // Only add pair if at least one of key or value is present
-              if (pairResult.key || pairResult.value) {
-                result.push(pairResult);
+              if (keyValuePair.key && keyValuePair.value) {
+                result.push(keyValuePair);
               }
             }
 
-            if (!result.length) return undefined;
-
-            return result;
+            return result.length ? result : undefined;
           })
           .superRefine((metadata, ctx) => {
             if (metadata && !Array.isArray(metadata)) {
