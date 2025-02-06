@@ -4,7 +4,8 @@ import { Redlock, Settings } from "@app/lib/red-lock";
 
 export enum PgSqlLock {
   BootUpMigration = 2023,
-  SuperAdminInit = 2024
+  SuperAdminInit = 2024,
+  KmsRootKeyInit = 2025
 }
 
 export type TKeyStoreFactory = ReturnType<typeof keyStoreFactory>;
