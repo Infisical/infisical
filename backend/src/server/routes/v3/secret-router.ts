@@ -216,7 +216,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             if (metadata && !Array.isArray(metadata)) {
               ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: "Invalid secretMetadata format. Correct format is key1:value1,key2:value2"
+                message:
+                  "Invalid secretMetadata format. Correct format is key=value1,value=value2|key=value3,value=value4."
               });
             }
 
@@ -233,13 +234,13 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
                   ctx.addIssue({
                     code: z.ZodIssueCode.custom,
                     message:
-                      "Invalid secretMetadata format, key or value must be provided. Correct format is key1:value1,key2:value2"
+                      "Invalid secretMetadata format, key or value must be provided. Correct format is key=value1,value=value2|key=value3,value=value4."
                   });
                 }
               }
             }
           })
-          .describe(RAW_SECRETS.LIST.secretMetadata),
+          .describe(RAW_SECRETS.LIST.metadataFilter),
         workspaceId: z.string().trim().optional().describe(RAW_SECRETS.LIST.workspaceId),
         workspaceSlug: z.string().trim().optional().describe(RAW_SECRETS.LIST.workspaceSlug),
         environment: z.string().trim().optional().describe(RAW_SECRETS.LIST.environment),
