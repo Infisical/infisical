@@ -238,7 +238,8 @@ export const azureKeyVaultSecretSyncFactory = ({
 
     Object.keys(vaultSecrets).forEach((key) => {
       if (!disabledAzureKeyVaultSecretKeys.includes(key)) {
-        secretMap[key] = {
+        const underscoredKey = key.replace(/-/g, "_");
+        secretMap[underscoredKey] = {
           value: vaultSecrets[key].value
         };
       }

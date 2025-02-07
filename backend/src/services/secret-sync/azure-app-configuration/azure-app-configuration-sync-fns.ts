@@ -138,13 +138,12 @@ export const azureAppConfigurationSecretSyncFactory = ({
 
     for await (const key of Object.keys(azureAppConfigSecrets)) {
       const azureSecret = azureAppConfigSecrets[key];
-      if (!(key in secretMap) || secretMap[key] === null || azureSecret.label !== secretSync.destinationConfig.label) {
-        await $deleteAzureSecret(
-          accessToken,
-          secretSync.destinationConfig.configurationUrl,
-          key,
-          azureSecret.label // use the secret's actual label for deletion
-        );
+      if (
+        !(key in secretMap) ||
+        secretMap[key] === null ||
+        (azureSecret.label && azureSecret.label !== secretSync.destinationConfig.label)
+      ) {
+        await $deleteAzureSecret(accessToken, secretSync.destinationConfig.configurationUrl, key, azureSecret.label);
       }
     }
   };
