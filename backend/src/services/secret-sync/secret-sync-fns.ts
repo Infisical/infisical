@@ -134,17 +134,25 @@ export const SecretSyncFns = {
   }
 };
 
+const MAX_MESSAGE_LENGTH = 1024;
+
 export const parseSyncErrorMessage = (err: unknown): string => {
+  let errorMessage: string;
+
   if (err instanceof SecretSyncError) {
-    return JSON.stringify({
+    errorMessage = JSON.stringify({
       secretKey: err.secretKey,
       error: err.message || parseSyncErrorMessage(err.error)
     });
+  } else if (err instanceof AxiosError) {
+    errorMessage = err?.response?.data
+      ? JSON.stringify(err?.response?.data)
+      : err?.message ?? "An unknown error occurred.";
+  } else {
+    errorMessage = (err as Error)?.message || "An unknown error occurred.";
   }
 
-  if (err instanceof AxiosError) {
-    return err?.response?.data ? JSON.stringify(err?.response?.data) : err?.message ?? "An unknown error occurred.";
-  }
-
-  return (err as Error)?.message || "An unknown error occurred.";
+  return errorMessage.length <= MAX_MESSAGE_LENGTH
+    ? errorMessage
+    : `${errorMessage.substring(0, MAX_MESSAGE_LENGTH - 3)}...`;
 };
