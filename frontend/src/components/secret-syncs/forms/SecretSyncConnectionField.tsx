@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -9,10 +8,7 @@ import { OrgPermissionSubjects, useOrgPermission } from "@app/context";
 import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { SECRET_SYNC_CONNECTION_MAP } from "@app/helpers/secretSyncs";
-import {
-  TAvailableAppConnection,
-  useListAvailableAppConnections
-} from "@app/hooks/api/appConnections";
+import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 
 import { TSecretSyncForm } from "./schemas";
 
@@ -20,7 +16,7 @@ type Props = {
   onChange?: VoidFunction;
 };
 
-export const SecretSyncConnectionField = ({ onChange: callback, filterConnections }: Props) => {
+export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
   const { permission } = useOrgPermission();
   const { control, watch } = useFormContext<TSecretSyncForm>();
 
