@@ -1,6 +1,6 @@
 {
   "name": "Infisical",
-  "openapi": "https://2eb781d275f5.ngrok.app/api/docs/json",
+  "openapi": "https://app.infisical.com/api/docs/json",
   "logo": {
     "dark": "/logo/dark.svg",
     "light": "/logo/light.svg",
@@ -846,6 +846,30 @@
                 "api-reference/endpoints/app-connections/gcp/create",
                 "api-reference/endpoints/app-connections/gcp/update",
                 "api-reference/endpoints/app-connections/gcp/delete"
+              ]
+            },
+            {
+              "group": "Azure Key Vault",
+              "pages": [
+                "api-reference/endpoints/app-connections/azure-key-vault/list",
+                "api-reference/endpoints/app-connections/azure-key-vault/available",
+                "api-reference/endpoints/app-connections/azure-key-vault/get-by-id",
+                "api-reference/endpoints/app-connections/azure-key-vault/get-by-name",
+                "api-reference/endpoints/app-connections/azure-key-vault/create",
+                "api-reference/endpoints/app-connections/azure-key-vault/update",
+                "api-reference/endpoints/app-connections/azure-key-vault/delete"
+              ]
+            },
+            {
+              "group": "Azure App Configuration",
+              "pages": [
+                "api-reference/endpoints/app-connections/azure-app-configuration/list",
+                "api-reference/endpoints/app-connections/azure-app-configuration/available",
+                "api-reference/endpoints/app-connections/azure-app-configuration/get-by-id",
+                "api-reference/endpoints/app-connections/azure-app-configuration/get-by-name",
+                "api-reference/endpoints/app-connections/azure-app-configuration/create",
+                "api-reference/endpoints/app-connections/azure-app-configuration/update",
+                "api-reference/endpoints/app-connections/azure-app-configuration/delete"
               ]
             }
           ]

@@ -7,6 +7,7 @@ import { getAzureConnectionAccessToken } from "@app/services/app-connection/azur
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
+import { SecretSyncError } from "../secret-sync-errors";
 import { GetAzureKeyVaultSecret, TAzureKeyVaultSyncWithCredentials } from "./azure-key-vault-sync-types";
 
 type TAzureKeyVaultSecretSyncFactoryDeps = {
@@ -127,6 +128,7 @@ export const azureKeyVaultSecretSyncFactory = ({
 
     const setSecretAzureKeyVault = async ({ key, value }: { key: string; value: string }) => {
       let isSecretSet = false;
+      let syncError: Error | null = null;
       let maxTries = 6;
       if (disabledAzureKeyVaultSecretKeys.includes(key)) return;
 
@@ -147,6 +149,7 @@ export const azureKeyVaultSecretSyncFactory = ({
 
           isSecretSet = true;
         } catch (err) {
+          syncError = err as Error;
           if (err instanceof AxiosError) {
             // eslint-disable-next-line
             if (err.response?.data?.error?.innererror?.code === "ObjectIsDeletedButRecoverable") {
@@ -174,7 +177,10 @@ export const azureKeyVaultSecretSyncFactory = ({
       }
 
       if (!isSecretSet) {
-        throw new Error(`Failed to set secret ${key}`);
+        throw new SecretSyncError({
+          error: syncError,
+          secretKey: key
+        });
       }
     };
 

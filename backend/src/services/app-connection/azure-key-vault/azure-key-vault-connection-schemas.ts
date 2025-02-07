@@ -63,7 +63,6 @@ export const SanitizedAzureKeyVaultConnectionSchema = z.discriminatedUnion("meth
   BaseAzureKeyVaultConnectionSchema.extend({
     method: z.literal(AzureKeyVaultConnectionMethod.OAuth),
     credentials: AzureKeyVaultConnectionOAuthOutputCredentialsSchema.pick({
-      resource: true,
       tenantId: true
     })
   })

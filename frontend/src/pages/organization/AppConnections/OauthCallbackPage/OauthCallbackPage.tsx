@@ -8,6 +8,7 @@ import {
   AzureAppConfigurationConnectionMethod,
   AzureKeyVaultConnectionMethod,
   GitHubConnectionMethod,
+  TAzureAppConfigurationConnection,
   TAzureKeyVaultConnection,
   TGitHubConnection,
   useCreateAppConnection,
@@ -15,20 +16,25 @@ import {
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
-type GithubFormData = Pick<TGitHubConnection, "name" | "method" | "description"> & {
+type BaseFormData = {
   returnUrl?: string;
   connectionId?: string;
 };
 
-type AzureFormData = Pick<TGitHubConnection, "name" | "method" | "description"> & {
-  returnUrl?: string;
-  connectionId?: string;
-} & Pick<TAzureKeyVaultConnection["credentials"], "tenantId">;
+type GithubFormData = BaseFormData & Pick<TGitHubConnection, "name" | "method" | "description">;
+
+type AzureKeyVaultFormData = BaseFormData &
+  Pick<TAzureKeyVaultConnection, "name" | "method" | "description"> &
+  Pick<TAzureKeyVaultConnection["credentials"], "tenantId">;
+
+type AzureAppConfigurationFormData = BaseFormData &
+  Pick<TAzureAppConfigurationConnection, "name" | "method" | "description"> &
+  Pick<TAzureAppConfigurationConnection["credentials"], "tenantId">;
 
 type FormDataMap = {
   [AppConnection.GitHub]: GithubFormData & { app: AppConnection.GitHub };
-  [AppConnection.AzureKeyVault]: AzureFormData & { app: AppConnection.AzureKeyVault };
-  [AppConnection.AzureAppConfiguration]: AzureFormData & {
+  [AppConnection.AzureKeyVault]: AzureKeyVaultFormData & { app: AppConnection.AzureKeyVault };
+  [AppConnection.AzureAppConfiguration]: AzureAppConfigurationFormData & {
     app: AppConnection.AzureAppConfiguration;
   };
 };
@@ -105,7 +111,8 @@ export const OAuthCallbackPage = () => {
           app: AppConnection.AzureKeyVault,
           connectionId,
           credentials: {
-            code: code as string
+            code: code as string,
+            tenantId: formData.tenantId
           }
         });
       } else {
@@ -122,7 +129,7 @@ export const OAuthCallbackPage = () => {
       }
     } catch (err: any) {
       createNotification({
-        title: `Failed to ${connectionId ? "update" : "add"} Azure Connection`,
+        title: `Failed to ${connectionId ? "update" : "add"} Azure Key Vault Connection`,
         text: err?.message,
         type: "error"
       });
@@ -152,7 +159,8 @@ export const OAuthCallbackPage = () => {
           app: AppConnection.AzureAppConfiguration,
           connectionId,
           credentials: {
-            code: code as string
+            code: code as string,
+            tenantId: formData.tenantId
           }
         });
       } else {
@@ -162,13 +170,14 @@ export const OAuthCallbackPage = () => {
           description,
           method: AzureAppConfigurationConnectionMethod.OAuth,
           credentials: {
-            code: code as string
+            code: code as string,
+            tenantId: formData.tenantId
           }
         });
       }
     } catch (err: any) {
       createNotification({
-        title: `Failed to ${connectionId ? "update" : "add"} Azure Connection`,
+        title: `Failed to ${connectionId ? "update" : "add"} Azure App Configuration Connection`,
         text: err?.message,
         type: "error"
       });

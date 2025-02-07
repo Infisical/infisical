@@ -45,7 +45,8 @@ export const AzureKeyVaultConnectionForm = ({ appConnection }: Props) => {
     resolver: zodResolver(formSchema),
     defaultValues: appConnection
       ? {
-          ...appConnection
+          ...appConnection,
+          tenantId: appConnection.credentials.tenantId
         }
       : {
           app: AppConnection.AzureKeyVault,

@@ -19,6 +19,7 @@ type TAzureAppConfigurationSecretSyncFactoryDeps = {
 interface AzureAppConfigKeyValue {
   key: string;
   value: string;
+  label?: string;
 }
 
 export const azureAppConfigurationSecretSyncFactory = ({
@@ -78,7 +79,9 @@ export const azureAppConfigurationSecretSyncFactory = ({
       secretSync.destinationConfig.label ? `&label=${secretSync.destinationConfig.label}` : "&label=%00"
     }`;
 
-    const azureAppConfigSecrets = Object.fromEntries(
+    const azureAppConfigValuesUrlAllSecrets = `/kv?api-version=2023-11-01`;
+
+    const azureAppConfigSecretsLabeled = Object.fromEntries(
       (
         await $getCompleteAzureAppConfigValues(
           accessToken,
@@ -88,9 +91,25 @@ export const azureAppConfigurationSecretSyncFactory = ({
       ).map((entry) => [entry.key, entry.value])
     );
 
+    const azureAppConfigSecrets = Object.fromEntries(
+      (
+        await $getCompleteAzureAppConfigValues(
+          accessToken,
+          secretSync.destinationConfig.configurationUrl,
+          azureAppConfigValuesUrlAllSecrets
+        )
+      ).map((entry) => [
+        entry.key,
+        {
+          value: entry.value,
+          label: entry.label
+        }
+      ])
+    );
+
     // add the secrets to azure app config, that are in infisical
     for await (const key of Object.keys(secretMap)) {
-      if (!(key in azureAppConfigSecrets) || secretMap[key]?.value !== azureAppConfigSecrets[key]) {
+      if (!(key in azureAppConfigSecretsLabeled) || secretMap[key]?.value !== azureAppConfigSecretsLabeled[key]) {
         await request.put(
           `${secretSync.destinationConfig.configurationUrl}/kv/${key}?api-version=2023-11-01`,
           {
@@ -117,14 +136,14 @@ export const azureAppConfigurationSecretSyncFactory = ({
       }
     }
 
-    // delete the secrets that are in azure app config, but not in infisical
     for await (const key of Object.keys(azureAppConfigSecrets)) {
-      if (!(key in secretMap) || secretMap[key] === null) {
+      const azureSecret = azureAppConfigSecrets[key];
+      if (!(key in secretMap) || secretMap[key] === null || azureSecret.label !== secretSync.destinationConfig.label) {
         await $deleteAzureSecret(
           accessToken,
           secretSync.destinationConfig.configurationUrl,
           key,
-          secretSync.destinationConfig.label
+          azureSecret.label // use the secret's actual label for deletion
         );
       }
     }

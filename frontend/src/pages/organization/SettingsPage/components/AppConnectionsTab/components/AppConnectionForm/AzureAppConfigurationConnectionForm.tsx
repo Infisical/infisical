@@ -45,7 +45,8 @@ export const AzureAppConfigurationConnectionForm = ({ appConnection }: Props) =>
     resolver: zodResolver(formSchema),
     defaultValues: appConnection
       ? {
-          ...appConnection
+          ...appConnection,
+          tenantId: appConnection.credentials.tenantId
         }
       : {
           app: AppConnection.AzureAppConfiguration,

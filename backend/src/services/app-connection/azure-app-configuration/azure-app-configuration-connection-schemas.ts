@@ -63,7 +63,6 @@ export const SanitizedAzureAppConfigurationConnectionSchema = z.discriminatedUni
   BaseAzureAppConfigurationConnectionSchema.extend({
     method: z.literal(AzureAppConfigurationConnectionMethod.OAuth),
     credentials: AzureAppConfigurationConnectionOAuthOutputCredentialsSchema.pick({
-      resource: true,
       tenantId: true
     })
   })
