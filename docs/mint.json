@@ -1,6 +1,6 @@
 {
   "name": "Infisical",
-  "openapi": "https://app.infisical.com/api/docs/json",
+  "openapi": "https://2eb781d275f5.ngrok.app/api/docs/json",
   "logo": {
     "dark": "/logo/dark.svg",
     "light": "/logo/light.svg",
@@ -394,7 +394,8 @@
             "integrations/app-connections/aws",
             "integrations/app-connections/github",
             "integrations/app-connections/gcp",
-            "integrations/app-connections/azure"
+            "integrations/app-connections/azure-key-vault",
+            "integrations/app-connections/azure-app-configuration"
           ]
         }
       ]
@@ -908,7 +909,36 @@
                 "api-reference/endpoints/secret-syncs/gcp-secret-manager/import-secrets",
                 "api-reference/endpoints/secret-syncs/gcp-secret-manager/remove-secrets"
               ]
+            },
+            {
+              "group": "Azure Key Vault",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/azure-key-vault/list",
+                "api-reference/endpoints/secret-syncs/azure-key-vault/get-by-id",
+                "api-reference/endpoints/secret-syncs/azure-key-vault/get-by-name",
+                "api-reference/endpoints/secret-syncs/azure-key-vault/create",
+                "api-reference/endpoints/secret-syncs/azure-key-vault/update",
+                "api-reference/endpoints/secret-syncs/azure-key-vault/delete",
+                "api-reference/endpoints/secret-syncs/azure-key-vault/sync-secrets",
+                "api-reference/endpoints/secret-syncs/azure-key-vault/import-secrets",
+                "api-reference/endpoints/secret-syncs/azure-key-vault/remove-secrets"
+              ]
+            },
+            {
+              "group": "Azure App Configuration",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/list",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/get-by-id",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/get-by-name",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/create",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/update",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/delete",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/sync-secrets",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/import-secrets",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/remove-secrets"
+              ]
             }
+
           ]
         },
         {

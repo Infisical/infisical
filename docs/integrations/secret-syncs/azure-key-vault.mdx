@@ -8,6 +8,17 @@ description: "Learn how to configure a Azure Key Vault Sync for Infisical."
         - Set up and add secrets to [Infisical Cloud](https://app.infisical.com)
         - Create a [Azure Connection](/integrations/app-connections/azure), configured for Azure Key Vault.
 
+<Note>
+  The Azure Key Vault Secret Sync requires the following secrets permissions to be set on the user / service principal
+  for Infisical to sync secrets to Azure Key Vault: `secrets/list`, `secrets/get`, `secrets/set`, `secrets/recover`.
+
+  Any role with these permissions would work such as the **Key Vault Secrets Officer** role.
+</Note>
+
+<Note>
+  Secrets in Infisical that contain an underscore (`_`) will be converted to a hyphen (`-`) when synced to Azure Key Vault.
+</Note>
+
 <Tabs>
     <Tab title="Infisical UI">
         1. Navigate to **Project** > **Integrations** and select the **Secret Syncs** tab. Click on the **Add Sync** button.

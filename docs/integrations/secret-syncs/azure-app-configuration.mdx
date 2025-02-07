@@ -8,6 +8,14 @@ description: "Learn how to configure an Azure App Configuration Sync for Infisic
         - Set up and add secrets to [Infisical Cloud](https://app.infisical.com)
         - Create a [Azure Connection](/integrations/app-connections/azure), configured for Azure App Configuration.
 
+<Note>
+  The Azure App Configuration Secret Sync requires the following permissions to be set on the user / service principal
+  for Infisical to sync secrets to Azure App Configuration: `Read Key-Value`, `Write Key-Value`, `Delete Key-Value`.
+
+  Any role with these permissions would work such as the **App Configuration Data Owner** role. Alternatively, you can use the
+  **App Configuration Data Reader** role for read-only access or **App Configuration Data Contributor** role for read/write access.
+</Note>
+
 <Tabs>
     <Tab title="Infisical UI">
         1. Navigate to **Project** > **Integrations** and select the **Secret Syncs** tab. Click on the **Add Sync** button.
