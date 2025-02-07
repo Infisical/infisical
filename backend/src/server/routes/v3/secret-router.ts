@@ -181,6 +181,66 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       ],
       querystring: z.object({
+        metadataFilter: z
+          .string()
+          .optional()
+          .transform((val) => {
+            if (!val) return undefined;
+
+            const result: { key?: string; value?: string }[] = [];
+            const pairs = val.split("|");
+
+            for (const pair of pairs) {
+              const keyValuePair: { key?: string; value?: string } = {};
+              const parts = pair.split(/[,=]/);
+
+              for (let i = 0; i < parts.length; i += 2) {
+                const identifier = parts[i].trim().toLowerCase();
+                const value = parts[i + 1]?.trim();
+
+                if (identifier === "key" && value) {
+                  keyValuePair.key = value;
+                } else if (identifier === "value" && value) {
+                  keyValuePair.value = value;
+                }
+              }
+
+              if (keyValuePair.key && keyValuePair.value) {
+                result.push(keyValuePair);
+              }
+            }
+
+            return result.length ? result : undefined;
+          })
+          .superRefine((metadata, ctx) => {
+            if (metadata && !Array.isArray(metadata)) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message:
+                  "Invalid secretMetadata format. Correct format is key=value1,value=value2|key=value3,value=value4."
+              });
+            }
+
+            if (metadata) {
+              if (metadata.length > 10) {
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message: "You can only filter by up to 10 metadata fields"
+                });
+              }
+
+              for (const item of metadata) {
+                if (!item.key && !item.value) {
+                  ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message:
+                      "Invalid secretMetadata format, key or value must be provided. Correct format is key=value1,value=value2|key=value3,value=value4."
+                  });
+                }
+              }
+            }
+          })
+          .describe(RAW_SECRETS.LIST.metadataFilter),
         workspaceId: z.string().trim().optional().describe(RAW_SECRETS.LIST.workspaceId),
         workspaceSlug: z.string().trim().optional().describe(RAW_SECRETS.LIST.workspaceSlug),
         environment: z.string().trim().optional().describe(RAW_SECRETS.LIST.environment),
@@ -281,6 +341,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         projectId: workspaceId,
         path: secretPath,
+        metadataFilter: req.query.metadataFilter,
         includeImports: req.query.include_imports,
         recursive: req.query.recursive,
         tagSlugs: req.query.tagSlugs
