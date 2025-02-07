@@ -7,6 +7,7 @@ import { buildDynamicKnexQuery, TKnexDynamicOperator } from "./dynamic";
 
 export * from "./connection";
 export * from "./join";
+export * from "./prependTableNameToFindFilter";
 export * from "./select";
 
 export const withTransaction = <K extends object>(db: Knex, dal: K) => ({

@@ -4,7 +4,7 @@ import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { TSecretSyncs } from "@app/db/schemas/secret-syncs";
 import { DatabaseError } from "@app/lib/errors";
-import { buildFindFilter, ormify, selectAllTableCols } from "@app/lib/knex";
+import { buildFindFilter, ormify, prependTableNameToFindFilter, selectAllTableCols } from "@app/lib/knex";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
 export type TSecretSyncDALFactory = ReturnType<typeof secretSyncDALFactory>;
@@ -34,17 +34,9 @@ const baseSecretSyncQuery = ({ filter, db, tx }: { db: TDbClient; filter?: Secre
       db.ref("updatedAt").withSchema(TableName.AppConnection).as("connectionUpdatedAt")
     );
 
-  // prepends table name to filter keys to avoid ambiguous col references, skipping utility filters like $in, etc.
-  const prependTableName = (filterObj: object): SecretSyncFindFilter =>
-    Object.fromEntries(
-      Object.entries(filterObj).map(([key, value]) =>
-        key.startsWith("$") ? [key, prependTableName(value as object)] : [`${TableName.SecretSync}.${key}`, value]
-      )
-    );
-
   if (filter) {
     /* eslint-disable @typescript-eslint/no-misused-promises */
-    void query.where(buildFindFilter(prependTableName(filter)));
+    void query.where(buildFindFilter(prependTableNameToFindFilter(TableName.SecretSync, filter)));
   }
 
   return query;

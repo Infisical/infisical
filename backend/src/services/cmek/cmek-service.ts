@@ -3,7 +3,8 @@ import { ForbiddenError } from "@casl/ability";
 import { ActionProjectType, ProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionCmekActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
+import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import {
   TCmekDecryptDTO,
@@ -44,17 +45,31 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Create, ProjectPermissionSub.Cmek);
 
-    const cmek = await kmsService.generateKmsKey({
-      ...dto,
-      projectId,
-      isReserved: false
-    });
+    try {
+      const cmek = await kmsService.generateKmsKey({
+        ...dto,
+        projectId,
+        isReserved: false
+      });
 
-    return cmek;
+      return {
+        ...cmek,
+        version: 1,
+        encryptionAlgorithm: dto.encryptionAlgorithm
+      };
+    } catch (err) {
+      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
+        throw new BadRequestError({
+          message: `A KMS key with the name "${dto.name}" already exists for the project with ID "${projectId}"`
+        });
+      }
+
+      throw err;
+    }
   };
 
   const updateCmekById = async ({ keyId, ...data }: TUpdabteCmekByIdDTO, actor: OrgServiceActor) => {
-    const key = await kmsDAL.findById(keyId);
+    const key = await kmsDAL.findCmekById(keyId);
 
     if (!key) throw new NotFoundError({ message: `Key with ID ${keyId} not found` });
 
@@ -71,13 +86,27 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Edit, ProjectPermissionSub.Cmek);
 
-    const cmek = await kmsDAL.updateById(keyId, data);
+    try {
+      const cmek = await kmsDAL.updateById(keyId, data);
 
-    return cmek;
+      return {
+        ...cmek,
+        version: key.version,
+        encryptionAlgorithm: key.encryptionAlgorithm
+      };
+    } catch (err) {
+      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
+        throw new BadRequestError({
+          message: `A KMS key with the name "${data.name!}" already exists for the project with ID "${key.projectId}"`
+        });
+      }
+
+      throw err;
+    }
   };
 
   const deleteCmekById = async (keyId: string, actor: OrgServiceActor) => {
-    const key = await kmsDAL.findById(keyId);
+    const key = await kmsDAL.findCmekById(keyId);
 
     if (!key) throw new NotFoundError({ message: `Key with ID ${keyId} not found` });
 
@@ -94,9 +123,9 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Delete, ProjectPermissionSub.Cmek);
 
-    const cmek = kmsDAL.deleteById(keyId);
+    await kmsDAL.deleteById(keyId);
 
-    return cmek;
+    return key;
   };
 
   const listCmeksByProjectId = async (
@@ -120,15 +149,58 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
 
-    const { keys: cmeks, totalCount } = await kmsDAL.findKmsKeysByProjectId({ projectId, ...filters });
+    const { keys: cmeks, totalCount } = await kmsDAL.listCmeksByProjectId({ projectId, ...filters });
 
     return { cmeks, totalCount };
+  };
+
+  const findCmekById = async (keyId: string, actor: OrgServiceActor) => {
+    const key = await kmsDAL.findCmekById(keyId);
+
+    if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
+
+    if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: key.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
+
+    return key;
+  };
+
+  const findCmekByName = async (keyName: string, projectId: string, actor: OrgServiceActor) => {
+    const key = await kmsDAL.findCmekByName(keyName, projectId);
+
+    if (!key)
+      throw new NotFoundError({ message: `Key with name "${keyName}" not found for project with ID "${projectId}"` });
+
+    if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: key.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
+
+    return key;
   };
 
   const cmekEncrypt = async ({ keyId, plaintext }: TCmekEncryptDTO, actor: OrgServiceActor) => {
     const key = await kmsDAL.findById(keyId);
 
-    if (!key) throw new NotFoundError({ message: `Key with ID ${keyId} not found` });
+    if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
 
     if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
 
@@ -155,7 +227,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
   const cmekDecrypt = async ({ keyId, ciphertext }: TCmekDecryptDTO, actor: OrgServiceActor) => {
     const key = await kmsDAL.findById(keyId);
 
-    if (!key) throw new NotFoundError({ message: `Key with ID ${keyId} not found` });
+    if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
 
     if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
 
@@ -185,6 +257,8 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService, proj
     deleteCmekById,
     listCmeksByProjectId,
     cmekEncrypt,
-    cmekDecrypt
+    cmekDecrypt,
+    findCmekById,
+    findCmekByName
   };
 };

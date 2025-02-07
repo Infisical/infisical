@@ -1593,6 +1593,13 @@ export const KMS = {
     orderDirection: "The direction to order keys in.",
     search: "The text string to filter key names by."
   },
+  GET_KEY_BY_ID: {
+    keyId: "The ID of the KMS key to retrieve."
+  },
+  GET_KEY_BY_NAME: {
+    keyName: "The name of the KMS key to retrieve.",
+    projectId: "The ID of the project the key belongs to."
+  },
   ENCRYPT: {
     keyId: "The ID of the key to encrypt the data with.",
     plaintext: "The plaintext to be encrypted (base64 encoded)."

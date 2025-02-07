@@ -1039,6 +1039,8 @@
           "group": "Keys",
           "pages": [
             "api-reference/endpoints/kms/keys/list",
+            "api-reference/endpoints/kms/keys/get-by-id",
+            "api-reference/endpoints/kms/keys/get-by-name",
             "api-reference/endpoints/kms/keys/create",
             "api-reference/endpoints/kms/keys/update",
             "api-reference/endpoints/kms/keys/delete",

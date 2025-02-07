@@ -1,4 +1,5 @@
 import { Knex } from "knex";
+
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
