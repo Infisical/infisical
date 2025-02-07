@@ -13,7 +13,7 @@ const AzureKeyVaultSyncDestinationConfigSchema = z.object({
   vaultBaseUrl: z.string().url("Invalid vault base URL format").min(1, "Vault base URL required")
 });
 
-const AzureKeyVaultSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };
+const AzureKeyVaultSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
 
 export const AzureKeyVaultSyncSchema = BaseSecretSyncSchema(
   SecretSync.AzureKeyVault,

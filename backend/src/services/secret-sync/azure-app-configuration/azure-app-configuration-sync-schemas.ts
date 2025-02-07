@@ -14,7 +14,7 @@ const AzureAppConfigurationSyncDestinationConfigSchema = z.object({
   label: z.string().optional()
 });
 
-const AzureAppConfigurationSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };
+const AzureAppConfigurationSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
 
 export const AzureAppConfigurationSyncSchema = BaseSecretSyncSchema(
   SecretSync.AzureAppConfiguration,
