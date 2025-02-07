@@ -10,7 +10,7 @@ import {
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
 const AzureKeyVaultSyncDestinationConfigSchema = z.object({
-  vaultBaseUrl: z.string().min(1, "Vault base URL required")
+  vaultBaseUrl: z.string().url("Invalid vault base URL format").min(1, "Vault base URL required")
 });
 
 const AzureKeyVaultSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };
@@ -39,7 +39,7 @@ export const UpdateAzureKeyVaultSyncSchema = GenericUpdateSecretSyncFieldsSchema
 
 export const AzureKeyVaultSyncListItemSchema = z.object({
   name: z.literal("Azure Key Vault"),
-  connection: z.literal(AppConnection.Azure),
+  connection: z.literal(AppConnection.AzureKeyVault),
   destination: z.literal(SecretSync.AzureKeyVault),
-  canImportSecrets: z.literal(false)
+  canImportSecrets: z.literal(true)
 });

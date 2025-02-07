@@ -5,6 +5,6 @@ import { TSecretSyncListItem } from "@app/services/secret-sync/secret-sync-types
 export const AZURE_APP_CONFIGURATION_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "Azure App Configuration",
   destination: SecretSync.AzureAppConfiguration,
-  connection: AppConnection.Azure,
-  canImportSecrets: false
+  connection: AppConnection.AzureAppConfiguration,
+  canImportSecrets: true
 };

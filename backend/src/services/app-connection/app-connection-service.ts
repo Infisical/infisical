@@ -27,9 +27,8 @@ import { ValidateGitHubConnectionCredentialsSchema } from "@app/services/app-con
 import { githubConnectionService } from "@app/services/app-connection/github/github-connection-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
-import { KmsDataKey } from "../kms/kms-types";
 import { TAppConnectionDALFactory } from "./app-connection-dal";
-import { AzureResources } from "./azure";
+import { ValidateAzureKeyVaultConnectionCredentialsSchema } from "./azure-key-vault";
 import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
 import { gcpConnectionService } from "./gcp/gcp-connection-service";
 
@@ -45,7 +44,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.AWS]: ValidateAwsConnectionCredentialsSchema,
   [AppConnection.GitHub]: ValidateGitHubConnectionCredentialsSchema,
   [AppConnection.GCP]: ValidateGcpConnectionCredentialsSchema,
-  [AppConnection.Azure]: ValidateGcpConnectionCredentialsSchema
+  [AppConnection.AzureKeyVault]: ValidateAzureKeyVaultConnectionCredentialsSchema,
+  [AppConnection.AzureAppConfiguration]: ValidateAzureKeyVaultConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -350,27 +350,7 @@ export const appConnectionServiceFactory = ({
       )
     );
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId: actor.orgId
-    });
-
-    const decryptedConnections = availableConnections.map((connection) => {
-      const decryptedPlainTextBlob = decryptor({
-        cipherTextBlob: connection.encryptedCredentials
-      });
-
-      const credentials = JSON.parse(decryptedPlainTextBlob.toString()) as TAppConnection["credentials"];
-
-      return {
-        ...connection,
-        ...(app === AppConnection.Azure && {
-          azureResource: (credentials as { resource: AzureResources }).resource
-        })
-      };
-    });
-
-    return decryptedConnections as Omit<TAppConnection, "credentials">[];
+    return availableConnections as Omit<TAppConnection, "credentials">[];
   };
 
   return {

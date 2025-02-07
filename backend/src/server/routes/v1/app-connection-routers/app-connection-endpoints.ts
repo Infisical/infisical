@@ -8,7 +8,6 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { TAppConnection, TAppConnectionInput } from "@app/services/app-connection/app-connection-types";
-import { AzureResources } from "@app/services/app-connection/azure";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerAppConnectionEndpoints = <T extends TAppConnection, I extends TAppConnectionInput>({
@@ -78,8 +77,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
             .object({
               app: z.literal(app),
               name: z.string(),
-              id: z.string().uuid(),
-              azureResource: z.nativeEnum(AzureResources).optional()
+              id: z.string().uuid()
             })
             .array()
         })

@@ -12,20 +12,33 @@ import {
 } from "@app/services/app-connection/github";
 
 import {
-  TAzureConnection,
-  TAzureConnectionConfig,
-  TAzureConnectionInput,
-  TValidateAzureConnectionCredentials
-} from "./azure";
+  TAzureAppConfigurationConnection,
+  TAzureAppConfigurationConnectionConfig,
+  TAzureAppConfigurationConnectionInput,
+  TValidateAzureAppConfigurationConnectionCredentials
+} from "./azure-app-configuration";
+import {
+  TAzureKeyVaultConnection,
+  TAzureKeyVaultConnectionConfig,
+  TAzureKeyVaultConnectionInput,
+  TValidateAzureKeyVaultConnectionCredentials
+} from "./azure-key-vault";
 import { TGcpConnection, TGcpConnectionConfig, TGcpConnectionInput, TValidateGcpConnectionCredentials } from "./gcp";
 
-export type TAppConnection = { id: string } & (TAwsConnection | TGitHubConnection | TGcpConnection | TAzureConnection);
+export type TAppConnection = { id: string } & (
+  | TAwsConnection
+  | TGitHubConnection
+  | TGcpConnection
+  | TAzureKeyVaultConnection
+  | TAzureAppConfigurationConnection
+);
 
 export type TAppConnectionInput = { id: string } & (
   | TAwsConnectionInput
   | TGitHubConnectionInput
   | TGcpConnectionInput
-  | TAzureConnectionInput
+  | TAzureKeyVaultConnectionInput
+  | TAzureAppConfigurationConnectionInput
 );
 
 export type TCreateAppConnectionDTO = Pick<
@@ -41,10 +54,12 @@ export type TAppConnectionConfig =
   | TAwsConnectionConfig
   | TGitHubConnectionConfig
   | TGcpConnectionConfig
-  | TAzureConnectionConfig;
+  | TAzureKeyVaultConnectionConfig
+  | TAzureAppConfigurationConnectionConfig;
 
 export type TValidateAppConnectionCredentials =
   | TValidateAwsConnectionCredentials
   | TValidateGitHubConnectionCredentials
   | TValidateGcpConnectionCredentials
-  | TValidateAzureConnectionCredentials;
+  | TValidateAzureKeyVaultConnectionCredentials
+  | TValidateAzureAppConfigurationConnectionCredentials;

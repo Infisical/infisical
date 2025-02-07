@@ -5,9 +5,10 @@ import { createNotification } from "@app/components/notifications";
 import { ContentLoader } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
-  AzureConnectionMethod,
-  AzureResources,
+  AzureAppConfigurationConnectionMethod,
+  AzureKeyVaultConnectionMethod,
   GitHubConnectionMethod,
+  TAzureKeyVaultConnection,
   TGitHubConnection,
   useCreateAppConnection,
   useUpdateAppConnection
@@ -22,18 +23,20 @@ type GithubFormData = Pick<TGitHubConnection, "name" | "method" | "description">
 type AzureFormData = Pick<TGitHubConnection, "name" | "method" | "description"> & {
   returnUrl?: string;
   connectionId?: string;
-  tenantId?: string;
-  resource: AzureResources;
-};
+} & Pick<TAzureKeyVaultConnection["credentials"], "tenantId">;
 
 type FormDataMap = {
   [AppConnection.GitHub]: GithubFormData & { app: AppConnection.GitHub };
-  [AppConnection.Azure]: AzureFormData & { app: AppConnection.Azure };
+  [AppConnection.AzureKeyVault]: AzureFormData & { app: AppConnection.AzureKeyVault };
+  [AppConnection.AzureAppConfiguration]: AzureFormData & {
+    app: AppConnection.AzureAppConfiguration;
+  };
 };
 
 const formDataStorageFieldMap: Partial<Record<AppConnection, string>> = {
   [AppConnection.GitHub]: "githubConnectionFormData",
-  [AppConnection.Azure]: "azureConnectionFormData"
+  [AppConnection.AzureKeyVault]: "azureKeyVaultConnectionFormData",
+  [AppConnection.AzureAppConfiguration]: "azureAppConfigurationConnectionFormData"
 };
 
 export const OAuthCallbackPage = () => {
@@ -44,7 +47,7 @@ export const OAuthCallbackPage = () => {
     from: ROUTE_PATHS.Organization.AppConnections.OauthCallbackPage.id
   });
 
-  const appConnection = useParams({
+  const rawAppConnection = useParams({
     strict: false,
     select: (el) => el?.appConnection as AppConnection
   });
@@ -52,7 +55,10 @@ export const OAuthCallbackPage = () => {
   const updateAppConnection = useUpdateAppConnection();
   const createAppConnection = useCreateAppConnection();
 
-  const { code, state, installation_id: installationId } = search;
+  const { code, state: rawState, installation_id: installationId } = search;
+
+  const state = rawState.includes("<:>") ? rawState.split("<:>")[0] : rawState;
+  const appConnection = rawState.includes("<:>") ? rawState.split("<:>")[1] : rawAppConnection;
 
   const clearState = (app: AppConnection) => {
     if (state !== localStorage.getItem("latestCSRFToken")) {
@@ -85,18 +91,18 @@ export const OAuthCallbackPage = () => {
     }
   };
 
-  const handleAzure = useCallback(async () => {
-    const formData = getFormData(AppConnection.Azure);
+  const handleAzureKeyVault = useCallback(async () => {
+    const formData = getFormData(AppConnection.AzureKeyVault);
     if (formData === null) return null;
 
-    clearState(AppConnection.Azure);
+    clearState(AppConnection.AzureKeyVault);
 
     const { connectionId, name, description, returnUrl } = formData;
 
     try {
       if (connectionId) {
         await updateAppConnection.mutateAsync({
-          app: AppConnection.Azure,
+          app: AppConnection.AzureKeyVault,
           connectionId,
           credentials: {
             code: code as string
@@ -104,13 +110,58 @@ export const OAuthCallbackPage = () => {
         });
       } else {
         await createAppConnection.mutateAsync({
-          app: AppConnection.Azure,
+          app: AppConnection.AzureKeyVault,
           name,
           description,
-          method: AzureConnectionMethod.OAuth,
+          method: AzureKeyVaultConnectionMethod.OAuth,
           credentials: {
-            resource: formData.resource,
             tenantId: formData.tenantId,
+            code: code as string
+          }
+        });
+      }
+    } catch (err: any) {
+      createNotification({
+        title: `Failed to ${connectionId ? "update" : "add"} Azure Connection`,
+        text: err?.message,
+        type: "error"
+      });
+      navigate({
+        to: returnUrl ?? "/organization/settings?selectedTab=app-connections"
+      });
+    }
+
+    return {
+      connectionId,
+      returnUrl,
+      appConnectionName: formData.app
+    };
+  }, []);
+
+  const handleAzureAppConfiguration = useCallback(async () => {
+    const formData = getFormData(AppConnection.AzureAppConfiguration);
+    if (formData === null) return null;
+
+    clearState(AppConnection.AzureAppConfiguration);
+
+    const { connectionId, name, description, returnUrl } = formData;
+
+    try {
+      if (connectionId) {
+        await updateAppConnection.mutateAsync({
+          app: AppConnection.AzureAppConfiguration,
+          connectionId,
+          credentials: {
+            code: code as string
+          }
+        });
+      } else {
+        await createAppConnection.mutateAsync({
+          app: AppConnection.AzureAppConfiguration,
+          name,
+          description,
+          method: AzureAppConfigurationConnectionMethod.OAuth,
+          credentials: {
             code: code as string
           }
         });
@@ -215,14 +266,21 @@ export const OAuthCallbackPage = () => {
 
       if (appConnection === AppConnection.GitHub) {
         data = await handleGithub();
-      } else if (appConnection === AppConnection.Azure) {
-        data = await handleAzure();
+      } else if (appConnection === AppConnection.AzureKeyVault) {
+        data = await handleAzureKeyVault();
+      } else if (appConnection === AppConnection.AzureAppConfiguration) {
+        data = await handleAzureAppConfiguration();
       }
 
       if (data) {
         createNotification({
           text: `Successfully ${data.connectionId ? "updated" : "added"} ${data.appConnectionName || ""} Connection`,
           type: "success"
+        });
+      } else {
+        createNotification({
+          text: "Failed to add connection",
+          type: "error"
         });
       }
 

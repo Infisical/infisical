@@ -15,6 +15,6 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.AWSSecretsManager]: AppConnection.AWS,
   [SecretSync.GitHub]: AppConnection.GitHub,
   [SecretSync.GCPSecretManager]: AppConnection.GCP,
-  [SecretSync.AzureKeyVault]: AppConnection.Azure,
-  [SecretSync.AzureAppConfiguration]: AppConnection.Azure
+  [SecretSync.AzureKeyVault]: AppConnection.AzureKeyVault,
+  [SecretSync.AzureAppConfiguration]: AppConnection.AzureAppConfiguration
 };

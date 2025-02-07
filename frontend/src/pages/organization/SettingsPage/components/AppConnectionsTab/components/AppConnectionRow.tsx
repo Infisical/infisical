@@ -27,8 +27,7 @@ import { OrgPermissionSubjects } from "@app/context";
 import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { useToggle } from "@app/hooks";
-import { azureResourcesMap, TAppConnection } from "@app/hooks/api/appConnections";
-import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { TAppConnection } from "@app/hooks/api/appConnections";
 
 type Props = {
   appConnection: TAppConnection;
@@ -43,7 +42,7 @@ export const AppConnectionRow = ({
   onEditCredentials,
   onEditDetails
 }: Props) => {
-  const { id, name, method, app, description, credentials } = appConnection;
+  const { id, name, method, app, description } = appConnection;
 
   const [isIdCopied, setIsIdCopied] = useToggle(false);
 
@@ -76,10 +75,7 @@ export const AppConnectionRow = ({
             src={`/images/integrations/${APP_CONNECTION_MAP[app].image}`}
             className="mr-0.5 h-5 w-5"
           />
-          <span className="hidden lg:inline">
-            {APP_CONNECTION_MAP[app].name}
-            {app === AppConnection.Azure && ` ${azureResourcesMap[credentials.resource]}`}
-          </span>
+          <span className="hidden lg:inline">{APP_CONNECTION_MAP[app].name}</span>
         </div>
       </Td>
       <Td className="!min-w-[8rem] max-w-0">

@@ -2,8 +2,6 @@ import { Controller, useFormContext } from "react-hook-form";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import { FormControl, Input } from "@app/components/v2";
-import { AzureResources } from "@app/hooks/api/appConnections";
-import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
@@ -18,15 +16,6 @@ export const AzureKeyVaultSyncFields = () => {
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.vaultBaseUrl", "");
-        }}
-        filterConnections={(connections) => {
-          if (!connections) return connections;
-
-          return connections.filter(
-            (connection) =>
-              connection.app === AppConnection.Azure &&
-              connection.azureResource === AzureResources.KeyVault
-          );
         }}
       />
       <Controller

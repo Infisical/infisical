@@ -20,14 +20,24 @@ import {
 } from "@app/services/app-connection/github";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
-import { AzureConnectionMethod, getAzureConnectionListItem, validateAzureConnectionCredentials } from "./azure";
+import {
+  AzureAppConfigurationConnectionMethod,
+  getAzureAppConfigurationConnectionListItem,
+  validateAzureAppConfigurationConnectionCredentials
+} from "./azure-app-configuration";
+import {
+  AzureKeyVaultConnectionMethod,
+  getAzureKeyVaultConnectionListItem,
+  validateAzureKeyVaultConnectionCredentials
+} from "./azure-key-vault";
 
 export const listAppConnectionOptions = () => {
   return [
     getAwsAppConnectionListItem(),
     getGitHubConnectionListItem(),
     getGcpAppConnectionListItem(),
-    getAzureConnectionListItem()
+    getAzureKeyVaultConnectionListItem(),
+    getAzureAppConfigurationConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -84,8 +94,10 @@ export const validateAppConnectionCredentials = async (
       return validateGitHubConnectionCredentials(appConnection);
     case AppConnection.GCP:
       return validateGcpConnectionCredentials(appConnection);
-    case AppConnection.Azure:
-      return validateAzureConnectionCredentials(appConnection);
+    case AppConnection.AzureKeyVault:
+      return validateAzureKeyVaultConnectionCredentials(appConnection);
+    case AppConnection.AzureAppConfiguration:
+      return validateAzureAppConfigurationConnectionCredentials(appConnection);
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection ${app}`);
@@ -96,7 +108,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
   switch (method) {
     case GitHubConnectionMethod.App:
       return "GitHub App";
-    case AzureConnectionMethod.OAuth:
+    case AzureKeyVaultConnectionMethod.OAuth:
+    case AzureAppConfigurationConnectionMethod.OAuth:
     case GitHubConnectionMethod.OAuth:
       return "OAuth";
     case AwsConnectionMethod.AccessKey:

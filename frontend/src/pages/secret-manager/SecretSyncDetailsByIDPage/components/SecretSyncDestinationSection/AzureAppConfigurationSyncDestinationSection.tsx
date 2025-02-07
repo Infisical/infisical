@@ -13,9 +13,7 @@ export const AzureAppConfigurationSyncDestinationSection = ({ secretSync }: Prop
   return (
     <>
       <SecretSyncLabel label="Configuration URL">{configurationUrl}</SecretSyncLabel>
-      <SecretSyncLabel label="Label">
-        {label && label.length > 0 ? label : <span className="opacity-40">Not set</span>}
-      </SecretSyncLabel>
+      <SecretSyncLabel label="Label">{label}</SecretSyncLabel>
     </>
   );
 };

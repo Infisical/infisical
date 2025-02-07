@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { TAzureConnection } from "@app/services/app-connection/azure";
+import { TAzureAppConfigurationConnection } from "@app/services/app-connection/azure-app-configuration";
 
 import {
   AzureAppConfigurationSyncListItemSchema,
@@ -15,5 +15,5 @@ export type TAzureAppConfigurationSyncInput = z.infer<typeof CreateAzureAppConfi
 export type TAzureAppConfigurationSyncListItem = z.infer<typeof AzureAppConfigurationSyncListItemSchema>;
 
 export type TAzureAppConfigurationSyncWithCredentials = TAzureAppConfigurationSync & {
-  connection: TAzureConnection;
+  connection: TAzureAppConfigurationConnection;
 };

@@ -4,7 +4,7 @@ import https from "https";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
-import { getAzureConnectionAccessToken } from "@app/services/app-connection/azure";
+import { getAzureConnectionAccessToken } from "@app/services/app-connection/azure-key-vault";
 import { isAzureKeyVaultReference } from "@app/services/integration-auth/integration-sync-secret-fns";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { TAzureConnection } from "@app/services/app-connection/azure";
+import { TAzureKeyVaultConnection } from "@app/services/app-connection/azure-key-vault";
 
 import {
   AzureKeyVaultSyncListItemSchema,
@@ -15,7 +15,7 @@ export type TAzureKeyVaultSyncInput = z.infer<typeof CreateAzureKeyVaultSyncSche
 export type TAzureKeyVaultSyncListItem = z.infer<typeof AzureKeyVaultSyncListItemSchema>;
 
 export type TAzureKeyVaultSyncWithCredentials = TAzureKeyVaultSync & {
-  connection: TAzureConnection;
+  connection: TAzureKeyVaultConnection;
 };
 
 export interface GetAzureKeyVaultSecret {

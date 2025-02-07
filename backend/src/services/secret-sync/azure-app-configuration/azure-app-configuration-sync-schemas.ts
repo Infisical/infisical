@@ -40,7 +40,7 @@ export const UpdateAzureAppConfigurationSyncSchema = GenericUpdateSecretSyncFiel
 
 export const AzureAppConfigurationSyncListItemSchema = z.object({
   name: z.literal("Azure App Configuration"),
-  connection: z.literal(AppConnection.Azure),
+  connection: z.literal(AppConnection.AzureAppConfiguration),
   destination: z.literal(SecretSync.AzureAppConfiguration),
-  canImportSecrets: z.literal(false)
+  canImportSecrets: z.literal(true)
 });

@@ -8,7 +8,7 @@ export type TAzureKeyVaultSync = TRootSecretSync & {
     vaultBaseUrl: string;
   };
   connection: {
-    app: AppConnection.Azure;
+    app: AppConnection.AzureKeyVault;
     name: string;
     id: string;
   };

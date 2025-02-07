@@ -93,16 +93,6 @@ export const SecretSyncFns = {
   ): Promise<void> => {
     // const affixedSecretMap = addAffixes(secretSync, secretMap);
 
-    const azureKeyVaultSecretSync = azureKeyVaultSecretSyncFactory({
-      appConnectionDAL,
-      kmsService
-    });
-
-    const azureAppConfigurationSecretSync = azureAppConfigurationSecretSyncFactory({
-      appConnectionDAL,
-      kmsService
-    });
-
     switch (secretSync.destination) {
       case SecretSync.AWSParameterStore:
         return AwsParameterStoreSyncFns.syncSecrets(secretSync, secretMap);
@@ -113,9 +103,15 @@ export const SecretSyncFns = {
       case SecretSync.GCPSecretManager:
         return GcpSyncFns.syncSecrets(secretSync, secretMap);
       case SecretSync.AzureKeyVault:
-        return azureKeyVaultSecretSync.syncSecrets(secretSync, secretMap);
+        return azureKeyVaultSecretSyncFactory({
+          appConnectionDAL,
+          kmsService
+        }).syncSecrets(secretSync, secretMap);
       case SecretSync.AzureAppConfiguration:
-        return azureAppConfigurationSecretSync.syncSecrets(secretSync, secretMap);
+        return azureAppConfigurationSecretSyncFactory({
+          appConnectionDAL,
+          kmsService
+        }).syncSecrets(secretSync, secretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -126,16 +122,6 @@ export const SecretSyncFns = {
     secretSync: TSecretSyncWithCredentials,
     { kmsService, appConnectionDAL }: TSyncSecretDeps
   ): Promise<TSecretMap> => {
-    const azureKeyVaultSecretSync = azureKeyVaultSecretSyncFactory({
-      appConnectionDAL,
-      kmsService
-    });
-
-    const azureAppConfigurationSecretSync = azureAppConfigurationSecretSyncFactory({
-      appConnectionDAL,
-      kmsService
-    });
-
     let secretMap: TSecretMap;
     switch (secretSync.destination) {
       case SecretSync.AWSParameterStore:
@@ -151,10 +137,16 @@ export const SecretSyncFns = {
         secretMap = await GcpSyncFns.getSecrets(secretSync);
         break;
       case SecretSync.AzureKeyVault:
-        secretMap = await azureKeyVaultSecretSync.getSecrets(secretSync);
+        secretMap = await azureKeyVaultSecretSyncFactory({
+          appConnectionDAL,
+          kmsService
+        }).getSecrets(secretSync);
         break;
       case SecretSync.AzureAppConfiguration:
-        secretMap = await azureAppConfigurationSecretSync.getSecrets(secretSync);
+        secretMap = await azureAppConfigurationSecretSyncFactory({
+          appConnectionDAL,
+          kmsService
+        }).getSecrets(secretSync);
         break;
       default:
         throw new Error(
@@ -172,16 +164,6 @@ export const SecretSyncFns = {
   ): Promise<void> => {
     // const affixedSecretMap = addAffixes(secretSync, secretMap);
 
-    const azureKeyVaultSecretSync = azureKeyVaultSecretSyncFactory({
-      appConnectionDAL,
-      kmsService
-    });
-
-    const azureAppConfigurationSecretSync = azureAppConfigurationSecretSyncFactory({
-      appConnectionDAL,
-      kmsService
-    });
-
     switch (secretSync.destination) {
       case SecretSync.AWSParameterStore:
         return AwsParameterStoreSyncFns.removeSecrets(secretSync, secretMap);
@@ -192,9 +174,15 @@ export const SecretSyncFns = {
       case SecretSync.GCPSecretManager:
         return GcpSyncFns.removeSecrets(secretSync, secretMap);
       case SecretSync.AzureKeyVault:
-        return azureKeyVaultSecretSync.removeSecrets(secretSync, secretMap);
+        return azureKeyVaultSecretSyncFactory({
+          appConnectionDAL,
+          kmsService
+        }).removeSecrets(secretSync, secretMap);
       case SecretSync.AzureAppConfiguration:
-        return azureAppConfigurationSecretSync.removeSecrets(secretSync, secretMap);
+        return azureAppConfigurationSecretSyncFactory({
+          appConnectionDAL,
+          kmsService
+        }).removeSecrets(secretSync, secretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

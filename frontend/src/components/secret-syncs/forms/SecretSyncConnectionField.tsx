@@ -18,9 +18,6 @@ import { TSecretSyncForm } from "./schemas";
 
 type Props = {
   onChange?: VoidFunction;
-  filterConnections?: (
-    connections?: TAvailableAppConnection[]
-  ) => TAvailableAppConnection[] | undefined;
 };
 
 export const SecretSyncConnectionField = ({ onChange: callback, filterConnections }: Props) => {
@@ -30,7 +27,7 @@ export const SecretSyncConnectionField = ({ onChange: callback, filterConnection
   const destination = watch("destination");
   const app = SECRET_SYNC_CONNECTION_MAP[destination];
 
-  const { data: allConnections, isLoading } = useListAvailableAppConnections(app);
+  const { data: availableConnections, isLoading } = useListAvailableAppConnections(app);
 
   const connectionName = APP_CONNECTION_MAP[app].name;
 
@@ -38,10 +35,6 @@ export const SecretSyncConnectionField = ({ onChange: callback, filterConnection
     OrgPermissionAppConnectionActions.Create,
     OrgPermissionSubjects.AppConnections
   );
-
-  const availableConnections = useMemo(() => {
-    return filterConnections ? filterConnections(allConnections) : allConnections;
-  }, [allConnections]);
 
   const appName = APP_CONNECTION_MAP[SECRET_SYNC_CONNECTION_MAP[destination]].name;
 

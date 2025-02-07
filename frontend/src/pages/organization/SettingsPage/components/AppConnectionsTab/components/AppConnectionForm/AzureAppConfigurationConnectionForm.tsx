@@ -8,13 +8,12 @@ import { z } from "zod";
 import { Button, FormControl, Input, ModalClose, Select, SelectItem } from "@app/components/v2";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { isInfisicalCloud } from "@app/helpers/platform";
-import { useGetAppConnectionOption } from "@app/hooks/api/appConnections";
-import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
-  AzureConnectionMethod,
-  AzureResources,
-  TAzureConnection
-} from "@app/hooks/api/appConnections/types/azure-connection";
+  AzureAppConfigurationConnectionMethod,
+  TAzureAppConfigurationConnection,
+  useGetAppConnectionOption
+} from "@app/hooks/api/appConnections";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
 import {
   genericAppConnectionFieldsSchema,
@@ -22,43 +21,35 @@ import {
 } from "./GenericAppConnectionFields";
 
 type Props = {
-  appConnection?: TAzureConnection;
-};
-
-const resourceScopes: Record<AzureResources, string> = {
-  [AzureResources.AppConfiguration]: "https://azconfig.io/.default",
-  [AzureResources.KeyVault]: "https://vault.azure.net/.default"
+  appConnection?: TAzureAppConfigurationConnection;
 };
 
 const formSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.Azure),
-  method: z.nativeEnum(AzureConnectionMethod),
-  tenantId: z.string().trim().optional(),
-  resource: z.nativeEnum(AzureResources)
+  app: z.literal(AppConnection.AzureAppConfiguration),
+  method: z.nativeEnum(AzureAppConfigurationConnectionMethod),
+  tenantId: z.string().trim().optional()
 });
 
 type FormData = z.infer<typeof formSchema>;
 
-export const AzureConnectionForm = ({ appConnection }: Props) => {
+export const AzureAppConfigurationConnectionForm = ({ appConnection }: Props) => {
   const isUpdate = Boolean(appConnection);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   const {
     option: { oauthClientId },
     isLoading
-  } = useGetAppConnectionOption(AppConnection.Azure);
+  } = useGetAppConnectionOption(AppConnection.AzureAppConfiguration);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: appConnection
       ? {
-          ...appConnection,
-          resource: appConnection?.credentials.resource
+          ...appConnection
         }
       : {
-          app: AppConnection.Azure,
-          method: AzureConnectionMethod.OAuth,
-          resource: AzureResources.KeyVault
+          app: AppConnection.AzureAppConfiguration,
+          method: AzureAppConfigurationConnectionMethod.OAuth
         }
   });
 
@@ -76,14 +67,14 @@ export const AzureConnectionForm = ({ appConnection }: Props) => {
     const state = crypto.randomBytes(16).toString("hex");
     localStorage.setItem("latestCSRFToken", state);
     localStorage.setItem(
-      "azureConnectionFormData",
+      "azureAppConfigurationConnectionFormData",
       JSON.stringify({ ...formData, connectionId: appConnection?.id })
     );
 
     switch (formData.method) {
-      case AzureConnectionMethod.OAuth:
+      case AzureAppConfigurationConnectionMethod.OAuth:
         window.location.assign(
-          `https://login.microsoftonline.com/${formData.tenantId || "common"}/oauth2/v2.0/authorize?client_id=${oauthClientId}&response_type=code&redirect_uri=${window.location.origin}/organization/app-connections/azure/oauth/callback&response_mode=query&scope=${resourceScopes[formData.resource]}%20openid%20offline_access&state=${state}`
+          `https://login.microsoftonline.com/${formData.tenantId || "common"}/oauth2/v2.0/authorize?client_id=${oauthClientId}&response_type=code&redirect_uri=${window.location.origin}/organization/app-connections/azure/oauth/callback&response_mode=query&scope=https://azconfig.io/.default%20openid%20offline_access&state=${state}<:>azure-app-configuration`
         );
         break;
       default:
@@ -94,7 +85,7 @@ export const AzureConnectionForm = ({ appConnection }: Props) => {
   let isMissingConfig: boolean;
 
   switch (selectedMethod) {
-    case AzureConnectionMethod.OAuth:
+    case AzureAppConfigurationConnectionMethod.OAuth:
       isMissingConfig = !oauthClientId;
       break;
     default:
@@ -113,7 +104,7 @@ export const AzureConnectionForm = ({ appConnection }: Props) => {
           control={control}
           render={({ field, fieldState: { error } }) => (
             <FormControl
-              tooltipText="The Azure Active Directory (Entra ID) Tenant ID. This field cannot be changed after creation."
+              tooltipText="The Azure Active Directory (Entra ID) Tenant ID."
               isError={Boolean(error?.message)}
               label="Tenant ID"
               isOptional
@@ -125,39 +116,12 @@ export const AzureConnectionForm = ({ appConnection }: Props) => {
         />
 
         <Controller
-          name="resource"
-          control={control}
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              tooltipText="Select the Azure resource you would like the app connection to access."
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Resource"
-            >
-              <Select
-                isDisabled={isUpdate}
-                value={value}
-                onValueChange={(val) => onChange(val)}
-                className="w-full border border-mineshaft-500"
-                position="popper"
-                dropdownContainerClassName="max-w-none"
-              >
-                <SelectItem value={AzureResources.KeyVault}>Azure Key Vault</SelectItem>
-                <SelectItem value={AzureResources.AppConfiguration}>
-                  Azure App Configuration
-                </SelectItem>
-              </Select>
-            </FormControl>
-          )}
-        />
-
-        <Controller
           name="method"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <FormControl
               tooltipText={`The method you would like to use to connect with ${
-                APP_CONNECTION_MAP[AppConnection.Azure].name
+                APP_CONNECTION_MAP[AppConnection.AzureAppConfiguration].name
               }. This field cannot be changed after creation.`}
               errorText={
                 !isLoading && isMissingConfig
@@ -179,7 +143,7 @@ export const AzureConnectionForm = ({ appConnection }: Props) => {
                 position="popper"
                 dropdownContainerClassName="max-w-none"
               >
-                {Object.values(AzureConnectionMethod).map((method) => {
+                {Object.values(AzureAppConfigurationConnectionMethod).map((method) => {
                   return (
                     <SelectItem value={method} key={method}>
                       {getAppConnectionMethodDetails(method).name}

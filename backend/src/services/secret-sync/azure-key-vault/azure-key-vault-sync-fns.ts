@@ -3,7 +3,7 @@ import { AxiosError } from "axios";
 
 import { request } from "@app/lib/config/request";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
-import { getAzureConnectionAccessToken } from "@app/services/app-connection/azure";
+import { getAzureConnectionAccessToken } from "@app/services/app-connection/azure-key-vault";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
@@ -171,6 +171,10 @@ export const azureKeyVaultSecretSyncFactory = ({
             }
           }
         }
+      }
+
+      if (!isSecretSet) {
+        throw new Error(`Failed to set secret ${key}`);
       }
     };
 

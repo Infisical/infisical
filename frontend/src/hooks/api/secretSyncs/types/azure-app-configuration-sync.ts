@@ -9,7 +9,7 @@ export type TAzureAppConfigurationSync = TRootSecretSync & {
     label?: string;
   };
   connection: {
-    app: AppConnection.Azure;
+    app: AppConnection.AzureAppConfiguration;
     name: string;
     id: string;
   };
