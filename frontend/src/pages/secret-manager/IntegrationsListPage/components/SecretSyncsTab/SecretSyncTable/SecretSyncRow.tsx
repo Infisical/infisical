@@ -208,7 +208,9 @@ export const SecretSyncRow = ({
                           <FontAwesomeIcon icon={faXmark} className="ml-1 pr-1.5 pt-0.5 text-sm" />
                           <div className="text-xs">Failure Reason</div>
                         </div>
-                        <div className="rounded bg-mineshaft-600 p-2 text-xs">{failureMessage}</div>
+                        <div className="break-words rounded bg-mineshaft-600 p-2 text-xs">
+                          {failureMessage}
+                        </div>
                       </div>
                     )}
                   </div>
