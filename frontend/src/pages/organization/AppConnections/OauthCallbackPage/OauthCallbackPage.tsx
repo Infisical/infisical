@@ -4,6 +4,7 @@ import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { createNotification } from "@app/components/notifications";
 import { ContentLoader } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
+import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import {
   AzureAppConfigurationConnectionMethod,
   AzureKeyVaultConnectionMethod,
@@ -283,7 +284,7 @@ export const OAuthCallbackPage = () => {
 
       if (data) {
         createNotification({
-          text: `Successfully ${data.connectionId ? "updated" : "added"} ${data.appConnectionName || ""} Connection`,
+          text: `Successfully ${data.connectionId ? "updated" : "added"} ${data.appConnectionName ? APP_CONNECTION_MAP[data.appConnectionName as AppConnection].name : ""} Connection`,
           type: "success"
         });
       } else {
