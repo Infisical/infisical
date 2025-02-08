@@ -20,10 +20,25 @@ import {
 } from "@app/services/app-connection/github";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
+import {
+  AzureAppConfigurationConnectionMethod,
+  getAzureAppConfigurationConnectionListItem,
+  validateAzureAppConfigurationConnectionCredentials
+} from "./azure-app-configuration";
+import {
+  AzureKeyVaultConnectionMethod,
+  getAzureKeyVaultConnectionListItem,
+  validateAzureKeyVaultConnectionCredentials
+} from "./azure-key-vault";
+
 export const listAppConnectionOptions = () => {
-  return [getAwsAppConnectionListItem(), getGitHubConnectionListItem(), getGcpAppConnectionListItem()].sort((a, b) =>
-    a.name.localeCompare(b.name)
-  );
+  return [
+    getAwsAppConnectionListItem(),
+    getGitHubConnectionListItem(),
+    getGcpAppConnectionListItem(),
+    getAzureKeyVaultConnectionListItem(),
+    getAzureAppConfigurationConnectionListItem()
+  ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
 export const encryptAppConnectionCredentials = async ({
@@ -79,6 +94,10 @@ export const validateAppConnectionCredentials = async (
       return validateGitHubConnectionCredentials(appConnection);
     case AppConnection.GCP:
       return validateGcpConnectionCredentials(appConnection);
+    case AppConnection.AzureKeyVault:
+      return validateAzureKeyVaultConnectionCredentials(appConnection);
+    case AppConnection.AzureAppConfiguration:
+      return validateAzureAppConfigurationConnectionCredentials(appConnection);
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection ${app}`);
@@ -89,6 +108,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
   switch (method) {
     case GitHubConnectionMethod.App:
       return "GitHub App";
+    case AzureKeyVaultConnectionMethod.OAuth:
+    case AzureAppConfigurationConnectionMethod.OAuth:
     case GitHubConnectionMethod.OAuth:
       return "OAuth";
     case AwsConnectionMethod.AccessKey:

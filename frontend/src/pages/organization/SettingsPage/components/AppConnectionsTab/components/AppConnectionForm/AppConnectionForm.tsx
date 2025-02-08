@@ -10,6 +10,8 @@ import { DiscriminativePick } from "@app/types";
 
 import { AppConnectionHeader } from "../AppConnectionHeader";
 import { AwsConnectionForm } from "./AwsConnectionForm";
+import { AzureAppConfigurationConnectionForm } from "./AzureAppConfigurationConnectionForm";
+import { AzureKeyVaultConnectionForm } from "./AzureKeyVaultConnectionForm";
 import { GcpConnectionForm } from "./GcpConnectionForm";
 import { GitHubConnectionForm } from "./GitHubConnectionForm";
 
@@ -53,6 +55,10 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <GitHubConnectionForm />;
     case AppConnection.GCP:
       return <GcpConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.AzureKeyVault:
+      return <AzureKeyVaultConnectionForm />;
+    case AppConnection.AzureAppConfiguration:
+      return <AzureAppConfigurationConnectionForm />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -92,6 +98,10 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <GitHubConnectionForm appConnection={appConnection} />;
     case AppConnection.GCP:
       return <GcpConnectionForm appConnection={appConnection} onSubmit={onSubmit} />;
+    case AppConnection.AzureKeyVault:
+      return <AzureKeyVaultConnectionForm appConnection={appConnection} />;
+    case AppConnection.AzureAppConfiguration:
+      return <AzureAppConfigurationConnectionForm appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

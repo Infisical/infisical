@@ -11,11 +11,35 @@ import {
   TValidateGitHubConnectionCredentials
 } from "@app/services/app-connection/github";
 
+import {
+  TAzureAppConfigurationConnection,
+  TAzureAppConfigurationConnectionConfig,
+  TAzureAppConfigurationConnectionInput,
+  TValidateAzureAppConfigurationConnectionCredentials
+} from "./azure-app-configuration";
+import {
+  TAzureKeyVaultConnection,
+  TAzureKeyVaultConnectionConfig,
+  TAzureKeyVaultConnectionInput,
+  TValidateAzureKeyVaultConnectionCredentials
+} from "./azure-key-vault";
 import { TGcpConnection, TGcpConnectionConfig, TGcpConnectionInput, TValidateGcpConnectionCredentials } from "./gcp";
 
-export type TAppConnection = { id: string } & (TAwsConnection | TGitHubConnection | TGcpConnection);
+export type TAppConnection = { id: string } & (
+  | TAwsConnection
+  | TGitHubConnection
+  | TGcpConnection
+  | TAzureKeyVaultConnection
+  | TAzureAppConfigurationConnection
+);
 
-export type TAppConnectionInput = { id: string } & (TAwsConnectionInput | TGitHubConnectionInput | TGcpConnectionInput);
+export type TAppConnectionInput = { id: string } & (
+  | TAwsConnectionInput
+  | TGitHubConnectionInput
+  | TGcpConnectionInput
+  | TAzureKeyVaultConnectionInput
+  | TAzureAppConfigurationConnectionInput
+);
 
 export type TCreateAppConnectionDTO = Pick<
   TAppConnectionInput,
@@ -26,9 +50,16 @@ export type TUpdateAppConnectionDTO = Partial<Omit<TCreateAppConnectionDTO, "met
   connectionId: string;
 };
 
-export type TAppConnectionConfig = TAwsConnectionConfig | TGitHubConnectionConfig | TGcpConnectionConfig;
+export type TAppConnectionConfig =
+  | TAwsConnectionConfig
+  | TGitHubConnectionConfig
+  | TGcpConnectionConfig
+  | TAzureKeyVaultConnectionConfig
+  | TAzureAppConfigurationConnectionConfig;
 
 export type TValidateAppConnectionCredentials =
   | TValidateAwsConnectionCredentials
   | TValidateGitHubConnectionCredentials
-  | TValidateGcpConnectionCredentials;
+  | TValidateGcpConnectionCredentials
+  | TValidateAzureKeyVaultConnectionCredentials
+  | TValidateAzureAppConfigurationConnectionCredentials;

@@ -9,14 +9,21 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
   [SecretSync.AWSParameterStore]: { name: "AWS Parameter Store", image: "Amazon Web Services.png" },
   [SecretSync.AWSSecretsManager]: { name: "AWS Secrets Manager", image: "Amazon Web Services.png" },
   [SecretSync.GitHub]: { name: "GitHub", image: "GitHub.png" },
-  [SecretSync.GCPSecretManager]: { name: "GCP Secret Manager", image: "Google Cloud Platform.png" }
+  [SecretSync.GCPSecretManager]: { name: "GCP Secret Manager", image: "Google Cloud Platform.png" },
+  [SecretSync.AzureKeyVault]: { name: "Azure Key Vault", image: "Microsoft Azure.png" },
+  [SecretSync.AzureAppConfiguration]: {
+    name: "Azure App Configuration",
+    image: "Microsoft Azure.png"
+  }
 };
 
 export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.AWSParameterStore]: AppConnection.AWS,
   [SecretSync.AWSSecretsManager]: AppConnection.AWS,
   [SecretSync.GitHub]: AppConnection.GitHub,
-  [SecretSync.GCPSecretManager]: AppConnection.GCP
+  [SecretSync.GCPSecretManager]: AppConnection.GCP,
+  [SecretSync.AzureKeyVault]: AppConnection.AzureKeyVault,
+  [SecretSync.AzureAppConfiguration]: AppConnection.AzureAppConfiguration
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<

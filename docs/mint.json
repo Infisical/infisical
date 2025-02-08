@@ -393,7 +393,9 @@
           "pages": [
             "integrations/app-connections/aws",
             "integrations/app-connections/github",
-            "integrations/app-connections/gcp"
+            "integrations/app-connections/gcp",
+            "integrations/app-connections/azure-key-vault",
+            "integrations/app-connections/azure-app-configuration"
           ]
         }
       ]
@@ -408,7 +410,9 @@
             "integrations/secret-syncs/aws-parameter-store",
             "integrations/secret-syncs/aws-secrets-manager",
             "integrations/secret-syncs/github",
-            "integrations/secret-syncs/gcp-secret-manager"
+            "integrations/secret-syncs/gcp-secret-manager",
+            "integrations/secret-syncs/azure-key-vault",
+            "integrations/secret-syncs/azure-app-configuration"
           ]
         }
       ]
@@ -843,6 +847,30 @@
                 "api-reference/endpoints/app-connections/gcp/update",
                 "api-reference/endpoints/app-connections/gcp/delete"
               ]
+            },
+            {
+              "group": "Azure Key Vault",
+              "pages": [
+                "api-reference/endpoints/app-connections/azure-key-vault/list",
+                "api-reference/endpoints/app-connections/azure-key-vault/available",
+                "api-reference/endpoints/app-connections/azure-key-vault/get-by-id",
+                "api-reference/endpoints/app-connections/azure-key-vault/get-by-name",
+                "api-reference/endpoints/app-connections/azure-key-vault/create",
+                "api-reference/endpoints/app-connections/azure-key-vault/update",
+                "api-reference/endpoints/app-connections/azure-key-vault/delete"
+              ]
+            },
+            {
+              "group": "Azure App Configuration",
+              "pages": [
+                "api-reference/endpoints/app-connections/azure-app-configuration/list",
+                "api-reference/endpoints/app-connections/azure-app-configuration/available",
+                "api-reference/endpoints/app-connections/azure-app-configuration/get-by-id",
+                "api-reference/endpoints/app-connections/azure-app-configuration/get-by-name",
+                "api-reference/endpoints/app-connections/azure-app-configuration/create",
+                "api-reference/endpoints/app-connections/azure-app-configuration/update",
+                "api-reference/endpoints/app-connections/azure-app-configuration/delete"
+              ]
             }
           ]
         },
@@ -905,7 +933,36 @@
                 "api-reference/endpoints/secret-syncs/gcp-secret-manager/import-secrets",
                 "api-reference/endpoints/secret-syncs/gcp-secret-manager/remove-secrets"
               ]
+            },
+            {
+              "group": "Azure Key Vault",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/azure-key-vault/list",
+                "api-reference/endpoints/secret-syncs/azure-key-vault/get-by-id",
+                "api-reference/endpoints/secret-syncs/azure-key-vault/get-by-name",
+                "api-reference/endpoints/secret-syncs/azure-key-vault/create",
+                "api-reference/endpoints/secret-syncs/azure-key-vault/update",
+                "api-reference/endpoints/secret-syncs/azure-key-vault/delete",
+                "api-reference/endpoints/secret-syncs/azure-key-vault/sync-secrets",
+                "api-reference/endpoints/secret-syncs/azure-key-vault/import-secrets",
+                "api-reference/endpoints/secret-syncs/azure-key-vault/remove-secrets"
+              ]
+            },
+            {
+              "group": "Azure App Configuration",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/list",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/get-by-id",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/get-by-name",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/create",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/update",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/delete",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/sync-secrets",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/import-secrets",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/remove-secrets"
+              ]
             }
+
           ]
         },
         {

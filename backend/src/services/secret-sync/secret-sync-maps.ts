@@ -5,12 +5,16 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.AWSParameterStore]: "AWS Parameter Store",
   [SecretSync.AWSSecretsManager]: "AWS Secrets Manager",
   [SecretSync.GitHub]: "GitHub",
-  [SecretSync.GCPSecretManager]: "GCP Secret Manager"
+  [SecretSync.GCPSecretManager]: "GCP Secret Manager",
+  [SecretSync.AzureKeyVault]: "Azure Key Vault",
+  [SecretSync.AzureAppConfiguration]: "Azure App Configuration"
 };
 
 export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.AWSParameterStore]: AppConnection.AWS,
   [SecretSync.AWSSecretsManager]: AppConnection.AWS,
   [SecretSync.GitHub]: AppConnection.GitHub,
-  [SecretSync.GCPSecretManager]: AppConnection.GCP
+  [SecretSync.GCPSecretManager]: AppConnection.GCP,
+  [SecretSync.AzureKeyVault]: AppConnection.AzureKeyVault,
+  [SecretSync.AzureAppConfiguration]: AppConnection.AzureAppConfiguration
 };

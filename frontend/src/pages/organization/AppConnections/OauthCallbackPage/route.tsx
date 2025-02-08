@@ -2,7 +2,7 @@ import { createFileRoute, stripSearchParams } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
-import { GitHubOAuthCallbackPage } from "./GithubOauthCallbackPage";
+import { OAuthCallbackPage } from "./OauthCallbackPage";
 
 const GitHubOAuthCallbackPageQueryParamsSchema = z.object({
   code: z.coerce.string().catch(""),
@@ -11,9 +11,9 @@ const GitHubOAuthCallbackPageQueryParamsSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organization/app-connections/github/oauth/callback"
+  "/_authenticate/_inject-org-details/_org-layout/organization/app-connections/$appConnection/oauth/callback"
 )({
-  component: GitHubOAuthCallbackPage,
+  component: OAuthCallbackPage,
   validateSearch: zodValidator(GitHubOAuthCallbackPageQueryParamsSchema),
   search: {
     middlewares: [stripSearchParams({ state: "", installation_id: "" })]

@@ -4,6 +4,8 @@ import { faKey, faPassport, faUser } from "@fortawesome/free-solid-svg-icons";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   AwsConnectionMethod,
+  AzureAppConfigurationConnectionMethod,
+  AzureKeyVaultConnectionMethod,
   GcpConnectionMethod,
   GitHubConnectionMethod,
   TAppConnection
@@ -15,6 +17,11 @@ export const APP_CONNECTION_MAP: Record<AppConnection, { name: string; image: st
   [AppConnection.GCP]: {
     name: "GCP",
     image: "Google Cloud Platform.png"
+  },
+  [AppConnection.AzureKeyVault]: { name: "Azure Key Vault", image: "Microsoft Azure.png" },
+  [AppConnection.AzureAppConfiguration]: {
+    name: "Azure App Configuration",
+    image: "Microsoft Azure.png"
   }
 };
 
@@ -22,6 +29,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
   switch (method) {
     case GitHubConnectionMethod.App:
       return { name: "GitHub App", icon: faGithub };
+    case AzureKeyVaultConnectionMethod.OAuth:
+    case AzureAppConfigurationConnectionMethod.OAuth:
     case GitHubConnectionMethod.OAuth:
       return { name: "OAuth", icon: faPassport };
     case AwsConnectionMethod.AccessKey:

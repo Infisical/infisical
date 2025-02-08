@@ -204,6 +204,10 @@ const envSchema = z
     // gcp app
     INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL: zpStr(z.string().optional()),
 
+    // azure app
+    INF_APP_CONNECTION_AZURE_CLIENT_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_AZURE_CLIENT_SECRET: zpStr(z.string().optional()),
+
     /* CORS ----------------------------------------------------------------------------- */
 
     CORS_ALLOWED_ORIGINS: zpStr(
