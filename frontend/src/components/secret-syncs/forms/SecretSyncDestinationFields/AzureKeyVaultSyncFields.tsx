@@ -1,12 +1,12 @@
 import { Controller, useFormContext } from "react-hook-form";
+import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import { FormControl, Input } from "@app/components/v2";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 
 export const AzureKeyVaultSyncFields = () => {
   const { control, setValue } = useFormContext<
