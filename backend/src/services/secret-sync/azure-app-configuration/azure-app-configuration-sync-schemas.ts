@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { SecretSyncs } from "@app/lib/api-docs";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import {
@@ -10,8 +11,11 @@ import {
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
 const AzureAppConfigurationSyncDestinationConfigSchema = z.object({
-  configurationUrl: z.string().min(1, "App Configuration URL required"),
-  label: z.string().optional()
+  configurationUrl: z
+    .string()
+    .min(1, "App Configuration URL required")
+    .describe(SecretSyncs.DESTINATION_CONFIG.AZURE_APP_CONFIGURATION.CONFIGURATION_URL),
+  label: z.string().optional().describe(SecretSyncs.DESTINATION_CONFIG.AZURE_APP_CONFIGURATION.LABEL)
 });
 
 const AzureAppConfigurationSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };

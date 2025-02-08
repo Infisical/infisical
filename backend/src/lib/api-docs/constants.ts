@@ -1739,6 +1739,15 @@ export const SecretSyncs = {
       OWNER: "The name of the GitHub account owner of the repository.",
       REPO: "The name of the GitHub repository.",
       ENV: "The name of the GitHub environment."
+    },
+    AZURE_KEY_VAULT: {
+      VAULT_BASE_URL:
+        "The base URL of the Azure Key Vault to sync secrets to. Example: https://example.vault.azure.net/"
+    },
+    AZURE_APP_CONFIGURATION: {
+      CONFIGURATION_URL:
+        "The URL of the Azure App Configuration to sync secrets to. Example: https://example.azconfig.io/",
+      LABEL: "An optional label to assign to secrets created in Azure App Configuration."
     }
   }
 };

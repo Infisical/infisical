@@ -5,6 +5,8 @@ import { FormControl, Input } from "@app/components/v2";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 
 export const AzureKeyVaultSyncFields = () => {
   const { control, setValue } = useFormContext<
@@ -32,6 +34,14 @@ export const AzureKeyVaultSyncFields = () => {
           </FormControl>
         )}
       />
+
+      <div className="mt-4 flex items-center gap-2 text-xs text-yellow-400">
+        <FontAwesomeIcon icon={faInfoCircle} />
+        <p>
+          Secret keys with underscores (_) will be converted to hyphens (-) when syncing to Azure
+          Key Vault.
+        </p>
+      </div>
     </>
   );
 };

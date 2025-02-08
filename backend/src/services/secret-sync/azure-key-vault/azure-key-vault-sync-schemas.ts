@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { SecretSyncs } from "@app/lib/api-docs";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import {
@@ -10,7 +11,11 @@ import {
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
 const AzureKeyVaultSyncDestinationConfigSchema = z.object({
-  vaultBaseUrl: z.string().url("Invalid vault base URL format").min(1, "Vault base URL required")
+  vaultBaseUrl: z
+    .string()
+    .url("Invalid vault base URL format")
+    .min(1, "Vault base URL required")
+    .describe(SecretSyncs.DESTINATION_CONFIG.AZURE_KEY_VAULT.VAULT_BASE_URL)
 });
 
 const AzureKeyVaultSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
