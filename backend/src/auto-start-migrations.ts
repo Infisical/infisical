@@ -14,9 +14,10 @@ type TArgs = {
   logger: Logger;
 };
 
+const isProduction = process.env.NODE_ENV === "production";
 const migrationConfig = {
   directory: path.join(__dirname, "./db/migrations"),
-  extension: "ts",
+  loadExtensions: [".mjs", ".ts"],
   tableName: "infisical_migrations"
 };
 
@@ -31,6 +32,31 @@ const migrationStatusCheckErrorHandler = (err: Error) => {
 
 export const runMigrations = async ({ applicationDb, auditLogDb, logger }: TArgs) => {
   try {
+    // akhilmhdh(Feb 10 2025): 6 months  from now remove this
+    if (isProduction) {
+      const migrationTable = migrationConfig.tableName;
+      const hasMigrationTable = await applicationDb.schema.hasTable(migrationTable);
+      if (hasMigrationTable) {
+        const firstFile = (await applicationDb(migrationTable).where({}).first()) as { name: string };
+        if (firstFile?.name?.includes(".ts")) {
+          await applicationDb(migrationTable).update({
+            name: applicationDb.raw("REPLACE(name, '.ts', '.mjs')")
+          });
+        }
+      }
+      if (auditLogDb) {
+        const hasMigrationTableInAuditLog = await auditLogDb.schema.hasTable(migrationTable);
+        if (hasMigrationTableInAuditLog) {
+          const firstFile = (await auditLogDb(migrationTable).where({}).first()) as { name: string };
+          if (firstFile?.name?.includes(".ts")) {
+            await auditLogDb(migrationTable).update({
+              name: auditLogDb.raw("REPLACE(name, '.ts', '.mjs')")
+            });
+          }
+        }
+      }
+    }
+
     const shouldRunMigration = Boolean(
       await applicationDb.migrate.status(migrationConfig).catch(migrationStatusCheckErrorHandler)
     ); // db.length - code.length
