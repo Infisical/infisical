@@ -32,7 +32,7 @@ const migrationStatusCheckErrorHandler = (err: Error) => {
 
 export const runMigrations = async ({ applicationDb, auditLogDb, logger }: TArgs) => {
   try {
-    // akhilmhdh(Feb 10 2025): 6 months  from now remove this
+    // akhilmhdh(Feb 10 2025): 2 years  from now remove this
     if (isProduction) {
       const migrationTable = migrationConfig.tableName;
       const hasMigrationTable = await applicationDb.schema.hasTable(migrationTable);
