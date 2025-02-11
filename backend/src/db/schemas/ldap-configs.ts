@@ -5,8 +5,6 @@
 
 import { z } from "zod";
 
-import { zodBuffer } from "@app/lib/zod";
-
 import { TImmutableDBKeys } from "./models";
 
 export const LdapConfigsSchema = z.object({
@@ -14,25 +12,22 @@ export const LdapConfigsSchema = z.object({
   orgId: z.string().uuid(),
   isActive: z.boolean(),
   url: z.string(),
-  encryptedBindDN: z.string().nullable().optional(),
-  bindDNIV: z.string().nullable().optional(),
-  bindDNTag: z.string().nullable().optional(),
-  encryptedBindPass: z.string().nullable().optional(),
-  bindPassIV: z.string().nullable().optional(),
-  bindPassTag: z.string().nullable().optional(),
+  encryptedBindDN: z.string(),
+  bindDNIV: z.string(),
+  bindDNTag: z.string(),
+  encryptedBindPass: z.string(),
+  bindPassIV: z.string(),
+  bindPassTag: z.string(),
   searchBase: z.string(),
-  encryptedCACert: z.string().nullable().optional(),
-  caCertIV: z.string().nullable().optional(),
-  caCertTag: z.string().nullable().optional(),
+  encryptedCACert: z.string(),
+  caCertIV: z.string(),
+  caCertTag: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
   groupSearchBase: z.string().default(""),
   groupSearchFilter: z.string().default(""),
   searchFilter: z.string().default(""),
-  uniqueUserAttribute: z.string().default(""),
-  encryptedLdapBindDN: zodBuffer,
-  encryptedLdapBindPass: zodBuffer,
-  encryptedLdapCaCertificate: zodBuffer.nullable().optional()
+  uniqueUserAttribute: z.string().default("")
 });
 
 export type TLdapConfigs = z.infer<typeof LdapConfigsSchema>;

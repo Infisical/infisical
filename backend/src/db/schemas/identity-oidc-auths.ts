@@ -5,8 +5,6 @@
 
 import { z } from "zod";
 
-import { zodBuffer } from "@app/lib/zod";
-
 import { TImmutableDBKeys } from "./models";
 
 export const IdentityOidcAuthsSchema = z.object({
@@ -17,16 +15,15 @@ export const IdentityOidcAuthsSchema = z.object({
   accessTokenTrustedIps: z.unknown(),
   identityId: z.string().uuid(),
   oidcDiscoveryUrl: z.string(),
-  encryptedCaCert: z.string().nullable().optional(),
-  caCertIV: z.string().nullable().optional(),
-  caCertTag: z.string().nullable().optional(),
+  encryptedCaCert: z.string(),
+  caCertIV: z.string(),
+  caCertTag: z.string(),
   boundIssuer: z.string(),
   boundAudiences: z.string(),
   boundClaims: z.unknown(),
   boundSubject: z.string().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date(),
-  encryptedCaCertificate: zodBuffer.nullable().optional()
+  updatedAt: z.date()
 });
 
 export type TIdentityOidcAuths = z.infer<typeof IdentityOidcAuthsSchema>;

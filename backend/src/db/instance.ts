@@ -49,9 +49,6 @@ export const initDbConnection = ({
             ca: Buffer.from(dbRootCert, "base64").toString("ascii")
           }
         : false
-    },
-    migrations: {
-      tableName: "infisical_migrations"
     }
   });
 
@@ -67,9 +64,6 @@ export const initDbConnection = ({
               ca: Buffer.from(replicaDbCertificate, "base64").toString("ascii")
             }
           : false
-      },
-      migrations: {
-        tableName: "infisical_migrations"
       }
     });
   });
@@ -104,9 +98,6 @@ export const initAuditLogDbConnection = ({
             ca: Buffer.from(dbRootCert, "base64").toString("ascii")
           }
         : false
-    },
-    migrations: {
-      tableName: "infisical_migrations"
     }
   });
 

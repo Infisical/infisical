@@ -1,18 +1,25 @@
 import { ForbiddenError } from "@casl/ability";
 import jwt from "jsonwebtoken";
 
-import { OrgMembershipStatus, TableName, TLdapConfigsUpdate, TUsers } from "@app/db/schemas";
+import { OrgMembershipStatus, SecretKeyEncoding, TableName, TLdapConfigsUpdate, TUsers } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { getConfig } from "@app/lib/config/env";
+import {
+  decryptSymmetric,
+  encryptSymmetric,
+  generateAsymmetricKeyPair,
+  generateSymmetricKey,
+  infisicalSymmetricDecrypt,
+  infisicalSymmetricEncypt
+} from "@app/lib/crypto/encryption";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TOrgBotDALFactory } from "@app/services/org/org-bot-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { getDefaultOrgMembershipRole } from "@app/services/org/org-role-fns";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
@@ -52,6 +59,7 @@ type TLdapConfigServiceFactoryDep = {
     TOrgDALFactory,
     "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById"
   >;
+  orgBotDAL: Pick<TOrgBotDALFactory, "findOne" | "create" | "transaction">;
   groupDAL: Pick<TGroupDALFactory, "find" | "findOne">;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
@@ -76,7 +84,6 @@ type TLdapConfigServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
 export type TLdapConfigServiceFactory = ReturnType<typeof ldapConfigServiceFactory>;
@@ -86,6 +93,7 @@ export const ldapConfigServiceFactory = ({
   ldapGroupMapDAL,
   orgDAL,
   orgMembershipDAL,
+  orgBotDAL,
   groupDAL,
   groupProjectDAL,
   projectKeyDAL,
@@ -97,8 +105,7 @@ export const ldapConfigServiceFactory = ({
   permissionService,
   licenseService,
   tokenService,
-  smtpService,
-  kmsService
+  smtpService
 }: TLdapConfigServiceFactoryDep) => {
   const createLdapCfg = async ({
     actor,
@@ -126,23 +133,77 @@ export const ldapConfigServiceFactory = ({
         message:
           "Failed to create LDAP configuration due to plan restriction. Upgrade plan to create LDAP configuration."
       });
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId
+
+    const orgBot = await orgBotDAL.transaction(async (tx) => {
+      const doc = await orgBotDAL.findOne({ orgId }, tx);
+      if (doc) return doc;
+
+      const { privateKey, publicKey } = generateAsymmetricKeyPair();
+      const key = generateSymmetricKey();
+      const {
+        ciphertext: encryptedPrivateKey,
+        iv: privateKeyIV,
+        tag: privateKeyTag,
+        encoding: privateKeyKeyEncoding,
+        algorithm: privateKeyAlgorithm
+      } = infisicalSymmetricEncypt(privateKey);
+      const {
+        ciphertext: encryptedSymmetricKey,
+        iv: symmetricKeyIV,
+        tag: symmetricKeyTag,
+        encoding: symmetricKeyKeyEncoding,
+        algorithm: symmetricKeyAlgorithm
+      } = infisicalSymmetricEncypt(key);
+
+      return orgBotDAL.create(
+        {
+          name: "Infisical org bot",
+          publicKey,
+          privateKeyIV,
+          encryptedPrivateKey,
+          symmetricKeyIV,
+          symmetricKeyTag,
+          encryptedSymmetricKey,
+          symmetricKeyAlgorithm,
+          orgId,
+          privateKeyTag,
+          privateKeyAlgorithm,
+          privateKeyKeyEncoding,
+          symmetricKeyKeyEncoding
+        },
+        tx
+      );
     });
+
+    const key = infisicalSymmetricDecrypt({
+      ciphertext: orgBot.encryptedSymmetricKey,
+      iv: orgBot.symmetricKeyIV,
+      tag: orgBot.symmetricKeyTag,
+      keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
+    });
+
+    const { ciphertext: encryptedBindDN, iv: bindDNIV, tag: bindDNTag } = encryptSymmetric(bindDN, key);
+    const { ciphertext: encryptedBindPass, iv: bindPassIV, tag: bindPassTag } = encryptSymmetric(bindPass, key);
+    const { ciphertext: encryptedCACert, iv: caCertIV, tag: caCertTag } = encryptSymmetric(caCert, key);
 
     const ldapConfig = await ldapConfigDAL.create({
       orgId,
       isActive,
       url,
+      encryptedBindDN,
+      bindDNIV,
+      bindDNTag,
+      encryptedBindPass,
+      bindPassIV,
+      bindPassTag,
       uniqueUserAttribute,
       searchBase,
       searchFilter,
       groupSearchBase,
       groupSearchFilter,
-      encryptedLdapCaCertificate: encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob,
-      encryptedLdapBindDN: encryptor({ plainText: Buffer.from(bindDN) }).cipherTextBlob,
-      encryptedLdapBindPass: encryptor({ plainText: Buffer.from(bindPass) }).cipherTextBlob
+      encryptedCACert,
+      caCertIV,
+      caCertTag
     });
 
     return ldapConfig;
@@ -185,21 +246,38 @@ export const ldapConfigServiceFactory = ({
       uniqueUserAttribute
     };
 
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId
+    const orgBot = await orgBotDAL.findOne({ orgId });
+    if (!orgBot)
+      throw new NotFoundError({
+        message: `Organization bot in organization with ID '${orgId}' not found`,
+        name: "OrgBotNotFound"
+      });
+    const key = infisicalSymmetricDecrypt({
+      ciphertext: orgBot.encryptedSymmetricKey,
+      iv: orgBot.symmetricKeyIV,
+      tag: orgBot.symmetricKeyTag,
+      keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
     });
 
     if (bindDN !== undefined) {
-      updateQuery.encryptedLdapBindDN = encryptor({ plainText: Buffer.from(bindDN) }).cipherTextBlob;
+      const { ciphertext: encryptedBindDN, iv: bindDNIV, tag: bindDNTag } = encryptSymmetric(bindDN, key);
+      updateQuery.encryptedBindDN = encryptedBindDN;
+      updateQuery.bindDNIV = bindDNIV;
+      updateQuery.bindDNTag = bindDNTag;
     }
 
     if (bindPass !== undefined) {
-      updateQuery.encryptedLdapBindPass = encryptor({ plainText: Buffer.from(bindPass) }).cipherTextBlob;
+      const { ciphertext: encryptedBindPass, iv: bindPassIV, tag: bindPassTag } = encryptSymmetric(bindPass, key);
+      updateQuery.encryptedBindPass = encryptedBindPass;
+      updateQuery.bindPassIV = bindPassIV;
+      updateQuery.bindPassTag = bindPassTag;
     }
 
     if (caCert !== undefined) {
-      updateQuery.encryptedLdapCaCertificate = encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob;
+      const { ciphertext: encryptedCACert, iv: caCertIV, tag: caCertTag } = encryptSymmetric(caCert, key);
+      updateQuery.encryptedCACert = encryptedCACert;
+      updateQuery.caCertIV = caCertIV;
+      updateQuery.caCertTag = caCertTag;
     }
 
     const [ldapConfig] = await ldapConfigDAL.update({ orgId }, updateQuery);
@@ -215,24 +293,61 @@ export const ldapConfigServiceFactory = ({
       });
     }
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId: ldapConfig.orgId
+    const orgBot = await orgBotDAL.findOne({ orgId: ldapConfig.orgId });
+    if (!orgBot) {
+      throw new NotFoundError({
+        message: `Organization bot not found in organization with ID ${ldapConfig.orgId}`,
+        name: "OrgBotNotFound"
+      });
+    }
+
+    const key = infisicalSymmetricDecrypt({
+      ciphertext: orgBot.encryptedSymmetricKey,
+      iv: orgBot.symmetricKeyIV,
+      tag: orgBot.symmetricKeyTag,
+      keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
     });
 
+    const {
+      encryptedBindDN,
+      bindDNIV,
+      bindDNTag,
+      encryptedBindPass,
+      bindPassIV,
+      bindPassTag,
+      encryptedCACert,
+      caCertIV,
+      caCertTag
+    } = ldapConfig;
+
     let bindDN = "";
-    if (ldapConfig.encryptedLdapBindDN) {
-      bindDN = decryptor({ cipherTextBlob: ldapConfig.encryptedLdapBindDN }).toString();
+    if (encryptedBindDN && bindDNIV && bindDNTag) {
+      bindDN = decryptSymmetric({
+        ciphertext: encryptedBindDN,
+        key,
+        tag: bindDNTag,
+        iv: bindDNIV
+      });
     }
 
     let bindPass = "";
-    if (ldapConfig.encryptedLdapBindPass) {
-      bindPass = decryptor({ cipherTextBlob: ldapConfig.encryptedLdapBindPass }).toString();
+    if (encryptedBindPass && bindPassIV && bindPassTag) {
+      bindPass = decryptSymmetric({
+        ciphertext: encryptedBindPass,
+        key,
+        tag: bindPassTag,
+        iv: bindPassIV
+      });
     }
 
     let caCert = "";
-    if (ldapConfig.encryptedLdapCaCertificate) {
-      caCert = decryptor({ cipherTextBlob: ldapConfig.encryptedLdapCaCertificate }).toString();
+    if (encryptedCACert && caCertIV && caCertTag) {
+      caCert = decryptSymmetric({
+        ciphertext: encryptedCACert,
+        key,
+        tag: caCertTag,
+        iv: caCertIV
+      });
     }
 
     return {

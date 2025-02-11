@@ -5,8 +5,6 @@
 
 import { z } from "zod";
 
-import { zodBuffer } from "@app/lib/zod";
-
 import { TImmutableDBKeys } from "./models";
 
 export const OidcConfigsSchema = z.object({
@@ -17,22 +15,20 @@ export const OidcConfigsSchema = z.object({
   jwksUri: z.string().nullable().optional(),
   tokenEndpoint: z.string().nullable().optional(),
   userinfoEndpoint: z.string().nullable().optional(),
-  encryptedClientId: z.string().nullable().optional(),
+  encryptedClientId: z.string(),
   configurationType: z.string(),
-  clientIdIV: z.string().nullable().optional(),
-  clientIdTag: z.string().nullable().optional(),
-  encryptedClientSecret: z.string().nullable().optional(),
-  clientSecretIV: z.string().nullable().optional(),
-  clientSecretTag: z.string().nullable().optional(),
+  clientIdIV: z.string(),
+  clientIdTag: z.string(),
+  encryptedClientSecret: z.string(),
+  clientSecretIV: z.string(),
+  clientSecretTag: z.string(),
   allowedEmailDomains: z.string().nullable().optional(),
   isActive: z.boolean(),
   createdAt: z.date(),
   updatedAt: z.date(),
   orgId: z.string().uuid(),
   lastUsed: z.date().nullable().optional(),
-  manageGroupMemberships: z.boolean().default(false),
-  encryptedOidcClientId: zodBuffer,
-  encryptedOidcClientSecret: zodBuffer
+  manageGroupMemberships: z.boolean().default(false)
 });
 
 export type TOidcConfigs = z.infer<typeof OidcConfigsSchema>;

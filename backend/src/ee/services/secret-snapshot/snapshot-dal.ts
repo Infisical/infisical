@@ -1,4 +1,4 @@
-/* eslint-disable no-await-in-loop,@typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-argument */
+/* eslint-disable no-await-in-loop */
 import { Knex } from "knex";
 import { z } from "zod";
 

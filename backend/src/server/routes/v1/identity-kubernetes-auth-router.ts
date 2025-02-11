@@ -8,19 +8,13 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 
-const IdentityKubernetesAuthResponseSchema = IdentityKubernetesAuthsSchema.pick({
-  id: true,
-  accessTokenTTL: true,
-  accessTokenMaxTTL: true,
-  accessTokenNumUsesLimit: true,
-  accessTokenTrustedIps: true,
-  createdAt: true,
-  updatedAt: true,
-  identityId: true,
-  kubernetesHost: true,
-  allowedNamespaces: true,
-  allowedNames: true,
-  allowedAudience: true
+const IdentityKubernetesAuthResponseSchema = IdentityKubernetesAuthsSchema.omit({
+  encryptedCaCert: true,
+  caCertIV: true,
+  caCertTag: true,
+  encryptedTokenReviewerJwt: true,
+  tokenReviewerJwtIV: true,
+  tokenReviewerJwtTag: true
 }).extend({
   caCert: z.string(),
   tokenReviewerJwt: z.string()

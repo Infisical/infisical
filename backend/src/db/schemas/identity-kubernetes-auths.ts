@@ -5,8 +5,6 @@
 
 import { z } from "zod";
 
-import { zodBuffer } from "@app/lib/zod";
-
 import { TImmutableDBKeys } from "./models";
 
 export const IdentityKubernetesAuthsSchema = z.object({
@@ -19,17 +17,15 @@ export const IdentityKubernetesAuthsSchema = z.object({
   updatedAt: z.date(),
   identityId: z.string().uuid(),
   kubernetesHost: z.string(),
-  encryptedCaCert: z.string().nullable().optional(),
-  caCertIV: z.string().nullable().optional(),
-  caCertTag: z.string().nullable().optional(),
-  encryptedTokenReviewerJwt: z.string().nullable().optional(),
-  tokenReviewerJwtIV: z.string().nullable().optional(),
-  tokenReviewerJwtTag: z.string().nullable().optional(),
+  encryptedCaCert: z.string(),
+  caCertIV: z.string(),
+  caCertTag: z.string(),
+  encryptedTokenReviewerJwt: z.string(),
+  tokenReviewerJwtIV: z.string(),
+  tokenReviewerJwtTag: z.string(),
   allowedNamespaces: z.string(),
   allowedNames: z.string(),
-  allowedAudience: z.string(),
-  encryptedKubernetesTokenReviewerJwt: zodBuffer,
-  encryptedKubernetesCaCertificate: zodBuffer.nullable().optional()
+  allowedAudience: z.string()
 });
 
 export type TIdentityKubernetesAuths = z.infer<typeof IdentityKubernetesAuthsSchema>;

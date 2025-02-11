@@ -14,7 +14,7 @@ import { FastifyRequest } from "fastify";
 import LdapStrategy from "passport-ldapauth";
 import { z } from "zod";
 
-import { LdapGroupMapsSchema } from "@app/db/schemas";
+import { LdapConfigsSchema, LdapGroupMapsSchema } from "@app/db/schemas";
 import { TLDAPConfig } from "@app/ee/services/ldap-config/ldap-config-types";
 import { isValidLdapFilter, searchGroups } from "@app/ee/services/ldap-config/ldap-fns";
 import { getConfig } from "@app/lib/config/env";
@@ -22,7 +22,6 @@ import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { SanitizedLdapConfigSchema } from "@app/server/routes/sanitizedSchema/directory-config";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerLdapRouter = async (server: FastifyZodProvider) => {
@@ -188,7 +187,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
         caCert: z.string().trim().default("")
       }),
       response: {
-        200: SanitizedLdapConfigSchema
+        200: LdapConfigsSchema
       }
     },
     handler: async (req) => {
@@ -229,7 +228,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
         .partial()
         .merge(z.object({ organizationId: z.string() })),
       response: {
-        200: SanitizedLdapConfigSchema
+        200: LdapConfigsSchema
       }
     },
     handler: async (req) => {

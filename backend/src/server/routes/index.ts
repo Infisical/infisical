@@ -85,7 +85,7 @@ import { sshCertificateTemplateServiceFactory } from "@app/ee/services/ssh-certi
 import { trustedIpDALFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal";
 import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
-import { getConfig, TEnvConfig } from "@app/lib/config/env";
+import { getConfig } from "@app/lib/config/env";
 import { TQueueServiceFactory } from "@app/queue";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue/access-token-queue";
@@ -244,8 +244,7 @@ export const registerRoutes = async (
     hsmModule,
     smtp: smtpService,
     queue: queueService,
-    keyStore,
-    envConfig
+    keyStore
   }: {
     auditLogDb?: Knex;
     db: Knex;
@@ -253,7 +252,6 @@ export const registerRoutes = async (
     smtp: TSmtpService;
     queue: TQueueServiceFactory;
     keyStore: TKeyStoreFactory;
-    envConfig: TEnvConfig;
   }
 ) => {
   const appCfg = getConfig();
@@ -393,8 +391,7 @@ export const registerRoutes = async (
   const licenseService = licenseServiceFactory({ permissionService, orgDAL, licenseDAL, keyStore });
 
   const hsmService = hsmServiceFactory({
-    hsmModule,
-    envConfig
+    hsmModule
   });
 
   const kmsService = kmsServiceFactory({
@@ -404,8 +401,7 @@ export const registerRoutes = async (
     internalKmsDAL,
     orgDAL,
     projectDAL,
-    hsmService,
-    envConfig
+    hsmService
   });
 
   const externalKmsService = externalKmsServiceFactory({
@@ -451,6 +447,7 @@ export const registerRoutes = async (
   const samlService = samlConfigServiceFactory({
     identityMetadataDAL,
     permissionService,
+    orgBotDAL,
     orgDAL,
     orgMembershipDAL,
     userDAL,
@@ -458,8 +455,7 @@ export const registerRoutes = async (
     samlConfigDAL,
     licenseService,
     tokenService,
-    smtpService,
-    kmsService
+    smtpService
   });
   const groupService = groupServiceFactory({
     userDAL,
@@ -510,6 +506,7 @@ export const registerRoutes = async (
     ldapGroupMapDAL,
     orgDAL,
     orgMembershipDAL,
+    orgBotDAL,
     groupDAL,
     groupProjectDAL,
     projectKeyDAL,
@@ -521,8 +518,7 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     tokenService,
-    smtpService,
-    kmsService
+    smtpService
   });
 
   const telemetryService = telemetryServiceFactory({
@@ -973,8 +969,7 @@ export const registerRoutes = async (
     permissionService,
     webhookDAL,
     projectEnvDAL,
-    projectDAL,
-    kmsService
+    projectDAL
   });
 
   const secretTagService = secretTagServiceFactory({ secretTagDAL, permissionService });
@@ -1154,8 +1149,7 @@ export const registerRoutes = async (
     secretDAL,
     folderDAL,
     projectBotService,
-    secretV2BridgeDAL,
-    kmsService
+    secretV2BridgeDAL
   });
 
   const integrationService = integrationServiceFactory({
@@ -1244,9 +1238,9 @@ export const registerRoutes = async (
     identityKubernetesAuthDAL,
     identityOrgMembershipDAL,
     identityAccessTokenDAL,
+    orgBotDAL,
     permissionService,
-    licenseService,
-    kmsService
+    licenseService
   });
   const identityGcpAuthService = identityGcpAuthServiceFactory({
     identityGcpAuthDAL,
@@ -1278,7 +1272,7 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     permissionService,
     licenseService,
-    kmsService
+    orgBotDAL
   });
 
   const identityJwtAuthService = identityJwtAuthServiceFactory({
@@ -1295,9 +1289,7 @@ export const registerRoutes = async (
     queueService,
     dynamicSecretLeaseDAL,
     dynamicSecretProviders,
-    dynamicSecretDAL,
-    folderDAL,
-    kmsService
+    dynamicSecretDAL
   });
   const dynamicSecretService = dynamicSecretServiceFactory({
     projectDAL,
@@ -1307,8 +1299,7 @@ export const registerRoutes = async (
     dynamicSecretProviders,
     folderDAL,
     permissionService,
-    licenseService,
-    kmsService
+    licenseService
   });
   const dynamicSecretLeaseService = dynamicSecretLeaseServiceFactory({
     projectDAL,
@@ -1318,8 +1309,7 @@ export const registerRoutes = async (
     dynamicSecretLeaseDAL,
     dynamicSecretProviders,
     folderDAL,
-    licenseService,
-    kmsService
+    licenseService
   });
   const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
     auditLogDAL,
@@ -1347,7 +1337,7 @@ export const registerRoutes = async (
     licenseService,
     tokenService,
     smtpService,
-    kmsService,
+    orgBotDAL,
     permissionService,
     oidcConfigDAL,
     projectBotDAL,

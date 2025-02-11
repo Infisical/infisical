@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 
 import { TSuperAdmin, TSuperAdminUpdate } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
@@ -87,21 +87,17 @@ export const superAdminServiceFactory = ({
 
     // reset on initialized
     await keyStore.deleteItem(ADMIN_CONFIG_KEY);
-    const serverCfg = await serverCfgDAL.transaction(async (tx) => {
-      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SuperAdminInit]);
-      const serverCfgInDB = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
-      if (serverCfgInDB) return serverCfgInDB;
+    const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
+    if (serverCfg) return;
 
-      const newCfg = await serverCfgDAL.create({
-        // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
-        id: ADMIN_CONFIG_DB_UUID,
-        initialized: false,
-        allowSignUp: true,
-        defaultAuthOrgId: null
-      });
-      return newCfg;
+    const newCfg = await serverCfgDAL.create({
+      // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
+      id: ADMIN_CONFIG_DB_UUID,
+      initialized: false,
+      allowSignUp: true,
+      defaultAuthOrgId: null
     });
-    return serverCfg;
+    return newCfg;
   };
 
   const updateServerCfg = async (

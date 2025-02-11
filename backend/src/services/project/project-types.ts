@@ -4,17 +4,8 @@ import { ProjectType, TProjectKeys } from "@app/db/schemas";
 import { TProjectPermission } from "@app/lib/types";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
-
-enum KmsType {
-  External = "external",
-  Internal = "internal"
-}
-
-enum CaStatus {
-  ACTIVE = "active",
-  DISABLED = "disabled",
-  PENDING_CERTIFICATE = "pending-certificate"
-}
+import { CaStatus } from "../certificate-authority/certificate-authority-types";
+import { KmsType } from "../kms/kms-types";
 
 export enum ProjectFilterType {
   ID = "id",

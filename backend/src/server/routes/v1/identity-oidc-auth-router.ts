@@ -12,20 +12,10 @@ import {
   validateOidcBoundClaimsField
 } from "@app/services/identity-oidc-auth/identity-oidc-auth-validators";
 
-const IdentityOidcAuthResponseSchema = IdentityOidcAuthsSchema.pick({
-  id: true,
-  accessTokenTTL: true,
-  accessTokenMaxTTL: true,
-  accessTokenNumUsesLimit: true,
-  accessTokenTrustedIps: true,
-  identityId: true,
-  oidcDiscoveryUrl: true,
-  boundIssuer: true,
-  boundAudiences: true,
-  boundClaims: true,
-  boundSubject: true,
-  createdAt: true,
-  updatedAt: true
+const IdentityOidcAuthResponseSchema = IdentityOidcAuthsSchema.omit({
+  encryptedCaCert: true,
+  caCertIV: true,
+  caCertTag: true
 }).extend({
   caCert: z.string()
 });

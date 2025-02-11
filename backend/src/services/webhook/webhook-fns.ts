@@ -3,8 +3,9 @@ import crypto from "node:crypto";
 import { AxiosError } from "axios";
 import picomatch from "picomatch";
 
-import { TWebhooks } from "@app/db/schemas";
+import { SecretKeyEncoding, TWebhooks } from "@app/db/schemas";
 import { request } from "@app/lib/config/request";
+import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
@@ -15,14 +16,28 @@ import { WebhookType } from "./webhook-types";
 
 const WEBHOOK_TRIGGER_TIMEOUT = 15 * 1000;
 
-export const decryptWebhookDetails = (webhook: TWebhooks, decryptor: (value: Buffer) => string) => {
-  const { encryptedPassKey, encryptedUrl } = webhook;
-
-  const decryptedUrl = decryptor(encryptedUrl);
+export const decryptWebhookDetails = (webhook: TWebhooks) => {
+  const { keyEncoding, iv, encryptedSecretKey, tag, urlCipherText, urlIV, urlTag, url } = webhook;
 
   let decryptedSecretKey = "";
-  if (encryptedPassKey) {
-    decryptedSecretKey = decryptor(encryptedPassKey);
+  let decryptedUrl = url;
+
+  if (encryptedSecretKey) {
+    decryptedSecretKey = infisicalSymmetricDecrypt({
+      keyEncoding: keyEncoding as SecretKeyEncoding,
+      ciphertext: encryptedSecretKey,
+      iv: iv as string,
+      tag: tag as string
+    });
+  }
+
+  if (urlCipherText) {
+    decryptedUrl = infisicalSymmetricDecrypt({
+      keyEncoding: keyEncoding as SecretKeyEncoding,
+      ciphertext: urlCipherText,
+      iv: urlIV as string,
+      tag: urlTag as string
+    });
   }
 
   return {
@@ -31,14 +46,10 @@ export const decryptWebhookDetails = (webhook: TWebhooks, decryptor: (value: Buf
   };
 };
 
-export const triggerWebhookRequest = async (
-  webhook: TWebhooks,
-  decryptor: (value: Buffer) => string,
-  data: Record<string, unknown>
-) => {
+export const triggerWebhookRequest = async (webhook: TWebhooks, data: Record<string, unknown>) => {
   const headers: Record<string, string> = {};
   const payload = { ...data, timestamp: Date.now() };
-  const { secretKey, url } = decryptWebhookDetails(webhook, decryptor);
+  const { secretKey, url } = decryptWebhookDetails(webhook);
 
   if (secretKey) {
     const webhookSign = crypto.createHmac("sha256", secretKey).update(JSON.stringify(payload)).digest("hex");
@@ -113,7 +124,6 @@ export type TFnTriggerWebhookDTO = {
   webhookDAL: Pick<TWebhookDALFactory, "findAllWebhooks" | "transaction" | "update" | "bulkUpdate">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  secretManagerDecryptor: (value: Buffer) => string;
 };
 
 // this is reusable function
@@ -124,8 +134,7 @@ export const fnTriggerWebhook = async ({
   projectId,
   webhookDAL,
   projectEnvDAL,
-  projectDAL,
-  secretManagerDecryptor
+  projectDAL
 }: TFnTriggerWebhookDTO) => {
   const webhooks = await webhookDAL.findAllWebhooks(projectId, environment);
   const toBeTriggeredHooks = webhooks.filter(
@@ -139,7 +148,6 @@ export const fnTriggerWebhook = async ({
     toBeTriggeredHooks.map((hook) =>
       triggerWebhookRequest(
         hook,
-        secretManagerDecryptor,
         getWebhookPayload("secrets.modified", {
           workspaceName: project.name,
           workspaceId: projectId,
