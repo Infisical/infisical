@@ -44,7 +44,7 @@ export const DeleteAppConnectionModal = ({ isOpen, onOpenChange, appConnection }
       isOpen={isOpen}
       onChange={onOpenChange}
       title={`Are you sure want to delete ${name}?`}
-      deleteKey="confirm"
+      deleteKey={name}
       onDeleteApproved={handleDeleteAppConnection}
     />
   );

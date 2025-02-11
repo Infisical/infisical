@@ -9,7 +9,7 @@ import { AppConnection, AWSRegion } from "@app/services/app-connection/app-conne
 import { AwsConnectionMethod } from "./aws-connection-enums";
 import { TAwsConnectionConfig } from "./aws-connection-types";
 
-export const getAwsAppConnectionListItem = () => {
+export const getAwsConnectionListItem = () => {
   const { INF_APP_CONNECTION_AWS_ACCESS_KEY_ID } = getConfig();
 
   return {

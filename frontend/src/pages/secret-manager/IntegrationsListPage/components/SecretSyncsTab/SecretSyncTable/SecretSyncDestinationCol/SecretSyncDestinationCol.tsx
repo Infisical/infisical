@@ -4,6 +4,7 @@ import { AwsParameterStoreSyncDestinationCol } from "./AwsParameterStoreSyncDest
 import { AwsSecretsManagerSyncDestinationCol } from "./AwsSecretsManagerSyncDestinationCol";
 import { AzureAppConfigurationDestinationSyncCol } from "./AzureAppConfigurationDestinationSyncCol";
 import { AzureKeyVaultDestinationSyncCol } from "./AzureKeyVaultDestinationSyncCol";
+import { DatabricksSyncDestinationCol } from "./DatabricksSyncDestinationCol";
 import { GcpSyncDestinationCol } from "./GcpSyncDestinationCol";
 import { GitHubSyncDestinationCol } from "./GitHubSyncDestinationCol";
 
@@ -25,7 +26,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <AzureKeyVaultDestinationSyncCol secretSync={secretSync} />;
     case SecretSync.AzureAppConfiguration:
       return <AzureAppConfigurationDestinationSyncCol secretSync={secretSync} />;
-
+    case SecretSync.Databricks:
+      return <DatabricksSyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(
         `Unhandled Secret Sync Destination Col: ${(secretSync as TSecretSync).destination}`

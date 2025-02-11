@@ -10,6 +10,7 @@ import {
   GitHubConnectionMethod,
   TAppConnection
 } from "@app/hooks/api/appConnections/types";
+import { DatabricksConnectionMethod } from "@app/hooks/api/appConnections/types/databricks-connection";
 
 export const APP_CONNECTION_MAP: Record<AppConnection, { name: string; image: string }> = {
   [AppConnection.AWS]: { name: "AWS", image: "Amazon Web Services.png" },
@@ -22,7 +23,8 @@ export const APP_CONNECTION_MAP: Record<AppConnection, { name: string; image: st
   [AppConnection.AzureAppConfiguration]: {
     name: "Azure App Configuration",
     image: "Microsoft Azure.png"
-  }
+  },
+  [AppConnection.Databricks]: { name: "Databricks", image: "Databricks.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -39,6 +41,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "Assume Role", icon: faUser };
     case GcpConnectionMethod.ServiceAccountImpersonation:
       return { name: "Service Account Impersonation", icon: faUser };
+    case DatabricksConnectionMethod.ServicePrincipal:
+      return { name: "Service Principal", icon: faUser };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }

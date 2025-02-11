@@ -30,7 +30,17 @@ export type TAzureAppConfigurationConnectionOption = TAppConnectionOptionBase & 
   oauthClientId?: string;
 };
 
-export type TAppConnectionOption = TAwsConnectionOption | TGitHubConnectionOption;
+export type TDatabricksConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Databricks;
+};
+
+export type TAppConnectionOption =
+  | TAwsConnectionOption
+  | TGitHubConnectionOption
+  | TGcpConnectionOption
+  | TAzureAppConfigurationConnectionOption
+  | TAzureKeyVaultConnectionOption
+  | TDatabricksConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -38,4 +48,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.GCP]: TGcpConnectionOption;
   [AppConnection.AzureKeyVault]: TAzureKeyVaultConnectionOption;
   [AppConnection.AzureAppConfiguration]: TAzureAppConfigurationConnectionOption;
+  [AppConnection.Databricks]: TDatabricksConnectionOption;
 };

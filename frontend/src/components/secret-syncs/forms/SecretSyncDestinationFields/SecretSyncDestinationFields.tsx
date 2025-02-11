@@ -1,5 +1,6 @@
 import { useFormContext } from "react-hook-form";
 
+import { DatabricksSyncFields } from "@app/components/secret-syncs/forms/SecretSyncDestinationFields/DatabricksSyncFields";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
@@ -28,6 +29,8 @@ export const SecretSyncDestinationFields = () => {
       return <AzureKeyVaultSyncFields />;
     case SecretSync.AzureAppConfiguration:
       return <AzureAppConfigurationSyncFields />;
+    case SecretSync.Databricks:
+      return <DatabricksSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

@@ -1,3 +1,4 @@
+import { registerDatabricksSyncRouter } from "@app/server/routes/v1/secret-sync-routers/databricks-sync-router";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 
 import { registerAwsParameterStoreSyncRouter } from "./aws-parameter-store-sync-router";
@@ -15,5 +16,6 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.GitHub]: registerGitHubSyncRouter,
   [SecretSync.GCPSecretManager]: registerGcpSyncRouter,
   [SecretSync.AzureKeyVault]: registerAzureKeyVaultSyncRouter,
-  [SecretSync.AzureAppConfiguration]: registerAzureAppConfigurationSyncRouter
+  [SecretSync.AzureAppConfiguration]: registerAzureAppConfigurationSyncRouter,
+  [SecretSync.Databricks]: registerDatabricksSyncRouter
 };

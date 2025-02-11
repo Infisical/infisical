@@ -14,6 +14,10 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
   [SecretSync.AzureAppConfiguration]: {
     name: "Azure App Configuration",
     image: "Microsoft Azure.png"
+  },
+  [SecretSync.Databricks]: {
+    name: "Databricks",
+    image: "Databricks.png"
   }
 };
 
@@ -23,7 +27,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.GitHub]: AppConnection.GitHub,
   [SecretSync.GCPSecretManager]: AppConnection.GCP,
   [SecretSync.AzureKeyVault]: AppConnection.AzureKeyVault,
-  [SecretSync.AzureAppConfiguration]: AppConnection.AzureAppConfiguration
+  [SecretSync.AzureAppConfiguration]: AppConnection.AzureAppConfiguration,
+  [SecretSync.Databricks]: AppConnection.Databricks
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<

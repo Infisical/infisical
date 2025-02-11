@@ -7,7 +7,8 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.GitHub]: "GitHub",
   [SecretSync.GCPSecretManager]: "GCP Secret Manager",
   [SecretSync.AzureKeyVault]: "Azure Key Vault",
-  [SecretSync.AzureAppConfiguration]: "Azure App Configuration"
+  [SecretSync.AzureAppConfiguration]: "Azure App Configuration",
+  [SecretSync.Databricks]: "Databricks"
 };
 
 export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
@@ -16,5 +17,6 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.GitHub]: AppConnection.GitHub,
   [SecretSync.GCPSecretManager]: AppConnection.GCP,
   [SecretSync.AzureKeyVault]: AppConnection.AzureKeyVault,
-  [SecretSync.AzureAppConfiguration]: AppConnection.AzureAppConfiguration
+  [SecretSync.AzureAppConfiguration]: AppConnection.AzureAppConfiguration,
+  [SecretSync.Databricks]: AppConnection.Databricks
 };

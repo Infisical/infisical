@@ -18,6 +18,7 @@ import {
   AzureAppConfigurationSyncSchema
 } from "@app/services/secret-sync/azure-app-configuration";
 import { AzureKeyVaultSyncListItemSchema, AzureKeyVaultSyncSchema } from "@app/services/secret-sync/azure-key-vault";
+import { DatabricksSyncListItemSchema, DatabricksSyncSchema } from "@app/services/secret-sync/databricks";
 import { GcpSyncListItemSchema, GcpSyncSchema } from "@app/services/secret-sync/gcp";
 import { GitHubSyncListItemSchema, GitHubSyncSchema } from "@app/services/secret-sync/github";
 
@@ -27,7 +28,8 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   GitHubSyncSchema,
   GcpSyncSchema,
   AzureKeyVaultSyncSchema,
-  AzureAppConfigurationSyncSchema
+  AzureAppConfigurationSyncSchema,
+  DatabricksSyncSchema
 ]);
 
 const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
@@ -36,7 +38,8 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   GitHubSyncListItemSchema,
   GcpSyncListItemSchema,
   AzureKeyVaultSyncListItemSchema,
-  AzureAppConfigurationSyncListItemSchema
+  AzureAppConfigurationSyncListItemSchema,
+  DatabricksSyncListItemSchema
 ]);
 
 export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {

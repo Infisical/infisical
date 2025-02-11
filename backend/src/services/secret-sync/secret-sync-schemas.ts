@@ -13,7 +13,7 @@ const SyncOptionsSchema = (secretSync: SecretSync, options: TSyncOptionsConfig =
     initialSyncBehavior: (options.canImportSecrets
       ? z.nativeEnum(SecretSyncInitialSyncBehavior)
       : z.literal(SecretSyncInitialSyncBehavior.OverwriteDestination)
-    ).describe(SecretSyncs.SYNC_OPTIONS(secretSync).INITIAL_SYNC_BEHAVIOR)
+    ).describe(SecretSyncs.SYNC_OPTIONS(secretSync).initialSyncBehavior)
     // prependPrefix: z
     //   .string()
     //   .trim()

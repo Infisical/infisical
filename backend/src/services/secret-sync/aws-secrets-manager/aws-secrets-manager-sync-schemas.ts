@@ -15,12 +15,12 @@ const AwsSecretsManagerSyncDestinationConfigSchema = z
     z.object({
       mappingBehavior: z
         .literal(AwsSecretsManagerSyncMappingBehavior.OneToOne)
-        .describe(SecretSyncs.DESTINATION_CONFIG.AWS_SECRETS_MANAGER.MAPPING_BEHAVIOR)
+        .describe(SecretSyncs.DESTINATION_CONFIG.AWS_SECRETS_MANAGER.mappingBehavior)
     }),
     z.object({
       mappingBehavior: z
         .literal(AwsSecretsManagerSyncMappingBehavior.ManyToOne)
-        .describe(SecretSyncs.DESTINATION_CONFIG.AWS_SECRETS_MANAGER.MAPPING_BEHAVIOR),
+        .describe(SecretSyncs.DESTINATION_CONFIG.AWS_SECRETS_MANAGER.mappingBehavior),
       secretName: z
         .string()
         .regex(
@@ -29,12 +29,12 @@ const AwsSecretsManagerSyncDestinationConfigSchema = z
         )
         .min(1, "Secret name is required")
         .max(256, "Secret name cannot exceed 256 characters")
-        .describe(SecretSyncs.DESTINATION_CONFIG.AWS_SECRETS_MANAGER.SECRET_NAME)
+        .describe(SecretSyncs.DESTINATION_CONFIG.AWS_SECRETS_MANAGER.secretName)
     })
   ])
   .and(
     z.object({
-      region: z.nativeEnum(AWSRegion).describe(SecretSyncs.DESTINATION_CONFIG.AWS_SECRETS_MANAGER.REGION)
+      region: z.nativeEnum(AWSRegion).describe(SecretSyncs.DESTINATION_CONFIG.AWS_SECRETS_MANAGER.region)
     })
   );
 

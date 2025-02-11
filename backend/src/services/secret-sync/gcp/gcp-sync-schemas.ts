@@ -1,5 +1,6 @@
 import z from "zod";
 
+import { SecretSyncs } from "@app/lib/api-docs";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   BaseSecretSyncSchema,
@@ -14,8 +15,8 @@ import { GcpSyncScope } from "./gcp-sync-enums";
 const GcpSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
 
 const GcpSyncDestinationConfigSchema = z.object({
-  scope: z.literal(GcpSyncScope.Global),
-  projectId: z.string().min(1, "Project ID is required")
+  scope: z.literal(GcpSyncScope.Global).describe(SecretSyncs.DESTINATION_CONFIG.GCP.scope),
+  projectId: z.string().min(1, "Project ID is required").describe(SecretSyncs.DESTINATION_CONFIG.GCP.projectId)
 });
 
 export const GcpSyncSchema = BaseSecretSyncSchema(SecretSync.GCPSecretManager, GcpSyncOptionsConfig).extend({

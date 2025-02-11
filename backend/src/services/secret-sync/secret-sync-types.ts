@@ -9,6 +9,12 @@ import {
   TAwsSecretsManagerSyncWithCredentials
 } from "@app/services/secret-sync/aws-secrets-manager";
 import {
+  TDatabricksSync,
+  TDatabricksSyncInput,
+  TDatabricksSyncListItem,
+  TDatabricksSyncWithCredentials
+} from "@app/services/secret-sync/databricks";
+import {
   TGitHubSync,
   TGitHubSyncInput,
   TGitHubSyncListItem,
@@ -43,7 +49,8 @@ export type TSecretSync =
   | TGitHubSync
   | TGcpSync
   | TAzureKeyVaultSync
-  | TAzureAppConfigurationSync;
+  | TAzureAppConfigurationSync
+  | TDatabricksSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -51,7 +58,8 @@ export type TSecretSyncWithCredentials =
   | TGitHubSyncWithCredentials
   | TGcpSyncWithCredentials
   | TAzureKeyVaultSyncWithCredentials
-  | TAzureAppConfigurationSyncWithCredentials;
+  | TAzureAppConfigurationSyncWithCredentials
+  | TDatabricksSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -59,7 +67,8 @@ export type TSecretSyncInput =
   | TGitHubSyncInput
   | TGcpSyncInput
   | TAzureKeyVaultSyncInput
-  | TAzureAppConfigurationSyncInput;
+  | TAzureAppConfigurationSyncInput
+  | TDatabricksSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -67,7 +76,8 @@ export type TSecretSyncListItem =
   | TGitHubSyncListItem
   | TGcpSyncListItem
   | TAzureKeyVaultSyncListItem
-  | TAzureAppConfigurationSyncListItem;
+  | TAzureAppConfigurationSyncListItem
+  | TDatabricksSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { AwsSecretsManagerSyncDestinationSchema } from "@app/components/secret-syncs/forms/schemas/aws-secrets-manager-sync-destination-schema";
+import { DatabricksSyncDestinationSchema } from "@app/components/secret-syncs/forms/schemas/databricks-sync-destination-schema";
 import { GitHubSyncDestinationSchema } from "@app/components/secret-syncs/forms/schemas/github-sync-destination-schema";
 import { SecretSyncInitialSyncBehavior } from "@app/hooks/api/secretSyncs";
 import { slugSchema } from "@app/lib/schemas";
@@ -39,7 +40,8 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   GitHubSyncDestinationSchema,
   GcpSyncDestinationSchema,
   AzureKeyVaultSyncDestinationSchema,
-  AzureAppConfigurationSyncDestinationSchema
+  AzureAppConfigurationSyncDestinationSchema,
+  DatabricksSyncDestinationSchema
 ]);
 
 export const SecretSyncFormSchema = SecretSyncUnionSchema.and(BaseSecretSyncSchema);

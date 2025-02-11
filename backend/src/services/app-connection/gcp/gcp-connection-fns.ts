@@ -17,7 +17,7 @@ import {
   TGcpConnectionConfig
 } from "./gcp-connection-types";
 
-export const getGcpAppConnectionListItem = () => {
+export const getGcpConnectionListItem = () => {
   return {
     name: "GCP" as const,
     app: AppConnection.GCP as const,

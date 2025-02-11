@@ -15,7 +15,7 @@ const AzureKeyVaultSyncDestinationConfigSchema = z.object({
     .string()
     .url("Invalid vault base URL format")
     .min(1, "Vault base URL required")
-    .describe(SecretSyncs.DESTINATION_CONFIG.AZURE_KEY_VAULT.VAULT_BASE_URL)
+    .describe(SecretSyncs.DESTINATION_CONFIG.AZURE_KEY_VAULT.vaultBaseUrl)
 });
 
 const AzureKeyVaultSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
