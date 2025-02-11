@@ -17,7 +17,7 @@ import { Knex } from "knex";
 
 import { HsmModule } from "@app/ee/services/hsm/hsm-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
-import { getConfig, IS_PACKAGED, TEnvConfig } from "@app/lib/config/env";
+import { getConfig, IS_PACKAGED } from "@app/lib/config/env";
 import { CustomLogger } from "@app/lib/logger/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TQueueServiceFactory } from "@app/queue";
@@ -43,11 +43,10 @@ type TMain = {
   keyStore: TKeyStoreFactory;
   hsmModule: HsmModule;
   redis: Redis;
-  envConfig: TEnvConfig;
 };
 
 // Run the server!
-export const main = async ({ db, hsmModule, auditLogDb, smtp, logger, queue, keyStore, redis, envConfig }: TMain) => {
+export const main = async ({ db, hsmModule, auditLogDb, smtp, logger, queue, keyStore, redis }: TMain) => {
   const appCfg = getConfig();
 
   const server = fastify({
@@ -128,7 +127,7 @@ export const main = async ({ db, hsmModule, auditLogDb, smtp, logger, queue, key
       })
     });
 
-    await server.register(registerRoutes, { smtp, queue, db, auditLogDb, keyStore, hsmModule, envConfig });
+    await server.register(registerRoutes, { smtp, queue, db, auditLogDb, keyStore, hsmModule });
 
     await server.register(registerServeUI, {
       standaloneMode: appCfg.STANDALONE_MODE || IS_PACKAGED,

@@ -5,9 +5,13 @@ import {
   IAMClient
 } from "@aws-sdk/client-iam";
 
-import { SecretType } from "@app/db/schemas";
+import { SecretKeyEncoding, SecretType } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
-import { encryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto/encryption";
+import {
+  encryptSymmetric128BitHexKeyUTF8,
+  infisicalSymmetricDecrypt,
+  infisicalSymmetricEncypt
+} from "@app/lib/crypto/encryption";
 import { daysToMillisecond, secondsToMillis } from "@app/lib/dates";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -131,15 +135,20 @@ export const secretRotationQueueFactory = ({
 
       // deep copy
       const provider = JSON.parse(JSON.stringify(rotationProvider)) as TSecretRotationProviderTemplate;
-      const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
-        await kmsService.createCipherPairWithDataKey({
-          type: KmsDataKey.SecretManager,
-          projectId: secretRotation.projectId
-        });
 
-      const decryptedData = secretManagerDecryptor({
-        cipherTextBlob: secretRotation.encryptedRotationData
-      }).toString();
+      // now get the encrypted variable values
+      // in includes the inputs, the previous outputs
+      // internal mapping variables etc
+      const { encryptedDataTag, encryptedDataIV, encryptedData, keyEncoding } = secretRotation;
+      if (!encryptedDataTag || !encryptedDataIV || !encryptedData || !keyEncoding) {
+        throw new DisableRotationErrors({ message: "No inputs found" });
+      }
+      const decryptedData = infisicalSymmetricDecrypt({
+        keyEncoding: keyEncoding as SecretKeyEncoding,
+        ciphertext: encryptedData,
+        iv: encryptedDataIV,
+        tag: encryptedDataTag
+      });
 
       const variables = JSON.parse(decryptedData) as TSecretRotationEncData;
       // rotation set cycle
@@ -294,9 +303,11 @@ export const secretRotationQueueFactory = ({
         outputs: newCredential.outputs,
         internal: newCredential.internal
       });
-      const encryptedRotationData = secretManagerEncryptor({
-        plainText: Buffer.from(JSON.stringify(variables))
-      }).cipherTextBlob;
+      const encVarData = infisicalSymmetricEncypt(JSON.stringify(variables));
+      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId: secretRotation.projectId
+      });
 
       const numberOfSecretsRotated = rotationOutputs.length;
       if (shouldUseSecretV2Bridge) {
@@ -312,7 +323,11 @@ export const secretRotationQueueFactory = ({
           await secretRotationDAL.updateById(
             rotationId,
             {
-              encryptedRotationData,
+              encryptedData: encVarData.ciphertext,
+              encryptedDataIV: encVarData.iv,
+              encryptedDataTag: encVarData.tag,
+              keyEncoding: encVarData.encoding,
+              algorithm: encVarData.algorithm,
               lastRotatedAt: new Date(),
               statusMessage: "Rotated successfull",
               status: "success"
@@ -356,7 +371,11 @@ export const secretRotationQueueFactory = ({
           await secretRotationDAL.updateById(
             rotationId,
             {
-              encryptedRotationData,
+              encryptedData: encVarData.ciphertext,
+              encryptedDataIV: encVarData.iv,
+              encryptedDataTag: encVarData.tag,
+              keyEncoding: encVarData.encoding,
+              algorithm: encVarData.algorithm,
               lastRotatedAt: new Date(),
               statusMessage: "Rotated successfull",
               status: "success"

@@ -5,8 +5,6 @@
 
 import { z } from "zod";
 
-import { zodBuffer } from "@app/lib/zod";
-
 import { TImmutableDBKeys } from "./models";
 
 export const SamlConfigsSchema = z.object({
@@ -25,10 +23,7 @@ export const SamlConfigsSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   orgId: z.string().uuid(),
-  lastUsed: z.date().nullable().optional(),
-  encryptedSamlEntryPoint: zodBuffer,
-  encryptedSamlIssuer: zodBuffer,
-  encryptedSamlCertificate: zodBuffer
+  lastUsed: z.date().nullable().optional()
 });
 
 export type TSamlConfigs = z.infer<typeof SamlConfigsSchema>;

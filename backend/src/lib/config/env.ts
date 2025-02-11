@@ -258,8 +258,7 @@ const envSchema = z
     SECRET_SCANNING_ORG_WHITELIST: data.SECRET_SCANNING_ORG_WHITELIST?.split(",")
   }));
 
-export type TEnvConfig = Readonly<z.infer<typeof envSchema>>;
-let envCfg: TEnvConfig;
+let envCfg: Readonly<z.infer<typeof envSchema>>;
 
 export const getConfig = () => envCfg;
 // cannot import singleton logger directly as it needs config to load various transport

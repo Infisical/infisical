@@ -12,13 +12,13 @@ import { MultiSamlStrategy } from "@node-saml/passport-saml";
 import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
+import { SamlConfigsSchema } from "@app/db/schemas";
 import { SamlProviders, TGetSamlCfgDTO } from "@app/ee/services/saml-config/saml-config-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { SanitizedSamlConfigSchema } from "@app/server/routes/sanitizedSchema/directory-config";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 type TSAMLConfig = {
@@ -298,7 +298,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         cert: z.string()
       }),
       response: {
-        200: SanitizedSamlConfigSchema
+        200: SamlConfigsSchema
       }
     },
     handler: async (req) => {
@@ -333,7 +333,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         .partial()
         .merge(z.object({ organizationId: z.string() })),
       response: {
-        200: SanitizedSamlConfigSchema
+        200: SamlConfigsSchema
       }
     },
     handler: async (req) => {

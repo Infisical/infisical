@@ -23,14 +23,14 @@ export default {
   name: "knex-env",
   transformMode: "ssr",
   async setup() {
-    const logger = initLogger();
-    const envConfig = initEnvConfig(logger);
+    const logger = await initLogger();
+    const cfg = initEnvConfig(logger);
     const db = initDbConnection({
-      dbConnectionUri: envConfig.DB_CONNECTION_URI,
-      dbRootCert: envConfig.DB_ROOT_CERT
+      dbConnectionUri: cfg.DB_CONNECTION_URI,
+      dbRootCert: cfg.DB_ROOT_CERT
     });
 
-    const redis = new Redis(envConfig.REDIS_URL);
+    const redis = new Redis(cfg.REDIS_URL);
     await redis.flushdb("SYNC");
 
     try {
@@ -42,7 +42,6 @@ export default {
         },
         true
       );
-
       await db.migrate.latest({
         directory: path.join(__dirname, "../src/db/migrations"),
         extension: "ts",
@@ -53,24 +52,14 @@ export default {
         directory: path.join(__dirname, "../src/db/seeds"),
         extension: "ts"
       });
-
       const smtp = mockSmtpServer();
-      const queue = queueServiceFactory(envConfig.REDIS_URL, { dbConnectionUrl: envConfig.DB_CONNECTION_URI });
-      const keyStore = keyStoreFactory(envConfig.REDIS_URL);
+      const queue = queueServiceFactory(cfg.REDIS_URL, { dbConnectionUrl: cfg.DB_CONNECTION_URI });
+      const keyStore = keyStoreFactory(cfg.REDIS_URL);
 
-      const hsmModule = initializeHsmModule(envConfig);
+      const hsmModule = initializeHsmModule();
       hsmModule.initialize();
 
-      const server = await main({
-        db,
-        smtp,
-        logger,
-        queue,
-        keyStore,
-        hsmModule: hsmModule.getModule(),
-        redis,
-        envConfig
-      });
+      const server = await main({ db, smtp, logger, queue, keyStore, hsmModule: hsmModule.getModule(), redis });
 
       // @ts-expect-error type
       globalThis.testServer = server;
@@ -84,8 +73,8 @@ export default {
           organizationId: seedData1.organization.id,
           accessVersion: 1
         },
-        envConfig.AUTH_SECRET,
-        { expiresIn: envConfig.JWT_AUTH_LIFETIME }
+        cfg.AUTH_SECRET,
+        { expiresIn: cfg.JWT_AUTH_LIFETIME }
       );
     } catch (error) {
       // eslint-disable-next-line
@@ -120,4 +109,3 @@ export default {
     };
   }
 };
-

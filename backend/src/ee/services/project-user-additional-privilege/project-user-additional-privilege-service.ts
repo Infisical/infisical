@@ -5,7 +5,7 @@ import ms from "ms";
 import { ActionProjectType, TableName } from "@app/db/schemas";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { UnpackedPermissionSchema } from "@app/server/routes/sanitizedSchema/permission";
+import { UnpackedPermissionSchema } from "@app/server/routes/santizedSchemas/permission";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 

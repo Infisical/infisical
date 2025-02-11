@@ -9,7 +9,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { UnpackedPermissionSchema } from "@app/server/routes/sanitizedSchema/permission";
+import { UnpackedPermissionSchema } from "@app/server/routes/santizedSchemas/permission";
 
 import { ActorAuthMethod } from "../auth/auth-type";
 import { TIdentityProjectMembershipRoleDALFactory } from "../identity-project/identity-project-membership-role-dal";

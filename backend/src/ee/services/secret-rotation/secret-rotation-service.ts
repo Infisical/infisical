@@ -2,11 +2,9 @@ import { ForbiddenError, subject } from "@casl/ability";
 import Ajv from "ajv";
 
 import { ActionProjectType, ProjectVersion, TableName } from "@app/db/schemas";
-import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto/encryption";
+import { decryptSymmetric128BitHexKeyUTF8, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
@@ -32,7 +30,6 @@ type TSecretRotationServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretRotationQueue: TSecretRotationQueueFactory;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
 export type TSecretRotationServiceFactory = ReturnType<typeof secretRotationServiceFactory>;
@@ -47,8 +44,7 @@ export const secretRotationServiceFactory = ({
   folderDAL,
   secretDAL,
   projectBotService,
-  secretV2BridgeDAL,
-  kmsService
+  secretV2BridgeDAL
 }: TSecretRotationServiceFactoryDep) => {
   const getProviderTemplates = async ({
     actor,
@@ -160,11 +156,7 @@ export const secretRotationServiceFactory = ({
       inputs: formattedInputs,
       creds: []
     };
-    const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
-
+    const encData = infisicalSymmetricEncypt(JSON.stringify(unencryptedData));
     const secretRotation = await secretRotationDAL.transaction(async (tx) => {
       const doc = await secretRotationDAL.create(
         {
@@ -172,8 +164,11 @@ export const secretRotationServiceFactory = ({
           secretPath,
           interval,
           envId: folder.envId,
-          encryptedRotationData: secretManagerEncryptor({ plainText: Buffer.from(JSON.stringify(unencryptedData)) })
-            .cipherTextBlob
+          encryptedDataTag: encData.tag,
+          encryptedDataIV: encData.iv,
+          encryptedData: encData.ciphertext,
+          algorithm: encData.algorithm,
+          keyEncoding: encData.encoding
         },
         tx
       );

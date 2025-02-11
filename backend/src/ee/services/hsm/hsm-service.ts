@@ -1,13 +1,12 @@
 import pkcs11js from "pkcs11js";
 
-import { TEnvConfig } from "@app/lib/config/env";
+import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 
 import { HsmKeyType, HsmModule } from "./hsm-types";
 
 type THsmServiceFactoryDep = {
   hsmModule: HsmModule;
-  envConfig: Pick<TEnvConfig, "HSM_PIN" | "HSM_SLOT" | "HSM_LIB_PATH" | "HSM_KEY_LABEL" | "isHsmConfigured">;
 };
 
 export type THsmServiceFactory = ReturnType<typeof hsmServiceFactory>;
@@ -16,7 +15,9 @@ type SyncOrAsync<T> = T | Promise<T>;
 type SessionCallback<T> = (session: pkcs11js.Handle) => SyncOrAsync<T>;
 
 // eslint-disable-next-line no-empty-pattern
-export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envConfig }: THsmServiceFactoryDep) => {
+export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 } }: THsmServiceFactoryDep) => {
+  const appCfg = getConfig();
+
   // Constants for buffer structures
   const IV_LENGTH = 16; // Luna HSM typically expects 16-byte IV for cbc
   const BLOCK_SIZE = 16;
@@ -62,11 +63,11 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envCon
         throw new Error("No slots available");
       }
 
-      if (envConfig.HSM_SLOT >= slots.length) {
-        throw new Error(`HSM slot ${envConfig.HSM_SLOT} not found or not initialized`);
+      if (appCfg.HSM_SLOT >= slots.length) {
+        throw new Error(`HSM slot ${appCfg.HSM_SLOT} not found or not initialized`);
       }
 
-      const slotId = slots[envConfig.HSM_SLOT];
+      const slotId = slots[appCfg.HSM_SLOT];
 
       const startTime = Date.now();
       while (Date.now() - startTime < MAX_TIMEOUT) {
@@ -77,7 +78,7 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envCon
 
           // Login
           try {
-            pkcs11.C_Login(sessionHandle, pkcs11js.CKU_USER, envConfig.HSM_PIN);
+            pkcs11.C_Login(sessionHandle, pkcs11js.CKU_USER, appCfg.HSM_PIN);
             logger.info("HSM: Successfully authenticated");
             break;
           } catch (error) {
@@ -85,7 +86,7 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envCon
             if (error instanceof pkcs11js.Pkcs11Error) {
               if (error.code === pkcs11js.CKR_PIN_INCORRECT) {
                 // We throw instantly here to prevent further attempts, because if too many attempts are made, the HSM will potentially wipe all key material
-                logger.error(error, `HSM: Incorrect PIN detected for HSM slot ${envConfig.HSM_SLOT}`);
+                logger.error(error, `HSM: Incorrect PIN detected for HSM slot ${appCfg.HSM_SLOT}`);
                 throw new Error("HSM: Incorrect HSM Pin detected. Please check the HSM configuration.");
               }
               if (error.code === pkcs11js.CKR_USER_ALREADY_LOGGED_IN) {
@@ -132,7 +133,7 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envCon
   };
 
   const $findKey = (sessionHandle: pkcs11js.Handle, type: HsmKeyType) => {
-    const label = type === HsmKeyType.HMAC ? `${envConfig.HSM_KEY_LABEL}_HMAC` : envConfig.HSM_KEY_LABEL;
+    const label = type === HsmKeyType.HMAC ? `${appCfg.HSM_KEY_LABEL}_HMAC` : appCfg.HSM_KEY_LABEL;
     const keyType = type === HsmKeyType.HMAC ? pkcs11js.CKK_GENERIC_SECRET : pkcs11js.CKK_AES;
 
     const template = [
@@ -359,7 +360,7 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envCon
   };
 
   const isActive = async () => {
-    if (!isInitialized || !envConfig.isHsmConfigured) {
+    if (!isInitialized || !appCfg.isHsmConfigured) {
       return false;
     }
 
@@ -371,11 +372,11 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envCon
       logger.error(err, "HSM: Error testing PKCS#11 module");
     }
 
-    return envConfig.isHsmConfigured && isInitialized && pkcs11TestPassed;
+    return appCfg.isHsmConfigured && isInitialized && pkcs11TestPassed;
   };
 
   const startService = async () => {
-    if (!envConfig.isHsmConfigured || !pkcs11 || !isInitialized) return;
+    if (!appCfg.isHsmConfigured || !pkcs11 || !isInitialized) return;
 
     try {
       await $withSession(async (sessionHandle) => {
@@ -394,7 +395,7 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envCon
             { type: pkcs11js.CKA_CLASS, value: pkcs11js.CKO_SECRET_KEY },
             { type: pkcs11js.CKA_KEY_TYPE, value: pkcs11js.CKK_AES },
             { type: pkcs11js.CKA_VALUE_LEN, value: AES_KEY_SIZE / 8 },
-            { type: pkcs11js.CKA_LABEL, value: envConfig.HSM_KEY_LABEL! },
+            { type: pkcs11js.CKA_LABEL, value: appCfg.HSM_KEY_LABEL! },
             { type: pkcs11js.CKA_ENCRYPT, value: true }, // Allow encryption
             { type: pkcs11js.CKA_DECRYPT, value: true }, // Allow decryption
             ...genericAttributes
@@ -409,7 +410,7 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envCon
             keyTemplate
           );
 
-          logger.info(`HSM: Master key created successfully with label: ${envConfig.HSM_KEY_LABEL}`);
+          logger.info(`HSM: Master key created successfully with label: ${appCfg.HSM_KEY_LABEL}`);
         }
 
         // Check if HMAC key exists, create if not
@@ -418,7 +419,7 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envCon
             { type: pkcs11js.CKA_CLASS, value: pkcs11js.CKO_SECRET_KEY },
             { type: pkcs11js.CKA_KEY_TYPE, value: pkcs11js.CKK_GENERIC_SECRET },
             { type: pkcs11js.CKA_VALUE_LEN, value: HMAC_KEY_SIZE / 8 }, // 256-bit key
-            { type: pkcs11js.CKA_LABEL, value: `${envConfig.HSM_KEY_LABEL!}_HMAC` },
+            { type: pkcs11js.CKA_LABEL, value: `${appCfg.HSM_KEY_LABEL!}_HMAC` },
             { type: pkcs11js.CKA_SIGN, value: true }, // Allow signing
             { type: pkcs11js.CKA_VERIFY, value: true }, // Allow verification
             ...genericAttributes
@@ -433,7 +434,7 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envCon
             hmacKeyTemplate
           );
 
-          logger.info(`HSM: HMAC key created successfully with label: ${envConfig.HSM_KEY_LABEL}_HMAC`);
+          logger.info(`HSM: HMAC key created successfully with label: ${appCfg.HSM_KEY_LABEL}_HMAC`);
         }
 
         // Get slot info to check supported mechanisms
