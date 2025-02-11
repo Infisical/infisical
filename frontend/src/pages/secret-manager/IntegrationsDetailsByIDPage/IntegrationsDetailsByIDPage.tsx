@@ -2,12 +2,15 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { faRefresh, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useParams } from "@tanstack/react-router";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
+import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
+  Checkbox,
+  DeleteActionModal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -18,8 +21,10 @@ import {
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { OrgPermissionActions, OrgPermissionSubjects, useWorkspace } from "@app/context";
+import { usePopUp, useToggle } from "@app/hooks";
 import { useGetIntegration } from "@app/hooks/api";
-import { useSyncIntegration } from "@app/hooks/api/integrations/queries";
+import { useDeleteIntegration, useSyncIntegration } from "@app/hooks/api/integrations/queries";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { IntegrationAuditLogsSection } from "./components/IntegrationAuditLogsSection";
 import { IntegrationConnectionSection } from "./components/IntegrationConnectionSection";
@@ -38,9 +43,44 @@ export const IntegrationDetailsByIDPage = () => {
     refetchInterval: 4000
   });
 
+  const [shouldDeleteSecrets, setShouldDeleteSecrets] = useToggle(false);
+
   const { currentWorkspace } = useWorkspace();
   const projectId = currentWorkspace.id;
   const { mutateAsync: syncIntegration } = useSyncIntegration();
+  const { mutateAsync: deleteIntegration } = useDeleteIntegration();
+
+  const navigate = useNavigate();
+
+  const handleIntegrationDelete = async (shouldDeleteIntegrationSecrets: boolean) => {
+    try {
+      await deleteIntegration({
+        id: integrationId,
+        workspaceId: currentWorkspace.id,
+        shouldDeleteIntegrationSecrets
+      });
+
+      createNotification({
+        type: "success",
+        text: "Deleted integration"
+      });
+
+      await navigate({
+        to: `/${ProjectType.SecretManager}/${projectId}/integrations`
+      });
+    } catch (err) {
+      console.log(err);
+      createNotification({
+        type: "error",
+        text: "Failed to delete integration"
+      });
+    }
+  };
+
+  const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
+    "deleteConfirmation",
+    "deleteSecretsConfirmation"
+  ] as const);
 
   return (
     <>
@@ -90,7 +130,10 @@ export const IntegrationDetailsByIDPage = () => {
                             ? "hover:!bg-red-500 hover:!text-white"
                             : "pointer-events-none cursor-not-allowed opacity-50"
                         )}
-                        onClick={() => {}}
+                        onClick={() => {
+                          setShouldDeleteSecrets.off();
+                          handlePopUpOpen("deleteConfirmation", integration);
+                        }}
                         disabled={!isAllowed}
                       >
                         <div className="flex items-center gap-2">
@@ -120,6 +163,57 @@ export const IntegrationDetailsByIDPage = () => {
           </div>
         )}
       </div>
+
+      <DeleteActionModal
+        isOpen={popUp.deleteConfirmation.isOpen}
+        title={`Are you sure want to remove ${integration?.integration || " "} integration for ${
+          integration?.app || "this project"
+        }?`}
+        onChange={(isOpen) => handlePopUpToggle("deleteConfirmation", isOpen)}
+        deleteKey={
+          (integration?.integration === "azure-app-configuration" &&
+            integration?.app?.split("//")[1]?.split(".")[0]) ||
+          integration?.app ||
+          integration?.owner ||
+          integration?.path ||
+          integration?.integration ||
+          ""
+        }
+        onDeleteApproved={async () => {
+          if (shouldDeleteSecrets) {
+            handlePopUpOpen("deleteSecretsConfirmation");
+            return;
+          }
+
+          await handleIntegrationDelete(false);
+
+          handlePopUpClose("deleteConfirmation");
+        }}
+      >
+        {integration?.integration === "github" && (
+          <div className="mt-4">
+            <Checkbox
+              id="delete-integration-secrets"
+              checkIndicatorBg="text-white"
+              onCheckedChange={() => setShouldDeleteSecrets.toggle()}
+            >
+              Delete previously synced secrets from the destination
+            </Checkbox>
+          </div>
+        )}
+      </DeleteActionModal>
+      <DeleteActionModal
+        isOpen={popUp.deleteSecretsConfirmation.isOpen}
+        title={`Are you sure you also want to delete secrets on ${integration?.integration}?`}
+        subTitle="By confirming, you acknowledge that all secrets managed by this integration will be removed from the destination. This action is irreversible."
+        onChange={(isOpen) => handlePopUpToggle("deleteSecretsConfirmation", isOpen)}
+        deleteKey="confirm"
+        onDeleteApproved={async () => {
+          await handleIntegrationDelete(true);
+          handlePopUpClose("deleteSecretsConfirmation");
+          handlePopUpClose("deleteConfirmation");
+        }}
+      />
     </>
   );
 };
