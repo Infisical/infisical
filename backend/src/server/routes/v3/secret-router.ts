@@ -36,11 +36,12 @@ const SecretReferenceNodeTree: z.ZodType<TSecretReferenceNode> = SecretReference
   children: z.lazy(() => SecretReferenceNodeTree.array())
 });
 
-const SecretNameSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .refine((el) => !el.includes(" "), "Secret name cannot contain spaces.");
+const BaseSecretNameSchema = z.string().trim().min(1);
+
+const SecretNameSchema = BaseSecretNameSchema.refine(
+  (el) => !el.includes(" "),
+  "Secret name cannot contain spaces."
+).refine((el) => !el.includes(":"), "Secret name cannot contain colon.");
 
 export const registerSecretRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -618,7 +619,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        secretName: SecretNameSchema.describe(RAW_SECRETS.UPDATE.secretName)
+        secretName: BaseSecretNameSchema.describe(RAW_SECRETS.UPDATE.secretName)
       }),
       body: z.object({
         workspaceId: z.string().trim().describe(RAW_SECRETS.UPDATE.workspaceId),
