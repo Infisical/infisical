@@ -52,7 +52,7 @@ const reencryptSamlConfig = async (knex: Knex) => {
           orgKmsService = await kmsService.createCipherPairWithDataKey({
             type: KmsDataKey.Organization,
             orgId: el.orgId
-          });
+          }, knex);
           orgEncryptionRingBuffer.push(el.orgId, orgKmsService);
         }
         const key = infisicalSymmetricDecrypt({
@@ -207,7 +207,7 @@ const reencryptLdapConfig = async (knex: Knex) => {
           orgKmsService = await kmsService.createCipherPairWithDataKey({
             type: KmsDataKey.Organization,
             orgId: el.orgId
-          });
+          }, knex);
           orgEncryptionRingBuffer.push(el.orgId, orgKmsService);
         }
         const key = infisicalSymmetricDecrypt({
@@ -356,7 +356,7 @@ const reencryptOidcConfig = async (knex: Knex) => {
           orgKmsService = await kmsService.createCipherPairWithDataKey({
             type: KmsDataKey.Organization,
             orgId: el.orgId
-          });
+          }, knex);
           orgEncryptionRingBuffer.push(el.orgId, orgKmsService);
         }
         const key = infisicalSymmetricDecrypt({

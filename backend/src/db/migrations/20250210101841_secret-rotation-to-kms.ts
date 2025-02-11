@@ -42,7 +42,7 @@ export async function up(knex: Knex): Promise<void> {
         projectKmsService = await kmsService.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
           projectId
-        });
+        }, knex);
         projectEncryptionRingBuffer.push(projectId, projectKmsService);
       }
 

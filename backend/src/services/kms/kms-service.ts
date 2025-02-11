@@ -472,7 +472,8 @@ export const kmsServiceFactory = ({
     }
 
     const kmsDecryptor = await decryptWithKmsKey({
-      kmsId: kmsKeyId
+      kmsId: kmsKeyId,
+      tx: trx
     });
 
     return kmsDecryptor({

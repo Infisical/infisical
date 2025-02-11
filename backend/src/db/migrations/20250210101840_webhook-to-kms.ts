@@ -31,8 +31,7 @@ export async function up(knex: Knex): Promise<void> {
   const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
   const projectEncryptionRingBuffer =
     createCircularCache<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
-
-  const webhooks = await knex(TableName.Webhook)
+    const webhooks = await knex(TableName.Webhook)
     .where({})
     .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.Webhook}.envId`)
     .select(
@@ -57,7 +56,7 @@ export async function up(knex: Knex): Promise<void> {
         projectKmsService = await kmsService.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
           projectId: el.projectId
-        });
+        }, knex);
         projectEncryptionRingBuffer.push(el.projectId, projectKmsService);
       }
 
