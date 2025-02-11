@@ -45,7 +45,7 @@
     "test:e2e-coverage": "vitest run --coverage -c vitest.e2e.config.ts",
     "generate:component": "tsx ./scripts/create-backend-file.ts",
     "generate:schema": "tsx ./scripts/generate-schema-types.ts && eslint --fix --ext ts ./src/db/schemas",
-    "auditlog-migration:latest": "knex --knexfile ./dist/db/auditlog-knexfile.mjs --client pg migrate:latest",
+    "auditlog-migration:latest": "node ./dist/db/rename-migrations-to-mjs.mjs && knex --knexfile ./dist/db/auditlog-knexfile.mjs --client pg migrate:latest",
     "auditlog-migration:up": "knex --knexfile ./dist/db/auditlog-knexfile.mjs --client pg migrate:up",
     "auditlog-migration:down": "knex --knexfile ./dist/db/auditlog-knexfile.mjs --client pg migrate:down",
     "auditlog-migration:list": "knex --knexfile ./dist/db/auditlog-knexfile.mjs --client pg migrate:list",
