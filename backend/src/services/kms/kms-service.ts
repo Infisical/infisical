@@ -37,6 +37,7 @@ import {
   TEncryptWithKmsDataKeyDTO,
   TEncryptWithKmsDTO,
   TGenerateKMSDTO,
+  TGetKeyMaterialDTO,
   TUpdateProjectSecretManagerKmsKeyDTO
 } from "./kms-types";
 
@@ -324,6 +325,30 @@ export const kmsServiceFactory = ({
       const decryptedBlob = dataCipher.decrypt(cipherTextBlob, kmsKey);
       return Promise.resolve(decryptedBlob);
     };
+  };
+
+  const getKeyMaterial = async ({ kmsId }: TGetKeyMaterialDTO) => {
+    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId);
+    if (!kmsDoc) {
+      throw new NotFoundError({ message: `KMS with ID '${kmsId}' not found` });
+    }
+
+    if (kmsDoc.isReserved) {
+      throw new BadRequestError({
+        message: "Cannot get key material for reserved key"
+      });
+    }
+
+    if (kmsDoc.externalKms) {
+      throw new BadRequestError({
+        message: "Cannot get key material for external key"
+      });
+    }
+
+    const keyCipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
+    const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
+
+    return kmsKey;
   };
 
   const encryptWithKmsKey = async ({ kmsId }: Omit<TEncryptWithKmsDTO, "plainText">, tx?: Knex) => {
@@ -967,6 +992,7 @@ export const kmsServiceFactory = ({
     getProjectKeyBackup,
     loadProjectKeyBackup,
     getKmsById,
-    createCipherPairWithDataKey
+    createCipherPairWithDataKey,
+    getKeyMaterial
   };
 };

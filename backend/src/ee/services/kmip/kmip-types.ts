@@ -1,3 +1,4 @@
+import { SymmetricEncryption } from "@app/lib/crypto/cipher";
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
@@ -41,3 +42,15 @@ export type TListKmipClientsByProjectIdDTO = {
   orderDirection?: OrderByDirection;
   search?: string;
 } & TProjectPermission;
+
+export type TKmipCreateDTO = {
+  clientId: string;
+  projectId: string;
+  encryptionAlgorithm: SymmetricEncryption;
+};
+
+export type TKmipGetDTO = {
+  clientId: string;
+  projectId: string;
+  id: string;
+};

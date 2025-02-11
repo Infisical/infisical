@@ -18,6 +18,7 @@ import { TKmipClientCertificateDALFactory } from "./kmip-client-certificate-dal"
 import { TKmipClientDALFactory } from "./kmip-client-dal";
 import { INSTANCE_KMIP_CONFIG_ID } from "./kmip-constants";
 import { TKmipInstanceConfigDALFactory } from "./kmip-instance-config-dal";
+import { TKmipInstanceServerCertificateDALFactory } from "./kmip-instance-server-certificate-dal";
 import {
   TCreateKmipClientCertificateDTO,
   TCreateKmipClientDTO,
@@ -30,6 +31,7 @@ import {
 type TKmipServiceFactoryDep = {
   kmipClientDAL: TKmipClientDALFactory;
   kmipClientCertificateDAL: TKmipClientCertificateDALFactory;
+  kmipInstanceServerCertificateDAL: TKmipInstanceServerCertificateDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithRootKey">;
   kmipInstanceConfigDAL: TKmipInstanceConfigDALFactory;
@@ -42,7 +44,8 @@ export const kmipServiceFactory = ({
   permissionService,
   kmipClientCertificateDAL,
   kmipInstanceConfigDAL,
-  kmsService
+  kmsService,
+  kmipInstanceServerCertificateDAL
 }: TKmipServiceFactoryDep) => {
   const createKmipClient = async ({
     actor,
@@ -325,12 +328,33 @@ export const kmipServiceFactory = ({
     };
   };
 
+  const getServerCertificateBySerialNumber = async (serialNumber: string) => {
+    const serverCert = await kmipInstanceServerCertificateDAL.findOne({
+      serialNumber
+    });
+
+    if (!serverCert) {
+      throw new NotFoundError({
+        message: "Server certificate not found"
+      });
+    }
+
+    const decryptWithRootKey = kmsService.decryptWithRootKey();
+    const parsedCertificate = new x509.X509Certificate(decryptWithRootKey(serverCert.encryptedCertificate));
+
+    return {
+      publicKey: parsedCertificate.publicKey.toString("pem"),
+      keyAlgorithm: serverCert.keyAlgorithm as CertKeyAlgorithm
+    };
+  };
+
   return {
     createKmipClient,
     updateKmipClient,
     deleteKmipClient,
     getKmipClient,
     listKmipClientsByProjectId,
-    createKmipClientCertificate
+    createKmipClientCertificate,
+    getServerCertificateBySerialNumber
   };
 };

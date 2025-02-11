@@ -61,3 +61,6 @@ export enum RootKeyEncryptionStrategy {
   Software = "SOFTWARE",
   HSM = "HSM"
 }
+export type TGetKeyMaterialDTO = {
+  kmsId: string;
+};

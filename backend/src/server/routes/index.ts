@@ -39,6 +39,7 @@ import { kmipClientCertificateDALFactory } from "@app/ee/services/kmip/kmip-clie
 import { kmipClientDALFactory } from "@app/ee/services/kmip/kmip-client-dal";
 import { kmipInstanceConfigDALFactory } from "@app/ee/services/kmip/kmip-instance-config-dal";
 import { kmipInstanceServerCertificateDALFactory } from "@app/ee/services/kmip/kmip-instance-server-certificate-dal";
+import { kmipOperationServiceFactory } from "@app/ee/services/kmip/kmip-operation-service";
 import { kmipServiceFactory } from "@app/ee/services/kmip/kmip-service";
 import { ldapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";
 import { ldapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
@@ -1434,7 +1435,15 @@ export const registerRoutes = async (
     permissionService,
     kmipClientCertificateDAL,
     kmipInstanceConfigDAL,
-    kmsService
+    kmsService,
+    kmipInstanceServerCertificateDAL
+  });
+
+  const kmipOperationService = kmipOperationServiceFactory({
+    kmsService,
+    kmsDAL,
+    projectDAL,
+    kmipClientDAL
   });
 
   await superAdminService.initServerCfg();
@@ -1536,7 +1545,8 @@ export const registerRoutes = async (
     totp: totpService,
     appConnection: appConnectionService,
     secretSync: secretSyncService,
-    kmip: kmipService
+    kmip: kmipService,
+    kmipOperation: kmipOperationService
   });
 
   const cronJobs: CronJob[] = [];
@@ -1548,7 +1558,8 @@ export const registerRoutes = async (
   }
 
   server.decorate<FastifyZodProvider["store"]>("store", {
-    user: userDAL
+    user: userDAL,
+    kmipClient: kmipClientDAL
   });
 
   await server.register(injectIdentity, { userDAL, serviceTokenDAL });

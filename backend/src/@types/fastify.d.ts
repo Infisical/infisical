@@ -16,6 +16,8 @@ import { TExternalKmsServiceFactory } from "@app/ee/services/external-kms/extern
 import { TGroupServiceFactory } from "@app/ee/services/group/group-service";
 import { TIdentityProjectAdditionalPrivilegeServiceFactory } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-service";
 import { TIdentityProjectAdditionalPrivilegeV2ServiceFactory } from "@app/ee/services/identity-project-additional-privilege-v2/identity-project-additional-privilege-v2-service";
+import { TKmipClientDALFactory } from "@app/ee/services/kmip/kmip-client-dal";
+import { TKmipOperationServiceFactory } from "@app/ee/services/kmip/kmip-operation-service";
 import { TKmipServiceFactory } from "@app/ee/services/kmip/kmip-service";
 import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -121,6 +123,10 @@ declare module "fastify" {
       isUserCompleted: string;
       providerAuthToken: string;
     };
+    kmipUser: {
+      projectId: string;
+      clientId: string;
+    };
     auditLogInfo: Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
     ssoConfig: Awaited<ReturnType<TSamlConfigServiceFactory["getSaml"]>>;
     ldapConfig: Awaited<ReturnType<TLdapConfigServiceFactory["getLdapCfg"]>>;
@@ -214,11 +220,13 @@ declare module "fastify" {
       appConnection: TAppConnectionServiceFactory;
       secretSync: TSecretSyncServiceFactory;
       kmip: TKmipServiceFactory;
+      kmipOperation: TKmipOperationServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer
     store: {
       user: Pick<TUserDALFactory, "findById">;
+      kmipClient: Pick<TKmipClientDALFactory, "findOne">;
     };
   }
 }
