@@ -5,7 +5,8 @@ export enum KmipPermission {
   Create = "create",
   Locate = "locate",
   Check = "check",
-  Get = "get"
+  Get = "get",
+  Delete = "delete"
 }
 
 export type TKmipClient = {

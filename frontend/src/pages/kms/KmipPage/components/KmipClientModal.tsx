@@ -21,7 +21,8 @@ const KMIP_PERMISSIONS_OPTIONS = [
   { value: KmipPermission.Check, label: "Check" },
   { value: KmipPermission.Create, label: "Create" },
   { value: KmipPermission.Get, label: "Get" },
-  { value: KmipPermission.Locate, label: "Locate" }
+  { value: KmipPermission.Locate, label: "Locate" },
+  { value: KmipPermission.Delete, label: "Delete" }
 ] as const;
 
 const formSchema = z.object({
@@ -31,7 +32,8 @@ const formSchema = z.object({
     [KmipPermission.Check]: z.boolean().optional(),
     [KmipPermission.Create]: z.boolean().optional(),
     [KmipPermission.Get]: z.boolean().optional(),
-    [KmipPermission.Locate]: z.boolean().optional()
+    [KmipPermission.Locate]: z.boolean().optional(),
+    [KmipPermission.Delete]: z.boolean().optional()
   })
 });
 

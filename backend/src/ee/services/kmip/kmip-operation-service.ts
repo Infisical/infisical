@@ -6,7 +6,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TKmipClientDALFactory } from "./kmip-client-dal";
 import { KmipPermission } from "./kmip-enum";
-import { TKmipCreateDTO, TKmipGetDTO } from "./kmip-types";
+import { TKmipCreateDTO, TKmipDeleteDTO, TKmipGetDTO } from "./kmip-types";
 
 type TKmipOperationServiceFactoryDep = {
   kmsService: TKmsServiceFactory;
@@ -23,7 +23,7 @@ export const kmipOperationServiceFactory = ({
   projectDAL,
   kmipClientDAL
 }: TKmipOperationServiceFactoryDep) => {
-  const create = async ({ projectId: preSplitProjectId, clientId, encryptionAlgorithm }: TKmipCreateDTO) => {
+  const create = async ({ projectId: preSplitProjectId, clientId, algorithm }: TKmipCreateDTO) => {
     let projectId = preSplitProjectId;
     const cmekProjectFromSplit = await projectDAL.getProjectFromSplitId(projectId, ProjectType.KMS);
     if (cmekProjectFromSplit) {
@@ -43,13 +43,57 @@ export const kmipOperationServiceFactory = ({
     }
 
     const kmsKey = await kmsService.generateKmsKey({
-      encryptionAlgorithm,
+      encryptionAlgorithm: algorithm,
       orgId: project.orgId,
       projectId,
       isReserved: false
     });
 
     return kmsKey;
+  };
+
+  const deleteOp = async ({ projectId: preSplitProjectId, id, clientId }: TKmipDeleteDTO) => {
+    let projectId = preSplitProjectId;
+    const cmekProjectFromSplit = await projectDAL.getProjectFromSplitId(projectId, ProjectType.KMS);
+
+    if (cmekProjectFromSplit) {
+      projectId = cmekProjectFromSplit.id;
+    }
+
+    const kmipClient = await kmipClientDAL.findOne({
+      id: clientId,
+      projectId
+    });
+
+    if (!kmipClient.permissions?.includes(KmipPermission.Delete)) {
+      throw new ForbiddenRequestError({
+        message: "Client does not have sufficient permission to perform KMIP delete"
+      });
+    }
+
+    const key = await kmsDAL.findOne({
+      id,
+      projectId
+    });
+
+    if (!key) {
+      throw new NotFoundError({ message: `Key with ID ${id} not found` });
+    }
+
+    if (key.isReserved) {
+      throw new BadRequestError({ message: "Cannot delete reserved keys" });
+    }
+
+    const completeKeyDetails = await kmsDAL.findByIdWithAssociatedKms(id);
+    if (!completeKeyDetails.internalKms) {
+      throw new BadRequestError({
+        message: "Cannot delete external keys"
+      });
+    }
+
+    const kms = kmsDAL.deleteById(id);
+
+    return kms;
   };
 
   const get = async ({ projectId: preSplitProjectId, id, clientId }: TKmipGetDTO) => {
@@ -88,7 +132,7 @@ export const kmipOperationServiceFactory = ({
 
     if (!completeKeyDetails.internalKms) {
       throw new BadRequestError({
-        message: "Cannot get external key"
+        message: "Cannot get external keys"
       });
     }
 
@@ -105,6 +149,7 @@ export const kmipOperationServiceFactory = ({
 
   return {
     create,
-    get
+    get,
+    deleteOp
   };
 };

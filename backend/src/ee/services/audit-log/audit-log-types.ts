@@ -41,7 +41,14 @@ export type TListProjectAuditLogDTO = {
 
 export type TCreateAuditLogDTO = {
   event: Event;
-  actor: UserActor | IdentityActor | ServiceActor | ScimClientActor | PlatformActor | UnknownUserActor;
+  actor:
+    | UserActor
+    | IdentityActor
+    | ServiceActor
+    | ScimClientActor
+    | PlatformActor
+    | UnknownUserActor
+    | KmipClientActor;
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;
@@ -259,7 +266,10 @@ export enum EventType {
   DELETE_KMIP_CLIENT = "delete-kmip-client",
   GET_KMIP_CLIENT = "get-kmip-client",
   GET_KMIP_CLIENTS = "get-kmip-clients",
-  CREATE_KMIP_CLIENT_CERTIFICATE = "create-kmip-client-certificate"
+  CREATE_KMIP_CLIENT_CERTIFICATE = "create-kmip-client-certificate",
+  KMIP_OPERATION_CREATE = "kmip-operation-create",
+  KMIP_OPERATION_GET = "kmip-operation-get",
+  KMIP_OPERATION_DELETE = "kmip-operation-delete"
 }
 
 interface UserActorMetadata {
@@ -282,6 +292,11 @@ interface ScimClientActorMetadata {}
 
 interface PlatformActorMetadata {}
 
+interface KmipClientActorMetadata {
+  clientId: string;
+  name: string;
+}
+
 interface UnknownUserActorMetadata {}
 
 export interface UserActor {
@@ -299,6 +314,11 @@ export interface PlatformActor {
   metadata: PlatformActorMetadata;
 }
 
+export interface KmipClientActor {
+  type: ActorType.KMIP_CLIENT;
+  metadata: KmipClientActorMetadata;
+}
+
 export interface UnknownUserActor {
   type: ActorType.UNKNOWN_USER;
   metadata: UnknownUserActorMetadata;
@@ -314,7 +334,7 @@ export interface ScimClientActor {
   metadata: ScimClientActorMetadata;
 }
 
-export type Actor = UserActor | ServiceActor | IdentityActor | ScimClientActor | PlatformActor;
+export type Actor = UserActor | ServiceActor | IdentityActor | ScimClientActor | PlatformActor | KmipClientActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -2123,6 +2143,28 @@ interface CreateKmipClientCertificateEvent {
   };
 }
 
+interface KmipOperationGetEvent {
+  type: EventType.KMIP_OPERATION_GET;
+  metadata: {
+    id: string;
+  };
+}
+
+interface KmipOperationDeleteEvent {
+  type: EventType.KMIP_OPERATION_DELETE;
+  metadata: {
+    id: string;
+  };
+}
+
+interface KmipOperationCreateEvent {
+  type: EventType.KMIP_OPERATION_CREATE;
+  metadata: {
+    id: string;
+    algorithm: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -2319,4 +2361,7 @@ export type Event =
   | DeleteKmipClientEvent
   | GetKmipClientEvent
   | GetKmipClientsEvent
-  | CreateKmipClientCertificateEvent;
+  | CreateKmipClientCertificateEvent
+  | KmipOperationGetEvent
+  | KmipOperationDeleteEvent
+  | KmipOperationCreateEvent;

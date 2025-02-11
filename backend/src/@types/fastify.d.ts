@@ -126,6 +126,7 @@ declare module "fastify" {
     kmipUser: {
       projectId: string;
       clientId: string;
+      name: string;
     };
     auditLogInfo: Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
     ssoConfig: Awaited<ReturnType<TSamlConfigServiceFactory["getSaml"]>>;

@@ -3,9 +3,11 @@ import jwt, { JwtPayload } from "jsonwebtoken";
 import z from "zod";
 
 import { KmsKeysSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { SymmetricEncryption } from "@app/lib/crypto/cipher";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { writeLimit } from "@app/server/config/rateLimiter";
+import { ActorType } from "@app/services/auth/auth-type";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
 export const registerKmipOperationRouter = async (server: FastifyZodProvider) => {
@@ -55,7 +57,8 @@ export const registerKmipOperationRouter = async (server: FastifyZodProvider) =>
 
     req.kmipUser = {
       projectId: decodedToken.projectId,
-      clientId: decodedToken.clientId
+      clientId: decodedToken.clientId,
+      name: kmipClient.name
     };
   });
 
@@ -68,7 +71,7 @@ export const registerKmipOperationRouter = async (server: FastifyZodProvider) =>
     schema: {
       description: "KMIP endpoint for creating managed objects",
       body: z.object({
-        encryptionAlgorithm: z.nativeEnum(SymmetricEncryption)
+        algorithm: z.nativeEnum(SymmetricEncryption)
       }),
       response: {
         200: KmsKeysSchema
@@ -76,9 +79,26 @@ export const registerKmipOperationRouter = async (server: FastifyZodProvider) =>
     },
     handler: async (req) => {
       const object = await server.services.kmipOperation.create({
+        ...req.kmipUser,
+        algorithm: req.body.algorithm
+      });
+
+      await server.services.auditLog.createAuditLog({
         projectId: req.kmipUser.projectId,
-        clientId: req.kmipUser.clientId,
-        encryptionAlgorithm: req.body.encryptionAlgorithm
+        actor: {
+          type: ActorType.KMIP_CLIENT,
+          metadata: {
+            clientId: req.kmipUser.clientId,
+            name: req.kmipUser.name
+          }
+        },
+        event: {
+          type: EventType.KMIP_OPERATION_CREATE,
+          metadata: {
+            id: object.id,
+            algorithm: req.body.algorithm
+          }
+        }
       });
 
       return object;
@@ -106,9 +126,69 @@ export const registerKmipOperationRouter = async (server: FastifyZodProvider) =>
     },
     handler: async (req) => {
       const object = await server.services.kmipOperation.get({
-        projectId: req.kmipUser.projectId,
-        clientId: req.kmipUser.clientId,
+        ...req.kmipUser,
         id: req.body.id
+      });
+
+      await server.services.auditLog.createAuditLog({
+        projectId: req.kmipUser.projectId,
+        actor: {
+          type: ActorType.KMIP_CLIENT,
+          metadata: {
+            clientId: req.kmipUser.clientId,
+            name: req.kmipUser.name
+          }
+        },
+        event: {
+          type: EventType.KMIP_OPERATION_GET,
+          metadata: {
+            id: object.id
+          }
+        }
+      });
+
+      return object;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/delete",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "KMIP endpoint for destroying managed objects",
+      body: z.object({
+        id: z.string()
+      }),
+      response: {
+        200: z.object({
+          id: z.string()
+        })
+      }
+    },
+    handler: async (req) => {
+      const object = await server.services.kmipOperation.deleteOp({
+        ...req.kmipUser,
+        id: req.body.id
+      });
+
+      await server.services.auditLog.createAuditLog({
+        projectId: req.kmipUser.projectId,
+        actor: {
+          type: ActorType.KMIP_CLIENT,
+          metadata: {
+            clientId: req.kmipUser.clientId,
+            name: req.kmipUser.name
+          }
+        },
+        event: {
+          type: EventType.KMIP_OPERATION_DELETE,
+          metadata: {
+            id: object.id
+          }
+        }
       });
 
       return object;

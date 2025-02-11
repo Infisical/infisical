@@ -30,6 +30,10 @@ interface IdentityActorMetadata {
   identityId: string;
   name: string;
 }
+interface KmipClientActorMetadata {
+  clientId: string;
+  name: string;
+}
 
 interface UserActor {
   type: ActorType.USER;
@@ -51,11 +55,22 @@ export interface PlatformActor {
   metadata: object;
 }
 
+export interface KmipClientActor {
+  type: ActorType.KMIP_CLIENT;
+  metadata: KmipClientActorMetadata;
+}
+
 export interface UnknownUserActor {
   type: ActorType.UNKNOWN_USER;
 }
 
-export type Actor = UserActor | ServiceActor | IdentityActor | PlatformActor | UnknownUserActor;
+export type Actor =
+  | UserActor
+  | ServiceActor
+  | IdentityActor
+  | PlatformActor
+  | UnknownUserActor
+  | KmipClientActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;

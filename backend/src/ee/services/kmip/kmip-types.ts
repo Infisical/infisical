@@ -43,14 +43,19 @@ export type TListKmipClientsByProjectIdDTO = {
   search?: string;
 } & TProjectPermission;
 
-export type TKmipCreateDTO = {
+type KmipOperationBaseDTO = {
   clientId: string;
   projectId: string;
-  encryptionAlgorithm: SymmetricEncryption;
 };
 
+export type TKmipCreateDTO = {
+  algorithm: SymmetricEncryption;
+} & KmipOperationBaseDTO;
+
 export type TKmipGetDTO = {
-  clientId: string;
-  projectId: string;
   id: string;
-};
+} & KmipOperationBaseDTO;
+
+export type TKmipDeleteDTO = {
+  id: string;
+} & KmipOperationBaseDTO;
