@@ -392,10 +392,11 @@
           "group": "Connections",
           "pages": [
             "integrations/app-connections/aws",
-            "integrations/app-connections/github",
-            "integrations/app-connections/gcp",
+            "integrations/app-connections/azure-app-configuration",
             "integrations/app-connections/azure-key-vault",
-            "integrations/app-connections/azure-app-configuration"
+            "integrations/app-connections/databricks",
+            "integrations/app-connections/gcp",
+            "integrations/app-connections/github"
           ]
         }
       ]
@@ -409,10 +410,11 @@
           "pages": [
             "integrations/secret-syncs/aws-parameter-store",
             "integrations/secret-syncs/aws-secrets-manager",
-            "integrations/secret-syncs/github",
-            "integrations/secret-syncs/gcp-secret-manager",
+            "integrations/secret-syncs/azure-app-configuration",
             "integrations/secret-syncs/azure-key-vault",
-            "integrations/secret-syncs/azure-app-configuration"
+            "integrations/secret-syncs/databricks",
+            "integrations/secret-syncs/gcp-secret-manager",
+            "integrations/secret-syncs/github"
           ]
         }
       ]
@@ -825,27 +827,15 @@
               ]
             },
             {
-              "group": "GitHub",
+              "group": "Azure App Configuration",
               "pages": [
-                "api-reference/endpoints/app-connections/github/list",
-                "api-reference/endpoints/app-connections/github/available",
-                "api-reference/endpoints/app-connections/github/get-by-id",
-                "api-reference/endpoints/app-connections/github/get-by-name",
-                "api-reference/endpoints/app-connections/github/create",
-                "api-reference/endpoints/app-connections/github/update",
-                "api-reference/endpoints/app-connections/github/delete"
-              ]
-            },
-            {
-              "group": "GCP",
-              "pages": [
-                "api-reference/endpoints/app-connections/gcp/list",
-                "api-reference/endpoints/app-connections/gcp/available",
-                "api-reference/endpoints/app-connections/gcp/get-by-id",
-                "api-reference/endpoints/app-connections/gcp/get-by-name",
-                "api-reference/endpoints/app-connections/gcp/create",
-                "api-reference/endpoints/app-connections/gcp/update",
-                "api-reference/endpoints/app-connections/gcp/delete"
+                "api-reference/endpoints/app-connections/azure-app-configuration/list",
+                "api-reference/endpoints/app-connections/azure-app-configuration/available",
+                "api-reference/endpoints/app-connections/azure-app-configuration/get-by-id",
+                "api-reference/endpoints/app-connections/azure-app-configuration/get-by-name",
+                "api-reference/endpoints/app-connections/azure-app-configuration/create",
+                "api-reference/endpoints/app-connections/azure-app-configuration/update",
+                "api-reference/endpoints/app-connections/azure-app-configuration/delete"
               ]
             },
             {
@@ -861,15 +851,39 @@
               ]
             },
             {
-              "group": "Azure App Configuration",
+              "group": "Databricks",
               "pages": [
-                "api-reference/endpoints/app-connections/azure-app-configuration/list",
-                "api-reference/endpoints/app-connections/azure-app-configuration/available",
-                "api-reference/endpoints/app-connections/azure-app-configuration/get-by-id",
-                "api-reference/endpoints/app-connections/azure-app-configuration/get-by-name",
-                "api-reference/endpoints/app-connections/azure-app-configuration/create",
-                "api-reference/endpoints/app-connections/azure-app-configuration/update",
-                "api-reference/endpoints/app-connections/azure-app-configuration/delete"
+                "api-reference/endpoints/app-connections/databricks/list",
+                "api-reference/endpoints/app-connections/databricks/available",
+                "api-reference/endpoints/app-connections/databricks/get-by-id",
+                "api-reference/endpoints/app-connections/databricks/get-by-name",
+                "api-reference/endpoints/app-connections/databricks/create",
+                "api-reference/endpoints/app-connections/databricks/update",
+                "api-reference/endpoints/app-connections/databricks/delete"
+              ]
+            },
+            {
+              "group": "GCP",
+              "pages": [
+                "api-reference/endpoints/app-connections/gcp/list",
+                "api-reference/endpoints/app-connections/gcp/available",
+                "api-reference/endpoints/app-connections/gcp/get-by-id",
+                "api-reference/endpoints/app-connections/gcp/get-by-name",
+                "api-reference/endpoints/app-connections/gcp/create",
+                "api-reference/endpoints/app-connections/gcp/update",
+                "api-reference/endpoints/app-connections/gcp/delete"
+              ]
+            },
+            {
+              "group": "GitHub",
+              "pages": [
+                "api-reference/endpoints/app-connections/github/list",
+                "api-reference/endpoints/app-connections/github/available",
+                "api-reference/endpoints/app-connections/github/get-by-id",
+                "api-reference/endpoints/app-connections/github/get-by-name",
+                "api-reference/endpoints/app-connections/github/create",
+                "api-reference/endpoints/app-connections/github/update",
+                "api-reference/endpoints/app-connections/github/delete"
               ]
             }
           ]
@@ -908,30 +922,17 @@
               ]
             },
             {
-              "group": "GitHub",
+              "group": "Azure App Configuration",
               "pages": [
-                "api-reference/endpoints/secret-syncs/github/list",
-                "api-reference/endpoints/secret-syncs/github/get-by-id",
-                "api-reference/endpoints/secret-syncs/github/get-by-name",
-                "api-reference/endpoints/secret-syncs/github/create",
-                "api-reference/endpoints/secret-syncs/github/update",
-                "api-reference/endpoints/secret-syncs/github/delete",
-                "api-reference/endpoints/secret-syncs/github/sync-secrets",
-                "api-reference/endpoints/secret-syncs/github/remove-secrets"
-              ]
-            },
-            {
-              "group": "GCP Secret Manager",
-              "pages": [
-                "api-reference/endpoints/secret-syncs/gcp-secret-manager/list",
-                "api-reference/endpoints/secret-syncs/gcp-secret-manager/get-by-id",
-                "api-reference/endpoints/secret-syncs/gcp-secret-manager/get-by-name",
-                "api-reference/endpoints/secret-syncs/gcp-secret-manager/create",
-                "api-reference/endpoints/secret-syncs/gcp-secret-manager/update",
-                "api-reference/endpoints/secret-syncs/gcp-secret-manager/delete",
-                "api-reference/endpoints/secret-syncs/gcp-secret-manager/sync-secrets",
-                "api-reference/endpoints/secret-syncs/gcp-secret-manager/import-secrets",
-                "api-reference/endpoints/secret-syncs/gcp-secret-manager/remove-secrets"
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/list",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/get-by-id",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/get-by-name",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/create",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/update",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/delete",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/sync-secrets",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/import-secrets",
+                "api-reference/endpoints/secret-syncs/azure-app-configuration/remove-secrets"
               ]
             },
             {
@@ -949,20 +950,45 @@
               ]
             },
             {
-              "group": "Azure App Configuration",
+              "group": "Databricks",
               "pages": [
-                "api-reference/endpoints/secret-syncs/azure-app-configuration/list",
-                "api-reference/endpoints/secret-syncs/azure-app-configuration/get-by-id",
-                "api-reference/endpoints/secret-syncs/azure-app-configuration/get-by-name",
-                "api-reference/endpoints/secret-syncs/azure-app-configuration/create",
-                "api-reference/endpoints/secret-syncs/azure-app-configuration/update",
-                "api-reference/endpoints/secret-syncs/azure-app-configuration/delete",
-                "api-reference/endpoints/secret-syncs/azure-app-configuration/sync-secrets",
-                "api-reference/endpoints/secret-syncs/azure-app-configuration/import-secrets",
-                "api-reference/endpoints/secret-syncs/azure-app-configuration/remove-secrets"
+                "api-reference/endpoints/secret-syncs/databricks/list",
+                "api-reference/endpoints/secret-syncs/databricks/get-by-id",
+                "api-reference/endpoints/secret-syncs/databricks/get-by-name",
+                "api-reference/endpoints/secret-syncs/databricks/create",
+                "api-reference/endpoints/secret-syncs/databricks/update",
+                "api-reference/endpoints/secret-syncs/databricks/delete",
+                "api-reference/endpoints/secret-syncs/databricks/sync-secrets",
+                "api-reference/endpoints/secret-syncs/databricks/remove-secrets"
+              ]
+            },
+            {
+              "group": "GCP Secret Manager",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/gcp-secret-manager/list",
+                "api-reference/endpoints/secret-syncs/gcp-secret-manager/get-by-id",
+                "api-reference/endpoints/secret-syncs/gcp-secret-manager/get-by-name",
+                "api-reference/endpoints/secret-syncs/gcp-secret-manager/create",
+                "api-reference/endpoints/secret-syncs/gcp-secret-manager/update",
+                "api-reference/endpoints/secret-syncs/gcp-secret-manager/delete",
+                "api-reference/endpoints/secret-syncs/gcp-secret-manager/sync-secrets",
+                "api-reference/endpoints/secret-syncs/gcp-secret-manager/import-secrets",
+                "api-reference/endpoints/secret-syncs/gcp-secret-manager/remove-secrets"
+              ]
+            },
+            {
+              "group": "GitHub",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/github/list",
+                "api-reference/endpoints/secret-syncs/github/get-by-id",
+                "api-reference/endpoints/secret-syncs/github/get-by-name",
+                "api-reference/endpoints/secret-syncs/github/create",
+                "api-reference/endpoints/secret-syncs/github/update",
+                "api-reference/endpoints/secret-syncs/github/delete",
+                "api-reference/endpoints/secret-syncs/github/sync-secrets",
+                "api-reference/endpoints/secret-syncs/github/remove-secrets"
               ]
             }
-
           ]
         },
         {

@@ -14,8 +14,8 @@ const AzureAppConfigurationSyncDestinationConfigSchema = z.object({
   configurationUrl: z
     .string()
     .min(1, "App Configuration URL required")
-    .describe(SecretSyncs.DESTINATION_CONFIG.AZURE_APP_CONFIGURATION.CONFIGURATION_URL),
-  label: z.string().optional().describe(SecretSyncs.DESTINATION_CONFIG.AZURE_APP_CONFIGURATION.LABEL)
+    .describe(SecretSyncs.DESTINATION_CONFIG.AZURE_APP_CONFIGURATION.configurationUrl),
+  label: z.string().optional().describe(SecretSyncs.DESTINATION_CONFIG.AZURE_APP_CONFIGURATION.label)
 });
 
 const AzureAppConfigurationSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };

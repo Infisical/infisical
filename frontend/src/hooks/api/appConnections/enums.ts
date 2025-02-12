@@ -3,5 +3,6 @@ export enum AppConnection {
   GitHub = "github",
   GCP = "gcp",
   AzureKeyVault = "azure-key-vault",
-  AzureAppConfiguration = "azure-app-configuration"
+  AzureAppConfiguration = "azure-app-configuration",
+  Databricks = "databricks"
 }

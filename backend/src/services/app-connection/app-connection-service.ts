@@ -23,6 +23,8 @@ import {
   TValidateAppConnectionCredentials
 } from "@app/services/app-connection/app-connection-types";
 import { ValidateAwsConnectionCredentialsSchema } from "@app/services/app-connection/aws";
+import { ValidateDatabricksConnectionCredentialsSchema } from "@app/services/app-connection/databricks";
+import { databricksConnectionService } from "@app/services/app-connection/databricks/databricks-connection-service";
 import { ValidateGitHubConnectionCredentialsSchema } from "@app/services/app-connection/github";
 import { githubConnectionService } from "@app/services/app-connection/github/github-connection-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -46,7 +48,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.GitHub]: ValidateGitHubConnectionCredentialsSchema,
   [AppConnection.GCP]: ValidateGcpConnectionCredentialsSchema,
   [AppConnection.AzureKeyVault]: ValidateAzureKeyVaultConnectionCredentialsSchema,
-  [AppConnection.AzureAppConfiguration]: ValidateAzureAppConfigurationConnectionCredentialsSchema
+  [AppConnection.AzureAppConfiguration]: ValidateAzureAppConfigurationConnectionCredentialsSchema,
+  [AppConnection.Databricks]: ValidateDatabricksConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -365,6 +368,7 @@ export const appConnectionServiceFactory = ({
     connectAppConnectionById,
     listAvailableAppConnectionsForUser,
     github: githubConnectionService(connectAppConnectionById),
-    gcp: gcpConnectionService(connectAppConnectionById)
+    gcp: gcpConnectionService(connectAppConnectionById),
+    databricks: databricksConnectionService(connectAppConnectionById, appConnectionDAL, kmsService)
   };
 };

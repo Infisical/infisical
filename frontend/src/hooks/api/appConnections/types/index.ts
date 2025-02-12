@@ -1,6 +1,7 @@
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { TAppConnectionOption } from "@app/hooks/api/appConnections/types/app-options";
 import { TAwsConnection } from "@app/hooks/api/appConnections/types/aws-connection";
+import { TDatabricksConnection } from "@app/hooks/api/appConnections/types/databricks-connection";
 import { TGitHubConnection } from "@app/hooks/api/appConnections/types/github-connection";
 
 import { TAzureAppConfigurationConnection } from "./azure-app-configuration-connection";
@@ -18,7 +19,8 @@ export type TAppConnection =
   | TGitHubConnection
   | TGcpConnection
   | TAzureKeyVaultConnection
-  | TAzureAppConfigurationConnection;
+  | TAzureAppConfigurationConnection
+  | TDatabricksConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -51,4 +53,5 @@ export type TAppConnectionMap = {
   [AppConnection.GCP]: TGcpConnection;
   [AppConnection.AzureKeyVault]: TAzureKeyVaultConnection;
   [AppConnection.AzureAppConfiguration]: TAzureAppConfigurationConnection;
+  [AppConnection.Databricks]: TDatabricksConnection;
 };

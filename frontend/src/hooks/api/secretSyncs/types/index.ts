@@ -1,5 +1,6 @@
 import { SecretSync, SecretSyncImportBehavior } from "@app/hooks/api/secretSyncs";
 import { TAwsParameterStoreSync } from "@app/hooks/api/secretSyncs/types/aws-parameter-store-sync";
+import { TDatabricksSync } from "@app/hooks/api/secretSyncs/types/databricks-sync";
 import { TGitHubSync } from "@app/hooks/api/secretSyncs/types/github-sync";
 import { DiscriminativePick } from "@app/types";
 
@@ -20,7 +21,8 @@ export type TSecretSync =
   | TGitHubSync
   | TGcpSync
   | TAzureKeyVaultSync
-  | TAzureAppConfigurationSync;
+  | TAzureAppConfigurationSync
+  | TDatabricksSync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 

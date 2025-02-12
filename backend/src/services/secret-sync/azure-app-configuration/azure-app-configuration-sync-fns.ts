@@ -11,7 +11,7 @@ import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { TAzureAppConfigurationSyncWithCredentials } from "./azure-app-configuration-sync-types";
 
-type TAzureAppConfigurationSecretSyncFactoryDeps = {
+type TAzureAppConfigurationSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
@@ -22,10 +22,10 @@ interface AzureAppConfigKeyValue {
   label?: string;
 }
 
-export const azureAppConfigurationSecretSyncFactory = ({
+export const azureAppConfigurationSyncFactory = ({
   kmsService,
   appConnectionDAL
-}: TAzureAppConfigurationSecretSyncFactoryDeps) => {
+}: TAzureAppConfigurationSyncFactoryDeps) => {
   const $getCompleteAzureAppConfigValues = async (accessToken: string, baseURL: string, url: string) => {
     let result: AzureAppConfigKeyValue[] = [];
     let currentUrl = url;

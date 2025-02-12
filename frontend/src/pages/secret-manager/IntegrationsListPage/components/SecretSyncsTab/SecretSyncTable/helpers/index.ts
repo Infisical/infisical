@@ -56,6 +56,9 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
         secondaryText = `Label - ${destinationConfig.label}`;
       }
       break;
+    case SecretSync.Databricks:
+      primaryText = destinationConfig.scope;
+      break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
   }

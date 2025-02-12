@@ -5,12 +5,17 @@ import { TAppConnectionServiceFactoryDep } from "@app/services/app-connection/ap
 import { TAppConnection, TAppConnectionConfig } from "@app/services/app-connection/app-connection-types";
 import {
   AwsConnectionMethod,
-  getAwsAppConnectionListItem,
+  getAwsConnectionListItem,
   validateAwsConnectionCredentials
 } from "@app/services/app-connection/aws";
 import {
+  DatabricksConnectionMethod,
+  getDatabricksConnectionListItem,
+  validateDatabricksConnectionCredentials
+} from "@app/services/app-connection/databricks";
+import {
   GcpConnectionMethod,
-  getGcpAppConnectionListItem,
+  getGcpConnectionListItem,
   validateGcpConnectionCredentials
 } from "@app/services/app-connection/gcp";
 import {
@@ -33,11 +38,12 @@ import {
 
 export const listAppConnectionOptions = () => {
   return [
-    getAwsAppConnectionListItem(),
+    getAwsConnectionListItem(),
     getGitHubConnectionListItem(),
-    getGcpAppConnectionListItem(),
+    getGcpConnectionListItem(),
     getAzureKeyVaultConnectionListItem(),
-    getAzureAppConfigurationConnectionListItem()
+    getAzureAppConfigurationConnectionListItem(),
+    getDatabricksConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -90,6 +96,8 @@ export const validateAppConnectionCredentials = async (
   switch (app) {
     case AppConnection.AWS:
       return validateAwsConnectionCredentials(appConnection);
+    case AppConnection.Databricks:
+      return validateDatabricksConnectionCredentials(appConnection);
     case AppConnection.GitHub:
       return validateGitHubConnectionCredentials(appConnection);
     case AppConnection.GCP:
@@ -118,6 +126,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "Assume Role";
     case GcpConnectionMethod.ServiceAccountImpersonation:
       return "Service Account Impersonation";
+    case DatabricksConnectionMethod.ServicePrincipal:
+      return "Service Principal";
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection Method: ${method}`);

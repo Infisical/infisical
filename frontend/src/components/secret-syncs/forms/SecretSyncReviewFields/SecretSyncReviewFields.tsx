@@ -4,6 +4,7 @@ import { useFormContext } from "react-hook-form";
 import { SecretSyncLabel } from "@app/components/secret-syncs";
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
 import { AwsSecretsManagerSyncReviewFields } from "@app/components/secret-syncs/forms/SecretSyncReviewFields/AwsSecretsManagerSyncReviewFields";
+import { DatabricksSyncReviewFields } from "@app/components/secret-syncs/forms/SecretSyncReviewFields/DatabricksSyncReviewFields";
 import { Badge } from "@app/components/v2";
 import { SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP, SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
@@ -53,6 +54,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.AzureAppConfiguration:
       DestinationFieldsComponent = <AzureAppConfigurationSyncReviewFields />;
+      break;
+    case SecretSync.Databricks:
+      DestinationFieldsComponent = <DatabricksSyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

@@ -10,15 +10,12 @@ import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 import { SecretSyncError } from "../secret-sync-errors";
 import { GetAzureKeyVaultSecret, TAzureKeyVaultSyncWithCredentials } from "./azure-key-vault-sync-types";
 
-type TAzureKeyVaultSecretSyncFactoryDeps = {
+type TAzureKeyVaultSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
-export const azureKeyVaultSecretSyncFactory = ({
-  kmsService,
-  appConnectionDAL
-}: TAzureKeyVaultSecretSyncFactoryDeps) => {
+export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzureKeyVaultSyncFactoryDeps) => {
   const $getAzureKeyVaultSecrets = async (accessToken: string, vaultBaseUrl: string) => {
     const paginateAzureKeyVaultSecrets = async () => {
       let result: GetAzureKeyVaultSecret[] = [];

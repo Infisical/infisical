@@ -5,6 +5,12 @@ import {
   TValidateAwsConnectionCredentials
 } from "@app/services/app-connection/aws";
 import {
+  TDatabricksConnection,
+  TDatabricksConnectionConfig,
+  TDatabricksConnectionInput,
+  TValidateDatabricksConnectionCredentials
+} from "@app/services/app-connection/databricks";
+import {
   TGitHubConnection,
   TGitHubConnectionConfig,
   TGitHubConnectionInput,
@@ -31,6 +37,7 @@ export type TAppConnection = { id: string } & (
   | TGcpConnection
   | TAzureKeyVaultConnection
   | TAzureAppConfigurationConnection
+  | TDatabricksConnection
 );
 
 export type TAppConnectionInput = { id: string } & (
@@ -39,6 +46,7 @@ export type TAppConnectionInput = { id: string } & (
   | TGcpConnectionInput
   | TAzureKeyVaultConnectionInput
   | TAzureAppConfigurationConnectionInput
+  | TDatabricksConnectionInput
 );
 
 export type TCreateAppConnectionDTO = Pick<
@@ -55,11 +63,13 @@ export type TAppConnectionConfig =
   | TGitHubConnectionConfig
   | TGcpConnectionConfig
   | TAzureKeyVaultConnectionConfig
-  | TAzureAppConfigurationConnectionConfig;
+  | TAzureAppConfigurationConnectionConfig
+  | TDatabricksConnectionConfig;
 
 export type TValidateAppConnectionCredentials =
   | TValidateAwsConnectionCredentials
   | TValidateGitHubConnectionCredentials
   | TValidateGcpConnectionCredentials
   | TValidateAzureKeyVaultConnectionCredentials
-  | TValidateAzureAppConfigurationConnectionCredentials;
+  | TValidateAzureAppConfigurationConnectionCredentials
+  | TValidateDatabricksConnectionCredentials;

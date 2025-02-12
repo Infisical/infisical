@@ -4,7 +4,8 @@ export enum SecretSync {
   GitHub = "github",
   GCPSecretManager = "gcp-secret-manager",
   AzureKeyVault = "azure-key-vault",
-  AzureAppConfiguration = "azure-app-configuration"
+  AzureAppConfiguration = "azure-app-configuration",
+  Databricks = "databricks"
 }
 
 export enum SecretSyncStatus {

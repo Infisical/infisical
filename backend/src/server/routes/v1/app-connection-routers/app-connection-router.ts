@@ -12,6 +12,10 @@ import {
   AzureKeyVaultConnectionListItemSchema,
   SanitizedAzureKeyVaultConnectionSchema
 } from "@app/services/app-connection/azure-key-vault";
+import {
+  DatabricksConnectionListItemSchema,
+  SanitizedDatabricksConnectionSchema
+} from "@app/services/app-connection/databricks";
 import { GcpConnectionListItemSchema, SanitizedGcpConnectionSchema } from "@app/services/app-connection/gcp";
 import { GitHubConnectionListItemSchema, SanitizedGitHubConnectionSchema } from "@app/services/app-connection/github";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -22,7 +26,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedGitHubConnectionSchema.options,
   ...SanitizedGcpConnectionSchema.options,
   ...SanitizedAzureKeyVaultConnectionSchema.options,
-  ...SanitizedAzureAppConfigurationConnectionSchema.options
+  ...SanitizedAzureAppConfigurationConnectionSchema.options,
+  ...SanitizedDatabricksConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -30,7 +35,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   GitHubConnectionListItemSchema,
   GcpConnectionListItemSchema,
   AzureKeyVaultConnectionListItemSchema,
-  AzureAppConfigurationConnectionListItemSchema
+  AzureAppConfigurationConnectionListItemSchema,
+  DatabricksConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

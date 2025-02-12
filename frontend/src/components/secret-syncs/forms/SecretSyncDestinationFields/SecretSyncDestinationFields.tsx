@@ -7,6 +7,7 @@ import { AwsParameterStoreSyncFields } from "./AwsParameterStoreSyncFields";
 import { AwsSecretsManagerSyncFields } from "./AwsSecretsManagerSyncFields";
 import { AzureAppConfigurationSyncFields } from "./AzureAppConfigurationSyncFields";
 import { AzureKeyVaultSyncFields } from "./AzureKeyVaultSyncFields";
+import { DatabricksSyncFields } from "./DatabricksSyncFields";
 import { GcpSyncFields } from "./GcpSyncFields";
 import { GitHubSyncFields } from "./GitHubSyncFields";
 
@@ -28,6 +29,8 @@ export const SecretSyncDestinationFields = () => {
       return <AzureKeyVaultSyncFields />;
     case SecretSync.AzureAppConfiguration:
       return <AzureAppConfigurationSyncFields />;
+    case SecretSync.Databricks:
+      return <DatabricksSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

@@ -14,21 +14,21 @@ import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types"
 const GitHubSyncDestinationConfigSchema = z
   .discriminatedUnion("scope", [
     z.object({
-      scope: z.literal(GitHubSyncScope.Organization),
-      org: z.string().min(1, "Organization name required").describe(SecretSyncs.DESTINATION_CONFIG.GITHUB.ORG),
+      scope: z.literal(GitHubSyncScope.Organization).describe(SecretSyncs.DESTINATION_CONFIG.GITHUB.scope),
+      org: z.string().min(1, "Organization name required").describe(SecretSyncs.DESTINATION_CONFIG.GITHUB.org),
       visibility: z.nativeEnum(GitHubSyncVisibility),
       selectedRepositoryIds: z.number().array().optional()
     }),
     z.object({
-      scope: z.literal(GitHubSyncScope.Repository),
-      owner: z.string().min(1, "Repository owner name required").describe(SecretSyncs.DESTINATION_CONFIG.GITHUB.OWNER),
-      repo: z.string().min(1, "Repository name required").describe(SecretSyncs.DESTINATION_CONFIG.GITHUB.REPO)
+      scope: z.literal(GitHubSyncScope.Repository).describe(SecretSyncs.DESTINATION_CONFIG.GITHUB.scope),
+      owner: z.string().min(1, "Repository owner name required").describe(SecretSyncs.DESTINATION_CONFIG.GITHUB.owner),
+      repo: z.string().min(1, "Repository name required").describe(SecretSyncs.DESTINATION_CONFIG.GITHUB.repo)
     }),
     z.object({
-      scope: z.literal(GitHubSyncScope.RepositoryEnvironment),
-      owner: z.string().min(1, "Repository owner name required").describe(SecretSyncs.DESTINATION_CONFIG.GITHUB.OWNER),
-      repo: z.string().min(1, "Repository name required").describe(SecretSyncs.DESTINATION_CONFIG.GITHUB.REPO),
-      env: z.string().min(1, "Environment name required").describe(SecretSyncs.DESTINATION_CONFIG.GITHUB.ENV)
+      scope: z.literal(GitHubSyncScope.RepositoryEnvironment).describe(SecretSyncs.DESTINATION_CONFIG.GITHUB.scope),
+      owner: z.string().min(1, "Repository owner name required").describe(SecretSyncs.DESTINATION_CONFIG.GITHUB.owner),
+      repo: z.string().min(1, "Repository name required").describe(SecretSyncs.DESTINATION_CONFIG.GITHUB.repo),
+      env: z.string().min(1, "Environment name required").describe(SecretSyncs.DESTINATION_CONFIG.GITHUB.env)
     })
   ])
   .superRefine((options, ctx) => {

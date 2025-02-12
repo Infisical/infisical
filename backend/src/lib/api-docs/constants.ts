@@ -1718,36 +1718,40 @@ export const SecretSyncs = {
   SYNC_OPTIONS: (destination: SecretSync) => {
     const destinationName = SECRET_SYNC_NAME_MAP[destination];
     return {
-      INITIAL_SYNC_BEHAVIOR: `Specify how Infisical should resolve the initial sync to the ${destinationName} destination.`,
-      PREPEND_PREFIX: `Optionally prepend a prefix to your secrets' keys when syncing to ${destinationName}.`,
-      APPEND_SUFFIX: `Optionally append a suffix to your secrets' keys when syncing to ${destinationName}.`
+      initialSyncBehavior: `Specify how Infisical should resolve the initial sync to the ${destinationName} destination.`
     };
   },
   DESTINATION_CONFIG: {
     AWS_PARAMETER_STORE: {
-      REGION: "The AWS region to sync secrets to.",
-      PATH: "The Parameter Store path to sync secrets to."
+      region: "The AWS region to sync secrets to.",
+      path: "The Parameter Store path to sync secrets to."
     },
     AWS_SECRETS_MANAGER: {
-      REGION: "The AWS region to sync secrets to.",
-      MAPPING_BEHAVIOR:
-        "How secrets from Infisical should be mapped to AWS Secrets Manager; one-to-one or many-to-one.",
-      SECRET_NAME: "The secret name in AWS Secrets Manager to sync to when using mapping behavior many-to-one."
+      region: "The AWS region to sync secrets to.",
+      mappingBehavior: "How secrets from Infisical should be mapped to AWS Secrets Manager; one-to-one or many-to-one.",
+      secretName: "The secret name in AWS Secrets Manager to sync to when using mapping behavior many-to-one."
     },
     GITHUB: {
-      ORG: "The name of the GitHub organization.",
-      OWNER: "The name of the GitHub account owner of the repository.",
-      REPO: "The name of the GitHub repository.",
-      ENV: "The name of the GitHub environment."
+      scope: "The GitHub scope that secrets should be synced to",
+      org: "The name of the GitHub organization.",
+      owner: "The name of the GitHub account owner of the repository.",
+      repo: "The name of the GitHub repository.",
+      env: "The name of the GitHub environment."
     },
     AZURE_KEY_VAULT: {
-      VAULT_BASE_URL:
-        "The base URL of the Azure Key Vault to sync secrets to. Example: https://example.vault.azure.net/"
+      vaultBaseUrl: "The base URL of the Azure Key Vault to sync secrets to. Example: https://example.vault.azure.net/"
     },
     AZURE_APP_CONFIGURATION: {
-      CONFIGURATION_URL:
+      configurationUrl:
         "The URL of the Azure App Configuration to sync secrets to. Example: https://example.azconfig.io/",
-      LABEL: "An optional label to assign to secrets created in Azure App Configuration."
+      label: "An optional label to assign to secrets created in Azure App Configuration."
+    },
+    GCP: {
+      scope: "The Google project scope that secrets should be synced to.",
+      projectId: "The ID of the Google project secrets should be synced to."
+    },
+    DATABRICKS: {
+      scope: "The Databricks secret scope that secrets should be synced to."
     }
   }
 };
