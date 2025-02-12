@@ -7,7 +7,13 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import { Button, FilterableSelect, FormControl, Modal, ModalContent } from "@app/components/v2";
 import { CreatableSelect } from "@app/components/v2/CreatableSelect";
-import { useOrganization, useWorkspace } from "@app/context";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  useOrganization,
+  useOrgPermission,
+  useWorkspace
+} from "@app/context";
 import {
   useAddUsersToOrg,
   useGetOrgUsers,
@@ -42,6 +48,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { t } = useTranslation();
   const { currentOrg } = useOrganization();
   const { currentWorkspace } = useWorkspace();
+  const { permission } = useOrgPermission();
 
   const orgId = currentOrg?.id || "";
   const workspaceId = currentWorkspace?.id || "";
@@ -140,6 +147,11 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const { append } = useFieldArray<TAddMemberForm>({ control, name: "orgMemberships" });
 
+  const canInviteNewMembers = permission.can(
+    OrgPermissionActions.Create,
+    OrgPermissionSubjects.Member
+  );
+
   return (
     <Modal
       isOpen={popUp?.addMember?.isOpen}
@@ -161,53 +173,69 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                   isError={!!errors.orgMemberships?.length}
                   errorText={errors.orgMemberships?.[0]?.message}
                   label="Invite users to project"
-                  helperText="You can invite new users to your organzation by typing out their email address"
+                  helperText={
+                    canInviteNewMembers
+                      ? "You can invite new users to your organization by typing out their email address"
+                      : undefined
+                  }
                 >
-                  <CreatableSelect
-                    /* eslint-disable-next-line react/no-unstable-nested-components */
-                    noOptionsMessage={() => (
-                      <>
-                        <p>
-                          {!filteredOrgUsers.length && (
-                            <p>All organization members are already assigned to this project.</p>
-                          )}
-                        </p>
-                        <p>
-                          Invite new users to your organization by typing out their email address.
-                        </p>
-                      </>
-                    )}
-                    onCreateOption={(inputValue) =>
-                      append({ label: inputValue, value: inputValue, isNewInvitee: true })
-                    }
-                    formatCreateLabel={(inputValue) => `Invite "${inputValue}"`}
-                    isValidNewOption={(input) =>
-                      Boolean(input) &&
-                      z.string().email().safeParse(input).success &&
-                      !orgUsers
-                        ?.flatMap(({ user }) => {
-                          const emails: string[] = [];
+                  {canInviteNewMembers ? (
+                    <CreatableSelect
+                      /* eslint-disable-next-line react/no-unstable-nested-components */
+                      noOptionsMessage={() => (
+                        <>
+                          <p>
+                            {!filteredOrgUsers.length && (
+                              <p>All organization members are already assigned to this project.</p>
+                            )}
+                          </p>
+                          <p>
+                            Invite new users to your organization by typing out their email address.
+                          </p>
+                        </>
+                      )}
+                      onCreateOption={(inputValue) =>
+                        append({ label: inputValue, value: inputValue, isNewInvitee: true })
+                      }
+                      formatCreateLabel={(inputValue) => `Invite "${inputValue}"`}
+                      isValidNewOption={(input) =>
+                        Boolean(input) &&
+                        z.string().email().safeParse(input).success &&
+                        !orgUsers
+                          ?.flatMap(({ user }) => {
+                            const emails: string[] = [];
 
-                          if (user.email) {
-                            emails.push(user.email);
-                          }
+                            if (user.email) {
+                              emails.push(user.email);
+                            }
 
-                          if (user.username) {
-                            emails.push(user.username);
-                          }
+                            if (user.username) {
+                              emails.push(user.username);
+                            }
 
-                          return emails;
-                        })
-                        .includes(input)
-                    }
-                    className="w-full"
-                    placeholder="Add one or more users..."
-                    isMulti
-                    name="members"
-                    options={filteredOrgUsers}
-                    value={field.value}
-                    onChange={field.onChange}
-                  />
+                            return emails;
+                          })
+                          .includes(input)
+                      }
+                      className="w-full"
+                      placeholder="Add one or more users..."
+                      isMulti
+                      name="members"
+                      options={filteredOrgUsers}
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
+                  ) : (
+                    <FilterableSelect
+                      className="w-full"
+                      placeholder="Add one or more users..."
+                      isMulti
+                      name="members"
+                      options={filteredOrgUsers}
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
+                  )}
                 </FormControl>
               )}
             />
