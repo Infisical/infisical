@@ -11,7 +11,7 @@ import {
 } from "@app/db/schemas";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 
-import { UnpackedPermissionSchema } from "./santizedSchemas/permission";
+import { UnpackedPermissionSchema } from "./sanitizedSchema/permission";
 
 // sometimes the return data must be santizied to avoid leaking important values
 // always prefer pick over omit in zod
@@ -201,10 +201,11 @@ export const SanitizedRoleSchemaV1 = ProjectRolesSchema.extend({
 });
 
 export const SanitizedDynamicSecretSchema = DynamicSecretsSchema.omit({
+  encryptedInput: true,
+  keyEncoding: true,
+  inputCiphertext: true,
   inputIV: true,
   inputTag: true,
-  inputCiphertext: true,
-  keyEncoding: true,
   algorithm: true
 });
 

@@ -4,20 +4,12 @@ import https from "https";
 import jwt from "jsonwebtoken";
 import { JwksClient } from "jwks-rsa";
 
-import { IdentityAuthMethod, SecretKeyEncoding, TIdentityOidcAuthsUpdate } from "@app/db/schemas";
+import { IdentityAuthMethod, TIdentityOidcAuthsUpdate } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { getConfig } from "@app/lib/config/env";
-import { generateAsymmetricKeyPair } from "@app/lib/crypto";
-import {
-  decryptSymmetric,
-  encryptSymmetric,
-  generateSymmetricKey,
-  infisicalSymmetricDecrypt,
-  infisicalSymmetricEncypt
-} from "@app/lib/crypto/encryption";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 
@@ -25,7 +17,8 @@ import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
-import { TOrgBotDALFactory } from "../org/org-bot-dal";
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { KmsDataKey } from "../kms/kms-types";
 import { TIdentityOidcAuthDALFactory } from "./identity-oidc-auth-dal";
 import { doesAudValueMatchOidcPolicy, doesFieldValueMatchOidcPolicy } from "./identity-oidc-auth-fns";
 import {
@@ -42,7 +35,7 @@ type TIdentityOidcAuthServiceFactoryDep = {
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  orgBotDAL: Pick<TOrgBotDALFactory, "findOne" | "transaction" | "create">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
 export type TIdentityOidcAuthServiceFactory = ReturnType<typeof identityOidcAuthServiceFactory>;
@@ -53,7 +46,7 @@ export const identityOidcAuthServiceFactory = ({
   permissionService,
   licenseService,
   identityAccessTokenDAL,
-  orgBotDAL
+  kmsService
 }: TIdentityOidcAuthServiceFactoryDep) => {
   const login = async ({ identityId, jwt: oidcJwt }: TLoginOidcAuthDTO) => {
     const identityOidcAuth = await identityOidcAuthDAL.findOne({ identityId });
@@ -70,31 +63,14 @@ export const identityOidcAuthServiceFactory = ({
       });
     }
 
-    const orgBot = await orgBotDAL.findOne({ orgId: identityMembershipOrg.orgId });
-    if (!orgBot) {
-      throw new NotFoundError({
-        message: `Organization bot not found for organization with ID '${identityMembershipOrg.orgId}'`,
-        name: "OrgBotNotFound"
-      });
-    }
-
-    const key = infisicalSymmetricDecrypt({
-      ciphertext: orgBot.encryptedSymmetricKey,
-      iv: orgBot.symmetricKeyIV,
-      tag: orgBot.symmetricKeyTag,
-      keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: identityMembershipOrg.orgId
     });
 
-    const { encryptedCaCert, caCertIV, caCertTag } = identityOidcAuth;
-
     let caCert = "";
-    if (encryptedCaCert && caCertIV && caCertTag) {
-      caCert = decryptSymmetric({
-        ciphertext: encryptedCaCert,
-        iv: caCertIV,
-        tag: caCertTag,
-        key
-      });
+    if (identityOidcAuth.encryptedCaCertificate) {
+      caCert = decryptor({ cipherTextBlob: identityOidcAuth.encryptedCaCertificate }).toString();
     }
 
     const requestAgent = new https.Agent({ ca: caCert, rejectUnauthorized: !!caCert });
@@ -264,64 +240,17 @@ export const identityOidcAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
-    const orgBot = await orgBotDAL.transaction(async (tx) => {
-      const doc = await orgBotDAL.findOne({ orgId: identityMembershipOrg.orgId }, tx);
-      if (doc) return doc;
-
-      const { privateKey, publicKey } = generateAsymmetricKeyPair();
-      const key = generateSymmetricKey();
-      const {
-        ciphertext: encryptedPrivateKey,
-        iv: privateKeyIV,
-        tag: privateKeyTag,
-        encoding: privateKeyKeyEncoding,
-        algorithm: privateKeyAlgorithm
-      } = infisicalSymmetricEncypt(privateKey);
-      const {
-        ciphertext: encryptedSymmetricKey,
-        iv: symmetricKeyIV,
-        tag: symmetricKeyTag,
-        encoding: symmetricKeyKeyEncoding,
-        algorithm: symmetricKeyAlgorithm
-      } = infisicalSymmetricEncypt(key);
-
-      return orgBotDAL.create(
-        {
-          name: "Infisical org bot",
-          publicKey,
-          privateKeyIV,
-          encryptedPrivateKey,
-          symmetricKeyIV,
-          symmetricKeyTag,
-          encryptedSymmetricKey,
-          symmetricKeyAlgorithm,
-          orgId: identityMembershipOrg.orgId,
-          privateKeyTag,
-          privateKeyAlgorithm,
-          privateKeyKeyEncoding,
-          symmetricKeyKeyEncoding
-        },
-        tx
-      );
+    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: identityMembershipOrg.orgId
     });
-
-    const key = infisicalSymmetricDecrypt({
-      ciphertext: orgBot.encryptedSymmetricKey,
-      iv: orgBot.symmetricKeyIV,
-      tag: orgBot.symmetricKeyTag,
-      keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
-    });
-
-    const { ciphertext: encryptedCaCert, iv: caCertIV, tag: caCertTag } = encryptSymmetric(caCert, key);
 
     const identityOidcAuth = await identityOidcAuthDAL.transaction(async (tx) => {
       const doc = await identityOidcAuthDAL.create(
         {
           identityId: identityMembershipOrg.identityId,
           oidcDiscoveryUrl,
-          encryptedCaCert,
-          caCertIV,
-          caCertTag,
+          encryptedCaCertificate: encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob,
           boundIssuer,
           boundAudiences,
           boundClaims,
@@ -415,38 +344,19 @@ export const identityOidcAuthServiceFactory = ({
         : undefined
     };
 
-    const orgBot = await orgBotDAL.findOne({ orgId: identityMembershipOrg.orgId });
-    if (!orgBot) {
-      throw new NotFoundError({
-        message: `Organization bot not found for organization with ID '${identityMembershipOrg.orgId}'`,
-        name: "OrgBotNotFound"
-      });
-    }
-
-    const key = infisicalSymmetricDecrypt({
-      ciphertext: orgBot.encryptedSymmetricKey,
-      iv: orgBot.symmetricKeyIV,
-      tag: orgBot.symmetricKeyTag,
-      keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
+    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: identityMembershipOrg.orgId
     });
 
     if (caCert !== undefined) {
-      const { ciphertext: encryptedCACert, iv: caCertIV, tag: caCertTag } = encryptSymmetric(caCert, key);
-      updateQuery.encryptedCaCert = encryptedCACert;
-      updateQuery.caCertIV = caCertIV;
-      updateQuery.caCertTag = caCertTag;
+      updateQuery.encryptedCaCertificate = encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob;
     }
 
     const updatedOidcAuth = await identityOidcAuthDAL.updateById(identityOidcAuth.id, updateQuery);
-    const updatedCACert =
-      updatedOidcAuth.encryptedCaCert && updatedOidcAuth.caCertIV && updatedOidcAuth.caCertTag
-        ? decryptSymmetric({
-            ciphertext: updatedOidcAuth.encryptedCaCert,
-            iv: updatedOidcAuth.caCertIV,
-            tag: updatedOidcAuth.caCertTag,
-            key
-          })
-        : "";
+    const updatedCACert = updatedOidcAuth.encryptedCaCertificate
+      ? decryptor({ cipherTextBlob: updatedOidcAuth.encryptedCaCertificate }).toString()
+      : "";
 
     return {
       ...updatedOidcAuth,
@@ -476,27 +386,14 @@ export const identityOidcAuthServiceFactory = ({
 
     const identityOidcAuth = await identityOidcAuthDAL.findOne({ identityId });
 
-    const orgBot = await orgBotDAL.findOne({ orgId: identityMembershipOrg.orgId });
-    if (!orgBot) {
-      throw new NotFoundError({
-        message: `Organization bot not found for organization with ID ${identityMembershipOrg.orgId}`,
-        name: "OrgBotNotFound"
-      });
-    }
-
-    const key = infisicalSymmetricDecrypt({
-      ciphertext: orgBot.encryptedSymmetricKey,
-      iv: orgBot.symmetricKeyIV,
-      tag: orgBot.symmetricKeyTag,
-      keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: identityMembershipOrg.orgId
     });
 
-    const caCert = decryptSymmetric({
-      ciphertext: identityOidcAuth.encryptedCaCert,
-      iv: identityOidcAuth.caCertIV,
-      tag: identityOidcAuth.caCertTag,
-      key
-    });
+    const caCert = identityOidcAuth.encryptedCaCertificate
+      ? decryptor({ cipherTextBlob: identityOidcAuth.encryptedCaCertificate }).toString()
+      : "";
 
     return { ...identityOidcAuth, orgId: identityMembershipOrg.orgId, caCert };
   };

@@ -98,7 +98,7 @@ const extractReqId = () => {
   }
 };
 
-export const initLogger = async () => {
+export const initLogger = () => {
   const cfg = loggerConfig.parse(process.env);
   const targets: pino.TransportMultiOptions["targets"][number][] = [
     {
