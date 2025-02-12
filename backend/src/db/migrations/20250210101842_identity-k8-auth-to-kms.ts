@@ -76,76 +76,86 @@ const reencryptIdentityK8sAuth = async (knex: Knex) => {
     )
     .orderBy(`${TableName.OrgBot}.orgId` as "orgId");
 
-    const updatedIdentityKubernetesConfigs = [];
+  const updatedIdentityKubernetesConfigs = [];
 
-    for (const { encryptedSymmetricKey, symmetricKeyKeyEncoding, symmetricKeyTag, symmetricKeyIV, orgId, ...el } of identityKubernetesConfigs) {
-      let orgKmsService = orgEncryptionRingBuffer.getItem(orgId);
-      
-      if (!orgKmsService) {
-        orgKmsService = await kmsService.createCipherPairWithDataKey({
+  for await (const {
+    encryptedSymmetricKey,
+    symmetricKeyKeyEncoding,
+    symmetricKeyTag,
+    symmetricKeyIV,
+    orgId,
+    ...el
+  } of identityKubernetesConfigs) {
+    let orgKmsService = orgEncryptionRingBuffer.getItem(orgId);
+
+    if (!orgKmsService) {
+      orgKmsService = await kmsService.createCipherPairWithDataKey(
+        {
           type: KmsDataKey.Organization,
           orgId
-        }, knex);
-        orgEncryptionRingBuffer.push(orgId, orgKmsService);
-      }
-    
-      const key = infisicalSymmetricDecrypt({
-        ciphertext: encryptedSymmetricKey,
-        iv: symmetricKeyIV,
-        tag: symmetricKeyTag,
-        keyEncoding: symmetricKeyKeyEncoding as SecretKeyEncoding
-      });
-    
-      const decryptedTokenReviewerJwt =
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore This will be removed in next cycle so ignore the ts missing error
-        el.encryptedTokenReviewerJwt && el.tokenReviewerJwtIV && el.tokenReviewerJwtTag
-          ? decryptSymmetric({
-              key,
-              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              // @ts-ignore This will be removed in next cycle so ignore the ts missing error
-              iv: el.tokenReviewerJwtIV,
-              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              // @ts-ignore This will be removed in next cycle so ignore the ts missing error
-              tag: el.tokenReviewerJwtTag,
-              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              // @ts-ignore This will be removed in next cycle so ignore the ts missing error
-              ciphertext: el.encryptedTokenReviewerJwt
-            })
-          : "";
-    
-      const decryptedCertificate =
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore This will be removed in next cycle so ignore the ts missing error
-        el.encryptedCaCert && el.caCertIV && el.caCertTag
-          ? decryptSymmetric({
-              key,
-              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              // @ts-ignore This will be removed in next cycle so ignore the ts missing error
-              iv: el.caCertIV,
-              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              // @ts-ignore This will be removed in next cycle so ignore the ts missing error
-              tag: el.caCertTag,
-              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              // @ts-ignore This will be removed in next cycle so ignore the ts missing error
-              ciphertext: el.encryptedCaCert
-            })
-          : "";
-      
-      const encryptedKubernetesTokenReviewerJwt = orgKmsService.encryptor({
-        plainText: Buffer.from(decryptedTokenReviewerJwt)
-      }).cipherTextBlob;
-      const encryptedKubernetesCaCertificate = orgKmsService.encryptor({
-        plainText: Buffer.from(decryptedCertificate)
-      }).cipherTextBlob;
-      
-      updatedIdentityKubernetesConfigs.push({
-        ...el,
-        accessTokenTrustedIps: JSON.stringify(el.accessTokenTrustedIps),
-        encryptedKubernetesCaCertificate,
-        encryptedKubernetesTokenReviewerJwt
-      });
+        },
+        knex
+      );
+      orgEncryptionRingBuffer.push(orgId, orgKmsService);
     }
+
+    const key = infisicalSymmetricDecrypt({
+      ciphertext: encryptedSymmetricKey,
+      iv: symmetricKeyIV,
+      tag: symmetricKeyTag,
+      keyEncoding: symmetricKeyKeyEncoding as SecretKeyEncoding
+    });
+
+    const decryptedTokenReviewerJwt =
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore This will be removed in next cycle so ignore the ts missing error
+      el.encryptedTokenReviewerJwt && el.tokenReviewerJwtIV && el.tokenReviewerJwtTag
+        ? decryptSymmetric({
+            key,
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore This will be removed in next cycle so ignore the ts missing error
+            iv: el.tokenReviewerJwtIV,
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore This will be removed in next cycle so ignore the ts missing error
+            tag: el.tokenReviewerJwtTag,
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore This will be removed in next cycle so ignore the ts missing error
+            ciphertext: el.encryptedTokenReviewerJwt
+          })
+        : "";
+
+    const decryptedCertificate =
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore This will be removed in next cycle so ignore the ts missing error
+      el.encryptedCaCert && el.caCertIV && el.caCertTag
+        ? decryptSymmetric({
+            key,
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore This will be removed in next cycle so ignore the ts missing error
+            iv: el.caCertIV,
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore This will be removed in next cycle so ignore the ts missing error
+            tag: el.caCertTag,
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore This will be removed in next cycle so ignore the ts missing error
+            ciphertext: el.encryptedCaCert
+          })
+        : "";
+
+    const encryptedKubernetesTokenReviewerJwt = orgKmsService.encryptor({
+      plainText: Buffer.from(decryptedTokenReviewerJwt)
+    }).cipherTextBlob;
+    const encryptedKubernetesCaCertificate = orgKmsService.encryptor({
+      plainText: Buffer.from(decryptedCertificate)
+    }).cipherTextBlob;
+
+    updatedIdentityKubernetesConfigs.push({
+      ...el,
+      accessTokenTrustedIps: JSON.stringify(el.accessTokenTrustedIps),
+      encryptedKubernetesCaCertificate,
+      encryptedKubernetesTokenReviewerJwt
+    });
+  }
 
   for (let i = 0; i < updatedIdentityKubernetesConfigs.length; i += BATCH_SIZE) {
     // eslint-disable-next-line no-await-in-loop

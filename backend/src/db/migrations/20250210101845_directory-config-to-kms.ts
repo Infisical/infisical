@@ -49,10 +49,13 @@ const reencryptSamlConfig = async (knex: Knex) => {
       async ({ encryptedSymmetricKey, symmetricKeyKeyEncoding, symmetricKeyTag, symmetricKeyIV, ...el }) => {
         let orgKmsService = orgEncryptionRingBuffer.getItem(el.orgId);
         if (!orgKmsService) {
-          orgKmsService = await kmsService.createCipherPairWithDataKey({
-            type: KmsDataKey.Organization,
-            orgId: el.orgId
-          }, knex);
+          orgKmsService = await kmsService.createCipherPairWithDataKey(
+            {
+              type: KmsDataKey.Organization,
+              orgId: el.orgId
+            },
+            knex
+          );
           orgEncryptionRingBuffer.push(el.orgId, orgKmsService);
         }
         const key = infisicalSymmetricDecrypt({
@@ -204,10 +207,13 @@ const reencryptLdapConfig = async (knex: Knex) => {
       async ({ encryptedSymmetricKey, symmetricKeyKeyEncoding, symmetricKeyTag, symmetricKeyIV, ...el }) => {
         let orgKmsService = orgEncryptionRingBuffer.getItem(el.orgId);
         if (!orgKmsService) {
-          orgKmsService = await kmsService.createCipherPairWithDataKey({
-            type: KmsDataKey.Organization,
-            orgId: el.orgId
-          }, knex);
+          orgKmsService = await kmsService.createCipherPairWithDataKey(
+            {
+              type: KmsDataKey.Organization,
+              orgId: el.orgId
+            },
+            knex
+          );
           orgEncryptionRingBuffer.push(el.orgId, orgKmsService);
         }
         const key = infisicalSymmetricDecrypt({
@@ -353,10 +359,13 @@ const reencryptOidcConfig = async (knex: Knex) => {
       async ({ encryptedSymmetricKey, symmetricKeyKeyEncoding, symmetricKeyTag, symmetricKeyIV, ...el }) => {
         let orgKmsService = orgEncryptionRingBuffer.getItem(el.orgId);
         if (!orgKmsService) {
-          orgKmsService = await kmsService.createCipherPairWithDataKey({
-            type: KmsDataKey.Organization,
-            orgId: el.orgId
-          }, knex);
+          orgKmsService = await kmsService.createCipherPairWithDataKey(
+            {
+              type: KmsDataKey.Organization,
+              orgId: el.orgId
+            },
+            knex
+          );
           orgEncryptionRingBuffer.push(el.orgId, orgKmsService);
         }
         const key = infisicalSymmetricDecrypt({
