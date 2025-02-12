@@ -62,10 +62,13 @@ const reencryptIdentityOidcAuth = async (knex: Knex) => {
       async ({ encryptedSymmetricKey, symmetricKeyKeyEncoding, symmetricKeyTag, symmetricKeyIV, orgId, ...el }) => {
         let orgKmsService = orgEncryptionRingBuffer.getItem(orgId);
         if (!orgKmsService) {
-          orgKmsService = await kmsService.createCipherPairWithDataKey({
-            type: KmsDataKey.Organization,
-            orgId
-          }, knex);
+          orgKmsService = await kmsService.createCipherPairWithDataKey(
+            {
+              type: KmsDataKey.Organization,
+              orgId
+            },
+            knex
+          );
           orgEncryptionRingBuffer.push(orgId, orgKmsService);
         }
         const key = infisicalSymmetricDecrypt({

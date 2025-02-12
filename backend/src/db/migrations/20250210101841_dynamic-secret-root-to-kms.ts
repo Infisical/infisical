@@ -46,10 +46,13 @@ export async function up(knex: Knex): Promise<void> {
     dynamicSecretRootCredentials.map(async ({ projectId, ...el }) => {
       let projectKmsService = projectEncryptionRingBuffer.getItem(projectId);
       if (!projectKmsService) {
-        projectKmsService = await kmsService.createCipherPairWithDataKey({
-          type: KmsDataKey.SecretManager,
-          projectId
-        }, knex);
+        projectKmsService = await kmsService.createCipherPairWithDataKey(
+          {
+            type: KmsDataKey.SecretManager,
+            projectId
+          },
+          knex
+        );
         projectEncryptionRingBuffer.push(projectId, projectKmsService);
       }
 
