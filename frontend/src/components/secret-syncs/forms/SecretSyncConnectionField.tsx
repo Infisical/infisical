@@ -71,12 +71,8 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
           {canCreateConnection ? (
             <>
               You do not have access to any {appName} Connections. Create one from the{" "}
-              <Link
-                to="/organization/settings"
-                className="underline"
-                search={{ selectedTab: "app-connections" }}
-              >
-                Organization Settings
+              <Link to="/organization/app-connections" className="underline">
+                App Connections
               </Link>{" "}
               page.
             </>

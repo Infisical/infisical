@@ -20,6 +20,7 @@ import {
   useGetIntegrationAuthApps,
   useGetIntegrationAuthById
 } from "@app/hooks/api/integrationAuth";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 const cloudflareEnvironments = [
   { name: "Production", slug: "production" },
@@ -96,6 +97,9 @@ export const CloudflarePagesConfigurePage = () => {
         to: "/secret-manager/$projectId/integrations",
         params: {
           projectId: currentWorkspace.id
+        },
+        search: {
+          selectedTab: IntegrationsListPageTabs.NativeIntegrations
         }
       });
     } catch (err) {

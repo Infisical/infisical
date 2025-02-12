@@ -135,7 +135,7 @@ export const OAuthCallbackPage = () => {
         type: "error"
       });
       navigate({
-        to: returnUrl ?? "/organization/settings?selectedTab=app-connections"
+        to: returnUrl ?? "/organization/app-connections"
       });
     }
 
@@ -183,7 +183,7 @@ export const OAuthCallbackPage = () => {
         type: "error"
       });
       navigate({
-        to: returnUrl ?? "/organization/settings?selectedTab=app-connections"
+        to: returnUrl ?? "/organization/app-connections"
       });
     }
 
@@ -249,7 +249,7 @@ export const OAuthCallbackPage = () => {
         type: "error"
       });
       navigate({
-        to: returnUrl ?? "/organization/settings?selectedTab=app-connections"
+        to: returnUrl ?? "/organization/app-connections"
       });
     }
 
@@ -295,7 +295,7 @@ export const OAuthCallbackPage = () => {
       }
 
       await navigate({
-        to: data?.returnUrl ?? "/organization/settings?selectedTab=app-connections"
+        to: data?.returnUrl ?? "/organization/app-connections"
       });
     })();
   }, [isReady]);

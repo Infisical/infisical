@@ -23,6 +23,7 @@ import {
   useGetIntegrationAuthOctopusDeploySpaces
 } from "@app/hooks/api/integrationAuth/queries";
 import { OctopusDeployScope } from "@app/hooks/api/integrationAuth/types";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 const formSchema = z.object({
   scope: z.nativeEnum(OctopusDeployScope),
@@ -137,6 +138,9 @@ export const OctopusDeployConfigurePage = () => {
         to: "/secret-manager/$projectId/integrations",
         params: {
           projectId: currentWorkspace.id
+        },
+        search: {
+          selectedTab: IntegrationsListPageTabs.NativeIntegrations
         }
       });
     } catch (err) {

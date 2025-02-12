@@ -27,6 +27,7 @@ import {
   useGetIntegrationAuthApps,
   useGetIntegrationAuthById
 } from "@app/hooks/api/integrationAuth";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 export const FlyioConfigurePage = () => {
   const navigate = useNavigate();
@@ -88,6 +89,9 @@ export const FlyioConfigurePage = () => {
         to: "/secret-manager/$projectId/integrations",
         params: {
           projectId: currentWorkspace.id
+        },
+        search: {
+          selectedTab: IntegrationsListPageTabs.NativeIntegrations
         }
       });
     } catch (err) {

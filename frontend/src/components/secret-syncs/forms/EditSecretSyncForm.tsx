@@ -41,7 +41,8 @@ export const EditSecretSyncForm = ({ secretSync, fields, onComplete }: Props) =>
         syncId: secretSync.id,
         ...formData,
         environment: environment?.slug,
-        connectionId: connection.id
+        connectionId: connection.id,
+        projectId: secretSync.projectId
       });
 
       createNotification({

@@ -15,6 +15,7 @@ import {
   useGetIntegrationAuthApps,
   useGetIntegrationAuthById
 } from "@app/hooks/api/integrationAuth";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 const schema = z.object({
   secretPath: z.string().trim(),
@@ -72,6 +73,9 @@ export const HasuraCloudConfigurePage = () => {
         to: "/secret-manager/$projectId/integrations",
         params: {
           projectId: currentWorkspace.id
+        },
+        search: {
+          selectedTab: IntegrationsListPageTabs.NativeIntegrations
         }
       });
     } catch (err) {

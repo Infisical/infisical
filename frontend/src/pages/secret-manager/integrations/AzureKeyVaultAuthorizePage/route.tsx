@@ -1,6 +1,8 @@
 import { createFileRoute, linkOptions } from "@tanstack/react-router";
 import z from "zod";
 
+import { IntegrationsListPageTabs } from "@app/types/integrations";
+
 import { AzureKeyVaultAuthorizePage } from "./AzureKeyVaultAuthorizePage";
 
 const PageQueryParamsSchema = z.object({
@@ -21,7 +23,10 @@ export const Route = createFileRoute(
           label: "Integrations",
           link: linkOptions({
             to: "/secret-manager/$projectId/integrations",
-            params
+            params,
+            search: {
+              selectedTab: IntegrationsListPageTabs.NativeIntegrations
+            }
           })
         },
         {

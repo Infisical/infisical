@@ -28,6 +28,7 @@ import {
   useGetIntegrationAuthQoveryProjects,
   useGetIntegrationAuthQoveryScopes
 } from "@app/hooks/api/integrationAuth/queries";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 const qoveryScopes = [
   { label: "Application", value: "application" },
@@ -178,6 +179,9 @@ export const QoveryConfigurePage = () => {
         to: "/secret-manager/$projectId/integrations",
         params: {
           projectId: currentWorkspace.id
+        },
+        search: {
+          selectedTab: IntegrationsListPageTabs.NativeIntegrations
         }
       });
     } catch (err) {

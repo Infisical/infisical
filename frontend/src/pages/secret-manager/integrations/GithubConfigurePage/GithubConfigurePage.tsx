@@ -45,6 +45,7 @@ import {
   useGetIntegrationAuthGithubEnvs,
   useGetIntegrationAuthGithubOrgs
 } from "@app/hooks/api";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 enum TabSections {
   Connection = "connection",
@@ -269,6 +270,9 @@ export const GithubConfigurePage = () => {
         to: "/secret-manager/$projectId/integrations",
         params: {
           projectId: currentWorkspace.id
+        },
+        search: {
+          selectedTab: IntegrationsListPageTabs.NativeIntegrations
         }
       });
     } catch (err) {

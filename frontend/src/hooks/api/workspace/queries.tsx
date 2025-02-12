@@ -206,7 +206,7 @@ export const useGetWorkspaceAuthorizations = <TData = IntegrationAuth[],>(
     select
   });
 
-const fetchWorkspaceIntegrations = async (workspaceId: string) => {
+export const fetchWorkspaceIntegrations = async (workspaceId: string) => {
   const { data } = await apiRequest.get<{ integrations: TIntegration[] }>(
     `/api/v1/workspace/${workspaceId}/integrations`
   );
