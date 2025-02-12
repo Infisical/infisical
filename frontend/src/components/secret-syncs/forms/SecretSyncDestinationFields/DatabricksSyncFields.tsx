@@ -43,7 +43,7 @@ export const DatabricksSyncFields = () => {
             helperText={
               <Tooltip
                 className="max-w-md"
-                content="Ensure that you've created the secret scope in the selected workspace, the service principal has been be assigned to the respective workspace and that your service principal has write permissions for the specified secret scope."
+                content="Ensure that you've created the secret scope in the selected workspace, the service principal has been assigned to the respective workspace and that your service principal has write permissions for the specified secret scope."
               >
                 <div>
                   <span>Don&#39;t see the secret scope you&#39;re looking for?</span>{" "}

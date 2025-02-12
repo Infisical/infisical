@@ -1,10 +1,10 @@
-import { registerDatabricksSyncRouter } from "@app/server/routes/v1/secret-sync-routers/databricks-sync-router";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 
 import { registerAwsParameterStoreSyncRouter } from "./aws-parameter-store-sync-router";
 import { registerAwsSecretsManagerSyncRouter } from "./aws-secrets-manager-sync-router";
 import { registerAzureAppConfigurationSyncRouter } from "./azure-app-configuration-sync-router";
 import { registerAzureKeyVaultSyncRouter } from "./azure-key-vault-sync-router";
+import { registerDatabricksSyncRouter } from "./databricks-sync-router";
 import { registerGcpSyncRouter } from "./gcp-sync-router";
 import { registerGitHubSyncRouter } from "./github-sync-router";
 

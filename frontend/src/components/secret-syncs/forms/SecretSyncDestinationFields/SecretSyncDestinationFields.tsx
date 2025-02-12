@@ -1,6 +1,5 @@
 import { useFormContext } from "react-hook-form";
 
-import { DatabricksSyncFields } from "@app/components/secret-syncs/forms/SecretSyncDestinationFields/DatabricksSyncFields";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
@@ -8,6 +7,7 @@ import { AwsParameterStoreSyncFields } from "./AwsParameterStoreSyncFields";
 import { AwsSecretsManagerSyncFields } from "./AwsSecretsManagerSyncFields";
 import { AzureAppConfigurationSyncFields } from "./AzureAppConfigurationSyncFields";
 import { AzureKeyVaultSyncFields } from "./AzureKeyVaultSyncFields";
+import { DatabricksSyncFields } from "./DatabricksSyncFields";
 import { GcpSyncFields } from "./GcpSyncFields";
 import { GitHubSyncFields } from "./GitHubSyncFields";
 
