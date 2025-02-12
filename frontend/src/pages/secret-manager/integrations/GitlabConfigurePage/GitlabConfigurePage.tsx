@@ -35,6 +35,7 @@ import {
   useGetIntegrationAuthTeams
 } from "@app/hooks/api/integrationAuth";
 import { IntegrationSyncBehavior } from "@app/hooks/api/integrations/types";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 const gitLabEntities = [
   { name: "Individual", value: "individual" },
@@ -177,6 +178,9 @@ export const GitlabConfigurePage = () => {
         to: "/secret-manager/$projectId/integrations",
         params: {
           projectId: currentWorkspace.id
+        },
+        search: {
+          selectedTab: IntegrationsListPageTabs.NativeIntegrations
         }
       });
     } catch (err) {

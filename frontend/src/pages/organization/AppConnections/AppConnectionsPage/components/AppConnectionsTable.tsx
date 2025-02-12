@@ -159,7 +159,7 @@ export const AppConnectionsTable = () => {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search integrations..."
+          placeholder="Search connections..."
           className="flex-1"
         />
         <DropdownMenu>

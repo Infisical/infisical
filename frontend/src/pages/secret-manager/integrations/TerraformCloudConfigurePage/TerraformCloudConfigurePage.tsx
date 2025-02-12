@@ -21,6 +21,7 @@ import {
   useGetIntegrationAuthById
 } from "@app/hooks/api/integrationAuth";
 import { IntegrationSyncBehavior } from "@app/hooks/api/integrations/types";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 const initialSyncBehaviors = [
   {
@@ -107,6 +108,9 @@ export const TerraformCloudConfigurePage = () => {
         to: "/secret-manager/$projectId/integrations",
         params: {
           projectId: currentWorkspace.id
+        },
+        search: {
+          selectedTab: IntegrationsListPageTabs.NativeIntegrations
         }
       });
     } catch (err) {

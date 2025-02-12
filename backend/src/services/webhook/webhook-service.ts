@@ -3,9 +3,10 @@ import { ForbiddenError } from "@casl/ability";
 import { ActionProjectType, TWebhooksInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { NotFoundError } from "@app/lib/errors";
 
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { KmsDataKey } from "../kms/kms-types";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TWebhookDALFactory } from "./webhook-dal";
@@ -23,6 +24,7 @@ type TWebhookServiceFactoryDep = {
   projectEnvDAL: TProjectEnvDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
 export type TWebhookServiceFactory = ReturnType<typeof webhookServiceFactory>;
@@ -31,7 +33,8 @@ export const webhookServiceFactory = ({
   webhookDAL,
   projectEnvDAL,
   permissionService,
-  projectDAL
+  projectDAL,
+  kmsService
 }: TWebhookServiceFactoryDep) => {
   const createWebhook = async ({
     actor,
@@ -60,30 +63,20 @@ export const webhookServiceFactory = ({
         message: `Environment with slug '${environment}' in project with ID '${projectId}' not found`
       });
 
+    const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
     const insertDoc: TWebhooksInsert = {
-      url: "", // deprecated - we are moving away from plaintext URLs
       envId: env.id,
       isDisabled: false,
       secretPath: secretPath || "/",
-      type
+      type,
+      encryptedUrl: secretManagerEncryptor({ plainText: Buffer.from(webhookUrl) }).cipherTextBlob
     };
 
     if (webhookSecretKey) {
-      const { ciphertext, iv, tag, algorithm, encoding } = infisicalSymmetricEncypt(webhookSecretKey);
-      insertDoc.encryptedSecretKey = ciphertext;
-      insertDoc.iv = iv;
-      insertDoc.tag = tag;
-      insertDoc.algorithm = algorithm;
-      insertDoc.keyEncoding = encoding;
-    }
-
-    if (webhookUrl) {
-      const { ciphertext, iv, tag, algorithm, encoding } = infisicalSymmetricEncypt(webhookUrl);
-      insertDoc.urlCipherText = ciphertext;
-      insertDoc.urlIV = iv;
-      insertDoc.urlTag = tag;
-      insertDoc.algorithm = algorithm;
-      insertDoc.keyEncoding = encoding;
+      insertDoc.encryptedPassKey = secretManagerEncryptor({ plainText: Buffer.from(webhookSecretKey) }).cipherTextBlob;
     }
 
     const webhook = await webhookDAL.create(insertDoc);
@@ -140,12 +133,17 @@ export const webhookServiceFactory = ({
     });
 
     const project = await projectDAL.findById(webhook.projectId);
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: project.id
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
     let webhookError: string | undefined;
     try {
       await triggerWebhookRequest(
         webhook,
+        (value) => secretManagerDecryptor({ cipherTextBlob: value }).toString(),
         getWebhookPayload("test", {
           workspaceName: project.name,
           workspaceId: webhook.projectId,
@@ -185,8 +183,13 @@ export const webhookServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
 
     const webhooks = await webhookDAL.findAllWebhooks(projectId, environment, secretPath);
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+
     return webhooks.map((w) => {
-      const { url } = decryptWebhookDetails(w);
+      const { url } = decryptWebhookDetails(w, (value) => secretManagerDecryptor({ cipherTextBlob: value }).toString());
       return {
         ...w,
         url

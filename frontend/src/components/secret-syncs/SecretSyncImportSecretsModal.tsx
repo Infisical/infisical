@@ -37,7 +37,7 @@ const FormSchema = z.object({
 type TFormData = z.infer<typeof FormSchema>;
 
 const Content = ({ secretSync, onComplete }: ContentProps) => {
-  const { id: syncId, destination } = secretSync;
+  const { id: syncId, destination, projectId } = secretSync;
   const destinationName = SECRET_SYNC_MAP[destination].name;
 
   const {
@@ -53,7 +53,8 @@ const Content = ({ secretSync, onComplete }: ContentProps) => {
       await triggerImportSecrets.mutateAsync({
         syncId,
         destination,
-        importBehavior
+        importBehavior,
+        projectId
       });
 
       createNotification({

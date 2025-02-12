@@ -1,18 +1,6 @@
 version: "3"
 
 services:
-  db-migration:
-    container_name: infisical-db-migration
-    depends_on:
-      db:
-        condition: service_healthy
-    image: infisical/infisical:latest-postgres
-    env_file: .env
-    command: npm run migration:latest
-    pull_policy: always
-    networks:
-      - infisical
-
   backend:
     container_name: infisical-backend
     restart: unless-stopped
@@ -21,8 +9,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
-      db-migration:
-        condition: service_completed_successfully
     image: infisical/infisical:latest-postgres
     pull_policy: always
     env_file: .env
@@ -70,3 +56,4 @@ volumes:
 
 networks:
   infisical:
+

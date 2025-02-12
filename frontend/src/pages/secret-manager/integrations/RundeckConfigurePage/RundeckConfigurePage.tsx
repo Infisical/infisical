@@ -20,6 +20,7 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import { useWorkspace } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
 import { useGetIntegrationAuthById } from "@app/hooks/api/integrationAuth";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 const schema = z.object({
   keyStoragePath: z.string().trim().min(1, { message: "Rundeck Key Storage path is required" }),
@@ -73,6 +74,9 @@ export const RundeckConfigurePage = () => {
         to: "/secret-manager/$projectId/integrations",
         params: {
           projectId: currentWorkspace.id
+        },
+        search: {
+          selectedTab: IntegrationsListPageTabs.NativeIntegrations
         }
       });
     } catch (err) {

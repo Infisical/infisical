@@ -2,6 +2,8 @@ import { createFileRoute, linkOptions } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
+import { IntegrationsListPageTabs } from "@app/types/integrations";
+
 import { AzureAppConfigurationOauthCallbackPage } from "./AzureAppConfigurationOauthCallbackPage";
 
 export const AzureAppConfigurationOauthCallbackPageQueryParamsSchema = z.object({
@@ -22,7 +24,10 @@ export const Route = createFileRoute(
           label: "Integrations",
           link: linkOptions({
             to: "/secret-manager/$projectId/integrations",
-            params
+            params,
+            search: {
+              selectedTab: IntegrationsListPageTabs.NativeIntegrations
+            }
           })
         },
         {

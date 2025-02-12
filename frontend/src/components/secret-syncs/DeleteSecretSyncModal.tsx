@@ -18,7 +18,7 @@ export const DeleteSecretSyncModal = ({ isOpen, onOpenChange, secretSync, onComp
 
   if (!secretSync) return null;
 
-  const { id: syncId, name, destination } = secretSync;
+  const { id: syncId, name, destination, projectId } = secretSync;
 
   const handleDeleteSecretSync = async () => {
     const destinationName = SECRET_SYNC_MAP[destination].name;
@@ -27,7 +27,8 @@ export const DeleteSecretSyncModal = ({ isOpen, onOpenChange, secretSync, onComp
       await deleteSync.mutateAsync({
         syncId,
         destination,
-        removeSecrets
+        removeSecrets,
+        projectId
       });
 
       createNotification({

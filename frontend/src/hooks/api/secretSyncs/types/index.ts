@@ -45,26 +45,31 @@ export type TUpdateSecretSyncDTO = Partial<
 > & {
   destination: SecretSync;
   syncId: string;
+  projectId: string;
 };
 
 export type TDeleteSecretSyncDTO = {
   destination: SecretSync;
   syncId: string;
   removeSecrets: boolean;
+  projectId: string;
 };
 
 export type TTriggerSecretSyncSyncSecretsDTO = {
   destination: SecretSync;
   syncId: string;
+  projectId: string;
 };
 
 export type TTriggerSecretSyncImportSecretsDTO = {
   destination: SecretSync;
   syncId: string;
   importBehavior: SecretSyncImportBehavior;
+  projectId: string;
 };
 
 export type TTriggerSecretSyncRemoveSecretsDTO = {
   destination: SecretSync;
   syncId: string;
+  projectId: string;
 };

@@ -94,6 +94,13 @@ export const OrganizationLayout = () => {
                           </MenuItem>
                         )}
                       </Link>
+                      <Link to="/organization/app-connections">
+                        {({ isActive }) => (
+                          <MenuItem isSelected={isActive} icon="jigsaw-puzzle">
+                            App Connections
+                          </MenuItem>
+                        )}
+                      </Link>
                       <Link to="/organization/settings">
                         {({ isActive }) => (
                           <MenuItem isSelected={isActive} icon="toggle-settings">

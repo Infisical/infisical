@@ -9,7 +9,7 @@ import { ProjectTemplates } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { UnpackedPermissionSchema } from "@app/server/routes/santizedSchemas/permission";
+import { UnpackedPermissionSchema } from "@app/server/routes/sanitizedSchema/permission";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 const MAX_JSON_SIZE_LIMIT_IN_BYTES = 32_768;
