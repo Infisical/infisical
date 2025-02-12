@@ -29,6 +29,7 @@ import {
   useGetIntegrationAuthVercelCustomEnvironments
 } from "@app/hooks/api/integrationAuth";
 import { IntegrationSyncBehavior } from "@app/hooks/api/integrations/types";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 const vercelEnvironments = [
   { name: "Development", slug: "development" },
@@ -134,6 +135,9 @@ export const VercelConfigurePage = () => {
         to: "/secret-manager/$projectId/integrations",
         params: {
           projectId: currentWorkspace.id
+        },
+        search: {
+          selectedTab: IntegrationsListPageTabs.NativeIntegrations
         }
       });
     } catch (err) {

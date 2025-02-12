@@ -227,7 +227,8 @@ export const SecretSyncsTable = ({ secretSyncs }: Props) => {
       await updateSync.mutateAsync({
         syncId: secretSync.id,
         destination: secretSync.destination,
-        isAutoSyncEnabled
+        isAutoSyncEnabled,
+        projectId: secretSync.projectId
       });
 
       createNotification({
@@ -248,7 +249,8 @@ export const SecretSyncsTable = ({ secretSyncs }: Props) => {
     try {
       await triggerSync.mutateAsync({
         syncId: secretSync.id,
-        destination: secretSync.destination
+        destination: secretSync.destination,
+        projectId: secretSync.projectId
       });
 
       createNotification({

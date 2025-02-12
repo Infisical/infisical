@@ -60,6 +60,7 @@ import { Route as organizationKmsOverviewPageRouteImport } from './pages/organiz
 import { Route as organizationIdentityDetailsByIDPageRouteImport } from './pages/organization/IdentityDetailsByIDPage/route'
 import { Route as organizationGroupDetailsByIDPageRouteImport } from './pages/organization/GroupDetailsByIDPage/route'
 import { Route as organizationCertManagerOverviewPageRouteImport } from './pages/organization/CertManagerOverviewPage/route'
+import { Route as organizationAppConnectionsAppConnectionsPageRouteImport } from './pages/organization/AppConnections/AppConnectionsPage/route'
 import { Route as projectAccessControlPageRouteSshImport } from './pages/project/AccessControlPage/route-ssh'
 import { Route as projectAccessControlPageRouteSecretManagerImport } from './pages/project/AccessControlPage/route-secret-manager'
 import { Route as projectAccessControlPageRouteKmsImport } from './pages/project/AccessControlPage/route-kms'
@@ -206,6 +207,10 @@ const AuthenticateInjectOrgDetailsOrgLayoutSshProjectIdImport = createFileRoute(
 const AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdImport =
   createFileRoute(
     '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId',
+  )()
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsImport =
+  createFileRoute(
+    '/_authenticate/_inject-org-details/_org-layout/organization/app-connections',
   )()
 const AuthenticateInjectOrgDetailsOrgLayoutKmsProjectIdImport = createFileRoute(
   '/_authenticate/_inject-org-details/_org-layout/kms/$projectId',
@@ -440,6 +445,14 @@ const AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdRoute =
     getParentRoute: () => organizationLayoutRoute,
   } as any)
 
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRoute =
+  AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsImport.update({
+    id: '/app-connections',
+    path: '/app-connections',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationRoute,
+  } as any)
+
 const AuthenticateInjectOrgDetailsOrgLayoutKmsProjectIdRoute =
   AuthenticateInjectOrgDetailsOrgLayoutKmsProjectIdImport.update({
     id: '/kms/$projectId',
@@ -610,6 +623,14 @@ const organizationCertManagerOverviewPageRouteRoute =
     path: '/cert-manager/overview',
     getParentRoute: () =>
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationRoute,
+  } as any)
+
+const organizationAppConnectionsAppConnectionsPageRouteRoute =
+  organizationAppConnectionsAppConnectionsPageRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRoute,
   } as any)
 
 const projectAccessControlPageRouteSshRoute =
@@ -918,10 +939,10 @@ const secretManagerIntegrationsDetailsByIDPageRouteRoute =
 
 const organizationAppConnectionsOauthCallbackPageRouteRoute =
   organizationAppConnectionsOauthCallbackPageRouteImport.update({
-    id: '/app-connections/$appConnection/oauth/callback',
-    path: '/app-connections/$appConnection/oauth/callback',
+    id: '/$appConnection/oauth/callback',
+    path: '/$appConnection/oauth/callback',
     getParentRoute: () =>
-      AuthenticateInjectOrgDetailsOrgLayoutOrganizationRoute,
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRoute,
   } as any)
 
 const certManagerCertAuthDetailsByIDPageRouteRoute =
@@ -1852,6 +1873,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutKmsProjectIdImport
       parentRoute: typeof organizationLayoutImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/organization/app-connections': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organization/app-connections'
+      path: '/app-connections'
+      fullPath: '/organization/app-connections'
+      preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId': {
       id: '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId'
       path: '/secret-manager/$projectId'
@@ -1865,6 +1893,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/ssh/$projectId'
       preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutSshProjectIdImport
       parentRoute: typeof organizationLayoutImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/organization/app-connections/': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organization/app-connections/'
+      path: '/'
+      fullPath: '/organization/app-connections/'
+      preLoaderRoute: typeof organizationAppConnectionsAppConnectionsPageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organization/cert-manager/overview': {
       id: '/_authenticate/_inject-org-details/_org-layout/organization/cert-manager/overview'
@@ -2141,10 +2176,10 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticate/_inject-org-details/_org-layout/organization/app-connections/$appConnection/oauth/callback': {
       id: '/_authenticate/_inject-org-details/_org-layout/organization/app-connections/$appConnection/oauth/callback'
-      path: '/app-connections/$appConnection/oauth/callback'
+      path: '/$appConnection/oauth/callback'
       fullPath: '/organization/app-connections/$appConnection/oauth/callback'
       preLoaderRoute: typeof organizationAppConnectionsOauthCallbackPageRouteImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsImport
     }
     '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/$integrationId': {
       id: '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/$integrationId'
@@ -2834,6 +2869,24 @@ const AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren =
     AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteChildren,
   )
 
+interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRouteChildren {
+  organizationAppConnectionsAppConnectionsPageRouteRoute: typeof organizationAppConnectionsAppConnectionsPageRouteRoute
+  organizationAppConnectionsOauthCallbackPageRouteRoute: typeof organizationAppConnectionsOauthCallbackPageRouteRoute
+}
+
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRouteChildren: AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRouteChildren =
+  {
+    organizationAppConnectionsAppConnectionsPageRouteRoute:
+      organizationAppConnectionsAppConnectionsPageRouteRoute,
+    organizationAppConnectionsOauthCallbackPageRouteRoute:
+      organizationAppConnectionsOauthCallbackPageRouteRoute,
+  }
+
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRouteWithChildren =
+  AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRoute._addFileChildren(
+    AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRouteChildren,
+  )
+
 interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren {
   organizationAccessManagementPageRouteRoute: typeof organizationAccessManagementPageRouteRoute
   organizationAdminPageRouteRoute: typeof organizationAdminPageRouteRoute
@@ -2843,6 +2896,7 @@ interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren {
   organizationSecretScanningPageRouteRoute: typeof organizationSecretScanningPageRouteRoute
   organizationSecretSharingPageRouteRoute: typeof organizationSecretSharingPageRouteRoute
   organizationSettingsPageRouteRoute: typeof organizationSettingsPageRouteRoute
+  AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRouteWithChildren
   organizationCertManagerOverviewPageRouteRoute: typeof organizationCertManagerOverviewPageRouteRoute
   organizationGroupDetailsByIDPageRouteRoute: typeof organizationGroupDetailsByIDPageRouteRoute
   organizationIdentityDetailsByIDPageRouteRoute: typeof organizationIdentityDetailsByIDPageRouteRoute
@@ -2851,7 +2905,6 @@ interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren {
   organizationRoleByIDPageRouteRoute: typeof organizationRoleByIDPageRouteRoute
   organizationSecretManagerOverviewPageRouteRoute: typeof organizationSecretManagerOverviewPageRouteRoute
   organizationSshOverviewPageRouteRoute: typeof organizationSshOverviewPageRouteRoute
-  organizationAppConnectionsOauthCallbackPageRouteRoute: typeof organizationAppConnectionsOauthCallbackPageRouteRoute
 }
 
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren: AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren =
@@ -2867,6 +2920,8 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren: Authentica
     organizationSecretSharingPageRouteRoute:
       organizationSecretSharingPageRouteRoute,
     organizationSettingsPageRouteRoute: organizationSettingsPageRouteRoute,
+    AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRoute:
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRouteWithChildren,
     organizationCertManagerOverviewPageRouteRoute:
       organizationCertManagerOverviewPageRouteRoute,
     organizationGroupDetailsByIDPageRouteRoute:
@@ -2882,8 +2937,6 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren: Authentica
       organizationSecretManagerOverviewPageRouteRoute,
     organizationSshOverviewPageRouteRoute:
       organizationSshOverviewPageRouteRoute,
-    organizationAppConnectionsOauthCallbackPageRouteRoute:
-      organizationAppConnectionsOauthCallbackPageRouteRoute,
   }
 
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteWithChildren =
@@ -3539,8 +3592,10 @@ export interface FileRoutesByFullPath {
   '/organization/settings': typeof organizationSettingsPageRouteRoute
   '/cert-manager/$projectId': typeof certManagerLayoutRouteWithChildren
   '/kms/$projectId': typeof kmsLayoutRouteWithChildren
+  '/organization/app-connections': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRouteWithChildren
   '/secret-manager/$projectId': typeof secretManagerLayoutRouteWithChildren
   '/ssh/$projectId': typeof sshLayoutRouteWithChildren
+  '/organization/app-connections/': typeof organizationAppConnectionsAppConnectionsPageRouteRoute
   '/organization/cert-manager/overview': typeof organizationCertManagerOverviewPageRouteRoute
   '/organization/groups/$groupId': typeof organizationGroupDetailsByIDPageRouteRoute
   '/organization/identities/$identityId': typeof organizationIdentityDetailsByIDPageRouteRoute
@@ -3708,6 +3763,7 @@ export interface FileRoutesByTo {
   '/kms/$projectId': typeof kmsLayoutRouteWithChildren
   '/secret-manager/$projectId': typeof secretManagerLayoutRouteWithChildren
   '/ssh/$projectId': typeof sshLayoutRouteWithChildren
+  '/organization/app-connections': typeof organizationAppConnectionsAppConnectionsPageRouteRoute
   '/organization/cert-manager/overview': typeof organizationCertManagerOverviewPageRouteRoute
   '/organization/groups/$groupId': typeof organizationGroupDetailsByIDPageRouteRoute
   '/organization/identities/$identityId': typeof organizationIdentityDetailsByIDPageRouteRoute
@@ -3882,8 +3938,10 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organization/settings': typeof organizationSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutCertManagerProjectIdRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/kms/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutKmsProjectIdRouteWithChildren
+  '/_authenticate/_inject-org-details/_org-layout/organization/app-connections': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutSshProjectIdRouteWithChildren
+  '/_authenticate/_inject-org-details/_org-layout/organization/app-connections/': typeof organizationAppConnectionsAppConnectionsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/cert-manager/overview': typeof organizationCertManagerOverviewPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/groups/$groupId': typeof organizationGroupDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/identities/$identityId': typeof organizationIdentityDetailsByIDPageRouteRoute
@@ -4059,8 +4117,10 @@ export interface FileRouteTypes {
     | '/organization/settings'
     | '/cert-manager/$projectId'
     | '/kms/$projectId'
+    | '/organization/app-connections'
     | '/secret-manager/$projectId'
     | '/ssh/$projectId'
+    | '/organization/app-connections/'
     | '/organization/cert-manager/overview'
     | '/organization/groups/$groupId'
     | '/organization/identities/$identityId'
@@ -4227,6 +4287,7 @@ export interface FileRouteTypes {
     | '/kms/$projectId'
     | '/secret-manager/$projectId'
     | '/ssh/$projectId'
+    | '/organization/app-connections'
     | '/organization/cert-manager/overview'
     | '/organization/groups/$groupId'
     | '/organization/identities/$identityId'
@@ -4399,8 +4460,10 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organization/settings'
     | '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId'
     | '/_authenticate/_inject-org-details/_org-layout/kms/$projectId'
+    | '/_authenticate/_inject-org-details/_org-layout/organization/app-connections'
     | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId'
     | '/_authenticate/_inject-org-details/_org-layout/ssh/$projectId'
+    | '/_authenticate/_inject-org-details/_org-layout/organization/app-connections/'
     | '/_authenticate/_inject-org-details/_org-layout/organization/cert-manager/overview'
     | '/_authenticate/_inject-org-details/_org-layout/organization/groups/$groupId'
     | '/_authenticate/_inject-org-details/_org-layout/organization/identities/$identityId'
@@ -4759,6 +4822,7 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organization/secret-scanning",
         "/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing",
         "/_authenticate/_inject-org-details/_org-layout/organization/settings",
+        "/_authenticate/_inject-org-details/_org-layout/organization/app-connections",
         "/_authenticate/_inject-org-details/_org-layout/organization/cert-manager/overview",
         "/_authenticate/_inject-org-details/_org-layout/organization/groups/$groupId",
         "/_authenticate/_inject-org-details/_org-layout/organization/identities/$identityId",
@@ -4766,8 +4830,7 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organization/members/$membershipId",
         "/_authenticate/_inject-org-details/_org-layout/organization/roles/$roleId",
         "/_authenticate/_inject-org-details/_org-layout/organization/secret-manager/overview",
-        "/_authenticate/_inject-org-details/_org-layout/organization/ssh/overview",
-        "/_authenticate/_inject-org-details/_org-layout/organization/app-connections/$appConnection/oauth/callback"
+        "/_authenticate/_inject-org-details/_org-layout/organization/ssh/overview"
       ]
     },
     "/_authenticate/_inject-org-details/admin/_admin-layout": {
@@ -4827,6 +4890,14 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/kms/$projectId/_kms-layout"
       ]
     },
+    "/_authenticate/_inject-org-details/_org-layout/organization/app-connections": {
+      "filePath": "",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organization",
+      "children": [
+        "/_authenticate/_inject-org-details/_org-layout/organization/app-connections/",
+        "/_authenticate/_inject-org-details/_org-layout/organization/app-connections/$appConnection/oauth/callback"
+      ]
+    },
     "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId": {
       "filePath": "",
       "parent": "/_authenticate/_inject-org-details/_org-layout",
@@ -4840,6 +4911,10 @@ export const routeTree = rootRoute
       "children": [
         "/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout"
       ]
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organization/app-connections/": {
+      "filePath": "organization/AppConnections/AppConnectionsPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organization/app-connections"
     },
     "/_authenticate/_inject-org-details/_org-layout/organization/cert-manager/overview": {
       "filePath": "organization/CertManagerOverviewPage/route.tsx",
@@ -5119,7 +5194,7 @@ export const routeTree = rootRoute
     },
     "/_authenticate/_inject-org-details/_org-layout/organization/app-connections/$appConnection/oauth/callback": {
       "filePath": "organization/AppConnections/OauthCallbackPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organization"
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organization/app-connections"
     },
     "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/$integrationId": {
       "filePath": "secret-manager/IntegrationsDetailsByIDPage/route.tsx",

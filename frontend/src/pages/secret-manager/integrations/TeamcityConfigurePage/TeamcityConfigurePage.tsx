@@ -21,6 +21,7 @@ import {
   useGetIntegrationAuthById,
   useGetIntegrationAuthTeamCityBuildConfigs
 } from "@app/hooks/api/integrationAuth";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 export const TeamcityConfigurePage = () => {
   const navigate = useNavigate();
@@ -92,6 +93,9 @@ export const TeamcityConfigurePage = () => {
         to: "/secret-manager/$projectId/integrations",
         params: {
           projectId: currentWorkspace.id
+        },
+        search: {
+          selectedTab: IntegrationsListPageTabs.NativeIntegrations
         }
       });
     } catch (err) {

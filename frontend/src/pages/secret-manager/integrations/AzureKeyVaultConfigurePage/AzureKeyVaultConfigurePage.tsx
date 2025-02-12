@@ -16,6 +16,7 @@ import { useCreateIntegration } from "@app/hooks/api";
 import { useGetIntegrationAuthById } from "@app/hooks/api/integrationAuth";
 import { IntegrationSyncBehavior } from "@app/hooks/api/integrations/types";
 import { useGetWorkspaceById } from "@app/hooks/api/workspace";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 const initialSyncBehaviors = [
   {
@@ -90,6 +91,9 @@ export const AzureKeyVaultConfigurePage = () => {
         to: "/secret-manager/$projectId/integrations",
         params: {
           projectId: currentWorkspace.id
+        },
+        search: {
+          selectedTab: IntegrationsListPageTabs.NativeIntegrations
         }
       });
     } catch (err) {

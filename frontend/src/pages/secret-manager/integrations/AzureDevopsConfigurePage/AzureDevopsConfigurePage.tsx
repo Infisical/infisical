@@ -21,6 +21,7 @@ import {
   useGetIntegrationAuthById
 } from "@app/hooks/api/integrationAuth";
 import { useGetWorkspaceById } from "@app/hooks/api/workspace";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 export const AzureDevopsConfigurePage = () => {
   const navigate = useNavigate();
@@ -82,6 +83,9 @@ export const AzureDevopsConfigurePage = () => {
         to: "/secret-manager/$projectId/integrations",
         params: {
           projectId: currentWorkspace.id
+        },
+        search: {
+          selectedTab: IntegrationsListPageTabs.NativeIntegrations
         }
       });
     } catch (err) {

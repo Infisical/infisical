@@ -38,6 +38,7 @@ import {
   IntegrationMappingBehavior,
   IntegrationMetadataSyncMode
 } from "@app/hooks/api/integrations/types";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 enum TabSections {
   Connection = "connection",
@@ -206,6 +207,9 @@ export const AwsSecretManagerConfigurePage = () => {
         to: "/secret-manager/$projectId/integrations",
         params: {
           projectId: currentWorkspace.id
+        },
+        search: {
+          selectedTab: IntegrationsListPageTabs.NativeIntegrations
         }
       });
     } catch (err) {

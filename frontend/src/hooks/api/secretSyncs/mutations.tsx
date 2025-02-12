@@ -23,7 +23,8 @@ export const useCreateSecretSync = () => {
 
       return data.secretSync;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: secretSyncKeys.list() })
+    onSuccess: (_, { projectId }) =>
+      queryClient.invalidateQueries({ queryKey: secretSyncKeys.list(projectId) })
   });
 };
 
@@ -38,8 +39,8 @@ export const useUpdateSecretSync = () => {
 
       return data.secretSync;
     },
-    onSuccess: (_, { syncId, destination }) => {
-      queryClient.invalidateQueries({ queryKey: secretSyncKeys.list() });
+    onSuccess: (_, { syncId, destination, projectId }) => {
+      queryClient.invalidateQueries({ queryKey: secretSyncKeys.list(projectId) });
       queryClient.invalidateQueries({ queryKey: secretSyncKeys.byId(destination, syncId) });
     }
   });
@@ -55,8 +56,8 @@ export const useDeleteSecretSync = () => {
 
       return data;
     },
-    onSuccess: (_, { syncId, destination }) => {
-      queryClient.invalidateQueries({ queryKey: secretSyncKeys.list() });
+    onSuccess: (_, { syncId, destination, projectId }) => {
+      queryClient.invalidateQueries({ queryKey: secretSyncKeys.list(projectId) });
       queryClient.invalidateQueries({ queryKey: secretSyncKeys.byId(destination, syncId) });
     }
   });
@@ -72,8 +73,8 @@ export const useTriggerSecretSyncSyncSecrets = () => {
 
       return data;
     },
-    onSuccess: (_, { syncId, destination }) => {
-      queryClient.invalidateQueries({ queryKey: secretSyncKeys.list() });
+    onSuccess: (_, { syncId, destination, projectId }) => {
+      queryClient.invalidateQueries({ queryKey: secretSyncKeys.list(projectId) });
       queryClient.invalidateQueries({ queryKey: secretSyncKeys.byId(destination, syncId) });
     }
   });
@@ -93,8 +94,8 @@ export const useTriggerSecretSyncImportSecrets = () => {
 
       return data;
     },
-    onSuccess: (_, { syncId, destination }) => {
-      queryClient.invalidateQueries({ queryKey: secretSyncKeys.list() });
+    onSuccess: (_, { syncId, destination, projectId }) => {
+      queryClient.invalidateQueries({ queryKey: secretSyncKeys.list(projectId) });
       queryClient.invalidateQueries({ queryKey: secretSyncKeys.byId(destination, syncId) });
     }
   });
@@ -110,8 +111,8 @@ export const useTriggerSecretSyncRemoveSecrets = () => {
 
       return data;
     },
-    onSuccess: (_, { syncId, destination }) => {
-      queryClient.invalidateQueries({ queryKey: secretSyncKeys.list() });
+    onSuccess: (_, { syncId, destination, projectId }) => {
+      queryClient.invalidateQueries({ queryKey: secretSyncKeys.list(projectId) });
       queryClient.invalidateQueries({ queryKey: secretSyncKeys.byId(destination, syncId) });
     }
   });

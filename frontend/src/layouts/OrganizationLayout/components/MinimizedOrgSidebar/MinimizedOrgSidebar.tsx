@@ -10,6 +10,7 @@ import {
   faInfo,
   faInfoCircle,
   faMoneyBill,
+  faPlug,
   faSignOut,
   faUser,
   faUsers
@@ -100,6 +101,7 @@ export const MinimizedOrgSidebar = () => {
   const isMoreSelected = (
     [
       linkOptions({ to: "/organization/access-management" }).to,
+      linkOptions({ to: "/organization/app-connections" }).to,
       linkOptions({ to: "/organization/settings" }).to,
       linkOptions({ to: "/organization/audit-logs" }).to
     ] as string[]
@@ -311,10 +313,10 @@ export const MinimizedOrgSidebar = () => {
                   <div className="w-full">
                     <MenuIconButton
                       lottieIconMode="reverse"
-                      icon="three-ellipsis"
+                      icon="settings-cog"
                       isSelected={isMoreSelected}
                     >
-                      More
+                      Org Controls
                     </MenuIconButton>
                   </div>
                 </DropdownMenuTrigger>
@@ -323,6 +325,11 @@ export const MinimizedOrgSidebar = () => {
                   <Link to="/organization/access-management">
                     <DropdownMenuItem icon={<FontAwesomeIcon icon={faUsers} />}>
                       Access Control
+                    </DropdownMenuItem>
+                  </Link>
+                  <Link to="/organization/app-connections">
+                    <DropdownMenuItem icon={<FontAwesomeIcon icon={faPlug} />}>
+                      App Connections
                     </DropdownMenuItem>
                   </Link>
                   {(window.location.origin.includes("https://app.infisical.com") ||

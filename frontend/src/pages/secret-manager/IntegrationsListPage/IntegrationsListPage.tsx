@@ -29,7 +29,7 @@ export const IntegrationsListPage = () => {
   const updateSelectedTab = (tab: string) => {
     navigate({
       to: ROUTE_PATHS.SecretManager.IntegrationsListPage.path,
-      search: (prev) => ({ ...prev, selectedTab: tab }),
+      search: (prev) => ({ ...prev, selectedTab: tab as IntegrationsListPageTabs }),
       params: {
         projectId: currentWorkspace.id
       }

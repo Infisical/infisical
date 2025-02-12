@@ -29,6 +29,7 @@ import { useWorkspace } from "@app/context";
 import { isValidPath } from "@app/helpers/string";
 import { useCreateIntegration } from "@app/hooks/api";
 import { useGetIntegrationAuthById } from "@app/hooks/api/integrationAuth";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 const generateFormSchema = (availableEnvironmentNames: string[]) => {
   return z.object({
@@ -103,6 +104,9 @@ export const HashicorpVaultConfigurePage = () => {
         to: "/secret-manager/$projectId/integrations",
         params: {
           projectId: currentWorkspace.id
+        },
+        search: {
+          selectedTab: IntegrationsListPageTabs.NativeIntegrations
         }
       });
     } catch (err) {

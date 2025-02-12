@@ -12,7 +12,7 @@ import {
 export const secretSyncKeys = {
   all: ["secret-sync"] as const,
   options: () => [...secretSyncKeys.all, "options"] as const,
-  list: () => [...secretSyncKeys.all, "list"] as const,
+  list: (projectId: string) => [...secretSyncKeys.all, "list", projectId] as const,
   byId: (destination: SecretSync, syncId: string) =>
     [...secretSyncKeys.all, destination, "by-id", syncId] as const
 };
@@ -46,6 +46,14 @@ export const useSecretSyncOption = (destination: SecretSync) => {
   return { syncOption, isPending };
 };
 
+export const fetchSecretSyncsByProjectId = async (projectId: string) => {
+  const { data } = await apiRequest.get<TListSecretSyncs>("/api/v1/secret-syncs", {
+    params: { projectId }
+  });
+
+  return data.secretSyncs;
+};
+
 export const useListSecretSyncs = (
   projectId: string,
   options?: Omit<
@@ -54,14 +62,8 @@ export const useListSecretSyncs = (
   >
 ) => {
   return useQuery({
-    queryKey: secretSyncKeys.list(),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<TListSecretSyncs>("/api/v1/secret-syncs", {
-        params: { projectId }
-      });
-
-      return data.secretSyncs;
-    },
+    queryKey: secretSyncKeys.list(projectId),
+    queryFn: () => fetchSecretSyncsByProjectId(projectId),
     ...options
   });
 };
