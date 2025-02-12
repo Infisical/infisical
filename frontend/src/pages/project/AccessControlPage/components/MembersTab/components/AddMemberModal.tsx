@@ -164,6 +164,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                   helperText="You can invite new users to your organzation by typing out their email address"
                 >
                   <CreatableSelect
+                    /* eslint-disable-next-line react/no-unstable-nested-components */
                     noOptionsMessage={() => (
                       <>
                         <p>
@@ -171,7 +172,9 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                             <p>All organization members are already assigned to this project.</p>
                           )}
                         </p>
-                        <p>Add new users to your organization by typing out their email address.</p>
+                        <p>
+                          Invite new users to your organization by typing out their email address.
+                        </p>
                       </>
                     )}
                     onCreateOption={(inputValue) =>
