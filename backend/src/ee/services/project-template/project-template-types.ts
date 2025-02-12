@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { TProjectEnvironments } from "@app/db/schemas";
 import { TProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
-import { UnpackedPermissionSchema } from "@app/server/routes/santizedSchemas/permission";
+import { UnpackedPermissionSchema } from "@app/server/routes/sanitizedSchema/permission";
 
 export type TProjectTemplateEnvironment = Pick<TProjectEnvironments, "name" | "slug" | "position">;
 
