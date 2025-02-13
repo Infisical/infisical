@@ -20,12 +20,37 @@ export const Route = createFileRoute(
   validateSearch: zodValidator(IntegrationsListPageQuerySchema),
   beforeLoad: async ({ context, search, params: { projectId } }) => {
     if (!search.selectedTab) {
-      const secretSyncs = await context.queryClient.ensureQueryData({
-        queryKey: secretSyncKeys.list(projectId),
-        queryFn: () => fetchSecretSyncsByProjectId(projectId)
-      });
+      try {
+        const secretSyncs = await context.queryClient.ensureQueryData({
+          queryKey: secretSyncKeys.list(projectId),
+          queryFn: () => fetchSecretSyncsByProjectId(projectId)
+        });
 
-      if (secretSyncs.length) {
+        if (secretSyncs.length) {
+          throw redirect({
+            to: "/secret-manager/$projectId/integrations",
+            params: {
+              projectId
+            },
+            search: { selectedTab: IntegrationsListPageTabs.SecretSyncs }
+          });
+        }
+
+        const integrations = await context.queryClient.ensureQueryData({
+          queryKey: workspaceKeys.getWorkspaceIntegrations(projectId),
+          queryFn: () => fetchWorkspaceIntegrations(projectId)
+        });
+
+        if (integrations.length) {
+          throw redirect({
+            to: "/secret-manager/$projectId/integrations",
+            params: {
+              projectId
+            },
+            search: { selectedTab: IntegrationsListPageTabs.NativeIntegrations }
+          });
+        }
+
         throw redirect({
           to: "/secret-manager/$projectId/integrations",
           params: {
@@ -33,14 +58,7 @@ export const Route = createFileRoute(
           },
           search: { selectedTab: IntegrationsListPageTabs.SecretSyncs }
         });
-      }
-
-      const integrations = await context.queryClient.ensureQueryData({
-        queryKey: workspaceKeys.getWorkspaceIntegrations(projectId),
-        queryFn: () => fetchWorkspaceIntegrations(projectId)
-      });
-
-      if (integrations.length) {
+      } catch {
         throw redirect({
           to: "/secret-manager/$projectId/integrations",
           params: {
@@ -49,14 +67,6 @@ export const Route = createFileRoute(
           search: { selectedTab: IntegrationsListPageTabs.NativeIntegrations }
         });
       }
-
-      throw redirect({
-        to: "/secret-manager/$projectId/integrations",
-        params: {
-          projectId
-        },
-        search: { selectedTab: IntegrationsListPageTabs.SecretSyncs }
-      });
     }
 
     return {
