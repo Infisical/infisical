@@ -57,16 +57,16 @@ export const ProjectPermissionCan: FunctionComponent<Props<ProjectPermissionSet>
         const finalChild =
           typeof children === "function" ? children(isAllowed, ability as any) : children;
 
+        if (!isAllowed && renderGuardBanner) {
+          return <ProjectPermissionGuardBanner />;
+        }
+
         if (!isAllowed && passThrough) {
           return <Tooltip content={label}>{finalChild}</Tooltip>;
         }
 
         if (isAllowed && renderTooltip && allowedLabel) {
           return <Tooltip content={allowedLabel}>{finalChild}</Tooltip>;
-        }
-
-        if (!isAllowed && renderGuardBanner) {
-          return <ProjectPermissionGuardBanner />;
         }
 
         if (!isAllowed) return null;
