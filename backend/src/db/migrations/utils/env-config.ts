@@ -42,7 +42,7 @@ export const getMigrationEnvConfig = () => {
     console.error("Invalid environment variables. Check the error below");
     // eslint-disable-next-line no-console
     console.error(
-      "Migration is now automatic at startup. Please remove this step from your workflow and start the application as normal."
+      "Infisical now automatically runs database migrations during boot up, so you no longer need to run them separately."
     );
     // eslint-disable-next-line no-console
     console.error(parsedEnv.error.issues);
