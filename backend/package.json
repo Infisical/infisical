@@ -129,7 +129,7 @@
     "@fastify/etag": "^5.1.0",
     "@fastify/formbody": "^7.4.0",
     "@fastify/helmet": "^11.1.1",
-    "@fastify/multipart": "8.3.0",
+    "@fastify/multipart": "8.3.1",
     "@fastify/passport": "^2.4.0",
     "@fastify/rate-limit": "^9.0.0",
     "@fastify/request-context": "^5.1.0",
