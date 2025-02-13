@@ -88,7 +88,7 @@ export const OctopusDeployConfigurePage = () => {
       {
         integrationAuthId,
         spaceId: currentSpace?.Id,
-        resourceId: currentResource.appId!,
+        resourceId: currentResource?.appId || "",
         scope: currentScope
       },
       { enabled: Boolean(currentSpace && currentResource) }
