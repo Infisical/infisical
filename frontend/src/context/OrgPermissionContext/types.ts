@@ -7,6 +7,14 @@ export enum OrgPermissionActions {
   Delete = "delete"
 }
 
+export enum OrgGatewayPermissionActions {
+  // is there a better word for this. This mean can an identity be a gateway
+  Create = "create",
+  Read = "read",
+  Edit = "edit",
+  Delete = "delete"
+}
+
 export enum OrgPermissionSubjects {
   Workspace = "workspace",
   Role = "role",
@@ -25,7 +33,8 @@ export enum OrgPermissionSubjects {
   AuditLogs = "audit-logs",
   ProjectTemplates = "project-templates",
   AppConnections = "app-connections",
-  Kmip = "kmip"
+  Kmip = "kmip",
+  Gateway = "gateway"
 }
 
 export enum OrgPermissionAdminConsoleAction {
@@ -68,7 +77,8 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.AuditLogs]
   | [OrgPermissionActions, OrgPermissionSubjects.ProjectTemplates]
   | [OrgPermissionAppConnectionActions, OrgPermissionSubjects.AppConnections]
-  | [OrgPermissionKmipActions, OrgPermissionSubjects.Kmip];
+  | [OrgPermissionKmipActions, OrgPermissionSubjects.Kmip]
+  | [OrgGatewayPermissionActions, OrgPermissionSubjects.Gateway];
 // TODO(scott): add back once org UI refactored
 // | [
 //     OrgPermissionAppConnectionActions,
