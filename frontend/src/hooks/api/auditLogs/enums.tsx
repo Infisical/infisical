@@ -139,5 +139,10 @@ export enum EventType {
   CREATE_KMIP_CLIENT_CERTIFICATE = "create-kmip-client-certificate",
   KMIP_OPERATION_CREATE = "kmip-operation-create",
   KMIP_OPERATION_GET = "kmip-operation-get",
-  KMIP_OPERATION_DELETE = "kmip-operation-delete"
+  KMIP_OPERATION_DELETE = "kmip-operation-delete",
+  KMIP_OPERATION_GET_ATTRIBUTES = "kmip-operation-get-attributes",
+  KMIP_OPERATION_ACTIVATE = "kmip-operation-activate",
+  KMIP_OPERATION_REVOKE = "kmip-operation-revoke",
+  KMIP_OPERATION_LOCATE = "kmip-operation-locate",
+  KMIP_OPERATION_REGISTER = "kmip-operation-register"
 }

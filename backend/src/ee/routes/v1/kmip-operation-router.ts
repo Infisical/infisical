@@ -153,7 +153,55 @@ export const registerKmipOperationRouter = async (server: FastifyZodProvider) =>
 
   server.route({
     method: "POST",
-    url: "/delete",
+    url: "/get-attributes",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "KMIP endpoint for getting attributes of managed object",
+      body: z.object({
+        id: z.string()
+      }),
+      response: {
+        200: z.object({
+          id: z.string(),
+          algorithm: z.string(),
+          isActive: z.boolean(),
+          createdAt: z.date(),
+          updatedAt: z.date()
+        })
+      }
+    },
+    handler: async (req) => {
+      const object = await server.services.kmipOperation.getAttributes({
+        ...req.kmipUser,
+        id: req.body.id
+      });
+
+      await server.services.auditLog.createAuditLog({
+        projectId: req.kmipUser.projectId,
+        actor: {
+          type: ActorType.KMIP_CLIENT,
+          metadata: {
+            clientId: req.kmipUser.clientId,
+            name: req.kmipUser.name
+          }
+        },
+        event: {
+          type: EventType.KMIP_OPERATION_GET_ATTRIBUTES,
+          metadata: {
+            id: object.id
+          }
+        }
+      });
+
+      return object;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/destroy",
     config: {
       rateLimit: writeLimit
     },
@@ -187,6 +235,195 @@ export const registerKmipOperationRouter = async (server: FastifyZodProvider) =>
           type: EventType.KMIP_OPERATION_DELETE,
           metadata: {
             id: object.id
+          }
+        }
+      });
+
+      return object;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/activate",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "KMIP endpoint for activating managed object",
+      body: z.object({
+        id: z.string()
+      }),
+      response: {
+        200: z.object({
+          id: z.string(),
+          isActive: z.boolean()
+        })
+      }
+    },
+    handler: async (req) => {
+      const object = await server.services.kmipOperation.activate({
+        ...req.kmipUser,
+        id: req.body.id
+      });
+
+      await server.services.auditLog.createAuditLog({
+        projectId: req.kmipUser.projectId,
+        actor: {
+          type: ActorType.KMIP_CLIENT,
+          metadata: {
+            clientId: req.kmipUser.clientId,
+            name: req.kmipUser.name
+          }
+        },
+        event: {
+          type: EventType.KMIP_OPERATION_ACTIVATE,
+          metadata: {
+            id: object.id
+          }
+        }
+      });
+
+      return object;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/revoke",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "KMIP endpoint for revoking managed object",
+      body: z.object({
+        id: z.string()
+      }),
+      response: {
+        200: z.object({
+          id: z.string(),
+          updatedAt: z.date()
+        })
+      }
+    },
+    handler: async (req) => {
+      const object = await server.services.kmipOperation.revoke({
+        ...req.kmipUser,
+        id: req.body.id
+      });
+
+      await server.services.auditLog.createAuditLog({
+        projectId: req.kmipUser.projectId,
+        actor: {
+          type: ActorType.KMIP_CLIENT,
+          metadata: {
+            clientId: req.kmipUser.clientId,
+            name: req.kmipUser.name
+          }
+        },
+        event: {
+          type: EventType.KMIP_OPERATION_REVOKE,
+          metadata: {
+            id: object.id
+          }
+        }
+      });
+
+      return object;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/locate",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "KMIP endpoint for locating managed objects",
+      response: {
+        200: z.object({
+          objects: z
+            .object({
+              id: z.string(),
+              name: z.string(),
+              isActive: z.boolean(),
+              algorithm: z.string(),
+              createdAt: z.date(),
+              updatedAt: z.date()
+            })
+            .array()
+        })
+      }
+    },
+    handler: async (req) => {
+      const objects = await server.services.kmipOperation.locate({
+        ...req.kmipUser
+      });
+
+      await server.services.auditLog.createAuditLog({
+        projectId: req.kmipUser.projectId,
+        actor: {
+          type: ActorType.KMIP_CLIENT,
+          metadata: {
+            clientId: req.kmipUser.clientId,
+            name: req.kmipUser.name
+          }
+        },
+        event: {
+          type: EventType.KMIP_OPERATION_LOCATE,
+          metadata: {
+            ids: objects.map((obj) => obj.id)
+          }
+        }
+      });
+
+      return {
+        objects
+      };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/register",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "KMIP endpoint for registering managed object",
+      body: z.object({
+        key: z.string(),
+        name: z.string(),
+        algorithm: z.nativeEnum(SymmetricEncryption)
+      }),
+      response: {
+        200: z.object({
+          id: z.string()
+        })
+      }
+    },
+    handler: async (req) => {
+      const object = await server.services.kmipOperation.register({
+        ...req.kmipUser,
+        ...req.body
+      });
+
+      await server.services.auditLog.createAuditLog({
+        projectId: req.kmipUser.projectId,
+        actor: {
+          type: ActorType.KMIP_CLIENT,
+          metadata: {
+            clientId: req.kmipUser.clientId,
+            name: req.kmipUser.name
+          }
+        },
+        event: {
+          type: EventType.KMIP_OPERATION_REGISTER,
+          metadata: {
+            id: object.id,
+            algorithm: req.body.algorithm,
+            name: object.name
           }
         }
       });

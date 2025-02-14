@@ -56,6 +56,26 @@ export type TKmipGetDTO = {
   id: string;
 } & KmipOperationBaseDTO;
 
+export type TKmipGetAttributesDTO = {
+  id: string;
+} & KmipOperationBaseDTO;
+
 export type TKmipDeleteDTO = {
   id: string;
+} & KmipOperationBaseDTO;
+
+export type TKmipActivateDTO = {
+  id: string;
+} & KmipOperationBaseDTO;
+
+export type TKmipRevokeDTO = {
+  id: string;
+} & KmipOperationBaseDTO;
+
+export type TKmipLocateDTO = KmipOperationBaseDTO;
+
+export type TKmipRegisterDTO = {
+  name: string;
+  key: string;
+  algorithm: SymmetricEncryption;
 } & KmipOperationBaseDTO;

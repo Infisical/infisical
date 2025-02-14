@@ -127,7 +127,12 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.CREATE_KMIP_CLIENT_CERTIFICATE]: "Create KMIP client certificate",
   [EventType.KMIP_OPERATION_CREATE]: "KMIP operation create",
   [EventType.KMIP_OPERATION_GET]: "KMIP operation get",
-  [EventType.KMIP_OPERATION_DELETE]: "KMIP operation delete"
+  [EventType.KMIP_OPERATION_DELETE]: "KMIP operation delete",
+  [EventType.KMIP_OPERATION_GET_ATTRIBUTES]: "KMIP operation get attributes",
+  [EventType.KMIP_OPERATION_ACTIVATE]: "KMIP operation activate",
+  [EventType.KMIP_OPERATION_REVOKE]: "KMIP operation revoke",
+  [EventType.KMIP_OPERATION_LOCATE]: "KMIP operation locate",
+  [EventType.KMIP_OPERATION_REGISTER]: "KMIP operation register"
 };
 
 export const userAgentTTypeoNameMap: { [K in UserAgentType]: string } = {

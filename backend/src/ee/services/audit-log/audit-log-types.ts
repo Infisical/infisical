@@ -269,7 +269,12 @@ export enum EventType {
   CREATE_KMIP_CLIENT_CERTIFICATE = "create-kmip-client-certificate",
   KMIP_OPERATION_CREATE = "kmip-operation-create",
   KMIP_OPERATION_GET = "kmip-operation-get",
-  KMIP_OPERATION_DELETE = "kmip-operation-delete"
+  KMIP_OPERATION_DELETE = "kmip-operation-delete",
+  KMIP_OPERATION_GET_ATTRIBUTES = "kmip-operation-get-attributes",
+  KMIP_OPERATION_ACTIVATE = "kmip-operation-activate",
+  KMIP_OPERATION_REVOKE = "kmip-operation-revoke",
+  KMIP_OPERATION_LOCATE = "kmip-operation-locate",
+  KMIP_OPERATION_REGISTER = "kmip-operation-register"
 }
 
 interface UserActorMetadata {
@@ -2165,6 +2170,43 @@ interface KmipOperationCreateEvent {
   };
 }
 
+interface KmipOperationGetAttributesEvent {
+  type: EventType.KMIP_OPERATION_GET_ATTRIBUTES;
+  metadata: {
+    id: string;
+  };
+}
+
+interface KmipOperationActivateEvent {
+  type: EventType.KMIP_OPERATION_ACTIVATE;
+  metadata: {
+    id: string;
+  };
+}
+
+interface KmipOperationRevokeEvent {
+  type: EventType.KMIP_OPERATION_REVOKE;
+  metadata: {
+    id: string;
+  };
+}
+
+interface KmipOperationLocateEvent {
+  type: EventType.KMIP_OPERATION_LOCATE;
+  metadata: {
+    ids: string[];
+  };
+}
+
+interface KmipOperationRegisterEvent {
+  type: EventType.KMIP_OPERATION_REGISTER;
+  metadata: {
+    id: string;
+    algorithm: string;
+    name: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -2364,4 +2406,9 @@ export type Event =
   | CreateKmipClientCertificateEvent
   | KmipOperationGetEvent
   | KmipOperationDeleteEvent
-  | KmipOperationCreateEvent;
+  | KmipOperationCreateEvent
+  | KmipOperationGetAttributesEvent
+  | KmipOperationActivateEvent
+  | KmipOperationRevokeEvent
+  | KmipOperationLocateEvent
+  | KmipOperationRegisterEvent;

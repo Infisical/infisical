@@ -64,3 +64,12 @@ export enum RootKeyEncryptionStrategy {
 export type TGetKeyMaterialDTO = {
   kmsId: string;
 };
+
+export type TImportKeyMaterialDTO = {
+  key: Buffer;
+  algorithm: SymmetricEncryption;
+  name?: string;
+  isReserved: boolean;
+  projectId: string;
+  orgId: string;
+};
