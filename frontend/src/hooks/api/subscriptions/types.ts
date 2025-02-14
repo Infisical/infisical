@@ -42,6 +42,7 @@ export type SubscriptionPlan = {
   has_used_trial: boolean;
   caCrl: boolean;
   instanceUserManagement: boolean;
+  gateway: boolean;
   externalKms: boolean;
   pkiEst: boolean;
   enforceMfa: boolean;
