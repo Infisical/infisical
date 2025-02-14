@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { OrganizationsSchema, SuperAdminSchema, UsersSchema } from "@app/db/schemas";
+import { GatewayInstanceConfigSchema, OrganizationsSchema, SuperAdminSchema, UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -11,6 +11,13 @@ import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+
+const SanitizedInstanceGatewaySchema = GatewayInstanceConfigSchema.pick({
+  isDisabled: true,
+  infisicalClientCaIssuedAt: true,
+  infisicalClientCaSerialNumber: true,
+  caKeyAlgorithm: true
+});
 
 export const registerAdminRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -244,6 +251,82 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       await server.services.superAdmin.updateRootEncryptionStrategy(req.body.strategy);
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/gateway",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async () => {
+      await server.services.superAdmin.setupInstanceGateway();
+      return { message: "Gateway setup completed" };
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/gateway",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      body: z.object({
+        isDisabled: z.boolean().optional()
+      }),
+      response: {
+        200: z.object({
+          message: z.string(),
+          gateway: SanitizedInstanceGatewaySchema
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      const gateway = await server.services.superAdmin.updateInstanceGateway(req.body);
+      return { message: "Gateway updated Successfully.", gateway };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/gateway",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          gateway: SanitizedInstanceGatewaySchema
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async () => {
+      const gateway = await server.services.superAdmin.getInstanceGateway();
+      return { gateway };
     }
   });
 

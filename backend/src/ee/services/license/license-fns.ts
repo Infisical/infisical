@@ -51,7 +51,8 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   pkiEst: false,
   enforceMfa: false,
   projectTemplates: false,
-  kmip: false
+  kmip: false,
+  gateway: true
 });
 
 export const setupLicenseRequestWithStore = (baseURL: string, refreshUrl: string, licenseKey: string) => {
