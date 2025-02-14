@@ -29,7 +29,8 @@ const organizationRoutes = route("/organization", [
       "/$appConnection/oauth/callback",
       "organization/AppConnections/OauthCallbackPage/route.tsx"
     )
-  ])
+  ]),
+  route("/gateways", [index("organization/Gateways/GatewayListPage/route.tsx")])
 ]);
 
 const secretManagerRoutes = route("/secret-manager/$projectId", [
