@@ -66,3 +66,14 @@ export enum RootKeyEncryptionStrategy {
   Software = "SOFTWARE",
   HSM = "HSM"
 }
+
+export type TInstanceGatewayConfig = {
+  isDisabled: boolean;
+  infisicalClientCaIssuedAt: string;
+  infisicalClientCaSerialNumber: string;
+  caKeyAlgorithm: string;
+};
+
+export type TDisableInstanceGatewayConfigDTO = {
+  isDisabled?: boolean;
+};
