@@ -230,7 +230,7 @@ export const gatewayServiceFactory = ({
       orgPermission.authMethod,
       orgPermission.orgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgGatewayPermissionActions.Create, OrgPermissionSubjects.Gateway);
+    ForbiddenError.from(permission).throwUnlessCan(OrgGatewayPermissionActions.Read, OrgPermissionSubjects.Gateway);
     const rootCa = await orgGatewayRootCaDAL.findOne({ orgId: orgPermission.orgId });
     if (!rootCa) return [];
 
@@ -248,7 +248,7 @@ export const gatewayServiceFactory = ({
       orgPermission.authMethod,
       orgPermission.orgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgGatewayPermissionActions.Create, OrgPermissionSubjects.Gateway);
+    ForbiddenError.from(permission).throwUnlessCan(OrgGatewayPermissionActions.Read, OrgPermissionSubjects.Gateway);
     const rootCa = await orgGatewayRootCaDAL.findOne({ orgId: orgPermission.orgId });
     if (!rootCa) throw new NotFoundError({ message: `Gateway with ID ${id} not found.` });
 
@@ -265,7 +265,7 @@ export const gatewayServiceFactory = ({
       orgPermission.authMethod,
       orgPermission.orgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgGatewayPermissionActions.Create, OrgPermissionSubjects.Gateway);
+    ForbiddenError.from(permission).throwUnlessCan(OrgGatewayPermissionActions.Delete, OrgPermissionSubjects.Gateway);
     const rootCa = await orgGatewayRootCaDAL.findOne({ orgId: orgPermission.orgId });
     if (!rootCa) throw new NotFoundError({ message: `Gateway with ID ${id} not found.` });
 

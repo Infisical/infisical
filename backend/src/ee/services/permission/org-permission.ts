@@ -274,6 +274,10 @@ const buildAdminPermission = () => {
   can(OrgPermissionAppConnectionActions.Delete, OrgPermissionSubjects.AppConnections);
   can(OrgPermissionAppConnectionActions.Connect, OrgPermissionSubjects.AppConnections);
 
+  can(OrgGatewayPermissionActions.Read, OrgPermissionSubjects.Gateway);
+  can(OrgGatewayPermissionActions.Edit, OrgPermissionSubjects.Gateway);
+  can(OrgGatewayPermissionActions.Delete, OrgPermissionSubjects.Gateway);
+
   can(OrgPermissionAdminConsoleAction.AccessAllProjects, OrgPermissionSubjects.AdminConsole);
 
   can(OrgPermissionKmipActions.Setup, OrgPermissionSubjects.Kmip);
@@ -310,6 +314,7 @@ const buildMemberPermission = () => {
   can(OrgPermissionActions.Read, OrgPermissionSubjects.AuditLogs);
 
   can(OrgPermissionAppConnectionActions.Connect, OrgPermissionSubjects.AppConnections);
+  can(OrgGatewayPermissionActions.Read, OrgPermissionSubjects.Gateway);
 
   return rules;
 };
