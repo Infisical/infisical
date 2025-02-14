@@ -23,7 +23,7 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
   const destination = watch("destination");
   const app = SECRET_SYNC_CONNECTION_MAP[destination];
 
-  const { data: availableConnections, isLoading } = useListAvailableAppConnections(app);
+  const { data: availableConnections, isPending } = useListAvailableAppConnections(app);
 
   const connectionName = APP_CONNECTION_MAP[app].name;
 
@@ -54,7 +54,7 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
                 onChange(newValue);
                 if (callback) callback();
               }}
-              isLoading={isLoading}
+              isLoading={isPending}
               options={availableConnections}
               placeholder="Select connection..."
               getOptionLabel={(option) => option.name}
