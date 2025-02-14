@@ -11,9 +11,9 @@ type Props = {
 };
 
 export const AppConnectionsSelect = ({ onSelect }: Props) => {
-  const { isLoading, data: appConnectionOptions } = useAppConnectionOptions();
+  const { isPending, data: appConnectionOptions } = useAppConnectionOptions();
 
-  if (isLoading) {
+  if (isPending) {
     return (
       <div className="flex h-full flex-col items-center justify-center py-2.5">
         <Spinner size="lg" className="text-mineshaft-500" />
