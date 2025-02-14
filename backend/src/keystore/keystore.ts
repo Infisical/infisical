@@ -2,11 +2,13 @@ import { Redis } from "ioredis";
 
 import { Redlock, Settings } from "@app/lib/red-lock";
 
-export enum PgSqlLock {
-  BootUpMigration = 2023,
-  SuperAdminInit = 2024,
-  KmsRootKeyInit = 2025
-}
+export const PgSqlLock = {
+  BootUpMigration: 2023,
+  SuperAdminInit: 2024,
+  KmsRootKeyInit: 2025,
+  OrgGatewayRootCaInit: (orgId: string) => `org-gateway-root-ca:${orgId}`,
+  OrgGatewayCertExchange: (orgId: string) => `org-gateway-cert-exchange:${orgId}`
+} as const;
 
 export type TKeyStoreFactory = ReturnType<typeof keyStoreFactory>;
 

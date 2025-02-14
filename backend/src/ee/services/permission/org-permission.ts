@@ -32,6 +32,14 @@ export enum OrgPermissionAdminConsoleAction {
   AccessAllProjects = "access-all-projects"
 }
 
+export enum OrgGatewayPermissionActions {
+  // is there a better word for this. This mean can an identity be a gateway
+  Create = "create",
+  Read = "read",
+  Edit = "edit",
+  Delete = "delete"
+}
+
 export enum OrgPermissionSubjects {
   Workspace = "workspace",
   Role = "role",
@@ -50,7 +58,8 @@ export enum OrgPermissionSubjects {
   AuditLogs = "audit-logs",
   ProjectTemplates = "project-templates",
   AppConnections = "app-connections",
-  Kmip = "kmip"
+  Kmip = "kmip",
+  Gateway = "gateway"
 }
 
 export type AppConnectionSubjectFields = {
@@ -73,6 +82,7 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.Kms]
   | [OrgPermissionActions, OrgPermissionSubjects.AuditLogs]
   | [OrgPermissionActions, OrgPermissionSubjects.ProjectTemplates]
+  | [OrgGatewayPermissionActions, OrgPermissionSubjects.Gateway]
   | [
       OrgPermissionAppConnectionActions,
       (

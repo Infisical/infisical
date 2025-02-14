@@ -184,6 +184,13 @@ const envSchema = z
     USE_PG_QUEUE: zodStrBool.default("false"),
     SHOULD_INIT_PG_QUEUE: zodStrBool.default("false"),
 
+    /* Gateway----------------------------------------------------------------------------- */
+    GATEWAY_INFISICAL_STATIC_IP_ADDRESS: zpStr(z.string().optional()),
+    GATEWAY_RELAY_ADDRESS: zpStr(z.string().optional()),
+    GATEWAY_RELAY_AUTH_SECRET: zpStr(z.string().optional()),
+
+    /* ----------------------------------------------------------------------------- */
+
     /* App Connections ----------------------------------------------------------------------------- */
 
     // aws

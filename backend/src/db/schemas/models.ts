@@ -113,6 +113,10 @@ export enum TableName {
   SecretApprovalRequestSecretTagV2 = "secret_approval_request_secret_tags_v2",
   SnapshotSecretV2 = "secret_snapshot_secrets_v2",
   ProjectSplitBackfillIds = "project_split_backfill_ids",
+  // Gateway
+  GatewayInstanceConfig = "gateway_instance_config",
+  OrgGatewayRootCa = "org_gateway_root_ca",
+  Gateway = "gateways",
   // junction tables with tags
   SecretV2JnTag = "secret_v2_tag_junction",
   JnSecretTag = "secret_tag_junction",

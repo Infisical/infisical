@@ -69,6 +69,7 @@ export type TFeatureSet = {
   enforceMfa: boolean;
   projectTemplates: false;
   kmip: false;
+  gateway: true;
 };
 
 export type TOrgPlansTableDTO = {
