@@ -285,7 +285,7 @@
       "pages": [
         "self-hosting/overview",
         {
-          "group": "Containerized installation methods",
+          "group": "Installation methods",
           "pages": [
             "self-hosting/deployment-options/standalone-infisical",
             "self-hosting/deployment-options/docker-swarm",
@@ -293,12 +293,12 @@
             "self-hosting/deployment-options/kubernetes-helm"
           ]
         },
+        "self-hosting/guides/upgrading-infisical",
         "self-hosting/configuration/envars",
         "self-hosting/configuration/requirements",
         {
           "group": "Guides",
           "pages": [
-            "self-hosting/configuration/schema-migrations",
             "self-hosting/guides/mongo-to-postgres",
             "self-hosting/guides/custom-certificates"
           ]
