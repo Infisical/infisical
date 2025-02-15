@@ -82,11 +82,27 @@ export const secretSharingDALFactory = (db: TDbClient) => {
     }
   };
 
+  const softDeleteByIdentifier = async (identifier: string) => {
+    try {
+      await db(TableName.SecretSharing).where({ identifier }).update({
+        encryptedValue: "",
+        iv: "",
+        tag: ""
+      });
+    } catch (error) {
+      throw new DatabaseError({
+        error,
+        name: "Soft Delete Shared Secret By Identifier"
+      });
+    }
+  };
+
   return {
     ...sharedSecretOrm,
     countAllUserOrgSharedSecrets,
     pruneExpiredSharedSecrets,
     softDeleteById,
+    softDeleteByIdentifier,
     findActiveSharedSecrets
   };
 };
