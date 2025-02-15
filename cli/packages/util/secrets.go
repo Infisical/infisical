@@ -1,6 +1,7 @@
 package util
 
 import (
+	"bufio"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
@@ -562,6 +563,27 @@ func GetPlainTextWorkspaceKey(authenticationToken string, receiverPrivateKey str
 	}
 
 	return crypto.DecryptAsymmetric(encryptedWorkspaceKey, encryptedWorkspaceKeyNonce, encryptedWorkspaceKeySenderPublicKey, currentUsersPrivateKey), nil
+}
+
+func ParseSecretsFromDotEnvFile(filePath string) ([]string, error) {
+	cwd,err:=os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	filePath = path.Join(cwd, filePath)
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	
+	defer file.Close()
+	env:=make([]string,0)
+	
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		env = append(env, scanner.Text())
+	}
+	return env, nil
 }
 
 func SetRawSecrets(secretArgs []string, secretType string, environmentName string, secretsPath string, projectId string, tokenDetails *models.TokenDetails) ([]models.SecretSetOperation, error) {

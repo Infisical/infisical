@@ -143,7 +143,6 @@ var secretsSetCmd = &cobra.Command{
 	Short:                 "Used set secrets",
 	Use:                   "set [secrets]",
 	DisableFlagsInUseLine: true,
-	Args:                  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		token, err := util.GetInfisicalToken(cmd)
 		if err != nil {
@@ -152,6 +151,15 @@ var secretsSetCmd = &cobra.Command{
 
 		if token == nil {
 			util.RequireLocalWorkspaceFile()
+		}
+
+		envFilePath, err := cmd.Flags().GetString("file")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
+		if envFilePath =="" && len(args) < 1 {
+			util.PrintErrorMessageAndExit("You need to provide either secrets or a path to a .env file containing secrets")
 		}
 
 		environmentName, _ := cmd.Flags().GetString("env")
@@ -176,6 +184,16 @@ var secretsSetCmd = &cobra.Command{
 		if err != nil || (secretType != util.SECRET_TYPE_SHARED && secretType != util.SECRET_TYPE_PERSONAL) {
 			util.HandleError(err, "Unable to parse secret type")
 		}
+
+		// check if user wants to upload secrets from a file
+		if envFilePath!="" {
+			secretsFromFile, err := util.ParseSecretsFromDotEnvFile(envFilePath)
+			if err != nil {
+				util.HandleError(err, "unable to parse secrets from file")
+			}
+			args = secretsFromFile
+		}
+
 
 		var secretOperations []models.SecretSetOperation
 		if token != nil && (token.Type == util.SERVICE_TOKEN_IDENTIFIER || token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER) {
@@ -206,7 +224,7 @@ var secretsSetCmd = &cobra.Command{
 			secretOperations, err = util.SetRawSecrets(args, secretType, environmentName, secretsPath, projectId, &models.TokenDetails{
 				Type:  "",
 				Token: loggedInUserDetails.UserCredentials.JTWToken,
-			})
+			}) 
 		}
 
 		if err != nil {
@@ -690,6 +708,13 @@ func init() {
 	secretsSetCmd.Flags().String("token", "", "Fetch secrets using service token or machine identity access token")
 	secretsSetCmd.Flags().String("projectId", "", "manually set the project ID to for setting secrets when using machine identity based auth")
 	secretsSetCmd.Flags().String("path", "/", "set secrets within a folder path")
+	secretsSetCmd.Flags().String("file","","Path to env file containing secrets")
+
+	// Only supports logged in users (JWT auth)
+	secretsSetCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		util.RequireLogin()
+		util.RequireLocalWorkspaceFile()
+	}
 	secretsSetCmd.Flags().String("type", util.SECRET_TYPE_SHARED, "the type of secret to create: personal or shared")
 
 	secretsDeleteCmd.Flags().String("type", "personal", "the type of secret to delete: personal or shared  (default: personal)")
