@@ -10,8 +10,12 @@ import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissi
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
 import { AwsParameterStoreSyncDestinationSection } from "@app/pages/secret-manager/SecretSyncDetailsByIDPage/components/SecretSyncDestinationSection/AwsParameterStoreSyncDestinationSection";
+import { AwsSecretsManagerSyncDestinationSection } from "@app/pages/secret-manager/SecretSyncDetailsByIDPage/components/SecretSyncDestinationSection/AwsSecretsManagerSyncDestinationSection";
+import { DatabricksSyncDestinationSection } from "@app/pages/secret-manager/SecretSyncDetailsByIDPage/components/SecretSyncDestinationSection/DatabricksSyncDestinationSection";
 import { GitHubSyncDestinationSection } from "@app/pages/secret-manager/SecretSyncDetailsByIDPage/components/SecretSyncDestinationSection/GitHubSyncDestinationSection";
 
+import { AzureAppConfigurationSyncDestinationSection } from "./AzureAppConfigurationSyncDestinationSection";
+import { AzureKeyVaultSyncDestinationSection } from "./AzureKeyVaultSyncDestinationSection";
 import { GcpSyncDestinationSection } from "./GcpSyncDestinationSection";
 
 type Props = {
@@ -29,11 +33,25 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
     case SecretSync.AWSParameterStore:
       DestinationComponents = <AwsParameterStoreSyncDestinationSection secretSync={secretSync} />;
       break;
+    case SecretSync.AWSSecretsManager:
+      DestinationComponents = <AwsSecretsManagerSyncDestinationSection secretSync={secretSync} />;
+      break;
     case SecretSync.GitHub:
       DestinationComponents = <GitHubSyncDestinationSection secretSync={secretSync} />;
       break;
     case SecretSync.GCPSecretManager:
       DestinationComponents = <GcpSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.AzureKeyVault:
+      DestinationComponents = <AzureKeyVaultSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.AzureAppConfiguration:
+      DestinationComponents = (
+        <AzureAppConfigurationSyncDestinationSection secretSync={secretSync} />
+      );
+      break;
+    case SecretSync.Databricks:
+      DestinationComponents = <DatabricksSyncDestinationSection secretSync={secretSync} />;
       break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);

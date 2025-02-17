@@ -3,6 +3,18 @@ import { Job } from "bullmq";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { QueueJobs } from "@app/queue";
 import {
+  TAwsSecretsManagerSync,
+  TAwsSecretsManagerSyncInput,
+  TAwsSecretsManagerSyncListItem,
+  TAwsSecretsManagerSyncWithCredentials
+} from "@app/services/secret-sync/aws-secrets-manager";
+import {
+  TDatabricksSync,
+  TDatabricksSyncInput,
+  TDatabricksSyncListItem,
+  TDatabricksSyncWithCredentials
+} from "@app/services/secret-sync/databricks";
+import {
   TGitHubSync,
   TGitHubSyncInput,
   TGitHubSyncListItem,
@@ -17,18 +29,55 @@ import {
   TAwsParameterStoreSyncListItem,
   TAwsParameterStoreSyncWithCredentials
 } from "./aws-parameter-store";
+import {
+  TAzureAppConfigurationSync,
+  TAzureAppConfigurationSyncInput,
+  TAzureAppConfigurationSyncListItem,
+  TAzureAppConfigurationSyncWithCredentials
+} from "./azure-app-configuration";
+import {
+  TAzureKeyVaultSync,
+  TAzureKeyVaultSyncInput,
+  TAzureKeyVaultSyncListItem,
+  TAzureKeyVaultSyncWithCredentials
+} from "./azure-key-vault";
 import { TGcpSync, TGcpSyncInput, TGcpSyncListItem, TGcpSyncWithCredentials } from "./gcp";
 
-export type TSecretSync = TAwsParameterStoreSync | TGitHubSync | TGcpSync;
+export type TSecretSync =
+  | TAwsParameterStoreSync
+  | TAwsSecretsManagerSync
+  | TGitHubSync
+  | TGcpSync
+  | TAzureKeyVaultSync
+  | TAzureAppConfigurationSync
+  | TDatabricksSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
+  | TAwsSecretsManagerSyncWithCredentials
   | TGitHubSyncWithCredentials
-  | TGcpSyncWithCredentials;
+  | TGcpSyncWithCredentials
+  | TAzureKeyVaultSyncWithCredentials
+  | TAzureAppConfigurationSyncWithCredentials
+  | TDatabricksSyncWithCredentials;
 
-export type TSecretSyncInput = TAwsParameterStoreSyncInput | TGitHubSyncInput | TGcpSyncInput;
+export type TSecretSyncInput =
+  | TAwsParameterStoreSyncInput
+  | TAwsSecretsManagerSyncInput
+  | TGitHubSyncInput
+  | TGcpSyncInput
+  | TAzureKeyVaultSyncInput
+  | TAzureAppConfigurationSyncInput
+  | TDatabricksSyncInput;
 
-export type TSecretSyncListItem = TAwsParameterStoreSyncListItem | TGitHubSyncListItem | TGcpSyncListItem;
+export type TSecretSyncListItem =
+  | TAwsParameterStoreSyncListItem
+  | TAwsSecretsManagerSyncListItem
+  | TGitHubSyncListItem
+  | TGcpSyncListItem
+  | TAzureKeyVaultSyncListItem
+  | TAzureAppConfigurationSyncListItem
+  | TDatabricksSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

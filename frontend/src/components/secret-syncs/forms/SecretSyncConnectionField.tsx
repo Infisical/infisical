@@ -23,7 +23,7 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
   const destination = watch("destination");
   const app = SECRET_SYNC_CONNECTION_MAP[destination];
 
-  const { data: options, isLoading } = useListAvailableAppConnections(app);
+  const { data: availableConnections, isPending } = useListAvailableAppConnections(app);
 
   const connectionName = APP_CONNECTION_MAP[app].name;
 
@@ -54,8 +54,8 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
                 onChange(newValue);
                 if (callback) callback();
               }}
-              isLoading={isLoading}
-              options={options}
+              isLoading={isPending}
+              options={availableConnections}
               placeholder="Select connection..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
@@ -65,18 +65,14 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
         control={control}
         name="connection"
       />
-      {options?.length === 0 && (
+      {availableConnections?.length === 0 && (
         <p className="-mt-2.5 mb-2.5 text-xs text-yellow">
           <FontAwesomeIcon className="mr-1" size="xs" icon={faInfoCircle} />
           {canCreateConnection ? (
             <>
               You do not have access to any {appName} Connections. Create one from the{" "}
-              <Link
-                to="/organization/settings"
-                className="underline"
-                search={{ selectedTab: "app-connections" }}
-              >
-                Organization Settings
+              <Link to="/organization/app-connections" className="underline">
+                App Connections
               </Link>{" "}
               page.
             </>

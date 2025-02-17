@@ -36,11 +36,12 @@ const SecretReferenceNodeTree: z.ZodType<TSecretReferenceNode> = SecretReference
   children: z.lazy(() => SecretReferenceNodeTree.array())
 });
 
-const SecretNameSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .refine((el) => !el.includes(" "), "Secret name cannot contain spaces.");
+const BaseSecretNameSchema = z.string().trim().min(1);
+
+const SecretNameSchema = BaseSecretNameSchema.refine(
+  (el) => !el.includes(" "),
+  "Secret name cannot contain spaces."
+).refine((el) => !el.includes(":"), "Secret name cannot contain colon.");
 
 export const registerSecretRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -181,6 +182,66 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       ],
       querystring: z.object({
+        metadataFilter: z
+          .string()
+          .optional()
+          .transform((val) => {
+            if (!val) return undefined;
+
+            const result: { key?: string; value?: string }[] = [];
+            const pairs = val.split("|");
+
+            for (const pair of pairs) {
+              const keyValuePair: { key?: string; value?: string } = {};
+              const parts = pair.split(/[,=]/);
+
+              for (let i = 0; i < parts.length; i += 2) {
+                const identifier = parts[i].trim().toLowerCase();
+                const value = parts[i + 1]?.trim();
+
+                if (identifier === "key" && value) {
+                  keyValuePair.key = value;
+                } else if (identifier === "value" && value) {
+                  keyValuePair.value = value;
+                }
+              }
+
+              if (keyValuePair.key && keyValuePair.value) {
+                result.push(keyValuePair);
+              }
+            }
+
+            return result.length ? result : undefined;
+          })
+          .superRefine((metadata, ctx) => {
+            if (metadata && !Array.isArray(metadata)) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message:
+                  "Invalid secretMetadata format. Correct format is key=value1,value=value2|key=value3,value=value4."
+              });
+            }
+
+            if (metadata) {
+              if (metadata.length > 10) {
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message: "You can only filter by up to 10 metadata fields"
+                });
+              }
+
+              for (const item of metadata) {
+                if (!item.key && !item.value) {
+                  ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message:
+                      "Invalid secretMetadata format, key or value must be provided. Correct format is key=value1,value=value2|key=value3,value=value4."
+                  });
+                }
+              }
+            }
+          })
+          .describe(RAW_SECRETS.LIST.metadataFilter),
         workspaceId: z.string().trim().optional().describe(RAW_SECRETS.LIST.workspaceId),
         workspaceSlug: z.string().trim().optional().describe(RAW_SECRETS.LIST.workspaceSlug),
         environment: z.string().trim().optional().describe(RAW_SECRETS.LIST.environment),
@@ -281,6 +342,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         projectId: workspaceId,
         path: secretPath,
+        metadataFilter: req.query.metadataFilter,
         includeImports: req.query.include_imports,
         recursive: req.query.recursive,
         tagSlugs: req.query.tagSlugs
@@ -411,7 +473,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             secretPath: req.query.secretPath,
             secretId: secret.id,
             secretKey: req.params.secretName,
-            secretVersion: secret.version
+            secretVersion: secret.version,
+            secretMetadata: secret.secretMetadata
           }
         }
       });
@@ -519,7 +582,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             secretPath: req.body.secretPath,
             secretId: secret.id,
             secretKey: req.params.secretName,
-            secretVersion: secret.version
+            secretVersion: secret.version,
+            secretMetadata: req.body.secretMetadata
           }
         }
       });
@@ -555,7 +619,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        secretName: SecretNameSchema.describe(RAW_SECRETS.UPDATE.secretName)
+        secretName: BaseSecretNameSchema.describe(RAW_SECRETS.UPDATE.secretName)
       }),
       body: z.object({
         workspaceId: z.string().trim().describe(RAW_SECRETS.UPDATE.workspaceId),
@@ -631,7 +695,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             secretPath: req.body.secretPath,
             secretId: secret.id,
             secretKey: req.params.secretName,
-            secretVersion: secret.version
+            secretVersion: secret.version,
+            secretMetadata: req.body.secretMetadata
           }
         }
       });
@@ -1904,6 +1969,10 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       }
       const { secrets } = secretOperation;
 
+      const secretMetadataMap = new Map(
+        inputSecrets.map(({ secretKey, secretMetadata }) => [secretKey, secretMetadata])
+      );
+
       await server.services.auditLog.createAuditLog({
         projectId: secrets[0].workspace,
         ...req.auditLogInfo,
@@ -1915,7 +1984,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             secrets: secrets.map((secret) => ({
               secretId: secret.id,
               secretKey: secret.secretKey,
-              secretVersion: secret.version
+              secretVersion: secret.version,
+              secretMetadata: secretMetadataMap.get(secret.secretKey)
             }))
           }
         }
@@ -2010,6 +2080,10 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       }
       const { secrets } = secretOperation;
 
+      const secretMetadataMap = new Map(
+        inputSecrets.map(({ secretKey, secretMetadata }) => [secretKey, secretMetadata])
+      );
+
       await server.services.auditLog.createAuditLog({
         projectId: secrets[0].workspace,
         ...req.auditLogInfo,
@@ -2021,7 +2095,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             secrets: secrets.map((secret) => ({
               secretId: secret.id,
               secretKey: secret.secretKey,
-              secretVersion: secret.version
+              secretVersion: secret.version,
+              secretMetadata: secretMetadataMap.get(secret.secretKey)
             }))
           }
         }

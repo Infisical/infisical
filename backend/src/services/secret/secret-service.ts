@@ -1263,6 +1263,13 @@ export const secretServiceFactory = ({
         name: "bot_not_found_error"
       });
 
+    if (paramsV2.metadataFilter) {
+      throw new BadRequestError({
+        message: "Please upgrade your project to filter secrets by metadata",
+        name: "SecretMetadataNotSupported"
+      });
+    }
+
     const { secrets, imports } = await getSecrets({
       actorId,
       projectId,
@@ -1444,7 +1451,7 @@ export const secretServiceFactory = ({
       decryptedSecret.secretValue = expandedSecretValue || "";
     }
 
-    return decryptedSecret;
+    return { secretMetadata: undefined, ...decryptedSecret };
   };
 
   const createSecretRaw = async ({

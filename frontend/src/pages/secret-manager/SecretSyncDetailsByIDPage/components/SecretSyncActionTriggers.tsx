@@ -92,7 +92,8 @@ export const SecretSyncActionTriggers = ({ secretSync }: Props) => {
       await updateSync.mutateAsync({
         syncId: secretSync.id,
         destination: secretSync.destination,
-        isAutoSyncEnabled
+        isAutoSyncEnabled,
+        projectId: secretSync.projectId
       });
 
       createNotification({
@@ -111,7 +112,8 @@ export const SecretSyncActionTriggers = ({ secretSync }: Props) => {
     try {
       await triggerSyncSecrets.mutateAsync({
         syncId: secretSync.id,
-        destination: secretSync.destination
+        destination: secretSync.destination,
+        projectId: secretSync.projectId
       });
 
       createNotification({

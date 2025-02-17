@@ -10,6 +10,7 @@ import {
   faInfo,
   faInfoCircle,
   faMoneyBill,
+  faPlug,
   faSignOut,
   faUser,
   faUsers
@@ -100,6 +101,7 @@ export const MinimizedOrgSidebar = () => {
   const isMoreSelected = (
     [
       linkOptions({ to: "/organization/access-management" }).to,
+      linkOptions({ to: "/organization/app-connections" }).to,
       linkOptions({ to: "/organization/settings" }).to,
       linkOptions({ to: "/organization/audit-logs" }).to
     ] as string[]
@@ -311,36 +313,43 @@ export const MinimizedOrgSidebar = () => {
                   <div className="w-full">
                     <MenuIconButton
                       lottieIconMode="reverse"
-                      icon="three-ellipsis"
+                      icon="settings-cog"
                       isSelected={isMoreSelected}
                     >
-                      More
+                      Org Controls
                     </MenuIconButton>
                   </div>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" side="right" className="p-1">
                   <DropdownMenuLabel>Organization Options</DropdownMenuLabel>
                   <Link to="/organization/access-management">
-                    <DropdownMenuItem icon={<FontAwesomeIcon icon={faUsers} />}>
+                    <DropdownMenuItem icon={<FontAwesomeIcon className="w-3" icon={faUsers} />}>
                       Access Control
+                    </DropdownMenuItem>
+                  </Link>
+                  <Link to="/organization/app-connections">
+                    <DropdownMenuItem icon={<FontAwesomeIcon className="w-3" icon={faPlug} />}>
+                      App Connections
                     </DropdownMenuItem>
                   </Link>
                   {(window.location.origin.includes("https://app.infisical.com") ||
                     window.location.origin.includes("https://eu.infisical.com") ||
                     window.location.origin.includes("https://gamma.infisical.com")) && (
                     <Link to="/organization/billing">
-                      <DropdownMenuItem icon={<FontAwesomeIcon icon={faMoneyBill} />}>
+                      <DropdownMenuItem
+                        icon={<FontAwesomeIcon className="w-3" icon={faMoneyBill} />}
+                      >
                         Usage & Billing
                       </DropdownMenuItem>
                     </Link>
                   )}
                   <Link to="/organization/audit-logs">
-                    <DropdownMenuItem icon={<FontAwesomeIcon icon={faBook} />}>
+                    <DropdownMenuItem icon={<FontAwesomeIcon className="w-3" icon={faBook} />}>
                       Audit Logs
                     </DropdownMenuItem>
                   </Link>
                   <Link to="/organization/settings">
-                    <DropdownMenuItem icon={<FontAwesomeIcon icon={faCog} />}>
+                    <DropdownMenuItem icon={<FontAwesomeIcon className="w-3" icon={faCog} />}>
                       Organization Settings
                     </DropdownMenuItem>
                   </Link>

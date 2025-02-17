@@ -3,11 +3,31 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { KmsKeysSchema, TableName, TInternalKms, TKmsKeys } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { buildFindFilter, ormify, prependTableNameToFindFilter, selectAllTableCols } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
 import { CmekOrderBy, TListCmeksByProjectIdDTO } from "@app/services/cmek/cmek-types";
 
 export type TKmsKeyDALFactory = ReturnType<typeof kmskeyDALFactory>;
+
+type TCmekFindFilter = Parameters<typeof buildFindFilter<TKmsKeys>>[0];
+
+const baseCmekQuery = ({ filter, db, tx }: { db: TDbClient; filter?: TCmekFindFilter; tx?: Knex }) => {
+  const query = (tx || db.replicaNode())(TableName.KmsKey)
+    .where(`${TableName.KmsKey}.isReserved`, false)
+    .join(TableName.InternalKms, `${TableName.InternalKms}.kmsKeyId`, `${TableName.KmsKey}.id`)
+    .select(
+      selectAllTableCols(TableName.KmsKey),
+      db.ref("encryptionAlgorithm").withSchema(TableName.InternalKms),
+      db.ref("version").withSchema(TableName.InternalKms)
+    );
+
+  if (filter) {
+    /* eslint-disable @typescript-eslint/no-misused-promises */
+    void query.where(buildFindFilter(prependTableNameToFindFilter(TableName.KmsKey, filter)));
+  }
+
+  return query;
+};
 
 export const kmskeyDALFactory = (db: TDbClient) => {
   const kmsOrm = ormify(db, TableName.KmsKey);
@@ -101,7 +121,7 @@ export const kmskeyDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findKmsKeysByProjectId = async (
+  const listCmeksByProjectId = async (
     {
       projectId,
       offset = 0,
@@ -120,6 +140,7 @@ export const kmskeyDALFactory = (db: TDbClient) => {
             void qb.whereILike("name", `%${search}%`);
           }
         })
+        .where(`${TableName.KmsKey}.isReserved`, false)
         .join(TableName.InternalKms, `${TableName.InternalKms}.kmsKeyId`, `${TableName.KmsKey}.id`)
         .select<
           (TKmsKeys &
@@ -146,5 +167,33 @@ export const kmskeyDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...kmsOrm, findByIdWithAssociatedKms, findKmsKeysByProjectId, findProjectCmeks };
+  const findCmekById = async (id: string, tx?: Knex) => {
+    try {
+      const key = await baseCmekQuery({
+        filter: { id },
+        db,
+        tx
+      }).first();
+
+      return key;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find by ID - KMS Key" });
+    }
+  };
+
+  const findCmekByName = async (keyName: string, projectId: string, tx?: Knex) => {
+    try {
+      const key = await baseCmekQuery({
+        filter: { name: keyName, projectId },
+        db,
+        tx
+      }).first();
+
+      return key;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find by Name - KMS Key" });
+    }
+  };
+
+  return { ...kmsOrm, findByIdWithAssociatedKms, listCmeksByProjectId, findCmekById, findCmekByName, findProjectCmeks };
 };

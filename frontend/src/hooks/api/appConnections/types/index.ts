@@ -1,17 +1,28 @@
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { TAppConnectionOption } from "@app/hooks/api/appConnections/types/app-options";
 import { TAwsConnection } from "@app/hooks/api/appConnections/types/aws-connection";
+import { TDatabricksConnection } from "@app/hooks/api/appConnections/types/databricks-connection";
 import { TGitHubConnection } from "@app/hooks/api/appConnections/types/github-connection";
 
+import { TAzureAppConfigurationConnection } from "./azure-app-configuration-connection";
+import { TAzureKeyVaultConnection } from "./azure-key-vault-connection";
 import { TGcpConnection } from "./gcp-connection";
 
 export * from "./aws-connection";
+export * from "./azure-app-configuration-connection";
+export * from "./azure-key-vault-connection";
 export * from "./gcp-connection";
 export * from "./github-connection";
 
-export type TAppConnection = TAwsConnection | TGitHubConnection | TGcpConnection;
+export type TAppConnection =
+  | TAwsConnection
+  | TGitHubConnection
+  | TGcpConnection
+  | TAzureKeyVaultConnection
+  | TAzureAppConfigurationConnection
+  | TDatabricksConnection;
 
-export type TAvailableAppConnection = Pick<TAppConnection, "name" | "app" | "id">;
+export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
 export type TListAppConnections<T extends TAppConnection> = { appConnections: T[] };
 export type TGetAppConnection<T extends TAppConnection> = { appConnection: T };
@@ -40,4 +51,7 @@ export type TAppConnectionMap = {
   [AppConnection.AWS]: TAwsConnection;
   [AppConnection.GitHub]: TGitHubConnection;
   [AppConnection.GCP]: TGcpConnection;
+  [AppConnection.AzureKeyVault]: TAzureKeyVaultConnection;
+  [AppConnection.AzureAppConfiguration]: TAzureAppConfigurationConnection;
+  [AppConnection.Databricks]: TDatabricksConnection;
 };

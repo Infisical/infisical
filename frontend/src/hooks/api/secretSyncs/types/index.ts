@@ -1,8 +1,12 @@
 import { SecretSync, SecretSyncImportBehavior } from "@app/hooks/api/secretSyncs";
 import { TAwsParameterStoreSync } from "@app/hooks/api/secretSyncs/types/aws-parameter-store-sync";
+import { TDatabricksSync } from "@app/hooks/api/secretSyncs/types/databricks-sync";
 import { TGitHubSync } from "@app/hooks/api/secretSyncs/types/github-sync";
 import { DiscriminativePick } from "@app/types";
 
+import { TAwsSecretsManagerSync } from "./aws-secrets-manager-sync";
+import { TAzureAppConfigurationSync } from "./azure-app-configuration-sync";
+import { TAzureKeyVaultSync } from "./azure-key-vault-sync";
 import { TGcpSync } from "./gcp-sync";
 
 export type TSecretSyncOption = {
@@ -11,7 +15,14 @@ export type TSecretSyncOption = {
   canImportSecrets: boolean;
 };
 
-export type TSecretSync = TAwsParameterStoreSync | TGitHubSync | TGcpSync;
+export type TSecretSync =
+  | TAwsParameterStoreSync
+  | TAwsSecretsManagerSync
+  | TGitHubSync
+  | TGcpSync
+  | TAzureKeyVaultSync
+  | TAzureAppConfigurationSync
+  | TDatabricksSync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 
@@ -34,26 +45,31 @@ export type TUpdateSecretSyncDTO = Partial<
 > & {
   destination: SecretSync;
   syncId: string;
+  projectId: string;
 };
 
 export type TDeleteSecretSyncDTO = {
   destination: SecretSync;
   syncId: string;
   removeSecrets: boolean;
+  projectId: string;
 };
 
 export type TTriggerSecretSyncSyncSecretsDTO = {
   destination: SecretSync;
   syncId: string;
+  projectId: string;
 };
 
 export type TTriggerSecretSyncImportSecretsDTO = {
   destination: SecretSync;
   syncId: string;
   importBehavior: SecretSyncImportBehavior;
+  projectId: string;
 };
 
 export type TTriggerSecretSyncRemoveSecretsDTO = {
   destination: SecretSync;
   syncId: string;
+  projectId: string;
 };

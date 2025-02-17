@@ -204,6 +204,10 @@ const envSchema = z
     // gcp app
     INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL: zpStr(z.string().optional()),
 
+    // azure app
+    INF_APP_CONNECTION_AZURE_CLIENT_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_AZURE_CLIENT_SECRET: zpStr(z.string().optional()),
+
     /* CORS ----------------------------------------------------------------------------- */
 
     CORS_ALLOWED_ORIGINS: zpStr(
@@ -254,7 +258,8 @@ const envSchema = z
     SECRET_SCANNING_ORG_WHITELIST: data.SECRET_SCANNING_ORG_WHITELIST?.split(",")
   }));
 
-let envCfg: Readonly<z.infer<typeof envSchema>>;
+export type TEnvConfig = Readonly<z.infer<typeof envSchema>>;
+let envCfg: TEnvConfig;
 
 export const getConfig = () => envCfg;
 // cannot import singleton logger directly as it needs config to load various transport

@@ -15,7 +15,7 @@ type ContentProps = {
 };
 
 const Content = ({ secretSync, onComplete }: ContentProps) => {
-  const { id: syncId, destination } = secretSync;
+  const { id: syncId, destination, projectId } = secretSync;
   const destinationName = SECRET_SYNC_MAP[destination].name;
 
   const triggerSyncImport = useTriggerSecretSyncRemoveSecrets();
@@ -24,7 +24,8 @@ const Content = ({ secretSync, onComplete }: ContentProps) => {
     try {
       await triggerSyncImport.mutateAsync({
         syncId,
-        destination
+        destination,
+        projectId
       });
 
       createNotification({

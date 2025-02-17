@@ -688,7 +688,9 @@ export const RAW_SECRETS = {
     environment: "The slug of the environment to list secrets from.",
     secretPath: "The secret path to list secrets from.",
     includeImports: "Weather to include imported secrets or not.",
-    tagSlugs: "The comma separated tag slugs to filter secrets."
+    tagSlugs: "The comma separated tag slugs to filter secrets.",
+    metadataFilter:
+      "The secret metadata key-value pairs to filter secrets by. When querying for multiple metadata pairs, the query is treated as an AND operation. Secret metadata format is key=value1,value=value2|key=value3,value=value4."
   },
   CREATE: {
     secretName: "The name of the secret to create.",
@@ -1591,6 +1593,13 @@ export const KMS = {
     orderDirection: "The direction to order keys in.",
     search: "The text string to filter key names by."
   },
+  GET_KEY_BY_ID: {
+    keyId: "The ID of the KMS key to retrieve."
+  },
+  GET_KEY_BY_NAME: {
+    keyName: "The name of the KMS key to retrieve.",
+    projectId: "The ID of the project the key belongs to."
+  },
   ENCRYPT: {
     keyId: "The ID of the key to encrypt the data with.",
     plaintext: "The plaintext to be encrypted (base64 encoded)."
@@ -1709,21 +1718,40 @@ export const SecretSyncs = {
   SYNC_OPTIONS: (destination: SecretSync) => {
     const destinationName = SECRET_SYNC_NAME_MAP[destination];
     return {
-      INITIAL_SYNC_BEHAVIOR: `Specify how Infisical should resolve the initial sync to the ${destinationName} destination.`,
-      PREPEND_PREFIX: `Optionally prepend a prefix to your secrets' keys when syncing to ${destinationName}.`,
-      APPEND_SUFFIX: `Optionally append a suffix to your secrets' keys when syncing to ${destinationName}.`
+      initialSyncBehavior: `Specify how Infisical should resolve the initial sync to the ${destinationName} destination.`
     };
   },
   DESTINATION_CONFIG: {
     AWS_PARAMETER_STORE: {
-      REGION: "The AWS region to sync secrets to.",
-      PATH: "The Parameter Store path to sync secrets to."
+      region: "The AWS region to sync secrets to.",
+      path: "The Parameter Store path to sync secrets to."
+    },
+    AWS_SECRETS_MANAGER: {
+      region: "The AWS region to sync secrets to.",
+      mappingBehavior: "How secrets from Infisical should be mapped to AWS Secrets Manager; one-to-one or many-to-one.",
+      secretName: "The secret name in AWS Secrets Manager to sync to when using mapping behavior many-to-one."
     },
     GITHUB: {
-      ORG: "The name of the GitHub organization.",
-      OWNER: "The name of the GitHub account owner of the repository.",
-      REPO: "The name of the GitHub repository.",
-      ENV: "The name of the GitHub environment."
+      scope: "The GitHub scope that secrets should be synced to",
+      org: "The name of the GitHub organization.",
+      owner: "The name of the GitHub account owner of the repository.",
+      repo: "The name of the GitHub repository.",
+      env: "The name of the GitHub environment."
+    },
+    AZURE_KEY_VAULT: {
+      vaultBaseUrl: "The base URL of the Azure Key Vault to sync secrets to. Example: https://example.vault.azure.net/"
+    },
+    AZURE_APP_CONFIGURATION: {
+      configurationUrl:
+        "The URL of the Azure App Configuration to sync secrets to. Example: https://example.azconfig.io/",
+      label: "An optional label to assign to secrets created in Azure App Configuration."
+    },
+    GCP: {
+      scope: "The Google project scope that secrets should be synced to.",
+      projectId: "The ID of the Google project secrets should be synced to."
+    },
+    DATABRICKS: {
+      scope: "The Databricks secret scope that secrets should be synced to."
     }
   }
 };

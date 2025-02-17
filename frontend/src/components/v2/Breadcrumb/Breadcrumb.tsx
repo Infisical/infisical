@@ -126,7 +126,7 @@ export type TBreadcrumbFormat =
     };
 
 const BreadcrumbContainer = ({ breadcrumbs }: { breadcrumbs: TBreadcrumbFormat[] }) => (
-  <div className="mx-auto max-w-7xl py-4 capitalize text-white">
+  <div className="mx-auto max-w-7xl py-4 text-white">
     <Breadcrumb>
       <BreadcrumbList>
         {(breadcrumbs as TBreadcrumbFormat[]).map((el, index) => {

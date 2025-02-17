@@ -57,11 +57,14 @@ import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secre
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
+import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
+
 export type TSecretSyncQueueFactory = ReturnType<typeof secretSyncQueueFactory>;
 
 type TSecretSyncQueueFactoryDep = {
   queueService: Pick<TQueueServiceFactory, "queue" | "start">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
   folderDAL: TSecretFolderDALFactory;
   secretV2BridgeDAL: Pick<
@@ -111,6 +114,7 @@ const getRequeueDelay = (failureCount?: number) => {
 export const secretSyncQueueFactory = ({
   queueService,
   kmsService,
+  appConnectionDAL,
   keyStore,
   folderDAL,
   secretV2BridgeDAL,
@@ -322,7 +326,10 @@ export const secretSyncQueueFactory = ({
         "Invalid Secret Sync source configuration: folder no longer exists. Please update source environment and secret path."
       );
 
-    const importedSecrets = await SecretSyncFns.getSecrets(secretSync);
+    const importedSecrets = await SecretSyncFns.getSecrets(secretSync, {
+      appConnectionDAL,
+      kmsService
+    });
 
     if (!Object.keys(importedSecrets).length) return {};
 
@@ -434,7 +441,10 @@ export const secretSyncQueueFactory = ({
         });
       }
 
-      await SecretSyncFns.syncSecrets(secretSyncWithCredentials, secretMap);
+      await SecretSyncFns.syncSecrets(secretSyncWithCredentials, secretMap, {
+        appConnectionDAL,
+        kmsService
+      });
 
       isSynced = true;
     } catch (err) {
@@ -672,7 +682,11 @@ export const secretSyncQueueFactory = ({
             credentials
           }
         } as TSecretSyncWithCredentials,
-        secretMap
+        secretMap,
+        {
+          appConnectionDAL,
+          kmsService
+        }
       );
 
       isSuccess = true;

@@ -1,5 +1,7 @@
 import { createFileRoute, linkOptions } from "@tanstack/react-router";
 
+import { IntegrationsListPageTabs } from "@app/types/integrations";
+
 import { AWSSecretManagerAuthorizePage } from "./AwsSecretManagerAuthorizePage";
 
 export const Route = createFileRoute(
@@ -14,7 +16,10 @@ export const Route = createFileRoute(
           label: "Integrations",
           link: linkOptions({
             to: "/secret-manager/$projectId/integrations",
-            params
+            params,
+            search: {
+              selectedTab: IntegrationsListPageTabs.NativeIntegrations
+            }
           })
         },
         {

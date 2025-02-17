@@ -30,6 +30,7 @@ import { useWorkspace } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
 import { useGetIntegrationAuthById } from "@app/hooks/api/integrationAuth";
 import { useGetIntegrationAuthAwsKmsKeys } from "@app/hooks/api/integrationAuth/queries";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 enum TabSections {
   Connection = "connection",
@@ -158,6 +159,9 @@ export const AWSParameterStoreConfigurePage = () => {
         to: "/secret-manager/$projectId/integrations",
         params: {
           projectId: currentWorkspace.id
+        },
+        search: {
+          selectedTab: IntegrationsListPageTabs.NativeIntegrations
         }
       });
     } catch (err) {

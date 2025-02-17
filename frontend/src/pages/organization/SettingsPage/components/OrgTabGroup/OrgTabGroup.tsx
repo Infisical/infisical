@@ -4,7 +4,6 @@ import { useSearch } from "@tanstack/react-router";
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 
-import { AppConnectionsTab } from "../AppConnectionsTab";
 import { AuditLogStreamsTab } from "../AuditLogStreamTab";
 import { ImportTab } from "../ImportTab";
 import { KmipTab } from "../KmipTab/OrgKmipTab";
@@ -27,7 +26,6 @@ export const OrgTabGroup = () => {
       key: "workflow-integrations",
       component: OrgWorkflowIntegrationTab
     },
-    { name: "App Connections", key: "app-connections", component: AppConnectionsTab },
     { name: "Audit Log Streams", key: "tag-audit-log-streams", component: AuditLogStreamsTab },
     { name: "Import", key: "tab-import", component: ImportTab },
     { name: "Project Templates", key: "project-templates", component: ProjectTemplatesTab },

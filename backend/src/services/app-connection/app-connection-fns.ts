@@ -5,12 +5,17 @@ import { TAppConnectionServiceFactoryDep } from "@app/services/app-connection/ap
 import { TAppConnection, TAppConnectionConfig } from "@app/services/app-connection/app-connection-types";
 import {
   AwsConnectionMethod,
-  getAwsAppConnectionListItem,
+  getAwsConnectionListItem,
   validateAwsConnectionCredentials
 } from "@app/services/app-connection/aws";
 import {
+  DatabricksConnectionMethod,
+  getDatabricksConnectionListItem,
+  validateDatabricksConnectionCredentials
+} from "@app/services/app-connection/databricks";
+import {
   GcpConnectionMethod,
-  getGcpAppConnectionListItem,
+  getGcpConnectionListItem,
   validateGcpConnectionCredentials
 } from "@app/services/app-connection/gcp";
 import {
@@ -20,10 +25,26 @@ import {
 } from "@app/services/app-connection/github";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
+import {
+  AzureAppConfigurationConnectionMethod,
+  getAzureAppConfigurationConnectionListItem,
+  validateAzureAppConfigurationConnectionCredentials
+} from "./azure-app-configuration";
+import {
+  AzureKeyVaultConnectionMethod,
+  getAzureKeyVaultConnectionListItem,
+  validateAzureKeyVaultConnectionCredentials
+} from "./azure-key-vault";
+
 export const listAppConnectionOptions = () => {
-  return [getAwsAppConnectionListItem(), getGitHubConnectionListItem(), getGcpAppConnectionListItem()].sort((a, b) =>
-    a.name.localeCompare(b.name)
-  );
+  return [
+    getAwsConnectionListItem(),
+    getGitHubConnectionListItem(),
+    getGcpConnectionListItem(),
+    getAzureKeyVaultConnectionListItem(),
+    getAzureAppConfigurationConnectionListItem(),
+    getDatabricksConnectionListItem()
+  ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
 export const encryptAppConnectionCredentials = async ({
@@ -75,10 +96,16 @@ export const validateAppConnectionCredentials = async (
   switch (app) {
     case AppConnection.AWS:
       return validateAwsConnectionCredentials(appConnection);
+    case AppConnection.Databricks:
+      return validateDatabricksConnectionCredentials(appConnection);
     case AppConnection.GitHub:
       return validateGitHubConnectionCredentials(appConnection);
     case AppConnection.GCP:
       return validateGcpConnectionCredentials(appConnection);
+    case AppConnection.AzureKeyVault:
+      return validateAzureKeyVaultConnectionCredentials(appConnection);
+    case AppConnection.AzureAppConfiguration:
+      return validateAzureAppConfigurationConnectionCredentials(appConnection);
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection ${app}`);
@@ -89,6 +116,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
   switch (method) {
     case GitHubConnectionMethod.App:
       return "GitHub App";
+    case AzureKeyVaultConnectionMethod.OAuth:
+    case AzureAppConfigurationConnectionMethod.OAuth:
     case GitHubConnectionMethod.OAuth:
       return "OAuth";
     case AwsConnectionMethod.AccessKey:
@@ -97,6 +126,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "Assume Role";
     case GcpConnectionMethod.ServiceAccountImpersonation:
       return "Service Account Impersonation";
+    case DatabricksConnectionMethod.ServicePrincipal:
+      return "Service Principal";
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection Method: ${method}`);

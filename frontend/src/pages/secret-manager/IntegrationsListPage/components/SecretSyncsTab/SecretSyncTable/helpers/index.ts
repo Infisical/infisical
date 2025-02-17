@@ -17,6 +17,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.path;
       secondaryText = destinationConfig.region;
       break;
+    case SecretSync.AWSSecretsManager:
+      primaryText = destinationConfig.region;
+      secondaryText = destinationConfig.mappingBehavior;
+      break;
     case SecretSync.GitHub:
       switch (destinationConfig.scope) {
         case GitHubSyncScope.Organization:
@@ -42,6 +46,18 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
     case SecretSync.GCPSecretManager:
       primaryText = destinationConfig.projectId;
       secondaryText = "Global";
+      break;
+    case SecretSync.AzureKeyVault:
+      primaryText = destinationConfig.vaultBaseUrl;
+      break;
+    case SecretSync.AzureAppConfiguration:
+      primaryText = destinationConfig.configurationUrl;
+      if (destinationConfig.label) {
+        secondaryText = `Label - ${destinationConfig.label}`;
+      }
+      break;
+    case SecretSync.Databricks:
+      primaryText = destinationConfig.scope;
       break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);

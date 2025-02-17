@@ -3,11 +3,15 @@ import { useFormContext } from "react-hook-form";
 
 import { SecretSyncLabel } from "@app/components/secret-syncs";
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
+import { AwsSecretsManagerSyncReviewFields } from "@app/components/secret-syncs/forms/SecretSyncReviewFields/AwsSecretsManagerSyncReviewFields";
+import { DatabricksSyncReviewFields } from "@app/components/secret-syncs/forms/SecretSyncReviewFields/DatabricksSyncReviewFields";
 import { Badge } from "@app/components/v2";
 import { SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP, SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { AwsParameterStoreSyncReviewFields } from "./AwsParameterStoreSyncReviewFields";
+import { AzureAppConfigurationSyncReviewFields } from "./AzureAppConfigurationSyncReviewFields";
+import { AzureKeyVaultSyncReviewFields } from "./AzureKeyVaultSyncReviewFields";
 import { GcpSyncReviewFields } from "./GcpSyncReviewFields";
 import { GitHubSyncReviewFields } from "./GitHubSyncReviewFields";
 
@@ -36,11 +40,23 @@ export const SecretSyncReviewFields = () => {
     case SecretSync.AWSParameterStore:
       DestinationFieldsComponent = <AwsParameterStoreSyncReviewFields />;
       break;
+    case SecretSync.AWSSecretsManager:
+      DestinationFieldsComponent = <AwsSecretsManagerSyncReviewFields />;
+      break;
     case SecretSync.GitHub:
       DestinationFieldsComponent = <GitHubSyncReviewFields />;
       break;
     case SecretSync.GCPSecretManager:
       DestinationFieldsComponent = <GcpSyncReviewFields />;
+      break;
+    case SecretSync.AzureKeyVault:
+      DestinationFieldsComponent = <AzureKeyVaultSyncReviewFields />;
+      break;
+    case SecretSync.AzureAppConfiguration:
+      DestinationFieldsComponent = <AzureAppConfigurationSyncReviewFields />;
+      break;
+    case SecretSync.Databricks:
+      DestinationFieldsComponent = <DatabricksSyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

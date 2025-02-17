@@ -4,6 +4,18 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AwsConnectionListItemSchema, SanitizedAwsConnectionSchema } from "@app/services/app-connection/aws";
+import {
+  AzureAppConfigurationConnectionListItemSchema,
+  SanitizedAzureAppConfigurationConnectionSchema
+} from "@app/services/app-connection/azure-app-configuration";
+import {
+  AzureKeyVaultConnectionListItemSchema,
+  SanitizedAzureKeyVaultConnectionSchema
+} from "@app/services/app-connection/azure-key-vault";
+import {
+  DatabricksConnectionListItemSchema,
+  SanitizedDatabricksConnectionSchema
+} from "@app/services/app-connection/databricks";
 import { GcpConnectionListItemSchema, SanitizedGcpConnectionSchema } from "@app/services/app-connection/gcp";
 import { GitHubConnectionListItemSchema, SanitizedGitHubConnectionSchema } from "@app/services/app-connection/github";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -12,13 +24,19 @@ import { AuthMode } from "@app/services/auth/auth-type";
 const SanitizedAppConnectionSchema = z.union([
   ...SanitizedAwsConnectionSchema.options,
   ...SanitizedGitHubConnectionSchema.options,
-  ...SanitizedGcpConnectionSchema.options
+  ...SanitizedGcpConnectionSchema.options,
+  ...SanitizedAzureKeyVaultConnectionSchema.options,
+  ...SanitizedAzureAppConfigurationConnectionSchema.options,
+  ...SanitizedDatabricksConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   AwsConnectionListItemSchema,
   GitHubConnectionListItemSchema,
-  GcpConnectionListItemSchema
+  GcpConnectionListItemSchema,
+  AzureKeyVaultConnectionListItemSchema,
+  AzureAppConfigurationConnectionListItemSchema,
+  DatabricksConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

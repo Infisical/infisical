@@ -1291,8 +1291,13 @@ export const secretV2BridgeServiceFactory = ({
         ]
       }
     });
-    if (secretsToUpdate.length !== inputSecrets.length)
-      throw new NotFoundError({ message: `Secret does not exist: ${secretsToUpdate.map((el) => el.key).join(",")}` });
+    if (secretsToUpdate.length !== inputSecrets.length) {
+      const secretsToUpdateNames = secretsToUpdate.map((secret) => secret.key);
+      const invalidSecrets = inputSecrets.filter((secret) => !secretsToUpdateNames.includes(secret.secretKey));
+      throw new NotFoundError({
+        message: `Secret does not exist: ${invalidSecrets.map((el) => el.secretKey).join(",")}`
+      });
+    }
     const secretsToUpdateInDBGroupedByKey = groupBy(secretsToUpdate, (i) => i.key);
 
     secretsToUpdate.forEach((el) => {

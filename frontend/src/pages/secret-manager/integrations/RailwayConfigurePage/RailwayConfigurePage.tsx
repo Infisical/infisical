@@ -19,6 +19,7 @@ import {
   useGetIntegrationAuthRailwayEnvironments,
   useGetIntegrationAuthRailwayServices
 } from "@app/hooks/api/integrationAuth";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 export const RailwayConfigurePage = () => {
   const navigate = useNavigate();
@@ -110,6 +111,9 @@ export const RailwayConfigurePage = () => {
         to: "/secret-manager/$projectId/integrations",
         params: {
           projectId: currentWorkspace.id
+        },
+        search: {
+          selectedTab: IntegrationsListPageTabs.NativeIntegrations
         }
       });
     } catch (err) {

@@ -48,9 +48,3 @@ This ensures that if there is a failure in one availability zone, the working re
 <Accordion title="Can Infisical run in an air-gapped environment without any internet access?" defaultOpen >
     Yes, Infisical can function in an air-gapped environment. To do so, update your ECS task to use the publicly available AWS Elastic Container Registry (ECR) image instead of the default Docker Hub image. Additionally, it's necessary to configure VPC endpoints, which allows your system to access AWS ECR via a private network route instead of the internet, ensuring all connectivity remains within the secure, private network.
 </Accordion>
-<Accordion title="Since RDS is in a private subnet, how do run the Postgres schema migrations?">
-    Since the Amazon RDS instance is housed within a private network to enhance security, it is not directly accessible from the internet. This means that in order to run the required [Postgres schema migrations](/self-hosting/configuration/schema-migrations), you need to connect to this instance of RDS. There are many approaches you can take: 
-    - To automate schema migrations, you may setup CI/CD pipeline with access to the same RDS network to run the schema migrations before making deployment to ECS. This ensures that if migrations fail, your Infisical instances continues to run. 
-    - If you would like to run the migrations manually, consider using AWS Systems Manager Session Manager to access the RDS within the VPC on your local machine. 
-    - If your organization already has mechanisms in place for secure access to the VPC, such as VPNs or Direct Connect, these can also be utilized for performing database migrations manually.
-</Accordion>

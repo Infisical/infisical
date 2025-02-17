@@ -41,7 +41,7 @@ export const registerGitHubConnectionRouter = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { connectionId } = req.params;
 
@@ -67,7 +67,7 @@ export const registerGitHubConnectionRouter = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { connectionId } = req.params;
 
@@ -97,7 +97,7 @@ export const registerGitHubConnectionRouter = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { connectionId } = req.params;
       const { repo, owner } = req.query;

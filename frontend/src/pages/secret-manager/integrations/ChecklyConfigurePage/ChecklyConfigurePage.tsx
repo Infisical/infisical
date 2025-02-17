@@ -27,6 +27,7 @@ import {
   useGetIntegrationAuthChecklyGroups
 } from "@app/hooks/api/integrationAuth";
 import { useGetWorkspaceById } from "@app/hooks/api/workspace";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 enum TabSections {
   Connection = "connection",
@@ -115,6 +116,9 @@ export const ChecklyConfigurePage = () => {
         to: "/secret-manager/$projectId/integrations",
         params: {
           projectId: currentWorkspace.id
+        },
+        search: {
+          selectedTab: IntegrationsListPageTabs.NativeIntegrations
         }
       });
     } catch (err) {

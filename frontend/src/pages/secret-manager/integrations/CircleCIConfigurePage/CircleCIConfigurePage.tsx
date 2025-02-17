@@ -21,6 +21,7 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import { useWorkspace } from "@app/context";
 import { useCreateIntegration, useGetIntegrationAuthCircleCIOrganizations } from "@app/hooks/api";
 import { CircleCiScope } from "@app/hooks/api/integrationAuth/types";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 const formSchema = z.discriminatedUnion("scope", [
   z.object({
@@ -105,6 +106,9 @@ export const CircleCIConfigurePage = () => {
         to: "/secret-manager/$projectId/integrations",
         params: {
           projectId: currentWorkspace.id
+        },
+        search: {
+          selectedTab: IntegrationsListPageTabs.NativeIntegrations
         }
       });
     } catch (err) {

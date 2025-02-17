@@ -17,6 +17,7 @@ import {
   useGetIntegrationAuthApps,
   useGetIntegrationAuthById
 } from "@app/hooks/api/integrationAuth";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 const netlifyEnvironments = [
   { name: "Local development", slug: "dev" },
@@ -81,6 +82,9 @@ export const NetlifyConfigurePage = () => {
         to: "/secret-manager/$projectId/integrations",
         params: {
           projectId: currentWorkspace.id
+        },
+        search: {
+          selectedTab: IntegrationsListPageTabs.NativeIntegrations
         }
       });
     } catch (err) {

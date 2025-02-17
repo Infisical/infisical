@@ -284,7 +284,8 @@ export const CmekTable = () => {
                           <IconButton
                             ariaLabel="copy icon"
                             colorSchema="secondary"
-                            className="group/copy duration:0 invisible relative ml-3 group-hover:visible"
+                            size="xs"
+                            className="group/copy duration:0 invisible relative ml-3 rounded-md group-hover:visible"
                             onClick={() => {
                               navigator.clipboard.writeText(id);
                               setCopyCipherText("Copied");
@@ -299,112 +300,116 @@ export const CmekTable = () => {
                         <Badge variant={variant}>{label}</Badge>
                       </Td>
                       <Td>{version}</Td>
-                      <Td className="flex justify-end">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <IconButton
-                              variant="plain"
-                              colorSchema="primary"
-                              className="ml-4 p-0 data-[state=open]:text-primary-400"
-                              ariaLabel="More options"
-                            >
-                              <FontAwesomeIcon size="lg" icon={faEllipsis} />
-                            </IconButton>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent className="min-w-[160px]">
-                            <Tooltip
-                              content={
-                                // eslint-disable-next-line no-nested-ternary
-                                cannotEncryptData
-                                  ? "Access Restricted"
-                                  : isDisabled
-                                    ? "Key Disabled"
-                                    : ""
-                              }
-                              position="left"
-                            >
-                              <div>
-                                <DropdownMenuItem
-                                  onClick={() => handlePopUpOpen("encryptData", cmek)}
-                                  icon={<FontAwesomeIcon icon={faLock} />}
-                                  iconPos="left"
-                                  isDisabled={cannotEncryptData || isDisabled}
-                                >
-                                  Encrypt Data
-                                </DropdownMenuItem>
-                              </div>
-                            </Tooltip>
-                            <Tooltip
-                              content={
-                                // eslint-disable-next-line no-nested-ternary
-                                cannotDecryptData
-                                  ? "Access Restricted"
-                                  : isDisabled
-                                    ? "Key Disabled"
-                                    : ""
-                              }
-                              position="left"
-                            >
-                              <div>
-                                <DropdownMenuItem
-                                  onClick={() => handlePopUpOpen("decryptData", cmek)}
-                                  icon={<FontAwesomeIcon icon={faLockOpen} />}
-                                  iconPos="left"
-                                  isDisabled={cannotDecryptData || isDisabled}
-                                >
-                                  Decrypt Data
-                                </DropdownMenuItem>
-                              </div>
-                            </Tooltip>
-                            <Tooltip
-                              content={cannotEditKey ? "Access Restricted" : ""}
-                              position="left"
-                            >
-                              <div>
-                                <DropdownMenuItem
-                                  onClick={() => handlePopUpOpen("upsertKey", cmek)}
-                                  icon={<FontAwesomeIcon icon={faEdit} />}
-                                  iconPos="left"
-                                  isDisabled={cannotEditKey}
-                                >
-                                  Edit Key
-                                </DropdownMenuItem>
-                              </div>
-                            </Tooltip>
-                            <Tooltip
-                              content={cannotEditKey ? "Access Restricted" : ""}
-                              position="left"
-                            >
-                              <div>
-                                <DropdownMenuItem
-                                  onClick={() => handleDisableCmek(cmek)}
-                                  icon={
-                                    <FontAwesomeIcon icon={isDisabled ? faCheckCircle : faCancel} />
-                                  }
-                                  iconPos="left"
-                                  isDisabled={cannotEditKey}
-                                >
-                                  {isDisabled ? "Enable" : "Disable"} Key
-                                </DropdownMenuItem>
-                              </div>
-                            </Tooltip>
-                            <Tooltip
-                              content={cannotDeleteKey ? "Access Restricted" : ""}
-                              position="left"
-                            >
-                              <div>
-                                <DropdownMenuItem
-                                  onClick={() => handlePopUpOpen("deleteKey", cmek)}
-                                  icon={<FontAwesomeIcon icon={faTrash} />}
-                                  iconPos="left"
-                                  isDisabled={cannotDeleteKey}
-                                >
-                                  Delete Key
-                                </DropdownMenuItem>
-                              </div>
-                            </Tooltip>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                      <Td>
+                        <div className="flex justify-end">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <IconButton
+                                variant="plain"
+                                colorSchema="primary"
+                                className="ml-4 p-0 data-[state=open]:text-primary-400"
+                                ariaLabel="More options"
+                              >
+                                <FontAwesomeIcon size="lg" icon={faEllipsis} />
+                              </IconButton>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="min-w-[160px]">
+                              <Tooltip
+                                content={
+                                  // eslint-disable-next-line no-nested-ternary
+                                  cannotEncryptData
+                                    ? "Access Restricted"
+                                    : isDisabled
+                                      ? "Key Disabled"
+                                      : ""
+                                }
+                                position="left"
+                              >
+                                <div>
+                                  <DropdownMenuItem
+                                    onClick={() => handlePopUpOpen("encryptData", cmek)}
+                                    icon={<FontAwesomeIcon icon={faLock} />}
+                                    iconPos="left"
+                                    isDisabled={cannotEncryptData || isDisabled}
+                                  >
+                                    Encrypt Data
+                                  </DropdownMenuItem>
+                                </div>
+                              </Tooltip>
+                              <Tooltip
+                                content={
+                                  // eslint-disable-next-line no-nested-ternary
+                                  cannotDecryptData
+                                    ? "Access Restricted"
+                                    : isDisabled
+                                      ? "Key Disabled"
+                                      : ""
+                                }
+                                position="left"
+                              >
+                                <div>
+                                  <DropdownMenuItem
+                                    onClick={() => handlePopUpOpen("decryptData", cmek)}
+                                    icon={<FontAwesomeIcon icon={faLockOpen} />}
+                                    iconPos="left"
+                                    isDisabled={cannotDecryptData || isDisabled}
+                                  >
+                                    Decrypt Data
+                                  </DropdownMenuItem>
+                                </div>
+                              </Tooltip>
+                              <Tooltip
+                                content={cannotEditKey ? "Access Restricted" : ""}
+                                position="left"
+                              >
+                                <div>
+                                  <DropdownMenuItem
+                                    onClick={() => handlePopUpOpen("upsertKey", cmek)}
+                                    icon={<FontAwesomeIcon icon={faEdit} />}
+                                    iconPos="left"
+                                    isDisabled={cannotEditKey}
+                                  >
+                                    Edit Key
+                                  </DropdownMenuItem>
+                                </div>
+                              </Tooltip>
+                              <Tooltip
+                                content={cannotEditKey ? "Access Restricted" : ""}
+                                position="left"
+                              >
+                                <div>
+                                  <DropdownMenuItem
+                                    onClick={() => handleDisableCmek(cmek)}
+                                    icon={
+                                      <FontAwesomeIcon
+                                        icon={isDisabled ? faCheckCircle : faCancel}
+                                      />
+                                    }
+                                    iconPos="left"
+                                    isDisabled={cannotEditKey}
+                                  >
+                                    {isDisabled ? "Enable" : "Disable"} Key
+                                  </DropdownMenuItem>
+                                </div>
+                              </Tooltip>
+                              <Tooltip
+                                content={cannotDeleteKey ? "Access Restricted" : ""}
+                                position="left"
+                              >
+                                <div>
+                                  <DropdownMenuItem
+                                    onClick={() => handlePopUpOpen("deleteKey", cmek)}
+                                    icon={<FontAwesomeIcon icon={faTrash} />}
+                                    iconPos="left"
+                                    isDisabled={cannotDeleteKey}
+                                  >
+                                    Delete Key
+                                  </DropdownMenuItem>
+                                </div>
+                              </Tooltip>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </Td>
                     </Tr>
                   );

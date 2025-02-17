@@ -1,25 +1,23 @@
 import * as pkcs11js from "pkcs11js";
 
-import { getConfig } from "@app/lib/config/env";
+import { TEnvConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 
 import { HsmModule } from "./hsm-types";
 
-export const initializeHsmModule = () => {
-  const appCfg = getConfig();
-
+export const initializeHsmModule = (envConfig: Pick<TEnvConfig, "isHsmConfigured" | "HSM_LIB_PATH">) => {
   // Create a new instance of PKCS11 module
   const pkcs11 = new pkcs11js.PKCS11();
   let isInitialized = false;
 
   const initialize = () => {
-    if (!appCfg.isHsmConfigured) {
+    if (!envConfig.isHsmConfigured) {
       return;
     }
 
     try {
       // Load the PKCS#11 module
-      pkcs11.load(appCfg.HSM_LIB_PATH!);
+      pkcs11.load(envConfig.HSM_LIB_PATH!);
 
       // Initialize the module
       pkcs11.C_Initialize();

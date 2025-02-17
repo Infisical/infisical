@@ -23,6 +23,7 @@ import {
   useGetIntegrationAuthBitBucketWorkspaces
 } from "@app/hooks/api";
 import { useGetIntegrationAuthBitBucketEnvironments } from "@app/hooks/api/integrationAuth/queries";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 enum BitbucketScope {
   Repo = "repo",
@@ -131,6 +132,9 @@ export const BitbucketConfigurePage = () => {
         to: "/secret-manager/$projectId/integrations",
         params: {
           projectId: currentWorkspace.id
+        },
+        search: {
+          selectedTab: IntegrationsListPageTabs.NativeIntegrations
         }
       });
     } catch (err) {

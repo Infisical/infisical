@@ -8,6 +8,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { Badge, PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 import {
@@ -29,7 +30,7 @@ export const IntegrationsListPage = () => {
   const updateSelectedTab = (tab: string) => {
     navigate({
       to: ROUTE_PATHS.SecretManager.IntegrationsListPage.path,
-      search: (prev) => ({ ...prev, selectedTab: tab }),
+      search: (prev) => ({ ...prev, selectedTab: tab as IntegrationsListPageTabs }),
       params: {
         projectId: currentWorkspace.id
       }
@@ -52,7 +53,7 @@ export const IntegrationsListPage = () => {
           />
           <div className="mb-4 mt-4 flex flex-col rounded-r border-l-2 border-l-primary bg-mineshaft-300/5 px-4 py-2.5">
             <div className="mb-1 flex items-center text-sm">
-              <FontAwesomeIcon icon={faInfoCircle} size="sm" className="mr-1 text-primary" />
+              <FontAwesomeIcon icon={faInfoCircle} size="sm" className="mr-1.5 text-primary" />
               Integrations Update
             </div>
             <p className="mb-2 mt-1 text-sm text-bunker-300">
@@ -100,8 +101,7 @@ export const IntegrationsListPage = () => {
             <TabPanel value={IntegrationsListPageTabs.SecretSyncs}>
               <ProjectPermissionCan
                 renderGuardBanner
-                passThrough={false}
-                I={ProjectPermissionActions.Read}
+                I={ProjectPermissionSecretSyncActions.Read}
                 a={ProjectPermissionSub.SecretSyncs}
               >
                 <SecretSyncsTab />
@@ -110,7 +110,6 @@ export const IntegrationsListPage = () => {
             <TabPanel value={IntegrationsListPageTabs.NativeIntegrations}>
               <ProjectPermissionCan
                 renderGuardBanner
-                passThrough={false}
                 I={ProjectPermissionActions.Read}
                 a={ProjectPermissionSub.Integrations}
               >
