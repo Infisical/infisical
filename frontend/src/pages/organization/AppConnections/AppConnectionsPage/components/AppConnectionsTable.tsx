@@ -51,7 +51,7 @@ type AppConnectionFilters = {
 };
 
 export const AppConnectionsTable = () => {
-  const { isLoading, data: appConnections = [] } = useListAppConnections();
+  const { isPending, data: appConnections = [] } = useListAppConnections();
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "deleteConnection",
@@ -262,7 +262,7 @@ export const AppConnectionsTable = () => {
             </Tr>
           </THead>
           <TBody>
-            {isLoading && (
+            {isPending && (
               <TableSkeleton innerKey="app-connections-table" columns={4} key="app-connections" />
             )}
             {filteredAppConnections.slice(offset, perPage * page).map((connection) => (
@@ -285,7 +285,7 @@ export const AppConnectionsTable = () => {
             onChangePerPage={setPerPage}
           />
         )}
-        {!isLoading && !filteredAppConnections?.length && (
+        {!isPending && !filteredAppConnections?.length && (
           <EmptyState
             title={
               appConnections.length

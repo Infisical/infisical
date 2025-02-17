@@ -10,9 +10,9 @@ type Props = {
 };
 
 export const SecretSyncSelect = ({ onSelect }: Props) => {
-  const { isLoading, data: secretSyncOptions } = useSecretSyncOptions();
+  const { isPending, data: secretSyncOptions } = useSecretSyncOptions();
 
-  if (isLoading) {
+  if (isPending) {
     return (
       <div className="flex h-full flex-col items-center justify-center py-2.5">
         <Spinner size="lg" className="text-mineshaft-500" />
