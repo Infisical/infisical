@@ -63,3 +63,26 @@ export type TListProjectKmipClientsDTO = {
 export enum KmipClientOrderBy {
   Name = "name"
 }
+
+export type OrgKmipConfig = {
+  serverCertificateChain: string;
+  clientCertificateChain: string;
+};
+
+export type TSetupOrgKmipDTO = {
+  caKeyAlgorithm: CertKeyAlgorithm;
+};
+
+export type TGenerateOrgKmipServerCertDTO = {
+  commonName: string;
+  keyAlgorithm: CertKeyAlgorithm;
+  altNames: string;
+  ttl: string;
+};
+
+export type OrgKmipServerCert = {
+  serialNumber: string;
+  certificate: string;
+  certificateChain: string;
+  privateKey: string;
+};

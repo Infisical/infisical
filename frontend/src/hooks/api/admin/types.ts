@@ -1,5 +1,3 @@
-import { CertKeyAlgorithm } from "../certificates/enums";
-
 export enum LoginMethod {
   EMAIL = "email",
   GOOGLE = "google",
@@ -64,30 +62,7 @@ export type TGetServerRootKmsEncryptionDetails = {
   }[];
 };
 
-export type InstanceKmipConfig = {
-  serverCertificateChain: string;
-  clientCertificateChain: string;
-};
-
 export enum RootKeyEncryptionStrategy {
   Software = "SOFTWARE",
   HSM = "HSM"
 }
-
-export type TSetupInstanceKmipDTO = {
-  caKeyAlgorithm: CertKeyAlgorithm;
-};
-
-export type TGenerateInstanceKmipServerCertDTO = {
-  commonName: string;
-  keyAlgorithm: CertKeyAlgorithm;
-  altNames: string;
-  ttl: string;
-};
-
-export type InstanceKmipServerCert = {
-  serialNumber: string;
-  certificate: string;
-  certificateChain: string;
-  privateKey: string;
-};

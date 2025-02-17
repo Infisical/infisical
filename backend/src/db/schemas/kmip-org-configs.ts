@@ -9,8 +9,9 @@ import { zodBuffer } from "@app/lib/zod";
 
 import { TImmutableDBKeys } from "./models";
 
-export const KmipInstanceConfigsSchema = z.object({
+export const KmipOrgConfigsSchema = z.object({
   id: z.string().uuid(),
+  orgId: z.string().uuid(),
   caKeyAlgorithm: z.string(),
   rootCaIssuedAt: z.date(),
   rootCaExpiration: z.date(),
@@ -33,6 +34,6 @@ export const KmipInstanceConfigsSchema = z.object({
   updatedAt: z.date()
 });
 
-export type TKmipInstanceConfigs = z.infer<typeof KmipInstanceConfigsSchema>;
-export type TKmipInstanceConfigsInsert = Omit<z.input<typeof KmipInstanceConfigsSchema>, TImmutableDBKeys>;
-export type TKmipInstanceConfigsUpdate = Partial<Omit<z.input<typeof KmipInstanceConfigsSchema>, TImmutableDBKeys>>;
+export type TKmipOrgConfigs = z.infer<typeof KmipOrgConfigsSchema>;
+export type TKmipOrgConfigsInsert = Omit<z.input<typeof KmipOrgConfigsSchema>, TImmutableDBKeys>;
+export type TKmipOrgConfigsUpdate = Partial<Omit<z.input<typeof KmipOrgConfigsSchema>, TImmutableDBKeys>>;

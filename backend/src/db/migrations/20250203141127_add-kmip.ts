@@ -16,10 +16,14 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  const hasKmipInstanceConfigTable = await knex.schema.hasTable(TableName.KmipInstanceConfig);
-  if (!hasKmipInstanceConfigTable) {
-    await knex.schema.createTable(TableName.KmipInstanceConfig, (t) => {
+  const hasKmipOrgPkiConfig = await knex.schema.hasTable(TableName.KmipOrgConfig);
+  if (!hasKmipOrgPkiConfig) {
+    await knex.schema.createTable(TableName.KmipOrgConfig, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+
+      t.uuid("orgId").notNullable();
+      t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
+      t.unique("orgId");
 
       t.string("caKeyAlgorithm").notNullable();
 
@@ -46,13 +50,15 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
     });
 
-    await createOnUpdateTrigger(knex, TableName.KmipInstanceConfig);
+    await createOnUpdateTrigger(knex, TableName.KmipOrgConfig);
   }
 
-  const hasKmipInstanceServerCertTable = await knex.schema.hasTable(TableName.KmipInstanceServerCertificates);
-  if (!hasKmipInstanceServerCertTable) {
-    await knex.schema.createTable(TableName.KmipInstanceServerCertificates, (t) => {
+  const hasKmipOrgServerCertTable = await knex.schema.hasTable(TableName.KmipOrgServerCertificates);
+  if (!hasKmipOrgServerCertTable) {
+    await knex.schema.createTable(TableName.KmipOrgServerCertificates, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.uuid("orgId").notNullable();
+      t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
       t.string("commonName").notNullable();
       t.string("altNames").notNullable();
       t.string("serialNumber").notNullable();
@@ -79,15 +85,15 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const hasKmipInstanceConfigTable = await knex.schema.hasTable(TableName.KmipInstanceConfig);
-  if (hasKmipInstanceConfigTable) {
-    await knex.schema.dropTable(TableName.KmipInstanceConfig);
-    await dropOnUpdateTrigger(knex, TableName.KmipInstanceConfig);
+  const hasKmipOrgPkiConfig = await knex.schema.hasTable(TableName.KmipOrgConfig);
+  if (hasKmipOrgPkiConfig) {
+    await knex.schema.dropTable(TableName.KmipOrgConfig);
+    await dropOnUpdateTrigger(knex, TableName.KmipOrgConfig);
   }
 
-  const hasKmipInstanceServerCertTable = await knex.schema.hasTable(TableName.KmipInstanceServerCertificates);
-  if (hasKmipInstanceServerCertTable) {
-    await knex.schema.dropTable(TableName.KmipInstanceServerCertificates);
+  const hasKmipOrgServerCertTable = await knex.schema.hasTable(TableName.KmipOrgServerCertificates);
+  if (hasKmipOrgServerCertTable) {
+    await knex.schema.dropTable(TableName.KmipOrgServerCertificates);
   }
 
   const hasKmipClientCertTable = await knex.schema.hasTable(TableName.KmipClientCertificates);

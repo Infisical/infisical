@@ -1,5 +1,5 @@
 import { SymmetricEncryption } from "@app/lib/crypto/cipher";
-import { OrderByDirection, TProjectPermission } from "@app/lib/types";
+import { OrderByDirection, TOrgPermission, TProjectPermission } from "@app/lib/types";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
 import { KmipPermission } from "./kmip-enum";
@@ -79,3 +79,16 @@ export type TKmipRegisterDTO = {
   key: string;
   algorithm: SymmetricEncryption;
 } & KmipOperationBaseDTO;
+
+export type TSetupOrgKmipDTO = {
+  caKeyAlgorithm: CertKeyAlgorithm;
+} & Omit<TOrgPermission, "orgId">;
+
+export type TGetOrgKmipDTO = Omit<TOrgPermission, "orgId">;
+
+export type TGenerateOrgKmipServerCertificateDTO = {
+  commonName: string;
+  altNames: string;
+  keyAlgorithm: CertKeyAlgorithm;
+  ttl: string;
+} & Omit<TOrgPermission, "orgId">;

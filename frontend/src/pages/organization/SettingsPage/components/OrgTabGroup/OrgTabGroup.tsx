@@ -7,6 +7,7 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import { AppConnectionsTab } from "../AppConnectionsTab";
 import { AuditLogStreamsTab } from "../AuditLogStreamTab";
 import { ImportTab } from "../ImportTab";
+import { KmipTab } from "../KmipTab/OrgKmipTab";
 import { OrgAuthTab } from "../OrgAuthTab";
 import { OrgEncryptionTab } from "../OrgEncryptionTab";
 import { OrgGeneralTab } from "../OrgGeneralTab";
@@ -29,7 +30,8 @@ export const OrgTabGroup = () => {
     { name: "App Connections", key: "app-connections", component: AppConnectionsTab },
     { name: "Audit Log Streams", key: "tag-audit-log-streams", component: AuditLogStreamsTab },
     { name: "Import", key: "tab-import", component: ImportTab },
-    { name: "Project Templates", key: "project-templates", component: ProjectTemplatesTab }
+    { name: "Project Templates", key: "project-templates", component: ProjectTemplatesTab },
+    { name: "KMIP", key: "kmip", component: KmipTab }
   ];
 
   const [selectedTab, setSelectedTab] = useState(search.selectedTab || tabs[0].key);

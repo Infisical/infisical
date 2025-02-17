@@ -1,7 +1,6 @@
 export {
   useAdminDeleteUser,
   useCreateAdminUser,
-  useSetupInstanceKmip,
   useUpdateAdminSlackConfig,
   useUpdateServerConfig,
   useUpdateServerEncryptionStrategy
@@ -9,7 +8,6 @@ export {
 export {
   useAdminGetUsers,
   useGetAdminSlackConfig,
-  useGetInstanceKmipConfig,
   useGetServerConfig,
   useGetServerRootKmsEncryptionDetails
 } from "./queries";

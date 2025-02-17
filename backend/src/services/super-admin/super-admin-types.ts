@@ -1,5 +1,3 @@
-import { CertKeyAlgorithm } from "../certificate/certificate-types";
-
 export type TAdminSignUpDTO = {
   email: string;
   password: string;
@@ -33,14 +31,3 @@ export enum LoginMethod {
   LDAP = "ldap",
   OIDC = "oidc"
 }
-
-export type TSetupInstanceKmipDTO = {
-  caKeyAlgorithm: CertKeyAlgorithm;
-};
-
-export type TGenerateInstanceKmipServerCertificateDTO = {
-  commonName: string;
-  altNames: string;
-  keyAlgorithm: CertKeyAlgorithm;
-  ttl: string;
-};

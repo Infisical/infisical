@@ -23,6 +23,11 @@ export enum OrgPermissionAppConnectionActions {
   Connect = "connect"
 }
 
+export enum OrgPermissionKmipActions {
+  Proxy = "proxy",
+  Setup = "setup"
+}
+
 export enum OrgPermissionAdminConsoleAction {
   AccessAllProjects = "access-all-projects"
 }
@@ -44,7 +49,8 @@ export enum OrgPermissionSubjects {
   AdminConsole = "organization-admin-console",
   AuditLogs = "audit-logs",
   ProjectTemplates = "project-templates",
-  AppConnections = "app-connections"
+  AppConnections = "app-connections",
+  Kmip = "kmip"
 }
 
 export type AppConnectionSubjectFields = {
@@ -74,7 +80,8 @@ export type OrgPermissionSet =
         | (ForcedSubject<OrgPermissionSubjects.AppConnections> & AppConnectionSubjectFields)
       )
     ]
-  | [OrgPermissionAdminConsoleAction, OrgPermissionSubjects.AdminConsole];
+  | [OrgPermissionAdminConsoleAction, OrgPermissionSubjects.AdminConsole]
+  | [OrgPermissionKmipActions, OrgPermissionSubjects.Kmip];
 
 const AppConnectionConditionSchema = z
   .object({
@@ -167,6 +174,12 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionAdminConsoleAction).describe(
       "Describe what action an entity can take."
     )
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.Kmip).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionKmipActions).describe(
+      "Describe what action an entity can take."
+    )
   })
 ]);
 
@@ -252,6 +265,8 @@ const buildAdminPermission = () => {
   can(OrgPermissionAppConnectionActions.Connect, OrgPermissionSubjects.AppConnections);
 
   can(OrgPermissionAdminConsoleAction.AccessAllProjects, OrgPermissionSubjects.AdminConsole);
+
+  can(OrgPermissionKmipActions.Setup, OrgPermissionSubjects.Kmip);
 
   return rules;
 };

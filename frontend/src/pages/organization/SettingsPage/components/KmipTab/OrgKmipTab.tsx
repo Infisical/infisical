@@ -18,26 +18,30 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
+import { useOrganization } from "@app/context";
 import { downloadTxtFile } from "@app/helpers/download";
 import { usePopUp, useTimedReset } from "@app/hooks";
-import { useGetInstanceKmipConfig, useSetupInstanceKmip } from "@app/hooks/api";
-import { useGenerateInstanceKmipServerCert } from "@app/hooks/api/admin/mutation";
-import { InstanceKmipConfig } from "@app/hooks/api/admin/types";
 import { certKeyAlgorithms } from "@app/hooks/api/certificates/constants";
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
+import {
+  useGenerateOrgKmipServerCert,
+  useGetOrgKmipConfig,
+  useSetupOrgKmip
+} from "@app/hooks/api/kmip";
+import { OrgKmipConfig } from "@app/hooks/api/kmip/types";
 import { CertificateContent } from "@app/pages/cert-manager/CertificatesPage/components/CertificatesTab/components/CertificateContent";
 
-const kmipInstanceConfigFormSchema = z.object({
+const orgConfigFormSchema = z.object({
   caKeyAlgorithm: z.nativeEnum(CertKeyAlgorithm)
 });
 
-type TKmipInstanceConfigForm = z.infer<typeof kmipInstanceConfigFormSchema>;
+type TKmipOrgConfigForm = z.infer<typeof orgConfigFormSchema>;
 
-const KmipInstanceConfigSection = ({
+const OrgConfigSection = ({
   kmipConfig,
   isKmipConfigLoading
 }: {
-  kmipConfig?: InstanceKmipConfig;
+  kmipConfig?: OrgKmipConfig;
   isKmipConfigLoading: boolean;
 }) => {
   const { popUp, handlePopUpToggle, handlePopUpClose, handlePopUpOpen } = usePopUp([
@@ -47,13 +51,15 @@ const KmipInstanceConfigSection = ({
     handleSubmit,
     control,
     formState: { isSubmitting }
-  } = useForm<TKmipInstanceConfigForm>({
-    resolver: zodResolver(kmipInstanceConfigFormSchema)
+  } = useForm<TKmipOrgConfigForm>({
+    resolver: zodResolver(orgConfigFormSchema)
   });
-  const { mutateAsync: setupInstanceKmip } = useSetupInstanceKmip();
 
-  const onFormSubmit = async (formData: TKmipInstanceConfigForm) => {
-    await setupInstanceKmip(formData);
+  const { currentOrg } = useOrganization();
+  const { mutateAsync: setupOrgKmip } = useSetupOrgKmip(currentOrg.id);
+
+  const onFormSubmit = async (formData: TKmipOrgConfigForm) => {
+    await setupOrgKmip(formData);
 
     createNotification({
       type: "success",
@@ -171,7 +177,7 @@ const KmipInstanceConfigSection = ({
         )}
         {!isKmipConfigLoading && !kmipConfig && (
           <div className="mt-2">
-            <div>KMIP has not yet been configured for the instance.</div>
+            <div>KMIP has not yet been configured for the organization.</div>
             <Button
               className="mt-2"
               onClick={() => {
@@ -187,7 +193,7 @@ const KmipInstanceConfigSection = ({
         isOpen={popUp.configureKmip.isOpen}
         onOpenChange={(state) => handlePopUpToggle("configureKmip", state)}
       >
-        <ModalContent title="Configure KMIP for the instance">
+        <ModalContent title="Configure KMIP for the organization">
           <form onSubmit={handleSubmit(onFormSubmit)}>
             <Controller
               control={control}
@@ -242,14 +248,14 @@ const KmipInstanceConfigSection = ({
   );
 };
 
-const kmipInstanceServerCertFormSchema = z.object({
+const orgServerCertFormSchema = z.object({
   commonName: z.string(),
   altNames: z.string(),
   keyAlgorithm: z.nativeEnum(CertKeyAlgorithm),
   ttl: z.string()
 });
 
-type TKmipInstanceServerCertForm = z.infer<typeof kmipInstanceServerCertFormSchema>;
+type TOrgServerCertForm = z.infer<typeof orgServerCertFormSchema>;
 
 export const KmipServerConfigSection = () => {
   const { popUp, handlePopUpToggle, handlePopUpClose, handlePopUpOpen } = usePopUp([
@@ -268,13 +274,13 @@ export const KmipServerConfigSection = () => {
     handleSubmit,
     control,
     formState: { isSubmitting }
-  } = useForm<TKmipInstanceServerCertForm>({
-    resolver: zodResolver(kmipInstanceServerCertFormSchema)
+  } = useForm<TOrgServerCertForm>({
+    resolver: zodResolver(orgServerCertFormSchema)
   });
 
-  const { mutateAsync: generateKmipServerCert } = useGenerateInstanceKmipServerCert();
+  const { mutateAsync: generateKmipServerCert } = useGenerateOrgKmipServerCert();
 
-  const onFormSubmit = async (formData: TKmipInstanceServerCertForm) => {
+  const onFormSubmit = async (formData: TOrgServerCertForm) => {
     const { data: certificate } = await generateKmipServerCert(formData);
     handlePopUpOpen("showCertificate", certificate);
 
@@ -304,7 +310,7 @@ export const KmipServerConfigSection = () => {
         isOpen={popUp.configureKmipServerCert.isOpen}
         onOpenChange={(state) => handlePopUpToggle("configureKmipServerCert", state)}
       >
-        <ModalContent title="Configure KMIP for the instance">
+        <ModalContent title="Configure KMIP for the organization">
           <form onSubmit={handleSubmit(onFormSubmit)}>
             <Controller
               control={control}
@@ -402,7 +408,7 @@ export const KmipServerConfigSection = () => {
         isOpen={popUp.showCertificate.isOpen}
         onOpenChange={(state) => handlePopUpToggle("showCertificate", state)}
       >
-        <ModalContent title="Configure KMIP for the instance">
+        <ModalContent title="Configure KMIP for the organization">
           <CertificateContent {...certificateData} />
         </ModalContent>
       </Modal>
@@ -410,12 +416,13 @@ export const KmipServerConfigSection = () => {
   );
 };
 
-export const KmipPanel = () => {
-  const { data: kmipConfig, isPending } = useGetInstanceKmipConfig();
+export const KmipTab = () => {
+  const { currentOrg } = useOrganization();
+  const { data: kmipConfig, isPending } = useGetOrgKmipConfig(currentOrg.id);
 
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <KmipInstanceConfigSection kmipConfig={kmipConfig} isKmipConfigLoading={isPending} />
+      <OrgConfigSection kmipConfig={kmipConfig} isKmipConfigLoading={isPending} />
       {kmipConfig && <KmipServerConfigSection />}
     </div>
   );

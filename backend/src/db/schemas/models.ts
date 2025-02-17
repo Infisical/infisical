@@ -134,8 +134,8 @@ export enum TableName {
   AppConnection = "app_connections",
   SecretSync = "secret_syncs",
   KmipClient = "kmip_clients",
-  KmipInstanceConfig = "kmip_instance_configs",
-  KmipInstanceServerCertificates = "kmip_instance_server_certificates",
+  KmipOrgConfig = "kmip_org_configs",
+  KmipOrgServerCertificates = "kmip_org_server_certificates",
   KmipClientCertificates = "kmip_client_certificates"
 }
 

@@ -37,9 +37,9 @@ import { identityProjectAdditionalPrivilegeServiceFactory } from "@app/ee/servic
 import { identityProjectAdditionalPrivilegeV2ServiceFactory } from "@app/ee/services/identity-project-additional-privilege-v2/identity-project-additional-privilege-v2-service";
 import { kmipClientCertificateDALFactory } from "@app/ee/services/kmip/kmip-client-certificate-dal";
 import { kmipClientDALFactory } from "@app/ee/services/kmip/kmip-client-dal";
-import { kmipInstanceConfigDALFactory } from "@app/ee/services/kmip/kmip-instance-config-dal";
-import { kmipInstanceServerCertificateDALFactory } from "@app/ee/services/kmip/kmip-instance-server-certificate-dal";
 import { kmipOperationServiceFactory } from "@app/ee/services/kmip/kmip-operation-service";
+import { kmipOrgConfigDALFactory } from "@app/ee/services/kmip/kmip-org-config-dal";
+import { kmipOrgServerCertificateDALFactory } from "@app/ee/services/kmip/kmip-org-server-certificate-dal";
 import { kmipServiceFactory } from "@app/ee/services/kmip/kmip-service";
 import { ldapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";
 import { ldapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
@@ -388,8 +388,8 @@ export const registerRoutes = async (
   const resourceMetadataDAL = resourceMetadataDALFactory(db);
   const kmipClientDAL = kmipClientDALFactory(db);
   const kmipClientCertificateDAL = kmipClientCertificateDALFactory(db);
-  const kmipInstanceConfigDAL = kmipInstanceConfigDALFactory(db);
-  const kmipInstanceServerCertificateDAL = kmipInstanceServerCertificateDALFactory(db);
+  const kmipOrgConfigDAL = kmipOrgConfigDALFactory(db);
+  const kmipOrgServerCertificateDAL = kmipOrgServerCertificateDALFactory(db);
 
   const permissionService = permissionServiceFactory({
     permissionDAL,
@@ -630,9 +630,7 @@ export const registerRoutes = async (
     orgService,
     keyStore,
     licenseService,
-    kmsService,
-    kmipInstanceConfigDAL,
-    kmipInstanceServerCertificateDAL
+    kmsService
   });
 
   const orgAdminService = orgAdminServiceFactory({
@@ -1434,9 +1432,9 @@ export const registerRoutes = async (
     kmipClientDAL,
     permissionService,
     kmipClientCertificateDAL,
-    kmipInstanceConfigDAL,
+    kmipOrgConfigDAL,
     kmsService,
-    kmipInstanceServerCertificateDAL
+    kmipOrgServerCertificateDAL
   });
 
   const kmipOperationService = kmipOperationServiceFactory({

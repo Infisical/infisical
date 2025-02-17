@@ -149,12 +149,12 @@ import {
   TKmipClients,
   TKmipClientsInsert,
   TKmipClientsUpdate,
-  TKmipInstanceConfigs,
-  TKmipInstanceConfigsInsert,
-  TKmipInstanceConfigsUpdate,
-  TKmipInstanceServerCertificates,
-  TKmipInstanceServerCertificatesInsert,
-  TKmipInstanceServerCertificatesUpdate,
+  TKmipOrgConfigs,
+  TKmipOrgConfigsInsert,
+  TKmipOrgConfigsUpdate,
+  TKmipOrgServerCertificates,
+  TKmipOrgServerCertificatesInsert,
+  TKmipOrgServerCertificatesUpdate,
   TKmsKeys,
   TKmsKeysInsert,
   TKmsKeysUpdate,
@@ -915,15 +915,15 @@ declare module "knex/types/tables" {
     >;
     [TableName.SecretSync]: KnexOriginal.CompositeTableType<TSecretSyncs, TSecretSyncsInsert, TSecretSyncsUpdate>;
     [TableName.KmipClient]: KnexOriginal.CompositeTableType<TKmipClients, TKmipClientsInsert, TKmipClientsUpdate>;
-    [TableName.KmipInstanceConfig]: KnexOriginal.CompositeTableType<
-      TKmipInstanceConfigs,
-      TKmipInstanceConfigsInsert,
-      TKmipInstanceConfigsUpdate
+    [TableName.KmipOrgConfig]: KnexOriginal.CompositeTableType<
+      TKmipOrgConfigs,
+      TKmipOrgConfigsInsert,
+      TKmipOrgConfigsUpdate
     >;
-    [TableName.KmipInstanceServerCertificates]: KnexOriginal.CompositeTableType<
-      TKmipInstanceServerCertificates,
-      TKmipInstanceServerCertificatesInsert,
-      TKmipInstanceServerCertificatesUpdate
+    [TableName.KmipOrgServerCertificates]: KnexOriginal.CompositeTableType<
+      TKmipOrgServerCertificates,
+      TKmipOrgServerCertificatesInsert,
+      TKmipOrgServerCertificatesUpdate
     >;
     [TableName.KmipClientCertificates]: KnexOriginal.CompositeTableType<
       TKmipClientCertificates,

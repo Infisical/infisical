@@ -10,6 +10,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
+import { validateAltNamesField } from "@app/services/certificate-authority/certificate-authority-validators";
 
 const KmipClientResponseSchema = KmipClientsSchema.pick({
   projectId: true,
@@ -283,6 +284,94 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
       });
 
       return certificate;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      body: z.object({
+        caKeyAlgorithm: z.nativeEnum(CertKeyAlgorithm)
+      }),
+      response: {
+        200: z.object({
+          serverCertificateChain: z.string(),
+          clientCertificateChain: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      return server.services.kmip.setupOrgKmip({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.body
+      });
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          serverCertificateChain: z.string(),
+          clientCertificateChain: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      return server.services.kmip.getOrgKmip({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/server-certificates",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      body: z.object({
+        commonName: z.string().trim().min(1),
+        altNames: validateAltNamesField,
+        keyAlgorithm: z.nativeEnum(CertKeyAlgorithm),
+        ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number")
+      }),
+      response: {
+        200: z.object({
+          serialNumber: z.string(),
+          certificateChain: z.string(),
+          certificate: z.string(),
+          privateKey: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      return server.services.kmip.generateOrgKmipServerCertificate({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.body
+      });
     }
   });
 };

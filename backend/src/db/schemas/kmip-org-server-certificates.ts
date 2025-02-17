@@ -9,8 +9,9 @@ import { zodBuffer } from "@app/lib/zod";
 
 import { TImmutableDBKeys } from "./models";
 
-export const KmipInstanceServerCertificatesSchema = z.object({
+export const KmipOrgServerCertificatesSchema = z.object({
   id: z.string().uuid(),
+  orgId: z.string().uuid(),
   commonName: z.string(),
   altNames: z.string(),
   serialNumber: z.string(),
@@ -21,11 +22,8 @@ export const KmipInstanceServerCertificatesSchema = z.object({
   encryptedChain: zodBuffer
 });
 
-export type TKmipInstanceServerCertificates = z.infer<typeof KmipInstanceServerCertificatesSchema>;
-export type TKmipInstanceServerCertificatesInsert = Omit<
-  z.input<typeof KmipInstanceServerCertificatesSchema>,
-  TImmutableDBKeys
->;
-export type TKmipInstanceServerCertificatesUpdate = Partial<
-  Omit<z.input<typeof KmipInstanceServerCertificatesSchema>, TImmutableDBKeys>
+export type TKmipOrgServerCertificates = z.infer<typeof KmipOrgServerCertificatesSchema>;
+export type TKmipOrgServerCertificatesInsert = Omit<z.input<typeof KmipOrgServerCertificatesSchema>, TImmutableDBKeys>;
+export type TKmipOrgServerCertificatesUpdate = Partial<
+  Omit<z.input<typeof KmipOrgServerCertificatesSchema>, TImmutableDBKeys>
 >;

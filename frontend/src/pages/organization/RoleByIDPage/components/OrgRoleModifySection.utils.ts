@@ -2,7 +2,10 @@
 import { z } from "zod";
 
 import { OrgPermissionSubjects } from "@app/context";
-import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
+import {
+  OrgPermissionAppConnectionActions,
+  OrgPermissionKmipActions
+} from "@app/context/OrgPermissionContext/types";
 import { TPermission } from "@app/hooks/api/roles/types";
 
 const generalPermissionSchema = z
@@ -21,6 +24,13 @@ const appConnectionsPermissionSchema = z
     [OrgPermissionAppConnectionActions.Create]: z.boolean().optional(),
     [OrgPermissionAppConnectionActions.Delete]: z.boolean().optional(),
     [OrgPermissionAppConnectionActions.Connect]: z.boolean().optional()
+  })
+  .optional();
+
+const kmipPermissionSchema = z
+  .object({
+    [OrgPermissionKmipActions.Proxy]: z.boolean().optional(),
+    [OrgPermissionKmipActions.Setup]: z.boolean().optional()
   })
   .optional();
 
@@ -61,7 +71,8 @@ export const formSchema = z.object({
       "organization-admin-console": adminConsolePermissionSchmea,
       [OrgPermissionSubjects.Kms]: generalPermissionSchema,
       [OrgPermissionSubjects.ProjectTemplates]: generalPermissionSchema,
-      "app-connections": appConnectionsPermissionSchema
+      "app-connections": appConnectionsPermissionSchema,
+      kmip: kmipPermissionSchema
     })
     .optional()
 });
