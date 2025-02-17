@@ -1,5 +1,7 @@
-import { apiRequest } from "@app/config/request";
 import { queryOptions } from "@tanstack/react-query";
+
+import { apiRequest } from "@app/config/request";
+
 import { TGateway } from "./types";
 
 export const gatewaysQueryKeys = {

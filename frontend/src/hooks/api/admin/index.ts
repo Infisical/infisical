@@ -1,9 +1,7 @@
 export {
   useAdminDeleteUser,
   useCreateAdminUser,
-  useSetupInstanceGatewayConfig,
   useUpdateAdminSlackConfig,
-  useUpdateInstanceGatewayConfig,
   useUpdateServerConfig,
   useUpdateServerEncryptionStrategy
 } from "./mutation";

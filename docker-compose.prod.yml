@@ -56,4 +56,3 @@ volumes:
 
 networks:
   infisical:
-

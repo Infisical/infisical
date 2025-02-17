@@ -9,7 +9,6 @@ import {
   AdminSlackConfig,
   RootKeyEncryptionStrategy,
   TCreateAdminUserDTO,
-  TDisableInstanceGatewayConfigDTO,
   TServerConfig,
   TUpdateAdminSlackConfigDTO
 } from "./types";
@@ -96,30 +95,6 @@ export const useUpdateServerEncryptionStrategy = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.getServerEncryptionStrategies() });
-    }
-  });
-};
-
-export const useSetupInstanceGatewayConfig = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async () => {
-      await apiRequest.post("/api/v1/admin/gateway");
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries(adminQueryKeys.getInstanceGatewayConfig());
-    }
-  });
-};
-
-export const useUpdateInstanceGatewayConfig = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (dto: TDisableInstanceGatewayConfigDTO) => {
-      await apiRequest.patch("/api/v1/admin/gateway", dto);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries(adminQueryKeys.getInstanceGatewayConfig());
     }
   });
 };

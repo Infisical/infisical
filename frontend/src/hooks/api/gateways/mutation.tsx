@@ -1,5 +1,7 @@
-import { apiRequest } from "@app/config/request";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+
+import { apiRequest } from "@app/config/request";
+
 import { gatewaysQueryKeys } from "./queries";
 
 export const useDeleteGateway = () => {
