@@ -1,13 +1,14 @@
 import { Redis } from "ioredis";
 
 import { Redlock, Settings } from "@app/lib/red-lock";
+import { pgAdvisoryLockHashText } from "@app/lib/crypto/hashtext";
 
 export const PgSqlLock = {
   BootUpMigration: 2023,
   SuperAdminInit: 2024,
   KmsRootKeyInit: 2025,
-  OrgGatewayRootCaInit: (orgId: string) => `org-gateway-root-ca:${orgId}`,
-  OrgGatewayCertExchange: (orgId: string) => `org-gateway-cert-exchange:${orgId}`
+  OrgGatewayRootCaInit: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-root-ca:${orgId}`),
+  OrgGatewayCertExchange: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-cert-exchange:${orgId}`)
 } as const;
 
 export type TKeyStoreFactory = ReturnType<typeof keyStoreFactory>;

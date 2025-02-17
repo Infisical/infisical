@@ -27,6 +27,7 @@ export const registerGatewayRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           turnServerUsername: z.string(),
           turnServerPassword: z.string(),
+          turnServerRealm: z.string(),
           turnServerAddress: z.string(),
           infisicalStaticIp: z.string()
         })

@@ -28,9 +28,8 @@ import { dynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secre
 import { externalKmsDALFactory } from "@app/ee/services/external-kms/external-kms-dal";
 import { externalKmsServiceFactory } from "@app/ee/services/external-kms/external-kms-service";
 import { gatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
-import { gatewayInstanceConfigDALFactory } from "@app/ee/services/gateway/gateway-instance-config-dal";
 import { gatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
-import { orgGatewayRootCaDALFactory } from "@app/ee/services/gateway/org-gateway-root-ca-dal";
+import { orgGatewayConfigDALFactory } from "@app/ee/services/gateway/org-gateway-config-dal";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { groupServiceFactory } from "@app/ee/services/group/group-service";
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -397,8 +396,7 @@ export const registerRoutes = async (
   const kmipOrgConfigDAL = kmipOrgConfigDALFactory(db);
   const kmipOrgServerCertificateDAL = kmipOrgServerCertificateDALFactory(db);
 
-  const gatewayInstanceConfigDAL = gatewayInstanceConfigDALFactory(db);
-  const orgGatewayRootCaDAL = orgGatewayRootCaDALFactory(db);
+  const orgGatewayConfigDAL = orgGatewayConfigDALFactory(db);
   const gatewayDAL = gatewayDALFactory(db);
 
   const permissionService = permissionServiceFactory({
@@ -639,7 +637,6 @@ export const registerRoutes = async (
     authService: loginService,
     serverCfgDAL: superAdminDAL,
     kmsRootConfigDAL,
-    gatewayInstanceConfigDAL,
     orgService,
     keyStore,
     licenseService,
@@ -1467,11 +1464,11 @@ export const registerRoutes = async (
   });
 
   const gatewayService = gatewayServiceFactory({
-    orgGatewayRootCaDAL,
     permissionService,
     gatewayDAL,
     kmsService,
-    licenseService
+    licenseService,
+    orgGatewayConfigDAL
   });
 
   await superAdminService.initServerCfg();

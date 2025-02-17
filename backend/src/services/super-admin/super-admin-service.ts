@@ -1,9 +1,6 @@
-import * as x509 from "@peculiar/x509";
 import bcrypt from "bcrypt";
-import crypto, { KeyObject } from "crypto";
 
 import { TSuperAdmin, TSuperAdminUpdate } from "@app/db/schemas";
-import { TGatewayInstanceConfigDALFactory } from "@app/ee/services/gateway/gateway-instance-config-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
@@ -13,8 +10,6 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TAuthLoginFactory } from "../auth/auth-login-service";
 import { AuthMethod } from "../auth/auth-type";
-import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "../certificate/certificate-types";
-import { createSerialNumber, keyAlgorithmToAlgCfg } from "../certificate-authority/certificate-authority-fns";
 import { KMS_ROOT_CONFIG_UUID } from "../kms/kms-fns";
 import { TKmsRootConfigDALFactory } from "../kms/kms-root-config-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -36,7 +31,6 @@ type TSuperAdminServiceFactoryDep = {
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   licenseService: Pick<TLicenseServiceFactory, "onPremFeatures">;
-  gatewayInstanceConfigDAL: Pick<TGatewayInstanceConfigDALFactory, "create" | "findById" | "updateById">;
 };
 
 export type TSuperAdminServiceFactory = ReturnType<typeof superAdminServiceFactory>;
@@ -53,7 +47,6 @@ export let getServerCfg: () => Promise<
 const ADMIN_CONFIG_KEY = "infisical-admin-cfg";
 const ADMIN_CONFIG_KEY_EXP = 60; // 60s
 const ADMIN_CONFIG_DB_UUID = "00000000-0000-0000-0000-000000000000";
-const GATEWAY_INSTANCE_CONFIG_UUID = "00000000-0000-0000-0000-000000000000";
 
 export const superAdminServiceFactory = ({
   serverCfgDAL,
@@ -64,8 +57,7 @@ export const superAdminServiceFactory = ({
   keyStore,
   kmsRootConfigDAL,
   kmsService,
-  licenseService,
-  gatewayInstanceConfigDAL
+  licenseService
 }: TSuperAdminServiceFactoryDep) => {
   const initServerCfg = async () => {
     // TODO(akhilmhdh): bad  pattern time less change this later to me itself
@@ -381,149 +373,6 @@ export const superAdminServiceFactory = ({
     await kmsService.updateEncryptionStrategy(strategy);
   };
 
-  const setupInstanceGateway = async () => {
-    if (!licenseService.onPremFeatures.gateway) {
-      throw new BadRequestError({
-        message: "Failed to setup gateway ca due to plan restriction. Upgrade to Infisical's Enterprise plan."
-      });
-    }
-
-    const existingConfig = await gatewayInstanceConfigDAL.findById(GATEWAY_INSTANCE_CONFIG_UUID);
-    if (existingConfig) {
-      throw new BadRequestError({
-        message: "Gateway has already been configured for the instance"
-      });
-    }
-
-    const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
-    // generate root CA
-    const infisicalClientRootCaSerialNumber = createSerialNumber();
-    const infisicalClientRootCaKeys = await crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
-    const infisicalClientCaSkObj = KeyObject.from(infisicalClientRootCaKeys.privateKey);
-    const infisicalClientCaIssuedAt = new Date();
-    const infisicalClientCaExpiration = new Date(new Date().setFullYear(new Date().getFullYear() + 25));
-
-    const infisicalClientCaCert = await x509.X509CertificateGenerator.createSelfSigned({
-      name: "CN=Infisical Gateway Client Root CA",
-      serialNumber: infisicalClientRootCaSerialNumber,
-      notBefore: infisicalClientCaIssuedAt,
-      notAfter: infisicalClientCaExpiration,
-      signingAlgorithm: alg,
-      keys: infisicalClientRootCaKeys,
-      extensions: [
-        // eslint-disable-next-line no-bitwise
-        new x509.KeyUsagesExtension(x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign, true),
-        await x509.SubjectKeyIdentifierExtension.create(infisicalClientRootCaKeys.publicKey)
-      ]
-    });
-
-    const infisicalClientLeafCertserialNumber = createSerialNumber();
-    const infisicalClientLeafKeys = await crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
-    const extensions: x509.Extension[] = [
-      new x509.BasicConstraintsExtension(false),
-      await x509.AuthorityKeyIdentifierExtension.create(infisicalClientCaCert, false),
-      await x509.SubjectKeyIdentifierExtension.create(infisicalClientLeafKeys.publicKey),
-      new x509.CertificatePolicyExtension(["2.5.29.32.0"]), // anyPolicy
-      new x509.KeyUsagesExtension(
-        // eslint-disable-next-line no-bitwise
-        x509.KeyUsageFlags[CertKeyUsage.DIGITAL_SIGNATURE] |
-          x509.KeyUsageFlags[CertKeyUsage.KEY_ENCIPHERMENT] |
-          x509.KeyUsageFlags[CertKeyUsage.KEY_AGREEMENT],
-        true
-      ),
-      new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage[CertExtendedKeyUsage.CLIENT_AUTH]], true)
-    ];
-
-    const infisicalClientLeafCert = await x509.X509CertificateGenerator.create({
-      serialNumber: infisicalClientLeafCertserialNumber,
-      subject: `OU=infisical,CN=infisical`,
-      issuer: infisicalClientCaCert.issuer,
-      notBefore: infisicalClientCaIssuedAt,
-      notAfter: infisicalClientCaExpiration,
-      signingKey: infisicalClientRootCaKeys.privateKey,
-      publicKey: infisicalClientLeafKeys.publicKey,
-      signingAlgorithm: alg,
-      extensions
-    });
-
-    const infisicalClientLeafCertSkObj = KeyObject.from(infisicalClientLeafKeys.privateKey);
-    const encryptWithRootKey = kmsService.encryptWithRootKey();
-    await gatewayInstanceConfigDAL.create({
-      // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
-      id: GATEWAY_INSTANCE_CONFIG_UUID,
-      isDisabled: false,
-      caKeyAlgorithm: CertKeyAlgorithm.RSA_2048,
-      infisicalClientCaIssuedAt,
-      infisicalClientCaExpiration,
-      infisicalClientCaSerialNumber: infisicalClientRootCaSerialNumber,
-      encryptedInfisicalClientCaCertificate: encryptWithRootKey(Buffer.from(infisicalClientCaCert.rawData)),
-      encryptedInfisicalClientCaPrivateKey: encryptWithRootKey(
-        infisicalClientCaSkObj.export({
-          type: "pkcs8",
-          format: "der"
-        })
-      ),
-      infisicalClientCertIssuedAt: infisicalClientCaIssuedAt,
-      infisicalClientCertExpiration: infisicalClientCaExpiration,
-      infisicalClientCertSerialNumber: infisicalClientLeafCertserialNumber,
-      infisicalClientCertKeyAlgorithm: CertKeyAlgorithm.RSA_2048,
-      encryptedInfisicalClientCertificate: encryptWithRootKey(Buffer.from(infisicalClientLeafCert.rawData)),
-      encryptedInfisicalClientPrivateKey: encryptWithRootKey(
-        infisicalClientLeafCertSkObj.export({
-          type: "pkcs8",
-          format: "der"
-        })
-      )
-    });
-  };
-
-  const updateInstanceGateway = async ({ isDisabled }: { isDisabled?: boolean }) => {
-    if (!licenseService.onPremFeatures.gateway) {
-      throw new BadRequestError({
-        message: "Failed to update gateway ca due to plan restriction. Upgrade to Infisical's Enterprise plan."
-      });
-    }
-
-    const existingConfig = await gatewayInstanceConfigDAL.findById(GATEWAY_INSTANCE_CONFIG_UUID);
-    if (!existingConfig) {
-      throw new NotFoundError({
-        message: "Gateway instance config not found"
-      });
-    }
-
-    const updatedGatewayInstanceConfig = await gatewayInstanceConfigDAL.updateById(GATEWAY_INSTANCE_CONFIG_UUID, {
-      isDisabled
-    });
-    return {
-      infisicalClientCaSerialNumber: updatedGatewayInstanceConfig.infisicalClientCaSerialNumber,
-      isDisabled: updatedGatewayInstanceConfig?.isDisabled,
-      caKeyAlgorithm: CertKeyAlgorithm.RSA_2048,
-      infisicalClientCaIssuedAt: updatedGatewayInstanceConfig.infisicalClientCaIssuedAt
-    };
-  };
-
-  const getInstanceGateway = async () => {
-    if (!licenseService.onPremFeatures.gateway) {
-      throw new BadRequestError({
-        message: "Failed to update gateway ca due to plan restriction. Upgrade to Infisical's Enterprise plan."
-      });
-    }
-
-    const existingConfig = await gatewayInstanceConfigDAL.findById(GATEWAY_INSTANCE_CONFIG_UUID);
-    if (!existingConfig) {
-      throw new NotFoundError({
-        message: "Gateway instance config not found"
-      });
-    }
-
-    return {
-      infisicalClientCaSerialNumber: existingConfig.infisicalClientCaSerialNumber,
-      isDisabled: existingConfig?.isDisabled,
-      caKeyAlgorithm: CertKeyAlgorithm.RSA_2048,
-      infisicalClientCaIssuedAt: existingConfig.infisicalClientCaIssuedAt
-    };
-  };
-
   return {
     initServerCfg,
     updateServerCfg,
@@ -532,9 +381,6 @@ export const superAdminServiceFactory = ({
     deleteUser,
     getAdminSlackConfig,
     updateRootEncryptionStrategy,
-    getConfiguredEncryptionStrategies,
-    setupInstanceGateway,
-    updateInstanceGateway,
-    getInstanceGateway
+    getConfiguredEncryptionStrategies
   };
 };

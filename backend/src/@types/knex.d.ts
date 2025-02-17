@@ -68,9 +68,6 @@ import {
   TExternalKms,
   TExternalKmsInsert,
   TExternalKmsUpdate,
-  TGatewayInstanceConfig,
-  TGatewayInstanceConfigInsert,
-  TGatewayInstanceConfigUpdate,
   TGateways,
   TGatewaysInsert,
   TGatewaysUpdate,
@@ -185,9 +182,9 @@ import {
   TOrgBots,
   TOrgBotsInsert,
   TOrgBotsUpdate,
-  TOrgGatewayRootCa,
-  TOrgGatewayRootCaInsert,
-  TOrgGatewayRootCaUpdate,
+  TOrgGatewayConfig,
+  TOrgGatewayConfigInsert,
+  TOrgGatewayConfigUpdate,
   TOrgMemberships,
   TOrgMembershipsInsert,
   TOrgMembershipsUpdate,
@@ -940,15 +937,10 @@ declare module "knex/types/tables" {
       TKmipClientCertificatesUpdate
     >;
     [TableName.Gateway]: KnexOriginal.CompositeTableType<TGateways, TGatewaysInsert, TGatewaysUpdate>;
-    [TableName.GatewayInstanceConfig]: KnexOriginal.CompositeTableType<
-      TGatewayInstanceConfig,
-      TGatewayInstanceConfigInsert,
-      TGatewayInstanceConfigUpdate
-    >;
-    [TableName.OrgGatewayRootCa]: KnexOriginal.CompositeTableType<
-      TOrgGatewayRootCa,
-      TOrgGatewayRootCaInsert,
-      TOrgGatewayRootCaUpdate
+    [TableName.OrgGatewayConfig]: KnexOriginal.CompositeTableType<
+      TOrgGatewayConfig,
+      TOrgGatewayConfigInsert,
+      TOrgGatewayConfigUpdate
     >;
   }
 }

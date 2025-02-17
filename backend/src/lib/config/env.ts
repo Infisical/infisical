@@ -187,6 +187,7 @@ const envSchema = z
     /* Gateway----------------------------------------------------------------------------- */
     GATEWAY_INFISICAL_STATIC_IP_ADDRESS: zpStr(z.string().optional()),
     GATEWAY_RELAY_ADDRESS: zpStr(z.string().optional()),
+    GATEWAY_RELAY_REALM: zpStr(z.string().optional()),
     GATEWAY_RELAY_AUTH_SECRET: zpStr(z.string().optional()),
 
     /* ----------------------------------------------------------------------------- */
