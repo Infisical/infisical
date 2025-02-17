@@ -4,47 +4,43 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.GatewayInstanceConfig))) {
-    await knex.schema.createTable(TableName.GatewayInstanceConfig, (t) => {
+  if (!(await knex.schema.hasTable(TableName.OrgGatewayConfig))) {
+    await knex.schema.createTable(TableName.OrgGatewayConfig, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
-      t.string("caKeyAlgorithm").notNullable();
-      t.boolean("isDisabled").defaultTo(false);
+      t.string("rootCaKeyAlgorithm").notNullable();
 
-      t.string("infisicalClientCaSerialNumber").notNullable();
-      t.datetime("infisicalClientCaIssuedAt").notNullable();
-      t.datetime("infisicalClientCaExpiration").notNullable();
-      t.binary("encryptedInfisicalClientCaCertificate").notNullable();
-      t.binary("encryptedInfisicalClientCaPrivateKey").notNullable();
+      t.datetime("rootCaIssuedAt").notNullable();
+      t.datetime("rootCaExpiration").notNullable();
+      t.string("rootCaSerialNumber").notNullable();
+      t.binary("encryptedRootCaCertificate").notNullable();
+      t.binary("encryptedRootCaPrivateKey").notNullable();
 
-      t.string("infisicalClientCertSerialNumber").notNullable();
-      t.string("infisicalClientCertKeyAlgorithm").notNullable();
-      t.datetime("infisicalClientCertIssuedAt").notNullable();
-      t.datetime("infisicalClientCertExpiration").notNullable();
-      t.binary("encryptedInfisicalClientCertificate").notNullable();
-      t.binary("encryptedInfisicalClientPrivateKey").notNullable();
-      t.timestamps(true, true, true);
-    });
+      t.datetime("clientCaIssuedAt").notNullable();
+      t.datetime("clientCaExpiration").notNullable();
+      t.string("clientCaSerialNumber");
+      t.binary("encryptedClientCaCertificate").notNullable();
+      t.binary("encryptedClientCaPrivateKey").notNullable();
 
-    await createOnUpdateTrigger(knex, TableName.GatewayInstanceConfig);
-  }
+      t.string("clientCertSerialNumber").notNullable();
+      t.string("clientCertKeyAlgorithm").notNullable();
+      t.datetime("clientCertIssuedAt").notNullable();
+      t.datetime("clientCertExpiration").notNullable();
+      t.binary("encryptedClientCertificate").notNullable();
+      t.binary("encryptedClientPrivateKey").notNullable();
 
-  if (!(await knex.schema.hasTable(TableName.OrgGatewayRootCa))) {
-    await knex.schema.createTable(TableName.OrgGatewayRootCa, (t) => {
-      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
-      t.string("caKeyAlgorithm").notNullable();
-      t.string("caSerialNumber").notNullable();
-      t.datetime("caIssuedAt").notNullable();
-      t.datetime("caExpiration").notNullable();
-      t.binary("encryptedCaCertificate").notNullable();
-      t.binary("encryptedCaPrivateKey").notNullable();
+      t.datetime("gatewayCaIssuedAt").notNullable();
+      t.datetime("gatewayCaExpiration").notNullable();
+      t.string("gatewayCaSerialNumber").notNullable();
+      t.binary("encryptedGatewayCaCertificate").notNullable();
+      t.binary("encryptedGatewayCaPrivateKey").notNullable();
 
       t.uuid("orgId").notNullable();
       t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
-
+      t.unique("orgId");
       t.timestamps(true, true, true);
     });
 
-    await createOnUpdateTrigger(knex, TableName.OrgGatewayRootCa);
+    await createOnUpdateTrigger(knex, TableName.OrgGatewayConfig);
   }
 
   if (!(await knex.schema.hasTable(TableName.Gateway))) {
@@ -60,7 +56,7 @@ export async function up(knex: Knex): Promise<void> {
       t.binary("relayAddress").notNullable();
 
       t.uuid("orgGatewayRootCaId").notNullable();
-      t.foreign("orgGatewayRootCaId").references("id").inTable(TableName.OrgGatewayRootCa).onDelete("CASCADE");
+      t.foreign("orgGatewayRootCaId").references("id").inTable(TableName.OrgGatewayConfig).onDelete("CASCADE");
 
       t.uuid("identityId").notNullable();
       t.foreign("identityId").references("id").inTable(TableName.Identity).onDelete("CASCADE");
@@ -73,12 +69,9 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.dropTableIfExists(TableName.GatewayInstanceConfig);
-  await dropOnUpdateTrigger(knex, TableName.GatewayInstanceConfig);
-
   await knex.schema.dropTableIfExists(TableName.Gateway);
   await dropOnUpdateTrigger(knex, TableName.Gateway);
 
-  await knex.schema.dropTableIfExists(TableName.OrgGatewayRootCa);
-  await dropOnUpdateTrigger(knex, TableName.OrgGatewayRootCa);
+  await knex.schema.dropTableIfExists(TableName.OrgGatewayConfig);
+  await dropOnUpdateTrigger(knex, TableName.OrgGatewayConfig);
 }
