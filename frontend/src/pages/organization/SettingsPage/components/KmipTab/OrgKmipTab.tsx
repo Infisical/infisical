@@ -4,12 +4,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
   FormControl,
   IconButton,
-  Input,
   Modal,
   ModalContent,
   Select,
@@ -18,18 +18,13 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
-import { useOrganization } from "@app/context";
+import { useOrganization, useSubscription } from "@app/context";
 import { downloadTxtFile } from "@app/helpers/download";
 import { usePopUp, useTimedReset } from "@app/hooks";
 import { certKeyAlgorithms } from "@app/hooks/api/certificates/constants";
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
-import {
-  useGenerateOrgKmipServerCert,
-  useGetOrgKmipConfig,
-  useSetupOrgKmip
-} from "@app/hooks/api/kmip";
+import { useGetOrgKmipConfig, useSetupOrgKmip } from "@app/hooks/api/kmip";
 import { OrgKmipConfig } from "@app/hooks/api/kmip/types";
-import { CertificateContent } from "@app/pages/cert-manager/CertificatesPage/components/CertificatesTab/components/CertificateContent";
 
 const orgConfigFormSchema = z.object({
   caKeyAlgorithm: z.nativeEnum(CertKeyAlgorithm)
@@ -45,8 +40,11 @@ const OrgConfigSection = ({
   isKmipConfigLoading: boolean;
 }) => {
   const { popUp, handlePopUpToggle, handlePopUpClose, handlePopUpOpen } = usePopUp([
-    "configureKmip"
+    "configureKmip",
+    "upgradePlan"
   ] as const);
+  const { subscription } = useSubscription();
+
   const {
     handleSubmit,
     control,
@@ -181,6 +179,11 @@ const OrgConfigSection = ({
             <Button
               className="mt-2"
               onClick={() => {
+                if (subscription && !subscription.kmip) {
+                  handlePopUpOpen("upgradePlan");
+                  return;
+                }
+
                 handlePopUpOpen("configureKmip");
               }}
             >
@@ -244,175 +247,12 @@ const OrgConfigSection = ({
           </form>
         </ModalContent>
       </Modal>
+      <UpgradePlanModal
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        text="KMIP requires an enterprise plan."
+      />
     </>
-  );
-};
-
-const orgServerCertFormSchema = z.object({
-  commonName: z.string(),
-  altNames: z.string(),
-  keyAlgorithm: z.nativeEnum(CertKeyAlgorithm),
-  ttl: z.string()
-});
-
-type TOrgServerCertForm = z.infer<typeof orgServerCertFormSchema>;
-
-export const KmipServerConfigSection = () => {
-  const { popUp, handlePopUpToggle, handlePopUpClose, handlePopUpOpen } = usePopUp([
-    "configureKmipServerCert",
-    "showCertificate"
-  ] as const);
-
-  const certificateData = popUp.showCertificate?.data as {
-    serialNumber: string;
-    certificate: string;
-    certificateChain: string;
-    privateKey: string;
-  };
-
-  const {
-    handleSubmit,
-    control,
-    formState: { isSubmitting }
-  } = useForm<TOrgServerCertForm>({
-    resolver: zodResolver(orgServerCertFormSchema)
-  });
-
-  const { mutateAsync: generateKmipServerCert } = useGenerateOrgKmipServerCert();
-
-  const onFormSubmit = async (formData: TOrgServerCertForm) => {
-    const { data: certificate } = await generateKmipServerCert(formData);
-    handlePopUpOpen("showCertificate", certificate);
-
-    createNotification({
-      type: "success",
-      text: "Successfully created KMIP server certificate"
-    });
-
-    handlePopUpClose("configureKmipServerCert");
-  };
-
-  return (
-    <div className="mt-8 flex flex-col justify-start">
-      <div className="text-lg">KMIP Server Certificate</div>
-      <div className="mt-2 max-w-lg text-sm text-mineshaft-400">
-        These certificates should be used to configure TLS for the KMIP servers.
-      </div>
-      <Button
-        className="mt-2 w-fit"
-        onClick={() => {
-          handlePopUpOpen("configureKmipServerCert");
-        }}
-      >
-        Generate KMIP server certificate
-      </Button>
-      <Modal
-        isOpen={popUp.configureKmipServerCert.isOpen}
-        onOpenChange={(state) => handlePopUpToggle("configureKmipServerCert", state)}
-      >
-        <ModalContent title="Configure KMIP for the organization">
-          <form onSubmit={handleSubmit(onFormSubmit)}>
-            <Controller
-              control={control}
-              defaultValue=""
-              name="commonName"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Common Name (CN)"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  isRequired
-                >
-                  <Input {...field} placeholder="service.acme.com" />
-                </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              defaultValue=""
-              name="altNames"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Alternative Names (SANs)"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                >
-                  <Input {...field} placeholder="app1.acme.com, app2.acme.com, ..." />
-                </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              name="ttl"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="TTL"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  isRequired
-                >
-                  <Input {...field} placeholder="2 days, 1d, 2h, 1y, ..." />
-                </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              name="keyAlgorithm"
-              defaultValue={CertKeyAlgorithm.RSA_2048}
-              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                <FormControl
-                  label="Key Algorithm"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                  helperText="This defines the key algorithm to use for signing the server certificate."
-                >
-                  <Select
-                    defaultValue={field.value}
-                    {...field}
-                    onValueChange={(e) => onChange(e)}
-                    className="w-full"
-                  >
-                    {certKeyAlgorithms.map(({ label, value }) => (
-                      <SelectItem value={String(value || "")} key={label}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              )}
-            />
-            <div className="mt-6 flex w-full gap-4">
-              <Button
-                className=""
-                size="sm"
-                type="submit"
-                isLoading={isSubmitting}
-                isDisabled={isSubmitting}
-              >
-                Continue
-              </Button>
-              <Button
-                className=""
-                size="sm"
-                variant="outline_bg"
-                type="button"
-                onClick={() => handlePopUpClose("configureKmipServerCert")}
-              >
-                Cancel
-              </Button>
-            </div>
-          </form>
-        </ModalContent>
-      </Modal>
-      <Modal
-        isOpen={popUp.showCertificate.isOpen}
-        onOpenChange={(state) => handlePopUpToggle("showCertificate", state)}
-      >
-        <ModalContent title="Configure KMIP for the organization">
-          <CertificateContent {...certificateData} />
-        </ModalContent>
-      </Modal>
-    </div>
   );
 };
 
@@ -423,7 +263,6 @@ export const KmipTab = () => {
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <OrgConfigSection kmipConfig={kmipConfig} isKmipConfigLoading={isPending} />
-      {kmipConfig && <KmipServerConfigSection />}
     </div>
   );
 };

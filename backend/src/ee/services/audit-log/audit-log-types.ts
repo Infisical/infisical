@@ -267,6 +267,11 @@ export enum EventType {
   GET_KMIP_CLIENT = "get-kmip-client",
   GET_KMIP_CLIENTS = "get-kmip-clients",
   CREATE_KMIP_CLIENT_CERTIFICATE = "create-kmip-client-certificate",
+
+  SETUP_KMIP = "setup-kmip",
+  GET_KMIP = "get-kmip",
+  REGISTER_KMIP_SERVER = "register-kmip-server",
+
   KMIP_OPERATION_CREATE = "kmip-operation-create",
   KMIP_OPERATION_GET = "kmip-operation-get",
   KMIP_OPERATION_DELETE = "kmip-operation-delete",
@@ -2207,6 +2212,31 @@ interface KmipOperationRegisterEvent {
   };
 }
 
+interface SetupKmipEvent {
+  type: EventType.SETUP_KMIP;
+  metadata: {
+    keyAlgorithm: CertKeyAlgorithm;
+  };
+}
+
+interface GetKmipEvent {
+  type: EventType.GET_KMIP;
+  metadata: {
+    id: string;
+  };
+}
+
+interface RegisterKmipServerEvent {
+  type: EventType.REGISTER_KMIP_SERVER;
+  metadata: {
+    serverCertificateSerialNumber: string;
+    hostnamesOrIps: string;
+    commonName: string;
+    keyAlgorithm: CertKeyAlgorithm;
+    ttl: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -2404,6 +2434,9 @@ export type Event =
   | GetKmipClientEvent
   | GetKmipClientsEvent
   | CreateKmipClientCertificateEvent
+  | SetupKmipEvent
+  | GetKmipEvent
+  | RegisterKmipServerEvent
   | KmipOperationGetEvent
   | KmipOperationDeleteEvent
   | KmipOperationCreateEvent

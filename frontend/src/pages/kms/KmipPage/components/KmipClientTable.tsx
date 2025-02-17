@@ -13,6 +13,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { motion } from "framer-motion";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -39,6 +40,7 @@ import {
   ProjectPermissionKmipActions,
   ProjectPermissionSub,
   useProjectPermission,
+  useSubscription,
   useWorkspace
 } from "@app/context";
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
@@ -81,6 +83,7 @@ export const KmipClientTable = () => {
   });
 
   const { permission } = useProjectPermission();
+  const { subscription } = useSubscription();
 
   const { kmipClients = [], totalCount = 0 } = data ?? {};
   useResetPageHelper({
@@ -93,7 +96,8 @@ export const KmipClientTable = () => {
     "upsertKmipClient",
     "deleteKmipClient",
     "generateKmipClientCert",
-    "displayKmipClientCert"
+    "displayKmipClientCert",
+    "upgradePlan"
   ] as const);
 
   const handleSort = () => {
@@ -152,7 +156,14 @@ export const KmipClientTable = () => {
                 colorSchema="primary"
                 type="submit"
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => handlePopUpOpen("upsertKmipClient", null)}
+                onClick={() => {
+                  if (subscription && !subscription.kmip) {
+                    handlePopUpOpen("upgradePlan");
+                    return;
+                  }
+
+                  handlePopUpOpen("upsertKmipClient", null);
+                }}
                 isDisabled={!isAllowed}
               >
                 Add KMIP Client
@@ -202,7 +213,7 @@ export const KmipClientTable = () => {
                     <Tr className="group h-10 hover:bg-mineshaft-700" key={`st-v3-${id}`}>
                       <Td>{name}</Td>
                       <Td className="max-w-80 break-all">{description}</Td>
-                      <Td className="max-w-40 break-all">{[permissions.join(", ")]}</Td>
+                      <Td className="max-w-40">{[permissions.join(", ")]}</Td>
                       <Td className="flex justify-end">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -315,6 +326,11 @@ export const KmipClientTable = () => {
           isOpen={popUp.displayKmipClientCert.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("displayKmipClientCert", isOpen)}
           certificate={popUp.displayKmipClientCert.data}
+        />
+        <UpgradePlanModal
+          isOpen={popUp.upgradePlan.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+          text="KMIP requires an enterprise plan."
         />
       </div>
     </motion.div>

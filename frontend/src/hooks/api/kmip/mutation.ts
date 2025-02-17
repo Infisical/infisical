@@ -5,11 +5,9 @@ import { apiRequest } from "@app/config/request";
 import { kmipKeys } from "./queries";
 import {
   KmipClientCertificate,
-  OrgKmipServerCert,
   TCreateKmipClient,
   TDeleteKmipClient,
   TGenerateKmipClientCertificate,
-  TGenerateOrgKmipServerCertDTO,
   TSetupOrgKmipDTO,
   TUpdateKmipClient
 } from "./types";
@@ -87,14 +85,6 @@ export const useSetupOrgKmip = (orgId: string) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: kmipKeys.getOrgKmip(orgId) });
-    }
-  });
-};
-
-export const useGenerateOrgKmipServerCert = () => {
-  return useMutation({
-    mutationFn: async (payload: TGenerateOrgKmipServerCertDTO) => {
-      return apiRequest.post<OrgKmipServerCert>("/api/v1/kmip/server-certificates", payload);
     }
   });
 };

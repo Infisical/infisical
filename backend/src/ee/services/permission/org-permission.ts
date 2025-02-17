@@ -268,6 +268,9 @@ const buildAdminPermission = () => {
 
   can(OrgPermissionKmipActions.Setup, OrgPermissionSubjects.Kmip);
 
+  // the proxy assignment is temporary in order to prevent "more privilege" error during role assignment to MI
+  can(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
+
   return rules;
 };
 

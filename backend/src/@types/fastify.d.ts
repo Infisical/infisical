@@ -227,7 +227,7 @@ declare module "fastify" {
     // everywhere else access using service layer
     store: {
       user: Pick<TUserDALFactory, "findById">;
-      kmipClient: Pick<TKmipClientDALFactory, "findOne">;
+      kmipClient: Pick<TKmipClientDALFactory, "findByProjectAndClientId">;
     };
   }
 }

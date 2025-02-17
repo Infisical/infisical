@@ -15,6 +15,7 @@ import { hostnameRegex } from "@app/services/certificate-authority/certificate-a
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
+import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionKmipActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { ProjectPermissionKmipActions, ProjectPermissionSub } from "../permission/project-permission";
@@ -30,6 +31,7 @@ import {
   TGetKmipClientDTO,
   TGetOrgKmipDTO,
   TListKmipClientsByProjectIdDTO,
+  TRegisterServerDTO,
   TSetupOrgKmipDTO,
   TUpdateKmipClientDTO
 } from "./kmip-types";
@@ -41,6 +43,7 @@ type TKmipServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   kmipOrgConfigDAL: TKmipOrgConfigDALFactory;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TKmipServiceFactory = ReturnType<typeof kmipServiceFactory>;
@@ -51,7 +54,8 @@ export const kmipServiceFactory = ({
   kmipClientCertificateDAL,
   kmipOrgConfigDAL,
   kmsService,
-  kmipOrgServerCertificateDAL
+  kmipOrgServerCertificateDAL,
+  licenseService
 }: TKmipServiceFactoryDep) => {
   const createKmipClient = async ({
     actor,
@@ -76,6 +80,12 @@ export const kmipServiceFactory = ({
       ProjectPermissionKmipActions.CreateClients,
       ProjectPermissionSub.Kmip
     );
+
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.kmip)
+      throw new BadRequestError({
+        message: "Failed to create KMIP client. Upgrade your plan to enterprise."
+      });
 
     const kmipClient = await kmipClientDAL.create({
       projectId,
@@ -104,6 +114,12 @@ export const kmipServiceFactory = ({
         message: `KMIP client with ID ${id} does not exist`
       });
     }
+
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.kmip)
+      throw new BadRequestError({
+        message: "Failed to update KMIP client. Upgrade your plan to enterprise."
+      });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -150,6 +166,12 @@ export const kmipServiceFactory = ({
       ProjectPermissionKmipActions.DeleteClients,
       ProjectPermissionSub.Kmip
     );
+
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.kmip)
+      throw new BadRequestError({
+        message: "Failed to delete KMIP client. Upgrade your plan to enterprise."
+      });
 
     const deletedKmipClient = await kmipClientDAL.deleteById(id);
 
@@ -217,6 +239,12 @@ export const kmipServiceFactory = ({
         message: `KMIP client with ID ${clientId} does not exist`
       });
     }
+
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.kmip)
+      throw new BadRequestError({
+        message: "Failed to create KMIP client. Upgrade your plan to enterprise."
+      });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -340,6 +368,31 @@ export const kmipServiceFactory = ({
     };
   };
 
+  const getServerCertificateBySerialNumber = async (orgId: string, serialNumber: string) => {
+    const serverCert = await kmipOrgServerCertificateDAL.findOne({
+      serialNumber,
+      orgId
+    });
+
+    if (!serverCert) {
+      throw new NotFoundError({
+        message: "Server certificate not found"
+      });
+    }
+
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId
+    });
+
+    const parsedCertificate = new x509.X509Certificate(decryptor({ cipherTextBlob: serverCert.encryptedCertificate }));
+
+    return {
+      publicKey: parsedCertificate.publicKey.toString("pem"),
+      keyAlgorithm: serverCert.keyAlgorithm as CertKeyAlgorithm
+    };
+  };
+
   const setupOrgKmip = async ({ caKeyAlgorithm, actorOrgId, actor, actorId, actorAuthMethod }: TSetupOrgKmipDTO) => {
     const { permission } = await permissionService.getOrgPermission(
       actor,
@@ -359,6 +412,12 @@ export const kmipServiceFactory = ({
         message: "KMIP has already been configured for the organization"
       });
     }
+
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.kmip)
+      throw new BadRequestError({
+        message: "Failed to setup KMIP. Upgrade your plan to enterprise."
+      });
 
     const alg = keyAlgorithmToAlgCfg(caKeyAlgorithm);
 
@@ -499,7 +558,9 @@ export const kmipServiceFactory = ({
     };
   };
 
-  const getOrgKmip = async ({ actorOrgId }: TGetOrgKmipDTO) => {
+  const getOrgKmip = async ({ actorOrgId, actor, actorId, actorAuthMethod }: TGetOrgKmipDTO) => {
+    await permissionService.getOrgPermission(actor, actorId, actorOrgId, actorAuthMethod, actorOrgId);
+
     const kmipConfig = await kmipOrgConfigDAL.findOne({
       orgId: actorOrgId
     });
@@ -525,32 +586,21 @@ export const kmipServiceFactory = ({
     );
 
     return {
+      id: kmipConfig.id,
       serverCertificateChain: `${serverIntermediateCaCert.toString("pem")}\n${rootCaCert.toString("pem")}`.trim(),
       clientCertificateChain: `${clientIntermediateCaCert.toString("pem")}\n${rootCaCert.toString("pem")}`.trim()
     };
   };
 
   const generateOrgKmipServerCertificate = async ({
-    actorOrgId,
-    actor,
-    actorId,
-    actorAuthMethod,
+    orgId,
     ttl,
     commonName,
     altNames,
     keyAlgorithm
   }: TGenerateOrgKmipServerCertificateDTO) => {
-    const { permission } = await permissionService.getOrgPermission(
-      actor,
-      actorId,
-      actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionKmipActions.Setup, OrgPermissionSubjects.Kmip);
-
     const kmipOrgConfig = await kmipOrgConfigDAL.findOne({
-      orgId: actorOrgId
+      orgId
     });
 
     if (!kmipOrgConfig) {
@@ -559,9 +609,15 @@ export const kmipServiceFactory = ({
       });
     }
 
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.kmip)
+      throw new BadRequestError({
+        message: "Failed to generate KMIP server certificate. Upgrade your plan to enterprise."
+      });
+
     const { decryptor, encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
-      orgId: actorOrgId
+      orgId
     });
 
     const caCertObj = new x509.X509Certificate(
@@ -668,7 +724,7 @@ export const kmipServiceFactory = ({
     const certificateChain = `${caCertObj.toString("pem")}\n${decryptedCaCertChain}`.trim();
 
     await kmipOrgServerCertificateDAL.create({
-      orgId: actorOrgId,
+      orgId,
       keyAlgorithm,
       issuedAt: notBeforeDate,
       expiration: notAfterDate,
@@ -687,6 +743,66 @@ export const kmipServiceFactory = ({
     };
   };
 
+  const registerServer = async ({
+    actorOrgId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    ttl,
+    commonName,
+    keyAlgorithm,
+    hostnamesOrIps
+  }: TRegisterServerDTO) => {
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
+
+    const kmipConfig = await kmipOrgConfigDAL.findOne({
+      orgId: actorOrgId
+    });
+
+    if (!kmipConfig) {
+      throw new BadRequestError({
+        message: "KMIP has not been configured for the organization"
+      });
+    }
+
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.kmip)
+      throw new BadRequestError({
+        message: "Failed to register KMIP server. Upgrade your plan to enterprise."
+      });
+
+    const { privateKey, certificate, certificateChain, serialNumber } = await generateOrgKmipServerCertificate({
+      orgId: actorOrgId,
+      commonName: commonName ?? "kmip-server",
+      altNames: hostnamesOrIps,
+      keyAlgorithm: keyAlgorithm ?? (kmipConfig.caKeyAlgorithm as CertKeyAlgorithm),
+      ttl
+    });
+
+    const { clientCertificateChain } = await getOrgKmip({
+      actor,
+      actorAuthMethod,
+      actorId,
+      actorOrgId
+    });
+
+    return {
+      serverCertificateSerialNumber: serialNumber,
+      clientCertificateChain,
+      privateKey,
+      certificate,
+      certificateChain
+    };
+  };
+
   return {
     createKmipClient,
     updateKmipClient,
@@ -696,6 +812,8 @@ export const kmipServiceFactory = ({
     createKmipClientCertificate,
     setupOrgKmip,
     generateOrgKmipServerCertificate,
-    getOrgKmip
+    getOrgKmip,
+    getServerCertificateBySerialNumber,
+    registerServer
   };
 };

@@ -306,13 +306,26 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      return server.services.kmip.setupOrgKmip({
+      const chains = await server.services.kmip.setupOrgKmip({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.SETUP_KMIP,
+          metadata: {
+            keyAlgorithm: req.body.caKeyAlgorithm
+          }
+        }
+      });
+
+      return chains;
     }
   });
 
@@ -332,46 +345,76 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      return server.services.kmip.getOrgKmip({
+      const kmip = await server.services.kmip.getOrgKmip({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.GET_KMIP,
+          metadata: {
+            id: kmip.id
+          }
+        }
+      });
+
+      return kmip;
     }
   });
 
   server.route({
     method: "POST",
-    url: "/server-certificates",
+    url: "/server-registration",
     config: {
       rateLimit: writeLimit
     },
     schema: {
       body: z.object({
-        commonName: z.string().trim().min(1),
-        altNames: validateAltNamesField,
-        keyAlgorithm: z.nativeEnum(CertKeyAlgorithm),
+        hostnamesOrIps: validateAltNamesField,
+        commonName: z.string().trim().min(1).optional(),
+        keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional().default(CertKeyAlgorithm.RSA_2048),
         ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number")
       }),
       response: {
         200: z.object({
-          serialNumber: z.string(),
+          clientCertificateChain: z.string(),
           certificateChain: z.string(),
           certificate: z.string(),
           privateKey: z.string()
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      return server.services.kmip.generateOrgKmipServerCertificate({
+      const configs = await server.services.kmip.registerServer({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.REGISTER_KMIP_SERVER,
+          metadata: {
+            serverCertificateSerialNumber: configs.serverCertificateSerialNumber,
+            hostnamesOrIps: req.body.hostnamesOrIps,
+            commonName: req.body.commonName ?? "kmip-server",
+            keyAlgorithm: req.body.keyAlgorithm,
+            ttl: req.body.ttl
+          }
+        }
+      });
+
+      return configs;
     }
   });
 };

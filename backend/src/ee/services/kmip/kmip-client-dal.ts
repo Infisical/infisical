@@ -13,6 +13,26 @@ export type TKmipClientDALFactory = ReturnType<typeof kmipClientDALFactory>;
 export const kmipClientDALFactory = (db: TDbClient) => {
   const kmipClientOrm = ormify(db, TableName.KmipClient);
 
+  const findByProjectAndClientId = async (projectId: string, clientId: string) => {
+    try {
+      const client = await db
+        .replicaNode()(TableName.KmipClient)
+        .join(TableName.Project, `${TableName.Project}.id`, `${TableName.KmipClient}.projectId`)
+        .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.Project}.orgId`)
+        .where({
+          [`${TableName.KmipClient}.projectId` as "projectId"]: projectId,
+          [`${TableName.KmipClient}.id` as "id"]: clientId
+        })
+        .select(selectAllTableCols(TableName.KmipClient))
+        .select(db.ref("id").withSchema(TableName.Organization).as("orgId"))
+        .first();
+
+      return client;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find by project and client ID" });
+    }
+  };
+
   const findByProjectId = async (
     {
       projectId,
@@ -60,6 +80,7 @@ export const kmipClientDALFactory = (db: TDbClient) => {
 
   return {
     ...kmipClientOrm,
-    findByProjectId
+    findByProjectId,
+    findByProjectAndClientId
   };
 };

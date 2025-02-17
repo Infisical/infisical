@@ -1,5 +1,3 @@
-import crypto from "crypto";
-import jwt, { JwtPayload } from "jsonwebtoken";
 import z from "zod";
 
 import { KmsKeysSchema } from "@app/db/schemas";
@@ -7,21 +5,17 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { SymmetricEncryption } from "@app/lib/crypto/cipher";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { writeLimit } from "@app/server/config/rateLimiter";
-import { ActorType } from "@app/services/auth/auth-type";
-import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
+import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
 export const registerKmipOperationRouter = async (server: FastifyZodProvider) => {
   server.decorateRequest("kmipUser", null);
 
-  server.addHook("preHandler", async (req) => {
-    const token = req.headers["x-kmip-jwt"] as string;
-    const serverCertSerialNumber = req.headers["x-server-certificate-serial-number"] as string;
-
-    if (!jwt) {
-      throw new ForbiddenRequestError({
-        message: "Missing KMIP JWT"
-      });
-    }
+  server.addHook("onRequest", async (req) => {
+    const clientId = req.headers["x-kmip-client-id"] as string;
+    const projectId = req.headers["x-kmip-project-id"] as string;
+    const clientCertSerialNumber = req.headers["x-kmip-client-certificate-serial-number"] as string;
+    const serverCertSerialNumber = req.headers["x-kmip-server-certificate-serial-number"] as string;
 
     if (!serverCertSerialNumber) {
       throw new ForbiddenRequestError({
@@ -29,25 +23,28 @@ export const registerKmipOperationRouter = async (server: FastifyZodProvider) =>
       });
     }
 
-    const serverCert = await server.services.kmip.getServerCertificateBySerialNumber(serverCertSerialNumber);
+    if (!clientCertSerialNumber) {
+      throw new ForbiddenRequestError({
+        message: "Missing client certificate serial number from request"
+      });
+    }
+
+    if (!clientId) {
+      throw new ForbiddenRequestError({
+        message: "Missing client ID from request"
+      });
+    }
+
+    if (!projectId) {
+      throw new ForbiddenRequestError({
+        message: "Missing project ID from request"
+      });
+    }
 
     // TODO: assert that server certificate used is not revoked
     // TODO: assert that client certificate used is not revoked
 
-    const publicKey = crypto.createPublicKey({
-      key: serverCert.publicKey,
-      format: "pem",
-      type: [CertKeyAlgorithm.ECDSA_P256, CertKeyAlgorithm.ECDSA_P384].includes(serverCert.keyAlgorithm)
-        ? "spki"
-        : "pkcs1"
-    });
-
-    const decodedToken = jwt.verify(token, publicKey) as JwtPayload & { projectId: string; clientId: string };
-
-    const kmipClient = await server.store.kmipClient.findOne({
-      id: decodedToken.clientId,
-      projectId: decodedToken.projectId
-    });
+    const kmipClient = await server.store.kmipClient.findByProjectAndClientId(projectId, clientId);
 
     if (!kmipClient) {
       throw new NotFoundError({
@@ -55,9 +52,15 @@ export const registerKmipOperationRouter = async (server: FastifyZodProvider) =>
       });
     }
 
+    if (kmipClient.orgId !== req.permission.orgId) {
+      throw new ForbiddenRequestError({
+        message: "Client specified in the request does not belong in the organization"
+      });
+    }
+
     req.kmipUser = {
-      projectId: decodedToken.projectId,
-      clientId: decodedToken.clientId,
+      projectId,
+      clientId,
       name: kmipClient.name
     };
   });
@@ -77,9 +80,14 @@ export const registerKmipOperationRouter = async (server: FastifyZodProvider) =>
         200: KmsKeysSchema
       }
     },
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const object = await server.services.kmipOperation.create({
         ...req.kmipUser,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
         algorithm: req.body.algorithm
       });
 
@@ -124,9 +132,14 @@ export const registerKmipOperationRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const object = await server.services.kmipOperation.get({
         ...req.kmipUser,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
         id: req.body.id
       });
 
@@ -172,9 +185,14 @@ export const registerKmipOperationRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const object = await server.services.kmipOperation.getAttributes({
         ...req.kmipUser,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
         id: req.body.id
       });
 
@@ -216,9 +234,14 @@ export const registerKmipOperationRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const object = await server.services.kmipOperation.deleteOp({
         ...req.kmipUser,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
         id: req.body.id
       });
 
@@ -261,9 +284,14 @@ export const registerKmipOperationRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const object = await server.services.kmipOperation.activate({
         ...req.kmipUser,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
         id: req.body.id
       });
 
@@ -306,9 +334,14 @@ export const registerKmipOperationRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const object = await server.services.kmipOperation.revoke({
         ...req.kmipUser,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
         id: req.body.id
       });
 
@@ -356,9 +389,14 @@ export const registerKmipOperationRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const objects = await server.services.kmipOperation.locate({
-        ...req.kmipUser
+        ...req.kmipUser,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
       });
 
       await server.services.auditLog.createAuditLog({
@@ -403,10 +441,15 @@ export const registerKmipOperationRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const object = await server.services.kmipOperation.register({
         ...req.kmipUser,
-        ...req.body
+        ...req.body,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
       });
 
       await server.services.auditLog.createAuditLog({

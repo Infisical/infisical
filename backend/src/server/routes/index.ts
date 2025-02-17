@@ -1434,14 +1434,16 @@ export const registerRoutes = async (
     kmipClientCertificateDAL,
     kmipOrgConfigDAL,
     kmsService,
-    kmipOrgServerCertificateDAL
+    kmipOrgServerCertificateDAL,
+    licenseService
   });
 
   const kmipOperationService = kmipOperationServiceFactory({
     kmsService,
     kmsDAL,
     projectDAL,
-    kmipClientDAL
+    kmipClientDAL,
+    permissionService
   });
 
   await superAdminService.initServerCfg();

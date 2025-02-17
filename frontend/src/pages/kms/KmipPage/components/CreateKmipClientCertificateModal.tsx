@@ -107,7 +107,7 @@ const KmipClientCertificateForm = ({
           </FormControl>
         )}
       />
-      <div className="flex items-center">
+      <div className="mt-8 flex items-center">
         <Button
           className="mr-4"
           size="sm"

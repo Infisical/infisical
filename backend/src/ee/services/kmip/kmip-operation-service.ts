@@ -1,9 +1,12 @@
-import { ProjectType } from "@app/db/schemas";
+import { ForbiddenError } from "@casl/ability";
+
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TKmsKeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
+import { OrgPermissionKmipActions, OrgPermissionSubjects } from "../permission/org-permission";
+import { TPermissionServiceFactory } from "../permission/permission-service";
 import { TKmipClientDALFactory } from "./kmip-client-dal";
 import { KmipPermission } from "./kmip-enum";
 import {
@@ -21,6 +24,7 @@ type TKmipOperationServiceFactoryDep = {
   kmsDAL: TKmsKeyDALFactory;
   kmipClientDAL: TKmipClientDALFactory;
   projectDAL: Pick<TProjectDALFactory, "getProjectFromSplitId" | "findById">;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
 
 export type TKmipOperationServiceFactory = ReturnType<typeof kmipOperationServiceFactory>;
@@ -29,16 +33,28 @@ export const kmipOperationServiceFactory = ({
   kmsService,
   kmsDAL,
   projectDAL,
-  kmipClientDAL
+  kmipClientDAL,
+  permissionService
 }: TKmipOperationServiceFactoryDep) => {
-  const create = async ({ projectId: preSplitProjectId, clientId, algorithm }: TKmipCreateDTO) => {
-    let projectId = preSplitProjectId;
-    const cmekProjectFromSplit = await projectDAL.getProjectFromSplitId(projectId, ProjectType.KMS);
-    if (cmekProjectFromSplit) {
-      projectId = cmekProjectFromSplit.id;
-    }
+  const create = async ({
+    projectId,
+    clientId,
+    algorithm,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TKmipCreateDTO) => {
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    );
 
-    const project = await projectDAL.findById(projectId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
+
     const kmipClient = await kmipClientDAL.findOne({
       id: clientId,
       projectId
@@ -52,7 +68,7 @@ export const kmipOperationServiceFactory = ({
 
     const kmsKey = await kmsService.generateKmsKey({
       encryptionAlgorithm: algorithm,
-      orgId: project.orgId,
+      orgId: actorOrgId,
       projectId,
       isReserved: false
     });
@@ -60,13 +76,16 @@ export const kmipOperationServiceFactory = ({
     return kmsKey;
   };
 
-  const deleteOp = async ({ projectId: preSplitProjectId, id, clientId }: TKmipDeleteDTO) => {
-    let projectId = preSplitProjectId;
-    const cmekProjectFromSplit = await projectDAL.getProjectFromSplitId(projectId, ProjectType.KMS);
+  const deleteOp = async ({ projectId, id, clientId, actor, actorId, actorOrgId, actorAuthMethod }: TKmipDeleteDTO) => {
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    );
 
-    if (cmekProjectFromSplit) {
-      projectId = cmekProjectFromSplit.id;
-    }
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
 
     const kmipClient = await kmipClientDAL.findOne({
       id: clientId,
@@ -104,13 +123,16 @@ export const kmipOperationServiceFactory = ({
     return kms;
   };
 
-  const get = async ({ projectId: preSplitProjectId, id, clientId }: TKmipGetDTO) => {
-    let projectId = preSplitProjectId;
-    const cmekProjectFromSplit = await projectDAL.getProjectFromSplitId(projectId, ProjectType.KMS);
+  const get = async ({ projectId, id, clientId, actor, actorId, actorAuthMethod, actorOrgId }: TKmipGetDTO) => {
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    );
 
-    if (cmekProjectFromSplit) {
-      projectId = cmekProjectFromSplit.id;
-    }
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
 
     const kmipClient = await kmipClientDAL.findOne({
       id: clientId,
@@ -158,13 +180,16 @@ export const kmipOperationServiceFactory = ({
     };
   };
 
-  const activate = async ({ projectId: preSplitProjectId, id, clientId }: TKmipGetDTO) => {
-    let projectId = preSplitProjectId;
-    const cmekProjectFromSplit = await projectDAL.getProjectFromSplitId(projectId, ProjectType.KMS);
+  const activate = async ({ projectId, id, clientId, actor, actorId, actorAuthMethod, actorOrgId }: TKmipGetDTO) => {
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    );
 
-    if (cmekProjectFromSplit) {
-      projectId = cmekProjectFromSplit.id;
-    }
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
 
     const kmipClient = await kmipClientDAL.findOne({
       id: clientId,
@@ -192,13 +217,16 @@ export const kmipOperationServiceFactory = ({
     };
   };
 
-  const revoke = async ({ projectId: preSplitProjectId, id, clientId }: TKmipRevokeDTO) => {
-    let projectId = preSplitProjectId;
-    const cmekProjectFromSplit = await projectDAL.getProjectFromSplitId(projectId, ProjectType.KMS);
+  const revoke = async ({ projectId, id, clientId, actor, actorId, actorAuthMethod, actorOrgId }: TKmipRevokeDTO) => {
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    );
 
-    if (cmekProjectFromSplit) {
-      projectId = cmekProjectFromSplit.id;
-    }
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
 
     const kmipClient = await kmipClientDAL.findOne({
       id: clientId,
@@ -242,13 +270,24 @@ export const kmipOperationServiceFactory = ({
     };
   };
 
-  const getAttributes = async ({ projectId: preSplitProjectId, id, clientId }: TKmipGetAttributesDTO) => {
-    let projectId = preSplitProjectId;
-    const cmekProjectFromSplit = await projectDAL.getProjectFromSplitId(projectId, ProjectType.KMS);
+  const getAttributes = async ({
+    projectId,
+    id,
+    clientId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TKmipGetAttributesDTO) => {
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    );
 
-    if (cmekProjectFromSplit) {
-      projectId = cmekProjectFromSplit.id;
-    }
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
 
     const kmipClient = await kmipClientDAL.findOne({
       id: clientId,
@@ -291,13 +330,16 @@ export const kmipOperationServiceFactory = ({
     };
   };
 
-  const locate = async ({ projectId: preSplitProjectId, clientId }: TKmipLocateDTO) => {
-    let projectId = preSplitProjectId;
-    const cmekProjectFromSplit = await projectDAL.getProjectFromSplitId(projectId, ProjectType.KMS);
+  const locate = async ({ projectId, clientId, actor, actorId, actorAuthMethod, actorOrgId }: TKmipLocateDTO) => {
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    );
 
-    if (cmekProjectFromSplit) {
-      projectId = cmekProjectFromSplit.id;
-    }
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
 
     const kmipClient = await kmipClientDAL.findOne({
       id: clientId,
@@ -315,13 +357,26 @@ export const kmipOperationServiceFactory = ({
     return keys;
   };
 
-  const register = async ({ projectId: preSplitProjectId, clientId, key, algorithm, name }: TKmipRegisterDTO) => {
-    let projectId = preSplitProjectId;
-    const cmekProjectFromSplit = await projectDAL.getProjectFromSplitId(projectId, ProjectType.KMS);
+  const register = async ({
+    projectId,
+    clientId,
+    key,
+    algorithm,
+    name,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TKmipRegisterDTO) => {
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    );
 
-    if (cmekProjectFromSplit) {
-      projectId = cmekProjectFromSplit.id;
-    }
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
 
     const kmipClient = await kmipClientDAL.findOne({
       id: clientId,

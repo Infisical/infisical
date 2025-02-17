@@ -73,13 +73,6 @@ export type TSetupOrgKmipDTO = {
   caKeyAlgorithm: CertKeyAlgorithm;
 };
 
-export type TGenerateOrgKmipServerCertDTO = {
-  commonName: string;
-  keyAlgorithm: CertKeyAlgorithm;
-  altNames: string;
-  ttl: string;
-};
-
 export type OrgKmipServerCert = {
   serialNumber: string;
   certificate: string;

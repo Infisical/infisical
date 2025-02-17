@@ -46,7 +46,7 @@ export type TListKmipClientsByProjectIdDTO = {
 type KmipOperationBaseDTO = {
   clientId: string;
   projectId: string;
-};
+} & Omit<TOrgPermission, "orgId">;
 
 export type TKmipCreateDTO = {
   algorithm: SymmetricEncryption;
@@ -90,5 +90,13 @@ export type TGenerateOrgKmipServerCertificateDTO = {
   commonName: string;
   altNames: string;
   keyAlgorithm: CertKeyAlgorithm;
+  ttl: string;
+  orgId: string;
+};
+
+export type TRegisterServerDTO = {
+  hostnamesOrIps: string;
+  commonName?: string;
+  keyAlgorithm?: CertKeyAlgorithm;
   ttl: string;
 } & Omit<TOrgPermission, "orgId">;

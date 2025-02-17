@@ -46,4 +46,5 @@ export type SubscriptionPlan = {
   pkiEst: boolean;
   enforceMfa: boolean;
   projectTemplates: boolean;
+  kmip: boolean;
 };
