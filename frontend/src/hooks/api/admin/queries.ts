@@ -1,5 +1,4 @@
-import { queryOptions, useInfiniteQuery, useQuery, UseQueryOptions } from "@tanstack/react-query";
-import { AxiosError } from "axios";
+import { useInfiniteQuery, useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
@@ -8,7 +7,6 @@ import {
   AdminGetUsersFilters,
   AdminSlackConfig,
   TGetServerRootKmsEncryptionDetails,
-  TInstanceGatewayConfig,
   TServerConfig
 } from "./types";
 
@@ -20,21 +18,7 @@ export const adminQueryKeys = {
   serverConfig: () => ["server-config"] as const,
   getUsers: (filters: AdminGetUsersFilters) => [adminStandaloneKeys.getUsers, { filters }] as const,
   getAdminSlackConfig: () => ["admin-slack-config"] as const,
-  getServerEncryptionStrategies: () => ["server-encryption-strategies"] as const,
-
-  getInstanceGatewayConfig: () =>
-    queryOptions({
-      queryKey: ["instance-gateway-config"],
-      queryFn: async () => {
-        const { data } = await apiRequest
-          .get<{ gateway: TInstanceGatewayConfig }>("/api/v1/admin/gateway")
-          .catch((err: AxiosError) => {
-            if (err.response?.status === 404) return { data: { gateway: false as const } };
-            throw err;
-          });
-        return data.gateway;
-      }
-    })
+  getServerEncryptionStrategies: () => ["server-encryption-strategies"] as const
 };
 
 export const fetchServerConfig = async () => {
