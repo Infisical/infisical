@@ -2035,7 +2035,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .nativeEnum(SecretUpdateMode)
           .optional()
           .default(SecretUpdateMode.FailOnNotFound)
-          .describe(RAW_SECRETS.UPDATE.environment),
+          .describe(RAW_SECRETS.UPDATE.mode),
         secrets: z
           .object({
             secretKey: SecretNameSchema.describe(RAW_SECRETS.UPDATE.secretName),
@@ -2105,15 +2105,39 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           metadata: {
             environment: req.body.environment,
             secretPath: req.body.secretPath,
-            secrets: secrets.map((secret) => ({
-              secretId: secret.id,
-              secretKey: secret.secretKey,
-              secretVersion: secret.version,
-              secretMetadata: secretMetadataMap.get(secret.secretKey)
-            }))
+            secrets: secrets
+              .filter((el) => el.version > 1)
+              .map((secret) => ({
+                secretId: secret.id,
+                secretPath: secret.secretPath,
+                secretKey: secret.secretKey,
+                secretVersion: secret.version,
+                secretMetadata: secretMetadataMap.get(secret.secretKey)
+              }))
           }
         }
       });
+      const createdSecrets = secrets.filter((el) => el.version === 1);
+      if (createdSecrets.length) {
+        await server.services.auditLog.createAuditLog({
+          projectId: secrets[0].workspace,
+          ...req.auditLogInfo,
+          event: {
+            type: EventType.CREATE_SECRETS,
+            metadata: {
+              environment: req.body.environment,
+              secretPath: req.body.secretPath,
+              secrets: createdSecrets.map((secret) => ({
+                secretId: secret.id,
+                secretPath: secret.secretPath,
+                secretKey: secret.secretKey,
+                secretVersion: secret.version,
+                secretMetadata: secretMetadataMap.get(secret.secretKey)
+              }))
+            }
+          }
+        });
+      }
 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretUpdated,

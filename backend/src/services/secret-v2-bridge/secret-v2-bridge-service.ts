@@ -1294,9 +1294,8 @@ export const secretV2BridgeServiceFactory = ({
       await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
     const updatedSecrets: Array<TSecretsV2 & { secretPath: string }> = [];
-    /* eslint-disable no-await-in-loop */
     await secretDAL.transaction(async (tx) => {
-      for (const folder of folders) {
+      for await (const folder of folders) {
         if (!folder) throw new NotFoundError({ message: "Folder not found" });
 
         const folderId = folder.id;
@@ -1336,7 +1335,7 @@ export const secretV2BridgeServiceFactory = ({
             message: `Secret does not exist: ${diff(
               secretsToUpdate.map((el) => el.secretKey),
               secretsToUpdateInDB.map((el) => el.key)
-            ).join(",")} in path ${folder.path}`
+            ).join(", ")} in path ${folder.path}`
           });
 
         const secretsToUpdateInDBGroupedByKey = groupBy(secretsToUpdateInDB, (i) => i.key);
@@ -1426,7 +1425,7 @@ export const secretV2BridgeServiceFactory = ({
             throw new BadRequestError({
               message: `Secret with new name already exists: ${secretsWithNewName
                 .map((el) => el.newSecretName)
-                .join(",")}`
+                .join(", ")}`
             });
 
           secretsWithNewName.forEach((el) => {
@@ -1530,7 +1529,6 @@ export const secretV2BridgeServiceFactory = ({
       }
     });
 
-    /* eslint-enable */
     await Promise.allSettled(folders.map((el) => (el?.id ? snapshotService.performSnapshot(el.id) : undefined)));
     await Promise.allSettled(
       folders.map((el) =>

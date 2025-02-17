@@ -722,7 +722,7 @@ export const RAW_SECRETS = {
     secretComment: "Update comment to the secret.",
     environment: "The slug of the environment where the secret is located.",
     mode: "Defines how the system should handle missing secrets during an update.",
-    secretPath: "The path of the secret to update.",
+    secretPath: "The default path for secrets to update or upsert, if not provided in the secret details.",
     secretValue: "The new value of the secret.",
     skipMultilineEncoding: "Skip multiline encoding for the secret value.",
     type: "The type of the secret to update.",
