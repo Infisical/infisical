@@ -33,6 +33,7 @@ import { Route as authLoginSsoPageRouteImport } from './pages/auth/LoginSsoPage/
 import { Route as authSelectOrgPageRouteImport } from './pages/auth/SelectOrgPage/route'
 import { Route as authLoginLdapPageRouteImport } from './pages/auth/LoginLdapPage/route'
 import { Route as adminSignUpPageRouteImport } from './pages/admin/SignUpPage/route'
+import { Route as organizationNoOrgPageRouteImport } from './pages/organization/NoOrgPage/route'
 import { Route as authSignUpPageRouteImport } from './pages/auth/SignUpPage/route'
 import { Route as authLoginPageRouteImport } from './pages/auth/LoginPage/route'
 import { Route as adminLayoutImport } from './pages/admin/layout'
@@ -42,7 +43,6 @@ import { Route as userPersonalSettingsPageRouteImport } from './pages/user/Perso
 import { Route as organizationSettingsPageRouteImport } from './pages/organization/SettingsPage/route'
 import { Route as organizationSecretSharingPageRouteImport } from './pages/organization/SecretSharingPage/route'
 import { Route as organizationSecretScanningPageRouteImport } from './pages/organization/SecretScanningPage/route'
-import { Route as organizationNoOrgPageRouteImport } from './pages/organization/NoOrgPage/route'
 import { Route as organizationBillingPageRouteImport } from './pages/organization/BillingPage/route'
 import { Route as organizationAuditLogsPageRouteImport } from './pages/organization/AuditLogsPage/route'
 import { Route as organizationAdminPageRouteImport } from './pages/organization/AdminPage/route'
@@ -378,6 +378,14 @@ const adminSignUpPageRouteRoute = adminSignUpPageRouteImport.update({
   getParentRoute: () => middlewaresRestrictLoginSignupRoute,
 } as any)
 
+const organizationNoOrgPageRouteRoute = organizationNoOrgPageRouteImport.update(
+  {
+    id: '/organization/none',
+    path: '/organization/none',
+    getParentRoute: () => middlewaresAuthenticateRoute,
+  } as any,
+)
+
 const authSignUpPageRouteRoute = authSignUpPageRouteImport.update({
   id: '/',
   path: '/',
@@ -490,15 +498,6 @@ const organizationSecretScanningPageRouteRoute =
     getParentRoute: () =>
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationRoute,
   } as any)
-
-const organizationNoOrgPageRouteRoute = organizationNoOrgPageRouteImport.update(
-  {
-    id: '/none',
-    path: '/none',
-    getParentRoute: () =>
-      AuthenticateInjectOrgDetailsOrgLayoutOrganizationRoute,
-  } as any,
-)
 
 const organizationBillingPageRouteRoute =
   organizationBillingPageRouteImport.update({
@@ -1691,6 +1690,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof authSignUpPageRouteImport
       parentRoute: typeof RestrictLoginSignupSignupImport
     }
+    '/_authenticate/organization/none': {
+      id: '/_authenticate/organization/none'
+      path: '/organization/none'
+      fullPath: '/organization/none'
+      preLoaderRoute: typeof organizationNoOrgPageRouteImport
+      parentRoute: typeof middlewaresAuthenticateImport
+    }
     '/_restrict-login-signup/admin/signup': {
       id: '/_restrict-login-signup/admin/signup'
       path: '/admin/signup'
@@ -1829,13 +1835,6 @@ declare module '@tanstack/react-router' {
       path: '/billing'
       fullPath: '/organization/billing'
       preLoaderRoute: typeof organizationBillingPageRouteImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/organization/none': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organization/none'
-      path: '/none'
-      fullPath: '/organization/none'
-      preLoaderRoute: typeof organizationNoOrgPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organization/secret-scanning': {
@@ -2892,7 +2891,6 @@ interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren {
   organizationAdminPageRouteRoute: typeof organizationAdminPageRouteRoute
   organizationAuditLogsPageRouteRoute: typeof organizationAuditLogsPageRouteRoute
   organizationBillingPageRouteRoute: typeof organizationBillingPageRouteRoute
-  organizationNoOrgPageRouteRoute: typeof organizationNoOrgPageRouteRoute
   organizationSecretScanningPageRouteRoute: typeof organizationSecretScanningPageRouteRoute
   organizationSecretSharingPageRouteRoute: typeof organizationSecretSharingPageRouteRoute
   organizationSettingsPageRouteRoute: typeof organizationSettingsPageRouteRoute
@@ -2914,7 +2912,6 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren: Authentica
     organizationAdminPageRouteRoute: organizationAdminPageRouteRoute,
     organizationAuditLogsPageRouteRoute: organizationAuditLogsPageRouteRoute,
     organizationBillingPageRouteRoute: organizationBillingPageRouteRoute,
-    organizationNoOrgPageRouteRoute: organizationNoOrgPageRouteRoute,
     organizationSecretScanningPageRouteRoute:
       organizationSecretScanningPageRouteRoute,
     organizationSecretSharingPageRouteRoute:
@@ -3469,6 +3466,7 @@ interface middlewaresAuthenticateRouteChildren {
   authPasswordSetupPageRouteRoute: typeof authPasswordSetupPageRouteRoute
   middlewaresInjectOrgDetailsRoute: typeof middlewaresInjectOrgDetailsRouteWithChildren
   AuthenticatePersonalSettingsRoute: typeof AuthenticatePersonalSettingsRouteWithChildren
+  organizationNoOrgPageRouteRoute: typeof organizationNoOrgPageRouteRoute
 }
 
 const middlewaresAuthenticateRouteChildren: middlewaresAuthenticateRouteChildren =
@@ -3478,6 +3476,7 @@ const middlewaresAuthenticateRouteChildren: middlewaresAuthenticateRouteChildren
       middlewaresInjectOrgDetailsRouteWithChildren,
     AuthenticatePersonalSettingsRoute:
       AuthenticatePersonalSettingsRouteWithChildren,
+    organizationNoOrgPageRouteRoute: organizationNoOrgPageRouteRoute,
   }
 
 const middlewaresAuthenticateRouteWithChildren =
@@ -3569,6 +3568,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof RestrictLoginSignupSignupRouteWithChildren
   '/login/': typeof authLoginPageRouteRoute
   '/signup/': typeof authSignUpPageRouteRoute
+  '/organization/none': typeof organizationNoOrgPageRouteRoute
   '/admin/signup': typeof adminSignUpPageRouteRoute
   '/login/ldap': typeof authLoginLdapPageRouteRoute
   '/login/select-organization': typeof authSelectOrgPageRouteRoute
@@ -3586,7 +3586,6 @@ export interface FileRoutesByFullPath {
   '/organization/admin': typeof organizationAdminPageRouteRoute
   '/organization/audit-logs': typeof organizationAuditLogsPageRouteRoute
   '/organization/billing': typeof organizationBillingPageRouteRoute
-  '/organization/none': typeof organizationNoOrgPageRouteRoute
   '/organization/secret-scanning': typeof organizationSecretScanningPageRouteRoute
   '/organization/secret-sharing': typeof organizationSecretSharingPageRouteRoute
   '/organization/settings': typeof organizationSettingsPageRouteRoute
@@ -3740,6 +3739,7 @@ export interface FileRoutesByTo {
   '/personal-settings': typeof userPersonalSettingsPageRouteRoute
   '/login': typeof authLoginPageRouteRoute
   '/signup': typeof authSignUpPageRouteRoute
+  '/organization/none': typeof organizationNoOrgPageRouteRoute
   '/admin/signup': typeof adminSignUpPageRouteRoute
   '/login/ldap': typeof authLoginLdapPageRouteRoute
   '/login/select-organization': typeof authSelectOrgPageRouteRoute
@@ -3755,7 +3755,6 @@ export interface FileRoutesByTo {
   '/organization/admin': typeof organizationAdminPageRouteRoute
   '/organization/audit-logs': typeof organizationAuditLogsPageRouteRoute
   '/organization/billing': typeof organizationBillingPageRouteRoute
-  '/organization/none': typeof organizationNoOrgPageRouteRoute
   '/organization/secret-scanning': typeof organizationSecretScanningPageRouteRoute
   '/organization/secret-sharing': typeof organizationSecretSharingPageRouteRoute
   '/organization/settings': typeof organizationSettingsPageRouteRoute
@@ -3912,6 +3911,7 @@ export interface FileRoutesById {
   '/_restrict-login-signup/signup': typeof RestrictLoginSignupSignupRouteWithChildren
   '/_restrict-login-signup/login/': typeof authLoginPageRouteRoute
   '/_restrict-login-signup/signup/': typeof authSignUpPageRouteRoute
+  '/_authenticate/organization/none': typeof organizationNoOrgPageRouteRoute
   '/_restrict-login-signup/admin/signup': typeof adminSignUpPageRouteRoute
   '/_restrict-login-signup/login/ldap': typeof authLoginLdapPageRouteRoute
   '/_restrict-login-signup/login/select-organization': typeof authSelectOrgPageRouteRoute
@@ -3932,7 +3932,6 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organization/admin': typeof organizationAdminPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/audit-logs': typeof organizationAuditLogsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/billing': typeof organizationBillingPageRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/organization/none': typeof organizationNoOrgPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/secret-scanning': typeof organizationSecretScanningPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing': typeof organizationSecretSharingPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/settings': typeof organizationSettingsPageRouteRoute
@@ -4094,6 +4093,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/login/'
     | '/signup/'
+    | '/organization/none'
     | '/admin/signup'
     | '/login/ldap'
     | '/login/select-organization'
@@ -4111,7 +4111,6 @@ export interface FileRouteTypes {
     | '/organization/admin'
     | '/organization/audit-logs'
     | '/organization/billing'
-    | '/organization/none'
     | '/organization/secret-scanning'
     | '/organization/secret-sharing'
     | '/organization/settings'
@@ -4264,6 +4263,7 @@ export interface FileRouteTypes {
     | '/personal-settings'
     | '/login'
     | '/signup'
+    | '/organization/none'
     | '/admin/signup'
     | '/login/ldap'
     | '/login/select-organization'
@@ -4279,7 +4279,6 @@ export interface FileRouteTypes {
     | '/organization/admin'
     | '/organization/audit-logs'
     | '/organization/billing'
-    | '/organization/none'
     | '/organization/secret-scanning'
     | '/organization/secret-sharing'
     | '/organization/settings'
@@ -4434,6 +4433,7 @@ export interface FileRouteTypes {
     | '/_restrict-login-signup/signup'
     | '/_restrict-login-signup/login/'
     | '/_restrict-login-signup/signup/'
+    | '/_authenticate/organization/none'
     | '/_restrict-login-signup/admin/signup'
     | '/_restrict-login-signup/login/ldap'
     | '/_restrict-login-signup/login/select-organization'
@@ -4454,7 +4454,6 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organization/admin'
     | '/_authenticate/_inject-org-details/_org-layout/organization/audit-logs'
     | '/_authenticate/_inject-org-details/_org-layout/organization/billing'
-    | '/_authenticate/_inject-org-details/_org-layout/organization/none'
     | '/_authenticate/_inject-org-details/_org-layout/organization/secret-scanning'
     | '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing'
     | '/_authenticate/_inject-org-details/_org-layout/organization/settings'
@@ -4651,7 +4650,8 @@ export const routeTree = rootRoute
       "children": [
         "/_authenticate/password-setup",
         "/_authenticate/_inject-org-details",
-        "/_authenticate/personal-settings"
+        "/_authenticate/personal-settings",
+        "/_authenticate/organization/none"
       ]
     },
     "/_restrict-login-signup": {
@@ -4733,6 +4733,10 @@ export const routeTree = rootRoute
     "/_restrict-login-signup/signup/": {
       "filePath": "auth/SignUpPage/route.tsx",
       "parent": "/_restrict-login-signup/signup"
+    },
+    "/_authenticate/organization/none": {
+      "filePath": "organization/NoOrgPage/route.tsx",
+      "parent": "/_authenticate"
     },
     "/_restrict-login-signup/admin/signup": {
       "filePath": "admin/SignUpPage/route.tsx",
@@ -4818,7 +4822,6 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organization/admin",
         "/_authenticate/_inject-org-details/_org-layout/organization/audit-logs",
         "/_authenticate/_inject-org-details/_org-layout/organization/billing",
-        "/_authenticate/_inject-org-details/_org-layout/organization/none",
         "/_authenticate/_inject-org-details/_org-layout/organization/secret-scanning",
         "/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing",
         "/_authenticate/_inject-org-details/_org-layout/organization/settings",
@@ -4858,10 +4861,6 @@ export const routeTree = rootRoute
     },
     "/_authenticate/_inject-org-details/_org-layout/organization/billing": {
       "filePath": "organization/BillingPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organization"
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organization/none": {
-      "filePath": "organization/NoOrgPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organization"
     },
     "/_authenticate/_inject-org-details/_org-layout/organization/secret-scanning": {

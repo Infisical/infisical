@@ -27,7 +27,7 @@ export const Route = createFileRoute("/_authenticate")({
         });
       });
 
-    if (!data.organizationId && location.pathname !== ROUTE_PATHS.Auth.PasswordSetupPage.path) {
+    if (!data.organizationId && location.pathname !== ROUTE_PATHS.Auth.PasswordSetupPage.path && location.pathname !== "/organization/none") {
       throw redirect({ to: "/login/select-organization" });
     }
 

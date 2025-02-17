@@ -16,7 +16,6 @@ const organizationRoutes = route("/organization", [
   route("/admin", "organization/AdminPage/route.tsx"),
   route("/audit-logs", "organization/AuditLogsPage/route.tsx"),
   route("/billing", "organization/BillingPage/route.tsx"),
-  route("/none", "organization/NoOrgPage/route.tsx"),
   route("/secret-sharing", "organization/SecretSharingPage/route.tsx"),
   route("/settings", "organization/SettingsPage/route.tsx"),
   route("/secret-scanning", "organization/SecretScanningPage/route.tsx"),
@@ -342,6 +341,7 @@ export const routes = rootRoute("root.tsx", [
     route("/personal-settings", [
       layout("user/layout.tsx", [index("user/PersonalSettingsPage/route.tsx")])
     ]),
+    route("/organization/none", "organization/NoOrgPage/route.tsx"),
     middleware("inject-org-details.tsx", [
       adminRoute,
       layout("org-layout", "organization/layout.tsx", [
