@@ -629,3 +629,22 @@ type GetRawSecretV3ByNameResponse struct {
 	} `json:"secret"`
 	ETag string
 }
+
+type GetRelayCredentialsResponseV1 struct {
+	TurnServerUsername string `json:"turnServerUsername"`
+	TurnServerPassword string `json:"turnServerPassword"`
+	TurnServerRealm    string `json:"turnServerRealm"`
+	TurnServerAddress  string `json:"turnServerAddress"`
+	InfisicalStaticIp  string `json:"infisicalStaticIp"`
+}
+
+type ExchangeRelayCertRequestV1 struct {
+	RelayAddress string `json:"relayAddress"`
+}
+
+type ExchangeRelayCertResponseV1 struct {
+	SerialNumber     string `json:"serialNumber"`
+	PrivateKey       string `json:"privateKey"`
+	Certificate      string `json:"certificate"`
+	CertificateChain string `json:"certificateChain"`
+}

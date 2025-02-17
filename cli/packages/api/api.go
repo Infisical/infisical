@@ -544,3 +544,42 @@ func CallUpdateRawSecretsV3(httpClient *resty.Client, request UpdateRawSecretByN
 
 	return nil
 }
+
+func CallRegisterGatewayIdentityV1(httpClient *resty.Client) (*GetRelayCredentialsResponseV1, error) {
+	var resBody GetRelayCredentialsResponseV1
+	response, err := httpClient.
+		R().
+		SetResult(&resBody).
+		SetHeader("User-Agent", USER_AGENT).
+		Post(fmt.Sprintf("%v/v1/gateways/register-identity", config.INFISICAL_URL))
+
+	if err != nil {
+		return nil, fmt.Errorf("CallRegisterGatewayIdentityV1: Unable to complete api request [err=%w]", err)
+	}
+
+	if response.IsError() {
+		return nil, fmt.Errorf("CallRegisterGatewayIdentityV1: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+	}
+
+	return &resBody, nil
+}
+
+func CallExchangeRelayCertV1(httpClient *resty.Client, request ExchangeRelayCertRequestV1) (*ExchangeRelayCertResponseV1, error) {
+	var resBody ExchangeRelayCertResponseV1
+	response, err := httpClient.
+		R().
+		SetResult(&resBody).
+		SetBody(request).
+		SetHeader("User-Agent", USER_AGENT).
+		Post(fmt.Sprintf("%v/v1/gateways/exchange-cert", config.INFISICAL_URL))
+
+	if err != nil {
+		return nil, fmt.Errorf("CallExchangeRelayCertV1: Unable to complete api request [err=%w]", err)
+	}
+
+	if response.IsError() {
+		return nil, fmt.Errorf("CallExchangeRelayCertV1: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+	}
+
+	return &resBody, nil
+}
