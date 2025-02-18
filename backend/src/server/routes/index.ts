@@ -1306,7 +1306,18 @@ export const registerRoutes = async (
     kmsService
   });
 
-  const dynamicSecretProviders = buildDynamicSecretProviders();
+  const gatewayService = gatewayServiceFactory({
+    permissionService,
+    gatewayDAL,
+    kmsService,
+    licenseService,
+    orgGatewayConfigDAL,
+    keyStore
+  });
+
+  const dynamicSecretProviders = buildDynamicSecretProviders({
+    gatewayService
+  });
   const dynamicSecretQueueService = dynamicSecretLeaseQueueServiceFactory({
     queueService,
     dynamicSecretLeaseDAL,
@@ -1324,8 +1335,11 @@ export const registerRoutes = async (
     folderDAL,
     permissionService,
     licenseService,
-    kmsService
+    kmsService,
+    gatewayDAL,
+    orgGatewayConfigDAL
   });
+
   const dynamicSecretLeaseService = dynamicSecretLeaseServiceFactory({
     projectDAL,
     permissionService,

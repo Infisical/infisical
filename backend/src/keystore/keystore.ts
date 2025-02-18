@@ -1,7 +1,7 @@
 import { Redis } from "ioredis";
 
-import { Redlock, Settings } from "@app/lib/red-lock";
 import { pgAdvisoryLockHashText } from "@app/lib/crypto/hashtext";
+import { Redlock, Settings } from "@app/lib/red-lock";
 
 export const PgSqlLock = {
   BootUpMigration: 2023,
@@ -36,7 +36,8 @@ export const KeyStorePrefixes = {
   SecretSyncLastRunTimestamp: (syncId: string) => `secret-sync-last-run-${syncId}` as const,
   IdentityAccessTokenStatusUpdate: (identityAccessTokenId: string) =>
     `identity-access-token-status:${identityAccessTokenId}`,
-  ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`
+  ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`,
+  GatewayIdentityCredential: (identityId: string) => `gateway-credentails:${identityId}`
 };
 
 export const KeyStoreTtls = {

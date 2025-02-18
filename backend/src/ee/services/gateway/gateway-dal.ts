@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { TDbClient } from "@app/db";
 import { TableName, TGateways } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
@@ -29,5 +31,24 @@ export const gatewayDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, find };
+  const findByProjectId = async (projectId: string, tx?: Knex) => {
+    try {
+      const query = (tx || db)(TableName.Gateway)
+        .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Gateway}.identityId`)
+        .join(
+          TableName.IdentityProjectMembership,
+          `${TableName.Identity}.id`,
+          `${TableName.IdentityProjectMembership}.identityId`
+        )
+        .select(selectAllTableCols(TableName.Gateway))
+        .select(db.ref("name").withSchema(TableName.Identity).as("identityName"))
+        .where({ [`${TableName.IdentityProjectMembership}.projectId` as "projectId"]: projectId });
+      const docs = await query;
+      return docs.map((el) => ({ ...el, identity: { id: el.identityId, name: el.identityName } }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: `${TableName.Gateway}: Find by project id` });
+    }
+  };
+
+  return { ...orm, find, findByProjectId };
 };
