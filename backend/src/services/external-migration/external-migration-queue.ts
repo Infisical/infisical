@@ -29,7 +29,7 @@ export type TExternalMigrationQueueFactoryDep = {
 
   secretDAL: Pick<TSecretV2BridgeDALFactory, "insertMany" | "upsertSecretReferences" | "findBySecretKeys">;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "create">;
-  secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "create">;
+  secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "create" | "find">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany" | "create">;
 
   folderDAL: Pick<TSecretFolderDALFactory, "create" | "findBySecretPath" | "findOne" | "findById">;

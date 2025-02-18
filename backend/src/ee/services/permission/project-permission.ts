@@ -17,6 +17,14 @@ export enum ProjectPermissionActions {
   Delete = "delete"
 }
 
+export enum ProjectPermissionSecretActions {
+  DescribeSecret = "read",
+  ReadValue = "readValue",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
+}
+
 export enum ProjectPermissionCmekActions {
   Read = "read",
   Create = "create",
@@ -115,7 +123,7 @@ export type IdentityManagementSubjectFields = {
 
 export type ProjectPermissionSet =
   | [
-      ProjectPermissionActions,
+      ProjectPermissionSecretActions,
       ProjectPermissionSub.Secrets | (ForcedSubject<ProjectPermissionSub.Secrets> & SecretSubjectFields)
     ]
   | [
@@ -433,7 +441,7 @@ export const ProjectPermissionV1Schema = z.discriminatedUnion("subject", [
   z.object({
     subject: z.literal(ProjectPermissionSub.Secrets).describe("The entity this permission pertains to."),
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretActions).describe(
       "Describe what action an entity can take."
     ),
     conditions: SecretConditionV1Schema.describe(
@@ -460,7 +468,7 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
   z.object({
     subject: z.literal(ProjectPermissionSub.Secrets).describe("The entity this permission pertains to."),
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretActions).describe(
       "Describe what action an entity can take."
     ),
     conditions: SecretConditionV2Schema.describe(
@@ -517,7 +525,6 @@ const buildAdminPermissionRules = () => {
 
   // Admins get full access to everything
   [
-    ProjectPermissionSub.Secrets,
     ProjectPermissionSub.SecretFolders,
     ProjectPermissionSub.SecretImports,
     ProjectPermissionSub.SecretApproval,
@@ -550,9 +557,20 @@ const buildAdminPermissionRules = () => {
         ProjectPermissionActions.Create,
         ProjectPermissionActions.Delete
       ],
-      el as ProjectPermissionSub
+      el
     );
   });
+
+  can(
+    [
+      ProjectPermissionSecretActions.DescribeSecret,
+      ProjectPermissionSecretActions.ReadValue,
+      ProjectPermissionSecretActions.Create,
+      ProjectPermissionSecretActions.Edit,
+      ProjectPermissionSecretActions.Delete
+    ],
+    ProjectPermissionSub.Secrets
+  );
 
   can(
     [
@@ -613,10 +631,11 @@ const buildMemberPermissionRules = () => {
 
   can(
     [
-      ProjectPermissionActions.Read,
-      ProjectPermissionActions.Edit,
-      ProjectPermissionActions.Create,
-      ProjectPermissionActions.Delete
+      ProjectPermissionSecretActions.DescribeSecret,
+      ProjectPermissionSecretActions.ReadValue,
+      ProjectPermissionSecretActions.Edit,
+      ProjectPermissionSecretActions.Create,
+      ProjectPermissionSecretActions.Delete
     ],
     ProjectPermissionSub.Secrets
   );
@@ -788,7 +807,8 @@ export const projectMemberPermissions = buildMemberPermissionRules();
 const buildViewerPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
 
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets);
+  // ? Q(Daniel): Should the viewer role be allowed to read values? Currently not allowed in permission below.
+  can(ProjectPermissionSecretActions.DescribeSecret, ProjectPermissionSub.Secrets);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretFolders);
   can(ProjectPermissionDynamicSecretActions.ReadRootCredential, ProjectPermissionSub.DynamicSecrets);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretImports);
@@ -831,6 +851,8 @@ export const buildServiceTokenProjectPermission = (
 ) => {
   const canWrite = permission.includes("write");
   const canRead = permission.includes("read");
+  const canReadValue = permission.includes("readValue");
+
   const { can, build } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
   scopes.forEach(({ secretPath, environment }) => {
     [ProjectPermissionSub.Secrets, ProjectPermissionSub.SecretImports, ProjectPermissionSub.SecretFolders].forEach(
@@ -856,6 +878,14 @@ export const buildServiceTokenProjectPermission = (
         if (canRead) {
           can(ProjectPermissionActions.Read, subject, {
             // @ts-expect-error type
+            secretPath: { $glob: secretPath },
+            environment
+          });
+        }
+
+        if (subject === ProjectPermissionSub.Secrets && canReadValue) {
+          // @ts-expect-error type
+          can(ProjectPermissionSecretActions.ReadValue, subject as ProjectPermissionSub.Secrets, {
             secretPath: { $glob: secretPath },
             environment
           });

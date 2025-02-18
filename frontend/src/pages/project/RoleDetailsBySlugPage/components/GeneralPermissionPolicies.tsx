@@ -35,6 +35,11 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
   title,
   isDisabled
 }: Props<T>) => {
+  if (subject === "secrets") {
+    console.log("secret subject");
+    console.log(actions);
+  }
+
   const { control } = useFormContext<TFormSchema>();
   const items = useFieldArray({
     control,
@@ -116,25 +121,36 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                 <div className="w-1/4">Actions</div>
                 <div className="flex flex-grow flex-wrap justify-start gap-8">
                   {actions.map(({ label, value }) => {
+                    if (subject === "secrets") {
+                      console.log("value", value);
+                    }
+
                     if (typeof value !== "string") return undefined;
+
                     return (
                       <Controller
                         key={`${el.id}-${label}`}
                         name={`permissions.${subject}.${rootIndex}.${value}` as any}
                         control={control}
                         defaultValue={false}
-                        render={({ field }) => (
-                          <div className="flex items-center justify-center">
-                            <Checkbox
-                              isDisabled={isDisabled}
-                              isChecked={Boolean(field.value)}
-                              onCheckedChange={field.onChange}
-                              id={`permissions.${subject}.${rootIndex}.${String(value)}`}
-                            >
-                              {label}
-                            </Checkbox>
-                          </div>
-                        )}
+                        render={({ field }) => {
+                          if (subject === "secrets") {
+                            console.log("field", field);
+                          }
+
+                          return (
+                            <div className="flex items-center justify-center">
+                              <Checkbox
+                                isDisabled={isDisabled}
+                                isChecked={Boolean(field.value)}
+                                onCheckedChange={field.onChange}
+                                id={`permissions.${subject}.${rootIndex}.${String(value)}`}
+                              >
+                                {label}
+                              </Checkbox>
+                            </div>
+                          );
+                        }}
                       />
                     );
                   })}
