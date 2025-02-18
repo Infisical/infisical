@@ -317,10 +317,6 @@ export const kmipServiceFactory = ({
 
     const caAlg = keyAlgorithmToAlgCfg(kmipConfig.caKeyAlgorithm as CertKeyAlgorithm);
 
-    const decryptedCaCertChain = decryptor({ cipherTextBlob: kmipConfig.encryptedClientIntermediateCaChain }).toString(
-      "utf-8"
-    );
-
     const caSkObj = crypto.createPrivateKey({
       key: decryptor({ cipherTextBlob: kmipConfig.encryptedClientIntermediateCaPrivateKey }),
       format: "der",
@@ -349,7 +345,11 @@ export const kmipServiceFactory = ({
     });
 
     const skLeafObj = KeyObject.from(leafKeys.privateKey);
-    const certificateChain = `${caCertObj.toString("pem")}\n${decryptedCaCertChain}`.trim();
+
+    const rootCaCert = new x509.X509Certificate(decryptor({ cipherTextBlob: kmipConfig.encryptedRootCaCertificate }));
+    const serverIntermediateCaCert = new x509.X509Certificate(
+      decryptor({ cipherTextBlob: kmipConfig.encryptedServerIntermediateCaCertificate })
+    );
 
     await kmipClientCertificateDAL.create({
       kmipClientId: clientId,
@@ -363,7 +363,7 @@ export const kmipServiceFactory = ({
       serialNumber,
       privateKey: skLeafObj.export({ format: "pem", type: "pkcs8" }) as string,
       certificate: leafCert.toString("pem"),
-      certificateChain,
+      certificateChain: `${serverIntermediateCaCert.toString("pem")}\n${rootCaCert.toString("pem")}`.trim(),
       projectId: kmipClient.projectId
     };
   };
