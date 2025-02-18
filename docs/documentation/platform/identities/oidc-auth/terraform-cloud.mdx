@@ -3,8 +3,7 @@ title: "Terraform Cloud"
 description: "How to authenticate with Infisical from Terraform Cloud using OIDC."
 ---
 
-This guide will show you how to configure Terraform Cloud to inject a workload identity token and use it for OIDC-based authentication with the Infisical Terraform provider.
-At a high level, we'll begin by creating a machine identity in Infisical, then move on to enabling and using the injected token in your Terraform runs.
+This guide will walk you through setting up Terraform Cloud to inject a [workload identity token](https://developer.hashicorp.com/terraform/cloud-docs/workspaces/dynamic-provider-credentials/workload-identity-tokens) and use it for OIDC-based authentication with the Infisical Terraform provider. You'll start by creating a machine identity in Infisical, then configure Terraform Cloud to pass the injected token into your Terraform runs.
 
 <Steps>
   <Step title="Create a Machine Identity in Infisical">
