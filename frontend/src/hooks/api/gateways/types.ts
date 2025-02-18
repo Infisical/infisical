@@ -12,6 +12,15 @@ export type TGateway = {
   };
 };
 
+export type TUpdateGatewayDTO = {
+  id: string;
+  name?: string;
+};
+
 export type TDeleteGatewayDTO = {
   id: string;
+};
+
+export type TListGatewayDTO = {
+  projectId?: string;
 };

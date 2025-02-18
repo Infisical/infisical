@@ -3,17 +3,30 @@ import { Helmet } from "react-helmet";
 import {
   faArrowUpRightFromSquare,
   faBookOpen,
+  faEdit,
+  faEllipsisV,
   faMagnifyingGlass,
   faPlug,
-  faSearch
+  faSearch,
+  faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 
+import { createNotification } from "@app/components/notifications";
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  DeleteActionModal,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   EmptyState,
+  IconButton,
   Input,
+  Modal,
+  ModalContent,
   PageHeader,
   Table,
   TableContainer,
@@ -22,19 +35,43 @@ import {
   Td,
   Th,
   THead,
+  Tooltip,
   Tr
 } from "@app/components/v2";
 import {
+  OrgGatewayPermissionActions,
   OrgPermissionAppConnectionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import { withPermission } from "@app/hoc";
-import { gatewaysQueryKeys } from "@app/hooks/api/gateways";
+import { usePopUp } from "@app/hooks";
+import { gatewaysQueryKeys, useDeleteGatewayById } from "@app/hooks/api/gateways";
+
+import { EditGatewayDetailsModal } from "./components/EditGatewayDetailsModal";
 
 export const GatewayListPage = withPermission(
   () => {
     const [search, setSearch] = useState("");
     const { data: gateways, isPending: isGatewayLoading } = useQuery(gatewaysQueryKeys.list());
+
+    const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
+      "deleteGateway",
+      "editDetails"
+    ] as const);
+
+    const deleteGatewayById = useDeleteGatewayById();
+
+    const handleDeleteGateway = async () => {
+      await deleteGatewayById.mutateAsync((popUp.deleteGateway.data as { id: string }).id, {
+        onSuccess: () => {
+          handlePopUpToggle("deleteGateway");
+          createNotification({
+            type: "success",
+            text: "Successfully delete gateway"
+          });
+        }
+      });
+    };
 
     const filteredGateway = gateways?.filter((el) =>
       el.name.toLowerCase().includes(search.toLowerCase())
@@ -100,13 +137,70 @@ export const GatewayListPage = withPermission(
                       {filteredGateway?.map((el) => (
                         <Tr key={el.id}>
                           <Td>{el.name}</Td>
-                          <Td>{format(new Date(el.issuedAt), "yyyy-MM-dd")}</Td>
+                          <Td>{format(new Date(el.issuedAt), "yyyy-MM-dd hh:mm:ss aaa")}</Td>
                           <Td>{el.identity.name}</Td>
-                          <Td />
+                          <Td className="w-5">
+                            <Tooltip className="max-w-sm text-center" content="Options">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <IconButton
+                                    ariaLabel="Options"
+                                    colorSchema="secondary"
+                                    className="w-6"
+                                    variant="plain"
+                                  >
+                                    <FontAwesomeIcon icon={faEllipsisV} />
+                                  </IconButton>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <OrgPermissionCan
+                                    I={OrgGatewayPermissionActions.Edit}
+                                    a={OrgPermissionSubjects.Gateway}
+                                  >
+                                    {(isAllowed: boolean) => (
+                                      <DropdownMenuItem
+                                        isDisabled={!isAllowed}
+                                        icon={<FontAwesomeIcon icon={faEdit} />}
+                                        onClick={() => handlePopUpOpen("editDetails", el)}
+                                      >
+                                        Edit Details
+                                      </DropdownMenuItem>
+                                    )}
+                                  </OrgPermissionCan>
+                                  <OrgPermissionCan
+                                    I={OrgPermissionAppConnectionActions.Delete}
+                                    a={OrgPermissionSubjects.AppConnections}
+                                  >
+                                    {(isAllowed: boolean) => (
+                                      <DropdownMenuItem
+                                        isDisabled={!isAllowed}
+                                        icon={<FontAwesomeIcon icon={faTrash} />}
+                                        className="text-red"
+                                        onClick={() => handlePopUpOpen("deleteGateway", el)}
+                                      >
+                                        Delete Gateway
+                                      </DropdownMenuItem>
+                                    )}
+                                  </OrgPermissionCan>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </Tooltip>
+                          </Td>
                         </Tr>
                       ))}
                     </TBody>
                   </Table>
+                  <Modal
+                    isOpen={popUp.editDetails.isOpen}
+                    onOpenChange={(isOpen) => handlePopUpToggle("editDetails", isOpen)}
+                  >
+                    <ModalContent title="Edit Gateway">
+                      <EditGatewayDetailsModal
+                        gatewayDetails={popUp.editDetails.data}
+                        onClose={() => handlePopUpToggle("editDetails")}
+                      />
+                    </ModalContent>
+                  </Modal>
                   {!isGatewayLoading && !filteredGateway?.length && (
                     <EmptyState
                       title={
@@ -117,6 +211,15 @@ export const GatewayListPage = withPermission(
                       icon={gateways?.length ? faSearch : faPlug}
                     />
                   )}
+                  <DeleteActionModal
+                    isOpen={popUp.deleteGateway.isOpen}
+                    title={`Are you sure want to delete gateway ${
+                      (popUp?.deleteGateway?.data as { name: string })?.name || ""
+                    }?`}
+                    onChange={(isOpen) => handlePopUpToggle("deleteGateway", isOpen)}
+                    deleteKey="confirm"
+                    onDeleteApproved={() => handleDeleteGateway()}
+                  />
                 </TableContainer>
               </div>
             </div>

@@ -1,2 +1,2 @@
-export { useDeleteGateway } from "./mutation";
+export { useDeleteGatewayById, useUpdateGatewayById } from "./mutation";
 export { gatewaysQueryKeys } from "./queries";
