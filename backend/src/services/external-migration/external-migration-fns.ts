@@ -33,7 +33,7 @@ export type TImportDataIntoInfisicalDTO = {
 
   secretDAL: Pick<TSecretV2BridgeDALFactory, "insertMany" | "upsertSecretReferences" | "findBySecretKeys">;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "create">;
-  secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "create">;
+  secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "create" | "find">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany" | "create">;
 
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;

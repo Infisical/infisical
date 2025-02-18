@@ -2,6 +2,7 @@ import { forwardRef, TextareaHTMLAttributes, useCallback, useMemo, useRef, useSt
 import { faCircle, faFolder, faKey } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as Popover from "@radix-ui/react-popover";
+import { twMerge } from "tailwind-merge";
 
 import { useWorkspace } from "@app/context";
 import { useDebounce, useToggle } from "@app/hooks";
@@ -54,6 +55,7 @@ type Props = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "onChange" | "val
   secretPath?: string;
   environment?: string;
   containerClassName?: string;
+  secretValueHidden?: boolean;
 };
 
 type ReferenceItem = {
@@ -70,6 +72,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
       containerClassName,
       secretPath: propSecretPath,
       environment: propEnvironment,
+      secretValueHidden,
       ...props
     },
     ref
@@ -275,6 +278,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
             ref={handleRef}
             onKeyDown={handleKeyDown}
             value={value}
+            valueHidden={secretValueHidden}
             onFocus={() => setIsFocused.on()}
             onBlur={(evt) => {
               // should not on blur when its mouse down selecting a item from suggestion
@@ -282,7 +286,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
                 setIsFocused.off();
             }}
             onChange={(e) => onChange?.(e.target.value)}
-            containerClassName={containerClassName}
+            containerClassName={twMerge(containerClassName)}
           />
         </Popover.Trigger>
         <Popover.Content

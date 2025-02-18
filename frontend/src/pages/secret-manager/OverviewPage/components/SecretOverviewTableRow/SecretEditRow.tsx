@@ -39,6 +39,7 @@ type Props = {
   isVisible?: boolean;
   isImportedSecret: boolean;
   environment: string;
+  secretValueHidden: boolean;
   secretPath: string;
   onSecretCreate: (env: string, key: string, value: string) => Promise<void>;
   onSecretUpdate: (
@@ -58,6 +59,7 @@ export const SecretEditRow = ({
   isImportedSecret,
   onSecretUpdate,
   secretName,
+  secretValueHidden,
   onSecretCreate,
   onSecretDelete,
   environment,
@@ -151,6 +153,7 @@ export const SecretEditRow = ({
               value={field.value as string}
               key="secret-input"
               isVisible={isVisible}
+              secretValueHidden={secretValueHidden}
               secretPath={secretPath}
               environment={environment}
               isImport={isImportedSecret}
@@ -158,6 +161,7 @@ export const SecretEditRow = ({
           )}
         />
       </div>
+
       <div
         className={twMerge(
           "flex w-24 justify-center space-x-3 pl-2 transition-all",

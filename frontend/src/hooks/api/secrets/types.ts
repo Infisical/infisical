@@ -37,6 +37,7 @@ export type SecretV3RawSanitized = {
   version: number;
   key: string;
   value?: string;
+  secretValueHidden: boolean;
   comment?: string;
   reminderRepeatDays?: number | null;
   reminderNote?: string | null;
@@ -61,6 +62,7 @@ export type SecretV3Raw = {
   environment: string;
   version: number;
   type: string;
+  secretValueHidden: boolean;
   secretKey: string;
   secretPath: string;
   secretValue?: string;

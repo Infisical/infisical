@@ -176,6 +176,7 @@ export const useGetImportedSecretsAllEnvs = ({
                 env: encSecret.environment,
                 key: encSecret.secretKey,
                 value: encSecret.secretValue,
+                secretValueHidden: encSecret.secretValueHidden,
                 tags: encSecret.tags,
                 comment: encSecret.secretComment,
                 createdAt: encSecret.createdAt,

@@ -102,6 +102,19 @@ export const fnSecretBulkInsert = async ({
       [`${TableName.SecretV2}Id` as const]: newSecretGroupedByKeyName[key][0].id
     }))
   );
+
+  const secretTags = await secretTagDAL.find({
+    $in: {
+      id: newSecretTags.map((el) => el.secret_tagsId)
+    }
+  });
+
+  const secretTagsWithSlugs = await secretTagDAL.find({
+    $in: {
+      id: secretTags.map((el) => el.id)
+    }
+  });
+
   const secretVersions = await secretVersionDAL.insertMany(
     sanitizedInputSecrets.map((el) => ({
       ...el,
@@ -137,6 +150,7 @@ export const fnSecretBulkInsert = async ({
   if (newSecretTags.length) {
     const secTags = await secretTagDAL.saveTagsToSecretV2(newSecretTags, tx);
     const secVersionsGroupBySecId = groupBy(secretVersions, (i) => i.secretId);
+
     const newSecretVersionTags = secTags.flatMap(({ secrets_v2Id, secret_tagsId }) => ({
       [`${TableName.SecretVersionV2}Id` as const]: secVersionsGroupBySecId[secrets_v2Id][0].id,
       [`${TableName.SecretTag}Id` as const]: secret_tagsId
@@ -623,13 +637,13 @@ export const reshapeBridgeSecret = (
       name: string;
     }[];
     secretMetadata?: ResourceMetadataDTO;
-  }
+  },
+  secretValueHidden?: boolean
 ) => ({
   secretKey: secret.key,
   secretPath,
   workspace: workspaceId,
   environment,
-  secretValue: secret.value || "",
   secretComment: secret.comment || "",
   version: secret.version,
   type: secret.type,
@@ -643,5 +657,15 @@ export const reshapeBridgeSecret = (
   metadata: secret.metadata,
   secretMetadata: secret.secretMetadata,
   createdAt: secret.createdAt,
-  updatedAt: secret.updatedAt
+  updatedAt: secret.updatedAt,
+
+  ...(secretValueHidden
+    ? {
+        secretValue: "<hidden-by-infisical>",
+        secretValueHidden: true
+      }
+    : {
+        secretValue: secret.value || "",
+        secretValueHidden: false
+      })
 });

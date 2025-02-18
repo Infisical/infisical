@@ -180,6 +180,7 @@ export type TGetSecretsRawDTO = {
   expandSecretReferences?: boolean;
   path: string;
   environment: string;
+  viewSecretValue: boolean;
   includeImports?: boolean;
   recursive?: boolean;
   tagSlugs?: string[];
@@ -205,6 +206,7 @@ export type TGetASecretRawDTO = {
   secretName: string;
   path: string;
   environment: string;
+  viewSecretValue: boolean;
   expandSecretReferences?: boolean;
   type: "shared" | "personal";
   includeImports?: boolean;

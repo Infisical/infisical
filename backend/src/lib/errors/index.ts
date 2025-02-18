@@ -1,3 +1,6 @@
+// eslint-disable-next-line max-classes-per-file
+import { AnyAbility, ForbiddenError } from "@casl/ability";
+
 /* eslint-disable max-classes-per-file */
 export class DatabaseError extends Error {
   name: string;
@@ -56,6 +59,13 @@ export class ForbiddenRequestError extends Error {
     super(message ?? "You are not allowed to access this resource");
     this.name = name || "ForbiddenError";
     this.error = error;
+  }
+}
+
+export class ForbiddenReadSecretError extends ForbiddenRequestError {
+  constructor({ error, message }: { message?: string; error?: unknown } = {}) {
+    super({ message, error });
+    this.name = "ForbiddenReadSecretError";
   }
 }
 

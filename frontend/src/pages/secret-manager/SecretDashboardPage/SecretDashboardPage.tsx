@@ -58,6 +58,7 @@ import {
   useSelectedSecrets
 } from "./SecretMainPage.store";
 import { Filter, RowType } from "./SecretMainPage.types";
+import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 
 const LOADER_TEXT = [
   "Retrieving your encrypted secrets...",
@@ -103,7 +104,7 @@ const Page = () => {
   const projectSlug = currentWorkspace?.slug || "";
   const secretPath = (routerQueryParams.secretPath as string) || "/";
   const canReadSecret = permission.can(
-    ProjectPermissionActions.Read,
+    ProjectPermissionSecretActions.DescribeSecret,
     subject(ProjectPermissionSub.Secrets, {
       environment,
       secretPath,
@@ -111,6 +112,17 @@ const Page = () => {
       secretTags: ["*"]
     })
   );
+  const canReadSecretValue = permission.can(
+    ProjectPermissionSecretActions.ReadValue,
+    subject(ProjectPermissionSub.Secrets, {
+      environment,
+      secretPath,
+      secretName: "*",
+      secretTags: ["*"]
+    })
+  );
+
+  console.log("Can read secret value", canReadSecret);
 
   const canReadSecretImports = permission.can(
     ProjectPermissionActions.Read,
@@ -176,6 +188,7 @@ const Page = () => {
     orderDirection,
     includeImports: canReadSecretImports && filter.include.import,
     includeFolders: filter.include.folder,
+    viewSecretValue: canReadSecretValue,
     includeDynamicSecrets: canReadDynamicSecret && filter.include.dynamic,
     includeSecrets: canReadSecret && filter.include.secret,
     tags: filter.tags

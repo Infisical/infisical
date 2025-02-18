@@ -52,6 +52,8 @@ import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { CreateReminderForm } from "./CreateReminderForm";
 import { formSchema, SecretActionType, TFormSchema } from "./SecretListView.utils";
+import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
+import { useEffect } from "react";
 
 type Props = {
   isOpen?: boolean;
@@ -122,7 +124,7 @@ export const SecretDetailSidebar = ({
   const selectTagSlugs = selectedTags.map((i) => i.slug);
 
   const cannotEditSecret = permission.cannot(
-    ProjectPermissionActions.Edit,
+    ProjectPermissionSecretActions.Edit,
     subject(ProjectPermissionSub.Secrets, {
       environment,
       secretPath,
@@ -130,16 +132,31 @@ export const SecretDetailSidebar = ({
       secretTags: selectTagSlugs
     })
   );
+
+  const cannotReadSecretValue = permission.cannot(
+    ProjectPermissionSecretActions.ReadValue,
+    subject(ProjectPermissionSub.Secrets, {
+      environment,
+      secretPath,
+      secretName: secretKey,
+      secretTags: selectTagSlugs
+    })
+  );
+
   const isReadOnly =
     permission.can(
-      ProjectPermissionActions.Read,
+      ProjectPermissionSecretActions.DescribeSecret,
       subject(ProjectPermissionSub.Secrets, {
         environment,
         secretPath,
         secretName: secretKey,
         secretTags: selectTagSlugs
       })
-    ) && cannotEditSecret;
+    ) &&
+    cannotEditSecret &&
+    cannotReadSecretValue;
+
+  console.log("cannotReadSecretValue", cannotReadSecretValue);
 
   const overrideAction = watch("overrideAction");
   const isOverridden =
@@ -261,7 +278,14 @@ export const SecretDetailSidebar = ({
                         key="secret-value"
                         control={control}
                         render={({ field }) => (
-                          <FormControl label="Value">
+                          <FormControl
+                            helperText={
+                              cannotReadSecretValue
+                                ? "The value of this secret is hidden because you don't have the read secret value permission."
+                                : undefined
+                            }
+                            label="Value"
+                          >
                             <InfisicalSecretInput
                               isReadOnly={isReadOnly}
                               environment={environment}

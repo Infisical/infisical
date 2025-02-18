@@ -22,7 +22,11 @@ import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/se
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSecretActions,
+  ProjectPermissionSub
+} from "../permission/project-permission";
 import {
   TGetSnapshotDataDTO,
   TProjectSnapshotCountDTO,
@@ -97,7 +101,7 @@ export const secretSnapshotServiceFactory = ({
 
     // We need to check if the user has access to the secrets in the folder. If we don't do this, a user could theoretically access snapshot secret values even if they don't have read access to the secrets in the folder.
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
+      ProjectPermissionSecretActions.ReadValue,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
@@ -134,7 +138,7 @@ export const secretSnapshotServiceFactory = ({
 
     // We need to check if the user has access to the secrets in the folder. If we don't do this, a user could theoretically access snapshot secret values even if they don't have read access to the secrets in the folder.
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
+      ProjectPermissionSecretActions.ReadValue,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
@@ -224,7 +228,7 @@ export const secretSnapshotServiceFactory = ({
 
     // We need to check if the user has access to the secrets in the folder. If we don't do this, a user could theoretically access snapshot secret values even if they don't have read access to the secrets in the folder.
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
+      ProjectPermissionSecretActions.ReadValue,
       subject(ProjectPermissionSub.Secrets, {
         environment: snapshotDetails.environment.slug,
         secretPath: fullFolderPath

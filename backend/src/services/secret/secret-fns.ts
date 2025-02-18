@@ -13,7 +13,7 @@ import {
   TSecrets
 } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import {
   buildSecretBlindIndexFromName,
@@ -190,7 +190,7 @@ export const recursivelyGetSecretPaths = ({
     const allowedPaths = paths.filter(
       (folder) =>
         permission.can(
-          ProjectPermissionActions.Read,
+          ProjectPermissionSecretActions.ReadValue,
           subject(ProjectPermissionSub.Secrets, {
             environment,
             secretPath: folder.path
@@ -344,6 +344,7 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
 
 export const decryptSecretRaw = (
   secret: TSecrets & {
+    secretValueHidden: boolean;
     workspace: string;
     environment: string;
     secretPath: string;
@@ -362,12 +363,14 @@ export const decryptSecretRaw = (
     key
   });
 
-  const secretValue = decryptSymmetric128BitHexKeyUTF8({
-    ciphertext: secret.secretValueCiphertext,
-    iv: secret.secretValueIV,
-    tag: secret.secretValueTag,
-    key
-  });
+  const secretValue = !secret.secretValueHidden
+    ? decryptSymmetric128BitHexKeyUTF8({
+        ciphertext: secret.secretValueCiphertext,
+        iv: secret.secretValueIV,
+        tag: secret.secretValueTag,
+        key
+      })
+    : "<hidden-by-infisical>";
 
   let secretComment = "";
 
@@ -385,6 +388,7 @@ export const decryptSecretRaw = (
     secretPath: secret.secretPath,
     workspace: secret.workspace,
     environment: secret.environment,
+    secretValueHidden: secret.secretValueHidden,
     secretValue,
     secretComment,
     version: secret.version,
@@ -1196,4 +1200,26 @@ export const fnDeleteProjectSecretReminders = async (
       );
     }
   }
+};
+
+export const conditionallyHideSecretValue = (
+  shouldHideValue: boolean,
+  {
+    secretValueCiphertext,
+    secretValueIV,
+    secretValueTag
+  }: {
+    secretValueCiphertext: string;
+    secretValueIV: string;
+    secretValueTag: string;
+  }
+) => {
+  const hiddenPlaceholder = "hidden-by-infisical>";
+
+  return {
+    secretValueCiphertext: shouldHideValue ? hiddenPlaceholder : secretValueCiphertext,
+    secretValueIV: shouldHideValue ? hiddenPlaceholder : secretValueIV,
+    secretValueTag: shouldHideValue ? hiddenPlaceholder : secretValueTag,
+    secretValueHidden: shouldHideValue
+  };
 };
