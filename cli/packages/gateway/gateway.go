@@ -48,16 +48,15 @@ func (g *Gateway) ConnectWithRelay() error {
 		return err
 	}
 
-	// Dial TURN Server
-	conn, err := net.Dial("tcp", relayDetails.TurnServerAddress)
+	turnServerAddr, err := net.ResolveTCPAddr("tcp", relayDetails.TurnServerAddress)
 	if err != nil {
-		return fmt.Errorf("Failed to connect with relay server: %w", err)
+		return fmt.Errorf("Failed to resolve TURN server address: %w", err)
 	}
 
-	if tcpConn, ok := conn.(*net.TCPConn); ok {
-		tcpConn.SetKeepAlive(true)
-		tcpConn.SetKeepAlivePeriod(10 * time.Second)
-		tcpConn.SetNoDelay(true)
+	// Dial TURN Server
+	conn, err := net.DialTCP("tcp", nil, turnServerAddr)
+	if err != nil {
+		return fmt.Errorf("Failed to connect with relay server: %w", err)
 	}
 
 	// Start a new TURN Client and wrap our net.Conn in a STUNConn
@@ -77,11 +76,6 @@ func (g *Gateway) ConnectWithRelay() error {
 		return fmt.Errorf("Failed to create relay client: %w", err)
 	}
 
-	err = client.Listen()
-	if err != nil {
-		return fmt.Errorf("Failed to listen to relay server: %w", err)
-	}
-
 	g.config = &GatewayConfig{
 		TurnServerUsername: relayDetails.TurnServerUsername,
 		TurnServerPassword: relayDetails.TurnServerPassword,
@@ -99,6 +93,11 @@ func (g *Gateway) ConnectWithRelay() error {
 
 func (g *Gateway) Listen() error {
 	defer g.client.Close()
+	err := g.client.Listen()
+	if err != nil {
+		return fmt.Errorf("Failed to listen to relay server: %w", err)
+	}
+	log.Info().Msg("Connected with relay")
 	// Allocate a relay socket on the TURN server. On success, it
 	// will return a net.PacketConn which represents the remote
 	// socket.
@@ -106,6 +105,7 @@ func (g *Gateway) Listen() error {
 	if err != nil {
 		return fmt.Errorf("Failed to allocate relay connection: %w", err)
 	}
+
 	defer func() {
 		if closeErr := relayNonTlsConn.Close(); closeErr != nil {
 			log.Error().Msgf("Failed to close connection: %s", closeErr)
@@ -148,7 +148,6 @@ func (g *Gateway) Listen() error {
 		return fmt.Errorf("failed to parse cert: %s", err)
 	}
 
-	fmt.Println(relayNonTlsConn.Addr().String())
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM([]byte(gatewayCert.CertificateChain))
 
@@ -159,13 +158,38 @@ func (g *Gateway) Listen() error {
 		ClientAuth:   tls.RequireAndVerifyClientCert,
 	})
 
+	log.Info().Msg("Connector started successfully")
 	for {
-		log.Info().Msg("Connector started successfully")
 		// Accept new relay connection
 		conn, err := relayConn.Accept()
 		if err != nil {
 			log.Error().Msgf("Failed to accept connection: %v", err)
 			continue
+		}
+
+		tlsConn, ok := conn.(*tls.Conn)
+		if !ok {
+			log.Error().Msg("Failed to convert to TLS connection")
+			conn.Close()
+			continue
+		}
+
+		err = tlsConn.Handshake()
+		if err != nil {
+			log.Error().Msgf("TLS handshake failed: %v", err)
+			conn.Close()
+			continue
+		}
+
+		// Get connection state which contains certificate information
+		state := tlsConn.ConnectionState()
+		if len(state.PeerCertificates) > 0 {
+			organizationUnit := state.PeerCertificates[0].Subject.OrganizationalUnit
+			commonName := state.PeerCertificates[0].Subject.CommonName
+			if organizationUnit[0] != "gateway-client" && commonName != "cloud" {
+				log.Error().Msgf("Client certificate verification failed. Received %s, %s", organizationUnit, commonName)
+				continue
+			}
 		}
 
 		// Handle the connection in a goroutine

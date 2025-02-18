@@ -3,7 +3,7 @@ package gateway
 import (
 	"bufio"
 	"bytes"
-	"fmt"
+	"errors"
 	"io"
 	"net"
 	"sync"
@@ -20,6 +20,9 @@ func handleConnection(conn net.Conn) {
 	for {
 		msg, err := reader.ReadBytes('\n')
 		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return
+			}
 			log.Error().Msgf("Error reading command: %s", err)
 			return
 		}
@@ -30,9 +33,7 @@ func handleConnection(conn net.Conn) {
 		switch string(cmd) {
 		case "FORWARD-TCP":
 			proxyAddress := string(bytes.Split(args, []byte(" "))[0])
-			fmt.Println(proxyAddress)
 			destTarget, err := net.Dial("tcp", proxyAddress)
-			fmt.Println(err)
 			if err != nil {
 				log.Error().Msgf("Failed to connect to target: %v", err)
 				return
@@ -56,12 +57,13 @@ func handleConnection(conn net.Conn) {
 			}
 
 			CopyData(conn, destTarget)
-			break
+			return
 		case "PING":
-			conn.Write([]byte("PONG\n"))
+			conn.Write([]byte("PONG"))
+			return
 		default:
 			log.Error().Msgf("Unknown command: %s", string(cmd))
-			break
+			return
 		}
 	}
 }
@@ -71,39 +73,33 @@ type CloseWrite interface {
 }
 
 func CopyData(src, dst net.Conn) {
-	// Create a WaitGroup to wait for both copy operations
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	// Start copying in both directions
-	go func() {
+	copyAndClose := func(dst, src net.Conn, done chan<- bool) {
 		defer wg.Done()
-		if _, err := io.Copy(dst, src); err != nil {
-			log.Error().Msgf("Error copying postgres->client: %v", err)
+		_, err := io.Copy(dst, src)
+		if err != nil && !errors.Is(err, io.EOF) {
+			log.Error().Msgf("Copy error: %v", err)
 		}
 
-		if e, ok := dst.(CloseWrite); ok {
-			log.Print("Closing dst")
-			e.CloseWrite()
-		} else {
+		// Signal we're done writing
+		done <- true
 
-			log.Print("Not closed")
+		// Half close the connection if possible
+		if c, ok := dst.(CloseWrite); ok {
+			c.CloseWrite()
 		}
-	}()
+	}
 
-	go func() {
-		defer wg.Done()
-		if _, err := io.Copy(src, dst); err != nil {
-			log.Error().Msgf("Error copying client->postgres: %v", err)
-		}
-		if e, ok := src.(CloseWrite); ok {
-			log.Print("Closing src")
-			e.CloseWrite()
-		} else {
-			log.Print("Not closed")
-		}
-	}()
+	done1 := make(chan bool, 1)
+	done2 := make(chan bool, 1)
+
+	go copyAndClose(dst, src, done1)
+	go copyAndClose(src, dst, done2)
 
 	// Wait for both copies to complete
+	<-done1
+	<-done2
 	wg.Wait()
 }
