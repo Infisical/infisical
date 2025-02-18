@@ -66,6 +66,14 @@ export async function up(knex: Knex): Promise<void> {
 
     await createOnUpdateTrigger(knex, TableName.Gateway);
   }
+
+  if (await knex.schema.hasTable(TableName.DynamicSecret)) {
+    const doesGatewayColExist = await knex.schema.hasColumn(TableName.DynamicSecret, "gatewayId");
+    await knex.schema.alterTable(TableName.DynamicSecret, (t) => {
+      // not setting a foreign constraint so that cascade effects are not triggered
+      if (!doesGatewayColExist) t.uuid("gatewayId");
+    });
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {
@@ -74,4 +82,11 @@ export async function down(knex: Knex): Promise<void> {
 
   await knex.schema.dropTableIfExists(TableName.OrgGatewayConfig);
   await dropOnUpdateTrigger(knex, TableName.OrgGatewayConfig);
+
+  if (await knex.schema.hasTable(TableName.DynamicSecret)) {
+    const doesGatewayColExist = await knex.schema.hasColumn(TableName.DynamicSecret, "gatewayId");
+    await knex.schema.alterTable(TableName.DynamicSecret, (t) => {
+      if (doesGatewayColExist) t.dropColumn("gatewayId");
+    });
+  }
 }

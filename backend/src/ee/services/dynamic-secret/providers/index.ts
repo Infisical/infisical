@@ -1,5 +1,6 @@
 import { SnowflakeProvider } from "@app/ee/services/dynamic-secret/providers/snowflake";
 
+import { TGatewayServiceFactory } from "../../gateway/gateway-service";
 import { AwsElastiCacheDatabaseProvider } from "./aws-elasticache";
 import { AwsIamProvider } from "./aws-iam";
 import { AzureEntraIDProvider } from "./azure-entra-id";
@@ -16,8 +17,14 @@ import { SapHanaProvider } from "./sap-hana";
 import { SqlDatabaseProvider } from "./sql-database";
 import { TotpProvider } from "./totp";
 
-export const buildDynamicSecretProviders = (): Record<DynamicSecretProviders, TDynamicProviderFns> => ({
-  [DynamicSecretProviders.SqlDatabase]: SqlDatabaseProvider(),
+type TBuildDynamicSecretProviderDTO = {
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTls">;
+};
+
+export const buildDynamicSecretProviders = ({
+  gatewayService
+}: TBuildDynamicSecretProviderDTO): Record<DynamicSecretProviders, TDynamicProviderFns> => ({
+  [DynamicSecretProviders.SqlDatabase]: SqlDatabaseProvider({ gatewayService }),
   [DynamicSecretProviders.Cassandra]: CassandraProvider(),
   [DynamicSecretProviders.AwsIam]: AwsIamProvider(),
   [DynamicSecretProviders.Redis]: RedisDatabaseProvider(),

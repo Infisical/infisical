@@ -1,15 +1,16 @@
 import crypto from "node:crypto";
 
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
-import fs from "fs/promises";
-import path from "path/posix";
+import { z } from "zod";
 
-import { PgSqlLock } from "@app/keystore/keystore";
+import { ActionProjectType } from "@app/db/schemas";
+import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { getTurnCredentials } from "@app/lib/turn/credentials";
+import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import {
   createSerialNumber,
@@ -21,29 +22,41 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgGatewayPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service";
+import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TGatewayDALFactory } from "./gateway-dal";
-import { TExchangeAllocatedRelayAddressDTO, TGetGatewayByIdDTO, TListGatewaysDTO } from "./gateway-types";
+import {
+  TExchangeAllocatedRelayAddressDTO,
+  TGetGatewayByIdDTO,
+  TGetProjectGatewayByIdDTO,
+  TListGatewaysDTO,
+  TUpdateGatewayByIdDTO
+} from "./gateway-types";
 import { TOrgGatewayConfigDALFactory } from "./org-gateway-config-dal";
 
 type TGatewayServiceFactoryDep = {
   gatewayDAL: TGatewayDALFactory;
-  orgGatewayConfigDAL: Pick<TOrgGatewayConfigDALFactory, "findOne" | "create" | "transaction">;
+  orgGatewayConfigDAL: Pick<TOrgGatewayConfigDALFactory, "findOne" | "create" | "transaction" | "findById">;
   licenseService: Pick<TLicenseServiceFactory, "onPremFeatures" | "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "decryptWithRootKey">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
 };
 
 export type TGatewayServiceFactory = ReturnType<typeof gatewayServiceFactory>;
+const TURN_SERVER_CREDENTIALS_SCHEMA = z.object({
+  username: z.string(),
+  password: z.string()
+});
 
-// TODO(gateway): missing permission check
 export const gatewayServiceFactory = ({
   gatewayDAL,
   licenseService,
   kmsService,
   permissionService,
-  orgGatewayConfigDAL
+  orgGatewayConfigDAL,
+  keyStore
 }: TGatewayServiceFactoryDep) => {
-  const $validateOrgAccessToGateway = async (orgId: string) => {
+  const $validateOrgAccessToGateway = async (orgId: string, actorId: string, actorAuthMethod: ActorAuthMethod) => {
     if (!licenseService.onPremFeatures.gateway) {
       throw new BadRequestError({
         message:
@@ -57,11 +70,20 @@ export const gatewayServiceFactory = ({
           "Gateway handshake failed due to organization plan restrictions. Please upgrade your instance to Infisical's Enterprise plan."
       });
     }
+    const { permission } = await permissionService.getOrgPermission(
+      ActorType.IDENTITY,
+      actorId,
+      orgId,
+      actorAuthMethod,
+      orgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgGatewayPermissionActions.Create, OrgPermissionSubjects.Gateway);
   };
 
-  const getGatewayRelayDetails = async (actorId: string, actorOrgId: string) => {
+  const getGatewayRelayDetails = async (actorId: string, actorOrgId: string, actorAuthMethod: ActorAuthMethod) => {
+    const TURN_CRED_EXPIRY = 5 * 60;
     const envCfg = getConfig();
-    await $validateOrgAccessToGateway(actorOrgId);
+    await $validateOrgAccessToGateway(actorOrgId, actorId, actorAuthMethod);
 
     if (
       !envCfg.GATEWAY_RELAY_AUTH_SECRET ||
@@ -73,11 +95,25 @@ export const gatewayServiceFactory = ({
         message: "Gateway handshake failed due to missing instance config."
       });
     }
-    // TODO(gateway): keep it in 30mins redis after encryption to avoid multiple credentials spinning up
-    const { username: turnServerUsername, password: turnServerPassword } = getTurnCredentials(
-      actorId,
-      envCfg.GATEWAY_RELAY_AUTH_SECRET
-    );
+
+    let turnServerUsername = "";
+    let turnServerPassword = "";
+    // keep it in redis for 5mins to avoid generating so many credentials
+    const previousCredential = await keyStore.getItem(KeyStorePrefixes.GatewayIdentityCredential(actorId));
+    if (previousCredential) {
+      const el = await TURN_SERVER_CREDENTIALS_SCHEMA.parseAsync(JSON.parse(previousCredential));
+      turnServerUsername = el.username;
+      turnServerPassword = el.password;
+    } else {
+      const el = getTurnCredentials(actorId, envCfg.GATEWAY_RELAY_AUTH_SECRET);
+      await keyStore.setItemWithExpiry(
+        KeyStorePrefixes.GatewayIdentityCredential(actorId),
+        TURN_CRED_EXPIRY,
+        JSON.stringify({ username: el.username, password: el.password })
+      );
+      turnServerUsername = el.username;
+      turnServerPassword = el.password;
+    }
 
     return {
       turnServerUsername,
@@ -91,8 +127,10 @@ export const gatewayServiceFactory = ({
   const exchangeAllocatedRelayAddress = async ({
     identityId,
     identityOrg,
-    relayAddress
+    relayAddress,
+    identityOrgAuthMethod
   }: TExchangeAllocatedRelayAddressDTO) => {
+    await $validateOrgAccessToGateway(identityOrg, identityId, identityOrgAuthMethod);
     const { encryptor: orgKmsEncryptor, decryptor: orgKmsDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityOrg
@@ -160,7 +198,7 @@ export const gatewayServiceFactory = ({
       const clientCertSerialNumber = createSerialNumber();
       const clientCert = await x509.X509CertificateGenerator.create({
         serialNumber: clientCertSerialNumber,
-        subject: "O=infisical,OU=gateway,CN=cloud-client",
+        subject: `O=${identityOrg},OU=gateway-client,CN=cloud`,
         issuer: clientCaCert.subject,
         notAfter: clientCaExpiration,
         notBefore: clientCaIssuedAt,
@@ -213,15 +251,6 @@ export const gatewayServiceFactory = ({
           await x509.SubjectKeyIdentifierExtension.create(gatewayCaKeys.publicKey)
         ]
       });
-
-      await fs.writeFile(path.join(__dirname, "./root-ca-cert"), rootCaCert.toString("pem"));
-      await fs.writeFile(path.join(__dirname, "./client-ca-cert"), clientCaCert.toString("pem"));
-      await fs.writeFile(path.join(__dirname, "./gateway-ca-cert"), gatewayCaCert.toString("pem"));
-      await fs.writeFile(path.join(__dirname, "./client-cert"), clientCert.toString("pem"));
-      await fs.writeFile(
-        path.join(__dirname, "./client-key"),
-        clientSkObj.export({ type: "pkcs8", format: "pem" }) as string
-      );
 
       return orgGatewayConfigDAL.create({
         orgId: identityOrg,
@@ -322,7 +351,6 @@ export const gatewayServiceFactory = ({
       ),
       new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage[CertExtendedKeyUsage.SERVER_AUTH]], true),
       // san
-      // TODO(gateway): change this later
       new x509.SubjectAlternativeNameExtension([{ type: "ip", value: "127.0.0.1" }], false)
     ];
 
@@ -340,16 +368,23 @@ export const gatewayServiceFactory = ({
       extensions
     });
 
+    const appCfg = getConfig();
+    // just for local development
+    const formatedRelayAddress =
+      appCfg.NODE_ENV === "development" ? relayAddress.replace("127.0.0.1", "host.docker.internal") : relayAddress;
     await gatewayDAL.transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.OrgGatewayCertExchange(identityOrg)]);
       const existingGateway = await gatewayDAL.findOne({ identityId, orgGatewayRootCaId: orgGatewayConfig.id });
+
       if (existingGateway) {
         return gatewayDAL.updateById(existingGateway.id, {
           keyAlgorithm: CertKeyAlgorithm.RSA_2048,
           issuedAt: certIssuedAt,
           expiration: certExpireAt,
           serialNumber,
-          relayAddress: orgKmsEncryptor({ plainText: Buffer.from(relayAddress) }).cipherTextBlob
+          relayAddress: orgKmsEncryptor({
+            plainText: Buffer.from(formatedRelayAddress)
+          }).cipherTextBlob
         });
       }
 
@@ -358,7 +393,9 @@ export const gatewayServiceFactory = ({
         issuedAt: certIssuedAt,
         expiration: certExpireAt,
         serialNumber,
-        relayAddress: orgKmsEncryptor({ plainText: Buffer.from(relayAddress) }).cipherTextBlob,
+        relayAddress: orgKmsEncryptor({
+          plainText: Buffer.from(formatedRelayAddress)
+        }).cipherTextBlob,
         identityId,
         orgGatewayRootCaId: orgGatewayConfig.id,
         name: alphaNumericNanoId(8)
@@ -410,6 +447,23 @@ export const gatewayServiceFactory = ({
     return gateway;
   };
 
+  const updateGatewayById = async ({ orgPermission, id, name }: TUpdateGatewayByIdDTO) => {
+    const { permission } = await permissionService.getOrgPermission(
+      orgPermission.type,
+      orgPermission.id,
+      orgPermission.orgId,
+      orgPermission.authMethod,
+      orgPermission.orgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgGatewayPermissionActions.Delete, OrgPermissionSubjects.Gateway);
+    const orgGatewayConfig = await orgGatewayConfigDAL.findOne({ orgId: orgPermission.orgId });
+    if (!orgGatewayConfig) throw new NotFoundError({ message: `Gateway with ID ${id} not found.` });
+
+    const [gateway] = await gatewayDAL.update({ id, orgGatewayRootCaId: orgGatewayConfig.id }, { name });
+    if (!gateway) throw new NotFoundError({ message: `Gateway with ID ${id} not found.` });
+    return gateway;
+  };
+
   const deleteGatewayById = async ({ orgPermission, id }: TGetGatewayByIdDTO) => {
     const { permission } = await permissionService.getOrgPermission(
       orgPermission.type,
@@ -427,11 +481,78 @@ export const gatewayServiceFactory = ({
     return gateway;
   };
 
+  const getProjectGateways = async ({ projectId, projectPermission }: TGetProjectGatewayByIdDTO) => {
+    const { permission } = await permissionService.getProjectPermission({
+      projectId,
+      actor: projectPermission.type,
+      actorId: projectPermission.id,
+      actorOrgId: projectPermission.orgId,
+      actorAuthMethod: projectPermission.authMethod,
+      actionProjectType: ActionProjectType.Any
+    });
+
+    const gateways = await gatewayDAL.findByProjectId(projectId);
+    const allowedGateways = gateways.filter((el) =>
+      permission.can(
+        ProjectPermissionActions.Read,
+        subject(ProjectPermissionSub.Identity, { identityId: el.identityId })
+      )
+    );
+    return allowedGateways;
+  };
+
+  // this has no permission check and used for dynamic secrets directly
+  // assumes permission check is already done
+  const fnGetGatewayClientTls = async (gatewayId: string) => {
+    const gateway = await gatewayDAL.findById(gatewayId);
+    if (!gateway) throw new NotFoundError({ message: `Gateway with ID ${gatewayId} not found.` });
+
+    const orgGatewayConfig = await orgGatewayConfigDAL.findById(gateway.orgGatewayRootCaId);
+    const { decryptor: orgKmsDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: orgGatewayConfig.orgId
+    });
+
+    const rootCaCert = new x509.X509Certificate(
+      orgKmsDecryptor({
+        cipherTextBlob: orgGatewayConfig.encryptedRootCaCertificate
+      })
+    );
+    const gatewayCaCert = new x509.X509Certificate(
+      orgKmsDecryptor({
+        cipherTextBlob: orgGatewayConfig.encryptedGatewayCaCertificate
+      })
+    );
+    const clientCert = new x509.X509Certificate(
+      orgKmsDecryptor({
+        cipherTextBlob: orgGatewayConfig.encryptedClientCertificate
+      })
+    );
+
+    const clientSkObj = crypto.createPrivateKey({
+      key: orgKmsDecryptor({ cipherTextBlob: orgGatewayConfig.encryptedClientPrivateKey }),
+      format: "der",
+      type: "pkcs8"
+    });
+
+    return {
+      relayAddress: orgKmsDecryptor({ cipherTextBlob: gateway.relayAddress }).toString(),
+      privateKey: clientSkObj.export({ type: "pkcs8", format: "pem" }),
+      certificate: clientCert.toString("pem"),
+      certChain: `${gatewayCaCert.toString("pem")}\n${rootCaCert.toString("pem")}`.trim(),
+      identityId: gateway.identityId,
+      orgId: orgGatewayConfig.orgId
+    };
+  };
+
   return {
     getGatewayRelayDetails,
     exchangeAllocatedRelayAddress,
     listGateways,
     getGatewayById,
-    deleteGatewayById
+    updateGatewayById,
+    deleteGatewayById,
+    getProjectGateways,
+    fnGetGatewayClientTls
   };
 };
