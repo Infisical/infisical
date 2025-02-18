@@ -116,6 +116,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           dynamicSecrets: SanitizedDynamicSecretSchema.extend({ environment: z.string() }).array().optional(),
           secrets: secretRawSchema
             .extend({
+              secretValueHidden: z.boolean(),
               secretPath: z.string().optional(),
               secretMetadata: ResourceMetadataSchema.optional(),
               tags: SecretTagsSchema.pick({
@@ -294,6 +295,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
         if (remainingLimit > 0 && totalSecretCount > adjustedOffset) {
           secrets = await server.services.secret.getSecretsRawMultiEnv({
+            viewSecretValue: true,
             actorId: req.permission.id,
             actor: req.permission.type,
             actorOrgId: req.permission.orgId,
@@ -393,6 +395,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           .optional(),
         search: z.string().trim().describe(DASHBOARD.SECRET_DETAILS_LIST.search).optional(),
         tags: z.string().trim().transform(decodeURIComponent).describe(DASHBOARD.SECRET_DETAILS_LIST.tags).optional(),
+        viewSecretValue: booleanSchema.default(true),
         includeSecrets: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeSecrets),
         includeFolders: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeFolders),
         includeDynamicSecrets: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeDynamicSecrets),
@@ -410,6 +413,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           dynamicSecrets: SanitizedDynamicSecretSchema.array().optional(),
           secrets: secretRawSchema
             .extend({
+              secretValueHidden: z.boolean(),
               secretPath: z.string().optional(),
               secretMetadata: ResourceMetadataSchema.optional(),
               tags: SecretTagsSchema.pick({
@@ -600,10 +604,18 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             tagSlugs: tags
           });
 
+          console.log("totalSecretCount", totalSecretCount);
+          console.log("adjustedOffset", adjustedOffset);
+          console.log("remainingLimit", remainingLimit);
+
+          console.log("will resolve to true", remainingLimit > 0 && totalSecretCount > adjustedOffset);
+
           if (remainingLimit > 0 && totalSecretCount > adjustedOffset) {
+            console.log("before running");
             const secretsRaw = await server.services.secret.getSecretsRaw({
               actorId: req.permission.id,
               actor: req.permission.type,
+              viewSecretValue: req.query.viewSecretValue,
               actorOrgId: req.permission.orgId,
               environment,
               actorAuthMethod: req.permission.authMethod,
@@ -617,6 +629,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               tagSlugs: tags
             });
 
+            console.log("secretsRaw", secretsRaw);
             secrets = secretsRaw.secrets;
 
             await server.services.auditLog.createAuditLog({
@@ -649,6 +662,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           }
         }
       } catch (error) {
+        console.log(error);
         if (!(error instanceof ForbiddenError)) {
           throw error;
         }
@@ -862,12 +876,14 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         projectId: z.string().trim(),
         environment: z.string().trim(),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
-        keys: z.string().trim().transform(decodeURIComponent)
+        keys: z.string().trim().transform(decodeURIComponent),
+        viewSecretValue: booleanSchema.default(true)
       }),
       response: {
         200: z.object({
           secrets: secretRawSchema
             .extend({
+              secretValueHidden: z.boolean(),
               secretPath: z.string().optional(),
               secretMetadata: ResourceMetadataSchema.optional(),
               tags: SecretTagsSchema.pick({
@@ -886,7 +902,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { secretPath, projectId, environment } = req.query;
+      const { secretPath, projectId, environment, viewSecretValue } = req.query;
 
       const keys = req.query.keys?.split(",").filter((key) => Boolean(key.trim())) ?? [];
       if (!keys.length) throw new BadRequestError({ message: "One or more keys required" });
@@ -895,6 +911,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
+        viewSecretValue,
         environment,
         actorAuthMethod: req.permission.authMethod,
         projectId,
