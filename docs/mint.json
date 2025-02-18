@@ -232,7 +232,8 @@
             "documentation/platform/identities/oidc-auth/general",
             "documentation/platform/identities/oidc-auth/github",
             "documentation/platform/identities/oidc-auth/circleci",
-            "documentation/platform/identities/oidc-auth/gitlab"
+            "documentation/platform/identities/oidc-auth/gitlab",
+            "documentation/platform/identities/oidc-auth/terraform-cloud"
           ]
         },
         "documentation/platform/mfa",
@@ -633,7 +634,8 @@
             "api-reference/endpoints/oidc-auth/attach",
             "api-reference/endpoints/oidc-auth/retrieve",
             "api-reference/endpoints/oidc-auth/update",
-            "api-reference/endpoints/oidc-auth/revoke"
+            "api-reference/endpoints/oidc-auth/revoke",
+            "integrations/frameworks/terraform-cloud"
           ]
         },
         {
