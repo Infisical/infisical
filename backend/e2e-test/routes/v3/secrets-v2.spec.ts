@@ -535,6 +535,107 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
       );
     });
 
+    test.each(secretTestCases)("Bulk upsert secrets in path $path", async ({ secret, path }) => {
+      const updateSharedSecRes = await testServer.inject({
+        method: "PATCH",
+        url: `/api/v3/secrets/batch/raw`,
+        headers: {
+          authorization: `Bearer ${authToken}`
+        },
+        body: {
+          workspaceId: seedData1.projectV3.id,
+          environment: seedData1.environment.slug,
+          secretPath: path,
+          mode: "upsert",
+          secrets: Array.from(Array(5)).map((_e, i) => ({
+            secretKey: `BULK-${secret.key}-${i + 1}`,
+            secretValue: "update-value",
+            secretComment: secret.comment
+          }))
+        }
+      });
+      expect(updateSharedSecRes.statusCode).toBe(200);
+      const updateSharedSecPayload = JSON.parse(updateSharedSecRes.payload);
+      expect(updateSharedSecPayload).toHaveProperty("secrets");
+
+      // bulk ones should exist
+      const secrets = await getSecrets(seedData1.environment.slug, path);
+      expect(secrets).toEqual(
+        expect.arrayContaining(
+          Array.from(Array(5)).map((_e, i) =>
+            expect.objectContaining({
+              secretKey: `BULK-${secret.key}-${i + 1}`,
+              secretValue: "update-value",
+              type: SecretType.Shared
+            })
+          )
+        )
+      );
+      await Promise.all(
+        Array.from(Array(5)).map((_e, i) => deleteSecret({ path, key: `BULK-${secret.key}-${i + 1}` }))
+      );
+    });
+
+    test("Bulk upsert secrets in path multiple paths", async () => {
+      const firstBatchSecrets = Array.from(Array(5)).map((_e, i) => ({
+        secretKey: `BULK-KEY-${secretTestCases[0].secret.key}-${i + 1}`,
+        secretValue: "update-value",
+        secretComment: "comment",
+        secretPath: secretTestCases[0].path
+      }));
+      const secondBatchSecrets = Array.from(Array(5)).map((_e, i) => ({
+        secretKey: `BULK-KEY-${secretTestCases[1].secret.key}-${i + 1}`,
+        secretValue: "update-value",
+        secretComment: "comment",
+        secretPath: secretTestCases[1].path
+      }));
+      const testSecrets = [...firstBatchSecrets, ...secondBatchSecrets];
+
+      const updateSharedSecRes = await testServer.inject({
+        method: "PATCH",
+        url: `/api/v3/secrets/batch/raw`,
+        headers: {
+          authorization: `Bearer ${authToken}`
+        },
+        body: {
+          workspaceId: seedData1.projectV3.id,
+          environment: seedData1.environment.slug,
+          mode: "upsert",
+          secrets: testSecrets
+        }
+      });
+      expect(updateSharedSecRes.statusCode).toBe(200);
+      const updateSharedSecPayload = JSON.parse(updateSharedSecRes.payload);
+      expect(updateSharedSecPayload).toHaveProperty("secrets");
+
+      // bulk ones should exist
+      const firstBatchSecretsOnInfisical = await getSecrets(seedData1.environment.slug, secretTestCases[0].path);
+      expect(firstBatchSecretsOnInfisical).toEqual(
+        expect.arrayContaining(
+          firstBatchSecrets.map((el) =>
+            expect.objectContaining({
+              secretKey: el.secretKey,
+              secretValue: "update-value",
+              type: SecretType.Shared
+            })
+          )
+        )
+      );
+      const secondBatchSecretsOnInfisical = await getSecrets(seedData1.environment.slug, secretTestCases[1].path);
+      expect(secondBatchSecretsOnInfisical).toEqual(
+        expect.arrayContaining(
+          secondBatchSecrets.map((el) =>
+            expect.objectContaining({
+              secretKey: el.secretKey,
+              secretValue: "update-value",
+              type: SecretType.Shared
+            })
+          )
+        )
+      );
+      await Promise.all(testSecrets.map((el) => deleteSecret({ path: el.secretPath, key: el.secretKey })));
+    });
+
     test.each(secretTestCases)("Bulk delete secrets in path $path", async ({ secret, path }) => {
       await Promise.all(
         Array.from(Array(5)).map((_e, i) => createSecret({ ...secret, key: `BULK-${secret.key}-${i + 1}`, path }))
