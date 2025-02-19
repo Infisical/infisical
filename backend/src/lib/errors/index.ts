@@ -1,7 +1,5 @@
-// eslint-disable-next-line max-classes-per-file
-import { AnyAbility, ForbiddenError } from "@casl/ability";
-
 /* eslint-disable max-classes-per-file */
+
 export class DatabaseError extends Error {
   name: string;
 
