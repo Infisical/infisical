@@ -3,6 +3,7 @@ import { AxiosError } from "axios";
 
 import { apiRequest } from "@app/config/request";
 import { SessionStorageKeys } from "@app/const";
+import { queryClient as qc } from "@app/hooks/api/reactQuery";
 
 import { APIKeyDataV2 } from "../apiKeys/types";
 import { MfaMethod } from "../auth/types";
@@ -27,7 +28,6 @@ import {
 
 export const fetchUserDetails = async () => {
   const { data } = await apiRequest.get<{ user: User & UserEnc }>("/api/v1/user");
-
   return data.user;
 };
 
@@ -278,30 +278,33 @@ export const useRegisterUserAction = () => {
   });
 };
 
-export const useLogoutUser = (keepQueryClient?: boolean) => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async () => {
-      await apiRequest.post("/api/v1/auth/logout");
-    },
-    onSuccess: () => {
-      setAuthToken("");
-      // Delete the cookie by not setting a value; Alternatively clear the local storage
-      localStorage.removeItem("protectedKey");
-      localStorage.removeItem("protectedKeyIV");
-      localStorage.removeItem("protectedKeyTag");
-      localStorage.removeItem("publicKey");
-      localStorage.removeItem("encryptedPrivateKey");
-      localStorage.removeItem("iv");
-      localStorage.removeItem("tag");
-      localStorage.removeItem("PRIVATE_KEY");
-      localStorage.removeItem("orgData.id");
-      sessionStorage.removeItem(SessionStorageKeys.CLI_TERMINAL_TOKEN);
+export const logoutUser = async () => {
+  await apiRequest.post("/api/v1/auth/logout");
+};
 
-      if (!keepQueryClient) {
-        queryClient.clear();
-      }
-    }
+// Utility function to clear session storage and query cache
+export const clearSession = (keepQueryClient?: boolean) => {
+  setAuthToken(""); // Clear authentication token
+  localStorage.removeItem("protectedKey");
+  localStorage.removeItem("protectedKeyIV");
+  localStorage.removeItem("protectedKeyTag");
+  localStorage.removeItem("publicKey");
+  localStorage.removeItem("encryptedPrivateKey");
+  localStorage.removeItem("iv");
+  localStorage.removeItem("tag");
+  localStorage.removeItem("PRIVATE_KEY");
+  localStorage.removeItem("orgData.id");
+  sessionStorage.removeItem(SessionStorageKeys.CLI_TERMINAL_TOKEN);
+
+  if (!keepQueryClient) {
+    qc.clear(); // Clear React Query cache
+  }
+};
+
+export const useLogoutUser = (keepQueryClient?: boolean) => {
+  return useMutation({
+    mutationFn: logoutUser,
+    onSuccess: () => clearSession(keepQueryClient)
   });
 };
 
