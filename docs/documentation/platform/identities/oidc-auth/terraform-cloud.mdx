@@ -1,0 +1,87 @@
+---
+title: "Terraform Cloud"
+description: "How to authenticate with Infisical from Terraform Cloud using OIDC."
+---
+
+This guide will walk you through setting up Terraform Cloud to inject a [workload identity token](https://developer.hashicorp.com/terraform/cloud-docs/workspaces/dynamic-provider-credentials/workload-identity-tokens) and use it for OIDC-based authentication with the Infisical Terraform provider. You'll start by creating a machine identity in Infisical, then configure Terraform Cloud to pass the injected token into your Terraform runs.
+
+<Steps>
+  <Step title="Create a Machine Identity in Infisical">
+    Follow the instructions [in this documentation](/documentation/platform/identities/oidc-auth/general) to create a machine identity with OIDC auth. Infisical OIDC configuration values for Terraform Cloud:
+    1. Set the OIDC Discovery URL to https://app.terraform.io.
+    2. Set the Issuer to https://app.terraform.io.
+    3. Configure the Audience to match the value you will use for **TFC_WORKLOAD_IDENTITY_AUDIENCE** in Terraform Cloud for the next step.
+
+    
+    To view all possible claims available from Terraform cloud, visit [HashiCorp’s documentation](https://developer.hashicorp.com/terraform/cloud-docs/workspaces/dynamic-provider-credentials/workload-identity-tokens#token-structure).
+
+  </Step>
+  <Step title="Enable Workload Identity Token Injection in Terraform Cloud">
+
+    <Tabs>
+      <Tab title="Generate single token">
+        1. **Navigate to your workspace** in Terraform Cloud.  
+        2. **Add a workspace variable** named `TFC_WORKLOAD_IDENTITY_AUDIENCE`:
+          - **Key**: `TFC_WORKLOAD_IDENTITY_AUDIENCE`
+          - **Value**: For example, `my-infisical-audience`
+          - **Category**: Environment
+
+        > **Important**:  
+        > - The presence of `TFC_WORKLOAD_IDENTITY_AUDIENCE` is required for Terraform Cloud to inject a token.  
+        > - If you are self-hosting HCP Terraform agents, ensure they are **v1.7.0 or above**.
+
+        Once set, Terraform Cloud will inject a workload identity token into the run environment as `TFC_WORKLOAD_IDENTITY_TOKEN`.
+      </Tab>
+      <Tab title="(Optional) Generate Multiple Tokens">
+        If you need multiple tokens (each with a different audience), create additional variables:
+
+        ```
+        TFC_WORKLOAD_IDENTITY_AUDIENCE_[YOUR_TAG_HERE]
+        ```
+
+        For example:
+        - `TFC_WORKLOAD_IDENTITY_AUDIENCE_INFISICAL`
+        - `TFC_WORKLOAD_IDENTITY_AUDIENCE_OTHER_SERVICE`
+
+        Terraform Cloud will then inject:
+        - `TFC_WORKLOAD_IDENTITY_TOKEN_INFISICAL`
+        - `TFC_WORKLOAD_IDENTITY_TOKEN_OTHER_SERVICE`
+
+        > **Note**:  
+        > - The `[YOUR_TAG_HERE]` can only contain letters, numbers, and underscores.  
+        > - You **cannot** use the reserved keyword `TYPE`.  
+        > - Generating multiple tokens requires **v1.12.0 or later** if you are self-hosting agents.
+      </Tab>
+    </Tabs>
+
+    <Warning>
+      If you are running on self-hosted HCP Terraform agents, you must use v1.7.0 or later to enable token injection. If you need to generate multiple tokens, you must use v1.12.0 or later.
+    </Warning>
+  </Step>
+  <Step title="Configure the Infisical Provider">
+    In your Terraform configuration, reference the injected token by name. For example:
+
+    ```hcl
+    provider "infisical" {
+      host = "https://app.infisical.com"
+
+      auth = {
+        oidc = {
+          identity_id = "<identity-id>"
+          # This must match the environment variable Terraform injects:
+          token_environment_variable_name = "TFC_WORKLOAD_IDENTITY_TOKEN"
+        }
+      }
+    }
+    ```
+
+    - **`host`**: Defaults to `https://app.infisical.com`. Override if using a self-hosted Infisical instance.
+    - **`identity_id`**: The OIDC identity ID from Infisical.
+    - **`token_environment_variable_name`**: Must match the injected variable name from Terraform Cloud. If using single token, use `TFC_WORKLOAD_IDENTITY_TOKEN`. If using multiple tokens, choose the one you want to use (e.g., `TFC_WORKLOAD_IDENTITY_TOKEN_INFISICAL`).
+  </Step>
+  <Step title="Validate Your Setup">
+    1. Run a plan and apply in Terraform Cloud.  
+    2. Verify the Infisical provider authenticates successfully without issues. If you run into authentication errors, double-check the Infisical identity has the correct roles/permissions in Infisical.
+
+  </Step>
+</Steps>

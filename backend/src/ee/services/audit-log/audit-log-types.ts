@@ -352,6 +352,7 @@ interface CreateSecretBatchEvent {
     secrets: Array<{
       secretId: string;
       secretKey: string;
+      secretPath?: string;
       secretVersion: number;
       secretMetadata?: TSecretMetadata;
     }>;
@@ -374,8 +375,14 @@ interface UpdateSecretBatchEvent {
   type: EventType.UPDATE_SECRETS;
   metadata: {
     environment: string;
-    secretPath: string;
-    secrets: Array<{ secretId: string; secretKey: string; secretVersion: number; secretMetadata?: TSecretMetadata }>;
+    secretPath?: string;
+    secrets: Array<{
+      secretId: string;
+      secretKey: string;
+      secretVersion: number;
+      secretMetadata?: TSecretMetadata;
+      secretPath?: string;
+    }>;
   };
 }
 

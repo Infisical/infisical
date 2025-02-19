@@ -23,6 +23,12 @@ export type TSecretReferenceDTO = {
   secretKey: string;
 };
 
+export enum SecretUpdateMode {
+  Ignore = "ignore",
+  Upsert = "upsert",
+  FailOnNotFound = "failOnNotFound"
+}
+
 export type TGetSecretsDTO = {
   expandSecretReferences?: boolean;
   path: string;
@@ -113,6 +119,7 @@ export type TUpdateManySecretDTO = Omit<TProjectPermission, "projectId"> & {
   secretPath: string;
   projectId: string;
   environment: string;
+  mode: SecretUpdateMode;
   secrets: {
     secretKey: string;
     newSecretName?: string;
@@ -123,6 +130,7 @@ export type TUpdateManySecretDTO = Omit<TProjectPermission, "projectId"> & {
     secretReminderRepeatDays?: number | null;
     secretReminderNote?: string | null;
     secretMetadata?: ResourceMetadataDTO;
+    secretPath?: string;
   }[];
 };
 
