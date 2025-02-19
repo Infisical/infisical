@@ -6,7 +6,7 @@ import { decryptAsymmetric, decryptSymmetric128BitHexKeyUTF8, encryptSymmetric12
 
 const createServiceToken = async (
   scopes: { environment: string; secretPath: string }[],
-  permissions: ("read" | "write")[]
+  permissions: ("read" | "write" | "readValue")[]
 ) => {
   const projectKeyRes = await testServer.inject({
     method: "GET",
@@ -139,7 +139,7 @@ describe("Service token secret ops", async () => {
   beforeAll(async () => {
     serviceToken = await createServiceToken(
       [{ secretPath: "/**", environment: seedData1.environment.slug }],
-      ["read", "write"]
+      ["read", "write", "readValue"]
     );
 
     // this is ensure cli service token decryptiong working fine
