@@ -604,14 +604,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             tagSlugs: tags
           });
 
-          console.log("totalSecretCount", totalSecretCount);
-          console.log("adjustedOffset", adjustedOffset);
-          console.log("remainingLimit", remainingLimit);
-
-          console.log("will resolve to true", remainingLimit > 0 && totalSecretCount > adjustedOffset);
-
           if (remainingLimit > 0 && totalSecretCount > adjustedOffset) {
-            console.log("before running");
             const secretsRaw = await server.services.secret.getSecretsRaw({
               actorId: req.permission.id,
               actor: req.permission.type,
@@ -629,7 +622,6 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               tagSlugs: tags
             });
 
-            console.log("secretsRaw", secretsRaw);
             secrets = secretsRaw.secrets;
 
             await server.services.auditLog.createAuditLog({
@@ -662,7 +654,6 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           }
         }
       } catch (error) {
-        console.log(error);
         if (!(error instanceof ForbiddenError)) {
           throw error;
         }
