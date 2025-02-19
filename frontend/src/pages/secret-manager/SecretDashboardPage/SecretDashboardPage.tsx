@@ -25,6 +25,7 @@ import {
   useProjectPermission,
   useWorkspace
 } from "@app/context";
+import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import {
   useGetImportedSecretsSingleEnv,
@@ -58,7 +59,6 @@ import {
   useSelectedSecrets
 } from "./SecretMainPage.store";
 import { Filter, RowType } from "./SecretMainPage.types";
-import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 
 const LOADER_TEXT = [
   "Retrieving your encrypted secrets...",
