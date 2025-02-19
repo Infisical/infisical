@@ -53,7 +53,6 @@ const SecretNameSchema = BaseSecretNameSchema.refine(
 ).refine((el) => !el.includes(":"), "Secret name cannot contain colon.");
 
 export const registerSecretRouter = async (server: FastifyZodProvider) => {
-  // ! Note(Daniel): (Tags) Does not support secrets v2. Request will fail if user doesn't have read value permission.
   server.route({
     method: "POST",
     url: "/tags/:secretName",
@@ -118,7 +117,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // ! Note(Daniel): (Tags) Does not support secrets v2. Request will fail if user doesn't have read value permission.
   server.route({
     method: "DELETE",
     url: "/tags/:secretName",
@@ -180,7 +178,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Note(Daniel): (Secrets) Done for v2 secrets AND normal secrets GET /raw
   server.route({
     method: "GET",
     url: "/raw",
@@ -385,7 +382,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // !!!!!!!!!!!!!!!!!!!!! Note(Daniel): (Secrets) Done for v2 secrets -- GET /raw/:secretName
   server.route({
     method: "GET",
     url: "/raw/:secretName",
@@ -499,7 +495,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // ? Note(Daniel): No modify, if user has Create permissions it will return the value they created for this secret --- POST /raw/:secretName
   server.route({
     method: "POST",
     url: "/raw/:secretName",
@@ -608,9 +603,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // ? Note(Daniel): Will NOT throw an error. If the user has access to read value, it will return value.
-  // ? Note(Daniel): If user does NOT have access to read value, it will return <hidden-by-infisical> for the value, but succeed with update.
-  // !!!!! Done for both secret types. For legacy secrets, it will return <hidden-by-infisical> if no read value permission is present.
   server.route({
     method: "PATCH",
     url: "/raw/:secretName",
@@ -657,7 +649,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.union([
           z.object({
-            secret: secretRawSchema
+            secret: secretRawSchema.extend({
+              secretValueHidden: z.boolean()
+            })
           }),
           z.object({ approval: SecretApprovalRequestsSchema }).describe("When secret protection policy is enabled")
         ])
@@ -723,9 +717,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // ? Note(Daniel): Will NOT throw an error. If the user has access to read value, it will return the deleted value
-  // ? Note(Daniel): If user does NOT have access to read value, it will return <hidden> for the value, but succeed with delete.
-  // !!!!! Done for both secret types. For legacy secrets, it will return <hidden> if no read value permission is present. --- /raw/:secretName
   server.route({
     method: "DELETE",
     url: "/raw/:secretName",
@@ -815,7 +806,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // !!!! Done. Will throw without the `readValue` permission, just like before.
   server.route({
     method: "GET",
     url: "/",
@@ -930,7 +920,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // !!!! Done. Will throw without the `readValue` permission, just like before.
   server.route({
     method: "GET",
     url: "/:secretName",
@@ -1010,7 +999,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // !!!! Done. Will work exactly like before. It will not attempt to hide the secret value, because the user creating this secret will already know the value upon creation.
   server.route({
     url: "/:secretName",
     method: "POST",
@@ -1182,7 +1170,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // !!!! Done. Will work like before, EXCEPT, if the user doesn't have the `readValue` permission, the secret value will be marked as "<hidden-by-infisical>"
   server.route({
     method: "PATCH",
     url: "/:secretName",
@@ -1371,7 +1358,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // !!!! Done. Will work like before, EXCEPT, if the user doesn't have the `readValue` permission, the secret value will be marked as "<hidden-by-infisical>"
   server.route({
     method: "DELETE",
     url: "/:secretName",
@@ -1392,13 +1378,12 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.union([
           z.object({
-            secret: SecretsSchema.omit({ secretBlindIndex: true }).merge(
-              z.object({
-                _id: z.string(),
-                workspace: z.string(),
-                environment: z.string()
-              })
-            )
+            secret: SecretsSchema.omit({ secretBlindIndex: true }).extend({
+              _id: z.string(),
+              secretValueHidden: z.boolean(),
+              workspace: z.string(),
+              environment: z.string()
+            })
           }),
           z.object({ approval: SecretApprovalRequestsSchema }).describe("When secret protection policy is enabled")
         ])
@@ -1496,7 +1481,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // ? No need for update, as this endpoint does not expose any values.
   server.route({
     method: "POST",
     url: "/move",
@@ -1552,7 +1536,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // !!!! Done. This will works exactly like before. It will not attempt to hide the secret value, because the user creating this secret will already know the value(s) upon creation.
   server.route({
     method: "POST",
     url: "/batch",
@@ -1679,7 +1662,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // !!!! Done. Works as before, EXCEPT if the user doesn't have the `readValue` permission, the secret value(s) will be marked as "<hidden-by-infisical>"
   server.route({
     method: "PATCH",
     url: "/batch",
@@ -1806,7 +1788,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // !!!! Done. Works as before, EXCEPT if the user doesn't have the `readValue` permission, the secret value(s) will be marked as "<hidden-by-infisical>"
   server.route({
     method: "DELETE",
     url: "/batch",
@@ -1925,7 +1906,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // ! (Daniel): Done. Will not attempt to hide secret value because this is a create operation.
   server.route({
     method: "POST",
     url: "/batch/raw",
@@ -2032,7 +2012,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // ! Done. Works as before, except if the user doesn't have the `readValue` permission, the secret value(s) will be marked as "<hidden-by-infisical>"
   server.route({
     method: "PATCH",
     url: "/batch/raw",
@@ -2180,7 +2159,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // ! (Daniel): Done. Works as before, except if the user doesn't have the `readValue` permission, the secret value(s) will be marked as "<hidden-by-infisical>"
   server.route({
     method: "DELETE",
     url: "/batch/raw",
@@ -2277,7 +2255,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // ! IMPORTANT: CHANGED BEHAVIOR -> Now this endpoint will throw a descriptive error if the user doesn't have access to the value of the secret itself.
   server.route({
     method: "GET",
     url: "/raw/:secretName/secret-reference-tree",
