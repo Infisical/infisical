@@ -1,6 +1,5 @@
 /* eslint-disable react/no-danger */
 import { forwardRef, TextareaHTMLAttributes } from "react";
-
 import { twMerge } from "tailwind-merge";
 
 import { useToggle } from "@app/hooks";

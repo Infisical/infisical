@@ -165,6 +165,7 @@ export const secretSnapshotServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
+
     const shouldUseBridge = snapshot.projectVersion === 3;
     let snapshotDetails;
     if (shouldUseBridge) {
@@ -173,67 +174,92 @@ export const secretSnapshotServiceFactory = ({
         projectId: snapshot.projectId
       });
       const encryptedSnapshotDetails = await snapshotDAL.findSecretSnapshotV2DataById(id);
+
+      const fullFolderPath = await getFullFolderPath({
+        folderDAL,
+        folderId: encryptedSnapshotDetails.folderId,
+        envId: encryptedSnapshotDetails.environment.id
+      });
+
       snapshotDetails = {
         ...encryptedSnapshotDetails,
-        secretVersions: encryptedSnapshotDetails.secretVersions.map((el) => ({
-          ...el,
-          secretKey: el.key,
-          secretValue: el.encryptedValue
-            ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
-            : "",
-          secretComment: el.encryptedComment
-            ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
-            : ""
-        }))
+        secretVersions: encryptedSnapshotDetails.secretVersions.map((el) => {
+          ForbiddenError.from(permission).throwUnlessCan(
+            ProjectPermissionSecretActions.ReadValue,
+            subject(ProjectPermissionSub.Secrets, {
+              environment: encryptedSnapshotDetails.environment.slug,
+              secretPath: fullFolderPath,
+              secretName: el.key,
+              secretTags: el.tags.length ? el.tags.map((tag) => tag.slug) : undefined
+            })
+          );
+
+          return {
+            ...el,
+            secretKey: el.key,
+            secretValue: el.encryptedValue
+              ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
+              : "",
+            secretComment: el.encryptedComment
+              ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
+              : ""
+          };
+        })
       };
     } else {
       const encryptedSnapshotDetails = await snapshotDAL.findSecretSnapshotDataById(id);
+
+      const fullFolderPath = await getFullFolderPath({
+        folderDAL,
+        folderId: encryptedSnapshotDetails.folderId,
+        envId: encryptedSnapshotDetails.environment.id
+      });
+
       const { botKey } = await projectBotService.getBotKey(snapshot.projectId);
       if (!botKey)
         throw new NotFoundError({ message: `Project bot key not found for project with ID '${snapshot.projectId}'` });
       snapshotDetails = {
         ...encryptedSnapshotDetails,
-        secretVersions: encryptedSnapshotDetails.secretVersions.map((el) => ({
-          ...el,
-          secretKey: decryptSymmetric128BitHexKeyUTF8({
+        secretVersions: encryptedSnapshotDetails.secretVersions.map((el) => {
+          const secretKey = decryptSymmetric128BitHexKeyUTF8({
             ciphertext: el.secretKeyCiphertext,
             iv: el.secretKeyIV,
             tag: el.secretKeyTag,
             key: botKey
-          }),
-          secretValue: decryptSymmetric128BitHexKeyUTF8({
-            ciphertext: el.secretValueCiphertext,
-            iv: el.secretValueIV,
-            tag: el.secretValueTag,
-            key: botKey
-          }),
-          secretComment:
-            el.secretCommentTag && el.secretCommentIV && el.secretCommentCiphertext
-              ? decryptSymmetric128BitHexKeyUTF8({
-                  ciphertext: el.secretCommentCiphertext,
-                  iv: el.secretCommentIV,
-                  tag: el.secretCommentTag,
-                  key: botKey
-                })
-              : ""
-        }))
+          });
+
+          ForbiddenError.from(permission).throwUnlessCan(
+            ProjectPermissionSecretActions.ReadValue,
+            subject(ProjectPermissionSub.Secrets, {
+              environment: encryptedSnapshotDetails.environment.slug,
+              secretPath: fullFolderPath,
+              secretName: secretKey,
+              secretTags: el.tags.length ? el.tags.map((tag) => tag.slug) : undefined
+            })
+          );
+
+          return {
+            ...el,
+            secretKey,
+            secretValue: decryptSymmetric128BitHexKeyUTF8({
+              ciphertext: el.secretValueCiphertext,
+              iv: el.secretValueIV,
+              tag: el.secretValueTag,
+              key: botKey
+            }),
+            secretComment:
+              el.secretCommentTag && el.secretCommentIV && el.secretCommentCiphertext
+                ? decryptSymmetric128BitHexKeyUTF8({
+                    ciphertext: el.secretCommentCiphertext,
+                    iv: el.secretCommentIV,
+                    tag: el.secretCommentTag,
+                    key: botKey
+                  })
+                : ""
+          };
+        })
       };
     }
-
-    const fullFolderPath = await getFullFolderPath({
-      folderDAL,
-      folderId: snapshotDetails.folderId,
-      envId: snapshotDetails.environment.id
-    });
-
-    // We need to check if the user has access to the secrets in the folder. If we don't do this, a user could theoretically access snapshot secret values even if they don't have read access to the secrets in the folder.
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.ReadValue,
-      subject(ProjectPermissionSub.Secrets, {
-        environment: snapshotDetails.environment.slug,
-        secretPath: fullFolderPath
-      })
-    );
 
     return snapshotDetails;
   };
