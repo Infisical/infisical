@@ -85,6 +85,10 @@
             "documentation/guides/microsoft-power-apps",
             "documentation/guides/organization-structure"
           ]
+        },
+        {
+          "group": "Setup",
+          "pages": ["documentation/setup/networking"]
         }
       ]
     },
