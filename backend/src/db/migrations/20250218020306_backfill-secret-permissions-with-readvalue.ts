@@ -1,36 +1,91 @@
-import { selectAllTableCols } from "@app/lib/knex";
+import { MongoAbility, RawRuleOf } from "@casl/ability";
+import { PackRule, packRules, unpackRules } from "@casl/ability/extra";
 import { Knex } from "knex";
+import { z } from "zod";
+
+import { selectAllTableCols } from "@app/lib/knex";
+
 import { TableName } from "../schemas";
 
-// [["read,create","secrets",{"environment":{"$eq":"dev"}}],
-//  ["read,edit,create","secrets",{"environment":{"$eq":"staging"}}],
-//  ["read,create","secrets",{"environment":{"$eq":"prod"}},1],
-//  ["edit,delete,create","secret-folders",{}],
-//  ["read,edit,delete,create","secret-imports",{}],
-//  ["read,edit,delete,create","member"],
-//  ["read,edit,delete,create","role"],
-//  ["read,edit,delete,create","integrations"],
-//  ["read,edit","settings"],
-//  ["edit,delete","workspace"],
-//  ["read,edit,delete,create","tags"],
-//  ["read,create,edit,delete,sync-secrets,import-secrets,remove-secrets","secret-syncs"]]
+enum ProjectPermissionSub {
+  Secrets = "secrets"
+}
 
-// enum ProjectPermissionSub {
-//   Secrets = "secrets"
-// }
+enum SecretActions {
+  Read = "read",
+  ReadValue = "readValue"
+}
+
+export const UnpackedPermissionSchema = z.object({
+  subject: z
+    .union([z.string().min(1), z.string().array()])
+    .transform((el) => (typeof el !== "string" ? el[0] : el))
+    .optional(),
+  action: z.union([z.string().min(1), z.string().array()]).transform((el) => (typeof el === "string" ? [el] : el)),
+  conditions: z.unknown().optional(),
+  inverted: z.boolean().optional()
+});
+
+export const unpackPermissions = (permissions: unknown) =>
+  UnpackedPermissionSchema.array().parse(unpackRules((permissions || []) as PackRule<RawRuleOf<MongoAbility>>[]));
 
 export async function up(knex: Knex): Promise<void> {
   const projectRoles = await knex(TableName.ProjectRoles).select(selectAllTableCols(TableName.ProjectRoles));
 
-  for (const projectRole of projectRoles) {
-    const { _, permissions } = projectRole;
+  for await (const projectRole of projectRoles) {
+    const { permissions } = projectRole;
 
-    const parsedPermissions = JSON.parse(permissions as string) as Record<string, string>[]; // contains array of permissions.
+    const parsedPermissions = unpackPermissions(permissions);
+    let shouldUpdate = false;
 
-    for (const parsedPermission of parsedPermissions) {
-      console.log(parsedPermission);
+    for (let i = 0; i < parsedPermissions.length; i += 1) {
+      const parsedPermission = parsedPermissions[i];
+      const { subject, action } = parsedPermission;
+
+      if (subject === ProjectPermissionSub.Secrets) {
+        if (action.includes(SecretActions.Read) && !action.includes(SecretActions.ReadValue)) {
+          action.push(SecretActions.ReadValue);
+          parsedPermissions[i] = { ...parsedPermission, action };
+          shouldUpdate = true;
+        }
+      }
+    }
+
+    if (shouldUpdate) {
+      const repackedPermissions = packRules(parsedPermissions);
+
+      await knex(TableName.ProjectRoles)
+        .where("id", projectRole.id)
+        .update({ permissions: JSON.stringify(repackedPermissions) });
     }
   }
 }
 
-export async function down(knex: Knex): Promise<void> {}
+export async function down(knex: Knex): Promise<void> {
+  const projectRoles = await knex(TableName.ProjectRoles).select(selectAllTableCols(TableName.ProjectRoles));
+
+  for await (const projectRole of projectRoles) {
+    const { permissions } = projectRole;
+
+    const parsedPermissions = unpackPermissions(permissions);
+
+    for (let i = 0; i < parsedPermissions.length; i += 1) {
+      const parsedPermission = parsedPermissions[i];
+
+      const { subject, action } = parsedPermission;
+
+      if (subject === ProjectPermissionSub.Secrets) {
+        if (action.includes(SecretActions.ReadValue)) {
+          action.splice(action.indexOf(SecretActions.ReadValue), 1);
+          parsedPermissions[i] = { ...parsedPermission, action };
+        }
+      }
+    }
+
+    const repackedPermissions = packRules(parsedPermissions);
+
+    await knex(TableName.ProjectRoles)
+      .where("id", projectRole.id)
+      .update({ permissions: JSON.stringify(repackedPermissions) });
+  }
+}
