@@ -77,8 +77,6 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
         secure: cfg.HTTPS_ENABLED
       });
 
-      console.log("access token", tokens.access);
-
       return { token: tokens.access, isMfaEnabled: false };
     }
   });
