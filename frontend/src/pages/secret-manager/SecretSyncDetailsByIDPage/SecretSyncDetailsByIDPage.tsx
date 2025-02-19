@@ -66,7 +66,7 @@ const PageContent = () => {
 
   const handleEditSource = () => handlePopUpOpen("editSync", SecretSyncEditFields.Source);
 
-  // const handleEditOptions = () => handlePopUpOpen("editSync", SecretSyncEditFields.Options);
+  const handleEditOptions = () => handlePopUpOpen("editSync", SecretSyncEditFields.Options);
 
   const handleEditDestination = () => handlePopUpOpen("editSync", SecretSyncEditFields.Destination);
 
@@ -108,10 +108,7 @@ const PageContent = () => {
             <div className="mr-4 flex w-72 flex-col gap-4">
               <SecretSyncDetailsSection secretSync={secretSync} onEditDetails={handleEditDetails} />
               <SecretSyncSourceSection secretSync={secretSync} onEditSource={handleEditSource} />
-              <SecretSyncOptionsSection
-                secretSync={secretSync}
-                // onEditOptions={handleEditOptions}
-              />
+              <SecretSyncOptionsSection secretSync={secretSync} onEditOptions={handleEditOptions} />
             </div>
             <div className="flex flex-1 flex-col gap-4">
               <SecretSyncDestinationSection

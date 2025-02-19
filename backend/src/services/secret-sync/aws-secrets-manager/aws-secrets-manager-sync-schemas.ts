@@ -9,6 +9,7 @@ import {
   GenericCreateSecretSyncFieldsSchema,
   GenericUpdateSecretSyncFieldsSchema
 } from "@app/services/secret-sync/secret-sync-schemas";
+import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
 const AwsSecretsManagerSyncDestinationConfigSchema = z
   .discriminatedUnion("mappingBehavior", [
@@ -38,19 +39,26 @@ const AwsSecretsManagerSyncDestinationConfigSchema = z
     })
   );
 
-export const AwsSecretsManagerSyncSchema = BaseSecretSyncSchema(SecretSync.AWSSecretsManager).extend({
+const AwsSecretsManagerSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
+
+export const AwsSecretsManagerSyncSchema = BaseSecretSyncSchema(
+  SecretSync.AWSSecretsManager,
+  AwsSecretsManagerSyncOptionsConfig
+).extend({
   destination: z.literal(SecretSync.AWSSecretsManager),
   destinationConfig: AwsSecretsManagerSyncDestinationConfigSchema
 });
 
 export const CreateAwsSecretsManagerSyncSchema = GenericCreateSecretSyncFieldsSchema(
-  SecretSync.AWSSecretsManager
+  SecretSync.AWSSecretsManager,
+  AwsSecretsManagerSyncOptionsConfig
 ).extend({
   destinationConfig: AwsSecretsManagerSyncDestinationConfigSchema
 });
 
 export const UpdateAwsSecretsManagerSyncSchema = GenericUpdateSecretSyncFieldsSchema(
-  SecretSync.AWSSecretsManager
+  SecretSync.AWSSecretsManager,
+  AwsSecretsManagerSyncOptionsConfig
 ).extend({
   destinationConfig: AwsSecretsManagerSyncDestinationConfigSchema.optional()
 });

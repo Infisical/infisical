@@ -1,12 +1,14 @@
+import { ReactNode } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import { faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { FormControl, Select, SelectItem } from "@app/components/v2";
 import { SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP, SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
-import { useSecretSyncOption } from "@app/hooks/api/secretSyncs";
+import { SecretSync, useSecretSyncOption } from "@app/hooks/api/secretSyncs";
 
-import { TSecretSyncForm } from "./schemas";
+import { TSecretSyncForm } from "../schemas";
+import { AwsParameterStoreSyncOptionsFields } from "./AwsParameterStoreSyncOptionsFields";
 
 type Props = {
   hideInitialSync?: boolean;
@@ -20,6 +22,24 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
   const destinationName = SECRET_SYNC_MAP[destination].name;
 
   const { syncOption } = useSecretSyncOption(destination);
+
+  let AdditionalSyncOptionsFieldsComponent: ReactNode;
+
+  switch (destination) {
+    case SecretSync.AWSParameterStore:
+      AdditionalSyncOptionsFieldsComponent = <AwsParameterStoreSyncOptionsFields />;
+      break;
+    case SecretSync.AWSSecretsManager:
+    case SecretSync.GitHub:
+    case SecretSync.GCPSecretManager:
+    case SecretSync.AzureKeyVault:
+    case SecretSync.AzureAppConfiguration:
+    case SecretSync.Databricks:
+      AdditionalSyncOptionsFieldsComponent = null;
+      break;
+    default:
+      throw new Error(`Unhandled Additional Sync Options Fields: ${destination}`);
+  }
 
   return (
     <>
@@ -91,6 +111,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
           )}
         </>
       )}
+      {AdditionalSyncOptionsFieldsComponent}
       {/* <Controller
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <FormControl

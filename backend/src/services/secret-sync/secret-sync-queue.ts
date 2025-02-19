@@ -233,6 +233,7 @@ export const secretSyncQueueFactory = ({
         }
 
         secretMap[secretKey].skipMultilineEncoding = Boolean(secret.skipMultilineEncoding);
+        secretMap[secretKey].secretMetadata = secret.secretMetadata;
       })
     );
 
@@ -258,7 +259,8 @@ export const secretSyncQueueFactory = ({
             secretMap[importedSecret.key] = {
               skipMultilineEncoding: importedSecret.skipMultilineEncoding,
               comment: importedSecret.secretComment,
-              value: importedSecret.secretValue || ""
+              value: importedSecret.secretValue || "",
+              secretMetadata: importedSecret.secretMetadata
             };
           }
         }

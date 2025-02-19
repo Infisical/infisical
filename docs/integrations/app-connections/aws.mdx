@@ -118,7 +118,9 @@ Infisical supports two methods for connecting to AWS.
                                             "ssm:GetParametersByPath",
                                             "ssm:DescribeParameters",
                                             "ssm:DeleteParameters",
+                                            "ssm:ListTagsForResource", // if you need to add tags to secrets
                                             "ssm:AddTagsToResource", // if you need to add tags to secrets
+                                            "ssm:RemoveTagsFromResource", // if you need to add tags to secrets
                                             "kms:ListKeys", // if you need to specify the KMS key
                                             "kms:ListAliases", // if you need to specify the KMS key
                                             "kms:Encrypt", // if you need to specify the KMS key
@@ -259,7 +261,9 @@ Infisical supports two methods for connecting to AWS.
                                     "ssm:GetParametersByPath",
                                     "ssm:DescribeParameters",
                                     "ssm:DeleteParameters",
+                                    "ssm:ListTagsForResource", // if you need to add tags to secrets
                                     "ssm:AddTagsToResource", // if you need to add tags to secrets
+                                    "ssm:RemoveTagsFromResource", // if you need to add tags to secrets
                                     "kms:ListKeys", // if you need to specify the KMS key
                                     "kms:ListAliases", // if you need to specify the KMS key
                                     "kms:Encrypt", // if you need to specify the KMS key

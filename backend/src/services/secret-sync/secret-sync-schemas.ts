@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { AnyZodObject, z } from "zod";
 
 import { SecretSyncsSchema } from "@app/db/schemas/secret-syncs";
 import { SecretSyncs } from "@app/lib/api-docs";
@@ -8,34 +8,45 @@ import { SecretSync, SecretSyncInitialSyncBehavior } from "@app/services/secret-
 import { SECRET_SYNC_CONNECTION_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
-const SyncOptionsSchema = (secretSync: SecretSync, options: TSyncOptionsConfig = { canImportSecrets: true }) =>
-  z.object({
-    initialSyncBehavior: (options.canImportSecrets
+const BaseSyncOptionsSchema = <T extends AnyZodObject | undefined = undefined>({
+  destination,
+  syncOptionsConfig: { canImportSecrets },
+  merge,
+  isUpdateSchema
+}: {
+  destination: SecretSync;
+  syncOptionsConfig: TSyncOptionsConfig;
+  merge?: T;
+  isUpdateSchema?: boolean;
+}) => {
+  const baseSchema = z.object({
+    initialSyncBehavior: (canImportSecrets
       ? z.nativeEnum(SecretSyncInitialSyncBehavior)
       : z.literal(SecretSyncInitialSyncBehavior.OverwriteDestination)
-    ).describe(SecretSyncs.SYNC_OPTIONS(secretSync).initialSyncBehavior)
-    // prependPrefix: z
-    //   .string()
-    //   .trim()
-    //   .transform((str) => str.toUpperCase())
-    //   .optional()
-    //   .describe(SecretSyncs.SYNC_OPTIONS(secretSync).PREPEND_PREFIX),
-    // appendSuffix: z
-    //   .string()
-    //   .trim()
-    //   .transform((str) => str.toUpperCase())
-    //   .optional()
-    //   .describe(SecretSyncs.SYNC_OPTIONS(secretSync).APPEND_SUFFIX)
+    ).describe(SecretSyncs.SYNC_OPTIONS(destination).initialSyncBehavior)
   });
 
-export const BaseSecretSyncSchema = (destination: SecretSync, syncOptionsConfig?: TSyncOptionsConfig) =>
+  const schema = merge ? baseSchema.merge(merge) : baseSchema;
+
+  return (
+    isUpdateSchema
+      ? schema.describe(SecretSyncs.UPDATE(destination).syncOptions).optional()
+      : schema.describe(SecretSyncs.CREATE(destination).syncOptions)
+  ) as T extends AnyZodObject ? z.ZodObject<z.objectUtil.MergeShapes<typeof schema.shape, T["shape"]>> : typeof schema;
+};
+
+export const BaseSecretSyncSchema = <T extends AnyZodObject | undefined = undefined>(
+  destination: SecretSync,
+  syncOptionsConfig: TSyncOptionsConfig,
+  merge?: T
+) =>
   SecretSyncsSchema.omit({
     destination: true,
     destinationConfig: true,
     syncOptions: true
   }).extend({
     // destination needs to be on the extended object for type differentiation
-    syncOptions: SyncOptionsSchema(destination, syncOptionsConfig),
+    syncOptions: BaseSyncOptionsSchema({ destination, syncOptionsConfig, merge }),
     // join properties
     projectId: z.string(),
     connection: z.object({
@@ -47,7 +58,11 @@ export const BaseSecretSyncSchema = (destination: SecretSync, syncOptionsConfig?
     folder: z.object({ id: z.string(), path: z.string() }).nullable()
   });
 
-export const GenericCreateSecretSyncFieldsSchema = (destination: SecretSync, syncOptionsConfig?: TSyncOptionsConfig) =>
+export const GenericCreateSecretSyncFieldsSchema = <T extends AnyZodObject | undefined = undefined>(
+  destination: SecretSync,
+  syncOptionsConfig: TSyncOptionsConfig,
+  merge?: T
+) =>
   z.object({
     name: slugSchema({ field: "name" }).describe(SecretSyncs.CREATE(destination).name),
     projectId: z.string().trim().min(1, "Project ID required").describe(SecretSyncs.CREATE(destination).projectId),
@@ -66,10 +81,14 @@ export const GenericCreateSecretSyncFieldsSchema = (destination: SecretSync, syn
       .transform(removeTrailingSlash)
       .describe(SecretSyncs.CREATE(destination).secretPath),
     isAutoSyncEnabled: z.boolean().default(true).describe(SecretSyncs.CREATE(destination).isAutoSyncEnabled),
-    syncOptions: SyncOptionsSchema(destination, syncOptionsConfig).describe(SecretSyncs.CREATE(destination).syncOptions)
+    syncOptions: BaseSyncOptionsSchema({ destination, syncOptionsConfig, merge })
   });
 
-export const GenericUpdateSecretSyncFieldsSchema = (destination: SecretSync, syncOptionsConfig?: TSyncOptionsConfig) =>
+export const GenericUpdateSecretSyncFieldsSchema = <T extends AnyZodObject | undefined = undefined>(
+  destination: SecretSync,
+  syncOptionsConfig: TSyncOptionsConfig,
+  merge?: T
+) =>
   z.object({
     name: slugSchema({ field: "name" }).describe(SecretSyncs.UPDATE(destination).name).optional(),
     connectionId: z.string().uuid().describe(SecretSyncs.UPDATE(destination).connectionId).optional(),
@@ -90,7 +109,5 @@ export const GenericUpdateSecretSyncFieldsSchema = (destination: SecretSync, syn
       .optional()
       .describe(SecretSyncs.UPDATE(destination).secretPath),
     isAutoSyncEnabled: z.boolean().optional().describe(SecretSyncs.UPDATE(destination).isAutoSyncEnabled),
-    syncOptions: SyncOptionsSchema(destination, syncOptionsConfig)
-      .optional()
-      .describe(SecretSyncs.UPDATE(destination).syncOptions)
+    syncOptions: BaseSyncOptionsSchema({ destination, syncOptionsConfig, merge, isUpdateSchema: true })
   });

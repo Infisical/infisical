@@ -1,6 +1,6 @@
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
-import { TRootSecretSync } from "@app/hooks/api/secretSyncs/types/root-sync";
+import { RootSyncOptions, TRootSecretSync } from "@app/hooks/api/secretSyncs/types/root-sync";
 
 export type TAwsParameterStoreSync = TRootSecretSync & {
   destination: SecretSync.AWSParameterStore;
@@ -12,5 +12,10 @@ export type TAwsParameterStoreSync = TRootSecretSync & {
     app: AppConnection.AWS;
     name: string;
     id: string;
+  };
+  syncOptions: RootSyncOptions & {
+    keyId?: string;
+    tags?: { key: string; value?: string }[];
+    syncSecretMetadataAsTags?: boolean;
   };
 };

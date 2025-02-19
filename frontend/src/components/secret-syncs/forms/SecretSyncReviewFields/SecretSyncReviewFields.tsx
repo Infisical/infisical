@@ -3,15 +3,18 @@ import { useFormContext } from "react-hook-form";
 
 import { SecretSyncLabel } from "@app/components/secret-syncs";
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
-import { AwsSecretsManagerSyncReviewFields } from "@app/components/secret-syncs/forms/SecretSyncReviewFields/AwsSecretsManagerSyncReviewFields";
-import { DatabricksSyncReviewFields } from "@app/components/secret-syncs/forms/SecretSyncReviewFields/DatabricksSyncReviewFields";
 import { Badge } from "@app/components/v2";
 import { SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP, SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
-import { AwsParameterStoreSyncReviewFields } from "./AwsParameterStoreSyncReviewFields";
+import {
+  AwsParameterStoreDestinationReviewFields,
+  AwsParameterStoreSyncOptionsReviewFields
+} from "./AwsParameterStoreSyncReviewFields";
+import { AwsSecretsManagerSyncReviewFields } from "./AwsSecretsManagerSyncReviewFields";
 import { AzureAppConfigurationSyncReviewFields } from "./AzureAppConfigurationSyncReviewFields";
 import { AzureKeyVaultSyncReviewFields } from "./AzureKeyVaultSyncReviewFields";
+import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
 import { GcpSyncReviewFields } from "./GcpSyncReviewFields";
 import { GitHubSyncReviewFields } from "./GitHubSyncReviewFields";
 
@@ -19,6 +22,7 @@ export const SecretSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm>();
 
   let DestinationFieldsComponent: ReactNode;
+  let AdditionalSyncOptionsFieldsComponent: ReactNode;
 
   const {
     name,
@@ -38,7 +42,8 @@ export const SecretSyncReviewFields = () => {
 
   switch (destination) {
     case SecretSync.AWSParameterStore:
-      DestinationFieldsComponent = <AwsParameterStoreSyncReviewFields />;
+      DestinationFieldsComponent = <AwsParameterStoreDestinationReviewFields />;
+      AdditionalSyncOptionsFieldsComponent = <AwsParameterStoreSyncOptionsReviewFields />;
       break;
     case SecretSync.AWSSecretsManager:
       DestinationFieldsComponent = <AwsSecretsManagerSyncReviewFields />;
@@ -84,7 +89,7 @@ export const SecretSyncReviewFields = () => {
       </div>
       <div className="flex flex-col gap-3">
         <div className="w-full border-b border-mineshaft-600">
-          <span className="text-sm text-mineshaft-300">Options</span>
+          <span className="text-sm text-mineshaft-300">Sync Options</span>
         </div>
         <div className="flex flex-wrap gap-x-8 gap-y-2">
           <SecretSyncLabel label="Auto-Sync">
@@ -97,6 +102,7 @@ export const SecretSyncReviewFields = () => {
           </SecretSyncLabel>
           {/* <SecretSyncLabel label="Prepend Prefix">{prependPrefix}</SecretSyncLabel>
           <SecretSyncLabel label="Append Suffix">{appendSuffix}</SecretSyncLabel> */}
+          {AdditionalSyncOptionsFieldsComponent}
         </div>
       </div>
       <div className="flex flex-col gap-3">

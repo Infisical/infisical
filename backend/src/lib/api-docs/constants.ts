@@ -1722,6 +1722,13 @@ export const SecretSyncs = {
       initialSyncBehavior: `Specify how Infisical should resolve the initial sync to the ${destinationName} destination.`
     };
   },
+  ADDITIONAL_SYNC_OPTIONS: {
+    AWS_PARAMETER_STORE: {
+      keyId: "The AWS KMS key ID or alias to use when encrypting parameters synced by Infisical.",
+      tags: "Optional resource tags to add to parameters synced by Infisical.",
+      syncSecretMetadataAsTags: `Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.`
+    }
+  },
   DESTINATION_CONFIG: {
     AWS_PARAMETER_STORE: {
       region: "The AWS region to sync secrets to.",

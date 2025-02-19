@@ -1,25 +1,24 @@
-import { useFormContext } from "react-hook-form";
 import { faEye } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { SecretSyncLabel } from "@app/components/secret-syncs";
-import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
 import { Badge, Table, TBody, Td, Th, THead, Tooltip, Tr } from "@app/components/v2";
-import { AWS_REGIONS } from "@app/helpers/appConnections";
-import { SecretSync } from "@app/hooks/api/secretSyncs";
+import { TAwsParameterStoreSync } from "@app/hooks/api/secretSyncs/types/aws-parameter-store-sync";
 
-export const AwsParameterStoreSyncOptionsReviewFields = () => {
-  const { watch } = useFormContext<
-    TSecretSyncForm & { destination: SecretSync.AWSParameterStore }
-  >();
+type Props = {
+  secretSync: TAwsParameterStoreSync;
+};
 
-  const [{ keyId, tags, syncSecretMetadataAsTags }] = watch(["syncOptions"]);
+export const AwsParameterStoreSyncOptionsSection = ({ secretSync }: Props) => {
+  const {
+    syncOptions: { keyId, tags, syncSecretMetadataAsTags }
+  } = secretSync;
 
   return (
     <>
       {keyId && <SecretSyncLabel label="KMS Key">{keyId}</SecretSyncLabel>}
       {tags?.length && (
-        <SecretSyncLabel label="AWS Tags">
+        <SecretSyncLabel label="Resource Tags">
           <Tooltip
             side="right"
             className="max-w-xl p-1"
@@ -52,32 +51,10 @@ export const AwsParameterStoreSyncOptionsReviewFields = () => {
         </SecretSyncLabel>
       )}
       {syncSecretMetadataAsTags && (
-        <SecretSyncLabel label="AWS Tags">
+        <SecretSyncLabel label="Sync Secret Metadata as Resource Tags">
           <Badge variant="success">Enabled</Badge>
         </SecretSyncLabel>
       )}
-    </>
-  );
-};
-
-export const AwsParameterStoreDestinationReviewFields = () => {
-  const { watch } = useFormContext<
-    TSecretSyncForm & { destination: SecretSync.AWSParameterStore }
-  >();
-
-  const [{ region, path }] = watch(["destinationConfig"]);
-
-  const awsRegion = AWS_REGIONS.find((r) => r.slug === region);
-
-  return (
-    <>
-      <SecretSyncLabel label="Region">
-        {awsRegion?.name}
-        <Badge className="ml-1" variant="success">
-          {awsRegion?.slug}{" "}
-        </Badge>
-      </SecretSyncLabel>
-      <SecretSyncLabel label="Path">{path}</SecretSyncLabel>
     </>
   );
 };

@@ -16,10 +16,10 @@ import {
   useSecretSyncOption
 } from "@app/hooks/api/secretSyncs";
 
+import { SecretSyncOptionsFields } from "./SecretSyncOptionsFields/SecretSyncOptionsFields";
 import { SecretSyncFormSchema, TSecretSyncForm } from "./schemas";
 import { SecretSyncDestinationFields } from "./SecretSyncDestinationFields";
 import { SecretSyncDetailsFields } from "./SecretSyncDetailsFields";
-import { SecretSyncOptionsFields } from "./SecretSyncOptionsFields";
 import { SecretSyncReviewFields } from "./SecretSyncReviewFields";
 import { SecretSyncSourceFields } from "./SecretSyncSourceFields";
 
@@ -32,7 +32,7 @@ type Props = {
 const FORM_TABS: { name: string; key: string; fields: (keyof TSecretSyncForm)[] }[] = [
   { name: "Source", key: "source", fields: ["secretPath", "environment"] },
   { name: "Destination", key: "destination", fields: ["connection", "destinationConfig"] },
-  { name: "Options", key: "options", fields: ["syncOptions"] },
+  { name: "Sync Options", key: "options", fields: ["syncOptions"] },
   { name: "Details", key: "details", fields: ["name", "description"] },
   { name: "Review", key: "review", fields: [] }
 ];
