@@ -7,7 +7,7 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
-import { isAtLeastAsPrivileged } from "@app/lib/casl";
+import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -274,13 +274,13 @@ export const projectMembershipServiceFactory = ({
         projectId
       );
 
-      const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, rolePermission);
-
-      if (!hasRequiredPriviledges) {
+      const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+      if (!permissionBoundary.isValid)
         throw new ForbiddenRequestError({
-          message: `Failed to change to a more privileged role ${requestedRoleChange}`
+          name: "PermissionBoundaryError",
+          message: `Failed to change to a more privileged role ${requestedRoleChange}`,
+          details: { missingPermissions: permissionBoundary.missingPermissions }
         });
-      }
     }
 
     // validate custom roles input

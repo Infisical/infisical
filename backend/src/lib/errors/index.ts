@@ -52,10 +52,18 @@ export class ForbiddenRequestError extends Error {
 
   error: unknown;
 
-  constructor({ name, error, message }: { message?: string; name?: string; error?: unknown } = {}) {
+  details?: unknown;
+
+  constructor({
+    name,
+    error,
+    message,
+    details
+  }: { message?: string; name?: string; error?: unknown; details?: unknown } = {}) {
     super(message ?? "You are not allowed to access this resource");
     this.name = name || "ForbiddenError";
     this.error = error;
+    this.details = details;
   }
 }
 

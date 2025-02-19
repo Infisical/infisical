@@ -4,7 +4,7 @@ import ms from "ms";
 import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { isAtLeastAsPrivileged } from "@app/lib/casl";
+import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 
@@ -91,11 +91,13 @@ export const identityProjectServiceFactory = ({
         projectId
       );
 
-      const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, rolePermission);
-
-      if (!hasRequiredPriviledges) {
-        throw new ForbiddenRequestError({ message: "Failed to change to a more privileged role" });
-      }
+      const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+      if (!permissionBoundary.isValid)
+        throw new ForbiddenRequestError({
+          name: "PermissionBoundaryError",
+          message: "Failed to assign to a more privileged role",
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
     }
 
     // validate custom roles input
@@ -185,9 +187,13 @@ export const identityProjectServiceFactory = ({
         projectId
       );
 
-      if (!isAtLeastAsPrivileged(permission, rolePermission)) {
-        throw new ForbiddenRequestError({ message: "Failed to change to a more privileged role" });
-      }
+      const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+      if (!permissionBoundary.isValid)
+        throw new ForbiddenRequestError({
+          name: "PermissionBoundaryError",
+          message: "Failed to change to a more privileged role",
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
     }
 
     // validate custom roles input
@@ -277,8 +283,13 @@ export const identityProjectServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-    if (!isAtLeastAsPrivileged(permission, identityRolePermission))
-      throw new ForbiddenRequestError({ message: "Failed to delete more privileged identity" });
+    const permissionBoundary = validatePermissionBoundary(permission, identityRolePermission);
+    if (!permissionBoundary.isValid)
+      throw new ForbiddenRequestError({
+        name: "PermissionBoundaryError",
+        message: "Failed to remove more privileged identity",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
+      });
 
     const [deletedIdentity] = await identityProjectDAL.delete({ identityId, projectId });
     return deletedIdentity;
