@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
-import jwt from "jsonwebtoken";
 
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 import { Knex } from "knex";
 
 import { TAuthTokens, TAuthTokenSessions } from "@app/db/schemas";
@@ -101,40 +101,6 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgMembershipDAL }: TAu
     return token;
   };
 
-  const validateRefreshToken = async (refreshToken?: string) => {
-    const appCfg = getConfig();
-    if (!refreshToken)
-      throw new NotFoundError({
-        name: "AuthTokenNotFound",
-        message: "Failed to find refresh token"
-      });
-
-    const decodedToken = jwt.verify(refreshToken, appCfg.AUTH_SECRET) as AuthModeRefreshJwtTokenPayload;
-
-    if (decodedToken.authTokenType !== AuthTokenType.REFRESH_TOKEN)
-      throw new UnauthorizedError({
-        message: "The token provided is not a refresh token",
-        name: "InvalidToken"
-      });
-
-    const tokenVersion = await getUserTokenSessionById(decodedToken.tokenVersionId, decodedToken.userId);
-
-    if (!tokenVersion)
-      throw new UnauthorizedError({
-        message: "Valid token version not found",
-        name: "InvalidToken"
-      });
-
-    if (decodedToken.refreshVersion !== tokenVersion.refreshVersion) {
-      throw new UnauthorizedError({
-        message: "Token version mismatch",
-        name: "InvalidToken"
-      });
-    }
-
-    return { decodedToken, tokenVersion };
-  };
-
   const validateTokenForUser = async ({
     type,
     userId,
@@ -185,6 +151,40 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgMembershipDAL }: TAu
 
   const revokeAllMySessions = async (userId: string) => tokenDAL.deleteTokenSession({ userId });
 
+  const validateRefreshToken = async (refreshToken?: string) => {
+    const appCfg = getConfig();
+    if (!refreshToken)
+      throw new NotFoundError({
+        name: "AuthTokenNotFound",
+        message: "Failed to find refresh token"
+      });
+
+    const decodedToken = jwt.verify(refreshToken, appCfg.AUTH_SECRET) as AuthModeRefreshJwtTokenPayload;
+
+    if (decodedToken.authTokenType !== AuthTokenType.REFRESH_TOKEN)
+      throw new UnauthorizedError({
+        message: "The token provided is not a refresh token",
+        name: "InvalidToken"
+      });
+
+    const tokenVersion = await getUserTokenSessionById(decodedToken.tokenVersionId, decodedToken.userId);
+
+    if (!tokenVersion)
+      throw new UnauthorizedError({
+        message: "Valid token version not found",
+        name: "InvalidToken"
+      });
+
+    if (decodedToken.refreshVersion !== tokenVersion.refreshVersion) {
+      throw new UnauthorizedError({
+        message: "Token version mismatch",
+        name: "InvalidToken"
+      });
+    }
+
+    return { decodedToken, tokenVersion };
+  };
+
   // to parse jwt identity in inject identity plugin
   const fnValidateJwtIdentity = async (token: AuthModeJwtTokenPayload) => {
     const session = await tokenDAL.findOneTokenSession({
@@ -218,12 +218,12 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgMembershipDAL }: TAu
 
   return {
     createTokenForUser,
-    validateRefreshToken,
     validateTokenForUser,
     getUserTokenSession,
     clearTokenSessionById,
     getTokenSessionByUser,
     revokeAllMySessions,
+    validateRefreshToken,
     fnValidateJwtIdentity,
     getUserTokenSessionById
   };

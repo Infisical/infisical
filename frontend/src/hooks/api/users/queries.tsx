@@ -3,6 +3,7 @@ import { AxiosError } from "axios";
 
 import { apiRequest } from "@app/config/request";
 import { SessionStorageKeys } from "@app/const";
+import { queryClient as qc } from "@app/hooks/api/reactQuery";
 
 import { APIKeyDataV2 } from "../apiKeys/types";
 import { MfaMethod } from "../auth/types";
@@ -24,7 +25,6 @@ import {
   User,
   UserEnc
 } from "./types";
-import { queryClient } from "@app/hooks/api/reactQuery";
 
 export const fetchUserDetails = async () => {
   const { data } = await apiRequest.get<{ user: User & UserEnc }>("/api/v1/user");
@@ -297,7 +297,7 @@ export const clearSession = (keepQueryClient?: boolean) => {
   sessionStorage.removeItem(SessionStorageKeys.CLI_TERMINAL_TOKEN);
 
   if (!keepQueryClient) {
-    queryClient.clear(); // Clear React Query cache
+    qc.clear(); // Clear React Query cache
   }
 };
 
