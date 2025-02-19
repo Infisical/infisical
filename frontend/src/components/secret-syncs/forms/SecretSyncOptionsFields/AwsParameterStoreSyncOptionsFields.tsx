@@ -77,7 +77,7 @@ export const AwsParameterStoreSyncOptionsFields = () => {
         label="Resource Tags"
         tooltipText="Add resource tags to parameters synced by Infisical"
       />
-      <div className="mb-3 grid max-h-[40vh] grid-cols-12 flex-col items-end gap-2 overflow-y-auto">
+      <div className="mb-3 grid max-h-[20vh] grid-cols-12 flex-col items-end gap-2 overflow-y-auto">
         {tagFields.fields.map(({ id: tagFieldId }, i) => (
           <Fragment key={tagFieldId}>
             <div className="col-span-5">
