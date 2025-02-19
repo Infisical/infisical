@@ -47,12 +47,18 @@ export const Route = createFileRoute("/_authenticate")({
         if (err.response?.status === 403) {
           // (dangtony98): this edge-case can occur if the user's token corresponds to an organization
           // that has been deleted for which we must clear the refresh token in http-only cookie
-          clearSession(true);
-          await logoutUser();
-          throw redirect({
-            to: "/login"
+          createNotification({
+            type: "error",
+            title: "Access Denied",
+            text: "Something went wrong with your session. Please log in again."
           });
         }
+        clearSession(true);
+        await logoutUser();
+
+        throw redirect({
+          to: "/login"
+        });
       });
 
     return { organizationId: data.organizationId as string, isAuthenticated: true, user };
