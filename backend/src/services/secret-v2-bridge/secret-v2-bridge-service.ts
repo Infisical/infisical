@@ -1741,7 +1741,7 @@ export const secretV2BridgeServiceFactory = ({
           const bulkInsertedSecrets = await secretDAL.find(
             {
               $in: {
-                id: bulkInsertedSecretsRes.map((el) => el.id)
+                [`${TableName.SecretV2}.id` as "id"]: bulkInsertedSecretsRes.map((el) => el.id)
               }
             },
             { tx }
