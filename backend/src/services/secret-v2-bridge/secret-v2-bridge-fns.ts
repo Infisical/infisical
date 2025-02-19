@@ -103,18 +103,6 @@ export const fnSecretBulkInsert = async ({
     }))
   );
 
-  const secretTags = await secretTagDAL.find({
-    $in: {
-      id: newSecretTags.map((el) => el.secret_tagsId)
-    }
-  });
-
-  const secretTagsWithSlugs = await secretTagDAL.find({
-    $in: {
-      id: secretTags.map((el) => el.id)
-    }
-  });
-
   const secretVersions = await secretVersionDAL.insertMany(
     sanitizedInputSecrets.map((el) => ({
       ...el,
