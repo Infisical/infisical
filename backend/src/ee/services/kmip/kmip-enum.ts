@@ -6,6 +6,6 @@ export enum KmipPermission {
   GetAttributes = "get-attributes",
   Activate = "activate",
   Revoke = "revoke",
-  Delete = "delete",
+  Destroy = "destroy",
   Register = "register"
 }

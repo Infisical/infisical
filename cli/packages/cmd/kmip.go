@@ -78,10 +78,6 @@ func startKmipServer(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
-	if hostnamesOrIps == "" {
-		util.PrintErrorMessageAndExit("missing value for field hostnames-or-ips")
-	}
-
 	kmip.StartServer(kmip.ServerConfig{
 		Addr:                 addr,
 		InfisicalBaseAPIURL:  config.INFISICAL_URL,

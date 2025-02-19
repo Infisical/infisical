@@ -236,7 +236,7 @@ export const registerKmipOperationRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const object = await server.services.kmipOperation.deleteOp({
+      const object = await server.services.kmipOperation.destroy({
         ...req.kmipUser,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -255,7 +255,7 @@ export const registerKmipOperationRouter = async (server: FastifyZodProvider) =>
           }
         },
         event: {
-          type: EventType.KMIP_OPERATION_DELETE,
+          type: EventType.KMIP_OPERATION_DESTROY,
           metadata: {
             id: object.id
           }

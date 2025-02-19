@@ -275,7 +275,7 @@ export enum EventType {
 
   KMIP_OPERATION_CREATE = "kmip-operation-create",
   KMIP_OPERATION_GET = "kmip-operation-get",
-  KMIP_OPERATION_DELETE = "kmip-operation-delete",
+  KMIP_OPERATION_DESTROY = "kmip-operation-destroy",
   KMIP_OPERATION_GET_ATTRIBUTES = "kmip-operation-get-attributes",
   KMIP_OPERATION_ACTIVATE = "kmip-operation-activate",
   KMIP_OPERATION_REVOKE = "kmip-operation-revoke",
@@ -2178,8 +2178,8 @@ interface KmipOperationGetEvent {
   };
 }
 
-interface KmipOperationDeleteEvent {
-  type: EventType.KMIP_OPERATION_DELETE;
+interface KmipOperationDestroyEvent {
+  type: EventType.KMIP_OPERATION_DESTROY;
   metadata: {
     id: string;
   };
@@ -2457,7 +2457,7 @@ export type Event =
   | GetKmipEvent
   | RegisterKmipServerEvent
   | KmipOperationGetEvent
-  | KmipOperationDeleteEvent
+  | KmipOperationDestroyEvent
   | KmipOperationCreateEvent
   | KmipOperationGetAttributesEvent
   | KmipOperationActivateEvent

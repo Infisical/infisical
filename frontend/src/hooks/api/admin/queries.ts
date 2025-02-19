@@ -18,8 +18,7 @@ export const adminQueryKeys = {
   serverConfig: () => ["server-config"] as const,
   getUsers: (filters: AdminGetUsersFilters) => [adminStandaloneKeys.getUsers, { filters }] as const,
   getAdminSlackConfig: () => ["admin-slack-config"] as const,
-  getServerEncryptionStrategies: () => ["server-encryption-strategies"] as const,
-  getInstanceKmip: () => ["instance-kmip"] as const
+  getServerEncryptionStrategies: () => ["server-encryption-strategies"] as const
 };
 
 export const fetchServerConfig = async () => {

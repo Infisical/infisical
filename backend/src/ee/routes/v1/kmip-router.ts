@@ -61,6 +61,8 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      return kmipClient;
     }
   });
 
@@ -107,6 +109,8 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      return kmipClient;
     }
   });
 
@@ -145,6 +149,8 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      return kmipClient;
     }
   });
 
@@ -183,6 +189,8 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      return kmipClient;
     }
   });
 

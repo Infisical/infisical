@@ -11,7 +11,7 @@ import { TKmipClientDALFactory } from "./kmip-client-dal";
 import { KmipPermission } from "./kmip-enum";
 import {
   TKmipCreateDTO,
-  TKmipDeleteDTO,
+  TKmipDestroyDTO,
   TKmipGetAttributesDTO,
   TKmipGetDTO,
   TKmipLocateDTO,
@@ -76,7 +76,7 @@ export const kmipOperationServiceFactory = ({
     return kmsKey;
   };
 
-  const deleteOp = async ({ projectId, id, clientId, actor, actorId, actorOrgId, actorAuthMethod }: TKmipDeleteDTO) => {
+  const destroy = async ({ projectId, id, clientId, actor, actorId, actorOrgId, actorAuthMethod }: TKmipDestroyDTO) => {
     const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
@@ -92,9 +92,9 @@ export const kmipOperationServiceFactory = ({
       projectId
     });
 
-    if (!kmipClient.permissions?.includes(KmipPermission.Delete)) {
+    if (!kmipClient.permissions?.includes(KmipPermission.Destroy)) {
       throw new ForbiddenRequestError({
-        message: "Client does not have sufficient permission to perform KMIP delete"
+        message: "Client does not have sufficient permission to perform KMIP destroy"
       });
     }
 
@@ -108,13 +108,19 @@ export const kmipOperationServiceFactory = ({
     }
 
     if (key.isReserved) {
-      throw new BadRequestError({ message: "Cannot delete reserved keys" });
+      throw new BadRequestError({ message: "Cannot destroy reserved keys" });
     }
 
     const completeKeyDetails = await kmsDAL.findByIdWithAssociatedKms(id);
     if (!completeKeyDetails.internalKms) {
       throw new BadRequestError({
-        message: "Cannot delete external keys"
+        message: "Cannot destroy external keys"
+      });
+    }
+
+    if (!completeKeyDetails.isDisabled) {
+      throw new BadRequestError({
+        message: "Cannot destroy active keys"
       });
     }
 
@@ -408,7 +414,7 @@ export const kmipOperationServiceFactory = ({
     get,
     activate,
     getAttributes,
-    deleteOp,
+    destroy,
     revoke,
     locate,
     register

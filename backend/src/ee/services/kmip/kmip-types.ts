@@ -60,7 +60,7 @@ export type TKmipGetAttributesDTO = {
   id: string;
 } & KmipOperationBaseDTO;
 
-export type TKmipDeleteDTO = {
+export type TKmipDestroyDTO = {
   id: string;
 } & KmipOperationBaseDTO;
 

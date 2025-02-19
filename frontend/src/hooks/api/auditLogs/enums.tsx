@@ -145,7 +145,7 @@ export enum EventType {
   REGISTER_KMIP_SERVER = "register-kmip-server",
   KMIP_OPERATION_CREATE = "kmip-operation-create",
   KMIP_OPERATION_GET = "kmip-operation-get",
-  KMIP_OPERATION_DELETE = "kmip-operation-delete",
+  KMIP_OPERATION_DESTROY = "kmip-operation-destroy",
   KMIP_OPERATION_GET_ATTRIBUTES = "kmip-operation-get-attributes",
   KMIP_OPERATION_ACTIVATE = "kmip-operation-activate",
   KMIP_OPERATION_REVOKE = "kmip-operation-revoke",
