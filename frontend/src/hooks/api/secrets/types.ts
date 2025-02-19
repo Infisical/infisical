@@ -19,6 +19,7 @@ export type EncryptedSecret = {
   secretValueCiphertext: string;
   secretValueIV: string;
   secretValueTag: string;
+  secretValueHidden: boolean;
   __v: number;
   createdAt: string;
   updatedAt: string;

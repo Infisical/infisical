@@ -122,8 +122,6 @@ const Page = () => {
     })
   );
 
-  console.log("Can read secret value", canReadSecret);
-
   const canReadSecretImports = permission.can(
     ProjectPermissionActions.Read,
     subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
