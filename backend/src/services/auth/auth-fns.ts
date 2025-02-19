@@ -2,7 +2,6 @@ import jwt from "jsonwebtoken";
 
 import { getConfig } from "@app/lib/config/env";
 import { ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
-
 import { AuthModeProviderJwtTokenPayload, AuthModeProviderSignUpTokenPayload, AuthTokenType } from "./auth-type";
 
 export const validateProviderAuthToken = (providerToken: string, username?: string) => {

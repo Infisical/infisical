@@ -33,6 +33,7 @@ export const LoginPage = () => {
         console.log("Error - Not logged in yet");
       }
     };
+
     if (isLoggedIn()) {
       handleRedirects();
     }
