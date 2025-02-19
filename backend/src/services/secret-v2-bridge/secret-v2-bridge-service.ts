@@ -950,6 +950,8 @@ export const secretV2BridgeServiceFactory = ({
         );
       })
       .map((secret) => {
+        const isPersonalSecret = secret.userId === actorId && secret.type === SecretType.Personal;
+
         const secretValueHidden =
           !viewSecretValue ||
           !permission.can(
@@ -975,7 +977,7 @@ export const secretV2BridgeServiceFactory = ({
               ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
               : ""
           },
-          secretValueHidden
+          secretValueHidden && !isPersonalSecret
         );
       });
 
@@ -1244,7 +1246,8 @@ export const secretV2BridgeServiceFactory = ({
             secretName,
             secretTags: (secret?.tags || []).map((el) => el.slug)
           })
-        )
+        ) &&
+        secretType !== SecretType.Personal
       ) {
         throw new ForbiddenReadSecretError({
           message: `You do not have permission to view secret value on secret with name '${secretName}'`
