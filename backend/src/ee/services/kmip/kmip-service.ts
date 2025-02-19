@@ -5,13 +5,13 @@ import ms from "ms";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
-import { isValidIp } from "@app/lib/ip";
+import { isValidHostname, isValidIp } from "@app/lib/ip";
+import { constructPemChainFromCerts } from "@app/services/certificate/certificate-fns";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import {
   createSerialNumber,
   keyAlgorithmToAlgCfg
 } from "@app/services/certificate-authority/certificate-authority-fns";
-import { hostnameRegex } from "@app/services/certificate-authority/certificate-authority-validators";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
@@ -363,7 +363,7 @@ export const kmipServiceFactory = ({
       serialNumber,
       privateKey: skLeafObj.export({ format: "pem", type: "pkcs8" }) as string,
       certificate: leafCert.toString("pem"),
-      certificateChain: `${serverIntermediateCaCert.toString("pem")}\n${rootCaCert.toString("pem")}`.trim(),
+      certificateChain: constructPemChainFromCerts([serverIntermediateCaCert, rootCaCert]),
       projectId: kmipClient.projectId
     };
   };
@@ -553,8 +553,8 @@ export const kmipServiceFactory = ({
     });
 
     return {
-      serverCertificateChain: `${serverIntermediateCaCert.toString("pem")}\n${rootCaCert.toString("pem")}`.trim(),
-      clientCertificateChain: `${clientIntermediateCaCert.toString("pem")}\n${rootCaCert.toString("pem")}`.trim()
+      serverCertificateChain: constructPemChainFromCerts([serverIntermediateCaCert, rootCaCert]),
+      clientCertificateChain: constructPemChainFromCerts([clientIntermediateCaCert, rootCaCert])
     };
   };
 
@@ -587,8 +587,8 @@ export const kmipServiceFactory = ({
 
     return {
       id: kmipConfig.id,
-      serverCertificateChain: `${serverIntermediateCaCert.toString("pem")}\n${rootCaCert.toString("pem")}`.trim(),
-      clientCertificateChain: `${clientIntermediateCaCert.toString("pem")}\n${rootCaCert.toString("pem")}`.trim()
+      serverCertificateChain: constructPemChainFromCerts([serverIntermediateCaCert, rootCaCert]),
+      clientCertificateChain: constructPemChainFromCerts([clientIntermediateCaCert, rootCaCert])
     };
   };
 
@@ -665,15 +665,13 @@ export const kmipServiceFactory = ({
       .split(",")
       .map((name) => name.trim())
       .map((altName) => {
-        // check if the altName is a valid hostname
-        if (hostnameRegex.test(altName)) {
+        if (isValidHostname(altName)) {
           return {
             type: "dns",
             value: altName
           };
         }
 
-        // check if the altName is a valid IP
         if (isValidIp(altName)) {
           return {
             type: "ip",

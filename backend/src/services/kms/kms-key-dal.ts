@@ -104,7 +104,6 @@ export const kmskeyDALFactory = (db: TDbClient) => {
         .join(TableName.InternalKms, `${TableName.KmsKey}.id`, `${TableName.InternalKms}.kmsKeyId`)
         .select(selectAllTableCols(TableName.KmsKey))
         .select(
-          db.ref("encryptedKey").withSchema(TableName.InternalKms).as("internalKmsEncryptedKey"),
           db.ref("encryptionAlgorithm").withSchema(TableName.InternalKms).as("internalKmsEncryptionAlgorithm"),
           db.ref("version").withSchema(TableName.InternalKms).as("internalKmsVersion")
         );
@@ -112,7 +111,6 @@ export const kmskeyDALFactory = (db: TDbClient) => {
       return result.map((entry) => ({
         ...KmsKeysSchema.parse(entry),
         isActive: !entry.isDisabled,
-        encryptedKey: entry.internalKmsEncryptedKey,
         algorithm: entry.internalKmsEncryptionAlgorithm,
         version: entry.internalKmsVersion
       }));

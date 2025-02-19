@@ -7,7 +7,5 @@ export type TKmipClientCertificateDALFactory = ReturnType<typeof kmipClientCerti
 export const kmipClientCertificateDALFactory = (db: TDbClient) => {
   const kmipClientCertOrm = ormify(db, TableName.KmipClientCertificates);
 
-  return {
-    ...kmipClientCertOrm
-  };
+  return kmipClientCertOrm;
 };

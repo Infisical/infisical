@@ -273,8 +273,8 @@ github.com/inconshreveable/mousetrap v1.0.1 h1:U3uMjPSQEBMNp1lFxmllqCPM6P5u/Xq7P
 github.com/inconshreveable/mousetrap v1.0.1/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/infisical/go-sdk v0.4.8 h1:aphRnaauC5//PkP1ZbY9RSK2RiT1LjPS5o4CbX0x5OQ=
 github.com/infisical/go-sdk v0.4.8/go.mod h1:bMO9xSaBeXkDBhTIM4FkkREAfw2V8mv5Bm7lvo4+uDk=
-github.com/infisical/infisical-kmip v0.3.4 h1:X7wsW/vnqrTAtilYyuz+xFtkUu025wD5Yfk2u/LbniQ=
-github.com/infisical/infisical-kmip v0.3.4/go.mod h1:bO1M4YtKyutNg1bREPmlyZspC5duSR7hyQ3lPmLzrIs=
+github.com/infisical/infisical-kmip v0.3.5 h1:QM3s0e18B+mYv3a9HQNjNAlbwZJBzXq5BAJM2scIeiE=
+github.com/infisical/infisical-kmip v0.3.5/go.mod h1:bO1M4YtKyutNg1bREPmlyZspC5duSR7hyQ3lPmLzrIs=
 github.com/jedib0t/go-pretty v4.3.0+incompatible h1:CGs8AVhEKg/n9YbUenWmNStRW2PHJzaeDodcfvRAbIo=
 github.com/jedib0t/go-pretty v4.3.0+incompatible/go.mod h1:XemHduiw8R651AF9Pt4FwCTKeG3oo7hrHJAoznj9nag=
 github.com/json-iterator/go v1.1.11/go.mod h1:KdQUCv79m/52Kvf8AW2vK1V8akMuk1QjK/uOdHXbAo4=

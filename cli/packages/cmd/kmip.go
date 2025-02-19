@@ -30,7 +30,7 @@ var kmipStartCmd = &cobra.Command{
 }
 
 func startKmipServer(cmd *cobra.Command, args []string) {
-	addr, err := cmd.Flags().GetString("addr")
+	listenAddr, err := cmd.Flags().GetString("listen-address")
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
 	}
@@ -79,7 +79,7 @@ func startKmipServer(cmd *cobra.Command, args []string) {
 	}
 
 	kmip.StartServer(kmip.ServerConfig{
-		Addr:                 addr,
+		Addr:                 listenAddr,
 		InfisicalBaseAPIURL:  config.INFISICAL_URL,
 		IdentityClientId:     identityClientId,
 		IdentityClientSecret: identityClientSecret,
@@ -90,7 +90,7 @@ func startKmipServer(cmd *cobra.Command, args []string) {
 }
 
 func init() {
-	kmipStartCmd.Flags().String("addr", "localhost:5696", "The address for the KMIP server to listen on. Defaults to localhost:5696")
+	kmipStartCmd.Flags().String("listen-address", "localhost:5696", "The address for the KMIP server to listen on. Defaults to localhost:5696")
 	kmipStartCmd.Flags().String("identity-auth-method", string(util.AuthStrategy.UNIVERSAL_AUTH), "The auth method to use for authenticating the machine identity. Defaults to universal-auth.")
 	kmipStartCmd.Flags().String("identity-client-id", "", "Universal auth client ID of machine identity")
 	kmipStartCmd.Flags().String("identity-client-secret", "", "Universal auth client secret of machine identity")

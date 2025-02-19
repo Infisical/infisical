@@ -8,7 +8,7 @@ import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
-export const registerKmipOperationRouter = async (server: FastifyZodProvider) => {
+export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
   server.decorateRequest("kmipUser", null);
 
   server.addHook("onRequest", async (req) => {

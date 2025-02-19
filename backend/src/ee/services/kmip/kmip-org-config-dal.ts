@@ -6,7 +6,6 @@ export type TKmipOrgConfigDALFactory = ReturnType<typeof kmipOrgConfigDALFactory
 
 export const kmipOrgConfigDALFactory = (db: TDbClient) => {
   const kmipOrgConfigOrm = ormify(db, TableName.KmipOrgConfig);
-  return {
-    ...kmipOrgConfigOrm
-  };
+
+  return kmipOrgConfigOrm;
 };

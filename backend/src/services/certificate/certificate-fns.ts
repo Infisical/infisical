@@ -40,3 +40,9 @@ export const isCertChainValid = async (certificates: x509.X509Certificate[]) => 
   // chain.build() implicitly verifies the chain
   return chainItems.length === certificates.length;
 };
+
+export const constructPemChainFromCerts = (certificates: x509.X509Certificate[]) =>
+  certificates
+    .map((cert) => cert.toString("pem"))
+    .join("\n")
+    .trim();
