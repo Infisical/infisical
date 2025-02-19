@@ -1400,7 +1400,7 @@ export const secretV2BridgeServiceFactory = ({
       const secs = await secretDAL.find(
         {
           $in: {
-            id: createdSecrets.map((el) => el.id)
+            [`${TableName.SecretV2}.id` as "id"]: createdSecrets.map((el) => el.id)
           }
         },
         { tx }
