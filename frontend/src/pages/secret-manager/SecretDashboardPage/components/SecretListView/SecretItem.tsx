@@ -150,7 +150,6 @@ export const SecretItem = memo(
       );
 
     const { secretValueHidden } = secret;
-    console.log(`Secret Key: ${secret.key}, hidden: ${secretValueHidden}`);
 
     const [isSecValueCopied, setIsSecValueCopied] = useToggle(false);
     useEffect(() => {
@@ -283,6 +282,16 @@ export const SecretItem = memo(
                     />
                   )}
                 />
+              ) : secretValueHidden ? (
+                <Tooltip content="You do not have permission to read the value of this secret.">
+                  <div
+                    className="flex w-80 flex-grow items-center py-1 pl-4 pr-2"
+                    tabIndex={0}
+                    role="button"
+                  >
+                    <span className="blur">********</span>
+                  </div>
+                </Tooltip>
               ) : (
                 <Controller
                   name="value"
@@ -290,7 +299,6 @@ export const SecretItem = memo(
                   control={control}
                   render={({ field }) => (
                     <InfisicalSecretInput
-                      secretValueHidden={secretValueHidden}
                       isReadOnly={isReadOnly}
                       key="secret-value"
                       isVisible={isVisible}

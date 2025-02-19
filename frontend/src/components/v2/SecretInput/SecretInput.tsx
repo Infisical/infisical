@@ -1,12 +1,9 @@
 /* eslint-disable react/no-danger */
 import { forwardRef, TextareaHTMLAttributes } from "react";
-import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
 import { twMerge } from "tailwind-merge";
 
 import { useToggle } from "@app/hooks";
-
-import { Tooltip } from "../Tooltip";
 
 const REGEX = /(\${([a-zA-Z0-9-_.]+)})/g;
 const replaceContentWithDot = (str: string) => {
@@ -18,26 +15,7 @@ const replaceContentWithDot = (str: string) => {
   return finalStr;
 };
 
-const syntaxHighlight = (
-  content?: string | null,
-  isVisible?: boolean,
-  isImport?: boolean,
-  valueHidden?: boolean
-) => {
-  if (valueHidden && !content)
-    return (
-      <div className="flex items-center gap-2">
-        <span className="opacity-60">VALUE HIDDEN</span>
-        <div className="relative z-50">
-          <Tooltip
-            className="!relative !z-50 !break-normal !font-inter"
-            content="You do not have permission to read the value of this secret."
-          >
-            <FontAwesomeIcon icon={faQuestionCircle} className="text-xs" />
-          </Tooltip>
-        </div>
-      </div>
-    );
+const syntaxHighlight = (content?: string | null, isVisible?: boolean, isImport?: boolean) => {
   if (isImport && !content) return "IMPORTED";
   if (content === "") return "EMPTY";
   if (!content) return "EMPTY";
@@ -106,7 +84,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
           <pre aria-hidden className="m-0">
             <code className={`inline-block w-full ${commonClassName}`}>
               <span style={{ whiteSpace: "break-spaces" }}>
-                {syntaxHighlight(value, isVisible || isSecretFocused, isImport, valueHidden)}
+                {syntaxHighlight(value, isVisible || isSecretFocused, isImport)}
               </span>
             </code>
           </pre>

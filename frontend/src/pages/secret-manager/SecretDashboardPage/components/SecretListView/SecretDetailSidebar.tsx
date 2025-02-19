@@ -9,7 +9,8 @@ import {
   faPlus,
   faShare,
   faTag,
-  faTrash
+  faTrash,
+  faTriangleExclamation
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -44,6 +45,7 @@ import {
   useProjectPermission,
   useWorkspace
 } from "@app/context";
+import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp, useToggle } from "@app/hooks";
 import { useGetSecretVersion } from "@app/hooks/api";
 import { useGetSecretAccessList } from "@app/hooks/api/secrets/queries";
@@ -52,8 +54,6 @@ import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { CreateReminderForm } from "./CreateReminderForm";
 import { formSchema, SecretActionType, TFormSchema } from "./SecretListView.utils";
-import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
-import { useEffect } from "react";
 
 type Props = {
   isOpen?: boolean;
@@ -155,8 +155,6 @@ export const SecretDetailSidebar = ({
     ) &&
     cannotEditSecret &&
     cannotReadSecretValue;
-
-  console.log("cannotReadSecretValue", cannotReadSecretValue);
 
   const overrideAction = watch("overrideAction");
   const isOverridden =
@@ -280,9 +278,18 @@ export const SecretDetailSidebar = ({
                         render={({ field }) => (
                           <FormControl
                             helperText={
-                              cannotReadSecretValue
-                                ? "The value of this secret is hidden because you don't have the read secret value permission."
-                                : undefined
+                              cannotReadSecretValue ? (
+                                <div className="flex space-x-2">
+                                  <FontAwesomeIcon
+                                    icon={faTriangleExclamation}
+                                    className="mt-0.5 text-yellow-400"
+                                  />
+                                  <span>
+                                    The value of this secret is hidden because you do not have the
+                                    read secret value permission.
+                                  </span>
+                                </div>
+                              ) : undefined
                             }
                             label="Value"
                           >
