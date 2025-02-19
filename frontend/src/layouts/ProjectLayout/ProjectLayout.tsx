@@ -113,7 +113,7 @@ export const ProjectLayout = () => {
                           }}
                         >
                           {({ isActive }) => (
-                            <MenuItem isSelected={isActive} icon="lock-closed">
+                            <MenuItem isSelected={isActive} icon="key-user" iconMode="reverse">
                               KMIP
                             </MenuItem>
                           )}

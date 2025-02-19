@@ -1,5 +1,5 @@
 import { ComponentPropsWithRef, ElementType, ReactNode, Ref, useRef } from "react";
-import { DotLottie, DotLottieReact } from "@lottiefiles/dotlottie-react";
+import { DotLottie, DotLottieReact, Mode } from "@lottiefiles/dotlottie-react";
 import { twMerge } from "tailwind-merge";
 
 export type MenuProps = {
@@ -16,6 +16,7 @@ export type MenuItemProps<T extends ElementType> = {
   as?: T;
   children: ReactNode;
   icon?: string;
+  iconMode?: Mode;
   description?: ReactNode;
   isDisabled?: boolean;
   isSelected?: boolean;
@@ -26,6 +27,7 @@ export type MenuItemProps<T extends ElementType> = {
 export const MenuItem = <T extends ElementType = "button">({
   children,
   icon,
+  iconMode,
   className,
   isDisabled,
   isSelected,
@@ -62,6 +64,7 @@ export const MenuItem = <T extends ElementType = "button">({
             dotLottieRefCallback={(el) => {
               iconRef.current = el;
             }}
+            mode={iconMode}
             src={`/lotties/${icon}.json`}
             loop
             className="h-full w-full"
