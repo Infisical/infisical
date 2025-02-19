@@ -96,7 +96,7 @@ client := infisical.NewInfisicalClient(context.Background(), infisical.Config{
             Whether or not to suppress logs such as warnings from the token refreshing process. Defaults to false if not specified.
         </ParamField>
 
-        <ParamField query="CacheExpiryInSeconds" type="number" default="0" optional>
+        <ParamField query="CacheExpiryInSeconds" type="number" default={0} optional>
             Defines how long certain responses should be cached in memory, in seconds. When set to a positive value, responses from specific methods (like secret fetching) will be cached for this duration. Set to 0 to disable caching.
         </ParamField>
     </Expandable>
