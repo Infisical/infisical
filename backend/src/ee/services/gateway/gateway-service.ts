@@ -353,7 +353,7 @@ export const gatewayServiceFactory = ({
       ),
       new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage[CertExtendedKeyUsage.SERVER_AUTH]], true),
       // san
-      new x509.SubjectAlternativeNameExtension([{ type: "ip", value: "127.0.0.1" }], false)
+      new x509.SubjectAlternativeNameExtension([{ type: "ip", value: relayAddress.split(":")[0] }], false)
     ];
 
     const serialNumber = createSerialNumber();
@@ -374,6 +374,7 @@ export const gatewayServiceFactory = ({
     // just for local development
     const formatedRelayAddress =
       appCfg.NODE_ENV === "development" ? relayAddress.replace("127.0.0.1", "host.docker.internal") : relayAddress;
+
     await gatewayDAL.transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.OrgGatewayCertExchange(identityOrg)]);
       const existingGateway = await gatewayDAL.findOne({ identityId, orgGatewayRootCaId: orgGatewayConfig.id });
