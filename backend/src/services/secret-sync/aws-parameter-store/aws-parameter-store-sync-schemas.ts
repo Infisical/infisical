@@ -35,14 +35,17 @@ const AwsParameterStoreSyncOptionsSchema = z.object({
         .string()
         .regex(
           /^([\p{L}\p{Z}\p{N}_.:/=+\-@]*)$/u,
-          "Tag keys can only contain Unicode letters, digits, white space and any of the following: _."
+          "Invalid resource tag key: keys can only contain Unicode letters, digits, white space and any of the following: _.:/=+@-"
         )
-        .min(1, "AWS tag key required")
-        .max(128, "AWS tag name cannot exceed 128 characters"),
+        .min(1, "Resource tag key required")
+        .max(128, "Resource tag name cannot exceed 128 characters"),
       value: z
         .string()
-        .regex(/^([\p{L}\p{Z}\p{N}_.:/=+\-@]*)$/u, "Invalid AWS tag value")
-        .max(256, "Tag values can only contain Unicode letters, digits, white space and any of the following: _.:/=+@-")
+        .regex(
+          /^([\p{L}\p{Z}\p{N}_.:/=+\-@]*)$/u,
+          "Invalid resource tag value: tag values can only contain Unicode letters, digits, white space and any of the following: _.:/=+@-"
+        )
+        .max(256, "Resource tag value cannot exceed 256 characters")
     })
     .array()
     .max(50)

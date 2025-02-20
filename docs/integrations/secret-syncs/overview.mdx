@@ -77,6 +77,13 @@ via the UI or API for the third-party service you intend to sync secrets to.
     - <strong>Destination:</strong> The App Connection to utilize and the destination endpoint to deploy secrets to. These can vary between services.
     - <strong>Options:</strong> Customize how secrets should be synced. Examples include adding a suffix or prefix to your secrets, or importing secrets from the destination on the initial sync.
 
+<Note>
+    Secret Syncs are the source of truth for connected third-party services. Any secret,
+    including associated data, not present or imported in Infisical before syncing will be
+    overwritten, and changes directly in the connected service outside of infisical may also
+    be overwritten by future syncs.
+</Note>
+
 <Info>
     Some third-party services do not support importing secrets.
 </Info>

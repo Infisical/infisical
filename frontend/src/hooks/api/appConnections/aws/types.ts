@@ -1,13 +1,5 @@
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
-export type TDatabricksSecretScope = {
-  name: string;
-};
-
-export type TDatabricksConnectionListSecretScopesResponse = {
-  secretScopes: TDatabricksSecretScope[];
-};
-
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;
   region: string;

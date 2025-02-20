@@ -63,6 +63,31 @@ export const AwsParameterStoreSyncOptionsFields = () => {
               onChange={(option) =>
                 onChange((option as SingleValue<TAwsConnectionKmsKey>)?.alias ?? null)
               }
+              // eslint-disable-next-line react/no-unstable-nested-components
+              noOptionsMessage={({ inputValue }) =>
+                inputValue ? undefined : (
+                  <p>
+                    To configure a KMS key, ensure the following permissions are present on the
+                    selected IAM role:{" "}
+                    <span className="rounded bg-mineshaft-600 text-mineshaft-300">
+                      &#34;kms:ListKeys&#34;
+                    </span>
+                    ,{" "}
+                    <span className="rounded bg-mineshaft-600 text-mineshaft-300">
+                      &#34;kms:ListAliases&#34;
+                    </span>
+                    ,{" "}
+                    <span className="rounded bg-mineshaft-600 text-mineshaft-300">
+                      &#34;kms:Encrypt&#34;
+                    </span>
+                    ,{" "}
+                    <span className="rounded bg-mineshaft-600 text-mineshaft-300">
+                      &#34;kms:Decrypt&#34;
+                    </span>
+                    .
+                  </p>
+                )
+              }
               options={kmsKeys}
               placeholder="Leave blank to use default KMS key"
               getOptionLabel={(option) =>

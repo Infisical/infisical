@@ -24,9 +24,25 @@ const listAwsKmsKeys = async (
     region
   });
 
-  const { Aliases = [] } = await awsKms.listAliases({ Limit: 100 }).promise();
+  const aliasEntries: AWS.KMS.AliasList = [];
+  let aliasMarker: string | undefined;
+  do {
+    // eslint-disable-next-line no-await-in-loop
+    const response = await awsKms.listAliases({ Limit: 100, Marker: aliasMarker }).promise();
+    aliasEntries.push(...(response.Aliases || []));
+    aliasMarker = response.NextMarker;
+  } while (aliasMarker);
 
-  const aliasEntries = Aliases.filter((aliasEntry) => {
+  const keyMetadataRecord: Record<string, AWS.KMS.KeyMetadata | undefined> = {};
+  for await (const aliasEntry of aliasEntries) {
+    if (aliasEntry.TargetKeyId) {
+      const keyDescription = await awsKms.describeKey({ KeyId: aliasEntry.TargetKeyId }).promise();
+
+      keyMetadataRecord[aliasEntry.TargetKeyId] = keyDescription.KeyMetadata;
+    }
+  }
+
+  const validAliasEntries = aliasEntries.filter((aliasEntry) => {
     if (!aliasEntry.TargetKeyId) return false;
 
     if (destination === SecretSync.AWSParameterStore && aliasEntry.AliasName === "alias/aws/ssm") return true;
@@ -36,13 +52,18 @@ const listAwsKmsKeys = async (
 
     if (aliasEntry.AliasName?.includes("alias/aws/")) return false;
 
+    const keyMetadata = keyMetadataRecord[aliasEntry.TargetKeyId];
+
+    if (!keyMetadata || keyMetadata.KeyUsage !== "ENCRYPT_DECRYPT" || keyMetadata.KeySpec !== "SYMMETRIC_DEFAULT")
+      return false;
+
     return true;
   });
 
-  const kmsKeys = aliasEntries.map((alias) => {
+  const kmsKeys = validAliasEntries.map((aliasEntry) => {
     return {
-      id: alias.TargetKeyId!,
-      alias: alias.AliasName!
+      id: aliasEntry.TargetKeyId!,
+      alias: aliasEntry.AliasName!
     };
   });
 

@@ -137,10 +137,9 @@ const getParameterMetadataByPath = async (ssm: AWS.SSM, path: string): Promise<T
 
 const getParameterStoreTagsRecord = async (
   ssm: AWS.SSM,
-  path: string,
   awsParameterStoreSecretsRecord: TAWSParameterStoreRecord,
-  areTagsPresent: boolean
-): Promise<TAWSParameterStoreTagsRecord> => {
+  needsTagsPermissions: boolean
+): Promise<{ shouldManageTags: boolean; awsParameterStoreTagsRecord: TAWSParameterStoreTagsRecord }> => {
   const awsParameterStoreTagsRecord: TAWSParameterStoreTagsRecord = {};
 
   for await (const entry of Object.entries(awsParameterStoreSecretsRecord)) {
@@ -163,15 +162,23 @@ const getParameterStoreTagsRecord = async (
     } catch (e) {
       // users aren't required to provide tag permissions to use sync so we handle gracefully if unauthorized
       // and they aren't trying to configure tags
-      if ((e as AWSError).code === "AccessDeniedException" && !areTagsPresent) {
-        return {};
+      if ((e as AWSError).code === "AccessDeniedException") {
+        if (!needsTagsPermissions) {
+          return { shouldManageTags: false, awsParameterStoreTagsRecord: {} };
+        }
+
+        throw new SecretSyncError({
+          message:
+            "IAM role has inadequate permissions to manage resource tags. Ensure the following polices are present: ssm:ListTagsForResource, ssm:AddTagsToResource, and ssm:RemoveTagsFromResource",
+          shouldRetry: false
+        });
       }
 
       throw e;
     }
   }
 
-  return awsParameterStoreTagsRecord;
+  return { shouldManageTags: true, awsParameterStoreTagsRecord };
 };
 
 const processParameterTags = ({
@@ -294,13 +301,11 @@ export const AwsParameterStoreSyncFns = {
 
     const awsParameterStoreMetadataRecord = await getParameterMetadataByPath(ssm, destinationConfig.path);
 
-    const awsParameterStoreTagsRecord = await getParameterStoreTagsRecord(
+    const { shouldManageTags, awsParameterStoreTagsRecord } = await getParameterStoreTagsRecord(
       ssm,
-      destinationConfig.path,
       awsParameterStoreSecretsRecord,
-      Boolean(syncOptions.tags || syncOptions.syncSecretMetadataAsTags)
+      Boolean(syncOptions.tags?.length || syncOptions.syncSecretMetadataAsTags)
     );
-
     const syncTagsRecord = Object.fromEntries(syncOptions.tags?.map((tag) => [tag.key, tag.value]) ?? []);
 
     for await (const entry of Object.entries(secretMap)) {
@@ -316,7 +321,7 @@ export const AwsParameterStoreSyncFns = {
       if (
         !(key in awsParameterStoreSecretsRecord) ||
         value !== awsParameterStoreSecretsRecord[key].Value ||
-        syncOptions.keyId !== awsParameterStoreMetadataRecord[key]?.KeyId
+        (syncOptions.keyId ?? "alias/aws/ssm") !== awsParameterStoreMetadataRecord[key]?.KeyId
       ) {
         try {
           await putParameter(ssm, {
@@ -334,28 +339,44 @@ export const AwsParameterStoreSyncFns = {
         }
       }
 
-      const { tagsToAdd, tagKeysToRemove } = processParameterTags({
-        syncTagsRecord: {
-          // configured sync tags take preference over secret metadata
-          ...(syncOptions.syncSecretMetadataAsTags &&
-            Object.fromEntries(secretMetadata?.map((tag) => [tag.key, tag.value]) ?? [])),
-          ...syncTagsRecord
-        },
-        awsTagsRecord: awsParameterStoreTagsRecord[key] ?? {}
-      });
-
-      if (tagsToAdd.length) {
-        await addTagsToParameter(ssm, {
-          ResourceId: `${destinationConfig.path}${key}`,
-          Tags: tagsToAdd
+      if (shouldManageTags) {
+        const { tagsToAdd, tagKeysToRemove } = processParameterTags({
+          syncTagsRecord: {
+            // configured sync tags take preference over secret metadata
+            ...(syncOptions.syncSecretMetadataAsTags &&
+              Object.fromEntries(secretMetadata?.map((tag) => [tag.key, tag.value]) ?? [])),
+            ...syncTagsRecord
+          },
+          awsTagsRecord: awsParameterStoreTagsRecord[key] ?? {}
         });
-      }
 
-      if (tagKeysToRemove.length) {
-        await removeTagsFromParameter(ssm, {
-          ResourceId: `${destinationConfig.path}${key}`,
-          TagKeys: tagKeysToRemove
-        });
+        if (tagsToAdd.length) {
+          try {
+            await addTagsToParameter(ssm, {
+              ResourceId: `${destinationConfig.path}${key}`,
+              Tags: tagsToAdd
+            });
+          } catch (error) {
+            throw new SecretSyncError({
+              error,
+              secretKey: key
+            });
+          }
+        }
+
+        if (tagKeysToRemove.length) {
+          try {
+            await removeTagsFromParameter(ssm, {
+              ResourceId: `${destinationConfig.path}${key}`,
+              TagKeys: tagKeysToRemove
+            });
+          } catch (error) {
+            throw new SecretSyncError({
+              error,
+              secretKey: key
+            });
+          }
+        }
       }
     }
 

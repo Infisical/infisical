@@ -17,7 +17,7 @@ export const AwsParameterStoreSyncOptionsSection = ({ secretSync }: Props) => {
   return (
     <>
       {keyId && <SecretSyncLabel label="KMS Key">{keyId}</SecretSyncLabel>}
-      {tags?.length && (
+      {tags && tags.length > 0 && (
         <SecretSyncLabel label="Resource Tags">
           <Tooltip
             side="right"

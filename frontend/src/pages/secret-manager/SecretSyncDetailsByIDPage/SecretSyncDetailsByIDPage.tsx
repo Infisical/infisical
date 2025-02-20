@@ -37,7 +37,7 @@ const PageContent = () => {
   const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp(["editSync"] as const);
 
   const { data: secretSync, isPending } = useGetSecretSync(destination, syncId, {
-    refetchInterval: 4000
+    refetchInterval: 30000
   });
 
   if (isPending) {

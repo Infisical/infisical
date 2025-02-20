@@ -18,8 +18,8 @@ export const AwsParameterStoreSyncOptionsReviewFields = () => {
   return (
     <>
       {keyId && <SecretSyncLabel label="KMS Key">{keyId}</SecretSyncLabel>}
-      {tags?.length && (
-        <SecretSyncLabel label="AWS Tags">
+      {tags && tags.length > 0 && (
+        <SecretSyncLabel label="Resource Tags">
           <Tooltip
             side="right"
             className="max-w-xl p-1"
@@ -52,7 +52,7 @@ export const AwsParameterStoreSyncOptionsReviewFields = () => {
         </SecretSyncLabel>
       )}
       {syncSecretMetadataAsTags && (
-        <SecretSyncLabel label="AWS Tags">
+        <SecretSyncLabel label="Sync Secret Metadata as Resource Tags">
           <Badge variant="success">Enabled</Badge>
         </SecretSyncLabel>
       )}
