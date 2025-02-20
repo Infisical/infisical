@@ -272,22 +272,6 @@ export const AwsSecretsManagerSyncFns = {
           SecretString: secretValue
         });
       }
-
-      for await (const secretKey of Object.keys(awsSecretsRecord)) {
-        if (secretKey === destinationConfig.secretName) {
-          // eslint-disable-next-line no-continue
-          continue;
-        }
-
-        try {
-          await deleteSecret(client, secretKey);
-        } catch (error) {
-          throw new SecretSyncError({
-            error,
-            secretKey
-          });
-        }
-      }
     }
   },
   getSecrets: async (secretSync: TAwsSecretsManagerSyncWithCredentials): Promise<TSecretMap> => {
