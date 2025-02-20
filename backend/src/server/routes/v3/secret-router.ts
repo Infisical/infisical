@@ -292,7 +292,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               secrets: secretRawSchema
                 .omit({ createdAt: true, updatedAt: true })
                 .extend({
-                  // secretValueHidden: z.boolean(),
+                  // No `secretValueHidden` on imports, because imported secrets that the user doesn't have read value permission on, will be filtered out.
+                  // Therefore all returned secret imports will have the value present.
                   secretMetadata: ResourceMetadataSchema.optional()
                 })
                 .array()
@@ -2322,7 +2323,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // ? No work needed, does not expose secret value.
   server.route({
     method: "POST",
     url: "/backfill-secret-references",

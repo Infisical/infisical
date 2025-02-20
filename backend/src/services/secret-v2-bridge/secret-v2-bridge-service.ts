@@ -20,7 +20,7 @@ import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-app
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
-import { BadRequestError, ForbiddenReadSecretError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { diff, groupBy } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
@@ -987,7 +987,6 @@ export const secretV2BridgeServiceFactory = ({
       secretDAL,
       decryptSecretValue: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined),
       canExpandValue: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) =>
-        // ? Question(Daniel): Will throw an error if the user doesn't have access to any of the expanded secrets.
         permission.can(
           ProjectPermissionSecretActions.ReadValue,
           subject(ProjectPermissionSub.Secrets, {
@@ -1249,8 +1248,9 @@ export const secretV2BridgeServiceFactory = ({
         ) &&
         secretType !== SecretType.Personal
       ) {
-        throw new ForbiddenReadSecretError({
-          message: `You do not have permission to view secret value on secret with name '${secretName}'`
+        throw new ForbiddenRequestError({
+          message: `You do not have permission to view secret value on secret with name '${secretName}'`,
+          name: "ForbiddenReadSecretError"
         });
       }
 
