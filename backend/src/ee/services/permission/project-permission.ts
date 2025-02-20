@@ -808,8 +808,8 @@ export const projectMemberPermissions = buildMemberPermissionRules();
 const buildViewerPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
 
-  // ? Q(Daniel): Should the viewer role be allowed to read values? Currently not allowed in permission below.
   can(ProjectPermissionSecretActions.DescribeSecret, ProjectPermissionSub.Secrets);
+  can(ProjectPermissionSecretActions.ReadValue, ProjectPermissionSub.Secrets);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretFolders);
   can(ProjectPermissionDynamicSecretActions.ReadRootCredential, ProjectPermissionSub.DynamicSecrets);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretImports);
