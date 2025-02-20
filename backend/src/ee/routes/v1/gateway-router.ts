@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { GatewaysSchema } from "@app/db/schemas";
+import { isValidIp } from "@app/lib/ip";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -16,6 +17,10 @@ const SanitizedGatewaySchema = GatewaysSchema.pick({
   serialNumber: true,
   heartbeat: true
 });
+const isValidRelayAddress = (relayAddress: string) => {
+  const [ip, port] = relayAddress.split(":");
+  return isValidIp(ip) && Number(port) <= 65535 && Number(port) >= 49152;
+};
 
 export const registerGatewayRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -54,7 +59,7 @@ export const registerGatewayRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        relayAddress: z.string()
+        relayAddress: z.string().refine(isValidRelayAddress, { message: "Invalid relay address" })
       }),
       response: {
         200: z.object({
