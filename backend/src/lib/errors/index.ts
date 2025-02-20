@@ -60,13 +60,6 @@ export class ForbiddenRequestError extends Error {
   }
 }
 
-export class ForbiddenReadSecretError extends ForbiddenRequestError {
-  constructor({ error, message }: { message?: string; error?: unknown } = {}) {
-    super({ message, error });
-    this.name = "ForbiddenReadSecretError";
-  }
-}
-
 export class BadRequestError extends Error {
   name: string;
 
