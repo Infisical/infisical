@@ -9,7 +9,8 @@ import {
   faPlus,
   faShare,
   faTag,
-  faTrash
+  faTrash,
+  faTriangleExclamation
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -44,6 +45,7 @@ import {
   useProjectPermission,
   useWorkspace
 } from "@app/context";
+import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp, useToggle } from "@app/hooks";
 import { useGetSecretVersion } from "@app/hooks/api";
 import { useGetSecretAccessList } from "@app/hooks/api/secrets/queries";
@@ -122,7 +124,7 @@ export const SecretDetailSidebar = ({
   const selectTagSlugs = selectedTags.map((i) => i.slug);
 
   const cannotEditSecret = permission.cannot(
-    ProjectPermissionActions.Edit,
+    ProjectPermissionSecretActions.Edit,
     subject(ProjectPermissionSub.Secrets, {
       environment,
       secretPath,
@@ -130,16 +132,29 @@ export const SecretDetailSidebar = ({
       secretTags: selectTagSlugs
     })
   );
+
+  const cannotReadSecretValue = permission.cannot(
+    ProjectPermissionSecretActions.ReadValue,
+    subject(ProjectPermissionSub.Secrets, {
+      environment,
+      secretPath,
+      secretName: secretKey,
+      secretTags: selectTagSlugs
+    })
+  );
+
   const isReadOnly =
     permission.can(
-      ProjectPermissionActions.Read,
+      ProjectPermissionSecretActions.DescribeSecret,
       subject(ProjectPermissionSub.Secrets, {
         environment,
         secretPath,
         secretName: secretKey,
         secretTags: selectTagSlugs
       })
-    ) && cannotEditSecret;
+    ) &&
+    cannotEditSecret &&
+    cannotReadSecretValue;
 
   const overrideAction = watch("overrideAction");
   const isOverridden =
@@ -257,8 +272,25 @@ export const SecretDetailSidebar = ({
                     key="secret-value"
                     control={control}
                     render={({ field }) => (
-                      <FormControl label="Value">
+                      <FormControl
+                        helperText={
+                          cannotReadSecretValue ? (
+                            <div className="flex space-x-2">
+                              <FontAwesomeIcon
+                                icon={faTriangleExclamation}
+                                className="mt-0.5 text-yellow-400"
+                              />
+                              <span>
+                                The value of this secret is hidden because you do not have the read
+                                secret value permission.
+                              </span>
+                            </div>
+                          ) : undefined
+                        }
+                        label="Value"
+                      >
                         <InfisicalSecretInput
+                          isVisible={false}
                           isReadOnly={isReadOnly}
                           environment={environment}
                           secretPath={secretPath}

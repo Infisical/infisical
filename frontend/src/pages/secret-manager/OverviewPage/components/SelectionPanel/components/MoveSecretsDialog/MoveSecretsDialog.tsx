@@ -25,7 +25,8 @@ import {
   Spinner,
   Switch
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
+import { ProjectPermissionSub, useProjectPermission } from "@app/context";
+import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useDebounce } from "@app/hooks";
 import { useMoveSecrets } from "@app/hooks/api";
 import { useGetProjectSecretsQuickSearch } from "@app/hooks/api/dashboard";
@@ -95,7 +96,7 @@ const Content = ({
         env.slug,
         {
           missingPermissions: permission.cannot(
-            ProjectPermissionActions.Delete,
+            ProjectPermissionSecretActions.Delete,
             subject(ProjectPermissionSub.Secrets, {
               environment: env.slug,
               secretPath: sourceSecretPath,
