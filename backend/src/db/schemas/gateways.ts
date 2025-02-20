@@ -16,6 +16,7 @@ export const GatewaysSchema = z.object({
   keyAlgorithm: z.string(),
   issuedAt: z.date(),
   expiration: z.date(),
+  heartbeat: z.date().nullable().optional(),
   relayAddress: zodBuffer,
   orgGatewayRootCaId: z.string().uuid(),
   identityId: z.string().uuid(),

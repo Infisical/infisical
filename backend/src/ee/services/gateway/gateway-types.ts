@@ -32,3 +32,7 @@ export type TGetProjectGatewayByIdDTO = {
   projectId: string;
   projectPermission: OrgServiceActor;
 };
+
+export type THeartBeatDTO = {
+  orgPermission: OrgServiceActor;
+};

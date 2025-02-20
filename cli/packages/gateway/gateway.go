@@ -1,11 +1,13 @@
 package gateway
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"net"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Infisical/infisical-merge/packages/api"
@@ -91,12 +93,13 @@ func (g *Gateway) ConnectWithRelay() error {
 	return nil
 }
 
-func (g *Gateway) Listen() error {
+func (g *Gateway) Listen(ctx context.Context) error {
 	defer g.client.Close()
 	err := g.client.Listen()
 	if err != nil {
 		return fmt.Errorf("Failed to listen to relay server: %w", err)
 	}
+
 	log.Info().Msg("Connected with relay")
 	// Allocate a relay socket on the TURN server. On success, it
 	// will return a net.PacketConn which represents the remote
@@ -106,6 +109,7 @@ func (g *Gateway) Listen() error {
 		return fmt.Errorf("Failed to allocate relay connection: %w", err)
 	}
 
+	log.Info().Msg(relayNonTlsConn.Addr().String())
 	defer func() {
 		if closeErr := relayNonTlsConn.Close(); closeErr != nil {
 			log.Error().Msgf("Failed to close connection: %s", closeErr)
@@ -128,20 +132,12 @@ func (g *Gateway) Listen() error {
 	g.config.Certificate = gatewayCert.Certificate
 	g.config.CertificateChain = gatewayCert.CertificateChain
 
-	go func() {
+	done := make(chan bool, 1)
+
+	g.registerPermissionLifecycle(func() error {
 		err := relayNonTlsConn.CreatePermissions(peerAddr)
-		if err != nil {
-			log.Error().Msgf("Failed to refresh permission: %s", err)
-		}
-		log.Printf("Created permission for incoming connections")
-		ticker := time.NewTicker(2 * time.Minute) // Refresh before 5-min expiry
-		for range ticker.C {
-			err := relayNonTlsConn.CreatePermissions(peerAddr)
-			if err != nil {
-				log.Error().Msgf("Failed to refresh permission: %s", err)
-			}
-		}
-	}()
+		return err
+	}, done)
 
 	cert, err := tls.X509KeyPair([]byte(gatewayCert.Certificate), []byte(gatewayCert.PrivateKey))
 	if err != nil {
@@ -158,41 +154,146 @@ func (g *Gateway) Listen() error {
 		ClientAuth:   tls.RequireAndVerifyClientCert,
 	})
 
+	errCh := make(chan error, 1)
 	log.Info().Msg("Connector started successfully")
-	for {
-		// Accept new relay connection
-		conn, err := relayConn.Accept()
-		if err != nil {
-			log.Error().Msgf("Failed to accept connection: %v", err)
-			continue
-		}
+	g.registerHeartBeat(errCh, done)
+	g.registerRelayIsActive(relayNonTlsConn.Addr().String(), errCh, done)
 
-		tlsConn, ok := conn.(*tls.Conn)
-		if !ok {
-			log.Error().Msg("Failed to convert to TLS connection")
-			conn.Close()
-			continue
-		}
+	// Create a WaitGroup to track active connections
+	var wg sync.WaitGroup
 
-		err = tlsConn.Handshake()
-		if err != nil {
-			log.Error().Msgf("TLS handshake failed: %v", err)
-			conn.Close()
-			continue
-		}
+	go func() {
+		for {
+			select {
+			case <-done:
+				return
+			default:
+				// Accept new relay connection
+				conn, err := relayConn.Accept()
+				if err != nil {
+					if !strings.Contains(err.Error(), "data contains incomplete STUN or TURN frame") {
+						log.Error().Msgf("Failed to accept connection: %v", err)
+					}
+					continue
+				}
 
-		// Get connection state which contains certificate information
-		state := tlsConn.ConnectionState()
-		if len(state.PeerCertificates) > 0 {
-			organizationUnit := state.PeerCertificates[0].Subject.OrganizationalUnit
-			commonName := state.PeerCertificates[0].Subject.CommonName
-			if organizationUnit[0] != "gateway-client" && commonName != "cloud" {
-				log.Error().Msgf("Client certificate verification failed. Received %s, %s", organizationUnit, commonName)
-				continue
+				tlsConn, ok := conn.(*tls.Conn)
+				if !ok {
+					log.Error().Msg("Failed to convert to TLS connection")
+					conn.Close()
+					continue
+				}
+
+				err = tlsConn.Handshake()
+				if err != nil {
+					log.Error().Msgf("TLS handshake failed: %v", err)
+					conn.Close()
+					continue
+				}
+
+				// Get connection state which contains certificate information
+				state := tlsConn.ConnectionState()
+				if len(state.PeerCertificates) > 0 {
+					organizationUnit := state.PeerCertificates[0].Subject.OrganizationalUnit
+					commonName := state.PeerCertificates[0].Subject.CommonName
+					if organizationUnit[0] != "gateway-client" && commonName != "cloud" {
+						log.Error().Msgf("Client certificate verification failed. Received %s, %s", organizationUnit, commonName)
+						continue
+					}
+				}
+
+				// Handle the connection in a goroutine
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					handleConnection(conn)
+				}()
 			}
 		}
+	}()
 
-		// Handle the connection in a goroutine
-		go handleConnection(conn)
+	var isShutdown bool
+	select {
+	case <-ctx.Done():
+		log.Info().Msg("Shutting down gateway...")
+		isShutdown = true
+	case err = <-errCh:
 	}
+
+	// Signal the accept loop to stop
+	close(done)
+	wg.Wait()
+
+	if isShutdown {
+		log.Info().Msg("Gateway shutdown complete")
+	}
+
+	return err
+}
+
+func (g *Gateway) registerHeartBeat(errCh chan error, done chan bool) {
+	ticker := time.NewTicker(1 * time.Hour)
+
+	go func() {
+		// wait for 5 mins
+		time.Sleep(5 * time.Second)
+		err := api.CallGatewayHeartBeatV1(g.httpClient)
+		if err != nil {
+			log.Error().Msgf("Failed to register heartbeat: %s", err)
+		}
+
+		for {
+			select {
+			case <-done:
+				ticker.Stop()
+				return
+			case <-ticker.C:
+				err := api.CallGatewayHeartBeatV1(g.httpClient)
+				errCh <- err
+			}
+		}
+	}()
+}
+
+func (g *Gateway) registerPermissionLifecycle(permissionFn func() error, done chan bool) {
+	ticker := time.NewTicker(3 * time.Minute)
+
+	go func() {
+		// wait for 5 mins
+		permissionFn()
+		log.Printf("Ceated permission for incoming connections")
+		for {
+			select {
+			case <-done:
+				ticker.Stop()
+				return
+			case <-ticker.C:
+				permissionFn()
+			}
+		}
+	}()
+}
+
+func (g *Gateway) registerRelayIsActive(serverAddr string, errCh chan error, done chan bool) {
+	ticker := time.NewTicker(10 * time.Second)
+
+	go func() {
+		time.Sleep(5 * time.Second)
+		for {
+			select {
+			case <-done:
+				ticker.Stop()
+				return
+			case <-ticker.C:
+				conn, err := net.Dial("tcp", serverAddr)
+				if err != nil {
+					errCh <- err
+					return
+				}
+				if conn != nil {
+					conn.Close()
+				}
+			}
+		}
+	}()
 }

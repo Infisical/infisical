@@ -12,7 +12,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
-import { format } from "date-fns";
+import { format, formatRelative } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -139,6 +139,11 @@ export const GatewayListPage = withPermission(
                           <Td>{el.name}</Td>
                           <Td>{format(new Date(el.issuedAt), "yyyy-MM-dd hh:mm:ss aaa")}</Td>
                           <Td>{el.identity.name}</Td>
+                          <Td>
+                            {el.heartbeart
+                              ? formatRelative(new Date(), new Date(el.heartbeart))
+                              : "-"}
+                          </Td>
                           <Td className="w-5">
                             <Tooltip className="max-w-sm text-center" content="Options">
                               <DropdownMenu>

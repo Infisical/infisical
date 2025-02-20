@@ -5,10 +5,17 @@ import (
 
 	// "github.com/Infisical/infisical-merge/packages/api"
 	// "github.com/Infisical/infisical-merge/packages/models"
+	"context"
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/Infisical/infisical-merge/packages/gateway"
 	"github.com/Infisical/infisical-merge/packages/util"
+	"github.com/rs/zerolog/log"
+
 	// "github.com/Infisical/infisical-merge/packages/visualize"
 	// "github.com/rs/zerolog/log"
 
@@ -33,20 +40,48 @@ var gatewayCmd = &cobra.Command{
 			util.HandleError(fmt.Errorf("Token not found"))
 		}
 
-		gatewayInstance, err := gateway.NewGateway(token.Token)
-		if err != nil {
-			util.HandleError(err)
-		}
-
-		if err = gatewayInstance.ConnectWithRelay(); err != nil {
-			util.HandleError(err)
-		}
-
-		if err := gatewayInstance.Listen(); err != nil {
-			util.HandleError(err)
-		}
-
 		Telemetry.CaptureEvent("cli-command:gateway", posthog.NewProperties().Set("version", util.CLI_VERSION))
+
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+		sigStopCh := make(chan bool, 1)
+
+		go func() {
+			<-sigCh
+			close(sigStopCh)
+		}()
+
+		ctx, cancel := context.WithCancel(cmd.Context())
+		defer cancel()
+
+		for {
+			select {
+			case <-sigStopCh:
+				log.Info().Msg("Shutting down gateway")
+				return
+			default:
+				gatewayInstance, err := gateway.NewGateway(token.Token)
+				if err != nil {
+					util.HandleError(err)
+				}
+
+				if err = gatewayInstance.ConnectWithRelay(); err != nil {
+					log.Error().Msgf("Gateway connection error with relay: %s", err)
+					log.Info().Msg("Restarting gateway...")
+					time.Sleep(5 * time.Second)
+					continue
+				}
+
+				if err := gatewayInstance.Listen(ctx); err == nil {
+					// meaning everything went smooth and we are exiting
+					return
+				}
+
+				log.Error().Msgf("Gateway listen error: %s", err)
+				log.Info().Msg("Restarting gateway...")
+				time.Sleep(5 * time.Second)
+			}
+		}
 	},
 }
 

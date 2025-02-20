@@ -37,7 +37,7 @@ export const KeyStorePrefixes = {
   IdentityAccessTokenStatusUpdate: (identityAccessTokenId: string) =>
     `identity-access-token-status:${identityAccessTokenId}`,
   ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`,
-  GatewayIdentityCredential: (identityId: string) => `gateway-credentails:${identityId}`
+  GatewayIdentityCredential: (identityId: string) => `gateway-credentials:${identityId}`
 };
 
 export const KeyStoreTtls = {

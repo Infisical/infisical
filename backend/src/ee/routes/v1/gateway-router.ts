@@ -13,7 +13,8 @@ const SanitizedGatewaySchema = GatewaysSchema.pick({
   createdAt: true,
   updatedAt: true,
   issuedAt: true,
-  serialNumber: true
+  serialNumber: true,
+  heartbeat: true
 });
 
 export const registerGatewayRouter = async (server: FastifyZodProvider) => {
@@ -73,6 +74,28 @@ export const registerGatewayRouter = async (server: FastifyZodProvider) => {
         identityOrgAuthMethod: req.permission.authMethod
       });
       return gatewayCertificates;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/heartbeat",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      await server.services.gateway.heartbeat({
+        orgPermission: req.permission
+      });
+      return { message: "Successfully registered heartbeat" };
     }
   });
 

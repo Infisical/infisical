@@ -36,12 +36,12 @@ type TPingGatewayAndVerifyDTO = {
   relayHost: string;
   relayPort: number;
   tlsOptions: tls.TlsOptions;
-  maxRetries: number;
+  maxRetries?: number;
   identityId: string;
   orgId: string;
 };
 
-const pingGatewayAndVerifyIdentity = async ({
+export const pingGatewayAndVerify = async ({
   relayHost,
   relayPort,
   tlsOptions = {},
@@ -236,7 +236,7 @@ export const withGatewayProxy = async (
   } = options;
 
   // First, try to ping the gateway
-  await pingGatewayAndVerifyIdentity({
+  await pingGatewayAndVerify({
     relayHost,
     relayPort,
     tlsOptions,
