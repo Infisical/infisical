@@ -89,6 +89,37 @@ export async function up(knex: Knex): Promise<void> {
   const projectUserAdditionalPrivileges = await knex(TableName.ProjectUserAdditionalPrivilege).select(
     selectAllTableCols(TableName.ProjectUserAdditionalPrivilege)
   );
+  const serviceTokens = await knex(TableName.ServiceToken).select(selectAllTableCols(TableName.ServiceToken));
+
+  const updatedServiceTokens = serviceTokens.reduce<typeof serviceTokens>((acc, serviceToken) => {
+    const { permissions } = serviceToken; // Service tokens are special, and include an array of actions only.
+
+    if (permissions.includes(SecretActions.Read) && !permissions.includes(SecretActions.ReadValue)) {
+      permissions.push(SecretActions.ReadValue);
+      acc.push({
+        ...serviceToken,
+        permissions
+      });
+    }
+    return acc;
+  }, []);
+
+  if (updatedServiceTokens.length > 0) {
+    await knex(TableName.ServiceToken)
+      .whereIn(
+        "id",
+        updatedServiceTokens.map((t) => t.id)
+      )
+      .update({
+        // @ts-expect-error -- raw query
+        permissions: knex.raw(
+          `CASE id 
+          ${updatedServiceTokens.map((t) => `WHEN '${t.id}' THEN ?::text[]`).join(" ")}
+        END`,
+          updatedServiceTokens.map((t) => t.permissions)
+        )
+      });
+  }
 
   const updatedRoles = projectRoles.reduce<typeof projectRoles>((acc, projectRole) => {
     const { shouldUpdate, parsedPermissions } = $updatePermissionsUp(projectRole.permissions);
@@ -157,6 +188,37 @@ export async function down(knex: Knex): Promise<void> {
   const userAdditionalPrivileges = await knex(TableName.ProjectUserAdditionalPrivilege).select(
     selectAllTableCols(TableName.ProjectUserAdditionalPrivilege)
   );
+  const serviceTokens = await knex(TableName.ServiceToken).select(selectAllTableCols(TableName.ServiceToken));
+
+  const updatedServiceTokens = serviceTokens.reduce<typeof serviceTokens>((acc, serviceToken) => {
+    const { permissions } = serviceToken;
+
+    if (permissions.includes(SecretActions.ReadValue)) {
+      permissions.splice(permissions.indexOf(SecretActions.ReadValue), 1);
+      acc.push({
+        ...serviceToken,
+        permissions
+      });
+    }
+    return acc;
+  }, []);
+
+  if (updatedServiceTokens.length > 0) {
+    await knex(TableName.ServiceToken)
+      .whereIn(
+        "id",
+        updatedServiceTokens.map((t) => t.id)
+      )
+      .update({
+        // @ts-expect-error -- raw query
+        permissions: knex.raw(
+          `CASE id 
+          ${updatedServiceTokens.map((t) => `WHEN '${t.id}' THEN ?::text[]`).join(" ")}
+        END`,
+          updatedServiceTokens.map((t) => t.permissions)
+        )
+      });
+  }
 
   const updatedRoles = projectRoles.reduce<typeof projectRoles>((acc, projectRole) => {
     const { shouldUpdate, repackedPermissions } = $updatePermissionsDown(projectRole.permissions);
