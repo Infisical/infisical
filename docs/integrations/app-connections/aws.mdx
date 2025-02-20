@@ -88,10 +88,10 @@ Infisical supports two methods for connecting to AWS.
                                             "secretsmanager:DescribeSecret",
                                             "secretsmanager:TagResource",
                                             "secretsmanager:UntagResource",
-                                            "kms:ListKeys",
-                                            "kms:ListAliases",
-                                            "kms:Encrypt",
-                                            "kms:Decrypt"
+                                            "kms:ListKeys", // if you need to specify the KMS key
+                                            "kms:ListAliases", // if you need to specify the KMS key
+                                            "kms:Encrypt", // if you need to specify the KMS key
+                                            "kms:Decrypt" // if you need to specify the KMS key
                                             ],
                                             "Resource": "*"
                                         }
@@ -231,10 +231,10 @@ Infisical supports two methods for connecting to AWS.
                                     "secretsmanager:DescribeSecret",
                                     "secretsmanager:TagResource",
                                     "secretsmanager:UntagResource",
-                                    "kms:ListKeys",
-                                    "kms:ListAliases",
-                                    "kms:Encrypt",
-                                    "kms:Decrypt"
+                                    "kms:ListKeys", // if you need to specify the KMS key
+                                    "kms:ListAliases", // if you need to specify the KMS key
+                                    "kms:Encrypt", // if you need to specify the KMS key
+                                    "kms:Decrypt" // if you need to specify the KMS key
                                     ],
                                     "Resource": "*"
                                 }

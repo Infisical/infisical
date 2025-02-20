@@ -39,11 +39,51 @@ const AwsSecretsManagerSyncDestinationConfigSchema = z
     })
   );
 
+const AwsSecretsManagerSyncOptionsSchema = z.object({
+  keyId: z
+    .string()
+    .regex(/^([a-zA-Z0-9:/_-]+)$/, "Invalid KMS Key ID")
+    .min(1, "Invalid KMS Key ID")
+    .max(256, "Invalid KMS Key ID")
+    .optional()
+    .describe(SecretSyncs.ADDITIONAL_SYNC_OPTIONS.AWS_SECRETS_MANAGER.keyId),
+  tags: z
+    .object({
+      key: z
+        .string()
+        .regex(
+          /^([\p{L}\p{Z}\p{N}_.:/=+\-@]*)$/u,
+          "Invalid tag key: keys can only contain Unicode letters, digits, white space and any of the following: _.:/=+@-"
+        )
+        .min(1, "Tag key required")
+        .max(128, "Tag key cannot exceed 128 characters"),
+      value: z
+        .string()
+        .regex(
+          /^([\p{L}\p{Z}\p{N}_.:/=+\-@]*)$/u,
+          "Invalid tag value: tag values can only contain Unicode letters, digits, white space and any of the following: _.:/=+@-"
+        )
+        .max(256, "Tag value cannot exceed 256 characters")
+    })
+    .array()
+    .max(50)
+    .refine((items) => new Set(items.map((item) => item.key)).size === items.length, {
+      message: "Tag keys must be unique"
+    })
+    .optional()
+    .describe(SecretSyncs.ADDITIONAL_SYNC_OPTIONS.AWS_SECRETS_MANAGER.tags),
+  syncSecretMetadataAsTags: z
+    .boolean()
+    .optional()
+    .describe(SecretSyncs.ADDITIONAL_SYNC_OPTIONS.AWS_SECRETS_MANAGER.syncSecretMetadataAsTags)
+});
+
 const AwsSecretsManagerSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
 
 export const AwsSecretsManagerSyncSchema = BaseSecretSyncSchema(
   SecretSync.AWSSecretsManager,
-  AwsSecretsManagerSyncOptionsConfig
+  AwsSecretsManagerSyncOptionsConfig,
+  AwsSecretsManagerSyncOptionsSchema
 ).extend({
   destination: z.literal(SecretSync.AWSSecretsManager),
   destinationConfig: AwsSecretsManagerSyncDestinationConfigSchema
@@ -51,17 +91,43 @@ export const AwsSecretsManagerSyncSchema = BaseSecretSyncSchema(
 
 export const CreateAwsSecretsManagerSyncSchema = GenericCreateSecretSyncFieldsSchema(
   SecretSync.AWSSecretsManager,
-  AwsSecretsManagerSyncOptionsConfig
-).extend({
-  destinationConfig: AwsSecretsManagerSyncDestinationConfigSchema
-});
+  AwsSecretsManagerSyncOptionsConfig,
+  AwsSecretsManagerSyncOptionsSchema
+)
+  .extend({
+    destinationConfig: AwsSecretsManagerSyncDestinationConfigSchema
+  })
+  .superRefine((sync, ctx) => {
+    if (
+      sync.destinationConfig.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.ManyToOne &&
+      sync.syncOptions.syncSecretMetadataAsTags
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Syncing secret metadata is not supported with "Many-to-One" mapping behavior.'
+      });
+    }
+  });
 
 export const UpdateAwsSecretsManagerSyncSchema = GenericUpdateSecretSyncFieldsSchema(
   SecretSync.AWSSecretsManager,
-  AwsSecretsManagerSyncOptionsConfig
-).extend({
-  destinationConfig: AwsSecretsManagerSyncDestinationConfigSchema.optional()
-});
+  AwsSecretsManagerSyncOptionsConfig,
+  AwsSecretsManagerSyncOptionsSchema
+)
+  .extend({
+    destinationConfig: AwsSecretsManagerSyncDestinationConfigSchema.optional()
+  })
+  .superRefine((sync, ctx) => {
+    if (
+      sync.destinationConfig?.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.ManyToOne &&
+      sync.syncOptions.syncSecretMetadataAsTags
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Syncing secret metadata is not supported with "Many-to-One" mapping behavior.'
+      });
+    }
+  });
 
 export const AwsSecretsManagerSyncListItemSchema = z.object({
   name: z.literal("AWS Secrets Manager"),

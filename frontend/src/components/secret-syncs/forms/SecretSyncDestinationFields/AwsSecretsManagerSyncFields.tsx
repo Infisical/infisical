@@ -9,7 +9,7 @@ import { TSecretSyncForm } from "../schemas";
 import { AwsRegionSelect } from "./shared";
 
 export const AwsSecretsManagerSyncFields = () => {
-  const { control, watch } = useFormContext<
+  const { control, watch, setValue } = useFormContext<
     TSecretSyncForm & { destination: SecretSync.AWSSecretsManager }
   >();
 
@@ -59,7 +59,10 @@ export const AwsSecretsManagerSyncFields = () => {
           >
             <Select
               value={value}
-              onValueChange={(val) => onChange(val)}
+              onValueChange={(val) => {
+                onChange(val);
+                setValue("syncOptions.syncSecretMetadataAsTags", false);
+              }}
               className="w-full border border-mineshaft-500 capitalize"
               position="popper"
               placeholder="Select an option..."

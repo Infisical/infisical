@@ -9,6 +9,7 @@ import { SecretSync, useSecretSyncOption } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
 import { AwsParameterStoreSyncOptionsFields } from "./AwsParameterStoreSyncOptionsFields";
+import { AwsSecretsManagerSyncOptionsFields } from "./AwsSecretsManagerSyncOptionsFields";
 
 type Props = {
   hideInitialSync?: boolean;
@@ -30,6 +31,8 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
       AdditionalSyncOptionsFieldsComponent = <AwsParameterStoreSyncOptionsFields />;
       break;
     case SecretSync.AWSSecretsManager:
+      AdditionalSyncOptionsFieldsComponent = <AwsSecretsManagerSyncOptionsFields />;
+      break;
     case SecretSync.GitHub:
     case SecretSync.GCPSecretManager:
     case SecretSync.AzureKeyVault:

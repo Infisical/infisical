@@ -214,7 +214,7 @@ export const CreateSecretSyncForm = ({ destination, onComplete, onCancel }: Prop
                         errorText={error?.message}
                       >
                         <Switch
-                          className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/50"
+                          className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
                           id="auto-sync-enabled"
                           thumbClassName="bg-mineshaft-800"
                           onCheckedChange={onChange}

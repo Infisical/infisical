@@ -15,7 +15,7 @@ export const AwsParameterStoreSyncDestinationSchema = BaseSecretSyncSchema(
             "Keys can only contain Unicode letters, digits, white space and any of the following: _.:/=+@-"
           )
           .min(1, "Key required")
-          .max(128, "AWS tag name cannot exceed 128 characters"),
+          .max(128, "Tag key cannot exceed 128 characters"),
         value: z
           .string()
           .regex(

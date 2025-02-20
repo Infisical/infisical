@@ -11,6 +11,7 @@ import { SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP } from "@app/helpers/secretSyncs"
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
 
 import { AwsParameterStoreSyncOptionsSection } from "./AwsParameterStoreSyncOptionsSection";
+import { AwsSecretsManagerSyncOptionsSection } from "./AwsSecretsManagerSyncOptionsSection";
 
 type Props = {
   secretSync: TSecretSync;
@@ -36,6 +37,10 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
       );
       break;
     case SecretSync.AWSSecretsManager:
+      AdditionalSyncOptionsComponent = (
+        <AwsSecretsManagerSyncOptionsSection secretSync={secretSync} />
+      );
+      break;
     case SecretSync.GitHub:
     case SecretSync.GCPSecretManager:
     case SecretSync.AzureKeyVault:

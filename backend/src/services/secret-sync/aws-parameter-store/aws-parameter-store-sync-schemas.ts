@@ -38,7 +38,7 @@ const AwsParameterStoreSyncOptionsSchema = z.object({
           "Invalid resource tag key: keys can only contain Unicode letters, digits, white space and any of the following: _.:/=+@-"
         )
         .min(1, "Resource tag key required")
-        .max(128, "Resource tag name cannot exceed 128 characters"),
+        .max(128, "Resource tag key cannot exceed 128 characters"),
       value: z
         .string()
         .regex(
@@ -50,7 +50,7 @@ const AwsParameterStoreSyncOptionsSchema = z.object({
     .array()
     .max(50)
     .refine((items) => new Set(items.map((item) => item.key)).size === items.length, {
-      message: "AWS tag keys must be unique"
+      message: "Resource tag keys must be unique"
     })
     .optional()
     .describe(SecretSyncs.ADDITIONAL_SYNC_OPTIONS.AWS_PARAMETER_STORE.tags),

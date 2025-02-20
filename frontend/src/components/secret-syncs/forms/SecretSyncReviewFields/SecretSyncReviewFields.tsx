@@ -11,7 +11,10 @@ import {
   AwsParameterStoreDestinationReviewFields,
   AwsParameterStoreSyncOptionsReviewFields
 } from "./AwsParameterStoreSyncReviewFields";
-import { AwsSecretsManagerSyncReviewFields } from "./AwsSecretsManagerSyncReviewFields";
+import {
+  AwsSecretsManagerSyncOptionsReviewFields,
+  AwsSecretsManagerSyncReviewFields
+} from "./AwsSecretsManagerSyncReviewFields";
 import { AzureAppConfigurationSyncReviewFields } from "./AzureAppConfigurationSyncReviewFields";
 import { AzureKeyVaultSyncReviewFields } from "./AzureKeyVaultSyncReviewFields";
 import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
@@ -47,6 +50,7 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.AWSSecretsManager:
       DestinationFieldsComponent = <AwsSecretsManagerSyncReviewFields />;
+      AdditionalSyncOptionsFieldsComponent = <AwsSecretsManagerSyncOptionsReviewFields />;
       break;
     case SecretSync.GitHub:
       DestinationFieldsComponent = <GitHubSyncReviewFields />;
