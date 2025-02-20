@@ -1477,14 +1477,6 @@ export const registerRoutes = async (
     permissionService
   });
 
-  const gatewayService = gatewayServiceFactory({
-    permissionService,
-    gatewayDAL,
-    kmsService,
-    licenseService,
-    orgGatewayConfigDAL
-  });
-
   await superAdminService.initServerCfg();
 
   // setup the communication with license key server
