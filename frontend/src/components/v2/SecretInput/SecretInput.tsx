@@ -50,7 +50,6 @@ type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   isImport?: boolean;
   isReadOnly?: boolean;
   isDisabled?: boolean;
-  valueHidden?: boolean;
   containerClassName?: string;
 };
 
@@ -62,7 +61,6 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       value,
       isVisible,
       isImport,
-      valueHidden,
       containerClassName,
       onBlur,
       isDisabled,
