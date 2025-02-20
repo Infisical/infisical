@@ -40,7 +40,8 @@ enum TabSections {
   Auth = "auth",
   RateLimit = "rate-limit",
   Integrations = "integrations",
-  Users = "users"
+  Users = "users",
+  Kmip = "kmip"
 }
 
 enum SignUpModes {

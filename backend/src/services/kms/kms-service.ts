@@ -37,6 +37,8 @@ import {
   TEncryptWithKmsDataKeyDTO,
   TEncryptWithKmsDTO,
   TGenerateKMSDTO,
+  TGetKeyMaterialDTO,
+  TImportKeyMaterialDTO,
   TUpdateProjectSecretManagerKmsKeyDTO
 } from "./kms-types";
 
@@ -323,6 +325,72 @@ export const kmsServiceFactory = ({
       const decryptedBlob = dataCipher.decrypt(cipherTextBlob, kmsKey);
       return Promise.resolve(decryptedBlob);
     };
+  };
+
+  const getKeyMaterial = async ({ kmsId }: TGetKeyMaterialDTO) => {
+    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId);
+    if (!kmsDoc) {
+      throw new NotFoundError({ message: `KMS with ID '${kmsId}' not found` });
+    }
+
+    if (kmsDoc.isReserved) {
+      throw new BadRequestError({
+        message: "Cannot get key material for reserved key"
+      });
+    }
+
+    if (kmsDoc.externalKms) {
+      throw new BadRequestError({
+        message: "Cannot get key material for external key"
+      });
+    }
+
+    const keyCipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
+    const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
+
+    return kmsKey;
+  };
+
+  const importKeyMaterial = async (
+    { key, algorithm, name, isReserved, projectId, orgId }: TImportKeyMaterialDTO,
+    tx?: Knex
+  ) => {
+    const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
+
+    const expectedByteLength = getByteLengthForAlgorithm(algorithm);
+    if (key.byteLength !== expectedByteLength) {
+      throw new BadRequestError({
+        message: `Invalid key length for ${algorithm}. Expected ${expectedByteLength} bytes but got ${key.byteLength} bytes`
+      });
+    }
+
+    const encryptedKeyMaterial = cipher.encrypt(key, ROOT_ENCRYPTION_KEY);
+    const sanitizedName = name ? slugify(name) : slugify(alphaNumericNanoId(8).toLowerCase());
+    const dbQuery = async (db: Knex) => {
+      const kmsDoc = await kmsDAL.create(
+        {
+          name: sanitizedName,
+          orgId,
+          isReserved,
+          projectId
+        },
+        db
+      );
+
+      await internalKmsDAL.create(
+        {
+          version: 1,
+          encryptedKey: encryptedKeyMaterial,
+          encryptionAlgorithm: algorithm,
+          kmsKeyId: kmsDoc.id
+        },
+        db
+      );
+      return kmsDoc;
+    };
+    if (tx) return dbQuery(tx);
+    const doc = await kmsDAL.transaction(async (tx2) => dbQuery(tx2));
+    return doc;
   };
 
   const encryptWithKmsKey = async ({ kmsId }: Omit<TEncryptWithKmsDTO, "plainText">, tx?: Knex) => {
@@ -944,6 +1012,8 @@ export const kmsServiceFactory = ({
     getProjectKeyBackup,
     loadProjectKeyBackup,
     getKmsById,
-    createCipherPairWithDataKey
+    createCipherPairWithDataKey,
+    getKeyMaterial,
+    importKeyMaterial
   };
 };

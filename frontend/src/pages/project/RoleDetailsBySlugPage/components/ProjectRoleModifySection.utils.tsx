@@ -8,6 +8,7 @@ import {
 import {
   PermissionConditionOperators,
   ProjectPermissionDynamicSecretActions,
+  ProjectPermissionKmipActions,
   ProjectPermissionSecretSyncActions,
   TPermissionCondition,
   TPermissionConditionOperators
@@ -46,6 +47,14 @@ const SecretSyncPolicyActionSchema = z.object({
   [ProjectPermissionSecretSyncActions.SyncSecrets]: z.boolean().optional(),
   [ProjectPermissionSecretSyncActions.ImportSecrets]: z.boolean().optional(),
   [ProjectPermissionSecretSyncActions.RemoveSecrets]: z.boolean().optional()
+});
+
+const KmipPolicyActionSchema = z.object({
+  [ProjectPermissionKmipActions.ReadClients]: z.boolean().optional(),
+  [ProjectPermissionKmipActions.CreateClients]: z.boolean().optional(),
+  [ProjectPermissionKmipActions.UpdateClients]: z.boolean().optional(),
+  [ProjectPermissionKmipActions.DeleteClients]: z.boolean().optional(),
+  [ProjectPermissionKmipActions.GenerateClientCertificates]: z.boolean().optional()
 });
 
 const SecretRollbackPolicyActionSchema = z.object({
@@ -162,7 +171,8 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.SecretRotation]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Kms]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Cmek]: CmekPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.SecretSyncs]: SecretSyncPolicyActionSchema.array().default([])
+      [ProjectPermissionSub.SecretSyncs]: SecretSyncPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.Kmip]: KmipPolicyActionSchema.array().default([])
     })
     .partial()
     .optional()
@@ -356,6 +366,28 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canDelete) formVal[subject]![0].delete = true;
       if (canEncrypt) formVal[subject]![0].encrypt = true;
       if (canDecrypt) formVal[subject]![0].decrypt = true;
+      return;
+    }
+
+    if (subject === ProjectPermissionSub.Kmip) {
+      const canReadClients = action.includes(ProjectPermissionKmipActions.ReadClients);
+      const canEditClients = action.includes(ProjectPermissionKmipActions.UpdateClients);
+      const canDeleteClients = action.includes(ProjectPermissionKmipActions.DeleteClients);
+      const canCreateClients = action.includes(ProjectPermissionKmipActions.CreateClients);
+      const canGenerateClientCerts = action.includes(
+        ProjectPermissionKmipActions.GenerateClientCertificates
+      );
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      // from above statement we are sure it won't be undefined
+      if (canReadClients) formVal[subject]![0][ProjectPermissionKmipActions.ReadClients] = true;
+      if (canEditClients) formVal[subject]![0][ProjectPermissionKmipActions.UpdateClients] = true;
+      if (canCreateClients) formVal[subject]![0][ProjectPermissionKmipActions.CreateClients] = true;
+      if (canDeleteClients) formVal[subject]![0][ProjectPermissionKmipActions.DeleteClients] = true;
+      if (canGenerateClientCerts)
+        formVal[subject]![0][ProjectPermissionKmipActions.GenerateClientCertificates] = true;
+
       return;
     }
 
@@ -736,6 +768,31 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       {
         label: "Remove Secrets from Destination",
         value: ProjectPermissionSecretSyncActions.RemoveSecrets
+      }
+    ]
+  },
+  [ProjectPermissionSub.Kmip]: {
+    title: "KMIP",
+    actions: [
+      {
+        label: "Read clients",
+        value: ProjectPermissionKmipActions.ReadClients
+      },
+      {
+        label: "Create clients",
+        value: ProjectPermissionKmipActions.CreateClients
+      },
+      {
+        label: "Modify clients",
+        value: ProjectPermissionKmipActions.UpdateClients
+      },
+      {
+        label: "Delete clients",
+        value: ProjectPermissionKmipActions.DeleteClients
+      },
+      {
+        label: "Generate client certificates",
+        value: ProjectPermissionKmipActions.GenerateClientCertificates
       }
     ]
   }

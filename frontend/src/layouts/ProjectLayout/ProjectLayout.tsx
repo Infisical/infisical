@@ -105,6 +105,20 @@ export const ProjectLayout = () => {
                           )}
                         </Link>
                       )}
+                      {isCmek && (
+                        <Link
+                          to={`/${ProjectType.KMS}/$projectId/kmip` as const}
+                          params={{
+                            projectId: currentWorkspace.id
+                          }}
+                        >
+                          {({ isActive }) => (
+                            <MenuItem isSelected={isActive} icon="key-user" iconMode="reverse">
+                              KMIP
+                            </MenuItem>
+                          )}
+                        </Link>
+                      )}
                       {isSSH && (
                         <Link
                           to={`/${ProjectType.SSH}/$projectId/overview` as const}

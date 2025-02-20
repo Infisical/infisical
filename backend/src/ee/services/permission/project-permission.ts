@@ -44,6 +44,14 @@ export enum ProjectPermissionSecretSyncActions {
   RemoveSecrets = "remove-secrets"
 }
 
+export enum ProjectPermissionKmipActions {
+  CreateClients = "create-clients",
+  UpdateClients = "update-clients",
+  DeleteClients = "delete-clients",
+  ReadClients = "read-clients",
+  GenerateClientCertificates = "generate-client-certificates"
+}
+
 export enum ProjectPermissionSub {
   Role = "role",
   Member = "member",
@@ -75,7 +83,8 @@ export enum ProjectPermissionSub {
   PkiCollections = "pki-collections",
   Kms = "kms",
   Cmek = "cmek",
-  SecretSyncs = "secret-syncs"
+  SecretSyncs = "secret-syncs",
+  Kmip = "kmip"
 }
 
 export type SecretSubjectFields = {
@@ -156,6 +165,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
   | [ProjectPermissionSecretSyncActions, ProjectPermissionSub.SecretSyncs]
+  | [ProjectPermissionKmipActions, ProjectPermissionSub.Kmip]
   | [ProjectPermissionCmekActions, ProjectPermissionSub.Cmek]
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Project]
@@ -410,6 +420,12 @@ const GeneralPermissionSchema = [
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretSyncActions).describe(
       "Describe what action an entity can take."
     )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.Kmip).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionKmipActions).describe(
+      "Describe what action an entity can take."
+    )
   })
 ];
 
@@ -575,6 +591,18 @@ const buildAdminPermissionRules = () => {
     ],
     ProjectPermissionSub.SecretSyncs
   );
+
+  can(
+    [
+      ProjectPermissionKmipActions.CreateClients,
+      ProjectPermissionKmipActions.UpdateClients,
+      ProjectPermissionKmipActions.DeleteClients,
+      ProjectPermissionKmipActions.ReadClients,
+      ProjectPermissionKmipActions.GenerateClientCertificates
+    ],
+    ProjectPermissionSub.Kmip
+  );
+
   return rules;
 };
 

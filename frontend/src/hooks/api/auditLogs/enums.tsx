@@ -1,5 +1,6 @@
 export enum ActorType {
   PLATFORM = "platform",
+  KMIP_CLIENT = "kmipClient",
   USER = "user",
   SERVICE = "service",
   IDENTITY = "identity",
@@ -132,5 +133,22 @@ export enum EventType {
   SECRET_SYNC_IMPORT_SECRETS = "secret-sync-import-secrets",
   SECRET_SYNC_REMOVE_SECRETS = "secret-sync-remove-secrets",
   OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER = "oidc-group-membership-mapping-assign-user",
-  OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER = "oidc-group-membership-mapping-remove-user"
+  OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER = "oidc-group-membership-mapping-remove-user",
+  CREATE_KMIP_CLIENT = "create-kmip-client",
+  UPDATE_KMIP_CLIENT = "update-kmip-client",
+  DELETE_KMIP_CLIENT = "delete-kmip-client",
+  GET_KMIP_CLIENT = "get-kmip-client",
+  GET_KMIP_CLIENTS = "get-kmip-clients",
+  CREATE_KMIP_CLIENT_CERTIFICATE = "create-kmip-client-certificate",
+  SETUP_KMIP = "setup-kmip",
+  GET_KMIP = "get-kmip",
+  REGISTER_KMIP_SERVER = "register-kmip-server",
+  KMIP_OPERATION_CREATE = "kmip-operation-create",
+  KMIP_OPERATION_GET = "kmip-operation-get",
+  KMIP_OPERATION_DESTROY = "kmip-operation-destroy",
+  KMIP_OPERATION_GET_ATTRIBUTES = "kmip-operation-get-attributes",
+  KMIP_OPERATION_ACTIVATE = "kmip-operation-activate",
+  KMIP_OPERATION_REVOKE = "kmip-operation-revoke",
+  KMIP_OPERATION_LOCATE = "kmip-operation-locate",
+  KMIP_OPERATION_REGISTER = "kmip-operation-register"
 }

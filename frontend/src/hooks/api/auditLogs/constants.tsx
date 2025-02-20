@@ -121,7 +121,24 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER]:
     "OIDC group membership mapping assigned user to groups",
   [EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER]:
-    "OIDC group membership mapping removed user from groups"
+    "OIDC group membership mapping removed user from groups",
+  [EventType.CREATE_KMIP_CLIENT]: "Create KMIP client",
+  [EventType.UPDATE_KMIP_CLIENT]: "Update KMIP client",
+  [EventType.DELETE_KMIP_CLIENT]: "Delete KMIP client",
+  [EventType.GET_KMIP_CLIENT]: "Get KMIP client",
+  [EventType.GET_KMIP_CLIENTS]: "Get KMIP clients",
+  [EventType.CREATE_KMIP_CLIENT_CERTIFICATE]: "Create KMIP client certificate",
+  [EventType.SETUP_KMIP]: "Setup KMIP configuration",
+  [EventType.GET_KMIP]: "Get KMIP configuration",
+  [EventType.REGISTER_KMIP_SERVER]: "Register KMIP server",
+  [EventType.KMIP_OPERATION_CREATE]: "KMIP operation create",
+  [EventType.KMIP_OPERATION_GET]: "KMIP operation get",
+  [EventType.KMIP_OPERATION_DESTROY]: "KMIP operation destroy",
+  [EventType.KMIP_OPERATION_GET_ATTRIBUTES]: "KMIP operation get attributes",
+  [EventType.KMIP_OPERATION_ACTIVATE]: "KMIP operation activate",
+  [EventType.KMIP_OPERATION_REVOKE]: "KMIP operation revoke",
+  [EventType.KMIP_OPERATION_LOCATE]: "KMIP operation locate",
+  [EventType.KMIP_OPERATION_REGISTER]: "KMIP operation register"
 };
 
 export const userAgentTTypeoNameMap: { [K in UserAgentType]: string } = {

@@ -35,6 +35,7 @@ export enum AuthMode {
 
 export enum ActorType { // would extend to AWS, Azure, ...
   PLATFORM = "platform", // Useful for when we want to perform logging on automated actions such as integration syncs.
+  KMIP_CLIENT = "kmipClient",
   USER = "user", // userIdentity
   SERVICE = "service",
   IDENTITY = "identity",
