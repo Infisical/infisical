@@ -82,22 +82,26 @@ Infisical supports two methods for connecting to AWS.
                                             "Sid": "AllowSecretsManagerAccess",
                                             "Effect": "Allow",
                                             "Action": [
-                                            "secretsmanager:GetSecretValue",
-                                            "secretsmanager:CreateSecret",
-                                            "secretsmanager:UpdateSecret",
-                                            "secretsmanager:DescribeSecret",
-                                            "secretsmanager:TagResource",
-                                            "secretsmanager:UntagResource",
-                                            "kms:ListKeys", // if you need to specify the KMS key
-                                            "kms:ListAliases", // if you need to specify the KMS key
-                                            "kms:Encrypt", // if you need to specify the KMS key
-                                            "kms:Decrypt" // if you need to specify the KMS key
+                                                "secretsmanager:ListSecrets",
+                                                "secretsmanager:GetSecretValue",
+                                                "secretsmanager:BatchGetSecretValue",
+                                                "secretsmanager:CreateSecret",
+                                                "secretsmanager:UpdateSecret",
+                                                "secretsmanager:DeleteSecret",
+                                                "secretsmanager:DescribeSecret",
+                                                "secretsmanager:TagResource",
+                                                "secretsmanager:UntagResource",
+                                                "kms:ListAliases", // if you need to specify the KMS key
+                                                "kms:Encrypt", // if you need to specify the KMS key
+                                                "kms:Decrypt", // if you need to specify the KMS key
+                                                "kms:DescribeKey" // if you need to specify the KMS key
                                             ],
                                             "Resource": "*"
                                         }
                                     ]
                                 }
                                 ```
+                                <Note>If using a custom KMS key, be sure to add the IAM role as a key user. ![KMS Key IAM Role User](/images/app-connections/aws/kms-key-user.png)</Note>
                             </Accordion>
                             <Accordion title="AWS Parameter Store">
                                 Use the following custom policy to grant the minimum permissions required by Infisical to sync secrets to AWS Parameter Store:
@@ -112,25 +116,25 @@ Infisical supports two methods for connecting to AWS.
                                             "Sid": "AllowSSMAccess",
                                             "Effect": "Allow",
                                             "Action": [
-                                            "ssm:PutParameter",
-                                            "ssm:DeleteParameter",
-                                            "ssm:GetParameters",
-                                            "ssm:GetParametersByPath",
-                                            "ssm:DescribeParameters",
-                                            "ssm:DeleteParameters",
-                                            "ssm:ListTagsForResource", // if you need to add tags to secrets
-                                            "ssm:AddTagsToResource", // if you need to add tags to secrets
-                                            "ssm:RemoveTagsFromResource", // if you need to add tags to secrets
-                                            "kms:ListKeys", // if you need to specify the KMS key
-                                            "kms:ListAliases", // if you need to specify the KMS key
-                                            "kms:Encrypt", // if you need to specify the KMS key
-                                            "kms:Decrypt" // if you need to specify the KMS key
+                                                "ssm:PutParameter",
+                                                "ssm:GetParameters",
+                                                "ssm:GetParametersByPath",
+                                                "ssm:DescribeParameters",
+                                                "ssm:DeleteParameters",
+                                                "ssm:ListTagsForResource", // if you need to add tags to secrets
+                                                "ssm:AddTagsToResource", // if you need to add tags to secrets
+                                                "ssm:RemoveTagsFromResource", // if you need to add tags to secrets
+                                                "kms:ListAliases", // if you need to specify the KMS key
+                                                "kms:Encrypt", // if you need to specify the KMS key
+                                                "kms:Decrypt", // if you need to specify the KMS key
+                                                "kms:DescribeKey" // if you need to specify the KMS key
                                             ],
                                             "Resource": "*"
                                         }
                                     ]
                                 }
                                 ```
+                                <Note>If using a custom KMS key, be sure to add the IAM role as a key user. ![KMS Key IAM Role User](/images/app-connections/aws/kms-key-user.png)</Note>
                             </Accordion>
                         </AccordionGroup>
                     </Tab>
@@ -225,22 +229,26 @@ Infisical supports two methods for connecting to AWS.
                                     "Sid": "AllowSecretsManagerAccess",
                                     "Effect": "Allow",
                                     "Action": [
-                                    "secretsmanager:GetSecretValue",
-                                    "secretsmanager:CreateSecret",
-                                    "secretsmanager:UpdateSecret",
-                                    "secretsmanager:DescribeSecret",
-                                    "secretsmanager:TagResource",
-                                    "secretsmanager:UntagResource",
-                                    "kms:ListKeys", // if you need to specify the KMS key
-                                    "kms:ListAliases", // if you need to specify the KMS key
-                                    "kms:Encrypt", // if you need to specify the KMS key
-                                    "kms:Decrypt" // if you need to specify the KMS key
+                                        "secretsmanager:ListSecrets",
+                                        "secretsmanager:GetSecretValue",
+                                        "secretsmanager:BatchGetSecretValue",
+                                        "secretsmanager:CreateSecret",
+                                        "secretsmanager:UpdateSecret",
+                                        "secretsmanager:DeleteSecret",
+                                        "secretsmanager:DescribeSecret",
+                                        "secretsmanager:TagResource",
+                                        "secretsmanager:UntagResource",
+                                        "kms:ListAliases", // if you need to specify the KMS key
+                                        "kms:Encrypt", // if you need to specify the KMS key
+                                        "kms:Decrypt", // if you need to specify the KMS key
+                                        "kms:DescribeKey" // if you need to specify the KMS key
                                     ],
                                     "Resource": "*"
                                 }
                                     ]
                                 }
                                 ```
+                                <Note>If using a custom KMS key, be sure to add the IAM role as a key user. ![KMS Key IAM Role User](/images/app-connections/aws/kms-key-user.png)</Note>
                             </Accordion>
                             <Accordion title="AWS Parameter Store">
                                 Use the following custom policy to grant the minimum permissions required by Infisical to sync secrets to AWS Parameter Store:
@@ -255,25 +263,25 @@ Infisical supports two methods for connecting to AWS.
                                     "Sid": "AllowSSMAccess",
                                     "Effect": "Allow",
                                     "Action": [
-                                    "ssm:PutParameter",
-                                    "ssm:DeleteParameter",
-                                    "ssm:GetParameters",
-                                    "ssm:GetParametersByPath",
-                                    "ssm:DescribeParameters",
-                                    "ssm:DeleteParameters",
-                                    "ssm:ListTagsForResource", // if you need to add tags to secrets
-                                    "ssm:AddTagsToResource", // if you need to add tags to secrets
-                                    "ssm:RemoveTagsFromResource", // if you need to add tags to secrets
-                                    "kms:ListKeys", // if you need to specify the KMS key
-                                    "kms:ListAliases", // if you need to specify the KMS key
-                                    "kms:Encrypt", // if you need to specify the KMS key
-                                    "kms:Decrypt" // if you need to specify the KMS key
+                                        "ssm:PutParameter",
+                                        "ssm:GetParameters",
+                                        "ssm:GetParametersByPath",
+                                        "ssm:DescribeParameters",
+                                        "ssm:DeleteParameters",
+                                        "ssm:ListTagsForResource", // if you need to add tags to secrets
+                                        "ssm:AddTagsToResource", // if you need to add tags to secrets
+                                        "ssm:RemoveTagsFromResource", // if you need to add tags to secrets
+                                        "kms:ListAliases", // if you need to specify the KMS key
+                                        "kms:Encrypt", // if you need to specify the KMS key
+                                        "kms:Decrypt", // if you need to specify the KMS key
+                                        "kms:DescribeKey" // if you need to specify the KMS key
                                     ],
                                     "Resource": "*"
                                 }
                                     ]
                                 }
                                 ```
+                                <Note>If using a custom KMS key, be sure to add the IAM role as a key user. ![KMS Key IAM Role User](/images/app-connections/aws/kms-key-user.png)</Note>
                             </Accordion>
                         </AccordionGroup>
                     </Tab>

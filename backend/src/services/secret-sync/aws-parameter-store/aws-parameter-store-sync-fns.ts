@@ -317,11 +317,13 @@ export const AwsParameterStoreSyncFns = {
         continue;
       }
 
+      const keyId = syncOptions.keyId ?? "alias/aws/ssm";
+
       // create parameter or update if changed
       if (
         !(key in awsParameterStoreSecretsRecord) ||
         value !== awsParameterStoreSecretsRecord[key].Value ||
-        (syncOptions.keyId ?? "alias/aws/ssm") !== awsParameterStoreMetadataRecord[key]?.KeyId
+        keyId !== awsParameterStoreMetadataRecord[key]?.KeyId
       ) {
         try {
           await putParameter(ssm, {
@@ -329,7 +331,7 @@ export const AwsParameterStoreSyncFns = {
             Type: "SecureString",
             Value: value,
             Overwrite: true,
-            KeyId: syncOptions.keyId
+            KeyId: keyId
           });
         } catch (error) {
           throw new SecretSyncError({

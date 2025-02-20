@@ -138,8 +138,8 @@ export const CreateSecretSyncForm = ({ destination, onComplete, onCancel }: Prop
           <p className="mt-1 text-sm text-bunker-200">
             Secret Syncs are the source of truth for connected third-party services. Any secret,
             including associated data, not present or imported in Infisical before syncing will be
-            overwritten, and changes directly in the connected service outside of infisical may also
-            be overwritten by future syncs.
+            overwritten, and changes made directly in the connected service outside of infisical may
+            also be overwritten by future syncs.
           </p>
         </div>
         <div className="mt-4 flex gap-4">

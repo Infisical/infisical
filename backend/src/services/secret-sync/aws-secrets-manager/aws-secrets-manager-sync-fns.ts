@@ -318,6 +318,8 @@ export const AwsSecretsManagerSyncFns = {
 
     const syncTagsRecord = Object.fromEntries(syncOptions.tags?.map((tag) => [tag.key, tag.value]) ?? []);
 
+    const keyId = syncOptions.keyId ?? "alias/aws/secretsmanager";
+
     if (destinationConfig.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.OneToOne) {
       for await (const entry of Object.entries(secretMap)) {
         const [key, { value, secretMetadata }] = entry;
@@ -330,15 +332,12 @@ export const AwsSecretsManagerSyncFns = {
 
         if (awsSecretsRecord[key]) {
           // skip secrets that haven't changed
-          if (
-            awsValuesRecord[key]?.SecretString !== value ||
-            (syncOptions.keyId ?? "alias/aws/secretsmanager") !== awsDescriptionsRecord[key]?.KmsKeyId
-          ) {
+          if (awsValuesRecord[key]?.SecretString !== value || keyId !== awsDescriptionsRecord[key]?.KmsKeyId) {
             try {
               await updateSecret(client, {
                 SecretId: key,
                 SecretString: value,
-                KmsKeyId: syncOptions.keyId
+                KmsKeyId: keyId
               });
             } catch (error) {
               throw new SecretSyncError({
@@ -352,7 +351,7 @@ export const AwsSecretsManagerSyncFns = {
             await createSecret(client, {
               Name: key,
               SecretString: value,
-              KmsKeyId: syncOptions.keyId
+              KmsKeyId: keyId
             });
           } catch (error) {
             throw new SecretSyncError({
@@ -416,17 +415,17 @@ export const AwsSecretsManagerSyncFns = {
         Object.fromEntries(Object.entries(secretMap).map(([key, secretData]) => [key, secretData.value]))
       );
 
-      if (awsValuesRecord[destinationConfig.secretName]) {
+      if (awsSecretsRecord[destinationConfig.secretName]) {
         await updateSecret(client, {
           SecretId: destinationConfig.secretName,
           SecretString: secretValue,
-          KmsKeyId: syncOptions.keyId
+          KmsKeyId: keyId
         });
       } else {
         await createSecret(client, {
           Name: destinationConfig.secretName,
           SecretString: secretValue,
-          KmsKeyId: syncOptions.keyId
+          KmsKeyId: keyId
         });
       }
 
@@ -455,22 +454,6 @@ export const AwsSecretsManagerSyncFns = {
           throw new SecretSyncError({
             error,
             secretKey: destinationConfig.secretName
-          });
-        }
-      }
-
-      for await (const secretKey of Object.keys(awsSecretsRecord)) {
-        if (secretKey === destinationConfig.secretName) {
-          // eslint-disable-next-line no-continue
-          continue;
-        }
-
-        try {
-          await deleteSecret(client, secretKey);
-        } catch (error) {
-          throw new SecretSyncError({
-            error,
-            secretKey
           });
         }
       }
