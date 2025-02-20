@@ -519,7 +519,7 @@ export const expandSecretReferencesFactory = ({
             const referredValue = await fetchSecret(environment, secretPath, secretKey);
             if (!canExpandValue(environment, secretPath, secretKey, referredValue.tags))
               throw new ForbiddenRequestError({
-                message: `You are attempting to reference secret named ${secretKey} from environment ${environment} in path ${secretPath} which you do not have access to.`
+                message: `You are attempting to reference secret named ${secretKey} from environment ${environment} in path ${secretPath} which you do not have access to read value on.`
               });
 
             const cacheKey = getCacheUniqueKey(environment, secretPath);
@@ -538,7 +538,7 @@ export const expandSecretReferencesFactory = ({
             const referedValue = await fetchSecret(secretReferenceEnvironment, secretReferencePath, secretReferenceKey);
             if (!canExpandValue(secretReferenceEnvironment, secretReferencePath, secretReferenceKey, referedValue.tags))
               throw new ForbiddenRequestError({
-                message: `You are attempting to reference secret named ${secretReferenceKey} from environment ${secretReferenceEnvironment} in path ${secretReferencePath} which you do not have access to.`
+                message: `You are attempting to reference secret named ${secretReferenceKey} from environment ${secretReferenceEnvironment} in path ${secretReferencePath} which you do not have access to read value on.`
               });
 
             const cacheKey = getCacheUniqueKey(secretReferenceEnvironment, secretReferencePath);
