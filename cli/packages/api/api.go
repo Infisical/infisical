@@ -583,3 +583,20 @@ func CallExchangeRelayCertV1(httpClient *resty.Client, request ExchangeRelayCert
 
 	return &resBody, nil
 }
+
+func CallGatewayHeartBeatV1(httpClient *resty.Client) error {
+	response, err := httpClient.
+		R().
+		SetHeader("User-Agent", USER_AGENT).
+		Post(fmt.Sprintf("%v/v1/gateways/heartbeat", config.INFISICAL_URL))
+
+	if err != nil {
+		return fmt.Errorf("CallGatewayHeartBeatV1: Unable to complete api request [err=%w]", err)
+	}
+
+	if response.IsError() {
+		return fmt.Errorf("CallGatewayHeartBeatV1: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+	}
+
+	return nil
+}

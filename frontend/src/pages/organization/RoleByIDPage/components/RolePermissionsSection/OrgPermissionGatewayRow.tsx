@@ -76,7 +76,7 @@ export const OrgGatewayPermissionRow = ({ isEditable, control, setValue }: Props
     switch (val) {
       case Permission.FullAccess:
         setValue(
-          "permissions.app-connections",
+          "permissions.gateway",
           {
             [OrgGatewayPermissionActions.Read]: true,
             [OrgGatewayPermissionActions.Edit]: true,
@@ -88,7 +88,7 @@ export const OrgGatewayPermissionRow = ({ isEditable, control, setValue }: Props
         break;
       case Permission.ReadOnly:
         setValue(
-          "permissions.app-connections",
+          "permissions.gateway",
           {
             [OrgGatewayPermissionActions.Read]: true,
             [OrgGatewayPermissionActions.Edit]: false,
@@ -102,7 +102,7 @@ export const OrgGatewayPermissionRow = ({ isEditable, control, setValue }: Props
       case Permission.NoAccess:
       default:
         setValue(
-          "permissions.app-connections",
+          "permissions.gateway",
           {
             [OrgGatewayPermissionActions.Read]: false,
             [OrgGatewayPermissionActions.Edit]: false,

@@ -8,6 +8,7 @@ import { ActionProjectType } from "@app/db/schemas";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { pingGatewayAndVerify } from "@app/lib/gateway";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { getTurnCredentials } from "@app/lib/turn/credentials";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
@@ -20,7 +21,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { TLicenseServiceFactory } from "../license/license-service";
-import { OrgGatewayPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
+import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TGatewayDALFactory } from "./gateway-dal";
@@ -28,6 +29,7 @@ import {
   TExchangeAllocatedRelayAddressDTO,
   TGetGatewayByIdDTO,
   TGetProjectGatewayByIdDTO,
+  THeartBeatDTO,
   TListGatewaysDTO,
   TUpdateGatewayByIdDTO
 } from "./gateway-types";
@@ -77,7 +79,7 @@ export const gatewayServiceFactory = ({
       actorAuthMethod,
       orgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgGatewayPermissionActions.Create, OrgPermissionSubjects.Gateway);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGatewayActions.Create, OrgPermissionSubjects.Gateway);
   };
 
   const getGatewayRelayDetails = async (actorId: string, actorOrgId: string, actorAuthMethod: ActorAuthMethod) => {
@@ -412,6 +414,61 @@ export const gatewayServiceFactory = ({
     };
   };
 
+  const heartbeat = async ({ orgPermission }: THeartBeatDTO) => {
+    await $validateOrgAccessToGateway(orgPermission.orgId, orgPermission.id, orgPermission.authMethod);
+    const orgGatewayConfig = await orgGatewayConfigDAL.findOne({ orgId: orgPermission.orgId });
+    if (!orgGatewayConfig) throw new NotFoundError({ message: `Identity with ID ${orgPermission.id} not found.` });
+
+    const [gateway] = await gatewayDAL.find({ identityId: orgPermission.id, orgGatewayRootCaId: orgGatewayConfig.id });
+    if (!gateway) throw new NotFoundError({ message: `Gateway with ID ${orgPermission.id} not found.` });
+
+    const { decryptor: orgKmsDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: orgGatewayConfig.orgId
+    });
+
+    const rootCaCert = new x509.X509Certificate(
+      orgKmsDecryptor({
+        cipherTextBlob: orgGatewayConfig.encryptedRootCaCertificate
+      })
+    );
+    const gatewayCaCert = new x509.X509Certificate(
+      orgKmsDecryptor({
+        cipherTextBlob: orgGatewayConfig.encryptedGatewayCaCertificate
+      })
+    );
+    const clientCert = new x509.X509Certificate(
+      orgKmsDecryptor({
+        cipherTextBlob: orgGatewayConfig.encryptedClientCertificate
+      })
+    );
+
+    const privateKey = crypto
+      .createPrivateKey({
+        key: orgKmsDecryptor({ cipherTextBlob: orgGatewayConfig.encryptedClientPrivateKey }),
+        format: "der",
+        type: "pkcs8"
+      })
+      .export({ type: "pkcs8", format: "pem" });
+
+    const relayAddress = orgKmsDecryptor({ cipherTextBlob: gateway.relayAddress }).toString();
+    const [relayHost, relayPort] = relayAddress.split(":");
+
+    await pingGatewayAndVerify({
+      relayHost,
+      relayPort: Number(relayPort),
+      tlsOptions: {
+        key: privateKey,
+        ca: `${gatewayCaCert.toString("pem")}\n${rootCaCert.toString("pem")}`.trim(),
+        cert: clientCert.toString("pem")
+      },
+      identityId: orgPermission.id,
+      orgId: orgPermission.orgId
+    });
+
+    await gatewayDAL.updateById(gateway.id, { heartbeat: new Date() });
+  };
+
   const listGateways = async ({ orgPermission }: TListGatewaysDTO) => {
     const { permission } = await permissionService.getOrgPermission(
       orgPermission.type,
@@ -420,7 +477,7 @@ export const gatewayServiceFactory = ({
       orgPermission.authMethod,
       orgPermission.orgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgGatewayPermissionActions.Read, OrgPermissionSubjects.Gateway);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGatewayActions.Read, OrgPermissionSubjects.Gateway);
     const orgGatewayConfig = await orgGatewayConfigDAL.findOne({ orgId: orgPermission.orgId });
     if (!orgGatewayConfig) return [];
 
@@ -438,7 +495,7 @@ export const gatewayServiceFactory = ({
       orgPermission.authMethod,
       orgPermission.orgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgGatewayPermissionActions.Read, OrgPermissionSubjects.Gateway);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGatewayActions.Read, OrgPermissionSubjects.Gateway);
     const orgGatewayConfig = await orgGatewayConfigDAL.findOne({ orgId: orgPermission.orgId });
     if (!orgGatewayConfig) throw new NotFoundError({ message: `Gateway with ID ${id} not found.` });
 
@@ -455,7 +512,7 @@ export const gatewayServiceFactory = ({
       orgPermission.authMethod,
       orgPermission.orgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgGatewayPermissionActions.Delete, OrgPermissionSubjects.Gateway);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGatewayActions.Edit, OrgPermissionSubjects.Gateway);
     const orgGatewayConfig = await orgGatewayConfigDAL.findOne({ orgId: orgPermission.orgId });
     if (!orgGatewayConfig) throw new NotFoundError({ message: `Gateway with ID ${id} not found.` });
 
@@ -472,7 +529,7 @@ export const gatewayServiceFactory = ({
       orgPermission.authMethod,
       orgPermission.orgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgGatewayPermissionActions.Delete, OrgPermissionSubjects.Gateway);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGatewayActions.Delete, OrgPermissionSubjects.Gateway);
     const orgGatewayConfig = await orgGatewayConfigDAL.findOne({ orgId: orgPermission.orgId });
     if (!orgGatewayConfig) throw new NotFoundError({ message: `Gateway with ID ${id} not found.` });
 
@@ -553,6 +610,7 @@ export const gatewayServiceFactory = ({
     updateGatewayById,
     deleteGatewayById,
     getProjectGateways,
-    fnGetGatewayClientTls
+    fnGetGatewayClientTls,
+    heartbeat
   };
 };

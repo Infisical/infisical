@@ -59,7 +59,9 @@ func handleConnection(conn net.Conn) {
 			CopyData(conn, destTarget)
 			return
 		case "PING":
-			conn.Write([]byte("PONG"))
+			if _, err := conn.Write([]byte("PONG")); err != nil {
+				log.Error().Msgf("Error writing PONG response: %v", err)
+			}
 			return
 		default:
 			log.Error().Msgf("Unknown command: %s", string(cmd))

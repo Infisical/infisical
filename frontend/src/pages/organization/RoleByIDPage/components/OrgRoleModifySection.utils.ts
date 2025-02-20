@@ -83,7 +83,7 @@ export const formSchema = z.object({
       [OrgPermissionSubjects.ProjectTemplates]: generalPermissionSchema,
       "app-connections": appConnectionsPermissionSchema,
       kmip: kmipPermissionSchema,
-      [OrgPermissionSubjects.Gateway]: orgGatewayPermissionSchema
+      gateway: orgGatewayPermissionSchema
     })
     .optional()
 });

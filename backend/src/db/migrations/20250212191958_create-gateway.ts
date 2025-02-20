@@ -52,6 +52,7 @@ export async function up(knex: Knex): Promise<void> {
       t.string("keyAlgorithm").notNullable();
       t.datetime("issuedAt").notNullable();
       t.datetime("expiration").notNullable();
+      t.datetime("heartbeat");
 
       t.binary("relayAddress").notNullable();
 
