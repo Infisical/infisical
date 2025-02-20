@@ -62,8 +62,10 @@ const $updatePermissionsDown = (permissions: unknown) => {
     const { subject, action } = parsedPermission;
 
     if (subject === ProjectPermissionSub.Secrets) {
-      if (action.includes(SecretActions.ReadValue)) {
-        action.splice(action.indexOf(SecretActions.ReadValue));
+      const readValueIndex = action.indexOf(SecretActions.ReadValue);
+
+      if (action.includes(SecretActions.ReadValue) && readValueIndex !== -1) {
+        action.splice(readValueIndex, 1);
         parsedPermissions[i] = { ...parsedPermission, action };
 
         shouldUpdate = true;
