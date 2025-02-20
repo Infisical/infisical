@@ -51,6 +51,8 @@ import {
   TUpdateManySecretsRawFnFactory
 } from "./secret-types";
 
+export const INFISICAL_SECRET_VALUE_HIDDEN_MASK = "<hidden-by-infisical>";
+
 export const generateSecretBlindIndexBySalt = async (secretName: string, secretBlindIndexDoc: TSecretBlindIndexes) => {
   const appCfg = getConfig();
   const secretBlindIndex = await buildSecretBlindIndexFromName({
@@ -370,7 +372,7 @@ export const decryptSecretRaw = (
         tag: secret.secretValueTag,
         key
       })
-    : "<hidden-by-infisical>";
+    : INFISICAL_SECRET_VALUE_HIDDEN_MASK;
 
   let secretComment = "";
 
@@ -1214,12 +1216,10 @@ export const conditionallyHideSecretValue = (
     secretValueTag: string;
   }
 ) => {
-  const hiddenPlaceholder = "hidden-by-infisical>";
-
   return {
-    secretValueCiphertext: shouldHideValue ? hiddenPlaceholder : secretValueCiphertext,
-    secretValueIV: shouldHideValue ? hiddenPlaceholder : secretValueIV,
-    secretValueTag: shouldHideValue ? hiddenPlaceholder : secretValueTag,
+    secretValueCiphertext: shouldHideValue ? INFISICAL_SECRET_VALUE_HIDDEN_MASK : secretValueCiphertext,
+    secretValueIV: shouldHideValue ? INFISICAL_SECRET_VALUE_HIDDEN_MASK : secretValueIV,
+    secretValueTag: shouldHideValue ? INFISICAL_SECRET_VALUE_HIDDEN_MASK : secretValueTag,
     secretValueHidden: shouldHideValue
   };
 };
