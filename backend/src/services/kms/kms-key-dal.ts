@@ -93,6 +93,32 @@ export const kmskeyDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findProjectCmeks = async (projectId: string, tx?: Knex) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.KmsKey)
+        .where({
+          [`${TableName.KmsKey}.projectId` as "projectId"]: projectId,
+          [`${TableName.KmsKey}.isReserved` as "isReserved"]: false
+        })
+        .join(TableName.Organization, `${TableName.KmsKey}.orgId`, `${TableName.Organization}.id`)
+        .join(TableName.InternalKms, `${TableName.KmsKey}.id`, `${TableName.InternalKms}.kmsKeyId`)
+        .select(selectAllTableCols(TableName.KmsKey))
+        .select(
+          db.ref("encryptionAlgorithm").withSchema(TableName.InternalKms).as("internalKmsEncryptionAlgorithm"),
+          db.ref("version").withSchema(TableName.InternalKms).as("internalKmsVersion")
+        );
+
+      return result.map((entry) => ({
+        ...KmsKeysSchema.parse(entry),
+        isActive: !entry.isDisabled,
+        algorithm: entry.internalKmsEncryptionAlgorithm,
+        version: entry.internalKmsVersion
+      }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find project cmeks" });
+    }
+  };
+
   const listCmeksByProjectId = async (
     {
       projectId,
@@ -167,5 +193,5 @@ export const kmskeyDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...kmsOrm, findByIdWithAssociatedKms, listCmeksByProjectId, findCmekById, findCmekByName };
+  return { ...kmsOrm, findByIdWithAssociatedKms, listCmeksByProjectId, findCmekById, findCmekByName, findProjectCmeks };
 };

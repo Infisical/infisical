@@ -46,6 +46,13 @@ export const LogsTableRow = ({ auditLog, isOrgAuditLogs, showActorColumn }: Prop
             <p>Platform</p>
           </Td>
         );
+      case ActorType.KMIP_CLIENT:
+        return (
+          <Td>
+            <p>{actor.metadata.name}</p>
+            <p>KMIP Client</p>
+          </Td>
+        );
       case ActorType.UNKNOWN_USER:
         return (
           <Td>

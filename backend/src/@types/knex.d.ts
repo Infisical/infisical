@@ -143,6 +143,18 @@ import {
   TInternalKms,
   TInternalKmsInsert,
   TInternalKmsUpdate,
+  TKmipClientCertificates,
+  TKmipClientCertificatesInsert,
+  TKmipClientCertificatesUpdate,
+  TKmipClients,
+  TKmipClientsInsert,
+  TKmipClientsUpdate,
+  TKmipOrgConfigs,
+  TKmipOrgConfigsInsert,
+  TKmipOrgConfigsUpdate,
+  TKmipOrgServerCertificates,
+  TKmipOrgServerCertificatesInsert,
+  TKmipOrgServerCertificatesUpdate,
   TKmsKeys,
   TKmsKeysInsert,
   TKmsKeysUpdate,
@@ -902,5 +914,21 @@ declare module "knex/types/tables" {
       TAppConnectionsUpdate
     >;
     [TableName.SecretSync]: KnexOriginal.CompositeTableType<TSecretSyncs, TSecretSyncsInsert, TSecretSyncsUpdate>;
+    [TableName.KmipClient]: KnexOriginal.CompositeTableType<TKmipClients, TKmipClientsInsert, TKmipClientsUpdate>;
+    [TableName.KmipOrgConfig]: KnexOriginal.CompositeTableType<
+      TKmipOrgConfigs,
+      TKmipOrgConfigsInsert,
+      TKmipOrgConfigsUpdate
+    >;
+    [TableName.KmipOrgServerCertificates]: KnexOriginal.CompositeTableType<
+      TKmipOrgServerCertificates,
+      TKmipOrgServerCertificatesInsert,
+      TKmipOrgServerCertificatesUpdate
+    >;
+    [TableName.KmipClientCertificates]: KnexOriginal.CompositeTableType<
+      TKmipClientCertificates,
+      TKmipClientCertificatesInsert,
+      TKmipClientCertificatesUpdate
+    >;
   }
 }

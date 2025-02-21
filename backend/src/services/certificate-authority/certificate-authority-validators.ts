@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { isValidIp } from "@app/lib/ip";
+
 const isValidDate = (dateString: string) => {
   const date = new Date(dateString);
   return !Number.isNaN(date.getTime());
@@ -25,7 +27,7 @@ export const validateAltNamesField = z
       if (data === "") return true;
       // Split and validate each alt name
       return data.split(", ").every((name) => {
-        return hostnameRegex.test(name) || z.string().email().safeParse(name).success;
+        return hostnameRegex.test(name) || z.string().email().safeParse(name).success || isValidIp(name);
       });
     },
     {

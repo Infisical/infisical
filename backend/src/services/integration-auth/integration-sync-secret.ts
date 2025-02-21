@@ -2257,7 +2257,9 @@ const syncSecretsFlyio = async ({
     }
   `;
 
-  await request.post(
+  type TFlyioErrors = { message: string }[];
+
+  const setSecretsResp = await request.post<{ errors?: TFlyioErrors }>(
     IntegrationUrls.FLYIO_API_URL,
     {
       query: SetSecrets,
@@ -2278,6 +2280,10 @@ const syncSecretsFlyio = async ({
       }
     }
   );
+
+  if (setSecretsResp.data.errors?.length) {
+    throw new Error(JSON.stringify(setSecretsResp.data.errors));
+  }
 
   // get secrets
   interface FlyioSecret {

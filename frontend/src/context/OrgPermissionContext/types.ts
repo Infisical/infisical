@@ -24,7 +24,8 @@ export enum OrgPermissionSubjects {
   AdminConsole = "organization-admin-console",
   AuditLogs = "audit-logs",
   ProjectTemplates = "project-templates",
-  AppConnections = "app-connections"
+  AppConnections = "app-connections",
+  Kmip = "kmip"
 }
 
 export enum OrgPermissionAdminConsoleAction {
@@ -37,6 +38,11 @@ export enum OrgPermissionAppConnectionActions {
   Edit = "edit",
   Delete = "delete",
   Connect = "connect"
+}
+
+export enum OrgPermissionKmipActions {
+  Proxy = "proxy",
+  Setup = "setup"
 }
 
 export type AppConnectionSubjectFields = {
@@ -61,7 +67,8 @@ export type OrgPermissionSet =
   | [OrgPermissionAdminConsoleAction, OrgPermissionSubjects.AdminConsole]
   | [OrgPermissionActions, OrgPermissionSubjects.AuditLogs]
   | [OrgPermissionActions, OrgPermissionSubjects.ProjectTemplates]
-  | [OrgPermissionAppConnectionActions, OrgPermissionSubjects.AppConnections];
+  | [OrgPermissionAppConnectionActions, OrgPermissionSubjects.AppConnections]
+  | [OrgPermissionKmipActions, OrgPermissionSubjects.Kmip];
 // TODO(scott): add back once org UI refactored
 // | [
 //     OrgPermissionAppConnectionActions,

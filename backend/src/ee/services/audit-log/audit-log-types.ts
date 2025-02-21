@@ -21,6 +21,8 @@ import {
   TUpdateSecretSyncDTO
 } from "@app/services/secret-sync/secret-sync-types";
 
+import { KmipPermission } from "../kmip/kmip-enum";
+
 export type TListProjectAuditLogDTO = {
   filter: {
     userAgentType?: UserAgentType;
@@ -39,7 +41,14 @@ export type TListProjectAuditLogDTO = {
 
 export type TCreateAuditLogDTO = {
   event: Event;
-  actor: UserActor | IdentityActor | ServiceActor | ScimClientActor | PlatformActor | UnknownUserActor;
+  actor:
+    | UserActor
+    | IdentityActor
+    | ServiceActor
+    | ScimClientActor
+    | PlatformActor
+    | UnknownUserActor
+    | KmipClientActor;
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;
@@ -252,7 +261,26 @@ export enum EventType {
   SECRET_SYNC_IMPORT_SECRETS = "secret-sync-import-secrets",
   SECRET_SYNC_REMOVE_SECRETS = "secret-sync-remove-secrets",
   OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER = "oidc-group-membership-mapping-assign-user",
-  OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER = "oidc-group-membership-mapping-remove-user"
+  OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER = "oidc-group-membership-mapping-remove-user",
+  CREATE_KMIP_CLIENT = "create-kmip-client",
+  UPDATE_KMIP_CLIENT = "update-kmip-client",
+  DELETE_KMIP_CLIENT = "delete-kmip-client",
+  GET_KMIP_CLIENT = "get-kmip-client",
+  GET_KMIP_CLIENTS = "get-kmip-clients",
+  CREATE_KMIP_CLIENT_CERTIFICATE = "create-kmip-client-certificate",
+
+  SETUP_KMIP = "setup-kmip",
+  GET_KMIP = "get-kmip",
+  REGISTER_KMIP_SERVER = "register-kmip-server",
+
+  KMIP_OPERATION_CREATE = "kmip-operation-create",
+  KMIP_OPERATION_GET = "kmip-operation-get",
+  KMIP_OPERATION_DESTROY = "kmip-operation-destroy",
+  KMIP_OPERATION_GET_ATTRIBUTES = "kmip-operation-get-attributes",
+  KMIP_OPERATION_ACTIVATE = "kmip-operation-activate",
+  KMIP_OPERATION_REVOKE = "kmip-operation-revoke",
+  KMIP_OPERATION_LOCATE = "kmip-operation-locate",
+  KMIP_OPERATION_REGISTER = "kmip-operation-register"
 }
 
 interface UserActorMetadata {
@@ -275,6 +303,11 @@ interface ScimClientActorMetadata {}
 
 interface PlatformActorMetadata {}
 
+interface KmipClientActorMetadata {
+  clientId: string;
+  name: string;
+}
+
 interface UnknownUserActorMetadata {}
 
 export interface UserActor {
@@ -292,6 +325,11 @@ export interface PlatformActor {
   metadata: PlatformActorMetadata;
 }
 
+export interface KmipClientActor {
+  type: ActorType.KMIP_CLIENT;
+  metadata: KmipClientActorMetadata;
+}
+
 export interface UnknownUserActor {
   type: ActorType.UNKNOWN_USER;
   metadata: UnknownUserActorMetadata;
@@ -307,7 +345,7 @@ export interface ScimClientActor {
   metadata: ScimClientActorMetadata;
 }
 
-export type Actor = UserActor | ServiceActor | IdentityActor | ScimClientActor | PlatformActor;
+export type Actor = UserActor | ServiceActor | IdentityActor | ScimClientActor | PlatformActor | KmipClientActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -2091,6 +2129,139 @@ interface OidcGroupMembershipMappingRemoveUserEvent {
   };
 }
 
+interface CreateKmipClientEvent {
+  type: EventType.CREATE_KMIP_CLIENT;
+  metadata: {
+    name: string;
+    id: string;
+    permissions: KmipPermission[];
+  };
+}
+
+interface UpdateKmipClientEvent {
+  type: EventType.UPDATE_KMIP_CLIENT;
+  metadata: {
+    name: string;
+    id: string;
+    permissions: KmipPermission[];
+  };
+}
+
+interface DeleteKmipClientEvent {
+  type: EventType.DELETE_KMIP_CLIENT;
+  metadata: {
+    id: string;
+  };
+}
+
+interface GetKmipClientEvent {
+  type: EventType.GET_KMIP_CLIENT;
+  metadata: {
+    id: string;
+  };
+}
+
+interface GetKmipClientsEvent {
+  type: EventType.GET_KMIP_CLIENTS;
+  metadata: {
+    ids: string[];
+  };
+}
+
+interface CreateKmipClientCertificateEvent {
+  type: EventType.CREATE_KMIP_CLIENT_CERTIFICATE;
+  metadata: {
+    clientId: string;
+    ttl: string;
+    keyAlgorithm: string;
+    serialNumber: string;
+  };
+}
+
+interface KmipOperationGetEvent {
+  type: EventType.KMIP_OPERATION_GET;
+  metadata: {
+    id: string;
+  };
+}
+
+interface KmipOperationDestroyEvent {
+  type: EventType.KMIP_OPERATION_DESTROY;
+  metadata: {
+    id: string;
+  };
+}
+
+interface KmipOperationCreateEvent {
+  type: EventType.KMIP_OPERATION_CREATE;
+  metadata: {
+    id: string;
+    algorithm: string;
+  };
+}
+
+interface KmipOperationGetAttributesEvent {
+  type: EventType.KMIP_OPERATION_GET_ATTRIBUTES;
+  metadata: {
+    id: string;
+  };
+}
+
+interface KmipOperationActivateEvent {
+  type: EventType.KMIP_OPERATION_ACTIVATE;
+  metadata: {
+    id: string;
+  };
+}
+
+interface KmipOperationRevokeEvent {
+  type: EventType.KMIP_OPERATION_REVOKE;
+  metadata: {
+    id: string;
+  };
+}
+
+interface KmipOperationLocateEvent {
+  type: EventType.KMIP_OPERATION_LOCATE;
+  metadata: {
+    ids: string[];
+  };
+}
+
+interface KmipOperationRegisterEvent {
+  type: EventType.KMIP_OPERATION_REGISTER;
+  metadata: {
+    id: string;
+    algorithm: string;
+    name: string;
+  };
+}
+
+interface SetupKmipEvent {
+  type: EventType.SETUP_KMIP;
+  metadata: {
+    keyAlgorithm: CertKeyAlgorithm;
+  };
+}
+
+interface GetKmipEvent {
+  type: EventType.GET_KMIP;
+  metadata: {
+    id: string;
+  };
+}
+
+interface RegisterKmipServerEvent {
+  type: EventType.REGISTER_KMIP_SERVER;
+  metadata: {
+    serverCertificateSerialNumber: string;
+    hostnamesOrIps: string;
+    commonName: string;
+    keyAlgorithm: CertKeyAlgorithm;
+    ttl: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -2282,4 +2453,21 @@ export type Event =
   | SecretSyncImportSecretsEvent
   | SecretSyncRemoveSecretsEvent
   | OidcGroupMembershipMappingAssignUserEvent
-  | OidcGroupMembershipMappingRemoveUserEvent;
+  | OidcGroupMembershipMappingRemoveUserEvent
+  | CreateKmipClientEvent
+  | UpdateKmipClientEvent
+  | DeleteKmipClientEvent
+  | GetKmipClientEvent
+  | GetKmipClientsEvent
+  | CreateKmipClientCertificateEvent
+  | SetupKmipEvent
+  | GetKmipEvent
+  | RegisterKmipServerEvent
+  | KmipOperationGetEvent
+  | KmipOperationDestroyEvent
+  | KmipOperationCreateEvent
+  | KmipOperationGetAttributesEvent
+  | KmipOperationActivateEvent
+  | KmipOperationRevokeEvent
+  | KmipOperationLocateEvent
+  | KmipOperationRegisterEvent;

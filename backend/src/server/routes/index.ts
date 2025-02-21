@@ -35,6 +35,12 @@ import { HsmModule } from "@app/ee/services/hsm/hsm-types";
 import { identityProjectAdditionalPrivilegeDALFactory } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-dal";
 import { identityProjectAdditionalPrivilegeServiceFactory } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-service";
 import { identityProjectAdditionalPrivilegeV2ServiceFactory } from "@app/ee/services/identity-project-additional-privilege-v2/identity-project-additional-privilege-v2-service";
+import { kmipClientCertificateDALFactory } from "@app/ee/services/kmip/kmip-client-certificate-dal";
+import { kmipClientDALFactory } from "@app/ee/services/kmip/kmip-client-dal";
+import { kmipOperationServiceFactory } from "@app/ee/services/kmip/kmip-operation-service";
+import { kmipOrgConfigDALFactory } from "@app/ee/services/kmip/kmip-org-config-dal";
+import { kmipOrgServerCertificateDALFactory } from "@app/ee/services/kmip/kmip-org-server-certificate-dal";
+import { kmipServiceFactory } from "@app/ee/services/kmip/kmip-service";
 import { ldapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";
 import { ldapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { ldapGroupMapDALFactory } from "@app/ee/services/ldap-config/ldap-group-map-dal";
@@ -382,6 +388,10 @@ export const registerRoutes = async (
 
   const projectTemplateDAL = projectTemplateDALFactory(db);
   const resourceMetadataDAL = resourceMetadataDALFactory(db);
+  const kmipClientDAL = kmipClientDALFactory(db);
+  const kmipClientCertificateDAL = kmipClientCertificateDALFactory(db);
+  const kmipOrgConfigDAL = kmipOrgConfigDALFactory(db);
+  const kmipOrgServerCertificateDAL = kmipOrgServerCertificateDALFactory(db);
 
   const permissionService = permissionServiceFactory({
     permissionDAL,
@@ -1429,6 +1439,24 @@ export const registerRoutes = async (
     keyStore
   });
 
+  const kmipService = kmipServiceFactory({
+    kmipClientDAL,
+    permissionService,
+    kmipClientCertificateDAL,
+    kmipOrgConfigDAL,
+    kmsService,
+    kmipOrgServerCertificateDAL,
+    licenseService
+  });
+
+  const kmipOperationService = kmipOperationServiceFactory({
+    kmsService,
+    kmsDAL,
+    projectDAL,
+    kmipClientDAL,
+    permissionService
+  });
+
   await superAdminService.initServerCfg();
 
   // setup the communication with license key server
@@ -1527,7 +1555,9 @@ export const registerRoutes = async (
     projectTemplate: projectTemplateService,
     totp: totpService,
     appConnection: appConnectionService,
-    secretSync: secretSyncService
+    secretSync: secretSyncService,
+    kmip: kmipService,
+    kmipOperation: kmipOperationService
   });
 
   const cronJobs: CronJob[] = [];
@@ -1539,7 +1569,8 @@ export const registerRoutes = async (
   }
 
   server.decorate<FastifyZodProvider["store"]>("store", {
-    user: userDAL
+    user: userDAL,
+    kmipClient: kmipClientDAL
   });
 
   await server.register(injectIdentity, { userDAL, serviceTokenDAL });

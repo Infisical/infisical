@@ -94,6 +94,15 @@ export const LogsFilter = ({
             {actor.metadata.name}
           </SelectItem>
         );
+      case ActorType.KMIP_CLIENT:
+        return (
+          <SelectItem
+            value={`${actor.type}-${actor.metadata.clientId}`}
+            key={`kmip-client-filter-${actor.metadata.clientId}`}
+          >
+            {actor.metadata.name}
+          </SelectItem>
+        );
       default:
         return (
           <SelectItem value="actor-none" key="actor-none">

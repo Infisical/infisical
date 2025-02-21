@@ -24,6 +24,14 @@ export enum ProjectPermissionCmekActions {
   Decrypt = "decrypt"
 }
 
+export enum ProjectPermissionKmipActions {
+  CreateClients = "create-clients",
+  UpdateClients = "update-clients",
+  DeleteClients = "delete-clients",
+  ReadClients = "read-clients",
+  GenerateClientCertificates = "generate-client-certificates"
+}
+
 export enum ProjectPermissionSecretSyncActions {
   Read = "read",
   Create = "create",
@@ -102,7 +110,8 @@ export enum ProjectPermissionSub {
   PkiCollections = "pki-collections",
   Kms = "kms",
   Cmek = "cmek",
-  SecretSyncs = "secret-syncs"
+  SecretSyncs = "secret-syncs",
+  Kmip = "kmip"
 }
 
 export type SecretSubjectFields = {
@@ -190,5 +199,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]
   | [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback]
   | [ProjectPermissionCmekActions, ProjectPermissionSub.Cmek]
-  | [ProjectPermissionActions.Edit, ProjectPermissionSub.Kms];
+  | [ProjectPermissionActions.Edit, ProjectPermissionSub.Kms]
+  | [ProjectPermissionKmipActions, ProjectPermissionSub.Kmip];
+
 export type TProjectPermission = MongoAbility<ProjectPermissionSet>;

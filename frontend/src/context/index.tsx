@@ -10,6 +10,7 @@ export {
   ProjectPermissionActions,
   ProjectPermissionCmekActions,
   ProjectPermissionDynamicSecretActions,
+  ProjectPermissionKmipActions,
   ProjectPermissionSub,
   useProjectPermission
 } from "./ProjectPermissionContext";
