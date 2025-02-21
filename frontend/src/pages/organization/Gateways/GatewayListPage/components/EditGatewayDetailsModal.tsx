@@ -3,9 +3,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input } from "@app/components/v2";
-import { useUpdateGatewayById } from "@app/hooks/api";
+import { Button, FilterableSelect, FormControl, Input } from "@app/components/v2";
+import { useGetUserWorkspaces, useUpdateGatewayById } from "@app/hooks/api";
 import { TGateway } from "@app/hooks/api/gateways/types";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 type Props = {
   gatewayDetails: TGateway;
@@ -13,7 +14,13 @@ type Props = {
 };
 
 const schema = z.object({
-  name: z.string()
+  name: z.string(),
+  projects: z
+    .object({
+      id: z.string(),
+      name: z.string()
+    })
+    .array()
 });
 
 export type FormData = z.infer<typeof schema>;
@@ -31,13 +38,20 @@ export const EditGatewayDetailsModal = ({ gatewayDetails, onClose }: Props) => {
   });
 
   const updateGatewayById = useUpdateGatewayById();
+  // when gateway goes to other products switch to all
+  const { data: secretManagerWorkspaces, isLoading: isSecretManagerLoading } = useGetUserWorkspaces(
+    {
+      type: ProjectType.SecretManager
+    }
+  );
 
-  const onFormSubmit = ({ name }: FormData) => {
+  const onFormSubmit = ({ name, projects }: FormData) => {
     if (isSubmitting) return;
     updateGatewayById.mutate(
       {
         id: gatewayDetails.id,
-        name
+        name,
+        projectIds: projects.map((el) => el.id)
       },
       {
         onSuccess: () => {
@@ -59,6 +73,30 @@ export const EditGatewayDetailsModal = ({ gatewayDetails, onClose }: Props) => {
         render={({ field, fieldState: { error } }) => (
           <FormControl label="Name" isError={Boolean(error)} errorText={error?.message} isRequired>
             <Input {...field} placeholder="db-subnet-1" />
+          </FormControl>
+        )}
+      />
+      <Controller
+        control={control}
+        name="projects"
+        render={({ field: { onChange, value }, fieldState: { error } }) => (
+          <FormControl
+            className="w-full"
+            label="Projects"
+            tooltipText="Select the project that you wish to assign to the gateway."
+            errorText={error?.message}
+            isError={Boolean(error)}
+          >
+            <FilterableSelect
+              options={secretManagerWorkspaces}
+              placeholder="Select projects..."
+              value={value}
+              onChange={onChange}
+              isMulti
+              isLoading={isSecretManagerLoading}
+              getOptionValue={(option) => option.id}
+              getOptionLabel={(option) => option.name}
+            />
           </FormControl>
         )}
       />

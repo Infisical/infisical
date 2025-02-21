@@ -30,6 +30,7 @@ import { externalKmsServiceFactory } from "@app/ee/services/external-kms/externa
 import { gatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
 import { gatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { orgGatewayConfigDALFactory } from "@app/ee/services/gateway/org-gateway-config-dal";
+import { projectGatewayDALFactory } from "@app/ee/services/gateway/project-gateway-dal";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { groupServiceFactory } from "@app/ee/services/group/group-service";
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -398,6 +399,7 @@ export const registerRoutes = async (
 
   const orgGatewayConfigDAL = orgGatewayConfigDALFactory(db);
   const gatewayDAL = gatewayDALFactory(db);
+  const projectGatewayDAL = projectGatewayDALFactory(db);
 
   const permissionService = permissionServiceFactory({
     permissionDAL,
@@ -1312,7 +1314,8 @@ export const registerRoutes = async (
     kmsService,
     licenseService,
     orgGatewayConfigDAL,
-    keyStore
+    keyStore,
+    projectGatewayDAL
   });
 
   const dynamicSecretProviders = buildDynamicSecretProviders({
@@ -1336,8 +1339,7 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     kmsService,
-    gatewayDAL,
-    orgGatewayConfigDAL
+    projectGatewayDAL
   });
 
   const dynamicSecretLeaseService = dynamicSecretLeaseServiceFactory({

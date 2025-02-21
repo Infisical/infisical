@@ -2,22 +2,31 @@ import { queryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { TGateway, TListGatewayDTO } from "./types";
+import { TGateway, TListProjectGatewayDTO, TProjectGateway } from "./types";
 
 export const gatewaysQueryKeys = {
   allKey: () => ["gateways"],
-  listKey: ({ projectId }: TListGatewayDTO) => [
+  listKey: () => [...gatewaysQueryKeys.allKey(), "list"],
+  list: () =>
+    queryOptions({
+      queryKey: gatewaysQueryKeys.listKey(),
+      queryFn: async () => {
+        const { data } = await apiRequest.get<{ gateways: TGateway[] }>("/api/v1/gateways");
+        return data.gateways;
+      }
+    }),
+  listProjectGatewayKey: ({ projectId }: TListProjectGatewayDTO) => [
     ...gatewaysQueryKeys.allKey(),
     "list",
     { projectId }
   ],
-  list: ({ projectId }: TListGatewayDTO = {}) =>
+  listProjectGateways: ({ projectId }: TListProjectGatewayDTO) =>
     queryOptions({
-      queryKey: gatewaysQueryKeys.listKey({ projectId }),
+      queryKey: gatewaysQueryKeys.listProjectGatewayKey({ projectId }),
       queryFn: async () => {
-        const { data } = await apiRequest.get<{ gateways: TGateway[] }>("/api/v1/gateways", {
-          params: { projectId }
-        });
+        const { data } = await apiRequest.get<{ gateways: TProjectGateway[] }>(
+          `/api/v1/gateways/projects/${projectId}`
+        );
         return data.gateways;
       }
     })

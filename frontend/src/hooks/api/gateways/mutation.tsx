@@ -12,7 +12,7 @@ export const useDeleteGatewayById = () => {
       return apiRequest.delete(`/api/v1/gateways/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(gatewaysQueryKeys.list({}));
+      queryClient.invalidateQueries(gatewaysQueryKeys.list());
     }
   });
 };
@@ -20,11 +20,11 @@ export const useDeleteGatewayById = () => {
 export const useUpdateGatewayById = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, name }: TUpdateGatewayDTO) => {
-      return apiRequest.patch(`/api/v1/gateways/${id}`, { name });
+    mutationFn: ({ id, name, projectIds }: TUpdateGatewayDTO) => {
+      return apiRequest.patch(`/api/v1/gateways/${id}`, { name, projectIds });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(gatewaysQueryKeys.list({}));
+      queryClient.invalidateQueries(gatewaysQueryKeys.list());
     }
   });
 };
