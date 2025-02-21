@@ -97,6 +97,13 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
+  if (await knex.schema.hasTable(TableName.DynamicSecret)) {
+    const doesGatewayColExist = await knex.schema.hasColumn(TableName.DynamicSecret, "gatewayId");
+    await knex.schema.alterTable(TableName.DynamicSecret, (t) => {
+      if (doesGatewayColExist) t.dropColumn("gatewayId");
+    });
+  }
+
   await knex.schema.dropTableIfExists(TableName.ProjectGateway);
   await dropOnUpdateTrigger(knex, TableName.ProjectGateway);
 
@@ -105,11 +112,4 @@ export async function down(knex: Knex): Promise<void> {
 
   await knex.schema.dropTableIfExists(TableName.OrgGatewayConfig);
   await dropOnUpdateTrigger(knex, TableName.OrgGatewayConfig);
-
-  if (await knex.schema.hasTable(TableName.DynamicSecret)) {
-    const doesGatewayColExist = await knex.schema.hasColumn(TableName.DynamicSecret, "gatewayId");
-    await knex.schema.alterTable(TableName.DynamicSecret, (t) => {
-      if (doesGatewayColExist) t.dropColumn("gatewayId");
-    });
-  }
 }
