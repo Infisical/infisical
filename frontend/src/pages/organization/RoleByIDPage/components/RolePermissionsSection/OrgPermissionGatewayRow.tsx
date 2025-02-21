@@ -24,10 +24,10 @@ enum Permission {
 }
 
 const PERMISSION_ACTIONS = [
-  { action: OrgGatewayPermissionActions.Read, label: "Read" },
-  { action: OrgGatewayPermissionActions.Create, label: "Create" },
-  { action: OrgGatewayPermissionActions.Edit, label: "Modify" },
-  { action: OrgGatewayPermissionActions.Delete, label: "Remove" }
+  { action: OrgGatewayPermissionActions.ListGateways, label: "List Gateways" },
+  { action: OrgGatewayPermissionActions.CreateGateways, label: "Create Gateways" },
+  { action: OrgGatewayPermissionActions.EditGateways, label: "Edit Gateways" },
+  { action: OrgGatewayPermissionActions.DeleteGateways, label: "Delete Gateways" }
 ] as const;
 
 export const OrgGatewayPermissionRow = ({ isEditable, control, setValue }: Props) => {
@@ -47,7 +47,7 @@ export const OrgGatewayPermissionRow = ({ isEditable, control, setValue }: Props
     if (isCustom) return Permission.Custom;
     if (score === 0) return Permission.NoAccess;
     if (score === totalActions) return Permission.FullAccess;
-    if (score === 1 && rule?.[OrgGatewayPermissionActions.Read]) return Permission.ReadOnly;
+    if (score === 1 && rule?.[OrgGatewayPermissionActions.ListGateways]) return Permission.ReadOnly;
 
     return Permission.Custom;
   }, [rule, isCustom]);
@@ -78,10 +78,10 @@ export const OrgGatewayPermissionRow = ({ isEditable, control, setValue }: Props
         setValue(
           "permissions.gateway",
           {
-            [OrgGatewayPermissionActions.Read]: true,
-            [OrgGatewayPermissionActions.Edit]: true,
-            [OrgGatewayPermissionActions.Create]: true,
-            [OrgGatewayPermissionActions.Delete]: true
+            [OrgGatewayPermissionActions.ListGateways]: true,
+            [OrgGatewayPermissionActions.EditGateways]: true,
+            [OrgGatewayPermissionActions.CreateGateways]: true,
+            [OrgGatewayPermissionActions.DeleteGateways]: true
           },
           { shouldDirty: true }
         );
@@ -90,10 +90,10 @@ export const OrgGatewayPermissionRow = ({ isEditable, control, setValue }: Props
         setValue(
           "permissions.gateway",
           {
-            [OrgGatewayPermissionActions.Read]: true,
-            [OrgGatewayPermissionActions.Edit]: false,
-            [OrgGatewayPermissionActions.Create]: false,
-            [OrgGatewayPermissionActions.Delete]: false
+            [OrgGatewayPermissionActions.ListGateways]: true,
+            [OrgGatewayPermissionActions.EditGateways]: false,
+            [OrgGatewayPermissionActions.CreateGateways]: false,
+            [OrgGatewayPermissionActions.DeleteGateways]: false
           },
           { shouldDirty: true }
         );
@@ -104,10 +104,10 @@ export const OrgGatewayPermissionRow = ({ isEditable, control, setValue }: Props
         setValue(
           "permissions.gateway",
           {
-            [OrgGatewayPermissionActions.Read]: false,
-            [OrgGatewayPermissionActions.Edit]: false,
-            [OrgGatewayPermissionActions.Create]: false,
-            [OrgGatewayPermissionActions.Delete]: false
+            [OrgGatewayPermissionActions.ListGateways]: false,
+            [OrgGatewayPermissionActions.EditGateways]: false,
+            [OrgGatewayPermissionActions.CreateGateways]: false,
+            [OrgGatewayPermissionActions.DeleteGateways]: false
           },
           { shouldDirty: true }
         );

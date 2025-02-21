@@ -37,10 +37,10 @@ const kmipPermissionSchema = z
 
 const orgGatewayPermissionSchema = z
   .object({
-    [OrgGatewayPermissionActions.Read]: z.boolean().optional(),
-    [OrgGatewayPermissionActions.Edit]: z.boolean().optional(),
-    [OrgGatewayPermissionActions.Delete]: z.boolean().optional(),
-    [OrgGatewayPermissionActions.Create]: z.boolean().optional()
+    [OrgGatewayPermissionActions.ListGateways]: z.boolean().optional(),
+    [OrgGatewayPermissionActions.EditGateways]: z.boolean().optional(),
+    [OrgGatewayPermissionActions.DeleteGateways]: z.boolean().optional(),
+    [OrgGatewayPermissionActions.CreateGateways]: z.boolean().optional()
   })
   .optional();
 

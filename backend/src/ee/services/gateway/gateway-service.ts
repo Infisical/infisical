@@ -79,7 +79,10 @@ export const gatewayServiceFactory = ({
       actorAuthMethod,
       orgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGatewayActions.Create, OrgPermissionSubjects.Gateway);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionGatewayActions.CreateGateways,
+      OrgPermissionSubjects.Gateway
+    );
   };
 
   const getGatewayRelayDetails = async (actorId: string, actorOrgId: string, actorAuthMethod: ActorAuthMethod) => {
@@ -152,7 +155,7 @@ export const gatewayServiceFactory = ({
       const rootCaKeyAlgorithm = CertKeyAlgorithm.RSA_2048;
       const rootCaExpiration = new Date(new Date().setFullYear(2045));
       const rootCaCert = await x509.X509CertificateGenerator.createSelfSigned({
-        name: "CN=Infisical Gateway Root CA",
+        name: `O=${identityOrg},CN=Infisical Gateway Root CA`,
         serialNumber: rootCaSerialNumber,
         notBefore: rootCaIssuedAt,
         notAfter: rootCaExpiration,
@@ -174,7 +177,7 @@ export const gatewayServiceFactory = ({
 
       const clientCaCert = await x509.X509CertificateGenerator.create({
         serialNumber: clientCaSerialNumber,
-        subject: "CN=Client Intermediate CA",
+        subject: `O=${identityOrg},CN=Client Intermediate CA`,
         issuer: rootCaCert.subject,
         notBefore: clientCaIssuedAt,
         notAfter: clientCaExpiration,
@@ -227,12 +230,12 @@ export const gatewayServiceFactory = ({
       // generate gateway ca
       const gatewayCaSerialNumber = createSerialNumber();
       const gatewayCaIssuedAt = new Date();
-      const gatewayCaExpiration = new Date(new Date().setFullYear(new Date().getFullYear() + 10));
+      const gatewayCaExpiration = new Date(new Date().setFullYear(2045));
       const gatewayCaKeys = await crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
       const gatewayCaSkObj = crypto.KeyObject.from(gatewayCaKeys.privateKey);
       const gatewayCaCert = await x509.X509CertificateGenerator.create({
         serialNumber: gatewayCaSerialNumber,
-        subject: "CN=KMIP Server Intermediate CA",
+        subject: `O=${identityOrg},CN=Gateway CA`,
         issuer: rootCaCert.subject,
         notBefore: gatewayCaIssuedAt,
         notAfter: gatewayCaExpiration,
@@ -327,6 +330,12 @@ export const gatewayServiceFactory = ({
       format: "der",
       type: "pkcs8"
     });
+    const gatewayCaCert = new x509.X509Certificate(
+      orgKmsDecryptor({
+        cipherTextBlob: orgGatewayConfig.encryptedGatewayCaCertificate
+      })
+    );
+
     const gatewayCaPrivateKey = await crypto.subtle.importKey(
       "pkcs8",
       gatewayCaSkObj.export({ format: "der", type: "pkcs8" }),
@@ -343,7 +352,7 @@ export const gatewayServiceFactory = ({
 
     const extensions: x509.Extension[] = [
       new x509.BasicConstraintsExtension(false),
-      await x509.AuthorityKeyIdentifierExtension.create(rootCaCert, false),
+      await x509.AuthorityKeyIdentifierExtension.create(gatewayCaCert, false),
       await x509.SubjectKeyIdentifierExtension.create(gatewayKeys.publicKey),
       new x509.CertificatePolicyExtension(["2.5.29.32.0"]), // anyPolicy
       new x509.KeyUsagesExtension(
@@ -360,8 +369,8 @@ export const gatewayServiceFactory = ({
     const privateKey = crypto.KeyObject.from(gatewayKeys.privateKey);
     const gatewayCertificate = await x509.X509CertificateGenerator.create({
       serialNumber,
-      subject: `CN=${identityId},O=${identityOrg}`,
-      issuer: rootCaCert.subject,
+      subject: `CN=${identityId},O=${identityOrg},OU=Gateway`,
+      issuer: gatewayCaCert.subject,
       notBefore: certIssuedAt,
       notAfter: certExpireAt,
       signingKey: gatewayCaPrivateKey,
@@ -401,7 +410,7 @@ export const gatewayServiceFactory = ({
         }).cipherTextBlob,
         identityId,
         orgGatewayRootCaId: orgGatewayConfig.id,
-        name: alphaNumericNanoId(8)
+        name: `gateway-${alphaNumericNanoId(6)}`
       });
     });
 
@@ -478,7 +487,10 @@ export const gatewayServiceFactory = ({
       orgPermission.authMethod,
       orgPermission.orgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGatewayActions.Read, OrgPermissionSubjects.Gateway);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionGatewayActions.ListGateways,
+      OrgPermissionSubjects.Gateway
+    );
     const orgGatewayConfig = await orgGatewayConfigDAL.findOne({ orgId: orgPermission.orgId });
     if (!orgGatewayConfig) return [];
 
@@ -496,7 +508,10 @@ export const gatewayServiceFactory = ({
       orgPermission.authMethod,
       orgPermission.orgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGatewayActions.Read, OrgPermissionSubjects.Gateway);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionGatewayActions.ListGateways,
+      OrgPermissionSubjects.Gateway
+    );
     const orgGatewayConfig = await orgGatewayConfigDAL.findOne({ orgId: orgPermission.orgId });
     if (!orgGatewayConfig) throw new NotFoundError({ message: `Gateway with ID ${id} not found.` });
 
@@ -513,7 +528,10 @@ export const gatewayServiceFactory = ({
       orgPermission.authMethod,
       orgPermission.orgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGatewayActions.Edit, OrgPermissionSubjects.Gateway);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionGatewayActions.EditGateways,
+      OrgPermissionSubjects.Gateway
+    );
     const orgGatewayConfig = await orgGatewayConfigDAL.findOne({ orgId: orgPermission.orgId });
     if (!orgGatewayConfig) throw new NotFoundError({ message: `Gateway with ID ${id} not found.` });
 
@@ -530,7 +548,10 @@ export const gatewayServiceFactory = ({
       orgPermission.authMethod,
       orgPermission.orgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGatewayActions.Delete, OrgPermissionSubjects.Gateway);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionGatewayActions.DeleteGateways,
+      OrgPermissionSubjects.Gateway
+    );
     const orgGatewayConfig = await orgGatewayConfigDAL.findOne({ orgId: orgPermission.orgId });
     if (!orgGatewayConfig) throw new NotFoundError({ message: `Gateway with ID ${id} not found.` });
 

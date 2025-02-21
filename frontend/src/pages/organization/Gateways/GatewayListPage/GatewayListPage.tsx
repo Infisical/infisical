@@ -5,6 +5,7 @@ import {
   faBookOpen,
   faEdit,
   faEllipsisV,
+  faInfoCircle,
   faMagnifyingGlass,
   faPlug,
   faSearch,
@@ -125,8 +126,18 @@ export const GatewayListPage = withPermission(
                     <THead>
                       <Tr>
                         <Th className="w-1/3">Name</Th>
-                        <Th>Issued At</Th>
+                        <Th>Cert Issued At</Th>
                         <Th>Identity</Th>
+                        <Th>
+                          Health Check
+                          <Tooltip
+                            asChild={false}
+                            className="normal-case"
+                            content="The last known healthcheck. Triggers every 1 hour."
+                          >
+                            <FontAwesomeIcon icon={faInfoCircle} className="ml-2" />
+                          </Tooltip>
+                        </Th>
                         <Th className="w-5" />
                       </Tr>
                     </THead>
@@ -140,8 +151,8 @@ export const GatewayListPage = withPermission(
                           <Td>{format(new Date(el.issuedAt), "yyyy-MM-dd hh:mm:ss aaa")}</Td>
                           <Td>{el.identity.name}</Td>
                           <Td>
-                            {el.heartbeart
-                              ? formatRelative(new Date(), new Date(el.heartbeart))
+                            {el.heartbeat
+                              ? formatRelative(new Date(el.heartbeat), new Date())
                               : "-"}
                           </Td>
                           <Td className="w-5">
@@ -159,7 +170,7 @@ export const GatewayListPage = withPermission(
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                   <OrgPermissionCan
-                                    I={OrgGatewayPermissionActions.Edit}
+                                    I={OrgGatewayPermissionActions.EditGateways}
                                     a={OrgPermissionSubjects.Gateway}
                                   >
                                     {(isAllowed: boolean) => (
