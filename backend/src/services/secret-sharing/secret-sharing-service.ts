@@ -62,6 +62,11 @@ export const secretSharingServiceFactory = ({
       throw new BadRequestError({ message: "Expiration date cannot be more than 30 days" });
     }
 
+    const fiveMins = 5 * 60 * 1000;
+    if (expiryTime - currentTime < fiveMins) {
+      throw new BadRequestError({ message: "Expiration time cannot be less than 5 mins" });
+    }
+
     if (secretValue.length > 10_000) {
       throw new BadRequestError({ message: "Shared secret value too long" });
     }
@@ -110,6 +115,11 @@ export const secretSharingServiceFactory = ({
     const thirtyDays = 30 * 24 * 60 * 60 * 1000;
     if (expiryTime - currentTime > thirtyDays) {
       throw new BadRequestError({ message: "Expiration date cannot exceed more than 30 days" });
+    }
+
+    const fiveMins = 5 * 60 * 1000;
+    if (expiryTime - currentTime < fiveMins) {
+      throw new BadRequestError({ message: "Expiration time cannot be less than 5 mins" });
     }
 
     const encryptWithRoot = kmsService.encryptWithRootKey();
