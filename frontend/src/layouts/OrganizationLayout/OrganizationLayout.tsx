@@ -103,7 +103,7 @@ export const OrganizationLayout = () => {
                       </Link>
                       <Link to="/organization/gateways">
                         {({ isActive }) => (
-                          <MenuItem isSelected={isActive} icon="jigsaw-puzzle">
+                          <MenuItem isSelected={isActive} icon="gateway" iconMode="reverse">
                             Gateways
                           </MenuItem>
                         )}

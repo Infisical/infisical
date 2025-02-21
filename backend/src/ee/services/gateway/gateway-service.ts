@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 
-import { ForbiddenError, subject } from "@casl/ability";
+import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import { z } from "zod";
 
@@ -23,7 +23,6 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TGatewayDALFactory } from "./gateway-dal";
 import {
   TExchangeAllocatedRelayAddressDTO,
@@ -34,9 +33,11 @@ import {
   TUpdateGatewayByIdDTO
 } from "./gateway-types";
 import { TOrgGatewayConfigDALFactory } from "./org-gateway-config-dal";
+import { TProjectGatewayDALFactory } from "./project-gateway-dal";
 
 type TGatewayServiceFactoryDep = {
   gatewayDAL: TGatewayDALFactory;
+  projectGatewayDAL: TProjectGatewayDALFactory;
   orgGatewayConfigDAL: Pick<TOrgGatewayConfigDALFactory, "findOne" | "create" | "transaction" | "findById">;
   licenseService: Pick<TLicenseServiceFactory, "onPremFeatures" | "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "decryptWithRootKey">;
@@ -56,7 +57,8 @@ export const gatewayServiceFactory = ({
   kmsService,
   permissionService,
   orgGatewayConfigDAL,
-  keyStore
+  keyStore,
+  projectGatewayDAL
 }: TGatewayServiceFactoryDep) => {
   const $validateOrgAccessToGateway = async (orgId: string, actorId: string, actorAuthMethod: ActorAuthMethod) => {
     if (!licenseService.onPremFeatures.gateway) {
@@ -410,7 +412,7 @@ export const gatewayServiceFactory = ({
         }).cipherTextBlob,
         identityId,
         orgGatewayRootCaId: orgGatewayConfig.id,
-        name: `gateway-${alphaNumericNanoId(6)}`
+        name: `gateway-${alphaNumericNanoId(6).toLowerCase()}`
       });
     });
 
@@ -520,7 +522,7 @@ export const gatewayServiceFactory = ({
     return gateway;
   };
 
-  const updateGatewayById = async ({ orgPermission, id, name }: TUpdateGatewayByIdDTO) => {
+  const updateGatewayById = async ({ orgPermission, id, name, projectIds }: TUpdateGatewayByIdDTO) => {
     const { permission } = await permissionService.getOrgPermission(
       orgPermission.type,
       orgPermission.id,
@@ -537,6 +539,16 @@ export const gatewayServiceFactory = ({
 
     const [gateway] = await gatewayDAL.update({ id, orgGatewayRootCaId: orgGatewayConfig.id }, { name });
     if (!gateway) throw new NotFoundError({ message: `Gateway with ID ${id} not found.` });
+    if (projectIds) {
+      await projectGatewayDAL.transaction(async (tx) => {
+        await projectGatewayDAL.delete({ gatewayId: gateway.id }, tx);
+        await projectGatewayDAL.insertMany(
+          projectIds.map((el) => ({ gatewayId: gateway.id, projectId: el })),
+          tx
+        );
+      });
+    }
+
     return gateway;
   };
 
@@ -561,7 +573,7 @@ export const gatewayServiceFactory = ({
   };
 
   const getProjectGateways = async ({ projectId, projectPermission }: TGetProjectGatewayByIdDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
+    await permissionService.getProjectPermission({
       projectId,
       actor: projectPermission.type,
       actorId: projectPermission.id,
@@ -571,18 +583,16 @@ export const gatewayServiceFactory = ({
     });
 
     const gateways = await gatewayDAL.findByProjectId(projectId);
-    const allowedGateways = gateways.filter((el) =>
-      permission.can(
-        ProjectPermissionActions.Read,
-        subject(ProjectPermissionSub.Identity, { identityId: el.identityId })
-      )
-    );
-    return allowedGateways;
+    return gateways;
   };
 
   // this has no permission check and used for dynamic secrets directly
   // assumes permission check is already done
-  const fnGetGatewayClientTls = async (gatewayId: string) => {
+  const fnGetGatewayClientTls = async (projectGatewayId: string) => {
+    const projectGateway = await projectGatewayDAL.findById(projectGatewayId);
+    if (!projectGateway) throw new NotFoundError({ message: `Project gateway with ID ${projectGatewayId} not found.` });
+
+    const { gatewayId } = projectGateway;
     const gateway = await gatewayDAL.findById(gatewayId);
     if (!gateway) throw new NotFoundError({ message: `Gateway with ID ${gatewayId} not found.` });
 

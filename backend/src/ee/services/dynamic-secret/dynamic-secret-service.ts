@@ -16,8 +16,7 @@ import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-fold
 
 import { TDynamicSecretLeaseDALFactory } from "../dynamic-secret-lease/dynamic-secret-lease-dal";
 import { TDynamicSecretLeaseQueueServiceFactory } from "../dynamic-secret-lease/dynamic-secret-lease-queue";
-import { TGatewayDALFactory } from "../gateway/gateway-dal";
-import { TOrgGatewayConfigDALFactory } from "../gateway/org-gateway-config-dal";
+import { TProjectGatewayDALFactory } from "../gateway/project-gateway-dal";
 import { TDynamicSecretDALFactory } from "./dynamic-secret-dal";
 import {
   DynamicSecretStatus,
@@ -46,8 +45,7 @@ type TDynamicSecretServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  gatewayDAL: Pick<TGatewayDALFactory, "findOne">;
-  orgGatewayConfigDAL: Pick<TOrgGatewayConfigDALFactory, "findOne">;
+  projectGatewayDAL: Pick<TProjectGatewayDALFactory, "findOne">;
 };
 
 export type TDynamicSecretServiceFactory = ReturnType<typeof dynamicSecretServiceFactory>;
@@ -62,8 +60,7 @@ export const dynamicSecretServiceFactory = ({
   dynamicSecretQueueService,
   projectDAL,
   kmsService,
-  gatewayDAL,
-  orgGatewayConfigDAL
+  projectGatewayDAL
 }: TDynamicSecretServiceFactoryDep) => {
   const create = async ({
     path,
@@ -115,20 +112,15 @@ export const dynamicSecretServiceFactory = ({
     const inputs = await selectedProvider.validateProviderInputs(provider.inputs);
 
     let selectedGatewayId: string | null = null;
-    if (inputs && typeof inputs === "object" && "gatewayId" in inputs && inputs.gatewayId) {
-      const gatewayId = inputs.gatewayId as string;
+    if (inputs && typeof inputs === "object" && "projectGatewayId" in inputs && inputs.projectGatewayId) {
+      const projectGatewayId = inputs.projectGatewayId as string;
 
-      const orgGateway = await orgGatewayConfigDAL.findOne({ orgId: actorOrgId });
-      if (!orgGateway)
+      const projectGateway = await projectGatewayDAL.findOne({ id: projectGatewayId, projectId });
+      if (!projectGateway)
         throw new NotFoundError({
-          message: `Gateway with ${gatewayId} not found`
+          message: `Project gateway with ${projectGatewayId} not found`
         });
-      const gateway = await gatewayDAL.findOne({ id: gatewayId, orgGatewayRootCaId: orgGateway.id });
-      if (!gateway)
-        throw new NotFoundError({
-          message: `Gateway with ${gatewayId} not found`
-        });
-      selectedGatewayId = gateway.id;
+      selectedGatewayId = projectGateway.id;
     }
 
     const isConnected = await selectedProvider.validateConnection(provider.inputs);
@@ -147,7 +139,7 @@ export const dynamicSecretServiceFactory = ({
       defaultTTL,
       folderId: folder.id,
       name,
-      gatewayId: selectedGatewayId
+      projectGatewayId: selectedGatewayId
     });
     return dynamicSecretCfg;
   };
@@ -220,20 +212,20 @@ export const dynamicSecretServiceFactory = ({
     const updatedInput = await selectedProvider.validateProviderInputs(newInput);
 
     let selectedGatewayId: string | null = null;
-    if (updatedInput && typeof updatedInput === "object" && "gatewayId" in updatedInput && updatedInput?.gatewayId) {
-      const gatewayId = updatedInput.gatewayId as string;
+    if (
+      updatedInput &&
+      typeof updatedInput === "object" &&
+      "projectGatewayId" in updatedInput &&
+      updatedInput?.projectGatewayId
+    ) {
+      const projectGatewayId = updatedInput.projectGatewayId as string;
 
-      const orgGateway = await orgGatewayConfigDAL.findOne({ orgId: actorOrgId });
-      if (!orgGateway)
+      const projectGateway = await projectGatewayDAL.findOne({ id: projectGatewayId, projectId });
+      if (!projectGateway)
         throw new NotFoundError({
-          message: `Gateway with ${gatewayId} not found`
+          message: `Project gateway with ${projectGatewayId} not found`
         });
-      const gateway = await gatewayDAL.findOne({ id: gatewayId, orgGatewayRootCaId: orgGateway.id });
-      if (!gateway)
-        throw new NotFoundError({
-          message: `Gateway with ${gatewayId} not found`
-        });
-      selectedGatewayId = gateway.id;
+      selectedGatewayId = projectGateway.id;
     }
 
     const isConnected = await selectedProvider.validateConnection(newInput);
@@ -246,7 +238,7 @@ export const dynamicSecretServiceFactory = ({
       name: newName ?? name,
       status: null,
       statusDetails: null,
-      gatewayId: selectedGatewayId
+      projectGatewayId: selectedGatewayId
     });
 
     return updatedDynamicCfg;

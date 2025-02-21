@@ -68,13 +68,29 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.Gateway);
   }
 
+  if (!(await knex.schema.hasTable(TableName.ProjectGateway))) {
+    await knex.schema.createTable(TableName.ProjectGateway, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+
+      t.string("projectId").notNullable();
+      t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
+
+      t.uuid("gatewayId").notNullable();
+      t.foreign("gatewayId").references("id").inTable(TableName.Gateway).onDelete("CASCADE");
+
+      t.timestamps(true, true, true);
+    });
+
+    await createOnUpdateTrigger(knex, TableName.ProjectGateway);
+  }
+
   if (await knex.schema.hasTable(TableName.DynamicSecret)) {
     const doesGatewayColExist = await knex.schema.hasColumn(TableName.DynamicSecret, "gatewayId");
     await knex.schema.alterTable(TableName.DynamicSecret, (t) => {
       // not setting a foreign constraint so that cascade effects are not triggered
       if (!doesGatewayColExist) {
-        t.uuid("gatewayId");
-        t.foreign("gatewayId").references("id").inTable(TableName.Identity);
+        t.uuid("projectGatewayId");
+        t.foreign("projectGatewayId").references("id").inTable(TableName.ProjectGateway);
       }
     });
   }

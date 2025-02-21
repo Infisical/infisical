@@ -143,7 +143,7 @@ export const SqlDatabaseInputForm = ({
 
   const createDynamicSecret = useCreateDynamicSecret();
   const { data: projectGateways, isPending: isProjectGatewaysLoading } = useQuery(
-    gatewaysQueryKeys.list({ projectId: currentWorkspace.id })
+    gatewaysQueryKeys.listProjectGateways({ projectId: currentWorkspace.id })
   );
 
   const handleCreateDynamicSecret = async ({ name, maxTTL, provider, defaultTTL }: TForm) => {

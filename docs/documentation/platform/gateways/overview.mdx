@@ -52,12 +52,32 @@ You can easily deploy a gateway using the Infisical CLI by following these steps
   </Note>
 
   </Step>
-  <Step title="Verification">
-    1. Check the gateway log to have **Gateway started successfully**
-    
-    2. Navigate to **Gateways** list page in Org Access Control
-    ![list-gateway](../../../images/platform/gateways/gateway-list.png)
-  </Step>
+<Step title="Verify Gateway Deployment">
+   1. Check gateway deployment status:
+       - Look for the message "**Gateway started successfully**" in the gateway logs
+       - This confirms your gateway is running correctly
+  
+   2. Verify gateway registration:
+       - Open your Infisical dashboard
+       - Navigate to **Organization Access Control**
+       - Select the **Gateways** tab
+       - Your newly deployed gateway should appear in the list
+   ![Gateway list in Organization Access Control](../../../images/platform/gateways/gateway-list.png)
+</Step>
+
+ <Step title="Link Gateway to Projects">
+   1. Access gateway settings:
+      - Find your gateway in the list
+      - Click the options menu (⋮)
+      - Select **Edit Details**
+   ![Edit gateway option](../../../images/platform/gateways/edit-gateway.png)
+  
+   2. Configure project access:
+      - In the edit modal, you'll see a list of available projects
+      - Select the projects you want to grant gateway access to
+      - Click Save to apply your changes
+   ![Project assignment modal](../../../images/platform/gateways/assign-project.png)
+ </Step>
 </Steps>
 
 ## Using Your Gateway

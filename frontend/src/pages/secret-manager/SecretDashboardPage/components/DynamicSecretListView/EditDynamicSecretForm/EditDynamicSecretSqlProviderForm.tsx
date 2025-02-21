@@ -36,7 +36,7 @@ const formSchema = z.object({
       revocationStatement: z.string().min(1),
       renewStatement: z.string().optional(),
       ca: z.string().optional(),
-      gatewayId: z.string().optional()
+      projectGatewayId: z.string().optional()
     })
     .partial(),
   defaultTTL: z.string().superRefine((val, ctx) => {
@@ -100,12 +100,13 @@ export const EditDynamicSecretSqlProviderForm = ({
   });
   const { currentWorkspace } = useWorkspace();
   const { data: projectGateways, isPending: isProjectGatewaysLoading } = useQuery(
-    gatewaysQueryKeys.list({ projectId: currentWorkspace.id })
+    gatewaysQueryKeys.listProjectGateways({ projectId: currentWorkspace.id })
   );
 
   const updateDynamicSecret = useUpdateDynamicSecret();
-  const selectedGatewayId = watch("inputs.gatewayId");
-  const isGatewayInActive = projectGateways?.findIndex((el) => el.id === selectedGatewayId) === -1;
+  const selectedProjectGatewayId = watch("inputs.projectGatewayId");
+  const isGatewayInActive =
+    projectGateways?.findIndex((el) => el.projectGatewayId === selectedProjectGatewayId) === -1;
 
   const handleUpdateDynamicSecret = async ({ inputs, maxTTL, defaultTTL, newName }: TForm) => {
     // wait till previous request is finished
@@ -119,7 +120,10 @@ export const EditDynamicSecretSqlProviderForm = ({
         data: {
           maxTTL: maxTTL || undefined,
           defaultTTL,
-          inputs: { ...inputs, gatewayId: isGatewayInActive ? null : inputs.gatewayId },
+          inputs: {
+            ...inputs,
+            projectGatewayId: isGatewayInActive ? null : inputs.projectGatewayId
+          },
           newName: newName === dynamicSecret.name ? undefined : newName
         }
       });
@@ -189,14 +193,14 @@ export const EditDynamicSecretSqlProviderForm = ({
         <div>
           <Controller
             control={control}
-            name="inputs.gatewayId"
+            name="inputs.projectGatewayId"
             defaultValue=""
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <FormControl
                 isError={Boolean(error?.message) || isGatewayInActive}
                 errorText={
-                  isGatewayInActive && selectedGatewayId
-                    ? `Gateway ${selectedGatewayId} is removed`
+                  isGatewayInActive && selectedProjectGatewayId
+                    ? `Project Gateway ${selectedProjectGatewayId} is removed`
                     : error?.message
                 }
                 label="Gateway"
@@ -215,7 +219,7 @@ export const EditDynamicSecretSqlProviderForm = ({
                     Internet Gateway
                   </SelectItem>
                   {projectGateways?.map((el) => (
-                    <SelectItem value={el.id} key={el.id}>
+                    <SelectItem value={el.projectGatewayId} key={el.id}>
                       {el.name}
                     </SelectItem>
                   ))}

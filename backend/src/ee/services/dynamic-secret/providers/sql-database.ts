@@ -34,7 +34,7 @@ type TSqlDatabaseProviderDTO = {
 export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretSqlDBSchema.parseAsync(inputs);
-    verifyHostInputValidity(providerInputs.host, Boolean(providerInputs.gatewayId));
+    verifyHostInputValidity(providerInputs.host, Boolean(providerInputs.projectGatewayId));
     return providerInputs;
   };
 
@@ -71,7 +71,7 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
     providerInputs: z.infer<typeof DynamicSecretSqlDBSchema>,
     gatewayCallback: (port: number) => Promise<void>
   ) => {
-    const relayDetails = await gatewayService.fnGetGatewayClientTls(providerInputs.gatewayId as string);
+    const relayDetails = await gatewayService.fnGetGatewayClientTls(providerInputs.projectGatewayId as string);
     const [relayHost, relayPort] = relayDetails.relayAddress.split(":");
     await withGatewayProxy(
       async (port) => {
@@ -105,7 +105,7 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
       await db.destroy();
     };
 
-    if (providerInputs.gatewayId) {
+    if (providerInputs.projectGatewayId) {
       await gatewayProxyWrapper(providerInputs, gatewayCallback);
     } else {
       await gatewayCallback();
@@ -138,7 +138,7 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
       });
       await db.destroy();
     };
-    if (providerInputs.gatewayId) {
+    if (providerInputs.projectGatewayId) {
       await gatewayProxyWrapper(providerInputs, gatewayCallback);
     } else {
       await gatewayCallback();
@@ -163,7 +163,7 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
 
       await db.destroy();
     };
-    if (providerInputs.gatewayId) {
+    if (providerInputs.projectGatewayId) {
       await gatewayProxyWrapper(providerInputs, gatewayCallback);
     } else {
       await gatewayCallback();
@@ -198,7 +198,7 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
 
       await db.destroy();
     };
-    if (providerInputs.gatewayId) {
+    if (providerInputs.projectGatewayId) {
       await gatewayProxyWrapper(providerInputs, gatewayCallback);
     } else {
       await gatewayCallback();

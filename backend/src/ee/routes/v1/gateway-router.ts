@@ -17,6 +17,7 @@ const SanitizedGatewaySchema = GatewaysSchema.pick({
   serialNumber: true,
   heartbeat: true
 });
+
 const isValidRelayAddress = (relayAddress: string) => {
   const [ip, port] = relayAddress.split(":");
   return isValidIp(ip) && Number(port) <= 65535 && Number(port) >= 40000;
@@ -120,23 +121,54 @@ export const registerGatewayRouter = async (server: FastifyZodProvider) => {
             identity: z.object({
               name: z.string(),
               id: z.string()
-            })
+            }),
+            projects: z
+              .object({
+                name: z.string(),
+                id: z.string(),
+                slug: z.string()
+              })
+              .array()
           }).array()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.JWT]),
     handler: async (req) => {
-      if (req.query.projectId) {
-        const gateways = await server.services.gateway.getProjectGateways({
-          projectId: req.query.projectId,
-          projectPermission: req.permission
-        });
-        return { gateways };
-      }
-
       const gateways = await server.services.gateway.listGateways({
         orgPermission: req.permission
+      });
+      return { gateways };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/projects/:projectId",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        projectId: z.string()
+      }),
+      response: {
+        200: z.object({
+          gateways: SanitizedGatewaySchema.extend({
+            identity: z.object({
+              name: z.string(),
+              id: z.string()
+            }),
+            projectGatewayId: z.string()
+          }).array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.JWT]),
+    handler: async (req) => {
+      const gateways = await server.services.gateway.getProjectGateways({
+        projectId: req.params.projectId,
+        projectPermission: req.permission
       });
       return { gateways };
     }
@@ -184,7 +216,8 @@ export const registerGatewayRouter = async (server: FastifyZodProvider) => {
         id: z.string()
       }),
       body: z.object({
-        name: slugSchema({ field: "name" }).optional()
+        name: slugSchema({ field: "name" }).optional(),
+        projectIds: z.string().array().optional()
       }),
       response: {
         200: z.object({
@@ -197,7 +230,8 @@ export const registerGatewayRouter = async (server: FastifyZodProvider) => {
       const gateway = await server.services.gateway.updateGatewayById({
         orgPermission: req.permission,
         id: req.params.id,
-        name: req.body.name
+        name: req.body.name,
+        projectIds: req.body.projectIds
       });
       return { gateway };
     }
