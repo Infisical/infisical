@@ -46,13 +46,14 @@ var gatewayCmd = &cobra.Command{
 		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 		sigStopCh := make(chan bool, 1)
 
+		ctx, cancel := context.WithCancel(cmd.Context())
+		defer cancel()
+
 		go func() {
 			<-sigCh
 			close(sigStopCh)
+			cancel()
 		}()
-
-		ctx, cancel := context.WithCancel(cmd.Context())
-		defer cancel()
 
 		for {
 			select {

@@ -155,7 +155,7 @@ func (g *Gateway) Listen(ctx context.Context) error {
 	})
 
 	errCh := make(chan error, 1)
-	log.Info().Msg("Connector started successfully")
+	log.Info().Msg("Gateway started successfully")
 	g.registerHeartBeat(errCh, done)
 	g.registerRelayIsActive(relayNonTlsConn.Addr().String(), errCh, done)
 
@@ -235,8 +235,8 @@ func (g *Gateway) registerHeartBeat(errCh chan error, done chan bool) {
 	ticker := time.NewTicker(1 * time.Hour)
 
 	go func() {
-		// wait for 5 mins
-		time.Sleep(5 * time.Second)
+		time.Sleep(10 * time.Second)
+		log.Info().Msg("Registering first heart beat")
 		err := api.CallGatewayHeartBeatV1(g.httpClient)
 		if err != nil {
 			log.Error().Msgf("Failed to register heartbeat: %s", err)
@@ -248,6 +248,7 @@ func (g *Gateway) registerHeartBeat(errCh chan error, done chan bool) {
 				ticker.Stop()
 				return
 			case <-ticker.C:
+				log.Info().Msg("Registering heart beat")
 				err := api.CallGatewayHeartBeatV1(g.httpClient)
 				errCh <- err
 			}
