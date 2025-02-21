@@ -19,7 +19,7 @@ const SanitizedGatewaySchema = GatewaysSchema.pick({
 });
 const isValidRelayAddress = (relayAddress: string) => {
   const [ip, port] = relayAddress.split(":");
-  return isValidIp(ip) && Number(port) <= 65535 && Number(port) >= 49152;
+  return isValidIp(ip) && Number(port) <= 65535 && Number(port) >= 40000;
 };
 
 export const registerGatewayRouter = async (server: FastifyZodProvider) => {
