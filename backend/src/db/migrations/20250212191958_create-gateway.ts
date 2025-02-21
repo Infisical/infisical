@@ -97,6 +97,9 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
+  await knex.schema.dropTableIfExists(TableName.ProjectGateway);
+  await dropOnUpdateTrigger(knex, TableName.ProjectGateway);
+
   await knex.schema.dropTableIfExists(TableName.Gateway);
   await dropOnUpdateTrigger(knex, TableName.Gateway);
 
