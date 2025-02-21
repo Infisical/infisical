@@ -8,13 +8,17 @@ import { TSecretSyncForm } from "../schemas";
 import { AwsRegionSelect } from "./shared";
 
 export const AwsParameterStoreSyncFields = () => {
-  const { control } = useFormContext<
+  const { control, setValue } = useFormContext<
     TSecretSyncForm & { destination: SecretSync.AWSParameterStore }
   >();
 
   return (
     <>
-      <SecretSyncConnectionField />
+      <SecretSyncConnectionField
+        onChange={() => {
+          setValue("syncOptions.keyId", undefined);
+        }}
+      />
       <Controller
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <FormControl isError={Boolean(error)} errorText={error?.message} label="Region">

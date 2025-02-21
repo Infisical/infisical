@@ -8,10 +8,10 @@ import { Button, ModalClose } from "@app/components/v2";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { TSecretSync, useUpdateSecretSync } from "@app/hooks/api/secretSyncs";
 
+import { SecretSyncOptionsFields } from "./SecretSyncOptionsFields/SecretSyncOptionsFields";
 import { TSecretSyncForm, UpdateSecretSyncFormSchema } from "./schemas";
 import { SecretSyncDestinationFields } from "./SecretSyncDestinationFields";
 import { SecretSyncDetailsFields } from "./SecretSyncDetailsFields";
-import { SecretSyncOptionsFields } from "./SecretSyncOptionsFields";
 import { SecretSyncSourceFields } from "./SecretSyncSourceFields";
 
 type Props = {

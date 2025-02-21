@@ -22,18 +22,19 @@ import {
   TUpdateAppConnectionDTO,
   TValidateAppConnectionCredentials
 } from "@app/services/app-connection/app-connection-types";
-import { ValidateAwsConnectionCredentialsSchema } from "@app/services/app-connection/aws";
-import { ValidateDatabricksConnectionCredentialsSchema } from "@app/services/app-connection/databricks";
-import { databricksConnectionService } from "@app/services/app-connection/databricks/databricks-connection-service";
-import { ValidateGitHubConnectionCredentialsSchema } from "@app/services/app-connection/github";
-import { githubConnectionService } from "@app/services/app-connection/github/github-connection-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAppConnectionDALFactory } from "./app-connection-dal";
+import { ValidateAwsConnectionCredentialsSchema } from "./aws";
+import { awsConnectionService } from "./aws/aws-connection-service";
 import { ValidateAzureAppConfigurationConnectionCredentialsSchema } from "./azure-app-configuration";
 import { ValidateAzureKeyVaultConnectionCredentialsSchema } from "./azure-key-vault";
+import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
+import { databricksConnectionService } from "./databricks/databricks-connection-service";
 import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
 import { gcpConnectionService } from "./gcp/gcp-connection-service";
+import { ValidateGitHubConnectionCredentialsSchema } from "./github";
+import { githubConnectionService } from "./github/github-connection-service";
 
 export type TAppConnectionServiceFactoryDep = {
   appConnectionDAL: TAppConnectionDALFactory;
@@ -369,6 +370,7 @@ export const appConnectionServiceFactory = ({
     listAvailableAppConnectionsForUser,
     github: githubConnectionService(connectAppConnectionById),
     gcp: gcpConnectionService(connectAppConnectionById),
-    databricks: databricksConnectionService(connectAppConnectionById, appConnectionDAL, kmsService)
+    databricks: databricksConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
+    aws: awsConnectionService(connectAppConnectionById)
   };
 };

@@ -2,6 +2,7 @@ import { Job } from "bullmq";
 
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { QueueJobs } from "@app/queue";
+import { ResourceMetadataDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import {
   TAwsSecretsManagerSync,
   TAwsSecretsManagerSyncInput,
@@ -197,5 +198,10 @@ export type TSendSecretSyncFailedNotificationsJobDTO = Job<
 
 export type TSecretMap = Record<
   string,
-  { value: string; comment?: string; skipMultilineEncoding?: boolean | null | undefined }
+  {
+    value: string;
+    comment?: string;
+    skipMultilineEncoding?: boolean | null | undefined;
+    secretMetadata?: ResourceMetadataDTO;
+  }
 >;

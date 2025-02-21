@@ -19,7 +19,7 @@ export const SecretSyncsTab = () => {
   const { data: secretSyncs = [], isPending: isSecretSyncsPending } = useListSecretSyncs(
     currentWorkspace.id,
     {
-      refetchInterval: 4000
+      refetchInterval: 30000
     }
   );
 

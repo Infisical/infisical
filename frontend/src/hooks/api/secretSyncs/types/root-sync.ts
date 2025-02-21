@@ -1,6 +1,12 @@
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { SecretSyncInitialSyncBehavior, SecretSyncStatus } from "@app/hooks/api/secretSyncs";
 
+export type RootSyncOptions = {
+  initialSyncBehavior: SecretSyncInitialSyncBehavior;
+  // prependPrefix?: string;
+  // appendSuffix?: string;
+};
+
 export type TRootSecretSync = {
   id: string;
   name: string;
@@ -24,11 +30,7 @@ export type TRootSecretSync = {
   lastRemoveJobId: string | null;
   lastRemovedAt: Date | null;
   lastRemoveMessage: string | null;
-  syncOptions: {
-    initialSyncBehavior: SecretSyncInitialSyncBehavior;
-    // prependPrefix?: string;
-    // appendSuffix?: string;
-  };
+  syncOptions: RootSyncOptions;
   connection: {
     app: AppConnection;
     id: string;

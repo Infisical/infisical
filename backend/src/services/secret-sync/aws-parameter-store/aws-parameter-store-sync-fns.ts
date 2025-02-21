@@ -7,6 +7,8 @@ import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 import { TAwsParameterStoreSyncWithCredentials } from "./aws-parameter-store-sync-types";
 
 type TAWSParameterStoreRecord = Record<string, AWS.SSM.Parameter>;
+type TAWSParameterStoreMetadataRecord = Record<string, AWS.SSM.ParameterMetadata>;
+type TAWSParameterStoreTagsRecord = Record<string, Record<string, string>>;
 
 const MAX_RETRIES = 5;
 const BATCH_SIZE = 10;
@@ -80,6 +82,129 @@ const getParametersByPath = async (ssm: AWS.SSM, path: string): Promise<TAWSPara
   return awsParameterStoreSecretsRecord;
 };
 
+const getParameterMetadataByPath = async (ssm: AWS.SSM, path: string): Promise<TAWSParameterStoreMetadataRecord> => {
+  const awsParameterStoreMetadataRecord: TAWSParameterStoreMetadataRecord = {};
+  let hasNext = true;
+  let nextToken: string | undefined;
+  let attempt = 0;
+
+  while (hasNext) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const parameters = await ssm
+        .describeParameters({
+          MaxResults: 10,
+          NextToken: nextToken,
+          ParameterFilters: [
+            {
+              Key: "Path",
+              Option: "OneLevel",
+              Values: [path]
+            }
+          ]
+        })
+        .promise();
+
+      attempt = 0;
+
+      if (parameters.Parameters) {
+        parameters.Parameters.forEach((parameter) => {
+          if (parameter.Name) {
+            // no leading slash if path is '/'
+            const secKey = path.length > 1 ? parameter.Name.substring(path.length) : parameter.Name;
+            awsParameterStoreMetadataRecord[secKey] = parameter;
+          }
+        });
+      }
+
+      hasNext = Boolean(parameters.NextToken);
+      nextToken = parameters.NextToken;
+    } catch (e) {
+      if ((e as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
+        attempt += 1;
+        // eslint-disable-next-line no-await-in-loop
+        await sleep();
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
+      throw e;
+    }
+  }
+
+  return awsParameterStoreMetadataRecord;
+};
+
+const getParameterStoreTagsRecord = async (
+  ssm: AWS.SSM,
+  awsParameterStoreSecretsRecord: TAWSParameterStoreRecord,
+  needsTagsPermissions: boolean
+): Promise<{ shouldManageTags: boolean; awsParameterStoreTagsRecord: TAWSParameterStoreTagsRecord }> => {
+  const awsParameterStoreTagsRecord: TAWSParameterStoreTagsRecord = {};
+
+  for await (const entry of Object.entries(awsParameterStoreSecretsRecord)) {
+    const [key, parameter] = entry;
+
+    if (!parameter.Name) {
+      // eslint-disable-next-line no-continue
+      continue;
+    }
+
+    try {
+      const tags = await ssm
+        .listTagsForResource({
+          ResourceType: "Parameter",
+          ResourceId: parameter.Name
+        })
+        .promise();
+
+      awsParameterStoreTagsRecord[key] = Object.fromEntries(tags.TagList?.map((tag) => [tag.Key, tag.Value]) ?? []);
+    } catch (e) {
+      // users aren't required to provide tag permissions to use sync so we handle gracefully if unauthorized
+      // and they aren't trying to configure tags
+      if ((e as AWSError).code === "AccessDeniedException") {
+        if (!needsTagsPermissions) {
+          return { shouldManageTags: false, awsParameterStoreTagsRecord: {} };
+        }
+
+        throw new SecretSyncError({
+          message:
+            "IAM role has inadequate permissions to manage resource tags. Ensure the following polices are present: ssm:ListTagsForResource, ssm:AddTagsToResource, and ssm:RemoveTagsFromResource",
+          shouldRetry: false
+        });
+      }
+
+      throw e;
+    }
+  }
+
+  return { shouldManageTags: true, awsParameterStoreTagsRecord };
+};
+
+const processParameterTags = ({
+  syncTagsRecord,
+  awsTagsRecord
+}: {
+  syncTagsRecord: Record<string, string>;
+  awsTagsRecord: Record<string, string>;
+}) => {
+  const tagsToAdd: AWS.SSM.TagList = [];
+  const tagKeysToRemove: string[] = [];
+
+  for (const syncEntry of Object.entries(syncTagsRecord)) {
+    const [syncKey, syncValue] = syncEntry;
+
+    if (!(syncKey in awsTagsRecord) || syncValue !== awsTagsRecord[syncKey])
+      tagsToAdd.push({ Key: syncKey, Value: syncValue });
+  }
+
+  for (const awsKey of Object.keys(awsTagsRecord)) {
+    if (!(awsKey in syncTagsRecord)) tagKeysToRemove.push(awsKey);
+  }
+
+  return { tagsToAdd, tagKeysToRemove };
+};
+
 const putParameter = async (
   ssm: AWS.SSM,
   params: AWS.SSM.PutParameterRequest,
@@ -93,6 +218,42 @@ const putParameter = async (
 
       // retry
       return putParameter(ssm, params, attempt + 1);
+    }
+    throw error;
+  }
+};
+
+const addTagsToParameter = async (
+  ssm: AWS.SSM,
+  params: Omit<AWS.SSM.AddTagsToResourceRequest, "ResourceType">,
+  attempt = 0
+): Promise<AWS.SSM.AddTagsToResourceResult> => {
+  try {
+    return await ssm.addTagsToResource({ ...params, ResourceType: "Parameter" }).promise();
+  } catch (error) {
+    if ((error as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
+      await sleep();
+
+      // retry
+      return addTagsToParameter(ssm, params, attempt + 1);
+    }
+    throw error;
+  }
+};
+
+const removeTagsFromParameter = async (
+  ssm: AWS.SSM,
+  params: Omit<AWS.SSM.RemoveTagsFromResourceRequest, "ResourceType">,
+  attempt = 0
+): Promise<AWS.SSM.RemoveTagsFromResourceResult> => {
+  try {
+    return await ssm.removeTagsFromResource({ ...params, ResourceType: "Parameter" }).promise();
+  } catch (error) {
+    if ((error as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
+      await sleep();
+
+      // retry
+      return removeTagsFromParameter(ssm, params, attempt + 1);
     }
     throw error;
   }
@@ -132,35 +293,92 @@ const deleteParametersBatch = async (
 
 export const AwsParameterStoreSyncFns = {
   syncSecrets: async (secretSync: TAwsParameterStoreSyncWithCredentials, secretMap: TSecretMap) => {
-    const { destinationConfig } = secretSync;
+    const { destinationConfig, syncOptions } = secretSync;
 
     const ssm = await getSSM(secretSync);
 
-    // TODO(scott): KMS Key ID, Tags
-
     const awsParameterStoreSecretsRecord = await getParametersByPath(ssm, destinationConfig.path);
 
-    for await (const entry of Object.entries(secretMap)) {
-      const [key, { value }] = entry;
+    const awsParameterStoreMetadataRecord = await getParameterMetadataByPath(ssm, destinationConfig.path);
 
-      // skip empty values (not allowed by AWS) or secrets that haven't changed
-      if (!value || (key in awsParameterStoreSecretsRecord && awsParameterStoreSecretsRecord[key].Value === value)) {
+    const { shouldManageTags, awsParameterStoreTagsRecord } = await getParameterStoreTagsRecord(
+      ssm,
+      awsParameterStoreSecretsRecord,
+      Boolean(syncOptions.tags?.length || syncOptions.syncSecretMetadataAsTags)
+    );
+    const syncTagsRecord = Object.fromEntries(syncOptions.tags?.map((tag) => [tag.key, tag.value]) ?? []);
+
+    for await (const entry of Object.entries(secretMap)) {
+      const [key, { value, secretMetadata }] = entry;
+
+      // skip empty values (not allowed by AWS)
+      if (!value) {
         // eslint-disable-next-line no-continue
         continue;
       }
 
-      try {
-        await putParameter(ssm, {
-          Name: `${destinationConfig.path}${key}`,
-          Type: "SecureString",
-          Value: value,
-          Overwrite: true
+      const keyId = syncOptions.keyId ?? "alias/aws/ssm";
+
+      // create parameter or update if changed
+      if (
+        !(key in awsParameterStoreSecretsRecord) ||
+        value !== awsParameterStoreSecretsRecord[key].Value ||
+        keyId !== awsParameterStoreMetadataRecord[key]?.KeyId
+      ) {
+        try {
+          await putParameter(ssm, {
+            Name: `${destinationConfig.path}${key}`,
+            Type: "SecureString",
+            Value: value,
+            Overwrite: true,
+            KeyId: keyId
+          });
+        } catch (error) {
+          throw new SecretSyncError({
+            error,
+            secretKey: key
+          });
+        }
+      }
+
+      if (shouldManageTags) {
+        const { tagsToAdd, tagKeysToRemove } = processParameterTags({
+          syncTagsRecord: {
+            // configured sync tags take preference over secret metadata
+            ...(syncOptions.syncSecretMetadataAsTags &&
+              Object.fromEntries(secretMetadata?.map((tag) => [tag.key, tag.value]) ?? [])),
+            ...syncTagsRecord
+          },
+          awsTagsRecord: awsParameterStoreTagsRecord[key] ?? {}
         });
-      } catch (error) {
-        throw new SecretSyncError({
-          error,
-          secretKey: key
-        });
+
+        if (tagsToAdd.length) {
+          try {
+            await addTagsToParameter(ssm, {
+              ResourceId: `${destinationConfig.path}${key}`,
+              Tags: tagsToAdd
+            });
+          } catch (error) {
+            throw new SecretSyncError({
+              error,
+              secretKey: key
+            });
+          }
+        }
+
+        if (tagKeysToRemove.length) {
+          try {
+            await removeTagsFromParameter(ssm, {
+              ResourceId: `${destinationConfig.path}${key}`,
+              TagKeys: tagKeysToRemove
+            });
+          } catch (error) {
+            throw new SecretSyncError({
+              error,
+              secretKey: key
+            });
+          }
+        }
       }
     }
 

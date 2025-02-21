@@ -1,3 +1,4 @@
+import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import {
   TAwsConnection,
   TAwsConnectionConfig,
@@ -16,6 +17,7 @@ import {
   TGitHubConnectionInput,
   TValidateGitHubConnectionCredentials
 } from "@app/services/app-connection/github";
+import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 
 import {
   TAzureAppConfigurationConnection,
@@ -73,3 +75,9 @@ export type TValidateAppConnectionCredentials =
   | TValidateAzureKeyVaultConnectionCredentials
   | TValidateAzureAppConfigurationConnectionCredentials
   | TValidateDatabricksConnectionCredentials;
+
+export type TListAwsConnectionKmsKeys = {
+  connectionId: string;
+  region: AWSRegion;
+  destination: SecretSync.AWSParameterStore | SecretSync.AWSSecretsManager;
+};
