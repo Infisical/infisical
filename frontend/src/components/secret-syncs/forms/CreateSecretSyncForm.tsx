@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Modal, ModalContent, Switch } from "@app/components/v2";
+import { Button, FormControl, Switch } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import {
@@ -165,108 +165,87 @@ export const CreateSecretSyncForm = ({ destination, onComplete, onCancel }: Prop
     );
 
   return (
-    <>
-      <form className={twMerge(isFinalStep && "max-h-[70vh] overflow-y-auto")}>
-        <FormProvider {...formMethods}>
-          <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
-            <Tab.List className="-pb-1 mb-6 w-full border-b-2 border-mineshaft-600">
-              {FORM_TABS.map((tab, index) => (
-                <Tab
-                  onClick={async (e) => {
-                    e.preventDefault();
-                    const isEnabled = await isTabEnabled(index);
-                    setSelectedTabIndex((prev) => (isEnabled ? index : prev));
-                  }}
-                  className={({ selected }) =>
-                    `w-30 -mb-[0.14rem] ${index > selectedTabIndex ? "opacity-30" : ""} px-4 py-2 text-sm font-medium outline-none disabled:opacity-60 ${
-                      selected
-                        ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
-                        : "text-bunker-300"
-                    }`
-                  }
-                  key={tab.key}
-                >
-                  {index + 1}. {tab.name}
-                </Tab>
-              ))}
-            </Tab.List>
-            <Tab.Panels>
-              <Tab.Panel>
-                <SecretSyncSourceFields />
-              </Tab.Panel>
-              <Tab.Panel>
-                <SecretSyncDestinationFields />
-              </Tab.Panel>
-              <Tab.Panel>
-                <SecretSyncOptionsFields />
-                <Controller
-                  control={control}
-                  name="isAutoSyncEnabled"
-                  render={({ field: { value, onChange }, fieldState: { error } }) => {
-                    return (
-                      <FormControl
-                        helperText={
-                          value
-                            ? "Secrets will automatically be synced when changes occur in the source location."
-                            : "Secrets will not automatically be synced when changes occur in the source location. You can still trigger syncs manually."
-                        }
-                        isError={Boolean(error)}
-                        errorText={error?.message}
+    <form className={twMerge(isFinalStep && "max-h-[70vh] overflow-y-auto")}>
+      <FormProvider {...formMethods}>
+        <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
+          <Tab.List className="-pb-1 mb-6 w-full border-b-2 border-mineshaft-600">
+            {FORM_TABS.map((tab, index) => (
+              <Tab
+                onClick={async (e) => {
+                  e.preventDefault();
+                  const isEnabled = await isTabEnabled(index);
+                  setSelectedTabIndex((prev) => (isEnabled ? index : prev));
+                }}
+                className={({ selected }) =>
+                  `w-30 -mb-[0.14rem] ${index > selectedTabIndex ? "opacity-30" : ""} px-4 py-2 text-sm font-medium outline-none disabled:opacity-60 ${
+                    selected
+                      ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
+                      : "text-bunker-300"
+                  }`
+                }
+                key={tab.key}
+              >
+                {index + 1}. {tab.name}
+              </Tab>
+            ))}
+          </Tab.List>
+          <Tab.Panels>
+            <Tab.Panel>
+              <SecretSyncSourceFields />
+            </Tab.Panel>
+            <Tab.Panel>
+              <SecretSyncDestinationFields />
+            </Tab.Panel>
+            <Tab.Panel>
+              <SecretSyncOptionsFields />
+              <Controller
+                control={control}
+                name="isAutoSyncEnabled"
+                render={({ field: { value, onChange }, fieldState: { error } }) => {
+                  return (
+                    <FormControl
+                      helperText={
+                        value
+                          ? "Secrets will automatically be synced when changes occur in the source location."
+                          : "Secrets will not automatically be synced when changes occur in the source location. You can still trigger syncs manually."
+                      }
+                      isError={Boolean(error)}
+                      errorText={error?.message}
+                    >
+                      <Switch
+                        className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+                        id="auto-sync-enabled"
+                        thumbClassName="bg-mineshaft-800"
+                        onCheckedChange={onChange}
+                        isChecked={value}
                       >
-                        <Switch
-                          className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
-                          id="auto-sync-enabled"
-                          thumbClassName="bg-mineshaft-800"
-                          onCheckedChange={onChange}
-                          isChecked={value}
-                        >
-                          <p className="w-[8.4rem]">Auto-Sync {value ? "Enabled" : "Disabled"}</p>
-                        </Switch>
-                      </FormControl>
-                    );
-                  }}
-                />
-              </Tab.Panel>
-              <Tab.Panel>
-                <SecretSyncDetailsFields />
-              </Tab.Panel>
-              <Tab.Panel>
-                <SecretSyncReviewFields />
-              </Tab.Panel>
-            </Tab.Panels>
-          </Tab.Group>
-        </FormProvider>
+                        <p className="w-[8.4rem]">Auto-Sync {value ? "Enabled" : "Disabled"}</p>
+                      </Switch>
+                    </FormControl>
+                  );
+                }}
+              />
+            </Tab.Panel>
+            <Tab.Panel>
+              <SecretSyncDetailsFields />
+            </Tab.Panel>
+            <Tab.Panel>
+              <SecretSyncReviewFields />
+            </Tab.Panel>
+          </Tab.Panels>
+        </Tab.Group>
+      </FormProvider>
 
-        <div className="flex w-full flex-row-reverse justify-between gap-4 pt-4">
-          <Button onClick={handleNext} colorSchema="secondary">
-            {isFinalStep ? "Create Sync" : "Next"}
+      <div className="flex w-full flex-row-reverse justify-between gap-4 pt-4">
+        <Button onClick={handleNext} colorSchema="secondary">
+          {isFinalStep ? "Create Sync" : "Next"}
+        </Button>
+        {selectedTabIndex > 0 && (
+          <Button onClick={handlePrev} colorSchema="secondary">
+            Back
           </Button>
-          {selectedTabIndex > 0 && (
-            <Button onClick={handlePrev} colorSchema="secondary">
-              Back
-            </Button>
-          )}
-        </div>
-      </form>
-      <Modal isOpen={showConfirmation} onOpenChange={setShowConfirmation}>
-        <ModalContent
-          title="Import Secrets"
-          subTitle={`Import secrets into Infisical from this ${destinationName} Sync destination.`}
-        >
-          <div className="mt-6 flex flex-col rounded-sm border border-l-[2px] border-mineshaft-600 border-l-primary bg-mineshaft-700/80 px-4 py-3">
-            <div className="mb-1 flex items-center text-sm">
-              <FontAwesomeIcon icon={faInfoCircle} size="sm" className="mr-1.5 text-primary" />
-              Secret Sync Behavior
-            </div>
-            <p className="mb-2 mt-1 text-sm text-bunker-200">
-              Secret Syncs are the source of truth for connected third-party services. Any secret
-              not present or imported in Infisical before syncing will be overwritten, and changes
-              made directly in the connected service may also be overwritten by future syncs from
-              Infisical.
-            </p>
-          </div>
-        </ModalContent>
-      </Modal>
-    </>
+        )}
+      </div>
+    </form>
   );
 };
