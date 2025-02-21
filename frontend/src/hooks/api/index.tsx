@@ -10,6 +10,7 @@ export * from "./certificates";
 export * from "./certificateTemplates";
 export * from "./dynamicSecret";
 export * from "./dynamicSecretLease";
+export * from "./gateways";
 export * from "./groups";
 export * from "./identities";
 export * from "./identityProjectAdditionalPrivilege";

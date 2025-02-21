@@ -201,6 +201,10 @@
             "documentation/platform/dynamic-secrets/totp"
           ]
         },
+        {
+          "group": "Gateway",
+          "pages": ["documentation/platform/gateways/overview"]
+        },
         "documentation/platform/project-templates",
         {
           "group": "Workflow Integrations",
