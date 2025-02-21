@@ -34,6 +34,25 @@ export const secretSharingServiceFactory = ({
   orgDAL,
   kmsService
 }: TSecretSharingServiceFactoryDep) => {
+  const $validateSharedSecretExpiry = (expiresAt: string) => {
+    if (new Date(expiresAt) < new Date()) {
+      throw new BadRequestError({ message: "Expiration date cannot be in the past" });
+    }
+
+    // Limit Expiry Time to 1 month
+    const expiryTime = new Date(expiresAt).getTime();
+    const currentTime = new Date().getTime();
+    const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+    if (expiryTime - currentTime > thirtyDays) {
+      throw new BadRequestError({ message: "Expiration date cannot be more than 30 days" });
+    }
+
+    const fiveMins = 5 * 60 * 1000;
+    if (expiryTime - currentTime < fiveMins) {
+      throw new BadRequestError({ message: "Expiration time cannot be less than 5 mins" });
+    }
+  };
+
   const createSharedSecret = async ({
     actor,
     actorId,
@@ -49,18 +68,7 @@ export const secretSharingServiceFactory = ({
   }: TCreateSharedSecretDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     if (!permission) throw new ForbiddenRequestError({ name: "User is not a part of the specified organization" });
-
-    if (new Date(expiresAt) < new Date()) {
-      throw new BadRequestError({ message: "Expiration date cannot be in the past" });
-    }
-
-    // Limit Expiry Time to 1 month
-    const expiryTime = new Date(expiresAt).getTime();
-    const currentTime = new Date().getTime();
-    const thirtyDays = 30 * 24 * 60 * 60 * 1000;
-    if (expiryTime - currentTime > thirtyDays) {
-      throw new BadRequestError({ message: "Expiration date cannot be more than 30 days" });
-    }
+    $validateSharedSecretExpiry(expiresAt);
 
     if (secretValue.length > 10_000) {
       throw new BadRequestError({ message: "Shared secret value too long" });
@@ -100,17 +108,7 @@ export const secretSharingServiceFactory = ({
     expiresAfterViews,
     accessType
   }: TCreatePublicSharedSecretDTO) => {
-    if (new Date(expiresAt) < new Date()) {
-      throw new BadRequestError({ message: "Expiration date cannot be in the past" });
-    }
-
-    // Limit Expiry Time to 1 month
-    const expiryTime = new Date(expiresAt).getTime();
-    const currentTime = new Date().getTime();
-    const thirtyDays = 30 * 24 * 60 * 60 * 1000;
-    if (expiryTime - currentTime > thirtyDays) {
-      throw new BadRequestError({ message: "Expiration date cannot exceed more than 30 days" });
-    }
+    $validateSharedSecretExpiry(expiresAt);
 
     const encryptWithRoot = kmsService.encryptWithRootKey();
     const encryptedSecret = encryptWithRoot(Buffer.from(secretValue));
