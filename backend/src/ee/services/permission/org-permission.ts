@@ -34,10 +34,10 @@ export enum OrgPermissionAdminConsoleAction {
 
 export enum OrgPermissionGatewayActions {
   // is there a better word for this. This mean can an identity be a gateway
-  Create = "create",
-  Read = "read",
-  Edit = "edit",
-  Delete = "delete"
+  CreateGateways = "create-gateways",
+  ListGateways = "list-gateways",
+  EditGateways = "edit-gateways",
+  DeleteGateways = "delete-gateways"
 }
 
 export enum OrgPermissionSubjects {
@@ -280,10 +280,10 @@ const buildAdminPermission = () => {
   can(OrgPermissionAppConnectionActions.Delete, OrgPermissionSubjects.AppConnections);
   can(OrgPermissionAppConnectionActions.Connect, OrgPermissionSubjects.AppConnections);
 
-  can(OrgPermissionGatewayActions.Read, OrgPermissionSubjects.Gateway);
-  can(OrgPermissionGatewayActions.Create, OrgPermissionSubjects.Gateway);
-  can(OrgPermissionGatewayActions.Edit, OrgPermissionSubjects.Gateway);
-  can(OrgPermissionGatewayActions.Delete, OrgPermissionSubjects.Gateway);
+  can(OrgPermissionGatewayActions.ListGateways, OrgPermissionSubjects.Gateway);
+  can(OrgPermissionGatewayActions.CreateGateways, OrgPermissionSubjects.Gateway);
+  can(OrgPermissionGatewayActions.EditGateways, OrgPermissionSubjects.Gateway);
+  can(OrgPermissionGatewayActions.DeleteGateways, OrgPermissionSubjects.Gateway);
 
   can(OrgPermissionAdminConsoleAction.AccessAllProjects, OrgPermissionSubjects.AdminConsole);
 
@@ -321,8 +321,8 @@ const buildMemberPermission = () => {
   can(OrgPermissionActions.Read, OrgPermissionSubjects.AuditLogs);
 
   can(OrgPermissionAppConnectionActions.Connect, OrgPermissionSubjects.AppConnections);
-  can(OrgPermissionGatewayActions.Read, OrgPermissionSubjects.Gateway);
-  can(OrgPermissionGatewayActions.Create, OrgPermissionSubjects.Gateway);
+  can(OrgPermissionGatewayActions.ListGateways, OrgPermissionSubjects.Gateway);
+  can(OrgPermissionGatewayActions.CreateGateways, OrgPermissionSubjects.Gateway);
 
   return rules;
 };

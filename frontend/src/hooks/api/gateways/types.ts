@@ -6,7 +6,7 @@ export type TGateway = {
   updatedAt: string;
   issuedAt: string;
   serialNumber: string;
-  heartbeart: string;
+  heartbeat: string;
   identity: {
     name: string;
     id: string;

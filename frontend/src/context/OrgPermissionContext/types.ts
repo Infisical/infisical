@@ -9,10 +9,10 @@ export enum OrgPermissionActions {
 
 export enum OrgGatewayPermissionActions {
   // is there a better word for this. This mean can an identity be a gateway
-  Create = "create",
-  Read = "read",
-  Edit = "edit",
-  Delete = "delete"
+  CreateGateways = "create-gateways",
+  ListGateways = "list-gateways",
+  EditGateways = "edit-gateways",
+  DeleteGateways = "delete-gateways"
 }
 
 export enum OrgPermissionSubjects {

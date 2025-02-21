@@ -195,7 +195,9 @@ export const EditDynamicSecretSqlProviderForm = ({
               <FormControl
                 isError={Boolean(error?.message) || isGatewayInActive}
                 errorText={
-                  isGatewayInActive ? `Gateway ${selectedGatewayId} is removed` : error?.message
+                  isGatewayInActive && selectedGatewayId
+                    ? `Gateway ${selectedGatewayId} is removed`
+                    : error?.message
                 }
                 label="Gateway"
                 helperText=""
@@ -206,9 +208,12 @@ export const EditDynamicSecretSqlProviderForm = ({
                   className="w-full border border-mineshaft-500"
                   dropdownContainerClassName="max-w-none"
                   isLoading={isProjectGatewaysLoading}
-                  placeholder="Select gateway"
+                  placeholder="Internet Gateway"
                   position="popper"
                 >
+                  <SelectItem value={null as unknown as string} onClick={() => onChange(undefined)}>
+                    Internet Gateway
+                  </SelectItem>
                   {projectGateways?.map((el) => (
                     <SelectItem value={el.id} key={el.id}>
                       {el.name}
