@@ -297,7 +297,7 @@ secrets, err := client.Secrets().List(infisical.ListSecretsOptions{
 })
 ```
 
-### Parameters
+#### Parameters
 
 <ParamField query="Parameters" type="object">
     <Expandable title="properties">
@@ -348,7 +348,7 @@ secret, err := client.Secrets().Retrieve(infisical.RetrieveSecretOptions{
 })
 ```
 
-### Parameters
+#### Parameters
 
 <ParamField query="Parameters" type="object" optional>
   <Expandable title="properties">
@@ -391,7 +391,7 @@ secret, err := client.Secrets().Create(infisical.CreateSecretOptions{
 })
 ```
 
-### Parameters
+#### Parameters
 
 <ParamField query="Parameters" type="object" optional>
   <Expandable title="properties">
@@ -439,7 +439,7 @@ secret, err := client.Secrets().Update(infisical.UpdateSecretOptions{
 })
 ```
 
-### Parameters
+#### Parameters
 
 <ParamField query="Parameters" type="object" optional>
   <Expandable title="properties">
@@ -490,7 +490,7 @@ secret, err := client.Secrets().Delete(infisical.DeleteSecretOptions{
 })
 ```
 
-### Parameters
+#### Parameters
 
 <ParamField query="Parameters" type="object" optional>
   <Expandable title="properties">
@@ -514,7 +514,77 @@ secret, err := client.Secrets().Delete(infisical.DeleteSecretOptions{
   </Expandable>
 </ParamField>
 
-## Working With folders
+
+### Batch Create Secrets
+
+`client.Secrets().Batch().Create(options)`
+
+Create multiple secrets in Infisical.
+
+```go
+	createdSecrets, err := client.Secrets().Batch().Create(infisical.BatchCreateSecretsOptions{
+		Environment: "<environment-slug>",
+		SecretPath:  "<secret-path>",
+		ProjectID:   "<project-id>",
+		Secrets: []infisical.BatchCreateSecret{
+			{
+				SecretKey:   "SECRET-1",
+				SecretValue: "test-value-1",
+			},
+			{
+				SecretKey:   "SECRET-2",
+				SecretValue: "test-value-2",
+			},
+		},
+	})
+```
+
+#### Parameters
+<ParamField query="Parameters" type="object" optional>
+  <Expandable title="properties">
+    <ParamField query="Environment" type="string" required>
+      The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+    </ParamField>
+    <ParamField query="ProjectID" type="string" required>
+      The project ID where the secret lives in.
+    </ParamField>
+    <ParamField query="SecretPath" type="string" optional>
+      The path from where secret should be created.
+    </ParamField>
+    <ParamField query="Secrets" type="array" required>
+    <Expandable>
+      <ParamField query="SecretKey" type="string" required>
+        The key of the secret to create.
+      </ParamField>
+      <ParamField query="SecretValue" type="string" required>
+        The value of the secret.
+      </ParamField>
+      <ParamField query="SecretComment" type="string" optional>
+      The comment to add to the secret.
+      </ParamField>
+      <ParamField query="SkipMultiLineEncoding" type="boolean" optional>
+        Whether or not to skip multiline encoding for the secret value.
+      </ParamField>
+      <ParamField query="TagIDs" type="string[]" optional>
+        The tag IDs to associate with the secret.
+      </ParamField>
+
+      <ParamField query="SecretMetadata" type="object" optional>
+        <Expandable>
+          <ParamField query="Key" type="string" required>
+            The key of the metadata.
+          </ParamField>
+          <ParamField query="Value" type="string" required>
+            The value of the metadata.
+          </ParamField>
+        </Expandable>
+      </ParamField>
+    </Expandable>
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Working With Folders
 
 ###
 
@@ -532,7 +602,7 @@ folders, err := client.Folders().List(infisical.ListFoldersOptions{
 })
 ```
 
-### Parameters
+#### Parameters
 
 <ParamField query="Parameters" type="object">
     <Expandable title="properties">
@@ -568,7 +638,7 @@ folder, err := client.Folders().Create(infisical.CreateFolderOptions{
 })
 ```
 
-### Parameters
+#### Parameters
 
 <ParamField query="Parameters" type="object" optional>
   <Expandable title="properties">
@@ -606,7 +676,7 @@ folder, err := client.Folders().Update(infisical.UpdateFolderOptions{
 })
 ```
 
-### Parameters
+#### Parameters
 
 <ParamField query="Parameters" type="object" optional>
   <Expandable title="properties">
@@ -648,7 +718,7 @@ deletedFolder, err := client.Folders().Delete(infisical.DeleteFolderOptions{
 })
 ```
 
-### Parameters
+#### Parameters
 
 <ParamField query="Parameters" type="object" optional>
     <Expandable title="properties">
