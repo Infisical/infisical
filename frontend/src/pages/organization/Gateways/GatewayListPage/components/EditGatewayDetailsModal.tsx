@@ -83,7 +83,7 @@ export const EditGatewayDetailsModal = ({ gatewayDetails, onClose }: Props) => {
           <FormControl
             className="w-full"
             label="Projects"
-            tooltipText="Select the project that you wish to assign to the gateway."
+            tooltipText="Select the project(s) that you'd like to add this gateway to"
             errorText={error?.message}
             isError={Boolean(error)}
           >
