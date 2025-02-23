@@ -44,7 +44,7 @@ Once authenticated, the Gateway establishes a secure connection with Infisical t
   </Step>
 
   <Step title="Deploy the Gateway">
-    Use the Infisical CLI to deploy the Gateway. You can log in with your machine identity and start the Gateway in one command:
+    Use the Infisical CLI to deploy the Gateway. You can log in with your machine identity and start the Gateway in one command. The example below demonstrates how to deploy the Gateway using the Universal Auth method:
     ```bash
     infisical gateway --token $(infisical login --method=universal-auth --client-id=<> --client-secret=<> --plain)
     ```
