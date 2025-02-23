@@ -327,6 +327,7 @@ export const SecretListView = ({
           onCreateTag={onCreateTag}
           handleSecretShare={() =>
             handlePopUpOpen("createSharedSecret", {
+              name:secret.key,
               value: secret.valueOverride ?? secret.value
             })
           }
