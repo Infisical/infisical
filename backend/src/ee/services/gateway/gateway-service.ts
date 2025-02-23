@@ -99,7 +99,7 @@ export const gatewayServiceFactory = ({
       !envCfg.GATEWAY_RELAY_REALM
     ) {
       throw new BadRequestError({
-        message: "Gateway handshake failed due to missing instance config."
+        message: "Gateway handshake failed due to missing instance configuration."
       });
     }
 

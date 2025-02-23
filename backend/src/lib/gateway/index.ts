@@ -79,7 +79,7 @@ export const pingGatewayAndVerify = async ({
 
             if (certificate.subject.CN !== identityId || certificate.subject.O !== orgId) {
               throw new BadRequestError({
-                message: `Invalid gateway. Certificate not found for ${identityId} in organisation ${orgId}`
+                message: `Invalid gateway. Certificate not found for ${identityId} in organization ${orgId}`
               });
             }
 
