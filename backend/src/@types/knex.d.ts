@@ -68,6 +68,9 @@ import {
   TExternalKms,
   TExternalKmsInsert,
   TExternalKmsUpdate,
+  TGateways,
+  TGatewaysInsert,
+  TGatewaysUpdate,
   TGitAppInstallSessions,
   TGitAppInstallSessionsInsert,
   TGitAppInstallSessionsUpdate,
@@ -179,6 +182,9 @@ import {
   TOrgBots,
   TOrgBotsInsert,
   TOrgBotsUpdate,
+  TOrgGatewayConfig,
+  TOrgGatewayConfigInsert,
+  TOrgGatewayConfigUpdate,
   TOrgMemberships,
   TOrgMembershipsInsert,
   TOrgMembershipsUpdate,
@@ -200,6 +206,9 @@ import {
   TProjectEnvironments,
   TProjectEnvironmentsInsert,
   TProjectEnvironmentsUpdate,
+  TProjectGateways,
+  TProjectGatewaysInsert,
+  TProjectGatewaysUpdate,
   TProjectKeys,
   TProjectKeysInsert,
   TProjectKeysUpdate,
@@ -929,6 +938,17 @@ declare module "knex/types/tables" {
       TKmipClientCertificates,
       TKmipClientCertificatesInsert,
       TKmipClientCertificatesUpdate
+    >;
+    [TableName.Gateway]: KnexOriginal.CompositeTableType<TGateways, TGatewaysInsert, TGatewaysUpdate>;
+    [TableName.ProjectGateway]: KnexOriginal.CompositeTableType<
+      TProjectGateways,
+      TProjectGatewaysInsert,
+      TProjectGatewaysUpdate
+    >;
+    [TableName.OrgGatewayConfig]: KnexOriginal.CompositeTableType<
+      TOrgGatewayConfig,
+      TOrgGatewayConfigInsert,
+      TOrgGatewayConfigUpdate
     >;
   }
 }

@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { OrgPermissionSubjects } from "@app/context";
 import {
+  OrgGatewayPermissionActions,
   OrgPermissionAppConnectionActions,
   OrgPermissionKmipActions
 } from "@app/context/OrgPermissionContext/types";
@@ -31,6 +32,15 @@ const kmipPermissionSchema = z
   .object({
     [OrgPermissionKmipActions.Proxy]: z.boolean().optional(),
     [OrgPermissionKmipActions.Setup]: z.boolean().optional()
+  })
+  .optional();
+
+const orgGatewayPermissionSchema = z
+  .object({
+    [OrgGatewayPermissionActions.ListGateways]: z.boolean().optional(),
+    [OrgGatewayPermissionActions.EditGateways]: z.boolean().optional(),
+    [OrgGatewayPermissionActions.DeleteGateways]: z.boolean().optional(),
+    [OrgGatewayPermissionActions.CreateGateways]: z.boolean().optional()
   })
   .optional();
 
@@ -72,7 +82,8 @@ export const formSchema = z.object({
       [OrgPermissionSubjects.Kms]: generalPermissionSchema,
       [OrgPermissionSubjects.ProjectTemplates]: generalPermissionSchema,
       "app-connections": appConnectionsPermissionSchema,
-      kmip: kmipPermissionSchema
+      kmip: kmipPermissionSchema,
+      gateway: orgGatewayPermissionSchema
     })
     .optional()
 });
