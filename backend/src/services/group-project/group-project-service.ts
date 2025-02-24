@@ -4,7 +4,7 @@ import ms from "ms";
 import { ActionProjectType, ProjectMembershipRole, SecretKeyEncoding, TGroups } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { isAtLeastAsPrivileged } from "@app/lib/casl";
+import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { decryptAsymmetric, encryptAsymmetric } from "@app/lib/crypto";
 import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -102,11 +102,13 @@ export const groupProjectServiceFactory = ({
         project.id
       );
 
-      const hasRequiredPrivileges = isAtLeastAsPrivileged(permission, rolePermission);
-
-      if (!hasRequiredPrivileges) {
-        throw new ForbiddenRequestError({ message: "Failed to assign group to a more privileged role" });
-      }
+      const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+      if (!permissionBoundary.isValid)
+        throw new ForbiddenRequestError({
+          name: "PermissionBoundaryError",
+          message: "Failed to assign group to a more privileged role",
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
     }
 
     // validate custom roles input
@@ -267,12 +269,13 @@ export const groupProjectServiceFactory = ({
         requestedRoleChange,
         project.id
       );
-
-      const hasRequiredPrivileges = isAtLeastAsPrivileged(permission, rolePermission);
-
-      if (!hasRequiredPrivileges) {
-        throw new ForbiddenRequestError({ message: "Failed to assign group to a more privileged role" });
-      }
+      const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+      if (!permissionBoundary.isValid)
+        throw new ForbiddenRequestError({
+          name: "PermissionBoundaryError",
+          message: "Failed to assign group to a more privileged role",
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
     }
 
     // validate custom roles input

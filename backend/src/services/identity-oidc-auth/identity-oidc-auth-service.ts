@@ -8,7 +8,7 @@ import { IdentityAuthMethod, TIdentityOidcAuthsUpdate } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { isAtLeastAsPrivileged } from "@app/lib/casl";
+import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
@@ -428,11 +428,13 @@ export const identityOidcAuthServiceFactory = ({
       actorOrgId
     );
 
-    if (!isAtLeastAsPrivileged(permission, rolePermission)) {
+    const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+    if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
-        message: "Failed to revoke OIDC auth of identity with more privileged role"
+        name: "PermissionBoundaryError",
+        message: "Failed to revoke oidc auth of identity with more privileged role",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
-    }
 
     const revokedIdentityOidcAuth = await identityOidcAuthDAL.transaction(async (tx) => {
       const deletedOidcAuth = await identityOidcAuthDAL.delete({ identityId }, tx);
