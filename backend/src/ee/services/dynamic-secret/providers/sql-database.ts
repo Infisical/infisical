@@ -33,7 +33,7 @@ export const SqlDatabaseProvider = (): TDynamicProviderFns => {
   };
 
   const $getClient = async (providerInputs: z.infer<typeof DynamicSecretSqlDBSchema>) => {
-    const ssl = providerInputs.ca ? { rejectUnauthorized: false, ca: providerInputs.ca } : undefined;
+    const ssl = providerInputs.ca ? { ca: providerInputs.ca } : undefined;
     const isMsSQLClient = providerInputs.client === SqlProviders.MsSQL;
 
     const db = knex({
