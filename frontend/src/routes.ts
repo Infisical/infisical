@@ -16,6 +16,10 @@ const organizationRoutes = route("/organization", [
   route("/admin", "organization/AdminPage/route.tsx"),
   route("/audit-logs", "organization/AuditLogsPage/route.tsx"),
   route("/billing", "organization/BillingPage/route.tsx"),
+  route("/dedicated-instances", [
+    index("organization/DedicatedInstancesPage/route.tsx"),
+    route("/$instanceId", "organization/DedicatedInstancesPage/DedicatedInstanceDetailsPage/route.tsx")
+  ]),
   route("/secret-sharing", "organization/SecretSharingPage/route.tsx"),
   route("/settings", "organization/SettingsPage/route.tsx"),
   route("/secret-scanning", "organization/SecretScanningPage/route.tsx"),

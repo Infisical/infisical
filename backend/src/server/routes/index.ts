@@ -232,6 +232,8 @@ import { webhookDALFactory } from "@app/services/webhook/webhook-dal";
 import { webhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { workflowIntegrationDALFactory } from "@app/services/workflow-integration/workflow-integration-dal";
 import { workflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
+import { dedicatedInstanceDALFactory } from "@app/ee/services/dedicated-instance/dedicated-instance-dal";
+import { dedicatedInstanceServiceFactory } from "@app/ee/services/dedicated-instance/dedicated-instance-service";
 
 import { injectAuditLogInfo } from "../plugins/audit-log";
 import { injectIdentity } from "../plugins/auth/inject-identity";
@@ -1457,6 +1459,12 @@ export const registerRoutes = async (
     permissionService
   });
 
+  const dedicatedInstanceDAL = dedicatedInstanceDALFactory(db);
+  const dedicatedInstanceService = dedicatedInstanceServiceFactory({
+    dedicatedInstanceDAL,
+    permissionService
+  });
+
   await superAdminService.initServerCfg();
 
   // setup the communication with license key server
@@ -1557,7 +1565,8 @@ export const registerRoutes = async (
     appConnection: appConnectionService,
     secretSync: secretSyncService,
     kmip: kmipService,
-    kmipOperation: kmipOperationService
+    kmipOperation: kmipOperationService,
+    dedicatedInstance: dedicatedInstanceService
   });
 
   const cronJobs: CronJob[] = [];
