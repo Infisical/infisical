@@ -743,7 +743,7 @@ export const SecretDetailSidebar = ({
                   ))}
                 </div>
               </div>
-              <div className="dark flex-grow text-sm text-bunker-300">
+              <div className="dark mb-4 flex-grow text-sm text-bunker-300">
                 <div className="mb-2 mt-4">
                   Access List
                   <Tooltip
