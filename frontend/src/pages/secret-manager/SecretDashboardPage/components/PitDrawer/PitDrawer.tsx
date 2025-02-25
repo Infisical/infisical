@@ -59,7 +59,12 @@ export const PitDrawer = ({
                   onClick={() => onSelectSnapshot(id)}
                 >
                   <div className="flex w-full justify-between">
-                    <div>{formatDistance(new Date(createdAt), new Date())}</div>
+                    <div>
+                      {(() => {
+                        const distance = formatDistance(new Date(createdAt), new Date());
+                        return distance.charAt(0).toUpperCase() + distance.slice(1) + " ago";
+                      })()}
+                    </div>
                     <div>{getButtonLabel(i === 0 && index === 0, snapshotId === id)}</div>
                   </div>
                 </Button>
@@ -70,7 +75,7 @@ export const PitDrawer = ({
         <Button
           className="mt-8 px-4 py-3 text-sm"
           isFullWidth
-          variant="star"
+          variant="outline_bg"
           isLoading={isFetchingNextPage}
           isDisabled={isFetchingNextPage || !hasNextPage}
           onClick={fetchNextPage}

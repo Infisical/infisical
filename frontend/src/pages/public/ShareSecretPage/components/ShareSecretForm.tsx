@@ -120,7 +120,7 @@ export const ShareSecretForm = ({ isPublic, value }: Props) => {
               isError={Boolean(error)}
               errorText={error?.message}
             >
-              <Input {...field} placeholder="API Key" type="text" />
+              <Input {...field} placeholder="API Key" type="text" autoComplete="off" autoCorrect="off" spellCheck="false" />
             </FormControl>
           )}
         />
@@ -155,7 +155,7 @@ export const ShareSecretForm = ({ isPublic, value }: Props) => {
             errorText={error?.message}
             isOptional
           >
-            <Input {...field} placeholder="Password" type="password" />
+            <Input {...field} placeholder="Password" type="password" autoComplete="new-password" autoCorrect="off" spellCheck="false" aria-autocomplete="none" data-form-type="other" />
           </FormControl>
         )}
       />

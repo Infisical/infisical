@@ -84,6 +84,10 @@ export const MinimizedOrgSidebar = () => {
   const [requiredMfaMethod, setRequiredMfaMethod] = useState(MfaMethod.EMAIL);
   const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
   const { subscription } = useSubscription();
+  const [open, setOpen] = useState(false);
+  const [openSupport, setOpenSupport] = useState(false);
+  const [openUser, setOpenUser] = useState(false);
+  const [openOrg, setOpenOrg] = useState(false);
 
   const { user } = useUser();
   const { mutateAsync } = useGetOrgTrialUrl();
@@ -160,23 +164,25 @@ export const MinimizedOrgSidebar = () => {
       >
         <nav className="items-between flex h-full flex-col justify-between overflow-y-auto dark:[color-scheme:dark]">
           <div>
-            <div className="flex cursor-pointer items-center p-2 pt-4 hover:bg-mineshaft-700">
-              <DropdownMenu modal>
-                <DropdownMenuTrigger asChild>
-                  <div className="flex w-full items-center justify-center rounded-md border border-none border-mineshaft-600 p-1 transition-all">
+            <div className="flex items-center hover:bg-mineshaft-700">
+              <DropdownMenu open={openOrg} onOpenChange={setOpenOrg} modal>
+                <DropdownMenuTrigger onMouseEnter={() => setOpenOrg(true)} onMouseLeave={() => setOpenOrg(false)} asChild>
+                  <div className="flex w-full items-center justify-center rounded-md border border-none border-mineshaft-600 p-3 pt-6 pb-5 transition-all">
                     <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
                       {currentOrg?.name.charAt(0)}
                     </div>
                   </div>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
+                  onMouseEnter={() => setOpenOrg(true)}
+                  onMouseLeave={() => setOpenOrg(false)}
                   align="start"
                   side="right"
-                  className="p-1 shadow-mineshaft-600 drop-shadow-md"
-                  style={{ minWidth: "320px" }}
+                  className="p-1 shadow-mineshaft-600 drop-shadow-md cursor-default mt-6"
+                  style={{ minWidth: "220px" }}
                 >
-                  <div className="px-2 py-1">
-                    <div className="flex w-full items-center justify-center rounded-md border border-mineshaft-600 p-1 transition-all duration-150 hover:bg-mineshaft-700">
+                  <div className="px-0.5 py-1">
+                    <div className="flex w-full items-center justify-center rounded-md border border-mineshaft-600 p-1 transition-all duration-300 bg-gradient-to-tr from-primary-500/5 to-mineshaft-800">
                       <div className="mr-2 flex h-8 w-8 items-center justify-center rounded-md bg-primary text-black">
                         {currentOrg?.name.charAt(0)}
                       </div>
@@ -241,7 +247,7 @@ export const MinimizedOrgSidebar = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            <div className="space-y-1 px-1">
+            <div className="space-y-1">
               <Link to="/organization/secret-manager/overview">
                 {({ isActive }) => (
                   <MenuIconButton
@@ -251,7 +257,7 @@ export const MinimizedOrgSidebar = () => {
                     }
                     icon="sliding-carousel"
                   >
-                    Secret Manager
+                    Secrets
                   </MenuIconButton>
                 )}
               </Link>
@@ -264,7 +270,7 @@ export const MinimizedOrgSidebar = () => {
                     }
                     icon="note"
                   >
-                    Cert Manager
+                    PKI
                   </MenuIconButton>
                 )}
               </Link>
@@ -296,31 +302,31 @@ export const MinimizedOrgSidebar = () => {
               <Link to="/organization/secret-scanning">
                 {({ isActive }) => (
                   <MenuIconButton isSelected={isActive} icon="secret-scan">
-                    Secret Scanning
+                    Scanner
                   </MenuIconButton>
                 )}
               </Link>
               <Link to="/organization/secret-sharing">
                 {({ isActive }) => (
                   <MenuIconButton isSelected={isActive} icon="lock-closed">
-                    Secret Sharing
+                    Share
                   </MenuIconButton>
                 )}
               </Link>
               <div className="my-1 w-full bg-mineshaft-500" style={{ height: "1px" }} />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+              <DropdownMenu open={open} onOpenChange={setOpen}>
+                <DropdownMenuTrigger onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)} asChild>
                   <div className="w-full">
                     <MenuIconButton
                       lottieIconMode="reverse"
                       icon="settings-cog"
                       isSelected={isMoreSelected}
                     >
-                      Org Controls
+                      Admin
                     </MenuIconButton>
                   </div>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" side="right" className="p-1">
+                <DropdownMenuContent onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)} align="start" side="right" className="p-1">
                   <DropdownMenuLabel>Organization Options</DropdownMenuLabel>
                   <Link to="/organization/access-management">
                     <DropdownMenuItem icon={<FontAwesomeIcon className="w-3" icon={faUsers} />}>
@@ -364,14 +370,14 @@ export const MinimizedOrgSidebar = () => {
                 : "mb-4"
             } flex w-full cursor-default flex-col items-center px-1 text-sm text-mineshaft-400`}
           >
-            <DropdownMenu>
-              <DropdownMenuTrigger className="w-full">
+            <DropdownMenu open={openSupport} onOpenChange={setOpenSupport}>
+              <DropdownMenuTrigger onMouseEnter={() => setOpenSupport(true)} onMouseLeave={() => setOpenSupport(false)} className="w-full">
                 <MenuIconButton>
                   <FontAwesomeIcon icon={faInfoCircle} className="mb-3 text-lg" />
                   Support
                 </MenuIconButton>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="p-1">
+              <DropdownMenuContent onMouseEnter={() => setOpenSupport(true)} onMouseLeave={() => setOpenSupport(false)} align="end" side="right" className="p-1">
                 {INFISICAL_SUPPORT_OPTIONS.map(([icon, text, url]) => (
                   <DropdownMenuItem key={url as string}>
                     <a
@@ -419,17 +425,17 @@ export const MinimizedOrgSidebar = () => {
                 </button>
               </Tooltip>
             )}
-            <DropdownMenu>
-              <DropdownMenuTrigger className="w-full" asChild>
+            <DropdownMenu open={openUser} onOpenChange={setOpenUser}>
+              <DropdownMenuTrigger onMouseEnter={() => setOpenUser(true)} onMouseLeave={() => setOpenUser(false)} className="w-full" asChild>
                 <div>
                   <MenuIconButton icon="user">User</MenuIconButton>
                 </div>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="p-1">
-                <div className="px-2 py-1">
-                  <div className="flex w-full items-center justify-center rounded-md border border-mineshaft-600 p-1 transition-all duration-150 hover:bg-mineshaft-700">
-                    <div className="p-2">
-                      <FontAwesomeIcon icon={faUser} className="text-mineshaft-400" />
+              <DropdownMenuContent onMouseEnter={() => setOpenUser(true)} onMouseLeave={() => setOpenUser(false)} side="right" align="end" className="p-1">
+                <div className="px-1 py-1 cursor-default">
+                  <div className="flex w-full items-center justify-center rounded-md border border-mineshaft-600 p-1 px-2 transition-all duration-150 bg-gradient-to-tr from-primary-500/10 to-mineshaft-800">
+                    <div className="p-1 pr-3">
+                      <FontAwesomeIcon icon={faUser} className="text-mineshaft-400 text-xl" />
                     </div>
                     <div className="flex flex-grow flex-col text-white">
                       <div className="max-w-36 truncate text-ellipsis text-sm font-medium capitalize">
@@ -477,11 +483,13 @@ export const MinimizedOrgSidebar = () => {
                     </DropdownMenuItem>
                   </Link>
                 )}
-                <Link to="/organization/admin">
-                  <DropdownMenuItem className="mt-1 border-t border-mineshaft-600">
-                    Organization Admin Console
-                  </DropdownMenuItem>
-                </Link>
+                <div className="pt-1 mt-1 border-t border-mineshaft-600">
+                  <Link to="/organization/admin">
+                    <DropdownMenuItem>
+                      Organization Admin Console
+                    </DropdownMenuItem>
+                  </Link>
+                </div>
                 <div className="mt-1 h-1 border-t border-mineshaft-600" />
                 <DropdownMenuItem onClick={logOutUser} icon={<FontAwesomeIcon icon={faSignOut} />}>
                   Log Out
