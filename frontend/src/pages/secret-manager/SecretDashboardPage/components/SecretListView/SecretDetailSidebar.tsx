@@ -587,7 +587,7 @@ export const SecretDetailSidebar = ({
               <div className="dark mb-4flex-grow text-sm text-bunker-300 cursor-default">
                 <div className="mb-2 pl-1">Version History</div>
                 <div className="flex h-48 flex-col space-y-2 overflow-y-auto thin-scrollbar overflow-x-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 dark:[color-scheme:dark]">
-                  {secretVersion?.map(({ createdAt, secretValue, version, id }, i) => (
+                  {secretVersion?.map(({ createdAt, secretValue, version, id }) => (
                     <div className="flex flex-row">
                       <div key={id} className="flex flex-col space-y-1 w-full">
                         <div className="flex items-center">
