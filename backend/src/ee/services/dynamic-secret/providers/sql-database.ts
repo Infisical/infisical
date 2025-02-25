@@ -69,13 +69,13 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
 
   const gatewayProxyWrapper = async (
     providerInputs: z.infer<typeof DynamicSecretSqlDBSchema>,
-    gatewayCallback: (port: number) => Promise<void>
+    gatewayCallback: (host: string, port: number) => Promise<void>
   ) => {
     const relayDetails = await gatewayService.fnGetGatewayClientTls(providerInputs.projectGatewayId as string);
     const [relayHost, relayPort] = relayDetails.relayAddress.split(":");
     await withGatewayProxy(
       async (port) => {
-        await gatewayCallback(port);
+        await gatewayCallback("localhost", port);
       },
       {
         targetHost: providerInputs.host,
@@ -96,8 +96,8 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
     let isConnected = false;
-    const gatewayCallback = async (port = providerInputs.port) => {
-      const db = await $getClient({ ...providerInputs, port });
+    const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
+      const db = await $getClient({ ...providerInputs, port, host });
       // oracle needs from keyword
       const testStatement = providerInputs.client === SqlProviders.Oracle ? "SELECT 1 FROM DUAL" : "SELECT 1";
 
@@ -106,8 +106,10 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
     };
 
     if (providerInputs.projectGatewayId) {
+      console.log(">>>>>> inside gateway");
       await gatewayProxyWrapper(providerInputs, gatewayCallback);
     } else {
+      console.log(">>>>>> outside gateway");
       await gatewayCallback();
     }
     return isConnected;
@@ -117,8 +119,8 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
     const providerInputs = await validateProviderInputs(inputs);
     const username = generateUsername(providerInputs.client);
     const password = generatePassword(providerInputs.client);
-    const gatewayCallback = async (port = providerInputs.port) => {
-      const db = await $getClient({ ...providerInputs, port });
+    const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
+      const db = await $getClient({ ...providerInputs, port, host });
       const { database } = providerInputs;
       const expiration = new Date(expireAt).toISOString();
 
@@ -150,8 +152,8 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
     const providerInputs = await validateProviderInputs(inputs);
     const username = entityId;
     const { database } = providerInputs;
-    const gatewayCallback = async (port = providerInputs.port) => {
-      const db = await $getClient({ ...providerInputs, port });
+    const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
+      const db = await $getClient({ ...providerInputs, port, host });
       const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username, database });
       const queries = revokeStatement.toString().split(";").filter(Boolean);
       await db.transaction(async (tx) => {
@@ -175,8 +177,8 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
     const providerInputs = await validateProviderInputs(inputs);
     if (!providerInputs.renewStatement) return { entityId };
 
-    const gatewayCallback = async (port = providerInputs.port) => {
-      const db = await $getClient({ ...providerInputs, port });
+    const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
+      const db = await $getClient({ ...providerInputs, port, host });
       const expiration = new Date(expireAt).toISOString();
       const { database } = providerInputs;
 

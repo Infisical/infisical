@@ -88,9 +88,14 @@ export const gatewayServiceFactory = ({
   };
 
   const getGatewayRelayDetails = async (actorId: string, actorOrgId: string, actorAuthMethod: ActorAuthMethod) => {
-    const TURN_CRED_EXPIRY = 5 * 60;
+    const TURN_CRED_EXPIRY = 10 * 60; // 10 minutes
+
     const envCfg = getConfig();
     await $validateOrgAccessToGateway(actorOrgId, actorId, actorAuthMethod);
+    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: actorOrgId
+    });
 
     if (
       !envCfg.GATEWAY_RELAY_AUTH_SECRET ||
@@ -108,7 +113,9 @@ export const gatewayServiceFactory = ({
     // keep it in redis for 5mins to avoid generating so many credentials
     const previousCredential = await keyStore.getItem(KeyStorePrefixes.GatewayIdentityCredential(actorId));
     if (previousCredential) {
-      const el = await TURN_SERVER_CREDENTIALS_SCHEMA.parseAsync(JSON.parse(previousCredential));
+      const el = await TURN_SERVER_CREDENTIALS_SCHEMA.parseAsync(
+        JSON.parse(decryptor({ cipherTextBlob: Buffer.from(previousCredential, "hex") }).toString())
+      );
       turnServerUsername = el.username;
       turnServerPassword = el.password;
     } else {
@@ -116,7 +123,9 @@ export const gatewayServiceFactory = ({
       await keyStore.setItemWithExpiry(
         KeyStorePrefixes.GatewayIdentityCredential(actorId),
         TURN_CRED_EXPIRY,
-        JSON.stringify({ username: el.username, password: el.password })
+        encryptor({
+          plainText: Buffer.from(JSON.stringify({ username: el.username, password: el.password }))
+        }).cipherTextBlob.toString("hex")
       );
       turnServerUsername = el.username;
       turnServerPassword = el.password;

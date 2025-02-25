@@ -35,7 +35,7 @@ const formSchema = z.object({
     revocationStatement: z.string().min(1),
     renewStatement: z.string().optional(),
     ca: z.string().optional(),
-    gatewayId: z.string().optional()
+    projectGatewayId: z.string().optional()
   }),
   defaultTTL: z.string().superRefine((val, ctx) => {
     const valMs = ms(val);
@@ -233,7 +233,7 @@ export const SqlDatabaseInputForm = ({
           <div>
             <Controller
               control={control}
-              name="provider.gatewayId"
+              name="provider.projectGatewayId"
               defaultValue=""
               render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <FormControl
@@ -257,7 +257,7 @@ export const SqlDatabaseInputForm = ({
                       Internet Gateway
                     </SelectItem>
                     {projectGateways?.map((el) => (
-                      <SelectItem value={el.id} key={el.id}>
+                      <SelectItem value={el.projectGatewayId} key={el.projectGatewayId}>
                         {el.name}
                       </SelectItem>
                     ))}
