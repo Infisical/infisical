@@ -13,7 +13,8 @@ import {
   faPlug,
   faSignOut,
   faUser,
-  faUsers
+  faUsers,
+  faServer
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQueryClient } from "@tanstack/react-query";
@@ -330,6 +331,11 @@ export const MinimizedOrgSidebar = () => {
                   <Link to="/organization/app-connections">
                     <DropdownMenuItem icon={<FontAwesomeIcon className="w-3" icon={faPlug} />}>
                       App Connections
+                    </DropdownMenuItem>
+                  </Link>
+                  <Link to="/organization/dedicated-instances">
+                    <DropdownMenuItem icon={<FontAwesomeIcon className="w-3" icon={faServer} />}>
+                      Dedicated Instances
                     </DropdownMenuItem>
                   </Link>
                   {(window.location.origin.includes("https://app.infisical.com") ||

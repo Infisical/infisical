@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export enum TableName {
   Users = "users",
+  Organization = "organizations",
   SshCertificateAuthority = "ssh_certificate_authorities",
   SshCertificateAuthoritySecret = "ssh_certificate_authority_secrets",
   SshCertificateTemplate = "ssh_certificate_templates",
@@ -29,7 +30,6 @@ export enum TableName {
   AuthTokens = "auth_tokens",
   AuthTokenSession = "auth_token_sessions",
   BackupPrivateKey = "backup_private_key",
-  Organization = "organizations",
   OrgMembership = "org_memberships",
   OrgRoles = "org_roles",
   OrgBot = "org_bots",
@@ -136,7 +136,8 @@ export enum TableName {
   KmipClient = "kmip_clients",
   KmipOrgConfig = "kmip_org_configs",
   KmipOrgServerCertificates = "kmip_org_server_certificates",
-  KmipClientCertificates = "kmip_client_certificates"
+  KmipClientCertificates = "kmip_client_certificates",
+  DedicatedInstances = "dedicated_instances"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt";

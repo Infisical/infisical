@@ -12,7 +12,8 @@ export enum OrgPermissionActions {
   Read = "read",
   Create = "create",
   Edit = "edit",
-  Delete = "delete"
+  Delete = "delete",
+  Update = "update"
 }
 
 export enum OrgPermissionAppConnectionActions {
@@ -50,7 +51,8 @@ export enum OrgPermissionSubjects {
   AuditLogs = "audit-logs",
   ProjectTemplates = "project-templates",
   AppConnections = "app-connections",
-  Kmip = "kmip"
+  Kmip = "kmip",
+  DedicatedInstance = "dedicatedInstance"
 }
 
 export type AppConnectionSubjectFields = {
@@ -81,7 +83,8 @@ export type OrgPermissionSet =
       )
     ]
   | [OrgPermissionAdminConsoleAction, OrgPermissionSubjects.AdminConsole]
-  | [OrgPermissionKmipActions, OrgPermissionSubjects.Kmip];
+  | [OrgPermissionKmipActions, OrgPermissionSubjects.Kmip]
+  | [OrgPermissionActions, OrgPermissionSubjects.DedicatedInstance];
 
 const AppConnectionConditionSchema = z
   .object({
@@ -180,6 +183,10 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionKmipActions).describe(
       "Describe what action an entity can take."
     )
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.DedicatedInstance).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
   })
 ]);
 
@@ -271,6 +278,11 @@ const buildAdminPermission = () => {
   // the proxy assignment is temporary in order to prevent "more privilege" error during role assignment to MI
   can(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
 
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.DedicatedInstance);
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.DedicatedInstance);
+  can(OrgPermissionActions.Update, OrgPermissionSubjects.DedicatedInstance);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.DedicatedInstance);
+
   return rules;
 };
 
@@ -300,6 +312,8 @@ const buildMemberPermission = () => {
   can(OrgPermissionActions.Read, OrgPermissionSubjects.AuditLogs);
 
   can(OrgPermissionAppConnectionActions.Connect, OrgPermissionSubjects.AppConnections);
+
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.DedicatedInstance);
 
   return rules;
 };

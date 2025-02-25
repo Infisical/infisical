@@ -74,6 +74,13 @@ export const OrganizationLayout = () => {
                           </MenuItem>
                         )}
                       </Link>
+                      <Link to="/organization/dedicated-instances">
+                        {({ isActive }) => (
+                          <MenuItem isSelected={isActive} icon="moving-block">
+                            Dedicated Instances
+                          </MenuItem>
+                        )}
+                      </Link>
                       {(window.location.origin.includes("https://app.infisical.com") ||
                         window.location.origin.includes("https://eu.infisical.com") ||
                         window.location.origin.includes("https://gamma.infisical.com")) && (

@@ -930,5 +930,10 @@ declare module "knex/types/tables" {
       TKmipClientCertificatesInsert,
       TKmipClientCertificatesUpdate
     >;
+    [TableName.DedicatedInstances]: KnexOriginal.CompositeTableType<
+      TDedicatedInstances,
+      TDedicatedInstancesInsert,
+      TDedicatedInstancesUpdate
+    >;
   }
 }

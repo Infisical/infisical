@@ -19,6 +19,7 @@ import { TIdentityProjectAdditionalPrivilegeV2ServiceFactory } from "@app/ee/ser
 import { TKmipClientDALFactory } from "@app/ee/services/kmip/kmip-client-dal";
 import { TKmipOperationServiceFactory } from "@app/ee/services/kmip/kmip-operation-service";
 import { TKmipServiceFactory } from "@app/ee/services/kmip/kmip-service";
+import { TDedicatedInstanceServiceFactory } from "@app/ee/services/dedicated-instance/dedicated-instance-service";
 import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
@@ -228,6 +229,7 @@ declare module "fastify" {
       secretSync: TSecretSyncServiceFactory;
       kmip: TKmipServiceFactory;
       kmipOperation: TKmipOperationServiceFactory;
+      dedicatedInstance: TDedicatedInstanceServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

@@ -4,6 +4,7 @@ import { registerAccessApprovalPolicyRouter } from "./access-approval-policy-rou
 import { registerAccessApprovalRequestRouter } from "./access-approval-request-router";
 import { registerAuditLogStreamRouter } from "./audit-log-stream-router";
 import { registerCaCrlRouter } from "./certificate-authority-crl-router";
+import { registerDedicatedInstanceRouter } from "./dedicated-instance-router";
 import { registerDynamicSecretLeaseRouter } from "./dynamic-secret-lease-router";
 import { registerDynamicSecretRouter } from "./dynamic-secret-router";
 import { registerExternalKmsRouter } from "./external-kms-router";
@@ -38,6 +39,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   // org role starts with organization
   await server.register(registerOrgRoleRouter, { prefix: "/organization" });
   await server.register(registerLicenseRouter, { prefix: "/organizations" });
+  await server.register(registerDedicatedInstanceRouter, { prefix: "/organizations" });
   await server.register(
     async (projectRouter) => {
       await projectRouter.register(registerProjectRoleRouter);
