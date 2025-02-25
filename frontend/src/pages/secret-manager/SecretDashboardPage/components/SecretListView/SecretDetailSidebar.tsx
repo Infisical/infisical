@@ -289,7 +289,7 @@ export const SecretDetailSidebar = ({
                   </Button>
                 </div>
               </div>
-              <div className="mb-2 p-4 px-0 border rounded border-mineshaft-600 bg-mineshaft-900 pb-0">
+              <div className="mb-2 rounded border border-mineshaft-600 bg-mineshaft-900 p-4 px-0 pb-0">
                 <div className="mb-4 px-4">
                   <Controller
                     control={control}
@@ -306,7 +306,8 @@ export const SecretDetailSidebar = ({
                       >
                         {(isAllowed) => (
                           <div className="flex items-center justify-between">
-                            <span className="w-max text-mineshaft-300 text-sm">Multi-line encoding
+                            <span className="w-max text-sm text-mineshaft-300">
+                              Multi-line encoding
                               <Tooltip
                                 content="When enabled, multiline secrets will be handled by escaping newlines and enclosing the entire value in double quotes."
                                 className="z-[100]"
@@ -321,15 +322,16 @@ export const SecretDetailSidebar = ({
                               onBlur={onBlur}
                               isDisabled={!isAllowed}
                               className="items-center justify-between"
-                            >
-                            </Switch>
+                            />
                           </div>
                         )}
                       </ProjectPermissionCan>
                     )}
                   />
                 </div>
-                <div className={`w-full border-t border-mineshaft-600 mb-4 ${isOverridden ? "block" : "hidden"}`}></div>
+                <div
+                  className={`mb-4 w-full border-t border-mineshaft-600 ${isOverridden ? "block" : "hidden"}`}
+                />
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Edit}
                   a={subject(ProjectPermissionSub.Secrets, {
@@ -340,9 +342,9 @@ export const SecretDetailSidebar = ({
                   })}
                 >
                   {(isAllowed) => (
-
-                    <div className="flex items-center justify-between pb-4 px-4">
-                      <span className="w-max text-mineshaft-300 text-sm">Override with a personal value 
+                    <div className="flex items-center justify-between px-4 pb-4">
+                      <span className="w-max text-sm text-mineshaft-300">
+                        Override with a personal value
                         <Tooltip
                           content="Override the secret value with a personal value that does not get shared with other users and machines."
                           className="z-[100]"
@@ -356,8 +358,7 @@ export const SecretDetailSidebar = ({
                         onCheckedChange={handleOverrideClick}
                         isChecked={isOverridden}
                         className="justify-start"
-                      >
-                      </Switch>
+                      />
                     </div>
                   )}
                 </ProjectPermissionCan>
@@ -379,12 +380,20 @@ export const SecretDetailSidebar = ({
                   />
                 )}
               </div>
-              <div className="flex flex-col bg-mineshaft-900 rounded-md p-4 px-0 pb-0 mb-4 mt-2 border border-mineshaft-600">
-                <div className={`flex justify-between text-mineshaft-100 px-4 ${tagFields.fields.length > 0 ? "flex-col " : "flex-row "}`}>
-                  <div className={`text-sm text-mineshaft-300 ${tagFields.fields.length > 0 ? "mb-2" : "mt-0.5"}`}>Tags</div>
+              <div className="mb-4 mt-2 flex flex-col rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 px-0 pb-0">
+                <div
+                  className={`flex justify-between px-4 text-mineshaft-100 ${tagFields.fields.length > 0 ? "flex-col" : "flex-row"}`}
+                >
+                  <div
+                    className={`text-sm text-mineshaft-300 ${tagFields.fields.length > 0 ? "mb-2" : "mt-0.5"}`}
+                  >
+                    Tags
+                  </div>
                   <div>
                     <FormControl>
-                      <div className={`grid auto-cols-min grid-flow-col gap-2 overflow-hidden ${tagFields.fields.length > 0 ? "pt-2" : ""}`}>
+                      <div
+                        className={`grid auto-cols-min grid-flow-col gap-2 overflow-hidden ${tagFields.fields.length > 0 ? "pt-2" : ""}`}
+                      >
                         {tagFields.fields.map(({ tagColor, id: formId, slug, id }) => (
                           <Tag
                             className="flex w-min items-center space-x-2"
@@ -430,7 +439,9 @@ export const SecretDetailSidebar = ({
                             )}
                           </ProjectPermissionCan>
                           <DropdownMenuContent align="start" side="right" className="z-[100]">
-                            <DropdownMenuLabel className="pl-2">Add tags to this secret</DropdownMenuLabel>
+                            <DropdownMenuLabel className="pl-2">
+                              Add tags to this secret
+                            </DropdownMenuLabel>
                             {tags.map((tag) => {
                               const { id: tagId, slug, color } = tag;
 
@@ -478,9 +489,18 @@ export const SecretDetailSidebar = ({
                     </FormControl>
                   </div>
                 </div>
-                <div className={`w-full border-t border-mineshaft-600 mb-4 ${tagFields.fields.length > 0 || metadataFormFields.fields.length > 0 ? "block" : "hidden"}`}></div>
-                <div className={`flex justify-between text-mineshaft-100 px-4 ${metadataFormFields.fields.length > 0 ? "flex-col " : "flex-row "}`}>
-                  <div className={`text-sm text-mineshaft-300 ${metadataFormFields.fields.length > 0 ? "mb-2" : "mt-0.5"}`}>Metadata</div>
+                <div
+                  className={`mb-4 w-full border-t border-mineshaft-600 ${tagFields.fields.length > 0 || metadataFormFields.fields.length > 0 ? "block" : "hidden"}`}
+                />
+
+                <div
+                  className={`flex justify-between px-4 text-mineshaft-100 ${metadataFormFields.fields.length > 0 ? "flex-col" : "flex-row"}`}
+                >
+                  <div
+                    className={`text-sm text-mineshaft-300 ${metadataFormFields.fields.length > 0 ? "mb-2" : "mt-0.5"}`}
+                  >
+                    Metadata
+                  </div>
                   <FormControl>
                     <div className="flex flex-col space-y-2">
                       {metadataFormFields.fields.map(({ id: metadataFieldId }, i) => (
@@ -534,7 +554,13 @@ export const SecretDetailSidebar = ({
                         </div>
                       ))}
                       <div className={`${metadataFormFields.fields.length > 0 ? "pt-2" : ""}`}>
-                        <IconButton ariaLabel="Add Key" variant="outline_bg" size="xs" className="rounded-md" onClick={() => metadataFormFields.append({ key: "", value: "" })}>
+                        <IconButton
+                          ariaLabel="Add Key"
+                          variant="outline_bg"
+                          size="xs"
+                          className="rounded-md"
+                          onClick={() => metadataFormFields.append({ key: "", value: "" })}
+                        >
                           <FontAwesomeIcon icon={faPlus} />
                         </IconButton>
                       </div>
@@ -544,7 +570,7 @@ export const SecretDetailSidebar = ({
               </div>
               <FormControl label="Comments & Notes">
                 <TextArea
-                  className="border border-mineshaft-600 text-sm bg-bunker-800"
+                  className="border border-mineshaft-600 bg-bunker-800 text-sm"
                   {...register("comment")}
                   readOnly={isReadOnly}
                   rows={5}
@@ -552,7 +578,7 @@ export const SecretDetailSidebar = ({
               </FormControl>
               <FormControl>
                 {secretReminderRepeatDays && secretReminderRepeatDays > 0 ? (
-                  <div className="px-2 flex items-center justify-between">
+                  <div className="flex items-center justify-between px-2">
                     <div className="flex items-center space-x-2">
                       <FontAwesomeIcon className="text-primary-500" icon={faClock} />
                       <span className="text-sm text-bunker-300">
@@ -584,62 +610,91 @@ export const SecretDetailSidebar = ({
                   </div>
                 )}
               </FormControl>
-              <div className="dark mb-4flex-grow text-sm text-bunker-300 cursor-default">
+              <div className="mb-4flex-grow dark cursor-default text-sm text-bunker-300">
                 <div className="mb-2 pl-1">Version History</div>
-                <div className="flex h-48 flex-col space-y-2 overflow-y-auto thin-scrollbar overflow-x-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 dark:[color-scheme:dark]">
+                <div className="thin-scrollbar flex h-48 flex-col space-y-2 overflow-y-auto overflow-x-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 dark:[color-scheme:dark]">
                   {secretVersion?.map(({ createdAt, secretValue, version, id }) => (
                     <div className="flex flex-row">
-                      <div key={id} className="flex flex-col space-y-1 w-full">
+                      <div key={id} className="flex w-full flex-col space-y-1">
                         <div className="flex items-center">
                           <div className="w-10">
-                            <div className="text-mineshaft-300 text-sm bg-mineshaft-700 border border-mineshaft-600 rounded-md px-1 w-fit">
+                            <div className="w-fit rounded-md border border-mineshaft-600 bg-mineshaft-700 px-1 text-sm text-mineshaft-300">
                               v{version}
                             </div>
                           </div>
                           <div>{format(new Date(createdAt), "Pp")}</div>
                         </div>
                         <div className="flex w-full cursor-default">
-                          <div className="w-10 relative">
-                            <div className="absolute left-3 top-0 bottom-0 border-l mt-0.5 border-mineshaft-400/60"></div>
+                          <div className="relative w-10">
+                            <div className="absolute bottom-0 left-3 top-0 mt-0.5 border-l border-mineshaft-400/60" />
                           </div>
                           <div className="flex flex-row">
-                            <div className="rounded-sm bg-primary-500/10 text-primary-300/70 px-1 w-fit h-min">Value:</div>
-                            <div className="pl-1 break-all font-mono group">
-                            <div className="hidden group-[.show-value]:inline transition-all duration-200 cursor-pointer relative">
-                                <span 
-                                  className="select-none" 
+                            <div className="h-min w-fit rounded-sm bg-primary-500/10 px-1 text-primary-300/70">
+                              Value:
+                            </div>
+                            <div className="group break-all pl-1 font-mono">
+                              <div className="relative hidden cursor-pointer transition-all duration-200 group-[.show-value]:inline">
+                                <button
+                                  type="button"
+                                  className="select-none"
                                   onClick={(e) => {
-                                    navigator.clipboard.writeText(secretValue || '');
+                                    navigator.clipboard.writeText(secretValue || "");
                                     const target = e.currentTarget;
-                                    target.style.borderBottom = '1px dashed';
-                                    target.style.paddingBottom = '-1px';
-                                    
+                                    target.style.borderBottom = "1px dashed";
+                                    target.style.paddingBottom = "-1px";
+
                                     // Create and insert popup
-                                    const popup = document.createElement('div');
-                                    popup.className = 'w-16 flex justify-center absolute top-6 left-0 text-xs text-primary-100 bg-mineshaft-800 px-1 py-0.5 rounded-md border border-primary-500/50';
-                                    popup.textContent = 'Copied!';
+                                    const popup = document.createElement("div");
+                                    popup.className =
+                                      "w-16 flex justify-center absolute top-6 left-0 text-xs text-primary-100 bg-mineshaft-800 px-1 py-0.5 rounded-md border border-primary-500/50";
+                                    popup.textContent = "Copied!";
                                     target.parentElement?.appendChild(popup);
-                                    
+
                                     // Remove popup and border after delay
                                     setTimeout(() => {
                                       popup.remove();
-                                      target.style.borderBottom = 'none';
+                                      target.style.borderBottom = "none";
                                     }, 3000);
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                      navigator.clipboard.writeText(secretValue || "");
+                                      const target = e.currentTarget;
+                                      target.style.borderBottom = "1px dashed";
+                                      target.style.paddingBottom = "-1px";
+
+                                      // Create and insert popup
+                                      const popup = document.createElement("div");
+                                      popup.className =
+                                        "w-16 flex justify-center absolute top-6 left-0 text-xs text-primary-100 bg-mineshaft-800 px-1 py-0.5 rounded-md border border-primary-500/50";
+                                      popup.textContent = "Copied!";
+                                      target.parentElement?.appendChild(popup);
+
+                                      // Remove popup and border after delay
+                                      setTimeout(() => {
+                                        popup.remove();
+                                        target.style.borderBottom = "none";
+                                      }, 3000);
+                                    }
                                   }}
                                 >
                                   {secretValue}
-                                </span>
-                                <button 
+                                </button>
+                                <button
                                   type="button"
-                                  className="ml-1 cursor-pointer" 
+                                  className="ml-1 cursor-pointer"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    e.currentTarget.closest('.group')?.classList.remove('show-value');
+                                    e.currentTarget
+                                      .closest(".group")
+                                      ?.classList.remove("show-value");
                                   }}
                                   onKeyDown={(e) => {
-                                    if (e.key === 'Enter' || e.key === ' ') {
+                                    if (e.key === "Enter" || e.key === " ") {
                                       e.stopPropagation();
-                                      e.currentTarget.closest('.group')?.classList.remove('show-value');
+                                      e.currentTarget
+                                        .closest(".group")
+                                        ?.classList.remove("show-value");
                                     }
                                   }}
                                 >
@@ -647,16 +702,18 @@ export const SecretDetailSidebar = ({
                                 </button>
                               </div>
                               <span className="group-[.show-value]:hidden">
-                                {secretValue?.replace(/./g, '*')}
-                                <button 
+                                {secretValue?.replace(/./g, "*")}
+                                <button
                                   type="button"
                                   className="ml-1 cursor-pointer"
                                   onClick={(e) => {
-                                    e.currentTarget.closest('.group')?.classList.add('show-value');
+                                    e.currentTarget.closest(".group")?.classList.add("show-value");
                                   }}
                                   onKeyDown={(e) => {
-                                    if (e.key === 'Enter' || e.key === ' ') {
-                                      e.currentTarget.closest('.group')?.classList.add('show-value');
+                                    if (e.key === "Enter" || e.key === " ") {
+                                      e.currentTarget
+                                        .closest(".group")
+                                        ?.classList.add("show-value");
                                     }
                                   }}
                                 >
@@ -667,10 +724,17 @@ export const SecretDetailSidebar = ({
                           </div>
                         </div>
                       </div>
-                      <div className={`flex items-center justify-center ${version === secretVersion.length ? "hidden" : ""}`}>
+                      <div
+                        className={`flex items-center justify-center ${version === secretVersion.length ? "hidden" : ""}`}
+                      >
                         <Tooltip content="Restore Secret Value">
-                          <IconButton ariaLabel="Restore" variant="outline_bg" size="sm" className="rounded-md h-8 w-8" onClick={() => setValue(
-                            "value", secretValue)}>
+                          <IconButton
+                            ariaLabel="Restore"
+                            variant="outline_bg"
+                            size="sm"
+                            className="h-8 w-8 rounded-md"
+                            onClick={() => setValue("value", secretValue)}
+                          >
                             <FontAwesomeIcon icon={faArrowRotateRight} />
                           </IconButton>
                         </Tooltip>
@@ -706,14 +770,22 @@ export const SecretDetailSidebar = ({
                   </Button>
                 )}
                 {!isPending && secretAccessList && (
-                  <div className="flex max-h-72 mb-4 flex-col space-y-2 overflow-y-auto overflow-x-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 dark:[color-scheme:dark]">
+                  <div className="mb-4 flex max-h-72 flex-col space-y-2 overflow-y-auto overflow-x-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 dark:[color-scheme:dark]">
                     {secretAccessList.users.length > 0 && (
                       <div className="pb-3">
                         <div className="mb-2 font-bold">Users</div>
                         <div className="flex flex-wrap gap-2">
                           {secretAccessList.users.map((user) => (
                             <div className="rounded-md bg-bunker-500">
-                              <Tooltip content={user.allowedActions.map(action => action.charAt(0).toUpperCase() + action.slice(1).toLowerCase()).join(", ")} className="z-[100]">
+                              <Tooltip
+                                content={user.allowedActions
+                                  .map(
+                                    (action) =>
+                                      action.charAt(0).toUpperCase() + action.slice(1).toLowerCase()
+                                  )
+                                  .join(", ")}
+                                className="z-[100]"
+                              >
                                 <Link
                                   to={
                                     `/${ProjectType.SecretManager}/$projectId/members/$membershipId` as const
@@ -722,7 +794,7 @@ export const SecretDetailSidebar = ({
                                     projectId: currentWorkspace.id,
                                     membershipId: user.membershipId
                                   }}
-                                  className="text-secondary/80 bg-mineshaft-700 border border-mineshaft-600 rounded-md px-1 py-0.5 text-sm hover:text-primary"
+                                  className="text-secondary/80 rounded-md border border-mineshaft-600 bg-mineshaft-700 px-1 py-0.5 text-sm hover:text-primary"
                                 >
                                   {user.name}
                                 </Link>
@@ -738,7 +810,15 @@ export const SecretDetailSidebar = ({
                         <div className="flex flex-wrap gap-2">
                           {secretAccessList.identities.map((identity) => (
                             <div className="rounded-md bg-bunker-500">
-                              <Tooltip content={identity.allowedActions.map(action => action.charAt(0).toUpperCase() + action.slice(1).toLowerCase()).join(", ")} className="z-[100]">
+                              <Tooltip
+                                content={identity.allowedActions
+                                  .map(
+                                    (action) =>
+                                      action.charAt(0).toUpperCase() + action.slice(1).toLowerCase()
+                                  )
+                                  .join(", ")}
+                                className="z-[100]"
+                              >
                                 <Link
                                   to={
                                     `/${ProjectType.SecretManager}/$projectId/identities/$identityId` as const
@@ -747,7 +827,7 @@ export const SecretDetailSidebar = ({
                                     projectId: currentWorkspace.id,
                                     identityId: identity.id
                                   }}
-                                  className="text-secondary/80 bg-mineshaft-700 border border-mineshaft-600 rounded-md px-1 py-0.5 text-sm hover:text-primary"
+                                  className="text-secondary/80 rounded-md border border-mineshaft-600 bg-mineshaft-700 px-1 py-0.5 text-sm hover:text-primary"
                                 >
                                   {identity.name}
                                 </Link>
@@ -763,13 +843,21 @@ export const SecretDetailSidebar = ({
                         <div className="flex flex-wrap gap-2">
                           {secretAccessList.groups.map((group) => (
                             <div className="rounded-md bg-bunker-500">
-                              <Tooltip content={group.allowedActions.map(action => action.charAt(0).toUpperCase() + action.slice(1).toLowerCase()).join(", ")} className="z-[100]">
+                              <Tooltip
+                                content={group.allowedActions
+                                  .map(
+                                    (action) =>
+                                      action.charAt(0).toUpperCase() + action.slice(1).toLowerCase()
+                                  )
+                                  .join(", ")}
+                                className="z-[100]"
+                              >
                                 <Link
                                   to={"/organization/groups/$groupId" as const}
                                   params={{
                                     groupId: group.id
                                   }}
-                                  className="text-secondary/80 bg-mineshaft-700 border border-mineshaft-600 rounded-md px-1 py-0.5 text-sm hover:text-primary"
+                                  className="text-secondary/80 rounded-md border border-mineshaft-600 bg-mineshaft-700 px-1 py-0.5 text-sm hover:text-primary"
                                 >
                                   {group.name}
                                 </Link>
@@ -815,8 +903,16 @@ export const SecretDetailSidebar = ({
                     })}
                   >
                     {(isAllowed) => (
-                      <IconButton colorSchema="danger" ariaLabel="Delete Secret" className="bg-mineshaft-700 border border-mineshaft-600 hover:bg-red-600/20 hover:border-red-500/70" isDisabled={!isAllowed} onClick={onDeleteSecret}>
-                        <Tooltip content="Delete Secret"><FontAwesomeIcon icon={faTrash} /></Tooltip>
+                      <IconButton
+                        colorSchema="danger"
+                        ariaLabel="Delete Secret"
+                        className="border border-mineshaft-600 bg-mineshaft-700 hover:border-red-500/70 hover:bg-red-600/20"
+                        isDisabled={!isAllowed}
+                        onClick={onDeleteSecret}
+                      >
+                        <Tooltip content="Delete Secret">
+                          <FontAwesomeIcon icon={faTrash} />
+                        </Tooltip>
                       </IconButton>
                     )}
                   </ProjectPermissionCan>
