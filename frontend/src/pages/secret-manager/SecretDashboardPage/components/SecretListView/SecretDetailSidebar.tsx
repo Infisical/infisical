@@ -629,24 +629,39 @@ export const SecretDetailSidebar = ({
                                 >
                                   {secretValue}
                                 </span>
-                                <FontAwesomeIcon 
-                                  icon={faEyeSlash} 
+                                <button 
+                                  type="button"
                                   className="ml-1 cursor-pointer" 
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     e.currentTarget.closest('.group')?.classList.remove('show-value');
                                   }}
-                                />
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                      e.stopPropagation();
+                                      e.currentTarget.closest('.group')?.classList.remove('show-value');
+                                    }
+                                  }}
+                                >
+                                  <FontAwesomeIcon icon={faEyeSlash} />
+                                </button>
                               </div>
                               <span className="group-[.show-value]:hidden">
                                 {secretValue?.replace(/./g, '*')}
-                                <FontAwesomeIcon 
-                                  icon={faEye} 
-                                  className="ml-1 cursor-pointer" 
+                                <button 
+                                  type="button"
+                                  className="ml-1 cursor-pointer"
                                   onClick={(e) => {
                                     e.currentTarget.closest('.group')?.classList.add('show-value');
                                   }}
-                                />
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                      e.currentTarget.closest('.group')?.classList.add('show-value');
+                                    }
+                                  }}
+                                >
+                                  <FontAwesomeIcon icon={faEye} />
+                                </button>
                               </span>
                             </div>
                           </div>
