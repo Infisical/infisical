@@ -188,13 +188,15 @@ export const secretRotationQueueFactory = ({
           options
         } as TSecretRotationDbFn;
 
+        const getQuery = getDbSetQuery(provider.template.client, {
+          password: newCredential.internal.rotated_password as string,
+          username: newCredential.internal.username as string
+        });
+
         // set function
         await secretRotationDbFn({
           ...dbFunctionArg,
-          ...getDbSetQuery(provider.template.client, {
-            password: newCredential.internal.rotated_password as string,
-            username: newCredential.internal.username as string
-          })
+          getQuery
         });
 
         // test function
@@ -203,8 +205,10 @@ export const secretRotationQueueFactory = ({
 
         await secretRotationDbFn({
           ...dbFunctionArg,
-          query: testQuery,
-          variables: []
+          getQuery: async () => ({
+            query: testQuery,
+            variables: []
+          })
         });
 
         newCredential.outputs.db_username = newCredential.internal.username;

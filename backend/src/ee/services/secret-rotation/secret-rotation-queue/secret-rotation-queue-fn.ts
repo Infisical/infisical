@@ -6,7 +6,7 @@
 /* eslint-disable no-param-reassign */
 import axios from "axios";
 import jmespath from "jmespath";
-import knex from "knex";
+import knex, { Knex } from "knex";
 
 import { getConfig } from "@app/lib/config/env";
 import { getDbConnectionHost } from "@app/lib/knex";
@@ -80,12 +80,11 @@ export const secretRotationDbFn = async ({
   ca,
   host,
   port,
-  query,
   database,
   password,
   username,
   client,
-  variables,
+  getQuery,
   options
 }: TSecretRotationDbFn) => {
   const appCfg = getConfig();
@@ -122,6 +121,9 @@ export const secretRotationDbFn = async ({
       options
     }
   });
+
+  const { query, variables } = await getQuery(db);
+
   const data = await db.raw(query, variables);
   return data;
 };
@@ -148,24 +150,27 @@ export const secretRotationHttpSetFn = async (func: THttpProviderFunction, varia
   });
 };
 
-export const getDbSetQuery = (db: TDbProviderClients, variables: { username: string; password: string }) => {
-  if (db === TDbProviderClients.Pg) {
+export const getDbSetQuery =
+  (db: TDbProviderClients, variables: { username: string; password: string }) => async (knx: Knex) => {
+    const sanitizedPassword = await knx.raw("select ?", [variables.password]);
+
+    if (db === TDbProviderClients.Pg) {
+      return {
+        query: `ALTER USER ?? WITH PASSWORD '${sanitizedPassword}'`,
+        variables: [variables.username]
+      };
+    }
+
+    if (db === TDbProviderClients.MsSqlServer) {
+      return {
+        query: `ALTER LOGIN ?? WITH PASSWORD = '${sanitizedPassword}'`,
+        variables: [variables.username]
+      };
+    }
+
+    // add more based on client
     return {
-      query: `ALTER USER ?? WITH PASSWORD '${variables.password}'`,
+      query: `ALTER USER ?? IDENTIFIED BY '${sanitizedPassword}'`,
       variables: [variables.username]
     };
-  }
-
-  if (db === TDbProviderClients.MsSqlServer) {
-    return {
-      query: `ALTER LOGIN ?? WITH PASSWORD = '${variables.password}'`,
-      variables: [variables.username]
-    };
-  }
-
-  // add more based on client
-  return {
-    query: `ALTER USER ?? IDENTIFIED BY '${variables.password}'`,
-    variables: [variables.username]
   };
-};

@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { TDbProviderClients } from "../templates/types";
 
 export type TSecretRotationEncData = {
@@ -21,8 +23,7 @@ export type TSecretRotationDbFn = {
   host: string;
   database: string;
   port: number;
-  query: string;
-  variables: unknown[];
+  getQuery: (db: Knex) => Promise<{ query: string; variables: unknown[] }>;
   ca?: string;
   options?: Record<string, unknown>;
 };
