@@ -20,7 +20,7 @@ export const DropdownMenuContent = forwardRef<HTMLDivElement, DropdownMenuConten
     return (
       <DropdownMenuPrimitive.Portal>
         <DropdownMenuPrimitive.Content
-          sideOffset={10}
+          sideOffset={-8}
           {...props}
           ref={forwardedRef}
           className={twMerge(
