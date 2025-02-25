@@ -4,8 +4,6 @@ import { faCircleQuestion, faEye } from "@fortawesome/free-regular-svg-icons";
 import {
   faArrowRotateRight,
   faCheckCircle,
-  faCircle,
-  faCircleDot,
   faClock,
   faEyeSlash,
   faPlus,
@@ -241,9 +239,6 @@ export const SecretDetailSidebar = ({
         <DrawerContent title={`Secret – ${secret?.key}`} className="thin-scrollbar">
           <form onSubmit={handleSubmit(handleFormSubmit)} className="h-full">
             <div className="flex h-full flex-col">
-              {/* <FormControl label="Key">
-                <Input isDisabled {...register("key")} />
-              </FormControl> */}
               <div className="flex flex-row">
                 <div className="w-full">
                   <ProjectPermissionCan
@@ -316,7 +311,7 @@ export const SecretDetailSidebar = ({
                                 content="When enabled, multiline secrets will be handled by escaping newlines and enclosing the entire value in double quotes."
                                 className="z-[100]"
                               >
-                                <FontAwesomeIcon icon={faCircleQuestion} className="ml-2" size="md" />
+                                <FontAwesomeIcon icon={faCircleQuestion} className="ml-2" />
                               </Tooltip>
                             </span>
                             <Switch
@@ -352,7 +347,7 @@ export const SecretDetailSidebar = ({
                           content="Override the secret value with a personal value that does not get shared with other users and machines."
                           className="z-[100]"
                         >
-                          <FontAwesomeIcon icon={faCircleQuestion} className="ml-2" size="md" />
+                          <FontAwesomeIcon icon={faCircleQuestion} className="ml-2" />
                         </Tooltip>
                       </span>
                       <Switch
