@@ -39,6 +39,7 @@ export enum QueueName {
   DynamicSecretRevocation = "dynamic-secret-revocation",
   CaCrlRotation = "ca-crl-rotation",
   SecretReplication = "secret-replication",
+  AutomatedSecurity = "automated-security",
   SecretSync = "secret-sync", // parent queue to push integration sync, webhook, and secret replication
   ProjectV3Migration = "project-v3-migration",
   AccessTokenStatusUpdate = "access-token-status-update",
@@ -72,7 +73,8 @@ export enum QueueJobs {
   SecretSyncSyncSecrets = "secret-sync-sync-secrets",
   SecretSyncImportSecrets = "secret-sync-import-secrets",
   SecretSyncRemoveSecrets = "secret-sync-remove-secrets",
-  SecretSyncSendActionFailedNotifications = "secret-sync-send-action-failed-notifications"
+  SecretSyncSendActionFailedNotifications = "secret-sync-send-action-failed-notifications",
+  ProfileIdentity = "profile-identity"
 }
 
 export type TQueueJobTypes = {
@@ -194,6 +196,10 @@ export type TQueueJobTypes = {
         encoding: SecretKeyEncoding;
       };
     };
+  };
+  [QueueName.AutomatedSecurity]: {
+    name: QueueJobs.ProfileIdentity;
+    payload: undefined;
   };
   [QueueName.AppConnectionSecretSync]:
     | {

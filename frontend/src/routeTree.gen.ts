@@ -44,6 +44,7 @@ import { Route as organizationSettingsPageRouteImport } from './pages/organizati
 import { Route as organizationSecretSharingPageRouteImport } from './pages/organization/SecretSharingPage/route'
 import { Route as organizationSecretScanningPageRouteImport } from './pages/organization/SecretScanningPage/route'
 import { Route as organizationBillingPageRouteImport } from './pages/organization/BillingPage/route'
+import { Route as organizationAutomatedSecurityPageRouteImport } from './pages/organization/AutomatedSecurityPage/route'
 import { Route as organizationAuditLogsPageRouteImport } from './pages/organization/AuditLogsPage/route'
 import { Route as organizationAdminPageRouteImport } from './pages/organization/AdminPage/route'
 import { Route as organizationAccessManagementPageRouteImport } from './pages/organization/AccessManagementPage/route'
@@ -504,6 +505,14 @@ const organizationBillingPageRouteRoute =
   organizationBillingPageRouteImport.update({
     id: '/billing',
     path: '/billing',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationRoute,
+  } as any)
+
+const organizationAutomatedSecurityPageRouteRoute =
+  organizationAutomatedSecurityPageRouteImport.update({
+    id: '/automated-security',
+    path: '/automated-security',
     getParentRoute: () =>
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationRoute,
   } as any)
@@ -1837,6 +1846,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof organizationAuditLogsPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/organization/automated-security': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organization/automated-security'
+      path: '/automated-security'
+      fullPath: '/organization/automated-security'
+      preLoaderRoute: typeof organizationAutomatedSecurityPageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/organization/billing': {
       id: '/_authenticate/_inject-org-details/_org-layout/organization/billing'
       path: '/billing'
@@ -2904,6 +2920,7 @@ interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren {
   organizationAccessManagementPageRouteRoute: typeof organizationAccessManagementPageRouteRoute
   organizationAdminPageRouteRoute: typeof organizationAdminPageRouteRoute
   organizationAuditLogsPageRouteRoute: typeof organizationAuditLogsPageRouteRoute
+  organizationAutomatedSecurityPageRouteRoute: typeof organizationAutomatedSecurityPageRouteRoute
   organizationBillingPageRouteRoute: typeof organizationBillingPageRouteRoute
   organizationSecretScanningPageRouteRoute: typeof organizationSecretScanningPageRouteRoute
   organizationSecretSharingPageRouteRoute: typeof organizationSecretSharingPageRouteRoute
@@ -2925,6 +2942,8 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren: Authentica
       organizationAccessManagementPageRouteRoute,
     organizationAdminPageRouteRoute: organizationAdminPageRouteRoute,
     organizationAuditLogsPageRouteRoute: organizationAuditLogsPageRouteRoute,
+    organizationAutomatedSecurityPageRouteRoute:
+      organizationAutomatedSecurityPageRouteRoute,
     organizationBillingPageRouteRoute: organizationBillingPageRouteRoute,
     organizationSecretScanningPageRouteRoute:
       organizationSecretScanningPageRouteRoute,
@@ -3601,6 +3620,7 @@ export interface FileRoutesByFullPath {
   '/organization/access-management': typeof organizationAccessManagementPageRouteRoute
   '/organization/admin': typeof organizationAdminPageRouteRoute
   '/organization/audit-logs': typeof organizationAuditLogsPageRouteRoute
+  '/organization/automated-security': typeof organizationAutomatedSecurityPageRouteRoute
   '/organization/billing': typeof organizationBillingPageRouteRoute
   '/organization/secret-scanning': typeof organizationSecretScanningPageRouteRoute
   '/organization/secret-sharing': typeof organizationSecretSharingPageRouteRoute
@@ -3771,6 +3791,7 @@ export interface FileRoutesByTo {
   '/organization/access-management': typeof organizationAccessManagementPageRouteRoute
   '/organization/admin': typeof organizationAdminPageRouteRoute
   '/organization/audit-logs': typeof organizationAuditLogsPageRouteRoute
+  '/organization/automated-security': typeof organizationAutomatedSecurityPageRouteRoute
   '/organization/billing': typeof organizationBillingPageRouteRoute
   '/organization/secret-scanning': typeof organizationSecretScanningPageRouteRoute
   '/organization/secret-sharing': typeof organizationSecretSharingPageRouteRoute
@@ -3949,6 +3970,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organization/access-management': typeof organizationAccessManagementPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/admin': typeof organizationAdminPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/audit-logs': typeof organizationAuditLogsPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organization/automated-security': typeof organizationAutomatedSecurityPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/billing': typeof organizationBillingPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/secret-scanning': typeof organizationSecretScanningPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing': typeof organizationSecretSharingPageRouteRoute
@@ -4129,6 +4151,7 @@ export interface FileRouteTypes {
     | '/organization/access-management'
     | '/organization/admin'
     | '/organization/audit-logs'
+    | '/organization/automated-security'
     | '/organization/billing'
     | '/organization/secret-scanning'
     | '/organization/secret-sharing'
@@ -4298,6 +4321,7 @@ export interface FileRouteTypes {
     | '/organization/access-management'
     | '/organization/admin'
     | '/organization/audit-logs'
+    | '/organization/automated-security'
     | '/organization/billing'
     | '/organization/secret-scanning'
     | '/organization/secret-sharing'
@@ -4474,6 +4498,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organization/access-management'
     | '/_authenticate/_inject-org-details/_org-layout/organization/admin'
     | '/_authenticate/_inject-org-details/_org-layout/organization/audit-logs'
+    | '/_authenticate/_inject-org-details/_org-layout/organization/automated-security'
     | '/_authenticate/_inject-org-details/_org-layout/organization/billing'
     | '/_authenticate/_inject-org-details/_org-layout/organization/secret-scanning'
     | '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing'
@@ -4843,6 +4868,7 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organization/access-management",
         "/_authenticate/_inject-org-details/_org-layout/organization/admin",
         "/_authenticate/_inject-org-details/_org-layout/organization/audit-logs",
+        "/_authenticate/_inject-org-details/_org-layout/organization/automated-security",
         "/_authenticate/_inject-org-details/_org-layout/organization/billing",
         "/_authenticate/_inject-org-details/_org-layout/organization/secret-scanning",
         "/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing",
@@ -4879,6 +4905,10 @@ export const routeTree = rootRoute
     },
     "/_authenticate/_inject-org-details/_org-layout/organization/audit-logs": {
       "filePath": "organization/AuditLogsPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organization"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organization/automated-security": {
+      "filePath": "organization/AutomatedSecurityPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organization"
     },
     "/_authenticate/_inject-org-details/_org-layout/organization/billing": {

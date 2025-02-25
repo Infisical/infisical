@@ -348,6 +348,11 @@ export const MinimizedOrgSidebar = () => {
                       Audit Logs
                     </DropdownMenuItem>
                   </Link>
+                  <Link to="/organization/automated-security">
+                    <DropdownMenuItem icon={<FontAwesomeIcon className="w-3" icon={faCog} />}>
+                      Automated Security
+                    </DropdownMenuItem>
+                  </Link>
                   <Link to="/organization/settings">
                     <DropdownMenuItem icon={<FontAwesomeIcon className="w-3" icon={faCog} />}>
                       Organization Settings

@@ -105,6 +105,9 @@ import { authPaswordServiceFactory } from "@app/services/auth/auth-password-serv
 import { authSignupServiceFactory } from "@app/services/auth/auth-signup-service";
 import { tokenDALFactory } from "@app/services/auth-token/auth-token-dal";
 import { tokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { automatedSecurityReportDALFactory } from "@app/services/automated-security/automated-security-report-dal";
+import { automatedSecurityServiceFactory } from "@app/services/automated-security/automated-security-service";
+import { identityProfileDALFactory } from "@app/services/automated-security/identity-profile-dal";
 import { certificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { certificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { certificateServiceFactory } from "@app/services/certificate/certificate-service";
@@ -392,6 +395,8 @@ export const registerRoutes = async (
   const kmipClientCertificateDAL = kmipClientCertificateDALFactory(db);
   const kmipOrgConfigDAL = kmipOrgConfigDALFactory(db);
   const kmipOrgServerCertificateDAL = kmipOrgServerCertificateDALFactory(db);
+  const automatedSecurityReportDAL = automatedSecurityReportDALFactory(db);
+  const identityProfileDAL = identityProfileDALFactory(db);
 
   const permissionService = permissionServiceFactory({
     permissionDAL,
@@ -1242,6 +1247,7 @@ export const registerRoutes = async (
     permissionService,
     licenseService
   });
+
   const identityUaService = identityUaServiceFactory({
     identityOrgMembershipDAL,
     permissionService,
@@ -1250,6 +1256,7 @@ export const registerRoutes = async (
     identityUaDAL,
     licenseService
   });
+
   const identityKubernetesAuthService = identityKubernetesAuthServiceFactory({
     identityKubernetesAuthDAL,
     identityOrgMembershipDAL,
@@ -1457,6 +1464,15 @@ export const registerRoutes = async (
     permissionService
   });
 
+  const automatedSecurityService = automatedSecurityServiceFactory({
+    auditLogDAL,
+    automatedSecurityReportDAL,
+    identityProfileDAL,
+    orgDAL,
+    queueService,
+    permissionService
+  });
+
   await superAdminService.initServerCfg();
 
   // setup the communication with license key server
@@ -1557,7 +1573,8 @@ export const registerRoutes = async (
     appConnection: appConnectionService,
     secretSync: secretSyncService,
     kmip: kmipService,
-    kmipOperation: kmipOperationService
+    kmipOperation: kmipOperationService,
+    automatedSecurity: automatedSecurityService
   });
 
   const cronJobs: CronJob[] = [];

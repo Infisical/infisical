@@ -29,6 +29,9 @@ import {
   TAuthTokenSessionsUpdate,
   TAuthTokensInsert,
   TAuthTokensUpdate,
+  TAutomatedSecurityReports,
+  TAutomatedSecurityReportsInsert,
+  TAutomatedSecurityReportsUpdate,
   TBackupPrivateKey,
   TBackupPrivateKeyInsert,
   TBackupPrivateKeyUpdate,
@@ -113,6 +116,9 @@ import {
   TIdentityOrgMemberships,
   TIdentityOrgMembershipsInsert,
   TIdentityOrgMembershipsUpdate,
+  TIdentityProfile,
+  TIdentityProfileInsert,
+  TIdentityProfileUpdate,
   TIdentityProjectAdditionalPrivilege,
   TIdentityProjectAdditionalPrivilegeInsert,
   TIdentityProjectAdditionalPrivilegeUpdate,
@@ -929,6 +935,16 @@ declare module "knex/types/tables" {
       TKmipClientCertificates,
       TKmipClientCertificatesInsert,
       TKmipClientCertificatesUpdate
+    >;
+    [TableName.IdentityProfile]: KnexOriginal.CompositeTableType<
+      TIdentityProfile,
+      TIdentityProfileInsert,
+      TIdentityProfileUpdate
+    >;
+    [TableName.AutomatedSecurityReports]: KnexOriginal.CompositeTableType<
+      TAutomatedSecurityReports,
+      TAutomatedSecurityReportsInsert,
+      TAutomatedSecurityReportsUpdate
     >;
   }
 }

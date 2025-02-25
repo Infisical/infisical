@@ -192,6 +192,7 @@
     "nanoid": "^3.3.8",
     "nodemailer": "^6.9.9",
     "odbc": "^2.4.9",
+    "openai": "^4.85.4",
     "openid-client": "^5.6.5",
     "ora": "^7.0.1",
     "oracledb": "^6.4.0",

@@ -228,7 +228,9 @@ const envSchema = z
           if (!val) return undefined;
           return JSON.parse(val) as string[];
         })
-    )
+    ),
+
+    AI_API_KEY: zpStr(z.string().optional())
   })
   // To ensure that basic encryption is always possible.
   .refine(

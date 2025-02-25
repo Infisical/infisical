@@ -8,6 +8,7 @@ import { registerSecretSyncRouter, SECRET_SYNC_REGISTER_ROUTER_MAP } from "@app/
 
 import { registerAdminRouter } from "./admin-router";
 import { registerAuthRoutes } from "./auth-router";
+import { registerAutomatedSecurityRouter } from "./automated-security-router";
 import { registerProjectBotRouter } from "./bot-router";
 import { registerCaRouter } from "./certificate-authority-router";
 import { registerCertRouter } from "./certificate-router";
@@ -141,4 +142,6 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
     },
     { prefix: "/secret-syncs" }
   );
+
+  await server.register(registerAutomatedSecurityRouter, { prefix: "/automated-security" });
 };

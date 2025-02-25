@@ -45,6 +45,7 @@ import { TAuthPasswordFactory } from "@app/services/auth/auth-password-service";
 import { TAuthSignupFactory } from "@app/services/auth/auth-signup-service";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { TAutomatedSecurityServiceFactory } from "@app/services/automated-security/automated-security-service";
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
 import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
 import { TCertificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
@@ -228,6 +229,7 @@ declare module "fastify" {
       secretSync: TSecretSyncServiceFactory;
       kmip: TKmipServiceFactory;
       kmipOperation: TKmipOperationServiceFactory;
+      automatedSecurity: TAutomatedSecurityServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer
