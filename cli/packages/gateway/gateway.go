@@ -196,7 +196,7 @@ func (g *Gateway) Listen(ctx context.Context) error {
 				if len(state.PeerCertificates) > 0 {
 					organizationUnit := state.PeerCertificates[0].Subject.OrganizationalUnit
 					commonName := state.PeerCertificates[0].Subject.CommonName
-					if organizationUnit[0] != "gateway-client" && commonName != "cloud" {
+					if organizationUnit[0] != "gateway-client" || commonName != "cloud" {
 						log.Error().Msgf("Client certificate verification failed. Received %s, %s", organizationUnit, commonName)
 						continue
 					}
@@ -262,7 +262,7 @@ func (g *Gateway) registerPermissionLifecycle(permissionFn func() error, done ch
 	go func() {
 		// wait for 5 mins
 		permissionFn()
-		log.Printf("Ceated permission for incoming connections")
+		log.Printf("Created permission for incoming connections")
 		for {
 			select {
 			case <-done:
