@@ -1,11 +1,11 @@
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
-import { faCircleQuestion } from "@fortawesome/free-regular-svg-icons";
+import { faCircleQuestion, faEye } from "@fortawesome/free-regular-svg-icons";
 import {
+  faArrowRotateRight,
   faCheckCircle,
-  faCircle,
-  faCircleDot,
   faClock,
+  faEyeSlash,
   faPlus,
   faShare,
   faTag,
@@ -236,44 +236,102 @@ export const SecretDetailSidebar = ({
         }}
         isOpen={isOpen}
       >
-        <DrawerContent title="Secret">
+        <DrawerContent title={`Secret – ${secret?.key}`} className="thin-scrollbar">
           <form onSubmit={handleSubmit(handleFormSubmit)} className="h-full">
             <div className="flex h-full flex-col">
-              <FormControl label="Key">
-                <Input isDisabled {...register("key")} />
-              </FormControl>
-              <ProjectPermissionCan
-                I={ProjectPermissionActions.Edit}
-                a={subject(ProjectPermissionSub.Secrets, {
-                  environment,
-                  secretPath,
-                  secretName: secretKey,
-                  secretTags: selectTagSlugs
-                })}
-              >
-                {(isAllowed) => (
+              <div className="flex flex-row">
+                <div className="w-full">
+                  <ProjectPermissionCan
+                    I={ProjectPermissionActions.Edit}
+                    a={subject(ProjectPermissionSub.Secrets, {
+                      environment,
+                      secretPath,
+                      secretName: secretKey,
+                      secretTags: selectTagSlugs
+                    })}
+                  >
+                    {(isAllowed) => (
+                      <Controller
+                        name="value"
+                        key="secret-value"
+                        control={control}
+                        render={({ field }) => (
+                          <FormControl label="Value">
+                            <InfisicalSecretInput
+                              isReadOnly={isReadOnly}
+                              environment={environment}
+                              secretPath={secretPath}
+                              key="secret-value"
+                              isDisabled={isOverridden || !isAllowed}
+                              containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-bunker-800 px-2 py-1.5"
+                              {...field}
+                              autoFocus={false}
+                            />
+                          </FormControl>
+                        )}
+                      />
+                    )}
+                  </ProjectPermissionCan>
+                </div>
+                <div className="ml-1 mt-1.5 flex items-center">
+                  <Button
+                    className="w-full px-2 py-[0.43rem] font-normal"
+                    variant="outline_bg"
+                    leftIcon={<FontAwesomeIcon icon={faShare} />}
+                    onClick={() => {
+                      const value = secret?.valueOverride ?? secret?.value;
+                      if (value) {
+                        handleSecretShare(value);
+                      }
+                    }}
+                  >
+                    Share
+                  </Button>
+                </div>
+              </div>
+              <div className="mb-2 rounded border border-mineshaft-600 bg-mineshaft-900 p-4 px-0 pb-0">
+                <div className="mb-4 px-4">
                   <Controller
-                    name="value"
-                    key="secret-value"
                     control={control}
-                    render={({ field }) => (
-                      <FormControl label="Value">
-                        <InfisicalSecretInput
-                          isReadOnly={isReadOnly}
-                          environment={environment}
-                          secretPath={secretPath}
-                          key="secret-value"
-                          isDisabled={isOverridden || !isAllowed}
-                          containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-bunker-800  px-2 py-1.5"
-                          {...field}
-                          autoFocus={false}
-                        />
-                      </FormControl>
+                    name="skipMultilineEncoding"
+                    render={({ field: { value, onChange, onBlur } }) => (
+                      <ProjectPermissionCan
+                        I={ProjectPermissionActions.Edit}
+                        a={subject(ProjectPermissionSub.Secrets, {
+                          environment,
+                          secretPath,
+                          secretName: secretKey,
+                          secretTags: selectTagSlugs
+                        })}
+                      >
+                        {(isAllowed) => (
+                          <div className="flex items-center justify-between">
+                            <span className="w-max text-sm text-mineshaft-300">
+                              Multi-line encoding
+                              <Tooltip
+                                content="When enabled, multiline secrets will be handled by escaping newlines and enclosing the entire value in double quotes."
+                                className="z-[100]"
+                              >
+                                <FontAwesomeIcon icon={faCircleQuestion} className="ml-2" />
+                              </Tooltip>
+                            </span>
+                            <Switch
+                              id="skipmultiencoding-option"
+                              onCheckedChange={(isChecked) => onChange(isChecked)}
+                              isChecked={value}
+                              onBlur={onBlur}
+                              isDisabled={!isAllowed}
+                              className="items-center justify-between"
+                            />
+                          </div>
+                        )}
+                      </ProjectPermissionCan>
                     )}
                   />
-                )}
-              </ProjectPermissionCan>
-              <div className="mb-2 border-b border-mineshaft-600 pb-4">
+                </div>
+                <div
+                  className={`mb-4 w-full border-t border-mineshaft-600 ${isOverridden ? "block" : "hidden"}`}
+                />
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Edit}
                   a={subject(ProjectPermissionSub.Secrets, {
@@ -284,194 +342,243 @@ export const SecretDetailSidebar = ({
                   })}
                 >
                   {(isAllowed) => (
-                    <Switch
-                      isDisabled={!isAllowed}
-                      id="personal-override"
-                      onCheckedChange={handleOverrideClick}
-                      isChecked={isOverridden}
-                    >
-                      Override with a personal value
-                    </Switch>
+                    <div className="flex items-center justify-between px-4 pb-4">
+                      <span className="w-max text-sm text-mineshaft-300">
+                        Override with a personal value
+                        <Tooltip
+                          content="Override the secret value with a personal value that does not get shared with other users and machines."
+                          className="z-[100]"
+                        >
+                          <FontAwesomeIcon icon={faCircleQuestion} className="ml-2" />
+                        </Tooltip>
+                      </span>
+                      <Switch
+                        isDisabled={!isAllowed}
+                        id="personal-override"
+                        onCheckedChange={handleOverrideClick}
+                        isChecked={isOverridden}
+                        className="justify-start"
+                      />
+                    </div>
                   )}
                 </ProjectPermissionCan>
+                {isOverridden && (
+                  <Controller
+                    name="valueOverride"
+                    control={control}
+                    render={({ field }) => (
+                      <FormControl label="Override Value" className="px-4">
+                        <InfisicalSecretInput
+                          isReadOnly={isReadOnly}
+                          environment={environment}
+                          secretPath={secretPath}
+                          containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-bunker-800 px-2 py-1.5"
+                          {...field}
+                        />
+                      </FormControl>
+                    )}
+                  />
+                )}
               </div>
-              {isOverridden && (
-                <Controller
-                  name="valueOverride"
-                  control={control}
-                  render={({ field }) => (
-                    <FormControl label="Value Override">
-                      <InfisicalSecretInput
-                        isReadOnly={isReadOnly}
-                        environment={environment}
-                        secretPath={secretPath}
-                        containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-bunker-800  px-2 py-1.5"
-                        {...field}
-                      />
-                    </FormControl>
-                  )}
-                />
-              )}
-              <FormControl label="Metadata">
-                <div className="flex flex-col space-y-2">
-                  {metadataFormFields.fields.map(({ id: metadataFieldId }, i) => (
-                    <div key={metadataFieldId} className="flex items-end space-x-2">
-                      <div className="flex-grow">
-                        {i === 0 && <span className="text-xs text-mineshaft-400">Key</span>}
-                        <Controller
-                          control={control}
-                          name={`secretMetadata.${i}.key`}
-                          render={({ field, fieldState: { error } }) => (
-                            <FormControl
-                              isError={Boolean(error?.message)}
-                              errorText={error?.message}
-                              className="mb-0"
-                            >
-                              <Input {...field} className="max-h-8" />
-                            </FormControl>
-                          )}
-                        />
-                      </div>
-                      <div className="flex-grow">
-                        {i === 0 && (
-                          <FormLabel
-                            label="Value"
-                            className="text-xs text-mineshaft-400"
-                            isOptional
-                          />
-                        )}
-                        <Controller
-                          control={control}
-                          name={`secretMetadata.${i}.value`}
-                          render={({ field, fieldState: { error } }) => (
-                            <FormControl
-                              isError={Boolean(error?.message)}
-                              errorText={error?.message}
-                              className="mb-0"
-                            >
-                              <Input {...field} className="max-h-8" />
-                            </FormControl>
-                          )}
-                        />
-                      </div>
-                      <IconButton
-                        ariaLabel="delete key"
-                        className="bottom-0.5 max-h-8"
-                        variant="outline_bg"
-                        onClick={() => metadataFormFields.remove(i)}
+              <div className="mb-4 mt-2 flex flex-col rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 px-0 pb-0">
+                <div
+                  className={`flex justify-between px-4 text-mineshaft-100 ${tagFields.fields.length > 0 ? "flex-col" : "flex-row"}`}
+                >
+                  <div
+                    className={`text-sm text-mineshaft-300 ${tagFields.fields.length > 0 ? "mb-2" : "mt-0.5"}`}
+                  >
+                    Tags
+                  </div>
+                  <div>
+                    <FormControl>
+                      <div
+                        className={`grid auto-cols-min grid-flow-col gap-2 overflow-hidden ${tagFields.fields.length > 0 ? "pt-2" : ""}`}
                       >
-                        <FontAwesomeIcon icon={faTrash} />
-                      </IconButton>
-                    </div>
-                  ))}
-                  <div className="mt-2">
-                    <Button
-                      leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                      size="xs"
-                      variant="outline_bg"
-                      onClick={() => metadataFormFields.append({ key: "", value: "" })}
-                    >
-                      Add Key
-                    </Button>
+                        {tagFields.fields.map(({ tagColor, id: formId, slug, id }) => (
+                          <Tag
+                            className="flex w-min items-center space-x-2"
+                            key={formId}
+                            onClose={() => {
+                              if (cannotEditSecret) {
+                                createNotification({ type: "error", text: "Access denied" });
+                                return;
+                              }
+                              const tag = tags?.find(({ id: tagId }) => id === tagId);
+                              if (tag) handleTagSelect(tag);
+                            }}
+                          >
+                            <div
+                              className="h-3 w-3 rounded-full"
+                              style={{ backgroundColor: tagColor || "#bec2c8" }}
+                            />
+                            <div className="text-sm">{slug}</div>
+                          </Tag>
+                        ))}
+                        <DropdownMenu>
+                          <ProjectPermissionCan
+                            I={ProjectPermissionActions.Edit}
+                            a={subject(ProjectPermissionSub.Secrets, {
+                              environment,
+                              secretPath,
+                              secretName: secretKey,
+                              secretTags: selectTagSlugs
+                            })}
+                          >
+                            {(isAllowed) => (
+                              <DropdownMenuTrigger asChild>
+                                <IconButton
+                                  ariaLabel="add"
+                                  variant="outline_bg"
+                                  size="xs"
+                                  className="rounded-md"
+                                  isDisabled={!isAllowed}
+                                >
+                                  <FontAwesomeIcon icon={faPlus} />
+                                </IconButton>
+                              </DropdownMenuTrigger>
+                            )}
+                          </ProjectPermissionCan>
+                          <DropdownMenuContent align="start" side="right" className="z-[100]">
+                            <DropdownMenuLabel className="pl-2">
+                              Add tags to this secret
+                            </DropdownMenuLabel>
+                            {tags.map((tag) => {
+                              const { id: tagId, slug, color } = tag;
+
+                              const isSelected = selectedTagsGroupById?.[tagId];
+                              return (
+                                <DropdownMenuItem
+                                  onClick={() => handleTagSelect(tag)}
+                                  key={tagId}
+                                  icon={isSelected && <FontAwesomeIcon icon={faCheckCircle} />}
+                                  iconPos="right"
+                                >
+                                  <div className="flex items-center">
+                                    <div
+                                      className="mr-2 h-2 w-2 rounded-full"
+                                      style={{ background: color || "#bec2c8" }}
+                                    />
+                                    {slug}
+                                  </div>
+                                </DropdownMenuItem>
+                              );
+                            })}
+                            <ProjectPermissionCan
+                              I={ProjectPermissionActions.Create}
+                              a={ProjectPermissionSub.Tags}
+                            >
+                              {(isAllowed) => (
+                                <div className="p-2">
+                                  <Button
+                                    size="xs"
+                                    className="w-full"
+                                    colorSchema="primary"
+                                    variant="outline_bg"
+                                    leftIcon={<FontAwesomeIcon icon={faTag} />}
+                                    onClick={onCreateTag}
+                                    isDisabled={!isAllowed}
+                                  >
+                                    Create a tag
+                                  </Button>
+                                </div>
+                              )}
+                            </ProjectPermissionCan>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </FormControl>
                   </div>
                 </div>
-              </FormControl>
-              <FormControl label="Tags" className="">
-                <div className="grid auto-cols-min grid-flow-col gap-2 overflow-hidden pt-2">
-                  {tagFields.fields.map(({ tagColor, id: formId, slug, id }) => (
-                    <Tag
-                      className="flex w-min items-center space-x-2"
-                      key={formId}
-                      onClose={() => {
-                        if (cannotEditSecret) {
-                          createNotification({ type: "error", text: "Access denied" });
-                          return;
-                        }
-                        const tag = tags?.find(({ id: tagId }) => id === tagId);
-                        if (tag) handleTagSelect(tag);
-                      }}
-                    >
-                      <div
-                        className="h-3 w-3 rounded-full"
-                        style={{ backgroundColor: tagColor || "#bec2c8" }}
-                      />
-                      <div className="text-sm">{slug}</div>
-                    </Tag>
-                  ))}
-                  <DropdownMenu>
-                    <ProjectPermissionCan
-                      I={ProjectPermissionActions.Edit}
-                      a={subject(ProjectPermissionSub.Secrets, {
-                        environment,
-                        secretPath,
-                        secretName: secretKey,
-                        secretTags: selectTagSlugs
-                      })}
-                    >
-                      {(isAllowed) => (
-                        <DropdownMenuTrigger asChild>
-                          <IconButton
-                            ariaLabel="add"
-                            variant="outline_bg"
-                            size="xs"
-                            className="rounded-md"
-                            isDisabled={!isAllowed}
-                          >
-                            <FontAwesomeIcon icon={faPlus} />
-                          </IconButton>
-                        </DropdownMenuTrigger>
-                      )}
-                    </ProjectPermissionCan>
-                    <DropdownMenuContent align="end" className="z-[100]">
-                      <DropdownMenuLabel>Add tags to this secret</DropdownMenuLabel>
-                      {tags.map((tag) => {
-                        const { id: tagId, slug, color } = tag;
+                <div
+                  className={`mb-4 w-full border-t border-mineshaft-600 ${tagFields.fields.length > 0 || metadataFormFields.fields.length > 0 ? "block" : "hidden"}`}
+                />
 
-                        const isSelected = selectedTagsGroupById?.[tagId];
-                        return (
-                          <DropdownMenuItem
-                            onClick={() => handleTagSelect(tag)}
-                            key={tagId}
-                            icon={isSelected && <FontAwesomeIcon icon={faCheckCircle} />}
-                            iconPos="right"
-                          >
-                            <div className="flex items-center">
-                              <div
-                                className="mr-2 h-2 w-2 rounded-full"
-                                style={{ background: color || "#bec2c8" }}
+                <div
+                  className={`flex justify-between px-4 text-mineshaft-100 ${metadataFormFields.fields.length > 0 ? "flex-col" : "flex-row"}`}
+                >
+                  <div
+                    className={`text-sm text-mineshaft-300 ${metadataFormFields.fields.length > 0 ? "mb-2" : "mt-0.5"}`}
+                  >
+                    Metadata
+                  </div>
+                  <FormControl>
+                    <div className="flex flex-col space-y-2">
+                      {metadataFormFields.fields.map(({ id: metadataFieldId }, i) => (
+                        <div key={metadataFieldId} className="flex items-end space-x-2">
+                          <div className="flex-grow">
+                            {i === 0 && <span className="text-xs text-mineshaft-400">Key</span>}
+                            <Controller
+                              control={control}
+                              name={`secretMetadata.${i}.key`}
+                              render={({ field, fieldState: { error } }) => (
+                                <FormControl
+                                  isError={Boolean(error?.message)}
+                                  errorText={error?.message}
+                                  className="mb-0"
+                                >
+                                  <Input {...field} className="max-h-8" />
+                                </FormControl>
+                              )}
+                            />
+                          </div>
+                          <div className="flex-grow">
+                            {i === 0 && (
+                              <FormLabel
+                                label="Value"
+                                className="text-xs text-mineshaft-400"
+                                isOptional
                               />
-                              {slug}
-                            </div>
-                          </DropdownMenuItem>
-                        );
-                      })}
-                      <ProjectPermissionCan
-                        I={ProjectPermissionActions.Create}
-                        a={ProjectPermissionSub.Tags}
-                      >
-                        {(isAllowed) => (
-                          <DropdownMenuItem asChild>
-                            <Button
-                              size="xs"
-                              className="w-full"
-                              colorSchema="primary"
-                              variant="outline_bg"
-                              leftIcon={<FontAwesomeIcon icon={faTag} />}
-                              onClick={onCreateTag}
-                              isDisabled={!isAllowed}
-                            >
-                              Create a tag
-                            </Button>
-                          </DropdownMenuItem>
-                        )}
-                      </ProjectPermissionCan>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                            )}
+                            <Controller
+                              control={control}
+                              name={`secretMetadata.${i}.value`}
+                              render={({ field, fieldState: { error } }) => (
+                                <FormControl
+                                  isError={Boolean(error?.message)}
+                                  errorText={error?.message}
+                                  className="mb-0"
+                                >
+                                  <Input {...field} className="max-h-8" />
+                                </FormControl>
+                              )}
+                            />
+                          </div>
+                          <IconButton
+                            ariaLabel="delete key"
+                            className="bottom-0.5 max-h-8"
+                            variant="outline_bg"
+                            onClick={() => metadataFormFields.remove(i)}
+                          >
+                            <FontAwesomeIcon icon={faTrash} />
+                          </IconButton>
+                        </div>
+                      ))}
+                      <div className={`${metadataFormFields.fields.length > 0 ? "pt-2" : ""}`}>
+                        <IconButton
+                          ariaLabel="Add Key"
+                          variant="outline_bg"
+                          size="xs"
+                          className="rounded-md"
+                          onClick={() => metadataFormFields.append({ key: "", value: "" })}
+                        >
+                          <FontAwesomeIcon icon={faPlus} />
+                        </IconButton>
+                      </div>
+                    </div>
+                  </FormControl>
                 </div>
+              </div>
+              <FormControl label="Comments & Notes">
+                <TextArea
+                  className="border border-mineshaft-600 bg-bunker-800 text-sm"
+                  {...register("comment")}
+                  readOnly={isReadOnly}
+                  rows={5}
+                />
               </FormControl>
-              <FormControl label="Reminder">
+              <FormControl>
                 {secretReminderRepeatDays && secretReminderRepeatDays > 0 ? (
-                  <div className="ml-1 mt-2 flex items-center justify-between">
+                  <div className="flex items-center justify-between px-2">
                     <div className="flex items-center space-x-2">
                       <FontAwesomeIcon className="text-primary-500" icon={faClock} />
                       <span className="text-sm text-bunker-300">
@@ -490,9 +597,9 @@ export const SecretDetailSidebar = ({
                     </div>
                   </div>
                 ) : (
-                  <div className="ml-1 mt-2 flex items-center space-x-2">
+                  <div className="ml-1 flex items-center space-x-2">
                     <Button
-                      className="w-full px-2 py-1"
+                      className="w-full px-2 py-2 font-normal"
                       variant="outline_bg"
                       leftIcon={<FontAwesomeIcon icon={faClock} />}
                       onClick={() => setCreateReminderFormOpen.on()}
@@ -503,92 +610,147 @@ export const SecretDetailSidebar = ({
                   </div>
                 )}
               </FormControl>
-              <FormControl label="Comments & Notes">
-                <TextArea
-                  className="border border-mineshaft-600 text-sm"
-                  {...register("comment")}
-                  readOnly={isReadOnly}
-                  rows={5}
-                />
-              </FormControl>
-              <div className="my-2 mb-4 border-b border-mineshaft-600 pb-4">
-                <Controller
-                  control={control}
-                  name="skipMultilineEncoding"
-                  render={({ field: { value, onChange, onBlur } }) => (
-                    <ProjectPermissionCan
-                      I={ProjectPermissionActions.Edit}
-                      a={subject(ProjectPermissionSub.Secrets, {
-                        environment,
-                        secretPath,
-                        secretName: secretKey,
-                        secretTags: selectTagSlugs
-                      })}
-                    >
-                      {(isAllowed) => (
-                        <Switch
-                          id="skipmultiencoding-option"
-                          onCheckedChange={(isChecked) => onChange(isChecked)}
-                          isChecked={value}
-                          onBlur={onBlur}
-                          isDisabled={!isAllowed}
-                          className="items-center"
-                        >
-                          Multi line encoding
-                          <Tooltip
-                            content="When enabled, multiline secrets will be handled by escaping newlines and enclosing the entire value in double quotes."
-                            className="z-[100]"
-                          >
-                            <FontAwesomeIcon icon={faCircleQuestion} className="ml-1" size="sm" />
-                          </Tooltip>
-                        </Switch>
-                      )}
-                    </ProjectPermissionCan>
-                  )}
-                />
-              </div>
-              <div className="ml-1 flex items-center space-x-4">
-                <Button
-                  className="w-full px-2 py-1"
-                  variant="outline_bg"
-                  leftIcon={<FontAwesomeIcon icon={faShare} />}
-                  onClick={() => {
-                    const value = secret?.valueOverride ?? secret?.value;
-                    if (value) {
-                      handleSecretShare(value);
-                    }
-                  }}
-                >
-                  Share Secret
-                </Button>
-              </div>
-              <div className="dark mb-4 mt-4 flex-grow text-sm text-bunker-300">
-                <div className="mb-2">Version History</div>
-                <div className="flex h-48 flex-col space-y-2 overflow-y-auto overflow-x-hidden rounded-md border border-mineshaft-600 bg-bunker-800 p-2 dark:[color-scheme:dark]">
-                  {secretVersion?.map(({ createdAt, secretValue, id }, i) => (
-                    <div key={id} className="flex flex-col space-y-1">
-                      <div className="flex items-center space-x-2">
-                        <div>
-                          <FontAwesomeIcon icon={i === 0 ? faCircleDot : faCircle} size="sm" />
+              <div className="mb-4flex-grow dark cursor-default text-sm text-bunker-300">
+                <div className="mb-2 pl-1">Version History</div>
+                <div className="thin-scrollbar flex h-48 flex-col space-y-2 overflow-y-auto overflow-x-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 dark:[color-scheme:dark]">
+                  {secretVersion?.map(({ createdAt, secretValue, version, id }) => (
+                    <div className="flex flex-row">
+                      <div key={id} className="flex w-full flex-col space-y-1">
+                        <div className="flex items-center">
+                          <div className="w-10">
+                            <div className="w-fit rounded-md border border-mineshaft-600 bg-mineshaft-700 px-1 text-sm text-mineshaft-300">
+                              v{version}
+                            </div>
+                          </div>
+                          <div>{format(new Date(createdAt), "Pp")}</div>
                         </div>
-                        <div>{format(new Date(createdAt), "Pp")}</div>
+                        <div className="flex w-full cursor-default">
+                          <div className="relative w-10">
+                            <div className="absolute bottom-0 left-3 top-0 mt-0.5 border-l border-mineshaft-400/60" />
+                          </div>
+                          <div className="flex flex-row">
+                            <div className="h-min w-fit rounded-sm bg-primary-500/10 px-1 text-primary-300/70">
+                              Value:
+                            </div>
+                            <div className="group break-all pl-1 font-mono">
+                              <div className="relative hidden cursor-pointer transition-all duration-200 group-[.show-value]:inline">
+                                <button
+                                  type="button"
+                                  className="select-none"
+                                  onClick={(e) => {
+                                    navigator.clipboard.writeText(secretValue || "");
+                                    const target = e.currentTarget;
+                                    target.style.borderBottom = "1px dashed";
+                                    target.style.paddingBottom = "-1px";
+
+                                    // Create and insert popup
+                                    const popup = document.createElement("div");
+                                    popup.className =
+                                      "w-16 flex justify-center absolute top-6 left-0 text-xs text-primary-100 bg-mineshaft-800 px-1 py-0.5 rounded-md border border-primary-500/50";
+                                    popup.textContent = "Copied!";
+                                    target.parentElement?.appendChild(popup);
+
+                                    // Remove popup and border after delay
+                                    setTimeout(() => {
+                                      popup.remove();
+                                      target.style.borderBottom = "none";
+                                    }, 3000);
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                      navigator.clipboard.writeText(secretValue || "");
+                                      const target = e.currentTarget;
+                                      target.style.borderBottom = "1px dashed";
+                                      target.style.paddingBottom = "-1px";
+
+                                      // Create and insert popup
+                                      const popup = document.createElement("div");
+                                      popup.className =
+                                        "w-16 flex justify-center absolute top-6 left-0 text-xs text-primary-100 bg-mineshaft-800 px-1 py-0.5 rounded-md border border-primary-500/50";
+                                      popup.textContent = "Copied!";
+                                      target.parentElement?.appendChild(popup);
+
+                                      // Remove popup and border after delay
+                                      setTimeout(() => {
+                                        popup.remove();
+                                        target.style.borderBottom = "none";
+                                      }, 3000);
+                                    }
+                                  }}
+                                >
+                                  {secretValue}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="ml-1 cursor-pointer"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.currentTarget
+                                      .closest(".group")
+                                      ?.classList.remove("show-value");
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                      e.stopPropagation();
+                                      e.currentTarget
+                                        .closest(".group")
+                                        ?.classList.remove("show-value");
+                                    }
+                                  }}
+                                >
+                                  <FontAwesomeIcon icon={faEyeSlash} />
+                                </button>
+                              </div>
+                              <span className="group-[.show-value]:hidden">
+                                {secretValue?.replace(/./g, "*")}
+                                <button
+                                  type="button"
+                                  className="ml-1 cursor-pointer"
+                                  onClick={(e) => {
+                                    e.currentTarget.closest(".group")?.classList.add("show-value");
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                      e.currentTarget
+                                        .closest(".group")
+                                        ?.classList.add("show-value");
+                                    }
+                                  }}
+                                >
+                                  <FontAwesomeIcon icon={faEye} />
+                                </button>
+                              </span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="ml-1.5 flex items-center space-x-2 border-l border-bunker-300 pl-4">
-                        <div className="self-start rounded-sm bg-primary-500/30 px-1">Value:</div>
-                        <div className="break-all font-mono">{secretValue}</div>
+                      <div
+                        className={`flex items-center justify-center ${version === secretVersion.length ? "hidden" : ""}`}
+                      >
+                        <Tooltip content="Restore Secret Value">
+                          <IconButton
+                            ariaLabel="Restore"
+                            variant="outline_bg"
+                            size="sm"
+                            className="h-8 w-8 rounded-md"
+                            onClick={() => setValue("value", secretValue)}
+                          >
+                            <FontAwesomeIcon icon={faArrowRotateRight} />
+                          </IconButton>
+                        </Tooltip>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
               <div className="dark mb-4 flex-grow text-sm text-bunker-300">
-                <div className="mb-2">
+                <div className="mb-2 mt-4">
                   Access List
                   <Tooltip
                     content="Lists all users, machine identities, and groups that have been granted any permission level (read, create, edit, or delete) for this secret."
                     className="z-[100]"
                   >
-                    <FontAwesomeIcon icon={faCircleQuestion} className="ml-1" size="sm" />
+                    <FontAwesomeIcon icon={faCircleQuestion} className="ml-2" />
                   </Tooltip>
                 </div>
                 {isPending && (
@@ -608,14 +770,22 @@ export const SecretDetailSidebar = ({
                   </Button>
                 )}
                 {!isPending && secretAccessList && (
-                  <div className="flex max-h-72 flex-col space-y-2 overflow-y-auto overflow-x-hidden rounded-md border border-mineshaft-600 bg-bunker-800 p-2 dark:[color-scheme:dark]">
+                  <div className="mb-4 flex max-h-72 flex-col space-y-2 overflow-y-auto overflow-x-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 dark:[color-scheme:dark]">
                     {secretAccessList.users.length > 0 && (
                       <div className="pb-3">
                         <div className="mb-2 font-bold">Users</div>
                         <div className="flex flex-wrap gap-2">
                           {secretAccessList.users.map((user) => (
-                            <div className="rounded-md bg-bunker-500 px-1">
-                              <Tooltip content={user.allowedActions.join(", ")} className="z-[100]">
+                            <div className="rounded-md bg-bunker-500">
+                              <Tooltip
+                                content={user.allowedActions
+                                  .map(
+                                    (action) =>
+                                      action.charAt(0).toUpperCase() + action.slice(1).toLowerCase()
+                                  )
+                                  .join(", ")}
+                                className="z-[100]"
+                              >
                                 <Link
                                   to={
                                     `/${ProjectType.SecretManager}/$projectId/members/$membershipId` as const
@@ -624,7 +794,7 @@ export const SecretDetailSidebar = ({
                                     projectId: currentWorkspace.id,
                                     membershipId: user.membershipId
                                   }}
-                                  className="text-secondary/80 text-sm hover:text-primary"
+                                  className="text-secondary/80 rounded-md border border-mineshaft-600 bg-mineshaft-700 px-1 py-0.5 text-sm hover:text-primary"
                                 >
                                   {user.name}
                                 </Link>
@@ -639,9 +809,14 @@ export const SecretDetailSidebar = ({
                         <div className="mb-2 font-bold">Identities</div>
                         <div className="flex flex-wrap gap-2">
                           {secretAccessList.identities.map((identity) => (
-                            <div className="rounded-md bg-bunker-500 px-1">
+                            <div className="rounded-md bg-bunker-500">
                               <Tooltip
-                                content={identity.allowedActions.join(", ")}
+                                content={identity.allowedActions
+                                  .map(
+                                    (action) =>
+                                      action.charAt(0).toUpperCase() + action.slice(1).toLowerCase()
+                                  )
+                                  .join(", ")}
                                 className="z-[100]"
                               >
                                 <Link
@@ -652,7 +827,7 @@ export const SecretDetailSidebar = ({
                                     projectId: currentWorkspace.id,
                                     identityId: identity.id
                                   }}
-                                  className="text-secondary/80 text-sm hover:text-primary"
+                                  className="text-secondary/80 rounded-md border border-mineshaft-600 bg-mineshaft-700 px-1 py-0.5 text-sm hover:text-primary"
                                 >
                                   {identity.name}
                                 </Link>
@@ -667,9 +842,14 @@ export const SecretDetailSidebar = ({
                         <div className="mb-2 font-bold">Groups</div>
                         <div className="flex flex-wrap gap-2">
                           {secretAccessList.groups.map((group) => (
-                            <div className="rounded-md bg-bunker-500 px-1">
+                            <div className="rounded-md bg-bunker-500">
                               <Tooltip
-                                content={group.allowedActions.join(", ")}
+                                content={group.allowedActions
+                                  .map(
+                                    (action) =>
+                                      action.charAt(0).toUpperCase() + action.slice(1).toLowerCase()
+                                  )
+                                  .join(", ")}
                                 className="z-[100]"
                               >
                                 <Link
@@ -677,7 +857,7 @@ export const SecretDetailSidebar = ({
                                   params={{
                                     groupId: group.id
                                   }}
-                                  className="text-secondary/80 text-sm hover:text-primary"
+                                  className="text-secondary/80 rounded-md border border-mineshaft-600 bg-mineshaft-700 px-1 py-0.5 text-sm hover:text-primary"
                                 >
                                   {group.name}
                                 </Link>
@@ -691,7 +871,7 @@ export const SecretDetailSidebar = ({
                 )}
               </div>
               <div className="flex flex-col space-y-4">
-                <div className="mb-2 flex items-center space-x-4">
+                <div className="mb-4 flex items-center space-x-4">
                   <ProjectPermissionCan
                     I={ProjectPermissionActions.Edit}
                     a={subject(ProjectPermissionSub.Secrets, {
@@ -705,6 +885,7 @@ export const SecretDetailSidebar = ({
                       <Button
                         isFullWidth
                         type="submit"
+                        variant="outline_bg"
                         isDisabled={isSubmitting || !isDirty || !isAllowed}
                         isLoading={isSubmitting}
                       >
@@ -722,9 +903,17 @@ export const SecretDetailSidebar = ({
                     })}
                   >
                     {(isAllowed) => (
-                      <Button colorSchema="danger" isDisabled={!isAllowed} onClick={onDeleteSecret}>
-                        Delete
-                      </Button>
+                      <IconButton
+                        colorSchema="danger"
+                        ariaLabel="Delete Secret"
+                        className="border border-mineshaft-600 bg-mineshaft-700 hover:border-red-500/70 hover:bg-red-600/20"
+                        isDisabled={!isAllowed}
+                        onClick={onDeleteSecret}
+                      >
+                        <Tooltip content="Delete Secret">
+                          <FontAwesomeIcon icon={faTrash} />
+                        </Tooltip>
+                      </IconButton>
                     )}
                   </ProjectPermissionCan>
                 </div>
