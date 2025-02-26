@@ -1,5 +1,3 @@
-/* eslint-disable no-nested-ternary */
-/* eslint-disable no-extra-boolean-cast */
 import { faCopy, faEye, faSpinner, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
@@ -57,11 +55,6 @@ export const RequestedSecretsRow = ({
 
                 const secretRequest = await revealSecretValue({
                   id: row.id
-                });
-
-                console.log("revealSecretRequestValue", {
-                  secretValue: secretRequest.secretValue,
-                  secretRequestName: secretRequest.name
                 });
 
                 handlePopUpOpen("revealSecretRequestValue", {
