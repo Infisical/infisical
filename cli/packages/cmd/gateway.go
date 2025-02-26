@@ -53,34 +53,57 @@ var gatewayCmd = &cobra.Command{
 			<-sigCh
 			close(sigStopCh)
 			cancel()
+
+			// If we get a second signal, force exit
+			<-sigCh
+			log.Warn().Msgf("Force exit triggered")
+			os.Exit(1)
 		}()
 
+		// Main gateway retry loop with proper context handling
+		retryTicker := time.NewTicker(5 * time.Second)
+		defer retryTicker.Stop()
+
 		for {
-			select {
-			case <-sigStopCh:
+			if ctx.Err() != nil {
 				log.Info().Msg("Shutting down gateway")
 				return
-			default:
-				gatewayInstance, err := gateway.NewGateway(token.Token)
-				if err != nil {
-					util.HandleError(err)
-				}
+			}
+			gatewayInstance, err := gateway.NewGateway(token.Token)
+			if err != nil {
+				util.HandleError(err)
+			}
 
-				if err = gatewayInstance.ConnectWithRelay(); err != nil {
-					log.Error().Msgf("Gateway connection error with relay: %s", err)
-					log.Info().Msg("Restarting gateway...")
-					time.Sleep(5 * time.Second)
-					continue
-				}
-				err = gatewayInstance.Listen(ctx)
-				if err == nil {
-					// meaning everything went smooth and we are exiting
+			if err = gatewayInstance.ConnectWithRelay(); err != nil {
+				if ctx.Err() != nil {
+					log.Info().Msg("Shutting down gateway")
 					return
 				}
 
-				log.Error().Msgf("Gateway listen error: %s", err)
-				log.Info().Msg("Restarting gateway...")
-				time.Sleep(5 * time.Second)
+				log.Error().Msgf("Gateway connection error with relay: %s", err)
+				log.Info().Msg("Retrying connection in 5 seconds...")
+				select {
+				case <-retryTicker.C:
+					continue
+				case <-ctx.Done():
+					log.Info().Msg("Shutting down gateway")
+					return
+				}
+			}
+
+			err = gatewayInstance.Listen(ctx)
+			if ctx.Err() != nil {
+				log.Info().Msg("Gateway shutdown complete")
+				return
+			}
+			log.Error().Msgf("Gateway listen error: %s", err)
+			log.Info().Msg("Retrying connection in 5 seconds...")
+			select {
+			case <-retryTicker.C:
+				continue
+			case <-ctx.Done():
+				log.Info().Msg("Shutting down gateway")
+				return
 			}
 		}
 	},

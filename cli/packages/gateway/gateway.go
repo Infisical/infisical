@@ -112,6 +112,7 @@ func (g *Gateway) Listen(ctx context.Context) error {
 	}
 
 	log.Info().Msg("Connected with relay")
+
 	// Allocate a relay socket on the TURN server. On success, it
 	// will return a net.PacketConn which represents the remote
 	// socket.
@@ -139,7 +140,7 @@ func (g *Gateway) Listen(ctx context.Context) error {
 	g.config.Certificate = gatewayCert.Certificate
 	g.config.CertificateChain = gatewayCert.CertificateChain
 
-	done := make(chan bool, 1)
+	shutdownCh := make(chan bool, 1)
 
 	if g.config.InfisicalStaticIp != "" {
 		log.Info().Msgf("Found static ip from Infisical: %s. Creating permission IP lifecycle", g.config.InfisicalStaticIp)
@@ -150,7 +151,7 @@ func (g *Gateway) Listen(ctx context.Context) error {
 		g.registerPermissionLifecycle(func() error {
 			err := relayNonTlsConn.CreatePermissions(peerAddr)
 			return err
-		}, done)
+		}, shutdownCh)
 	}
 
 	cert, err := tls.X509KeyPair([]byte(gatewayCert.Certificate), []byte(gatewayCert.PrivateKey))
@@ -170,21 +171,32 @@ func (g *Gateway) Listen(ctx context.Context) error {
 
 	errCh := make(chan error, 1)
 	log.Info().Msg("Gateway started successfully")
-	g.registerHeartBeat(errCh, done)
-	g.registerRelayIsActive(relayNonTlsConn.Addr().String(), errCh, done)
+	g.registerHeartBeat(errCh, shutdownCh)
+	g.registerRelayIsActive(relayNonTlsConn.Addr().String(), errCh, shutdownCh)
 
 	// Create a WaitGroup to track active connections
 	var wg sync.WaitGroup
 
 	go func() {
 		for {
+			if relayDeadlineConn, ok := relayConn.(*net.TCPListener); ok {
+				relayDeadlineConn.SetDeadline(time.Now().Add(1 * time.Second))
+			}
+
 			select {
-			case <-done:
+			case <-ctx.Done():
+				return
+			case <-shutdownCh:
 				return
 			default:
 				// Accept new relay connection
 				conn, err := relayConn.Accept()
 				if err != nil {
+					// Check if it's a timeout error (which we expect due to our deadline)
+					if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+						continue
+					}
+
 					if !strings.Contains(err.Error(), "data contains incomplete STUN or TURN frame") {
 						log.Error().Msgf("Failed to accept connection: %v", err)
 					}
@@ -198,7 +210,11 @@ func (g *Gateway) Listen(ctx context.Context) error {
 					continue
 				}
 
+				// Set a deadline for the handshake to prevent hanging
+				tlsConn.SetDeadline(time.Now().Add(10 * time.Second))
 				err = tlsConn.Handshake()
+				// Clear the deadline after handshake
+				tlsConn.SetDeadline(time.Time{})
 				if err != nil {
 					log.Error().Msgf("TLS handshake failed: %v", err)
 					conn.Close()
@@ -212,34 +228,54 @@ func (g *Gateway) Listen(ctx context.Context) error {
 					commonName := state.PeerCertificates[0].Subject.CommonName
 					if organizationUnit[0] != "gateway-client" || commonName != "cloud" {
 						log.Error().Msgf("Client certificate verification failed. Received %s, %s", organizationUnit, commonName)
+						conn.Close()
 						continue
 					}
 				}
 
 				// Handle the connection in a goroutine
 				wg.Add(1)
-				go func() {
+				go func(c net.Conn) {
 					defer wg.Done()
-					handleConnection(conn)
-				}()
+					defer c.Close()
+
+					// Monitor parent context to close this connection when needed
+					go func() {
+						select {
+						case <-ctx.Done():
+							c.Close() // Force close connection when context is canceled
+						case <-shutdownCh:
+							c.Close() // Force close connection when accepting loop is done
+						}
+					}()
+
+					handleConnection(c)
+				}(conn)
 			}
 		}
 	}()
 
-	var isShutdown bool
 	select {
 	case <-ctx.Done():
 		log.Info().Msg("Shutting down gateway...")
-		isShutdown = true
 	case err = <-errCh:
 	}
 
 	// Signal the accept loop to stop
-	close(done)
-	wg.Wait()
+	close(shutdownCh)
 
-	if isShutdown {
-		log.Info().Msg("Gateway shutdown complete")
+	// Set a timeout for waiting on connections to close
+	waitCh := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(waitCh)
+	}()
+
+	select {
+	case <-waitCh:
+		// All connections closed normally
+	case <-time.After(5 * time.Second):
+		log.Warn().Msg("Timeout waiting for connections to close gracefully")
 	}
 
 	return err
