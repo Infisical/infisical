@@ -61,12 +61,12 @@ export const gatewayServiceFactory = ({
   projectGatewayDAL
 }: TGatewayServiceFactoryDep) => {
   const $validateOrgAccessToGateway = async (orgId: string, actorId: string, actorAuthMethod: ActorAuthMethod) => {
-    if (!licenseService.onPremFeatures.gateway) {
-      throw new BadRequestError({
-        message:
-          "Gateway handshake failed due to instance plan restrictions. Please upgrade your instance to Infisical's Enterprise plan."
-      });
-    }
+    // if (!licenseService.onPremFeatures.gateway) {
+    //   throw new BadRequestError({
+    //     message:
+    //       "Gateway handshake failed due to instance plan restrictions. Please upgrade your instance to Infisical's Enterprise plan."
+    //   });
+    // }
     const orgLicensePlan = await licenseService.getPlan(orgId);
     if (!orgLicensePlan.gateway) {
       throw new BadRequestError({
