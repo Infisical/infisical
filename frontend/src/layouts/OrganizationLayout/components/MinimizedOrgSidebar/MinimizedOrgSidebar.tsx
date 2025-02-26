@@ -5,6 +5,7 @@ import {
   faBook,
   faCheck,
   faCog,
+  faDoorClosed,
   faEnvelope,
   faInfinity,
   faInfo,
@@ -350,6 +351,13 @@ export const MinimizedOrgSidebar = () => {
                   <Link to="/organization/app-connections">
                     <DropdownMenuItem icon={<FontAwesomeIcon className="w-3" icon={faPlug} />}>
                       App Connections
+                    </DropdownMenuItem>
+                  </Link>
+                  <Link to="/organization/gateways">
+                    <DropdownMenuItem
+                      icon={<FontAwesomeIcon className="w-3" icon={faDoorClosed} />}
+                    >
+                      Gateways
                     </DropdownMenuItem>
                   </Link>
                   {(window.location.origin.includes("https://app.infisical.com") ||

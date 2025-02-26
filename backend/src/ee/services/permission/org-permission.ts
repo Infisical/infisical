@@ -32,6 +32,14 @@ export enum OrgPermissionAdminConsoleAction {
   AccessAllProjects = "access-all-projects"
 }
 
+export enum OrgPermissionGatewayActions {
+  // is there a better word for this. This mean can an identity be a gateway
+  CreateGateways = "create-gateways",
+  ListGateways = "list-gateways",
+  EditGateways = "edit-gateways",
+  DeleteGateways = "delete-gateways"
+}
+
 export enum OrgPermissionSubjects {
   Workspace = "workspace",
   Role = "role",
@@ -50,7 +58,8 @@ export enum OrgPermissionSubjects {
   AuditLogs = "audit-logs",
   ProjectTemplates = "project-templates",
   AppConnections = "app-connections",
-  Kmip = "kmip"
+  Kmip = "kmip",
+  Gateway = "gateway"
 }
 
 export type AppConnectionSubjectFields = {
@@ -73,6 +82,7 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.Kms]
   | [OrgPermissionActions, OrgPermissionSubjects.AuditLogs]
   | [OrgPermissionActions, OrgPermissionSubjects.ProjectTemplates]
+  | [OrgPermissionGatewayActions, OrgPermissionSubjects.Gateway]
   | [
       OrgPermissionAppConnectionActions,
       (
@@ -180,6 +190,12 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionKmipActions).describe(
       "Describe what action an entity can take."
     )
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.Gateway).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionGatewayActions).describe(
+      "Describe what action an entity can take."
+    )
   })
 ]);
 
@@ -264,6 +280,11 @@ const buildAdminPermission = () => {
   can(OrgPermissionAppConnectionActions.Delete, OrgPermissionSubjects.AppConnections);
   can(OrgPermissionAppConnectionActions.Connect, OrgPermissionSubjects.AppConnections);
 
+  can(OrgPermissionGatewayActions.ListGateways, OrgPermissionSubjects.Gateway);
+  can(OrgPermissionGatewayActions.CreateGateways, OrgPermissionSubjects.Gateway);
+  can(OrgPermissionGatewayActions.EditGateways, OrgPermissionSubjects.Gateway);
+  can(OrgPermissionGatewayActions.DeleteGateways, OrgPermissionSubjects.Gateway);
+
   can(OrgPermissionAdminConsoleAction.AccessAllProjects, OrgPermissionSubjects.AdminConsole);
 
   can(OrgPermissionKmipActions.Setup, OrgPermissionSubjects.Kmip);
@@ -300,6 +321,8 @@ const buildMemberPermission = () => {
   can(OrgPermissionActions.Read, OrgPermissionSubjects.AuditLogs);
 
   can(OrgPermissionAppConnectionActions.Connect, OrgPermissionSubjects.AppConnections);
+  can(OrgPermissionGatewayActions.ListGateways, OrgPermissionSubjects.Gateway);
+  can(OrgPermissionGatewayActions.CreateGateways, OrgPermissionSubjects.Gateway);
 
   return rules;
 };

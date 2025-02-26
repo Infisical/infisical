@@ -45,7 +45,11 @@ export const ModalContent = forwardRef<HTMLDivElement, ModalContentProps>(
           )}
           style={{ maxHeight: "90%" }}
         >
-          {title && <CardTitle subTitle={subTitle}>{title}</CardTitle>}
+          {title && (
+            <DialogPrimitive.Title>
+              <CardTitle subTitle={subTitle}>{title}</CardTitle>
+            </DialogPrimitive.Title>
+          )}
           <CardBody
             className={twMerge("overflow-y-auto overflow-x-hidden", bodyClassName)}
             style={{ maxHeight: "90%" }}

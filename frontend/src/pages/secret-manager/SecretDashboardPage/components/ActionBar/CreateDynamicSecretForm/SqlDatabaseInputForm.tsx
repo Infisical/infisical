@@ -1,5 +1,6 @@
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import ms from "ms";
 import { z } from "zod";
 
@@ -18,7 +19,8 @@ import {
   SelectItem,
   TextArea
 } from "@app/components/v2";
-import { useCreateDynamicSecret } from "@app/hooks/api";
+import { useWorkspace } from "@app/context";
+import { gatewaysQueryKeys, useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders, SqlProviders } from "@app/hooks/api/dynamicSecret/types";
 
 const formSchema = z.object({
@@ -32,7 +34,8 @@ const formSchema = z.object({
     creationStatement: z.string().min(1),
     revocationStatement: z.string().min(1),
     renewStatement: z.string().optional(),
-    ca: z.string().optional()
+    ca: z.string().optional(),
+    projectGatewayId: z.string().optional()
   }),
   defaultTTL: z.string().superRefine((val, ctx) => {
     const valMs = ms(val);
@@ -124,6 +127,8 @@ export const SqlDatabaseInputForm = ({
   secretPath,
   projectSlug
 }: Props) => {
+  const { currentWorkspace } = useWorkspace();
+
   const {
     control,
     setValue,
@@ -137,6 +142,9 @@ export const SqlDatabaseInputForm = ({
   });
 
   const createDynamicSecret = useCreateDynamicSecret();
+  const { data: projectGateways, isPending: isProjectGatewaysLoading } = useQuery(
+    gatewaysQueryKeys.listProjectGateways({ projectId: currentWorkspace.id })
+  );
 
   const handleCreateDynamicSecret = async ({ name, maxTTL, provider, defaultTTL }: TForm) => {
     // wait till previous request is finished
@@ -221,6 +229,42 @@ export const SqlDatabaseInputForm = ({
                 )}
               />
             </div>
+          </div>
+          <div>
+            <Controller
+              control={control}
+              name="provider.projectGatewayId"
+              defaultValue=""
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl
+                  isError={Boolean(error?.message)}
+                  errorText={error?.message}
+                  label="Gateway"
+                >
+                  <Select
+                    value={value}
+                    onValueChange={onChange}
+                    className="w-full border border-mineshaft-500"
+                    dropdownContainerClassName="max-w-none"
+                    isLoading={isProjectGatewaysLoading}
+                    placeholder="Internet gateway"
+                    position="popper"
+                  >
+                    <SelectItem
+                      value={null as unknown as string}
+                      onClick={() => onChange(undefined)}
+                    >
+                      Internet Gateway
+                    </SelectItem>
+                    {projectGateways?.map((el) => (
+                      <SelectItem value={el.projectGatewayId} key={el.projectGatewayId}>
+                        {el.name}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+            />
           </div>
           <div>
             <div className="mb-4 mt-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">

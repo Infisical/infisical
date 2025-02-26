@@ -54,6 +54,7 @@ export type TDynamicSecretProvider =
         revocationStatement: string;
         renewStatement?: string;
         ca?: string | undefined;
+        gatewayId?: string;
       };
     }
   | {

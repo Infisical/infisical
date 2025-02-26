@@ -14,6 +14,7 @@ import {
   TFormSchema
 } from "../OrgRoleModifySection.utils";
 import { OrgPermissionAdminConsoleRow } from "./OrgPermissionAdminConsoleRow";
+import { OrgGatewayPermissionRow } from "./OrgPermissionGatewayRow";
 import { OrgPermissionKmipRow } from "./OrgPermissionKmipRow";
 import { OrgRoleWorkspaceRow } from "./OrgRoleWorkspaceRow";
 import { RolePermissionRow } from "./RolePermissionRow";
@@ -167,6 +168,11 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
                 );
               })}
               <OrgPermissionAppConnectionRow
+                control={control}
+                setValue={setValue}
+                isEditable={isCustomRole}
+              />
+              <OrgGatewayPermissionRow
                 control={control}
                 setValue={setValue}
                 isEditable={isCustomRole}

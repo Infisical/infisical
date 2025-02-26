@@ -3,8 +3,10 @@ import knex from "knex";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
+import { withGatewayProxy } from "@app/lib/gateway";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
+import { TGatewayServiceFactory } from "../../gateway/gateway-service";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretSqlDBSchema, SqlProviders, TDynamicProviderFns } from "./models";
 
@@ -25,10 +27,14 @@ const generateUsername = (provider: SqlProviders) => {
   return alphaNumericNanoId(32);
 };
 
-export const SqlDatabaseProvider = (): TDynamicProviderFns => {
+type TSqlDatabaseProviderDTO = {
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTls">;
+};
+
+export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretSqlDBSchema.parseAsync(inputs);
-    verifyHostInputValidity(providerInputs.host);
+    verifyHostInputValidity(providerInputs.host, Boolean(providerInputs.projectGatewayId));
     return providerInputs;
   };
 
@@ -61,61 +67,109 @@ export const SqlDatabaseProvider = (): TDynamicProviderFns => {
     return db;
   };
 
+  const gatewayProxyWrapper = async (
+    providerInputs: z.infer<typeof DynamicSecretSqlDBSchema>,
+    gatewayCallback: (host: string, port: number) => Promise<void>
+  ) => {
+    const relayDetails = await gatewayService.fnGetGatewayClientTls(providerInputs.projectGatewayId as string);
+    const [relayHost, relayPort] = relayDetails.relayAddress.split(":");
+    await withGatewayProxy(
+      async (port) => {
+        await gatewayCallback("localhost", port);
+      },
+      {
+        targetHost: providerInputs.host,
+        targetPort: providerInputs.port,
+        relayHost,
+        relayPort: Number(relayPort),
+        identityId: relayDetails.identityId,
+        orgId: relayDetails.orgId,
+        tlsOptions: {
+          ca: relayDetails.certChain,
+          cert: relayDetails.certificate,
+          key: relayDetails.privateKey
+        }
+      }
+    );
+  };
+
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const db = await $getClient(providerInputs);
-    // oracle needs from keyword
-    const testStatement = providerInputs.client === SqlProviders.Oracle ? "SELECT 1 FROM DUAL" : "SELECT 1";
+    let isConnected = false;
+    const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
+      const db = await $getClient({ ...providerInputs, port, host });
+      // oracle needs from keyword
+      const testStatement = providerInputs.client === SqlProviders.Oracle ? "SELECT 1 FROM DUAL" : "SELECT 1";
 
-    const isConnected = await db.raw(testStatement).then(() => true);
-    await db.destroy();
+      isConnected = await db.raw(testStatement).then(() => true);
+      await db.destroy();
+    };
+
+    if (providerInputs.projectGatewayId) {
+      console.log(">>>>>> inside gateway");
+      await gatewayProxyWrapper(providerInputs, gatewayCallback);
+    } else {
+      console.log(">>>>>> outside gateway");
+      await gatewayCallback();
+    }
     return isConnected;
   };
 
   const create = async (inputs: unknown, expireAt: number) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const db = await $getClient(providerInputs);
-
     const username = generateUsername(providerInputs.client);
     const password = generatePassword(providerInputs.client);
-    const { database } = providerInputs;
-    const expiration = new Date(expireAt).toISOString();
+    const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
+      const db = await $getClient({ ...providerInputs, port, host });
+      const { database } = providerInputs;
+      const expiration = new Date(expireAt).toISOString();
 
-    const creationStatement = handlebars.compile(providerInputs.creationStatement, { noEscape: true })({
-      username,
-      password,
-      expiration,
-      database
-    });
+      const creationStatement = handlebars.compile(providerInputs.creationStatement, { noEscape: true })({
+        username,
+        password,
+        expiration,
+        database
+      });
 
-    const queries = creationStatement.toString().split(";").filter(Boolean);
-    await db.transaction(async (tx) => {
-      for (const query of queries) {
-        // eslint-disable-next-line
-        await tx.raw(query);
-      }
-    });
-    await db.destroy();
+      const queries = creationStatement.toString().split(";").filter(Boolean);
+      await db.transaction(async (tx) => {
+        for (const query of queries) {
+          // eslint-disable-next-line
+          await tx.raw(query);
+        }
+      });
+      await db.destroy();
+    };
+    if (providerInputs.projectGatewayId) {
+      await gatewayProxyWrapper(providerInputs, gatewayCallback);
+    } else {
+      await gatewayCallback();
+    }
     return { entityId: username, data: { DB_USERNAME: username, DB_PASSWORD: password } };
   };
 
   const revoke = async (inputs: unknown, entityId: string) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const db = await $getClient(providerInputs);
-
     const username = entityId;
     const { database } = providerInputs;
+    const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
+      const db = await $getClient({ ...providerInputs, port, host });
+      const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username, database });
+      const queries = revokeStatement.toString().split(";").filter(Boolean);
+      await db.transaction(async (tx) => {
+        for (const query of queries) {
+          // eslint-disable-next-line
+          await tx.raw(query);
+        }
+      });
 
-    const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username, database });
-    const queries = revokeStatement.toString().split(";").filter(Boolean);
-    await db.transaction(async (tx) => {
-      for (const query of queries) {
-        // eslint-disable-next-line
-        await tx.raw(query);
-      }
-    });
-
-    await db.destroy();
+      await db.destroy();
+    };
+    if (providerInputs.projectGatewayId) {
+      await gatewayProxyWrapper(providerInputs, gatewayCallback);
+    } else {
+      await gatewayCallback();
+    }
     return { entityId: username };
   };
 
@@ -123,28 +177,34 @@ export const SqlDatabaseProvider = (): TDynamicProviderFns => {
     const providerInputs = await validateProviderInputs(inputs);
     if (!providerInputs.renewStatement) return { entityId };
 
-    const db = await $getClient(providerInputs);
+    const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
+      const db = await $getClient({ ...providerInputs, port, host });
+      const expiration = new Date(expireAt).toISOString();
+      const { database } = providerInputs;
 
-    const expiration = new Date(expireAt).toISOString();
-    const { database } = providerInputs;
-
-    const renewStatement = handlebars.compile(providerInputs.renewStatement)({
-      username: entityId,
-      expiration,
-      database
-    });
-
-    if (renewStatement) {
-      const queries = renewStatement.toString().split(";").filter(Boolean);
-      await db.transaction(async (tx) => {
-        for (const query of queries) {
-          // eslint-disable-next-line
-          await tx.raw(query);
-        }
+      const renewStatement = handlebars.compile(providerInputs.renewStatement)({
+        username: entityId,
+        expiration,
+        database
       });
-    }
 
-    await db.destroy();
+      if (renewStatement) {
+        const queries = renewStatement.toString().split(";").filter(Boolean);
+        await db.transaction(async (tx) => {
+          for (const query of queries) {
+            // eslint-disable-next-line
+            await tx.raw(query);
+          }
+        });
+      }
+
+      await db.destroy();
+    };
+    if (providerInputs.projectGatewayId) {
+      await gatewayProxyWrapper(providerInputs, gatewayCallback);
+    } else {
+      await gatewayCallback();
+    }
     return { entityId };
   };
 

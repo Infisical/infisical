@@ -1,12 +1,15 @@
 import { Redis } from "ioredis";
 
+import { pgAdvisoryLockHashText } from "@app/lib/crypto/hashtext";
 import { Redlock, Settings } from "@app/lib/red-lock";
 
-export enum PgSqlLock {
-  BootUpMigration = 2023,
-  SuperAdminInit = 2024,
-  KmsRootKeyInit = 2025
-}
+export const PgSqlLock = {
+  BootUpMigration: 2023,
+  SuperAdminInit: 2024,
+  KmsRootKeyInit: 2025,
+  OrgGatewayRootCaInit: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-root-ca:${orgId}`),
+  OrgGatewayCertExchange: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-cert-exchange:${orgId}`)
+} as const;
 
 export type TKeyStoreFactory = ReturnType<typeof keyStoreFactory>;
 
@@ -33,7 +36,8 @@ export const KeyStorePrefixes = {
   SecretSyncLastRunTimestamp: (syncId: string) => `secret-sync-last-run-${syncId}` as const,
   IdentityAccessTokenStatusUpdate: (identityAccessTokenId: string) =>
     `identity-access-token-status:${identityAccessTokenId}`,
-  ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`
+  ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`,
+  GatewayIdentityCredential: (identityId: string) => `gateway-credentials:${identityId}`
 };
 
 export const KeyStoreTtls = {

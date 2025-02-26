@@ -1,5 +1,6 @@
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import ms from "ms";
 import { z } from "zod";
 
@@ -18,7 +19,8 @@ import {
   SelectItem,
   TextArea
 } from "@app/components/v2";
-import { useUpdateDynamicSecret } from "@app/hooks/api";
+import { useWorkspace } from "@app/context";
+import { gatewaysQueryKeys, useUpdateDynamicSecret } from "@app/hooks/api";
 import { SqlProviders, TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 
 const formSchema = z.object({
@@ -33,7 +35,8 @@ const formSchema = z.object({
       creationStatement: z.string().min(1),
       revocationStatement: z.string().min(1),
       renewStatement: z.string().optional(),
-      ca: z.string().optional()
+      ca: z.string().optional(),
+      projectGatewayId: z.string().optional()
     })
     .partial(),
   defaultTTL: z.string().superRefine((val, ctx) => {
@@ -81,6 +84,7 @@ export const EditDynamicSecretSqlProviderForm = ({
 }: Props) => {
   const {
     control,
+    watch,
     formState: { isSubmitting },
     handleSubmit
   } = useForm<TForm>({
@@ -94,8 +98,15 @@ export const EditDynamicSecretSqlProviderForm = ({
       }
     }
   });
+  const { currentWorkspace } = useWorkspace();
+  const { data: projectGateways, isPending: isProjectGatewaysLoading } = useQuery(
+    gatewaysQueryKeys.listProjectGateways({ projectId: currentWorkspace.id })
+  );
 
   const updateDynamicSecret = useUpdateDynamicSecret();
+  const selectedProjectGatewayId = watch("inputs.projectGatewayId");
+  const isGatewayInActive =
+    projectGateways?.findIndex((el) => el.projectGatewayId === selectedProjectGatewayId) === -1;
 
   const handleUpdateDynamicSecret = async ({ inputs, maxTTL, defaultTTL, newName }: TForm) => {
     // wait till previous request is finished
@@ -109,7 +120,10 @@ export const EditDynamicSecretSqlProviderForm = ({
         data: {
           maxTTL: maxTTL || undefined,
           defaultTTL,
-          inputs,
+          inputs: {
+            ...inputs,
+            projectGatewayId: isGatewayInActive ? null : inputs.projectGatewayId
+          },
           newName: newName === dynamicSecret.name ? undefined : newName
         }
       });
@@ -175,6 +189,44 @@ export const EditDynamicSecretSqlProviderForm = ({
               )}
             />
           </div>
+        </div>
+        <div>
+          <Controller
+            control={control}
+            name="inputs.projectGatewayId"
+            defaultValue=""
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <FormControl
+                isError={Boolean(error?.message) || isGatewayInActive}
+                errorText={
+                  isGatewayInActive && selectedProjectGatewayId
+                    ? `Project Gateway ${selectedProjectGatewayId} is removed`
+                    : error?.message
+                }
+                label="Gateway"
+                helperText=""
+              >
+                <Select
+                  value={value}
+                  onValueChange={onChange}
+                  className="w-full border border-mineshaft-500"
+                  dropdownContainerClassName="max-w-none"
+                  isLoading={isProjectGatewaysLoading}
+                  placeholder="Internet Gateway"
+                  position="popper"
+                >
+                  <SelectItem value={null as unknown as string} onClick={() => onChange(undefined)}>
+                    Internet Gateway
+                  </SelectItem>
+                  {projectGateways?.map((el) => (
+                    <SelectItem value={el.projectGatewayId} key={el.id}>
+                      {el.name}
+                    </SelectItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+          />
         </div>
         <div>
           <div className="mb-4 border-b border-b-mineshaft-600 pb-2">Configuration</div>

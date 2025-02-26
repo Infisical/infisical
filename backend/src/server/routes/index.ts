@@ -27,6 +27,10 @@ import { dynamicSecretLeaseQueueServiceFactory } from "@app/ee/services/dynamic-
 import { dynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-service";
 import { externalKmsDALFactory } from "@app/ee/services/external-kms/external-kms-dal";
 import { externalKmsServiceFactory } from "@app/ee/services/external-kms/external-kms-service";
+import { gatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
+import { gatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { orgGatewayConfigDALFactory } from "@app/ee/services/gateway/org-gateway-config-dal";
+import { projectGatewayDALFactory } from "@app/ee/services/gateway/project-gateway-dal";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { groupServiceFactory } from "@app/ee/services/group/group-service";
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -392,6 +396,10 @@ export const registerRoutes = async (
   const kmipClientCertificateDAL = kmipClientCertificateDALFactory(db);
   const kmipOrgConfigDAL = kmipOrgConfigDALFactory(db);
   const kmipOrgServerCertificateDAL = kmipOrgServerCertificateDALFactory(db);
+
+  const orgGatewayConfigDAL = orgGatewayConfigDALFactory(db);
+  const gatewayDAL = gatewayDALFactory(db);
+  const projectGatewayDAL = projectGatewayDALFactory(db);
 
   const permissionService = permissionServiceFactory({
     permissionDAL,
@@ -1300,7 +1308,19 @@ export const registerRoutes = async (
     kmsService
   });
 
-  const dynamicSecretProviders = buildDynamicSecretProviders();
+  const gatewayService = gatewayServiceFactory({
+    permissionService,
+    gatewayDAL,
+    kmsService,
+    licenseService,
+    orgGatewayConfigDAL,
+    keyStore,
+    projectGatewayDAL
+  });
+
+  const dynamicSecretProviders = buildDynamicSecretProviders({
+    gatewayService
+  });
   const dynamicSecretQueueService = dynamicSecretLeaseQueueServiceFactory({
     queueService,
     dynamicSecretLeaseDAL,
@@ -1318,8 +1338,10 @@ export const registerRoutes = async (
     folderDAL,
     permissionService,
     licenseService,
-    kmsService
+    kmsService,
+    projectGatewayDAL
   });
+
   const dynamicSecretLeaseService = dynamicSecretLeaseServiceFactory({
     projectDAL,
     permissionService,
@@ -1557,7 +1579,8 @@ export const registerRoutes = async (
     appConnection: appConnectionService,
     secretSync: secretSyncService,
     kmip: kmipService,
-    kmipOperation: kmipOperationService
+    kmipOperation: kmipOperationService,
+    gateway: gatewayService
   });
 
   const cronJobs: CronJob[] = [];
