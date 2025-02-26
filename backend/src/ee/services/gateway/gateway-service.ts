@@ -97,12 +97,7 @@ export const gatewayServiceFactory = ({
       orgId: actorOrgId
     });
 
-    if (
-      !envCfg.GATEWAY_RELAY_AUTH_SECRET ||
-      !envCfg.GATEWAY_RELAY_ADDRESS ||
-      !envCfg.GATEWAY_INFISICAL_STATIC_IP_ADDRESS ||
-      !envCfg.GATEWAY_RELAY_REALM
-    ) {
+    if (!envCfg.GATEWAY_RELAY_AUTH_SECRET || !envCfg.GATEWAY_RELAY_ADDRESS || !envCfg.GATEWAY_RELAY_REALM) {
       throw new BadRequestError({
         message: "Gateway handshake failed due to missing instance configuration."
       });

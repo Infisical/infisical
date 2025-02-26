@@ -49,14 +49,25 @@ func (g *Gateway) ConnectWithRelay() error {
 	if err != nil {
 		return err
 	}
-
-	turnServerAddr, err := net.ResolveTCPAddr("tcp", relayDetails.TurnServerAddress)
-	if err != nil {
-		return fmt.Errorf("Failed to resolve TURN server address: %w", err)
-	}
+	relayAddress, relayPort := strings.Split(relayDetails.TurnServerAddress, ":")[0], strings.Split(relayDetails.TurnServerAddress, ":")[1]
+	var conn net.Conn
 
 	// Dial TURN Server
-	conn, err := net.DialTCP("tcp", nil, turnServerAddr)
+	if relayPort == "5349" {
+		log.Info().Msgf("Provided relay port %s. Using TLS", relayPort)
+		conn, err = tls.Dial("tcp", relayDetails.TurnServerAddress, &tls.Config{
+			InsecureSkipVerify: false,
+			ServerName:         relayAddress,
+		})
+	} else {
+		log.Info().Msgf("Provided relay port %s. Using non TLS connection.", relayPort)
+		peerAddr, err := net.ResolveTCPAddr("tcp", relayDetails.TurnServerAddress)
+		if err != nil {
+			return fmt.Errorf("Failed to parse turn server address: %w", err)
+		}
+		conn, err = net.DialTCP("tcp", nil, peerAddr)
+	}
+
 	if err != nil {
 		return fmt.Errorf("Failed to connect with relay server: %w", err)
 	}
@@ -85,7 +96,7 @@ func (g *Gateway) ConnectWithRelay() error {
 		InfisicalStaticIp:  relayDetails.InfisicalStaticIp,
 	}
 	// if port not specific allow all port
-	if !strings.Contains(relayDetails.InfisicalStaticIp, ":") {
+	if relayDetails.InfisicalStaticIp != "" && !strings.Contains(relayDetails.InfisicalStaticIp, ":") {
 		g.config.InfisicalStaticIp = g.config.InfisicalStaticIp + ":0"
 	}
 
@@ -116,10 +127,6 @@ func (g *Gateway) Listen(ctx context.Context) error {
 		}
 	}()
 
-	peerAddr, err := net.ResolveTCPAddr("tcp", g.config.InfisicalStaticIp)
-	if err != nil {
-		return fmt.Errorf("Failed to parse infisical static ip: %w", err)
-	}
 	gatewayCert, err := api.CallExchangeRelayCertV1(g.httpClient, api.ExchangeRelayCertRequestV1{
 		RelayAddress: relayNonTlsConn.Addr().String(),
 	})
@@ -134,10 +141,17 @@ func (g *Gateway) Listen(ctx context.Context) error {
 
 	done := make(chan bool, 1)
 
-	g.registerPermissionLifecycle(func() error {
-		err := relayNonTlsConn.CreatePermissions(peerAddr)
-		return err
-	}, done)
+	if g.config.InfisicalStaticIp != "" {
+		log.Info().Msgf("Found static ip from Infisical: %s. Creating permission IP lifecycle", g.config.InfisicalStaticIp)
+		peerAddr, err := net.ResolveTCPAddr("tcp", g.config.InfisicalStaticIp)
+		if err != nil {
+			return fmt.Errorf("Failed to parse infisical static ip: %w", err)
+		}
+		g.registerPermissionLifecycle(func() error {
+			err := relayNonTlsConn.CreatePermissions(peerAddr)
+			return err
+		}, done)
+	}
 
 	cert, err := tls.X509KeyPair([]byte(gatewayCert.Certificate), []byte(gatewayCert.PrivateKey))
 	if err != nil {

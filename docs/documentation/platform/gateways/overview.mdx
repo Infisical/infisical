@@ -1,7 +1,7 @@
 ---
 title: "Gateway"
 sidebarTitle: "Overview"
-description: "How access private network resources from Infisical"
+description: "How to access private network resources from Infisical"
 ---
 
 The Infisical Gateway provides secure access to private resources within your network without needing direct inbound connections to your environment.
@@ -9,28 +9,29 @@ This method keeps your resources fully protected from external access while enab
 Common use cases include generating dynamic credentials or rotating credentials for private databases.
 
 <Info>
-  **Note:** Gateway is a paid feature.
-  
-  - **Infisical Cloud users:** Gateway is available under the **Enterprise Tier**.
-  - **Self-Hosted Infisical:** Please contact [sales@infisical.com](mailto:sales@infisical.com) to purchase an enterprise license.
+  **Note:** Gateway is a paid feature. - **Infisical Cloud users:** Gateway is
+  available under the **Enterprise Tier**. - **Self-Hosted Infisical:** Please
+  contact [sales@infisical.com](mailto:sales@infisical.com) to purchase an
+  enterprise license.
 </Info>
 
 ## How It Works
 
-The Gateway serves as a secure intermediary that facilitates direct communication between the Infisical server and your private network. 
+The Gateway serves as a secure intermediary that facilitates direct communication between the Infisical server and your private network.
 It’s a lightweight daemon packaged within the Infisical CLI, making it easy to deploy and manage. Once set up, the Gateway establishes a connection with a relay server, ensuring that all communication between Infisical and your Gateway is fully end-to-end encrypted.
 This setup guarantees that only the platform and your Gateway can decrypt the transmitted information, keeping communication with your resources secure, private and isolated.
 
-
 ## Deployment
-The Infisical Gateway is seamlessly integrated into the Infisical CLI under the `gateway` command, making it simple to deploy and manage. 
-You can install the Gateway in all the same ways you install the Infisical CLI—whether via npm, Docker, or a binary. 
+
+The Infisical Gateway is seamlessly integrated into the Infisical CLI under the `gateway` command, making it simple to deploy and manage.
+You can install the Gateway in all the same ways you install the Infisical CLI—whether via npm, Docker, or a binary.
 For detailed installation instructions, refer to the Infisical [CLI Installation instructions](/cli/overview).
 
-To function, the Gateway must authenticate with Infisical. This requires a machine identity configured with the appropriate permissions to create and manage a Gateway. 
-Once authenticated, the Gateway establishes a secure connection with Infisical to allow your private resources to be reachable. 
+To function, the Gateway must authenticate with Infisical. This requires a machine identity configured with the appropriate permissions to create and manage a Gateway.
+Once authenticated, the Gateway establishes a secure connection with Infisical to allow your private resources to be reachable.
 
 ### Deployment process
+
 <Steps>
   <Step title="Create a Gateway Identity">
     1. Navigate to **Organization Access Control** in your Infisical dashboard.
@@ -67,7 +68,6 @@ Once authenticated, the Gateway establishes a secure connection with Infisical t
     ![Gateway List](../../../images/platform/gateways/gateway-list.png)
   </Step>
 
-
  <Step title="Link Gateway to Projects">
     To enable Infisical features like dynamic secrets or secret rotation to access private resources through the Gateway, you need to link the Gateway to the relevant projects. 
     
@@ -78,3 +78,4 @@ Once authenticated, the Gateway establishes a secure connection with Infisical t
     Once added to a project, the Gateway becomes available for use by any feature that supports Gateways within that project.
   </Step>
 </Steps>
+

@@ -105,7 +105,10 @@ export const pingGatewayAndVerify = async ({
     }
   }
 
-  throw new Error(`Failed to ping gateway after ${maxRetries} attempts. Last error: ${lastError?.message}`);
+  logger.error(lastError);
+  throw new BadRequestError({
+    message: `Failed to ping gateway after ${maxRetries} attempts. Last error: ${lastError?.message}`
+  });
 };
 
 interface TProxyServer {
@@ -251,6 +254,9 @@ export const withGatewayProxy = async (
   try {
     // Execute the callback with the allocated port
     await callback(port);
+  } catch (err) {
+    logger.error(err, "Failed to proxy");
+    throw new BadRequestError({ message: (err as Error)?.message });
   } finally {
     // Ensure cleanup happens regardless of success or failure
     cleanup();

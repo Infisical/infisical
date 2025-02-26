@@ -94,7 +94,7 @@ export const GatewayListPage = withPermission(
                   <span>Gateways</span>
                   <a
                     className="-mt-1.5"
-                    href="https://infisical.com/docs/integrations/gateways/overview"
+                    href="https://infisical.com/docs/documentation/platform/gateways/overview"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -109,7 +109,7 @@ export const GatewayListPage = withPermission(
                   </a>
                 </div>
               }
-              description="Create and configure connections with third-party apps for re-use across Infisical projects"
+              description="Create and configure gateway to access private network resources from Infisical"
             />
             <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
               <div>
@@ -118,7 +118,7 @@ export const GatewayListPage = withPermission(
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-                    placeholder="Search connections..."
+                    placeholder="Search gateway..."
                     className="flex-1"
                   />
                 </div>
