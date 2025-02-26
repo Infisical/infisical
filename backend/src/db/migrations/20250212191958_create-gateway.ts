@@ -98,9 +98,9 @@ export async function up(knex: Knex): Promise<void> {
 
 export async function down(knex: Knex): Promise<void> {
   if (await knex.schema.hasTable(TableName.DynamicSecret)) {
-    const doesGatewayColExist = await knex.schema.hasColumn(TableName.DynamicSecret, "gatewayId");
+    const doesGatewayColExist = await knex.schema.hasColumn(TableName.DynamicSecret, "projectGatewayId");
     await knex.schema.alterTable(TableName.DynamicSecret, (t) => {
-      if (doesGatewayColExist) t.dropColumn("gatewayId");
+      if (doesGatewayColExist) t.dropColumn("projectGatewayId");
     });
   }
 
