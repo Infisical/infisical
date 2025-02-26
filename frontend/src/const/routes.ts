@@ -21,6 +21,10 @@ export const ROUTE_PATHS = Object.freeze({
       "/organization/secret-scanning",
       "/_authenticate/_inject-org-details/_org-layout/organization/secret-scanning"
     ),
+    SecretSharing: setRoute(
+      "/organization/secret-sharing",
+      "/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing"
+    ),
     SettingsPage: setRoute(
       "/organization/settings",
       "/_authenticate/_inject-org-details/_org-layout/organization/settings"
@@ -285,6 +289,10 @@ export const ROUTE_PATHS = Object.freeze({
     )
   },
   Public: {
-    ViewSharedSecretByIDPage: setRoute("/shared/secret/$secretId", "/shared/secret/$secretId")
+    ViewSharedSecretByIDPage: setRoute("/shared/secret/$secretId", "/shared/secret/$secretId"),
+    ViewSecretRequestByIDPage: setRoute(
+      "/secret-request/secret/$secretRequestId",
+      "/secret-request/secret/$secretRequestId"
+    )
   }
 });

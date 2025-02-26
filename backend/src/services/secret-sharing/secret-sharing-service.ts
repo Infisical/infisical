@@ -4,26 +4,36 @@ import bcrypt from "bcrypt";
 
 import { TSecretSharing } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { SecretSharingAccessType } from "@app/lib/types";
 import { isUuidV4 } from "@app/lib/validator";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TOrgDALFactory } from "../org/org-dal";
+import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
+import { TUserDALFactory } from "../user/user-dal";
 import { TSecretSharingDALFactory } from "./secret-sharing-dal";
 import {
+  SecretSharingType,
   TCreatePublicSharedSecretDTO,
+  TCreateSecretRequestDTO,
   TCreateSharedSecretDTO,
   TDeleteSharedSecretDTO,
   TGetActiveSharedSecretByIdDTO,
-  TGetSharedSecretsDTO
+  TGetSecretRequestByIdDTO,
+  TGetSharedSecretsDTO,
+  TRevealSecretRequestValueDTO,
+  TSetSecretRequestValueDTO
 } from "./secret-sharing-types";
 
 type TSecretSharingServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   secretSharingDAL: TSecretSharingDALFactory;
   orgDAL: TOrgDALFactory;
+  userDAL: TUserDALFactory;
   kmsService: TKmsServiceFactory;
+  smtpService: TSmtpService;
 };
 
 export type TSecretSharingServiceFactory = ReturnType<typeof secretSharingServiceFactory>;
@@ -32,7 +42,9 @@ export const secretSharingServiceFactory = ({
   permissionService,
   secretSharingDAL,
   orgDAL,
-  kmsService
+  kmsService,
+  smtpService,
+  userDAL
 }: TSecretSharingServiceFactoryDep) => {
   const $validateSharedSecretExpiry = (expiresAt: string) => {
     if (new Date(expiresAt) < new Date()) {
@@ -75,7 +87,6 @@ export const secretSharingServiceFactory = ({
     }
 
     const encryptWithRoot = kmsService.encryptWithRootKey();
-
     const encryptedSecret = encryptWithRoot(Buffer.from(secretValue));
 
     const id = crypto.randomBytes(32).toString("hex");
@@ -88,6 +99,7 @@ export const secretSharingServiceFactory = ({
       encryptedValue: null,
       encryptedSecret,
       name,
+      type: SecretSharingType.Share,
       password: hashedPassword,
       expiresAt: new Date(expiresAt),
       expiresAfterViews,
@@ -99,6 +111,193 @@ export const secretSharingServiceFactory = ({
     const idToReturn = `${Buffer.from(newSharedSecret.identifier!, "hex").toString("base64url")}`;
 
     return { id: idToReturn };
+  };
+
+  const createSecretRequest = async ({
+    actor,
+    accessType,
+    expiresAt,
+    name,
+    actorId,
+    orgId,
+    actorAuthMethod,
+    actorOrgId
+  }: TCreateSecretRequestDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    if (!permission) throw new ForbiddenRequestError({ name: "User is not a part of the specified organization" });
+
+    $validateSharedSecretExpiry(expiresAt);
+
+    const newSecretRequest = await secretSharingDAL.create({
+      type: SecretSharingType.Request,
+      userId: actorId,
+      orgId,
+      name,
+      encryptedSecret: null,
+      accessType,
+      expiresAt: new Date(expiresAt)
+    });
+
+    return { id: newSecretRequest.id };
+  };
+
+  const revealSecretRequestValue = async ({
+    id,
+    actor,
+    actorId,
+    actorOrgId,
+    orgId,
+    actorAuthMethod
+  }: TRevealSecretRequestValueDTO) => {
+    const secretRequest = await secretSharingDAL.getSecretRequestById(id);
+
+    if (!secretRequest) {
+      throw new NotFoundError({ message: `Secret request with ID '${id}' not found` });
+    }
+
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    if (!permission) throw new ForbiddenRequestError({ name: "User is not a part of the specified organization" });
+
+    if (secretRequest.userId !== actorId || secretRequest.orgId !== orgId) {
+      throw new ForbiddenRequestError({ name: "User does not have permission to access this secret request" });
+    }
+
+    if (!secretRequest.encryptedSecret) {
+      throw new BadRequestError({ message: "Secret request has no value set" });
+    }
+
+    const decryptWithRoot = kmsService.decryptWithRootKey();
+    const decryptedSecret = decryptWithRoot(secretRequest.encryptedSecret);
+
+    return { ...secretRequest, secretValue: decryptedSecret.toString() };
+  };
+
+  const getSecretRequestById = async ({
+    id,
+    actor,
+    actorId,
+    orgId,
+    actorAuthMethod,
+    actorOrgId
+  }: TGetSecretRequestByIdDTO) => {
+    const secretRequest = await secretSharingDAL.getSecretRequestById(id);
+
+    if (!secretRequest) {
+      throw new NotFoundError({ message: `Secret request with ID '${id}' not found` });
+    }
+
+    if (secretRequest.accessType === SecretSharingAccessType.Organization) {
+      if (orgId === undefined) {
+        throw new UnauthorizedError();
+      }
+
+      const { permission } = await permissionService.getOrgPermission(
+        actor,
+        actorId,
+        orgId,
+        actorAuthMethod,
+        actorOrgId
+      );
+      if (!permission) throw new ForbiddenRequestError({ name: "User is not a part of the specified organization" });
+
+      if (secretRequest.orgId !== orgId) {
+        throw new ForbiddenRequestError({ name: "User does not have permission to access this secret request" });
+      }
+    }
+
+    if (secretRequest.expiresAt && secretRequest.expiresAt < new Date()) {
+      throw new ForbiddenRequestError({
+        message: "Access denied: Secret request has expired"
+      });
+    }
+
+    return {
+      ...secretRequest,
+      isSecretValueSet: Boolean(secretRequest.encryptedSecret)
+    };
+  };
+
+  const setSecretRequestValue = async ({
+    id,
+    actor,
+    actorId,
+    orgId,
+    actorAuthMethod,
+    actorOrgId,
+    secretValue
+  }: TSetSecretRequestValueDTO) => {
+    const appCfg = getConfig();
+
+    const secretRequest = await secretSharingDAL.getSecretRequestById(id);
+
+    if (!secretRequest) {
+      throw new NotFoundError({ message: `Secret request with ID '${id}' not found` });
+    }
+
+    let respondentUsername: string | undefined;
+
+    if (secretRequest.accessType === SecretSharingAccessType.Organization) {
+      const { permission } = await permissionService.getOrgPermission(
+        actor,
+        actorId,
+        orgId,
+        actorAuthMethod,
+        actorOrgId
+      );
+      if (!permission) throw new ForbiddenRequestError({ name: "User is not a part of the specified organization" });
+
+      if (!orgId) {
+        throw new UnauthorizedError();
+      }
+
+      if (secretRequest.orgId !== orgId) {
+        throw new ForbiddenRequestError({ name: "User does not have permission to access this secret request" });
+      }
+
+      const user = await userDAL.findById(actorId);
+
+      if (!user) {
+        throw new NotFoundError({ message: `User with ID '${actorId}' not found` });
+      }
+
+      respondentUsername = user.username;
+    }
+
+    if (secretRequest.encryptedSecret) {
+      throw new BadRequestError({ message: "Secret request already has a value set" });
+    }
+
+    if (secretValue.length > 10_000) {
+      throw new BadRequestError({ message: "Shared secret value too long" });
+    }
+
+    if (secretRequest.expiresAt && secretRequest.expiresAt < new Date()) {
+      throw new ForbiddenRequestError({
+        message: "Access denied: Secret request has expired"
+      });
+    }
+
+    const encryptWithRoot = kmsService.encryptWithRootKey();
+    const encryptedSecret = encryptWithRoot(Buffer.from(secretValue));
+
+    const request = await secretSharingDAL.transaction(async (tx) => {
+      const updatedRequest = await secretSharingDAL.updateById(id, { encryptedSecret }, tx);
+
+      await smtpService.sendMail({
+        recipients: [secretRequest.requesterUsername],
+        subjectLine: "Secret Request Completed",
+        substitutions: {
+          name: secretRequest.name,
+          respondentUsername,
+          secretRequestUrl: `${appCfg.SITE_URL}/organization/secret-sharing?selectedTab=request-secret`
+        },
+        template: SmtpTemplates.SecretRequestCompleted
+      });
+
+      return updatedRequest;
+    });
+
+    return request;
   };
 
   const createPublicSharedSecret = async ({
@@ -121,6 +320,7 @@ export const secretSharingServiceFactory = ({
       encryptedValue: null,
       iv: null,
       tag: null,
+      type: SecretSharingType.Share,
       encryptedSecret,
       password: hashedPassword,
       expiresAt: new Date(expiresAt),
@@ -137,7 +337,8 @@ export const secretSharingServiceFactory = ({
     actorAuthMethod,
     actorOrgId,
     offset,
-    limit
+    limit,
+    type
   }: TGetSharedSecretsDTO) => {
     if (!actorOrgId) throw new ForbiddenRequestError();
 
@@ -153,14 +354,16 @@ export const secretSharingServiceFactory = ({
     const secrets = await secretSharingDAL.find(
       {
         userId: actorId,
-        orgId: actorOrgId
+        orgId: actorOrgId,
+        type
       },
       { offset, limit, sort: [["createdAt", "desc"]] }
     );
 
     const count = await secretSharingDAL.countAllUserOrgSharedSecrets({
       orgId: actorOrgId,
-      userId: actorId
+      userId: actorId,
+      type
     });
 
     return {
@@ -187,9 +390,11 @@ export const secretSharingServiceFactory = ({
     const sharedSecret = isUuidV4(sharedSecretId)
       ? await secretSharingDAL.findOne({
           id: sharedSecretId,
+          type: SecretSharingType.Share,
           hashedHex
         })
       : await secretSharingDAL.findOne({
+          type: SecretSharingType.Share,
           identifier: Buffer.from(sharedSecretId, "base64url").toString("hex")
         });
 
@@ -254,7 +459,7 @@ export const secretSharingServiceFactory = ({
       secret: {
         ...sharedSecret,
         ...(decryptedSecretValue && {
-          secretValue: Buffer.from(decryptedSecretValue).toString()
+          secretValue: decryptedSecretValue.toString()
         }),
         orgName:
           sharedSecret.accessType === SecretSharingAccessType.Organization && orgId === sharedSecret.orgId
@@ -270,8 +475,8 @@ export const secretSharingServiceFactory = ({
     if (!permission) throw new ForbiddenRequestError({ name: "User does not belong to the specified organization" });
 
     const sharedSecret = isUuidV4(sharedSecretId)
-      ? await secretSharingDAL.findById(sharedSecretId)
-      : await secretSharingDAL.findOne({ identifier: sharedSecretId });
+      ? await secretSharingDAL.findOne({ id: sharedSecretId, type: deleteSharedSecretInput.type })
+      : await secretSharingDAL.findOne({ identifier: sharedSecretId, type: deleteSharedSecretInput.type });
 
     if (sharedSecret.orgId && sharedSecret.orgId !== orgId)
       throw new ForbiddenRequestError({ message: "User does not have permission to delete shared secret" });
@@ -286,6 +491,11 @@ export const secretSharingServiceFactory = ({
     createPublicSharedSecret,
     getSharedSecrets,
     deleteSharedSecretById,
-    getSharedSecretById
+    getSharedSecretById,
+
+    createSecretRequest,
+    getSecretRequestById,
+    setSecretRequestValue,
+    revealSecretRequestValue
   };
 };

@@ -1,13 +1,24 @@
 import { faHome } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { createFileRoute, linkOptions } from "@tanstack/react-router";
+import { createFileRoute, linkOptions, stripSearchParams } from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
+import { z } from "zod";
 
 import { SecretSharingPage } from "./SecretSharingPage";
+
+const SecretSharingQueryParams = z.object({
+  selectedTab: z.string().catch("")
+});
 
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing"
 )({
   component: SecretSharingPage,
+
+  validateSearch: zodValidator(SecretSharingQueryParams),
+  search: {
+    middlewares: [stripSearchParams({ selectedTab: "" })]
+  },
   context: () => ({
     breadcrumbs: [
       {
@@ -16,7 +27,7 @@ export const Route = createFileRoute(
         link: linkOptions({ to: "/" })
       },
       {
-        label: "secret sharing"
+        label: "Secret Sharing"
       }
     ]
   })

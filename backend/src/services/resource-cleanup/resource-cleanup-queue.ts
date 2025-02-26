@@ -20,7 +20,7 @@ type TDailyResourceCleanUpQueueServiceFactoryDep = {
   secretDAL: Pick<TSecretDALFactory, "pruneSecretReminders">;
   secretFolderVersionDAL: Pick<TSecretFolderVersionDALFactory, "pruneExcessVersions">;
   snapshotDAL: Pick<TSnapshotDALFactory, "pruneExcessSnapshots">;
-  secretSharingDAL: Pick<TSecretSharingDALFactory, "pruneExpiredSharedSecrets">;
+  secretSharingDAL: Pick<TSecretSharingDALFactory, "pruneExpiredSharedSecrets" | "pruneExpiredSecretRequests">;
   queueService: TQueueServiceFactory;
 };
 
@@ -45,6 +45,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
     await identityAccessTokenDAL.removeExpiredTokens();
     await identityUniversalAuthClientSecretDAL.removeExpiredClientSecrets();
     await secretSharingDAL.pruneExpiredSharedSecrets();
+    await secretSharingDAL.pruneExpiredSecretRequests();
     await snapshotDAL.pruneExcessSnapshots();
     await secretVersionDAL.pruneExcessVersions();
     await secretVersionV2DAL.pruneExcessVersions();

@@ -1088,7 +1088,9 @@ export const registerRoutes = async (
     permissionService,
     secretSharingDAL,
     orgDAL,
-    kmsService
+    kmsService,
+    smtpService,
+    userDAL
   });
 
   const accessApprovalPolicyService = accessApprovalPolicyServiceFactory({
