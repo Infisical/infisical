@@ -1,16 +1,12 @@
 import { Helmet } from "react-helmet";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { createNotification } from "@app/components/notifications";
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { usePopUp } from "@app/hooks";
-import { useDeleteSharedSecret } from "@app/hooks/api/secretSharing";
 
 import { RequestSecretTab } from "./components/RequestSecret/RequestSecretTab";
 import { ShareSecretTab } from "./components/ShareSecret/ShareSecretTab";
-
-type DeleteModalData = { name: string; id: string };
 
 enum SecretSharingPageTabs {
   ShareSecret = "share-secret",
@@ -18,7 +14,6 @@ enum SecretSharingPageTabs {
 }
 
 export const ShareSecretSection = () => {
-  const deleteSharedSecret = useDeleteSharedSecret();
   const { popUp, handlePopUpToggle, handlePopUpClose, handlePopUpOpen } = usePopUp([
     "createSharedSecret",
     "deleteSharedSecretConfirmation",
