@@ -7,7 +7,7 @@ import { z } from "zod";
 import { SecretSharingPage } from "./SecretSharingPage";
 
 const SecretSharingQueryParams = z.object({
-  selectedTab: z.string().catch("")
+  selectedTab: z.string().catch("").default("share-secret")
 });
 
 export const Route = createFileRoute(
