@@ -19,7 +19,12 @@ import "./index.css";
 import "./translation";
 // don't want to use this?
 // have a look at the Quick start guide
-// for passing in lng and translations on init
+// for passing in lng and translations on init/
+
+// https://vite.dev/guide/build#load-error-handling
+window.addEventListener("vite:preloadError", () => {
+  window.location.reload(); // for example, refresh the page
+});
 
 // Create a new router instance
 NProgress.configure({ showSpinner: false });
