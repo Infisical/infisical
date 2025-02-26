@@ -1,7 +1,7 @@
 import { Helmet } from "react-helmet";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { Badge, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { usePopUp } from "@app/hooks";
 
@@ -46,7 +46,12 @@ export const ShareSecretSection = () => {
       <Tabs value={selectedTab} onValueChange={updateSelectedTab}>
         <TabList>
           <Tab value={SecretSharingPageTabs.ShareSecret}>Share Secrets</Tab>
-          <Tab value={SecretSharingPageTabs.RequestSecret}>Request Secrets</Tab>
+          <Tab value={SecretSharingPageTabs.RequestSecret}>
+            Request Secrets
+            <Badge variant="primary" className="ml-1 cursor-pointer text-xs">
+              New
+            </Badge>
+          </Tab>
         </TabList>
         <TabPanel value={SecretSharingPageTabs.ShareSecret}>
           <ShareSecretTab
