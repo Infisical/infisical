@@ -39,7 +39,8 @@ export enum SmtpTemplates {
   SecretSyncFailed = "secretSyncFailed.handlebars",
   ExternalImportSuccessful = "externalImportSuccessful.handlebars",
   ExternalImportFailed = "externalImportFailed.handlebars",
-  ExternalImportStarted = "externalImportStarted.handlebars"
+  ExternalImportStarted = "externalImportStarted.handlebars",
+  SecretRequestCompleted = "secretRequestCompleted.handlebars"
 }
 
 export enum SmtpHost {

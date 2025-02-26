@@ -9,8 +9,15 @@ export type TSharedSecret = {
   expiresAt: Date;
   expiresAfterViews: number | null;
   encryptedValue: string;
+  encryptedSecret: string;
   iv: string;
   tag: string;
+};
+
+export type TRevealedSecretRequest = {
+  secretRequest: {
+    secretValue: string;
+  } & TSharedSecret;
 };
 
 export type TCreatedSharedSecret = {
@@ -26,6 +33,21 @@ export type TCreateSharedSecretRequest = {
   accessType?: SecretSharingAccessType;
 };
 
+export type TCreateSecretRequestRequest = {
+  name?: string;
+  accessType?: SecretSharingAccessType;
+  expiresAt: Date;
+};
+
+export type TSetSecretRequestValueRequest = {
+  secretValue: string;
+  id: string;
+};
+
+export type TRevealSecretRequestValueRequest = {
+  id: string;
+};
+
 export type TViewSharedSecretResponse = {
   isPasswordProtected: boolean;
   secret: {
@@ -38,8 +60,25 @@ export type TViewSharedSecretResponse = {
   };
 };
 
-export type TDeleteSharedSecretRequest = {
+export type TGetSecretRequestByIdResponse = {
+  secretRequest: {
+    isSecretValueSet: boolean;
+    accessType: SecretSharingAccessType;
+    requester: {
+      organizationName: string;
+      username: string;
+      firstName?: string;
+      lastName?: string;
+    };
+  };
+};
+
+export type TDeleteSharedSecretRequestDTO = {
   sharedSecretId: string;
+};
+
+export type TDeleteSecretRequestDTO = {
+  secretRequestId: string;
 };
 
 export enum SecretSharingAccessType {

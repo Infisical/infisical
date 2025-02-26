@@ -1,27 +1,40 @@
-import { Helmet } from "react-helmet";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, DeleteActionModal } from "@app/components/v2";
-import { usePopUp } from "@app/hooks";
-import { useDeleteSharedSecret } from "@app/hooks/api/secretSharing";
+import { useDeleteSharedSecret } from "@app/hooks/api";
+import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { AddShareSecretModal } from "./AddShareSecretModal";
 import { ShareSecretsTable } from "./ShareSecretsTable";
 
+type Props = {
+  handlePopUpOpen: (
+    popUpName: keyof UsePopUpState<["createSharedSecret", "deleteSharedSecretConfirmation"]>,
+    data?: any
+  ) => void;
+  popUp: UsePopUpState<["createSharedSecret", "deleteSharedSecretConfirmation"]>;
+  handlePopUpToggle: (
+    popUpName: keyof UsePopUpState<["createSharedSecret", "deleteSharedSecretConfirmation"]>,
+    state?: boolean
+  ) => void;
+  handlePopUpClose: (popUpName: keyof UsePopUpState<["deleteSharedSecretConfirmation"]>) => void;
+};
+
 type DeleteModalData = { name: string; id: string };
 
-export const ShareSecretSection = () => {
-  const deleteSharedSecret = useDeleteSharedSecret();
-  const { popUp, handlePopUpToggle, handlePopUpClose, handlePopUpOpen } = usePopUp([
-    "createSharedSecret",
-    "deleteSharedSecretConfirmation"
-  ] as const);
+export const ShareSecretTab = ({
+  handlePopUpOpen,
+  popUp,
+  handlePopUpToggle,
+  handlePopUpClose
+}: Props) => {
+  const deleteSecretShare = useDeleteSharedSecret();
 
   const onDeleteApproved = async () => {
     try {
-      deleteSharedSecret.mutateAsync({
+      deleteSecretShare.mutateAsync({
         sharedSecretId: (popUp?.deleteSharedSecretConfirmation?.data as DeleteModalData)?.id
       });
       createNotification({
@@ -41,11 +54,6 @@ export const ShareSecretSection = () => {
 
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <Helmet>
-        <title>Secret Sharing</title>
-        <link rel="icon" href="/infisical.ico" />
-        <meta property="og:image" content="/images/message.png" />
-      </Helmet>
       <div className="mb-4 flex justify-between">
         <p className="text-xl font-semibold text-mineshaft-100">Shared Secrets</p>
         <Button
