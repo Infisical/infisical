@@ -35,7 +35,6 @@ export const registerSnapshotRouter = async (server: FastifyZodProvider) => {
                 tags: SecretTagsSchema.pick({
                   id: true,
                   slug: true,
-                  name: true,
                   color: true
                 }).array()
               })
