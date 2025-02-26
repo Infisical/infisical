@@ -515,7 +515,8 @@
             "integrations/frameworks/laravel",
             "integrations/frameworks/rails",
             "integrations/frameworks/dotnet",
-            "integrations/platforms/pm2"
+            "integrations/platforms/pm2",
+            "integrations/frameworks/ab-initio"
           ]
         }
       ]
