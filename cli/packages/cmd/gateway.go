@@ -72,8 +72,8 @@ var gatewayCmd = &cobra.Command{
 					time.Sleep(5 * time.Second)
 					continue
 				}
-
-				if err := gatewayInstance.Listen(ctx); err == nil {
+				err = gatewayInstance.Listen(ctx)
+				if err == nil {
 					// meaning everything went smooth and we are exiting
 					return
 				}
