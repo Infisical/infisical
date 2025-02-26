@@ -24,7 +24,7 @@ export const verifyHostInputValidity = (host: string, isGateway = false) => {
   if (
     host === "localhost" ||
     host === "127.0.0.1" ||
-    crypto.timingSafeEqual(Buffer.from(dbHost || ""), Buffer.from(host))
+    (dbHost?.length === host.length && crypto.timingSafeEqual(Buffer.from(dbHost || ""), Buffer.from(host)))
   ) {
     throw new BadRequestError({ message: "Invalid db host" });
   }
