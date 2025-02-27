@@ -27,6 +27,18 @@ func ReconcileDeploymentsWithManagedSecrets(ctx context.Context, client controll
 		return 0, fmt.Errorf("unable to get deployments in the [namespace=%v] [err=%v]", managedSecret.SecretNamespace, err)
 	}
 
+	listOfDaemonSets := &v1.DaemonSetList{}
+	err = client.List(ctx, listOfDaemonSets, &controllerClient.ListOptions{Namespace: managedSecret.SecretNamespace})
+	if err != nil {
+		return 0, fmt.Errorf("unable to get daemonSets in the [namespace=%v] [err=%v]", managedSecret.SecretNamespace, err)
+	}
+
+	listOfStatefulSets := &v1.StatefulSetList{}
+	err = client.List(ctx, listOfStatefulSets, &controllerClient.ListOptions{Namespace: managedSecret.SecretNamespace})
+	if err != nil {
+		return 0, fmt.Errorf("unable to get statefulSets in the [namespace=%v] [err=%v]", managedSecret.SecretNamespace, err)
+	}
+
 	managedKubeSecretNameAndNamespace := types.NamespacedName{
 		Namespace: managedSecret.SecretNamespace,
 		Name:      managedSecret.SecretName,
@@ -39,6 +51,7 @@ func ReconcileDeploymentsWithManagedSecrets(ctx context.Context, client controll
 	}
 
 	var wg sync.WaitGroup
+
 	// Iterate over the deployments and check if they use the managed secret
 	for _, deployment := range listOfDeployments.Items {
 		deployment := deployment
@@ -51,6 +64,34 @@ func ReconcileDeploymentsWithManagedSecrets(ctx context.Context, client controll
 					logger.Error(err, fmt.Sprintf("unable to reconcile deployment with [name=%v]. Will try next requeue", deployment.ObjectMeta.Name))
 				}
 			}(deployment, *managedKubeSecret)
+		}
+	}
+
+	// Iterate over the daemonSets and check if they use the managed secret
+	for _, daemonSet := range listOfDaemonSets.Items {
+		daemonSet := daemonSet
+		if daemonSet.Annotations[AUTO_RELOAD_DEPLOYMENT_ANNOTATION] == "true" && IsDaemonSetUsingManagedSecret(daemonSet, managedSecret) {
+			wg.Add(1)
+			go func(deployment v1.DaemonSet, managedSecret corev1.Secret) {
+				defer wg.Done()
+				if err := ReconcileDaemonSet(ctx, client, logger, daemonSet, managedSecret); err != nil {
+					logger.Error(err, fmt.Sprintf("unable to reconcile daemonset with [name=%v]. Will try next requeue", deployment.ObjectMeta.Name))
+				}
+			}(daemonSet, *managedKubeSecret)
+		}
+	}
+
+	// Iterate over the statefulSets and check if they use the managed secret
+	for _, statefulSet := range listOfStatefulSets.Items {
+		statefulSet := statefulSet
+		if statefulSet.Annotations[AUTO_RELOAD_DEPLOYMENT_ANNOTATION] == "true" && IsStatefulSetUsingManagedSecret(statefulSet, managedSecret) {
+			wg.Add(1)
+			go func(statefulSet v1.StatefulSet, managedSecret corev1.Secret) {
+				defer wg.Done()
+				if err := ReconcileStatefulSet(ctx, client, logger, statefulSet, managedSecret); err != nil {
+					logger.Error(err, fmt.Sprintf("unable to reconcile statefulset with [name=%v]. Will try next requeue", statefulSet.ObjectMeta.Name))
+				}
+			}(statefulSet, *managedKubeSecret)
 		}
 	}
 
@@ -94,6 +135,53 @@ func IsDeploymentUsingManagedSecret(deployment v1.Deployment, managedSecret v1al
 	return false
 }
 
+func IsDaemonSetUsingManagedSecret(daemonSet v1.DaemonSet, managedSecret v1alpha1.ManagedKubeSecretConfig) bool {
+	managedSecretName := managedSecret.SecretName
+	for _, container := range daemonSet.Spec.Template.Spec.Containers {
+		for _, envFrom := range container.EnvFrom {
+			if envFrom.SecretRef != nil && envFrom.SecretRef.LocalObjectReference.Name == managedSecretName {
+				return true
+			}
+		}
+		for _, env := range container.Env {
+			if env.ValueFrom != nil && env.ValueFrom.SecretKeyRef != nil && env.ValueFrom.SecretKeyRef.LocalObjectReference.Name == managedSecretName {
+				return true
+			}
+		}
+	}
+
+	for _, volume := range daemonSet.Spec.Template.Spec.Volumes {
+		if volume.Secret != nil && volume.Secret.SecretName == managedSecretName {
+			return true
+		}
+	}
+
+	return false
+}
+
+func IsStatefulSetUsingManagedSecret(statefulSet v1.StatefulSet, managedSecret v1alpha1.ManagedKubeSecretConfig) bool {
+	managedSecretName := managedSecret.SecretName
+	for _, container := range statefulSet.Spec.Template.Spec.Containers {
+		for _, envFrom := range container.EnvFrom {
+			if envFrom.SecretRef != nil && envFrom.SecretRef.LocalObjectReference.Name == managedSecretName {
+				return true
+			}
+		}
+		for _, env := range container.Env {
+			if env.ValueFrom != nil && env.ValueFrom.SecretKeyRef != nil && env.ValueFrom.SecretKeyRef.LocalObjectReference.Name == managedSecretName {
+				return true
+			}
+		}
+	}
+	for _, volume := range statefulSet.Spec.Template.Spec.Volumes {
+		if volume.Secret != nil && volume.Secret.SecretName == managedSecretName {
+			return true
+		}
+	}
+
+	return false
+}
+
 // This function ensures that a deployment is in sync with a Kubernetes secret by comparing their versions.
 // If the version of the secret is different from the version annotation on the deployment, the annotation is updated to trigger a restart of the deployment.
 func ReconcileDeployment(ctx context.Context, client controllerClient.Client, logger logr.Logger, deployment v1.Deployment, secret corev1.Secret) error {
@@ -117,6 +205,56 @@ func ReconcileDeployment(ctx context.Context, client controllerClient.Client, lo
 
 	if err := client.Update(ctx, &deployment); err != nil {
 		return fmt.Errorf("failed to update deployment annotation: %v", err)
+	}
+	return nil
+}
+
+func ReconcileDaemonSet(ctx context.Context, client controllerClient.Client, logger logr.Logger, daemonSet v1.DaemonSet, secret corev1.Secret) error {
+	annotationKey := fmt.Sprintf("%s.%s", DEPLOYMENT_SECRET_NAME_ANNOTATION_PREFIX, secret.Name)
+	annotationValue := secret.Annotations[constants.SECRET_VERSION_ANNOTATION]
+
+	if daemonSet.Annotations[annotationKey] == annotationValue &&
+		daemonSet.Spec.Template.Annotations[annotationKey] == annotationValue {
+		logger.Info(fmt.Sprintf("The [daemonSetName=%v] is already using the most up to date managed secrets. No action required.", daemonSet.ObjectMeta.Name))
+		return nil
+	}
+
+	logger.Info(fmt.Sprintf("DaemonSet is using outdated managed secret. Starting re-deployment [daemonSetName=%v]", daemonSet.ObjectMeta.Name))
+
+	if daemonSet.Spec.Template.Annotations == nil {
+		daemonSet.Spec.Template.Annotations = make(map[string]string)
+	}
+
+	daemonSet.Annotations[annotationKey] = annotationValue
+	daemonSet.Spec.Template.Annotations[annotationKey] = annotationValue
+
+	if err := client.Update(ctx, &daemonSet); err != nil {
+		return fmt.Errorf("failed to update daemonSet annotation: %v", err)
+	}
+	return nil
+}
+
+func ReconcileStatefulSet(ctx context.Context, client controllerClient.Client, logger logr.Logger, statefulSet v1.StatefulSet, secret corev1.Secret) error {
+	annotationKey := fmt.Sprintf("%s.%s", DEPLOYMENT_SECRET_NAME_ANNOTATION_PREFIX, secret.Name)
+	annotationValue := secret.Annotations[constants.SECRET_VERSION_ANNOTATION]
+
+	if statefulSet.Annotations[annotationKey] == annotationValue &&
+		statefulSet.Spec.Template.Annotations[annotationKey] == annotationValue {
+		logger.Info(fmt.Sprintf("The [statefulSetName=%v] is already using the most up to date managed secrets. No action required.", statefulSet.ObjectMeta.Name))
+		return nil
+	}
+
+	logger.Info(fmt.Sprintf("StatefulSet is using outdated managed secret. Starting re-deployment [statefulSetName=%v]", statefulSet.ObjectMeta.Name))
+
+	if statefulSet.Spec.Template.Annotations == nil {
+		statefulSet.Spec.Template.Annotations = make(map[string]string)
+	}
+
+	statefulSet.Annotations[annotationKey] = annotationValue
+	statefulSet.Spec.Template.Annotations[annotationKey] = annotationValue
+
+	if err := client.Update(ctx, &statefulSet); err != nil {
+		return fmt.Errorf("failed to update statefulSet annotation: %v", err)
 	}
 	return nil
 }
