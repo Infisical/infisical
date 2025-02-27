@@ -51,7 +51,6 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
         user: providerInputs.username,
         password: providerInputs.password,
         ssl,
-        pool: { min: 0, max: 1 },
         // @ts-expect-error this is because of knexjs type signature issue. This is directly passed to driver
         // https://github.com/knex/knex/blob/b6507a7129d2b9fafebf5f831494431e64c6a8a0/lib/dialects/mssql/index.js#L66
         // https://github.com/tediousjs/tedious/blob/ebb023ed90969a7ec0e4b036533ad52739d921f7/test/config.ci.ts#L19
@@ -106,10 +105,8 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
     };
 
     if (providerInputs.projectGatewayId) {
-      console.log(">>>>>> inside gateway");
       await gatewayProxyWrapper(providerInputs, gatewayCallback);
     } else {
-      console.log(">>>>>> outside gateway");
       await gatewayCallback();
     }
     return isConnected;
@@ -121,24 +118,27 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
     const password = generatePassword(providerInputs.client);
     const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
       const db = await $getClient({ ...providerInputs, port, host });
-      const { database } = providerInputs;
-      const expiration = new Date(expireAt).toISOString();
+      try {
+        const { database } = providerInputs;
+        const expiration = new Date(expireAt).toISOString();
 
-      const creationStatement = handlebars.compile(providerInputs.creationStatement, { noEscape: true })({
-        username,
-        password,
-        expiration,
-        database
-      });
+        const creationStatement = handlebars.compile(providerInputs.creationStatement, { noEscape: true })({
+          username,
+          password,
+          expiration,
+          database
+        });
 
-      const queries = creationStatement.toString().split(";").filter(Boolean);
-      await db.transaction(async (tx) => {
-        for (const query of queries) {
-          // eslint-disable-next-line
-          await tx.raw(query);
-        }
-      });
-      await db.destroy();
+        const queries = creationStatement.toString().split(";").filter(Boolean);
+        await db.transaction(async (tx) => {
+          for (const query of queries) {
+            // eslint-disable-next-line
+            await tx.raw(query);
+          }
+        });
+      } finally {
+        await db.destroy();
+      }
     };
     if (providerInputs.projectGatewayId) {
       await gatewayProxyWrapper(providerInputs, gatewayCallback);
@@ -154,16 +154,18 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
     const { database } = providerInputs;
     const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
       const db = await $getClient({ ...providerInputs, port, host });
-      const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username, database });
-      const queries = revokeStatement.toString().split(";").filter(Boolean);
-      await db.transaction(async (tx) => {
-        for (const query of queries) {
-          // eslint-disable-next-line
-          await tx.raw(query);
-        }
-      });
-
-      await db.destroy();
+      try {
+        const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username, database });
+        const queries = revokeStatement.toString().split(";").filter(Boolean);
+        await db.transaction(async (tx) => {
+          for (const query of queries) {
+            // eslint-disable-next-line
+            await tx.raw(query);
+          }
+        });
+      } finally {
+        await db.destroy();
+      }
     };
     if (providerInputs.projectGatewayId) {
       await gatewayProxyWrapper(providerInputs, gatewayCallback);
@@ -187,18 +189,19 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
         expiration,
         database
       });
-
-      if (renewStatement) {
-        const queries = renewStatement.toString().split(";").filter(Boolean);
-        await db.transaction(async (tx) => {
-          for (const query of queries) {
-            // eslint-disable-next-line
-            await tx.raw(query);
-          }
-        });
+      try {
+        if (renewStatement) {
+          const queries = renewStatement.toString().split(";").filter(Boolean);
+          await db.transaction(async (tx) => {
+            for (const query of queries) {
+              // eslint-disable-next-line
+              await tx.raw(query);
+            }
+          });
+        }
+      } finally {
+        await db.destroy();
       }
-
-      await db.destroy();
     };
     if (providerInputs.projectGatewayId) {
       await gatewayProxyWrapper(providerInputs, gatewayCallback);
