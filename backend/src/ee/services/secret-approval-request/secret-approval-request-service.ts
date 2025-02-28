@@ -1294,7 +1294,7 @@ export const secretApprovalRequestServiceFactory = ({
             secretMetadata
           }) => {
             const secretId = updatingSecretsGroupByKey[secretKey][0].id;
-            if (tagIds?.length) commitTagIds[secretKey] = tagIds;
+            if (tagIds?.length) commitTagIds[newSecretName ?? secretKey] = tagIds;
             return {
               ...latestSecretVersions[secretId],
               secretMetadata,
