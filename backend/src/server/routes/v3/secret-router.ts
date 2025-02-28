@@ -537,7 +537,12 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .optional()
           .nullable()
           .describe(RAW_SECRETS.CREATE.secretReminderRepeatDays),
-        secretReminderNote: z.string().optional().nullable().describe(RAW_SECRETS.CREATE.secretReminderNote)
+        secretReminderNote: z
+          .string()
+          .max(1024, "Secret reminder note cannot exceed 1024 characters")
+          .optional()
+          .nullable()
+          .describe(RAW_SECRETS.CREATE.secretReminderNote)
       }),
       response: {
         200: z.union([
@@ -640,7 +645,12 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         tagIds: z.string().array().optional().describe(RAW_SECRETS.UPDATE.tagIds),
         metadata: z.record(z.string()).optional(),
         secretMetadata: ResourceMetadataSchema.optional(),
-        secretReminderNote: z.string().optional().nullable().describe(RAW_SECRETS.UPDATE.secretReminderNote),
+        secretReminderNote: z
+          .string()
+          .max(1024, "Secret reminder note cannot exceed 1024 characters")
+          .optional()
+          .nullable()
+          .describe(RAW_SECRETS.UPDATE.secretReminderNote),
         secretReminderRepeatDays: z
           .number()
           .optional()
@@ -2053,7 +2063,12 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.UPDATE.skipMultilineEncoding),
             newSecretName: SecretNameSchema.optional().describe(RAW_SECRETS.UPDATE.newSecretName),
             tagIds: z.string().array().optional().describe(RAW_SECRETS.UPDATE.tagIds),
-            secretReminderNote: z.string().optional().nullable().describe(RAW_SECRETS.UPDATE.secretReminderNote),
+            secretReminderNote: z
+              .string()
+              .max(1024, "Secret reminder note cannot exceed 1024 characters")
+              .optional()
+              .nullable()
+              .describe(RAW_SECRETS.UPDATE.secretReminderNote),
             secretMetadata: ResourceMetadataSchema.optional(),
             secretReminderRepeatDays: z
               .number()
