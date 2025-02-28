@@ -39,7 +39,7 @@ export default {
     },
     migrations: {
       tableName: "infisical_migrations",
-      loadExtensions: [".mjs"]
+      loadExtensions: [".mjs", ".ts"]
     }
   },
   production: {
@@ -64,7 +64,7 @@ export default {
     },
     migrations: {
       tableName: "infisical_migrations",
-      loadExtensions: [".mjs"]
+      loadExtensions: [".mjs", ".ts"]
     }
   }
 } as Knex.Config;
