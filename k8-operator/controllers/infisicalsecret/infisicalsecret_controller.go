@@ -42,7 +42,7 @@ func (r *InfisicalSecretReconciler) GetLogger(req ctrl.Request) logr.Logger {
 //+kubebuilder:rbac:groups=secrets.infisical.com,resources=infisicalsecrets/finalizers,verbs=update
 //+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;delete
 //+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;delete
-//+kubebuilder:rbac:groups=apps,resources=deployments,verbs=list;watch;get;update
+//+kubebuilder:rbac:groups=apps,resources=deployments;daemonsets;statefulsets,verbs=list;watch;get;update
 //+kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
