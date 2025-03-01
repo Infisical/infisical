@@ -25,6 +25,7 @@ import {
   useProjectPermission,
   useWorkspace
 } from "@app/context";
+import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import {
   useGetImportedSecretsSingleEnv,
@@ -103,7 +104,16 @@ const Page = () => {
   const projectSlug = currentWorkspace?.slug || "";
   const secretPath = (routerQueryParams.secretPath as string) || "/";
   const canReadSecret = permission.can(
-    ProjectPermissionActions.Read,
+    ProjectPermissionSecretActions.DescribeSecret,
+    subject(ProjectPermissionSub.Secrets, {
+      environment,
+      secretPath,
+      secretName: "*",
+      secretTags: ["*"]
+    })
+  );
+  const canReadSecretValue = permission.can(
+    ProjectPermissionSecretActions.ReadValue,
     subject(ProjectPermissionSub.Secrets, {
       environment,
       secretPath,
@@ -176,6 +186,7 @@ const Page = () => {
     orderDirection,
     includeImports: canReadSecretImports && filter.include.import,
     includeFolders: filter.include.folder,
+    viewSecretValue: canReadSecretValue,
     includeDynamicSecrets: canReadDynamicSecret && filter.include.dynamic,
     includeSecrets: canReadSecret && filter.include.secret,
     tags: filter.tags

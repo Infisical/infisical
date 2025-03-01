@@ -7,7 +7,7 @@ export type TCreateServiceTokenDTO = {
   iv: string;
   tag: string;
   expiresIn?: number | null;
-  permissions: ("read" | "write")[];
+  permissions: ("read" | "write" | "readValue")[];
 } & TProjectPermission;
 
 export type TGetServiceTokenInfoDTO = Omit<TProjectPermission, "projectId">;

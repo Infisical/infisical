@@ -1,3 +1,4 @@
+/* eslint-disable no-nested-ternary */
 /* eslint-disable simple-import-sort/imports */
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -44,6 +45,7 @@ import {
   SecretReferenceTree
 } from "@app/components/secrets/SecretReferenceDetails";
 
+import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import {
   FontAwesomeSpriteName,
   formSchema,
@@ -99,8 +101,14 @@ export const SecretItem = memo(
       trigger,
       formState: { isDirty, isSubmitting, errors }
     } = useForm<TFormSchema>({
-      defaultValues: secret,
-      values: secret,
+      defaultValues: {
+        ...secret,
+        value: secret.secretValueHidden ? "" : secret.value
+      },
+      values: {
+        ...secret,
+        value: secret.secretValueHidden ? "" : secret.value
+      },
       resolver: zodResolver(formSchema)
     });
 
@@ -123,7 +131,7 @@ export const SecretItem = memo(
 
     const isReadOnly =
       permission.can(
-        ProjectPermissionActions.Read,
+        ProjectPermissionSecretActions.DescribeSecret,
         subject(ProjectPermissionSub.Secrets, {
           environment,
           secretPath,
@@ -132,7 +140,7 @@ export const SecretItem = memo(
         })
       ) &&
       permission.cannot(
-        ProjectPermissionActions.Edit,
+        ProjectPermissionSecretActions.Edit,
         subject(ProjectPermissionSub.Secrets, {
           environment,
           secretPath,
@@ -140,6 +148,8 @@ export const SecretItem = memo(
           secretTags: selectedTagSlugs
         })
       );
+
+    const { secretValueHidden } = secret;
 
     const [isSecValueCopied, setIsSecValueCopied] = useToggle(false);
     useEffect(() => {
@@ -272,6 +282,16 @@ export const SecretItem = memo(
                     />
                   )}
                 />
+              ) : secretValueHidden ? (
+                <Tooltip content="You do not have permission to read the value of this secret.">
+                  <div
+                    className="flex w-80 flex-grow items-center py-1 pl-4 pr-2"
+                    tabIndex={0}
+                    role="button"
+                  >
+                    <span className="blur">********</span>
+                  </div>
+                </Tooltip>
               ) : (
                 <Controller
                   name="value"
@@ -285,6 +305,7 @@ export const SecretItem = memo(
                       environment={environment}
                       secretPath={secretPath}
                       {...field}
+                      defaultValue={secretValueHidden ? "" : undefined}
                       containerClassName="py-1.5 rounded-md transition-all group-hover:mr-2"
                     />
                   )}
