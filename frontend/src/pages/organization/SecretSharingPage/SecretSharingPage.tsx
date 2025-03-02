@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { PageHeader } from "@app/components/v2";
 
-import { ShareSecretSection } from "./components";
+import { ShareSecretSection } from "./ShareSecretSection";
 
 export const SecretSharingPage = () => {
   const { t } = useTranslation();

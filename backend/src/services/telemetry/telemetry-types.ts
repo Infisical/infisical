@@ -13,7 +13,9 @@ export enum PostHogEventTypes {
   IntegrationCreated = "Integration Created",
   MachineIdentityCreated = "Machine Identity Created",
   UserOrgInvitation = "User Org Invitation",
-  TelemetryInstanceStats = "Self Hosted Instance Stats"
+  TelemetryInstanceStats = "Self Hosted Instance Stats",
+  SecretRequestCreated = "Secret Request Created",
+  SecretRequestDeleted = "Secret Request Deleted"
 }
 
 export type TSecretModifiedEvent = {
@@ -120,6 +122,23 @@ export type TTelemetryInstanceStatsEvent = {
   };
 };
 
+export type TSecretRequestCreatedEvent = {
+  event: PostHogEventTypes.SecretRequestCreated;
+  properties: {
+    secretRequestId: string;
+    organizationId: string;
+    secretRequestName?: string;
+  };
+};
+
+export type TSecretRequestDeletedEvent = {
+  event: PostHogEventTypes.SecretRequestDeleted;
+  properties: {
+    secretRequestId: string;
+    organizationId: string;
+  };
+};
+
 export type TPostHogEvent = { distinctId: string } & (
   | TSecretModifiedEvent
   | TAdminInitEvent
@@ -130,4 +149,6 @@ export type TPostHogEvent = { distinctId: string } & (
   | TIntegrationCreatedEvent
   | TProjectCreateEvent
   | TTelemetryInstanceStatsEvent
+  | TSecretRequestCreatedEvent
+  | TSecretRequestDeletedEvent
 );

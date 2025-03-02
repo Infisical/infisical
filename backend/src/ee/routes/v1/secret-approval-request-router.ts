@@ -235,7 +235,6 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
   const tagSchema = SecretTagsSchema.pick({
     id: true,
     slug: true,
-    name: true,
     color: true
   })
     .array()

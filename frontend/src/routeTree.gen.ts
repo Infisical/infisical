@@ -28,6 +28,7 @@ import { Route as authPasswordSetupPageRouteImport } from './pages/auth/Password
 import { Route as userLayoutImport } from './pages/user/layout'
 import { Route as organizationLayoutImport } from './pages/organization/layout'
 import { Route as publicViewSharedSecretByIDPageRouteImport } from './pages/public/ViewSharedSecretByIDPage/route'
+import { Route as publicViewSecretRequestByIDPageRouteImport } from './pages/public/ViewSecretRequestByIDPage/route'
 import { Route as authSignUpSsoPageRouteImport } from './pages/auth/SignUpSsoPage/route'
 import { Route as authLoginSsoPageRouteImport } from './pages/auth/LoginSsoPage/route'
 import { Route as authSelectOrgPageRouteImport } from './pages/auth/SelectOrgPage/route'
@@ -351,6 +352,13 @@ const publicViewSharedSecretByIDPageRouteRoute =
   publicViewSharedSecretByIDPageRouteImport.update({
     id: '/shared/secret/$secretId',
     path: '/shared/secret/$secretId',
+    getParentRoute: () => rootRoute,
+  } as any)
+
+const publicViewSecretRequestByIDPageRouteRoute =
+  publicViewSecretRequestByIDPageRouteImport.update({
+    id: '/secret-request/secret/$secretRequestId',
+    path: '/secret-request/secret/$secretRequestId',
     getParentRoute: () => rootRoute,
   } as any)
 
@@ -1759,6 +1767,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/signup/sso'
       preLoaderRoute: typeof authSignUpSsoPageRouteImport
       parentRoute: typeof RestrictLoginSignupSignupImport
+    }
+    '/secret-request/secret/$secretRequestId': {
+      id: '/secret-request/secret/$secretRequestId'
+      path: '/secret-request/secret/$secretRequestId'
+      fullPath: '/secret-request/secret/$secretRequestId'
+      preLoaderRoute: typeof publicViewSecretRequestByIDPageRouteImport
+      parentRoute: typeof rootRoute
     }
     '/shared/secret/$secretId': {
       id: '/shared/secret/$secretId'
@@ -3643,6 +3658,7 @@ export interface FileRoutesByFullPath {
   '/login/select-organization': typeof authSelectOrgPageRouteRoute
   '/login/sso': typeof authLoginSsoPageRouteRoute
   '/signup/sso': typeof authSignUpSsoPageRouteRoute
+  '/secret-request/secret/$secretRequestId': typeof publicViewSecretRequestByIDPageRouteRoute
   '/shared/secret/$secretId': typeof publicViewSharedSecretByIDPageRouteRoute
   '/admin': typeof adminLayoutRouteWithChildren
   '/personal-settings/': typeof userPersonalSettingsPageRouteRoute
@@ -3817,6 +3833,7 @@ export interface FileRoutesByTo {
   '/login/select-organization': typeof authSelectOrgPageRouteRoute
   '/login/sso': typeof authLoginSsoPageRouteRoute
   '/signup/sso': typeof authSignUpSsoPageRouteRoute
+  '/secret-request/secret/$secretRequestId': typeof publicViewSecretRequestByIDPageRouteRoute
   '/shared/secret/$secretId': typeof publicViewSharedSecretByIDPageRouteRoute
   '/admin': typeof adminOverviewPageRouteRoute
   '/login/provider/error': typeof authProviderErrorPageRouteRoute
@@ -3991,6 +4008,7 @@ export interface FileRoutesById {
   '/_restrict-login-signup/login/select-organization': typeof authSelectOrgPageRouteRoute
   '/_restrict-login-signup/login/sso': typeof authLoginSsoPageRouteRoute
   '/_restrict-login-signup/signup/sso': typeof authSignUpSsoPageRouteRoute
+  '/secret-request/secret/$secretRequestId': typeof publicViewSecretRequestByIDPageRouteRoute
   '/shared/secret/$secretId': typeof publicViewSharedSecretByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout': typeof organizationLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/admin': typeof AuthenticateInjectOrgDetailsAdminRouteWithChildren
@@ -4176,6 +4194,7 @@ export interface FileRouteTypes {
     | '/login/select-organization'
     | '/login/sso'
     | '/signup/sso'
+    | '/secret-request/secret/$secretRequestId'
     | '/shared/secret/$secretId'
     | '/admin'
     | '/personal-settings/'
@@ -4349,6 +4368,7 @@ export interface FileRouteTypes {
     | '/login/select-organization'
     | '/login/sso'
     | '/signup/sso'
+    | '/secret-request/secret/$secretRequestId'
     | '/shared/secret/$secretId'
     | '/admin'
     | '/login/provider/error'
@@ -4521,6 +4541,7 @@ export interface FileRouteTypes {
     | '/_restrict-login-signup/login/select-organization'
     | '/_restrict-login-signup/login/sso'
     | '/_restrict-login-signup/signup/sso'
+    | '/secret-request/secret/$secretRequestId'
     | '/shared/secret/$secretId'
     | '/_authenticate/_inject-org-details/_org-layout'
     | '/_authenticate/_inject-org-details/admin'
@@ -4689,6 +4710,7 @@ export interface RootRouteChildren {
   publicShareSecretPageRouteRoute: typeof publicShareSecretPageRouteRoute
   middlewaresAuthenticateRoute: typeof middlewaresAuthenticateRouteWithChildren
   middlewaresRestrictLoginSignupRoute: typeof middlewaresRestrictLoginSignupRouteWithChildren
+  publicViewSecretRequestByIDPageRouteRoute: typeof publicViewSecretRequestByIDPageRouteRoute
   publicViewSharedSecretByIDPageRouteRoute: typeof publicViewSharedSecretByIDPageRouteRoute
 }
 
@@ -4699,6 +4721,8 @@ const rootRouteChildren: RootRouteChildren = {
   middlewaresAuthenticateRoute: middlewaresAuthenticateRouteWithChildren,
   middlewaresRestrictLoginSignupRoute:
     middlewaresRestrictLoginSignupRouteWithChildren,
+  publicViewSecretRequestByIDPageRouteRoute:
+    publicViewSecretRequestByIDPageRouteRoute,
   publicViewSharedSecretByIDPageRouteRoute:
     publicViewSharedSecretByIDPageRouteRoute,
 }
@@ -4718,6 +4742,7 @@ export const routeTree = rootRoute
         "/share-secret",
         "/_authenticate",
         "/_restrict-login-signup",
+        "/secret-request/secret/$secretRequestId",
         "/shared/secret/$secretId"
       ]
     },
@@ -4842,6 +4867,9 @@ export const routeTree = rootRoute
     "/_restrict-login-signup/signup/sso": {
       "filePath": "auth/SignUpSsoPage/route.tsx",
       "parent": "/_restrict-login-signup/signup"
+    },
+    "/secret-request/secret/$secretRequestId": {
+      "filePath": "public/ViewSecretRequestByIDPage/route.tsx"
     },
     "/shared/secret/$secretId": {
       "filePath": "public/ViewSharedSecretByIDPage/route.tsx"
