@@ -59,7 +59,8 @@ export const leaveConfirmDefaultMessage =
 
 export enum SessionStorageKeys {
   CLI_TERMINAL_TOKEN = "CLI_TERMINAL_TOKEN",
-  ORG_LOGIN_SUCCESS_REDIRECT_URL = "ORG_LOGIN_SUCCESS_REDIRECT_URL"
+  ORG_LOGIN_SUCCESS_REDIRECT_URL = "ORG_LOGIN_SUCCESS_REDIRECT_URL",
+  AUTH_CONSENT = "AUTH_CONSENT"
 }
 
 export const secretTagsColors = [

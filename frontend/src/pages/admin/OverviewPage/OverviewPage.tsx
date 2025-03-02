@@ -19,7 +19,8 @@ import {
   Tab,
   TabList,
   TabPanel,
-  Tabs
+  Tabs,
+  TextArea
 } from "@app/components/v2";
 import { useServerConfig, useUser } from "@app/context";
 import {
@@ -55,7 +56,9 @@ const formSchema = z.object({
   trustSamlEmails: z.boolean(),
   trustLdapEmails: z.boolean(),
   trustOidcEmails: z.boolean(),
-  defaultAuthOrgId: z.string()
+  defaultAuthOrgId: z.string(),
+  authConsentContent: z.string().optional(),
+  pageFrameContent: z.string().optional()
 });
 
 type TDashboardForm = z.infer<typeof formSchema>;
@@ -80,7 +83,9 @@ export const OverviewPage = () => {
       trustSamlEmails: config.trustSamlEmails,
       trustLdapEmails: config.trustLdapEmails,
       trustOidcEmails: config.trustOidcEmails,
-      defaultAuthOrgId: config.defaultAuthOrgId ?? ""
+      defaultAuthOrgId: config.defaultAuthOrgId ?? "",
+      authConsentContent: config.authConsentContent,
+      pageFrameContent: config.pageFrameContent
     }
   });
 
@@ -95,7 +100,14 @@ export const OverviewPage = () => {
   const isNotAllowed = !user?.superAdmin;
   const onFormSubmit = async (formData: TDashboardForm) => {
     try {
-      const { allowedSignUpDomain, trustSamlEmails, trustLdapEmails, trustOidcEmails } = formData;
+      const {
+        allowedSignUpDomain,
+        trustSamlEmails,
+        trustLdapEmails,
+        trustOidcEmails,
+        authConsentContent,
+        pageFrameContent
+      } = formData;
 
       await updateServerConfig({
         defaultAuthOrgId: defaultAuthOrgId || null,
@@ -103,7 +115,9 @@ export const OverviewPage = () => {
         allowedSignUpDomain: signUpMode === SignUpModes.Anyone ? allowedSignUpDomain : null,
         trustSamlEmails,
         trustLdapEmails,
-        trustOidcEmails
+        trustOidcEmails,
+        authConsentContent,
+        pageFrameContent
       });
       createNotification({
         text: "Successfully changed sign up setting.",
@@ -322,6 +336,51 @@ export const OverviewPage = () => {
                             </FormControl>
                           );
                         }}
+                      />
+                    </div>
+
+                    <div className="flex flex-col justify-start">
+                      <div className="mb-2 text-xl font-semibold text-mineshaft-100">Notices</div>
+                      <div className="mb-4 max-w-lg text-sm text-mineshaft-400">
+                        Configure system-wide notification banners and security messages. These
+                        settings control the text displayed to users during authentication and
+                        throughout their session
+                      </div>
+                      <Controller
+                        render={({ field, fieldState: { error } }) => (
+                          <FormControl
+                            isError={Boolean(error)}
+                            errorText={error?.message}
+                            label="Auth Consent Content"
+                          >
+                            <TextArea
+                              placeholder="Auth Consent Message"
+                              {...field}
+                              rows={3}
+                              className="thin-scrollbar h-48 max-w-lg !resize-none bg-mineshaft-800"
+                            />
+                          </FormControl>
+                        )}
+                        control={control}
+                        name="authConsentContent"
+                      />
+                      <Controller
+                        render={({ field, fieldState: { error } }) => (
+                          <FormControl
+                            isError={Boolean(error)}
+                            errorText={error?.message}
+                            label="Page Frame Content"
+                          >
+                            <TextArea
+                              placeholder="Page Frame Content"
+                              {...field}
+                              rows={3}
+                              className="thin-scrollbar h-48 max-w-lg !resize-none bg-mineshaft-800"
+                            />
+                          </FormControl>
+                        )}
+                        control={control}
+                        name="pageFrameContent"
                       />
                     </div>
                     <Button

@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { twMerge } from "tailwind-merge";
 
 import { CreateOrgModal } from "@app/components/organization/CreateOrgModal";
+import { Banner } from "@app/components/page-frames/Banner";
 import {
   BreadcrumbContainer,
   Menu,
@@ -13,6 +14,7 @@ import {
   MenuItem,
   TBreadcrumbFormat
 } from "@app/components/v2";
+import { useServerConfig } from "@app/context";
 import { usePopUp } from "@app/hooks";
 
 import { InsecureConnectionBanner } from "./components/InsecureConnectionBanner";
@@ -22,6 +24,7 @@ import { SidebarHeader } from "./components/SidebarHeader";
 export const OrganizationLayout = () => {
   const matches = useRouterState({ select: (s) => s.matches.at(-1)?.context });
   const location = useLocation();
+  const { config } = useServerConfig();
   const isOrganizationSpecificPage = location.pathname.startsWith("/organization");
   const breadcrumbs =
     isOrganizationSpecificPage && matches && "breadcrumbs" in matches
@@ -45,9 +48,14 @@ export const OrganizationLayout = () => {
       ] as string[]
     ).includes(location.pathname);
 
+  const containerHeight = config.pageFrameContent ? "h-[94vh]" : "h-screen";
+
   return (
     <>
-      <div className="dark hidden h-screen w-full flex-col overflow-x-hidden bg-bunker-800 transition-all md:flex">
+      <Banner />
+      <div
+        className={`dark hidden ${containerHeight} w-full flex-col overflow-x-hidden bg-bunker-800 transition-all md:flex`}
+      >
         {!window.isSecureContext && <InsecureConnectionBanner />}
         <div className="flex flex-grow flex-col overflow-y-hidden md:flex-row">
           <MinimizedOrgSidebar />
@@ -144,6 +152,7 @@ export const OrganizationLayout = () => {
           {` ${t("common.no-mobile")} `}
         </p>
       </div>
+      <Banner />
     </>
   );
 };

@@ -72,7 +72,9 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             message: "At least one login method should be enabled."
           }),
         slackClientId: z.string().optional(),
-        slackClientSecret: z.string().optional()
+        slackClientSecret: z.string().optional(),
+        authConsentContent: z.string().optional(),
+        pageFrameContent: z.string().optional()
       }),
       response: {
         200: z.object({

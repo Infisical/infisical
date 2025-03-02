@@ -22,6 +22,8 @@ export type TServerConfig = {
   defaultAuthOrgAuthMethod?: string | null;
   defaultAuthOrgAuthEnforced?: boolean | null;
   enabledLoginMethods: LoginMethod[];
+  authConsentContent?: string;
+  pageFrameContent?: string;
 };
 
 export type TCreateAdminUserDTO = {
