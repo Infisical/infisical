@@ -102,7 +102,7 @@ export const secretSnapshotServiceFactory = ({
 
     // We need to check if the user has access to the secrets in the folder. If we don't do this, a user could theoretically access snapshot secret values even if they don't have read access to the secrets in the folder.
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.ReadValue,
+      ProjectPermissionSecretActions.DescribeSecret,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
@@ -139,7 +139,7 @@ export const secretSnapshotServiceFactory = ({
 
     // We need to check if the user has access to the secrets in the folder. If we don't do this, a user could theoretically access snapshot secret values even if they don't have read access to the secrets in the folder.
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.ReadValue,
+      ProjectPermissionSecretActions.DescribeSecret,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
