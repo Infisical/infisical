@@ -238,13 +238,20 @@ export const SecretListView = ({
         if (!isReminderEvent) {
           handlePopUpClose("secretDetail");
         }
-        const successMessage = isReminderEvent ? "secret reminder" : "secrets";
+        
+        let successMessage;
+        if (isReminderEvent) {
+          successMessage = reminderRepeatDays ? "Successfully saved secret reminder" : "Successfully deleted secret reminder";
+        } else {
+          successMessage = "Successfully saved secrets";
+        }
+
         createNotification({
           type: isProtectedBranch && !personalAction ? "info" : "success",
           text:
             isProtectedBranch && !personalAction
               ? "Requested changes have been sent for review"
-              : `Successfully saved ${successMessage}`
+              : successMessage
         });
       } catch (error) {
         console.log(error);
