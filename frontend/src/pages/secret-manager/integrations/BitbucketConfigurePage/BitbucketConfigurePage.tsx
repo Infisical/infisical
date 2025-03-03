@@ -45,12 +45,28 @@ const formSchema = z
   .object({
     secretPath: z.string().default("/"),
     sourceEnvironment: z.object({ name: z.string(), slug: z.string() }),
-    targetRepo: z.object({ name: z.string(), appId: z.string() }),
+    targetRepo: z.object({ name: z.string(), appId: z.string().optional() }).nullish(),
     targetWorkspace: z.object({ name: z.string(), slug: z.string() }),
-    targetEnvironment: z.object({ name: z.string(), uuid: z.string() }).optional(),
+    targetEnvironment: z.object({ name: z.string(), uuid: z.string() }).nullish(),
     scope: z.object({ label: z.string(), value: z.nativeEnum(BitbucketScope) })
   })
   .superRefine((val, ctx) => {
+    if (!val.targetWorkspace) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["targetWorkspace"],
+        message: "Required"
+      });
+    }
+
+    if (!val.targetRepo) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["targetRepo"],
+        message: "Required"
+      });
+    }
+
     if (val.scope.value === BitbucketScope.Env && !val.targetEnvironment) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -66,7 +82,7 @@ export const BitbucketConfigurePage = () => {
   const navigate = useNavigate();
   const createIntegration = useCreateIntegration();
 
-  const { watch, control, reset, handleSubmit } = useForm<TFormData>({
+  const { watch, control, handleSubmit, setValue, reset } = useForm<TFormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       secretPath: "/"
@@ -90,14 +106,15 @@ export const BitbucketConfigurePage = () => {
     workspaceSlug: bitBucketWorkspace?.slug
   });
 
-  const { data: bitbucketEnvironments } = useGetIntegrationAuthBitBucketEnvironments(
-    {
-      integrationAuthId: (integrationAuthId as string) ?? "",
-      workspaceSlug: bitBucketWorkspace?.slug,
-      repoSlug: bitBucketRepo?.appId
-    },
-    { enabled: Boolean(bitBucketWorkspace?.slug && bitBucketRepo?.appId) }
-  );
+  const { data: bitbucketEnvironments, isPending: isBitbucketEnvironmentsLoading } =
+    useGetIntegrationAuthBitBucketEnvironments(
+      {
+        integrationAuthId: (integrationAuthId as string) ?? "",
+        workspaceSlug: bitBucketWorkspace?.slug ?? "",
+        repoSlug: bitBucketRepo?.appId ?? ""
+      },
+      { enabled: Boolean(bitBucketWorkspace?.slug && bitBucketRepo?.appId) }
+    );
 
   const onSubmit = async ({
     targetRepo,
@@ -107,6 +124,8 @@ export const BitbucketConfigurePage = () => {
     targetEnvironment,
     scope
   }: TFormData) => {
+    if (!targetRepo || !targetWorkspace) return;
+
     try {
       await createIntegration.mutateAsync({
         integrationAuthId,
@@ -147,7 +166,14 @@ export const BitbucketConfigurePage = () => {
   };
 
   useEffect(() => {
-    if (!bitbucketRepos || !bitbucketWorkspaces || !currentWorkspace) return;
+    if (
+      bitBucketWorkspace ||
+      bitBucketRepo ||
+      !bitbucketRepos ||
+      !bitbucketWorkspaces ||
+      !currentWorkspace
+    )
+      return;
 
     reset({
       targetRepo: bitbucketRepos[0],
@@ -224,12 +250,17 @@ export const BitbucketConfigurePage = () => {
                 getOptionValue={(option) => option.slug}
                 value={value}
                 getOptionLabel={(option) => option.name}
-                onChange={onChange}
+                onChange={(option) => {
+                  onChange(option);
+                  setValue("targetRepo", null);
+                  setValue("targetEnvironment", null);
+                }}
                 options={bitbucketWorkspaces}
                 placeholder={
                   bitbucketWorkspaces?.length ? "Select a workspace..." : "No workspaces found..."
                 }
-                isDisabled={!bitbucketWorkspaces?.length}
+                isLoading={isBitbucketWorkspacesLoading}
+                isDisabled={!bitbucketWorkspaces?.length || isBitbucketWorkspacesLoading}
               />
             </FormControl>
           )}
@@ -243,12 +274,16 @@ export const BitbucketConfigurePage = () => {
                 getOptionValue={(option) => option.appId!}
                 value={value}
                 getOptionLabel={(option) => option.name}
-                onChange={onChange}
+                onChange={(option) => {
+                  onChange(option);
+                  setValue("targetEnvironment", null);
+                }}
                 options={bitbucketRepos}
                 placeholder={
                   bitbucketRepos?.length ? "Select a repository..." : "No repositories found..."
                 }
-                isDisabled={!bitbucketRepos?.length}
+                isLoading={isBitbucketReposLoading}
+                isDisabled={!bitbucketRepos?.length || isBitbucketReposLoading}
               />
             </FormControl>
           )}
@@ -290,7 +325,8 @@ export const BitbucketConfigurePage = () => {
                       ? "Select an environment..."
                       : "No environments found..."
                   }
-                  isDisabled={!bitbucketEnvironments?.length}
+                  isLoading={isBitbucketEnvironmentsLoading && Boolean(bitBucketRepo)}
+                  isDisabled={!bitbucketEnvironments?.length || isBitbucketEnvironmentsLoading}
                 />
               </FormControl>
             )}
