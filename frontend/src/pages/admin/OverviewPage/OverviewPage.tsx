@@ -352,9 +352,10 @@ export const OverviewPage = () => {
                             isError={Boolean(error)}
                             errorText={error?.message}
                             label="Auth Consent Content"
+                            tooltipText="Formatting supported: HTML, Markdown, Plain text"
                           >
                             <TextArea
-                              placeholder="Auth Consent Message"
+                              placeholder="**Auth Consent Message**"
                               {...field}
                               rows={3}
                               className="thin-scrollbar h-48 max-w-lg !resize-none bg-mineshaft-800"
@@ -370,9 +371,10 @@ export const OverviewPage = () => {
                             isError={Boolean(error)}
                             errorText={error?.message}
                             label="Page Frame Content"
+                            tooltipText="Formatting supported: HTML, Markdown, Plain text"
                           >
                             <TextArea
-                              placeholder="Page Frame Content"
+                              placeholder='<div style="background-color: red">TOP SECRET</div>'
                               {...field}
                               rows={3}
                               className="thin-scrollbar h-48 max-w-lg !resize-none bg-mineshaft-800"
