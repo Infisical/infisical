@@ -158,7 +158,8 @@ export const SecretListView = ({
         comment,
         reminderRepeatDays,
         reminderNote,
-        secretMetadata
+        secretMetadata,
+        isReminderEvent
       } = modSecret;
       const hasKeyChanged = oldKey !== key && key;
 
@@ -234,13 +235,23 @@ export const SecretListView = ({
         queryClient.invalidateQueries({
           queryKey: secretApprovalRequestKeys.count({ workspaceId })
         });
-        handlePopUpClose("secretDetail");
+        if (!isReminderEvent) {
+          handlePopUpClose("secretDetail");
+        }
+        
+        let successMessage;
+        if (isReminderEvent) {
+          successMessage = reminderRepeatDays ? "Successfully saved secret reminder" : "Successfully deleted secret reminder";
+        } else {
+          successMessage = "Successfully saved secrets";
+        }
+
         createNotification({
           type: isProtectedBranch && !personalAction ? "info" : "success",
           text:
             isProtectedBranch && !personalAction
               ? "Requested changes have been sent for review"
-              : "Successfully saved secrets"
+              : successMessage
         });
       } catch (error) {
         console.log(error);
