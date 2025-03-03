@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 import { SshCertificatesSchema } from "@app/db/schemas";
 
 export const sanitizedSshCertificate = SshCertificatesSchema.pick({

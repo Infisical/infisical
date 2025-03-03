@@ -1,13 +1,7 @@
 import picomatch from "picomatch";
 import { z } from "zod";
 
-import {
-  SecretApprovalRequestsSchema,
-  SecretsSchema,
-  SecretTagsSchema,
-  SecretType,
-  ServiceTokenScopes
-} from "@app/db/schemas";
+import { SecretApprovalRequestsSchema, SecretsSchema, SecretType, ServiceTokenScopes } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { RAW_SECRETS, SECRETS } from "@app/lib/api-docs";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
