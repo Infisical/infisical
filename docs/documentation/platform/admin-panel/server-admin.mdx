@@ -7,21 +7,22 @@ The Server Admin Console provides **server administrators** with the ability to
 customize settings and manage users for their entire Infisical instance.
 
 <Note>
-    The first user to setup an account on your Infisical instance is designated as the server administrator by default.
+  The first user to setup an account on your Infisical instance is designated as
+  the server administrator by default.
 </Note>
 
 ## Accessing the Server Admin Console
-
 
 On the sidebar, tap on your initials to access the settings dropdown and press the **Server Admin Console** option.
 
 ![Access Server Admin Console](/images/platform/admin-panels/access-server-admin-panel.png)
 
 ## General Tab
+
 Configure general settings for your instance.
 
 ![General Settings](/images/platform/admin-panels/admin-panel-general.png)
-
+![General Settings 1](/images/platform/admin-panels/admin-panel-general-1.png)
 
 ### Allow User Signups
 
@@ -39,6 +40,13 @@ If you're using SAML/LDAP/OIDC for only one organization on your instance, you c
 
 By default, users signing up through SAML/LDAP/OIDC will still need to verify their email address to prevent email spoofing. This requirement can be skipped by enabling the switch to trust logins through the respective method.
 
+### Notices
+
+Auth consent content is displayed to users on the login page. They can be used to display important information to users, such as a maintenance message or a new feature announcement.
+![Auth Consent Usage](/images/platform/admin-panels/auth-consent-usage.png)
+
+Page frame content is displayed as a header and footer in ALL protected pages.
+![Page Frame Usage](/images/platform/admin-panels/page-frame-usage.png)
 
 ## Authentication Tab
 
@@ -46,16 +54,15 @@ From this tab, you can configure which login methods are enabled for your instan
 
 ![Authentication Settings](/images/platform/admin-panels/admin-panel-auths.png)
 
-
 ## Rate Limit Tab
 
 This tab allows you to set various rate limits for your Infisical instance. You do not need to redeploy when making changes to rate limits as these will be propagated automatically.
 
 ![Rate Limit Settings](/images/platform/admin-panels/admin-panel-rate-limits.png)
 
-
 <Note>
-  Note that rate limit configuration is a paid feature. Please contact sales@infisical.com to purchase a license for its use.
+  Note that rate limit configuration is a paid feature. Please contact
+  sales@infisical.com to purchase a license for its use.
 </Note>
 
 ## User Management Tab
@@ -65,5 +72,6 @@ From this tab, you can view all the users who have signed up for your instance. 
 ![User Management](/images/platform/admin-panels/admin-panel-users.png)
 
 <Note>
-    Note that rate limit configuration is a paid feature. Please contact sales@infisical.com to purchase a license for its use.
+  Note that rate limit configuration is a paid feature. Please contact
+  sales@infisical.com to purchase a license for its use.
 </Note>

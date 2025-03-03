@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, Outlet } from "@tanstack/react-router";
 
 import { WishForm } from "@app/components/features/WishForm";
+import { Banner } from "@app/components/page-frames/Banner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,6 +12,7 @@ import {
   DropdownMenuTrigger
 } from "@app/components/v2";
 import { envConfig } from "@app/config/env";
+import { useServerConfig } from "@app/context";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { InsecureConnectionBanner } from "../OrganizationLayout/components/InsecureConnectionBanner";
@@ -18,10 +20,14 @@ import { INFISICAL_SUPPORT_OPTIONS } from "../OrganizationLayout/components/Mini
 
 export const AdminLayout = () => {
   const { t } = useTranslation();
+  const { config } = useServerConfig();
+
+  const containerHeight = config.pageFrameContent ? "h-[94vh]" : "h-screen";
 
   return (
     <>
-      <div className="dark hidden h-screen w-full flex-col overflow-x-hidden md:flex">
+      <Banner />
+      <div className={`dark hidden ${containerHeight} w-full flex-col overflow-x-hidden md:flex`}>
         {!window.isSecureContext && <InsecureConnectionBanner />}
         <div className="flex flex-grow flex-col overflow-y-hidden md:flex-row">
           <aside className="dark w-full border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60">
@@ -69,7 +75,6 @@ export const AdminLayout = () => {
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-              )
             </nav>
           </aside>
           <main className="flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800 dark:[color-scheme:dark]">
@@ -83,6 +88,7 @@ export const AdminLayout = () => {
           {` ${t("common.no-mobile")} `}
         </p>
       </div>
+      <Banner />
     </>
   );
 };

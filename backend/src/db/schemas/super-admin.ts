@@ -23,7 +23,9 @@ export const SuperAdminSchema = z.object({
   defaultAuthOrgId: z.string().uuid().nullable().optional(),
   enabledLoginMethods: z.string().array().nullable().optional(),
   encryptedSlackClientId: zodBuffer.nullable().optional(),
-  encryptedSlackClientSecret: zodBuffer.nullable().optional()
+  encryptedSlackClientSecret: zodBuffer.nullable().optional(),
+  authConsentContent: z.string().nullable().optional(),
+  pageFrameContent: z.string().nullable().optional()
 });
 
 export type TSuperAdmin = z.infer<typeof SuperAdminSchema>;
