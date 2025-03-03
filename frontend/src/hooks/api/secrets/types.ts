@@ -51,6 +51,7 @@ export type SecretV3RawSanitized = {
   folderId?: string;
   skipMultilineEncoding?: boolean;
   secretMetadata?: { key: string; value: string }[];
+  isReminderEvent?: boolean;
 };
 
 export type SecretV3Raw = {

@@ -192,8 +192,8 @@ export const SecretDetailSidebar = ({
     await onSaveSecret(secret, { ...secret, ...data }, () => reset());
   };
 
-  const handleReminderSubmit = async (reminderRepeatDays: number | null, reminderNote: string | null) => {
-    await onSaveSecret(secret, { ...secret, reminderRepeatDays, reminderNote, isReminderEvent: true }, () => {});
+  const handleReminderSubmit = async (reminderRepeatDays: number | null | undefined, reminderNote: string | null | undefined) => {
+    await onSaveSecret(secret, { ...secret, reminderRepeatDays, reminderNote, isReminderEvent: true }, () => { });
   }
 
   const [createReminderFormOpen, setCreateReminderFormOpen] = useToggle(false);
