@@ -1,3 +1,4 @@
+import DOMPurify from "isomorphic-dompurify";
 import { z } from "zod";
 
 import { OrganizationsSchema, SuperAdminSchema, UsersSchema } from "@app/db/schemas";
@@ -73,8 +74,20 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           }),
         slackClientId: z.string().optional(),
         slackClientSecret: z.string().optional(),
-        authConsentContent: z.string().optional(),
-        pageFrameContent: z.string().optional()
+        authConsentContent: z
+          .string()
+          .trim()
+          .refine((content) => DOMPurify.sanitize(content) === content, {
+            message: "Auth consent content contains unsafe HTML."
+          })
+          .optional(),
+        pageFrameContent: z
+          .string()
+          .trim()
+          .refine((content) => DOMPurify.sanitize(content) === content, {
+            message: "Page frame content contains unsafe HTML."
+          })
+          .optional()
       }),
       response: {
         200: z.object({

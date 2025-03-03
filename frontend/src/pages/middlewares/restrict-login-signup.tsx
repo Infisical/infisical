@@ -1,8 +1,10 @@
 import { useState } from "react";
+import ReactMarkdown from "react-markdown";
 import { createFileRoute, Outlet, redirect, stripSearchParams } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { addSeconds, formatISO } from "date-fns";
 import DOMPurify from "dompurify";
+import rehypeRaw from "rehype-raw";
 import { z } from "zod";
 
 import { Button } from "@app/components/v2";
@@ -50,12 +52,9 @@ export const AuthConsentWrapper = () => {
       {config.authConsentContent && !hasConsented && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-mineshaft-700/80 bg-opacity-90">
           <div className="max-h-[80vh] w-4/12 overflow-y-auto rounded-lg bg-bunker-800 p-6 text-white">
-            <div
-              // eslint-disable-next-line react/no-danger
-              dangerouslySetInnerHTML={{
-                __html: DOMPurify.sanitize(config.authConsentContent)
-              }}
-            />
+            <ReactMarkdown rehypePlugins={[rehypeRaw]}>
+              {DOMPurify.sanitize(config.authConsentContent)}
+            </ReactMarkdown>
             <div className="mt-6 flex justify-end">
               <Button onClick={handleConsent} colorSchema="secondary">
                 OK
