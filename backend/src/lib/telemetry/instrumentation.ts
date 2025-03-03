@@ -6,6 +6,7 @@ import { registerInstrumentations } from "@opentelemetry/instrumentation";
 import { Resource } from "@opentelemetry/resources";
 import { AggregationTemporality, MeterProvider, PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from "@opentelemetry/semantic-conventions";
+import tracer from "dd-trace";
 import dotenv from "dotenv";
 
 import { initEnvConfig } from "../config/env";
@@ -84,6 +85,17 @@ const setupTelemetry = () => {
       otlpPassword: appCfg.OTEL_COLLECTOR_BASIC_AUTH_PASSWORD,
       otlpPushInterval: appCfg.OTEL_OTLP_PUSH_INTERVAL,
       exportType: appCfg.OTEL_EXPORT_TYPE
+    });
+  }
+
+  if (appCfg.SHOULD_USE_DATADOG_TRACER) {
+    console.log("Initializing Datadog tracer");
+    tracer.init({
+      profiling: appCfg.DATADOG_PROFILING_ENABLED,
+      version: appCfg.INFISICAL_PLATFORM_VERSION,
+      env: appCfg.DATADOG_ENV,
+      service: appCfg.DATADOG_SERVICE,
+      hostname: appCfg.DATADOG_HOSTNAME
     });
   }
 };
