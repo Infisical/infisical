@@ -276,53 +276,55 @@ export const SecretDetailSidebar = ({
                         key="secret-value"
                         control={control}
                         render={({ field }) => (
-                          <FormControl
-                            helperText={
-                              cannotReadSecretValue ? (
-                                <div className="flex space-x-2">
-                                  <FontAwesomeIcon
-                                    icon={faTriangleExclamation}
-                                    className="mt-0.5 text-yellow-400"
-                                  />
-                                  <span>
-                                    The value of this secret is hidden because you do not have the
-                                    read secret value permission.
-                                  </span>
-                                </div>
-                              ) : undefined
-                            }
-                            label="Value"
-                          >
-                            <InfisicalSecretInput
-                              isReadOnly={isReadOnly}
-                              environment={environment}
-                              secretPath={secretPath}
-                              key="secret-value"
-                              isDisabled={isOverridden || !isAllowed}
-                              containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-bunker-800 px-2 py-1.5"
-                              {...field}
-                              autoFocus={false}
-                            />
-                          </FormControl>
+                          <div className="flex items-center gap-2">
+                            <FormControl
+                              helperText={
+                                cannotReadSecretValue ? (
+                                  <div className="flex space-x-2">
+                                    <FontAwesomeIcon
+                                      icon={faTriangleExclamation}
+                                      className="mt-0.5 text-yellow-400"
+                                    />
+                                    <span>
+                                      The value of this secret is hidden because you do not have the
+                                      read secret value permission.
+                                    </span>
+                                  </div>
+                                ) : undefined
+                              }
+                              label="Value"
+                            >
+                              <div className="flex items-center gap-2">
+                                <InfisicalSecretInput
+                                  isReadOnly={isReadOnly}
+                                  environment={environment}
+                                  secretPath={secretPath}
+                                  key="secret-value"
+                                  isDisabled={isOverridden || !isAllowed}
+                                  containerClassName="text-bunker-300 w-full hover:border-primary-400/50 border border-mineshaft-600 bg-bunker-800 px-2 py-1.5"
+                                  {...field}
+                                  autoFocus={false}
+                                />
+                                <Button
+                                  className="px-2 py-[0.43rem] font-normal"
+                                  variant="outline_bg"
+                                  leftIcon={<FontAwesomeIcon icon={faShare} />}
+                                  onClick={() => {
+                                    const value = secret?.valueOverride ?? secret?.value;
+                                    if (value) {
+                                      handleSecretShare(value);
+                                    }
+                                  }}
+                                >
+                                  Share
+                                </Button>
+                              </div>
+                            </FormControl>
+                          </div>
                         )}
                       />
                     )}
                   </ProjectPermissionCan>
-                </div>
-                <div className="ml-1 mt-1.5 flex items-center">
-                  <Button
-                    className="w-full px-2 py-[0.43rem] font-normal"
-                    variant="outline_bg"
-                    leftIcon={<FontAwesomeIcon icon={faShare} />}
-                    onClick={() => {
-                      const value = secret?.valueOverride ?? secret?.value;
-                      if (value) {
-                        handleSecretShare(value);
-                      }
-                    }}
-                  >
-                    Share
-                  </Button>
                 </div>
               </div>
               <div className="mb-2 rounded border border-mineshaft-600 bg-mineshaft-900 p-4 px-0 pb-0">
