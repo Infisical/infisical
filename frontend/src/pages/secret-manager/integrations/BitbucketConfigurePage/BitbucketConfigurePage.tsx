@@ -55,7 +55,7 @@ const formSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["targetWorkspace"],
-        message: "Required"
+        message: "Bitbucket Workspace required"
       });
     }
 
@@ -63,7 +63,7 @@ const formSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["targetRepo"],
-        message: "Required"
+        message: "Bitbucket Repo required"
       });
     }
 
@@ -71,7 +71,7 @@ const formSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["targetEnvironment"],
-        message: "Required"
+        message: "Bitbucket Deployment Environment required"
       });
     }
   });
