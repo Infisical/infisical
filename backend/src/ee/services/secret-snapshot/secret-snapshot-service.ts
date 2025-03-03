@@ -38,6 +38,7 @@ import { TSnapshotFolderDALFactory } from "./snapshot-folder-dal";
 import { TSnapshotSecretDALFactory } from "./snapshot-secret-dal";
 import { TSnapshotSecretV2DALFactory } from "./snapshot-secret-v2-dal";
 import { getFullFolderPath } from "./snapshot-service-fns";
+import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "@app/services/secret/secret-fns";
 
 type TSecretSnapshotServiceFactoryDep = {
   snapshotDAL: TSnapshotDALFactory;
@@ -184,7 +185,7 @@ export const secretSnapshotServiceFactory = ({
       snapshotDetails = {
         ...encryptedSnapshotDetails,
         secretVersions: encryptedSnapshotDetails.secretVersions.map((el) => {
-          ForbiddenError.from(permission).throwUnlessCan(
+          const canReadValue = permission.can(
             ProjectPermissionSecretActions.ReadValue,
             subject(ProjectPermissionSub.Secrets, {
               environment: encryptedSnapshotDetails.environment.slug,
@@ -194,12 +195,20 @@ export const secretSnapshotServiceFactory = ({
             })
           );
 
+          let secretValue = "";
+          if (canReadValue) {
+            secretValue = el.encryptedValue
+              ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
+              : "";
+          } else {
+            secretValue = INFISICAL_SECRET_VALUE_HIDDEN_MASK;
+          }
+
           return {
             ...el,
             secretKey: el.key,
-            secretValue: el.encryptedValue
-              ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
-              : "",
+            secretValueHidden: !canReadValue,
+            secretValue,
             secretComment: el.encryptedComment
               ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
               : ""
@@ -228,7 +237,7 @@ export const secretSnapshotServiceFactory = ({
             key: botKey
           });
 
-          ForbiddenError.from(permission).throwUnlessCan(
+          const canReadValue = permission.can(
             ProjectPermissionSecretActions.ReadValue,
             subject(ProjectPermissionSub.Secrets, {
               environment: encryptedSnapshotDetails.environment.slug,
@@ -238,15 +247,24 @@ export const secretSnapshotServiceFactory = ({
             })
           );
 
-          return {
-            ...el,
-            secretKey,
-            secretValue: decryptSymmetric128BitHexKeyUTF8({
+          let secretValue = "";
+
+          if (canReadValue) {
+            secretValue = decryptSymmetric128BitHexKeyUTF8({
               ciphertext: el.secretValueCiphertext,
               iv: el.secretValueIV,
               tag: el.secretValueTag,
               key: botKey
-            }),
+            });
+          } else {
+            secretValue = INFISICAL_SECRET_VALUE_HIDDEN_MASK;
+          }
+
+          return {
+            ...el,
+            secretKey,
+            secretValueHidden: !canReadValue,
+            secretValue,
             secretComment:
               el.secretCommentTag && el.secretCommentIV && el.secretCommentCiphertext
                 ? decryptSymmetric128BitHexKeyUTF8({

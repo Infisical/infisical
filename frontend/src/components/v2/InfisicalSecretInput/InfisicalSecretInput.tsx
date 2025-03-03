@@ -2,7 +2,6 @@ import { forwardRef, TextareaHTMLAttributes, useCallback, useMemo, useRef, useSt
 import { faCircle, faFolder, faKey } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as Popover from "@radix-ui/react-popover";
-import { twMerge } from "tailwind-merge";
 
 import { useWorkspace } from "@app/context";
 import { useDebounce, useToggle } from "@app/hooks";
@@ -283,7 +282,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
                 setIsFocused.off();
             }}
             onChange={(e) => onChange?.(e.target.value)}
-            containerClassName={twMerge(containerClassName)}
+            containerClassName={containerClassName}
           />
         </Popover.Trigger>
         <Popover.Content
