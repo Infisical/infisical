@@ -158,7 +158,8 @@ export const SecretListView = ({
         comment,
         reminderRepeatDays,
         reminderNote,
-        secretMetadata
+        secretMetadata,
+        isReminderEvent
       } = modSecret;
       const hasKeyChanged = oldKey !== key && key;
 
@@ -234,7 +235,9 @@ export const SecretListView = ({
         queryClient.invalidateQueries({
           queryKey: secretApprovalRequestKeys.count({ workspaceId })
         });
-        handlePopUpClose("secretDetail");
+        if (!isReminderEvent) {
+          handlePopUpClose("secretDetail");
+        }
         createNotification({
           type: isProtectedBranch && !personalAction ? "info" : "success",
           text:
