@@ -250,6 +250,7 @@ export enum EventType {
   UPDATE_APP_CONNECTION = "update-app-connection",
   DELETE_APP_CONNECTION = "delete-app-connection",
   CREATE_SHARED_SECRET = "create-shared-secret",
+  CREATE_SECRET_REQUEST = "create-secret-request",
   DELETE_SHARED_SECRET = "delete-shared-secret",
   READ_SHARED_SECRET = "read-shared-secret",
   GET_SECRET_SYNCS = "get-secret-syncs",
@@ -2020,6 +2021,15 @@ interface CreateSharedSecretEvent {
   };
 }
 
+interface CreateSecretRequestEvent {
+  type: EventType.CREATE_SECRET_REQUEST;
+  metadata: {
+    id: string;
+    accessType: string;
+    name?: string;
+  };
+}
+
 interface DeleteSharedSecretEvent {
   type: EventType.DELETE_SHARED_SECRET;
   metadata: {
@@ -2470,4 +2480,5 @@ export type Event =
   | KmipOperationActivateEvent
   | KmipOperationRevokeEvent
   | KmipOperationLocateEvent
-  | KmipOperationRegisterEvent;
+  | KmipOperationRegisterEvent
+  | CreateSecretRequestEvent;

@@ -11,6 +11,7 @@ import {
 } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { SecretSharingType } from "@app/services/secret-sharing/secret-sharing-types";
 
 export const registerSecretSharingRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -38,6 +39,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
+        type: SecretSharingType.Share,
         ...req.query
       });
 
@@ -211,7 +213,8 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         orgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        sharedSecretId
+        sharedSecretId,
+        type: SecretSharingType.Share
       });
 
       await server.services.auditLog.createAuditLog({

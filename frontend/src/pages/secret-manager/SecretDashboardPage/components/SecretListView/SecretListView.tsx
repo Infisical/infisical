@@ -13,7 +13,7 @@ import { secretKeys } from "@app/hooks/api/secrets/queries";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { secretSnapshotKeys } from "@app/hooks/api/secretSnapshots/queries";
 import { WsTag } from "@app/hooks/api/types";
-import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/AddShareSecretModal";
+import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/AddShareSecretModal";
 
 import { useSelectedSecretActions, useSelectedSecrets } from "../../SecretMainPage.store";
 import { SecretDetailSidebar } from "./SecretDetailSidebar";

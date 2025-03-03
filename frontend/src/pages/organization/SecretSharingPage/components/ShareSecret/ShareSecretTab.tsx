@@ -1,27 +1,27 @@
-import { Helmet } from "react-helmet";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, DeleteActionModal } from "@app/components/v2";
-import { usePopUp } from "@app/hooks";
-import { useDeleteSharedSecret } from "@app/hooks/api/secretSharing";
+import { useDeleteSharedSecret } from "@app/hooks/api";
+import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AddShareSecretModal } from "./AddShareSecretModal";
 import { ShareSecretsTable } from "./ShareSecretsTable";
 
 type DeleteModalData = { name: string; id: string };
 
-export const ShareSecretSection = () => {
-  const deleteSharedSecret = useDeleteSharedSecret();
+export const ShareSecretTab = () => {
   const { popUp, handlePopUpToggle, handlePopUpClose, handlePopUpOpen } = usePopUp([
     "createSharedSecret",
     "deleteSharedSecretConfirmation"
   ] as const);
 
+  const deleteSecretShare = useDeleteSharedSecret();
+
   const onDeleteApproved = async () => {
     try {
-      deleteSharedSecret.mutateAsync({
+      deleteSecretShare.mutateAsync({
         sharedSecretId: (popUp?.deleteSharedSecretConfirmation?.data as DeleteModalData)?.id
       });
       createNotification({
@@ -41,11 +41,6 @@ export const ShareSecretSection = () => {
 
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <Helmet>
-        <title>Secret Sharing</title>
-        <link rel="icon" href="/infisical.ico" />
-        <meta property="og:image" content="/images/message.png" />
-      </Helmet>
       <div className="mb-4 flex justify-between">
         <p className="text-xl font-semibold text-mineshaft-100">Shared Secrets</p>
         <Button

@@ -5,8 +5,13 @@ import { apiRequest } from "@app/config/request";
 import { secretSharingKeys } from "./queries";
 import {
   TCreatedSharedSecret,
+  TCreateSecretRequestRequestDTO,
   TCreateSharedSecretRequest,
-  TDeleteSharedSecretRequest,
+  TDeleteSecretRequestDTO,
+  TDeleteSharedSecretRequestDTO,
+  TRevealedSecretRequest,
+  TRevealSecretRequestValueRequest,
+  TSetSecretRequestValueRequest,
   TSharedSecret
 } from "./types";
 
@@ -15,7 +20,7 @@ export const useCreateSharedSecret = () => {
   return useMutation({
     mutationFn: async (inputData: TCreateSharedSecretRequest) => {
       const { data } = await apiRequest.post<TCreatedSharedSecret>(
-        "/api/v1/secret-sharing",
+        "/api/v1/secret-sharing/shared",
         inputData
       );
       return data;
@@ -30,7 +35,7 @@ export const useCreatePublicSharedSecret = () => {
   return useMutation({
     mutationFn: async (inputData: TCreateSharedSecretRequest) => {
       const { data } = await apiRequest.post<TCreatedSharedSecret>(
-        "/api/v1/secret-sharing/public",
+        "/api/v1/secret-sharing/shared/public",
         inputData
       );
       return data;
@@ -40,16 +45,70 @@ export const useCreatePublicSharedSecret = () => {
   });
 };
 
+export const useCreateSecretRequest = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (inputData: TCreateSecretRequestRequestDTO) => {
+      const { data } = await apiRequest.post<TCreatedSharedSecret>(
+        "/api/v1/secret-sharing/requests",
+        inputData
+      );
+      return data;
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: secretSharingKeys.allSecretRequests() })
+  });
+};
+
+export const useSetSecretRequestValue = () => {
+  return useMutation({
+    mutationFn: async (inputData: TSetSecretRequestValueRequest) => {
+      const { data } = await apiRequest.post<TSharedSecret>(
+        `/api/v1/secret-sharing/requests/${inputData.id}/set-value`,
+        inputData
+      );
+      return data;
+    }
+  });
+};
+
+export const useRevealSecretRequestValue = () => {
+  return useMutation({
+    mutationFn: async (inputData: TRevealSecretRequestValueRequest) => {
+      const { data } = await apiRequest.post<TRevealedSecretRequest>(
+        `/api/v1/secret-sharing/requests/${inputData.id}/reveal-value`,
+        inputData
+      );
+      return data.secretRequest;
+    }
+  });
+};
 export const useDeleteSharedSecret = () => {
   const queryClient = useQueryClient();
   return useMutation<TSharedSecret, { message: string }, { sharedSecretId: string }>({
-    mutationFn: async ({ sharedSecretId }: TDeleteSharedSecretRequest) => {
+    mutationFn: async ({ sharedSecretId }: TDeleteSharedSecretRequestDTO) => {
       const { data } = await apiRequest.delete<TSharedSecret>(
-        `/api/v1/secret-sharing/${sharedSecretId}`
+        `/api/v1/secret-sharing/shared/${sharedSecretId}`
       );
       return data;
     },
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: secretSharingKeys.allSharedSecrets() })
+  });
+};
+
+export const useDeleteSecretRequest = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TSharedSecret, unknown, TDeleteSecretRequestDTO>({
+    mutationFn: async ({ secretRequestId }: TDeleteSecretRequestDTO) => {
+      const { data } = await apiRequest.delete<TSharedSecret>(
+        `/api/v1/secret-sharing/requests/${secretRequestId}`
+      );
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: secretSharingKeys.allSecretRequests() });
+    }
   });
 };
