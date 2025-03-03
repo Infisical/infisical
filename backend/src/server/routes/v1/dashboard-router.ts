@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { z } from "zod";
 
-import { ActionProjectType, SecretFoldersSchema, SecretImportsSchema, SecretTagsSchema } from "@app/db/schemas";
+import { ActionProjectType, SecretFoldersSchema, SecretImportsSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import {
   ProjectPermissionDynamicSecretActions,

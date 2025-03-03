@@ -981,6 +981,8 @@ export const secretV2BridgeServiceFactory = ({
               })
             );
           }
+          // Else, we do nothing. Because we don't want to filter out the secret, OR throw an error.
+          // If the user doesn't have access to read the value, in the below map function, we mask the secret value and return the secret with a hidden value.
         }
 
         return canDescribeSecret;
