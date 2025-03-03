@@ -42,10 +42,19 @@ By default, users signing up through SAML/LDAP/OIDC will still need to verify th
 
 ### Notices
 
-Auth consent content is displayed to users on the login page. They can be used to display important information to users, such as a maintenance message or a new feature announcement.
+Auth consent content is displayed to users on the login page. They can be used to display important information to users, such as a maintenance message or a new feature announcement. Both HTML and Markdown formatting are supported, allowing for customized styling like below:
+
+```
+**You are entering a confidential website**
+```
+
+```html
+<div style="font-weight: bold;">You are entering a confidential website</div>
+```
+
 ![Auth Consent Usage](/images/platform/admin-panels/auth-consent-usage.png)
 
-Page frame content is displayed as a header and footer in ALL protected pages.
+Page frame content is displayed as a header and footer in ALL protected pages. Like the auth consent content, both HTML and Markdown formatting are supported here as well.
 ![Page Frame Usage](/images/platform/admin-panels/page-frame-usage.png)
 
 ## Authentication Tab
