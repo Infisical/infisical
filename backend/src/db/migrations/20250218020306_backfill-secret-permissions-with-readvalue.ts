@@ -81,6 +81,8 @@ const $updatePermissionsDown = (permissions: unknown) => {
   };
 };
 
+const CHUNK_SIZE = 1000;
+
 export async function up(knex: Knex): Promise<void> {
   const projectRoles = await knex(TableName.ProjectRoles).select(selectAllTableCols(TableName.ProjectRoles));
   const projectIdentityAdditionalPrivileges = await knex(TableName.IdentityProjectAdditionalPrivilege).select(
@@ -89,6 +91,7 @@ export async function up(knex: Knex): Promise<void> {
   const projectUserAdditionalPrivileges = await knex(TableName.ProjectUserAdditionalPrivilege).select(
     selectAllTableCols(TableName.ProjectUserAdditionalPrivilege)
   );
+
   const serviceTokens = await knex(TableName.ServiceToken).select(selectAllTableCols(TableName.ServiceToken));
 
   const updatedServiceTokens = serviceTokens.reduce<typeof serviceTokens>((acc, serviceToken) => {
@@ -105,20 +108,25 @@ export async function up(knex: Knex): Promise<void> {
   }, []);
 
   if (updatedServiceTokens.length > 0) {
-    await knex(TableName.ServiceToken)
-      .whereIn(
-        "id",
-        updatedServiceTokens.map((t) => t.id)
-      )
-      .update({
-        // @ts-expect-error -- raw query
-        permissions: knex.raw(
-          `CASE id 
-          ${updatedServiceTokens.map((t) => `WHEN '${t.id}' THEN ?::text[]`).join(" ")}
-        END`,
-          updatedServiceTokens.map((t) => t.permissions)
+    for (let i = 0; i < updatedServiceTokens.length; i += CHUNK_SIZE) {
+      const chunk = updatedServiceTokens.slice(i, i + CHUNK_SIZE);
+
+      // eslint-disable-next-line no-await-in-loop
+      await knex(TableName.ServiceToken)
+        .whereIn(
+          "id",
+          chunk.map((t) => t.id)
         )
-      });
+        .update({
+          // @ts-expect-error -- raw query
+          permissions: knex.raw(
+            `CASE id 
+          ${chunk.map((t) => `WHEN '${t.id}' THEN ?::text[]`).join(" ")}
+          END`,
+            chunk.map((t) => t.permissions)
+          )
+        });
+    }
   }
 
   const updatedRoles = projectRoles.reduce<typeof projectRoles>((acc, projectRole) => {
@@ -162,21 +170,30 @@ export async function up(knex: Knex): Promise<void> {
   }, []);
 
   if (updatedRoles.length > 0) {
-    await knex(TableName.ProjectRoles).insert(updatedRoles).onConflict("id").merge(["permissions"]);
+    for (let i = 0; i < updatedRoles.length; i += CHUNK_SIZE) {
+      const chunk = updatedRoles.slice(i, i + CHUNK_SIZE);
+
+      // eslint-disable-next-line no-await-in-loop
+      await knex(TableName.ProjectRoles).insert(chunk).onConflict("id").merge(["permissions"]);
+    }
   }
 
   if (updatedIdentityAdditionalPrivileges.length > 0) {
-    await knex(TableName.IdentityProjectAdditionalPrivilege)
-      .insert(updatedIdentityAdditionalPrivileges)
-      .onConflict("id")
-      .merge(["permissions"]);
+    for (let i = 0; i < updatedIdentityAdditionalPrivileges.length; i += CHUNK_SIZE) {
+      const chunk = updatedIdentityAdditionalPrivileges.slice(i, i + CHUNK_SIZE);
+
+      // eslint-disable-next-line no-await-in-loop
+      await knex(TableName.IdentityProjectAdditionalPrivilege).insert(chunk).onConflict("id").merge(["permissions"]);
+    }
   }
 
   if (updatedUserAdditionalPrivileges.length > 0) {
-    await knex(TableName.ProjectUserAdditionalPrivilege)
-      .insert(updatedUserAdditionalPrivileges)
-      .onConflict("id")
-      .merge(["permissions"]);
+    for (let i = 0; i < updatedUserAdditionalPrivileges.length; i += CHUNK_SIZE) {
+      const chunk = updatedUserAdditionalPrivileges.slice(i, i + CHUNK_SIZE);
+
+      // eslint-disable-next-line no-await-in-loop
+      await knex(TableName.ProjectUserAdditionalPrivilege).insert(chunk).onConflict("id").merge(["permissions"]);
+    }
   }
 }
 
@@ -263,20 +280,29 @@ export async function down(knex: Knex): Promise<void> {
   );
 
   if (updatedRoles.length > 0) {
-    await knex(TableName.ProjectRoles).insert(updatedRoles).onConflict("id").merge(["permissions"]);
+    for (let i = 0; i < updatedRoles.length; i += CHUNK_SIZE) {
+      const chunk = updatedRoles.slice(i, i + CHUNK_SIZE);
+
+      // eslint-disable-next-line no-await-in-loop
+      await knex(TableName.ProjectRoles).insert(chunk).onConflict("id").merge(["permissions"]);
+    }
   }
 
   if (updatedIdentityAdditionalPrivileges.length > 0) {
-    await knex(TableName.IdentityProjectAdditionalPrivilege)
-      .insert(updatedIdentityAdditionalPrivileges)
-      .onConflict("id")
-      .merge(["permissions"]);
+    for (let i = 0; i < updatedIdentityAdditionalPrivileges.length; i += CHUNK_SIZE) {
+      const chunk = updatedIdentityAdditionalPrivileges.slice(i, i + CHUNK_SIZE);
+
+      // eslint-disable-next-line no-await-in-loop
+      await knex(TableName.IdentityProjectAdditionalPrivilege).insert(chunk).onConflict("id").merge(["permissions"]);
+    }
   }
 
   if (updatedUserAdditionalPrivileges.length > 0) {
-    await knex(TableName.ProjectUserAdditionalPrivilege)
-      .insert(updatedUserAdditionalPrivileges)
-      .onConflict("id")
-      .merge(["permissions"]);
+    for (let i = 0; i < updatedUserAdditionalPrivileges.length; i += CHUNK_SIZE) {
+      const chunk = updatedUserAdditionalPrivileges.slice(i, i + CHUNK_SIZE);
+
+      // eslint-disable-next-line no-await-in-loop
+      await knex(TableName.ProjectUserAdditionalPrivilege).insert(chunk).onConflict("id").merge(["permissions"]);
+    }
   }
 }
