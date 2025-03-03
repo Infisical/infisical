@@ -27,7 +27,7 @@ const Content = ({ secretValue, secretRequestName }: ContentProps) => {
         </p>
       )}
 
-      <div className="mb-8 flex items-center justify-between rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
+      <div className="mb-8 flex items-center justify-between rounded-md bg-mineshaft-700 p-2 text-base text-gray-400">
         <p className="mr-4 break-all">{secretValue}</p>
         <Tooltip content="Click to copy">
           <IconButton
@@ -46,7 +46,7 @@ const Content = ({ secretValue, secretRequestName }: ContentProps) => {
 
       <div className="mt-8 flex w-full items-center justify-between gap-2">
         <ModalClose asChild>
-          <Button colorSchema="primary">Close</Button>
+          <Button colorSchema="secondary">Close</Button>
         </ModalClose>
       </div>
     </>

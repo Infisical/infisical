@@ -38,6 +38,7 @@ export const RequestedSecretsTable = ({ handlePopUpOpen }: Props) => {
           <Tr>
             <Th>Name</Th>
             <Th>Status</Th>
+            <Th>Access Type</Th>
             <Th>Created At</Th>
             <Th>Valid Until</Th>
             <Th aria-label="button" className="w-5" />
@@ -64,7 +65,7 @@ export const RequestedSecretsTable = ({ handlePopUpOpen }: Props) => {
           />
         )}
       {!isPending && !data?.secrets?.length && (
-        <EmptyState title="No secrets shared yet" icon={faKey} />
+        <EmptyState title="No secrets requested yet" icon={faKey} />
       )}
     </TableContainer>
   );

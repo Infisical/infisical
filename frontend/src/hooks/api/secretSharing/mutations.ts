@@ -5,7 +5,7 @@ import { apiRequest } from "@app/config/request";
 import { secretSharingKeys } from "./queries";
 import {
   TCreatedSharedSecret,
-  TCreateSecretRequestRequest,
+  TCreateSecretRequestRequestDTO,
   TCreateSharedSecretRequest,
   TDeleteSecretRequestDTO,
   TDeleteSharedSecretRequestDTO,
@@ -48,7 +48,7 @@ export const useCreatePublicSharedSecret = () => {
 export const useCreateSecretRequest = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (inputData: TCreateSecretRequestRequest) => {
+    mutationFn: async (inputData: TCreateSecretRequestRequestDTO) => {
       const { data } = await apiRequest.post<TCreatedSharedSecret>(
         "/api/v1/secret-sharing/requests",
         inputData

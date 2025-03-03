@@ -57,12 +57,12 @@ export type TRevealSecretRequestValueDTO = {
 
 export type TGetSecretRequestByIdDTO = {
   id: string;
-} & TOrgPermission;
+} & Omit<TOrgPermission, "orgId">;
 
 export type TSetSecretRequestValueDTO = {
   id: string;
   secretValue: string;
-} & TOrgPermission;
+} & Omit<TOrgPermission, "orgId">;
 
 export type TDeleteSharedSecretDTO = {
   sharedSecretId: string;

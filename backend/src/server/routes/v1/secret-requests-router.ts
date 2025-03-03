@@ -44,7 +44,6 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
       const secretRequest = await req.server.services.secretSharing.getSecretRequestById({
         id: req.params.id,
         actorOrgId: req.permission?.orgId,
-        orgId: req.permission?.orgId,
         actor: req.permission?.type,
         actorId: req.permission?.id,
         actorAuthMethod: req.permission?.authMethod
@@ -82,7 +81,6 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
       const secretRequest = await req.server.services.secretSharing.setSecretRequestValue({
         id: req.params.id,
         actorOrgId: req.permission?.orgId,
-        orgId: req.permission?.orgId,
         actor: req.permission?.type,
         actorId: req.permission?.id,
         actorAuthMethod: req.permission?.authMethod,

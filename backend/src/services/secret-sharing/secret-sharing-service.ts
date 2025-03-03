@@ -176,7 +176,6 @@ export const secretSharingServiceFactory = ({
     id,
     actor,
     actorId,
-    orgId,
     actorAuthMethod,
     actorOrgId
   }: TGetSecretRequestByIdDTO) => {
@@ -187,22 +186,22 @@ export const secretSharingServiceFactory = ({
     }
 
     if (secretRequest.accessType === SecretSharingAccessType.Organization) {
-      if (orgId === undefined) {
+      if (!secretRequest.orgId) {
+        throw new BadRequestError({ message: "No organization ID present on secret request" });
+      }
+
+      if (!actorOrgId) {
         throw new UnauthorizedError();
       }
 
       const { permission } = await permissionService.getOrgPermission(
         actor,
         actorId,
-        orgId,
+        secretRequest.orgId,
         actorAuthMethod,
         actorOrgId
       );
       if (!permission) throw new ForbiddenRequestError({ name: "User is not a part of the specified organization" });
-
-      if (secretRequest.orgId !== orgId) {
-        throw new ForbiddenRequestError({ name: "User does not have permission to access this secret request" });
-      }
     }
 
     if (secretRequest.expiresAt && secretRequest.expiresAt < new Date()) {
@@ -221,7 +220,6 @@ export const secretSharingServiceFactory = ({
     id,
     actor,
     actorId,
-    orgId,
     actorAuthMethod,
     actorOrgId,
     secretValue
@@ -237,22 +235,22 @@ export const secretSharingServiceFactory = ({
     let respondentUsername: string | undefined;
 
     if (secretRequest.accessType === SecretSharingAccessType.Organization) {
+      if (!secretRequest.orgId) {
+        throw new BadRequestError({ message: "No organization ID present on secret request" });
+      }
+
+      if (!actorOrgId) {
+        throw new UnauthorizedError();
+      }
+
       const { permission } = await permissionService.getOrgPermission(
         actor,
         actorId,
-        orgId,
+        secretRequest.orgId,
         actorAuthMethod,
         actorOrgId
       );
       if (!permission) throw new ForbiddenRequestError({ name: "User is not a part of the specified organization" });
-
-      if (!orgId) {
-        throw new UnauthorizedError();
-      }
-
-      if (secretRequest.orgId !== orgId) {
-        throw new ForbiddenRequestError({ name: "User does not have permission to access this secret request" });
-      }
 
       const user = await userDAL.findById(actorId);
 
@@ -478,8 +476,14 @@ export const secretSharingServiceFactory = ({
       ? await secretSharingDAL.findOne({ id: sharedSecretId, type: deleteSharedSecretInput.type })
       : await secretSharingDAL.findOne({ identifier: sharedSecretId, type: deleteSharedSecretInput.type });
 
-    if (sharedSecret.orgId && sharedSecret.orgId !== orgId)
+    if (sharedSecret.userId !== actorId) {
+      throw new ForbiddenRequestError({
+        message: "User does not have permission to delete shared secret"
+      });
+    }
+    if (sharedSecret.orgId && sharedSecret.orgId !== orgId) {
       throw new ForbiddenRequestError({ message: "User does not have permission to delete shared secret" });
+    }
 
     const deletedSharedSecret = await secretSharingDAL.deleteById(sharedSecretId);
 

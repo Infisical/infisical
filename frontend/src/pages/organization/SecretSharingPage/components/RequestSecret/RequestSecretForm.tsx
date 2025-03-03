@@ -98,7 +98,12 @@ export const RequestSecretForm = () => {
         name="expiresIn"
         defaultValue="3600000"
         render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-          <FormControl label="Expires In" errorText={error?.message} isError={Boolean(error)}>
+          <FormControl
+            label="Expires In"
+            errorText={error?.message}
+            tooltipText="Select for how long someone is able to input the secret. If a secret is shared with you in time, it will remain available to you, even after the expiration."
+            isError={Boolean(error)}
+          >
             <Select
               defaultValue={field.value}
               {...field}

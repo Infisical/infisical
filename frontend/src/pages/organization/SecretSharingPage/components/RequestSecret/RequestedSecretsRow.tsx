@@ -4,7 +4,11 @@ import { format } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
 import { Badge, IconButton, Td, Tooltip, Tr } from "@app/components/v2";
-import { TSharedSecret, useRevealSecretRequestValue } from "@app/hooks/api/secretSharing";
+import {
+  SecretSharingAccessType,
+  TSharedSecret,
+  useRevealSecretRequestValue
+} from "@app/hooks/api/secretSharing";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 export const RequestedSecretsRow = ({
@@ -36,6 +40,23 @@ export const RequestedSecretsRow = ({
           </Badge>
         )}
       </Td>
+      <Td>
+        <Badge variant="primary">
+          <Tooltip
+            content={
+              row.accessType === SecretSharingAccessType.Anyone
+                ? "Anyone can input the secret."
+                : "Only members of the organization can input the secret."
+            }
+          >
+            <div>
+              {row.accessType === SecretSharingAccessType.Anyone
+                ? "Anyone"
+                : "Organization Members"}
+            </div>
+          </Tooltip>
+        </Badge>
+      </Td>
       <Td>{`${format(new Date(row.createdAt), "yyyy-MM-dd - HH:mm a")}`}</Td>
       <Td>{row.expiresAt ? format(new Date(row.expiresAt), "yyyy-MM-dd - HH:mm a") : "-"}</Td>
       <Td>
@@ -43,7 +64,7 @@ export const RequestedSecretsRow = ({
           <Tooltip
             content={
               row.encryptedSecret
-                ? "Reveal shared secret"
+                ? "Reveal secret"
                 : "Secret value must be provided before it can be viewed."
             }
           >
@@ -72,28 +93,30 @@ export const RequestedSecretsRow = ({
             </IconButton>
           </Tooltip>
 
-          <IconButton
-            isDisabled={Boolean(row.encryptedSecret) || isExpired}
-            className={Boolean(row.encryptedSecret) || isExpired ? "opacity-50" : ""}
-            onClick={async (e) => {
-              e.stopPropagation();
+          <Tooltip content="Copy link">
+            <IconButton
+              isDisabled={Boolean(row.encryptedSecret) || isExpired}
+              className={Boolean(row.encryptedSecret) || isExpired ? "opacity-50" : ""}
+              onClick={async (e) => {
+                e.stopPropagation();
 
-              navigator.clipboard.writeText(
-                `${window.location.origin}/secret-request/secret/${row.id}`
-              );
+                navigator.clipboard.writeText(
+                  `${window.location.origin}/secret-request/secret/${row.id}`
+                );
 
-              createNotification({
-                text: "Shared secret link copied to clipboard.",
-                type: "success"
-              });
-            }}
-            variant="plain"
-            ariaLabel="copy link"
-          >
-            <FontAwesomeIcon icon={faCopy} />
-          </IconButton>
+                createNotification({
+                  text: "Shared secret link copied to clipboard.",
+                  type: "success"
+                });
+              }}
+              variant="plain"
+              ariaLabel="copy link"
+            >
+              <FontAwesomeIcon icon={faCopy} />
+            </IconButton>
+          </Tooltip>
 
-          <Tooltip content="Delete Secret Request">
+          <Tooltip content="Delete">
             <IconButton
               onClick={(e) => {
                 e.stopPropagation();

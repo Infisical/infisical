@@ -2,7 +2,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName, TSecretSharing } from "@app/db/schemas";
-import { DatabaseError } from "@app/lib/errors";
+import { DatabaseError, NotFoundError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 import { QueueName } from "@app/queue";
@@ -32,10 +32,8 @@ export const secretSharingDALFactory = (db: TDbClient) => {
       .first();
 
     if (!secretRequest) {
-      throw new DatabaseError({
-        error: new Error("Get Secret Request By Id, Not found"),
-        message: "Get Secret Request By Id, Not found",
-        name: "GetSecretRequestById"
+      throw new NotFoundError({
+        message: `Secret request with ID '${id}' not found`
       });
     }
 

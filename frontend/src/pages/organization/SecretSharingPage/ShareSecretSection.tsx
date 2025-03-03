@@ -3,7 +3,6 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { Badge, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { usePopUp } from "@app/hooks";
 
 import { RequestSecretTab } from "./components/RequestSecret/RequestSecretTab";
 import { ShareSecretTab } from "./components/ShareSecret/ShareSecretTab";
@@ -14,14 +13,6 @@ enum SecretSharingPageTabs {
 }
 
 export const ShareSecretSection = () => {
-  const { popUp, handlePopUpToggle, handlePopUpClose, handlePopUpOpen } = usePopUp([
-    "createSharedSecret",
-    "deleteSharedSecretConfirmation",
-    "createSecretRequest",
-    "deleteSecretRequestConfirmation",
-    "revealSecretRequestValue"
-  ] as const);
-
   const navigate = useNavigate();
 
   const { selectedTab } = useSearch({
@@ -54,20 +45,10 @@ export const ShareSecretSection = () => {
           </Tab>
         </TabList>
         <TabPanel value={SecretSharingPageTabs.ShareSecret}>
-          <ShareSecretTab
-            handlePopUpOpen={handlePopUpOpen}
-            popUp={popUp}
-            handlePopUpToggle={handlePopUpToggle}
-            handlePopUpClose={handlePopUpClose}
-          />
+          <ShareSecretTab />
         </TabPanel>
         <TabPanel value={SecretSharingPageTabs.RequestSecret}>
-          <RequestSecretTab
-            handlePopUpOpen={handlePopUpOpen}
-            popUp={popUp}
-            handlePopUpToggle={handlePopUpToggle}
-            handlePopUpClose={handlePopUpClose}
-          />
+          <RequestSecretTab />
         </TabPanel>
       </Tabs>
     </div>

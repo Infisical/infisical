@@ -4,32 +4,19 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createNotification } from "@app/components/notifications";
 import { Button, DeleteActionModal } from "@app/components/v2";
 import { useDeleteSharedSecret } from "@app/hooks/api";
-import { UsePopUpState } from "@app/hooks/usePopUp";
+import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AddShareSecretModal } from "./AddShareSecretModal";
 import { ShareSecretsTable } from "./ShareSecretsTable";
 
-type Props = {
-  handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["createSharedSecret", "deleteSharedSecretConfirmation"]>,
-    data?: any
-  ) => void;
-  popUp: UsePopUpState<["createSharedSecret", "deleteSharedSecretConfirmation"]>;
-  handlePopUpToggle: (
-    popUpName: keyof UsePopUpState<["createSharedSecret", "deleteSharedSecretConfirmation"]>,
-    state?: boolean
-  ) => void;
-  handlePopUpClose: (popUpName: keyof UsePopUpState<["deleteSharedSecretConfirmation"]>) => void;
-};
-
 type DeleteModalData = { name: string; id: string };
 
-export const ShareSecretTab = ({
-  handlePopUpOpen,
-  popUp,
-  handlePopUpToggle,
-  handlePopUpClose
-}: Props) => {
+export const ShareSecretTab = () => {
+  const { popUp, handlePopUpToggle, handlePopUpClose, handlePopUpOpen } = usePopUp([
+    "createSharedSecret",
+    "deleteSharedSecretConfirmation"
+  ] as const);
+
   const deleteSecretShare = useDeleteSharedSecret();
 
   const onDeleteApproved = async () => {

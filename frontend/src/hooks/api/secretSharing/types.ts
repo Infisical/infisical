@@ -6,6 +6,7 @@ export type TSharedSecret = {
   updatedAt: Date;
   name: string | null;
   lastViewedAt?: Date;
+  accessType: SecretSharingAccessType;
   expiresAt: Date;
   expiresAfterViews: number | null;
   encryptedValue: string;
@@ -33,7 +34,7 @@ export type TCreateSharedSecretRequest = {
   accessType?: SecretSharingAccessType;
 };
 
-export type TCreateSecretRequestRequest = {
+export type TCreateSecretRequestRequestDTO = {
   name?: string;
   accessType?: SecretSharingAccessType;
   expiresAt: Date;

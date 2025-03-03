@@ -4,41 +4,21 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createNotification } from "@app/components/notifications";
 import { Button, DeleteActionModal } from "@app/components/v2";
 import { useDeleteSecretRequest } from "@app/hooks/api";
-import { UsePopUpState } from "@app/hooks/usePopUp";
+import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AddSecretRequestModal } from "./AddSecretRequestModal";
 import { RequestedSecretsTable } from "./RequestedSecretsTable";
 import { RevealSecretValueModal } from "./RevealSecretValueModal";
 
-type Props = {
-  handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<
-      ["createSecretRequest", "deleteSecretRequestConfirmation", "revealSecretRequestValue"]
-    >,
-    data?: any
-  ) => void;
-  popUp: UsePopUpState<
-    ["createSecretRequest", "deleteSecretRequestConfirmation", "revealSecretRequestValue"]
-  >;
-  handlePopUpToggle: (
-    popUpName: keyof UsePopUpState<
-      ["createSecretRequest", "deleteSecretRequestConfirmation", "revealSecretRequestValue"]
-    >,
-    state?: boolean
-  ) => void;
-  handlePopUpClose: (
-    popUpName: keyof UsePopUpState<["deleteSecretRequestConfirmation", "revealSecretRequestValue"]>
-  ) => void;
-};
-
 type DeleteModalData = { name: string; id: string };
 
-export const RequestSecretTab = ({
-  handlePopUpOpen,
-  popUp,
-  handlePopUpToggle,
-  handlePopUpClose
-}: Props) => {
+export const RequestSecretTab = () => {
+  const { popUp, handlePopUpToggle, handlePopUpClose, handlePopUpOpen } = usePopUp([
+    "createSecretRequest",
+    "deleteSecretRequestConfirmation",
+    "revealSecretRequestValue"
+  ] as const);
+
   const { mutateAsync: deleteSecretRequest } = useDeleteSecretRequest();
 
   const onDeleteApproved = async () => {
