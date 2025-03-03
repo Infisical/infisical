@@ -24,6 +24,7 @@ const databaseReadReplicaSchema = z
 
 const envSchema = z
   .object({
+    INFISICAL_PLATFORM_VERSION: zpStr(z.string().optional()),
     PORT: z.coerce.number().default(IS_PACKAGED ? 8080 : 4000),
     DISABLE_SECRET_SCANNING: z
       .enum(["true", "false"])
@@ -215,6 +216,13 @@ const envSchema = z
     // azure app
     INF_APP_CONNECTION_AZURE_CLIENT_ID: zpStr(z.string().optional()),
     INF_APP_CONNECTION_AZURE_CLIENT_SECRET: zpStr(z.string().optional()),
+
+    // datadog
+    SHOULD_USE_DATADOG_TRACER: zodStrBool.default("false"),
+    DATADOG_PROFILING_ENABLED: zodStrBool.default("false"),
+    DATADOG_ENV: zpStr(z.string().optional().default("prod")),
+    DATADOG_SERVICE: zpStr(z.string().optional().default("infisical-core")),
+    DATADOG_HOSTNAME: zpStr(z.string().optional()),
 
     /* CORS ----------------------------------------------------------------------------- */
 
