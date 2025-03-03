@@ -6,6 +6,7 @@ import { TSecretDALFactory } from "../secret/secret-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretImportDALFactory } from "./secret-import-dal";
+import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
 
 type TSecretImportSecrets = {
   secretPath: string;
@@ -39,6 +40,7 @@ type TSecretImportSecretsV2 = {
     // akhilmhdh: yes i know you can put ?.
     // But for somereason ts consider ? and undefined explicit as different just ts things
     secretValue: string;
+    secretValueHidden: boolean;
     secretComment: string;
     secretMetadata?: ResourceMetadataDTO;
   })[];
@@ -150,12 +152,14 @@ export const fnSecretsV2FromImports = async ({
   secretImportDAL,
   decryptor,
   expandSecretReferences,
-  hasSecretAccess
+  hasSecretAccess,
+  viewSecretValue
 }: {
   secretImports: (Omit<TSecretImports, "importEnv"> & {
     importEnv: { id: string; slug: string; name: string };
   })[];
   folderDAL: Pick<TSecretFolderDALFactory, "findByManySecretPath">;
+  viewSecretValue: boolean;
   secretDAL: Pick<TSecretV2BridgeDALFactory, "find">;
   secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds">;
   decryptor: (value?: Buffer | null) => string;
@@ -168,9 +172,11 @@ export const fnSecretsV2FromImports = async ({
   hasSecretAccess: (environment: string, secretPath: string, secretName: string, secretTagSlugs: string[]) => boolean;
 }) => {
   const cyclicDetector = new Set();
-  const stack: { secretImports: typeof rootSecretImports; depth: number; parentImportedSecrets: TSecretsV2[] }[] = [
-    { secretImports: rootSecretImports, depth: 0, parentImportedSecrets: [] }
-  ];
+  const stack: {
+    secretImports: typeof rootSecretImports;
+    depth: number;
+    parentImportedSecrets: (TSecretsV2 & { secretValueHidden: boolean })[];
+  }[] = [{ secretImports: rootSecretImports, depth: 0, parentImportedSecrets: [] }];
 
   const processedImports: TSecretImportSecretsV2[] = [];
 
@@ -229,7 +235,8 @@ export const fnSecretsV2FromImports = async ({
         .map((item) => ({
           ...item,
           secretKey: item.key,
-          secretValue: decryptor(item.encryptedValue),
+          secretValue: viewSecretValue ? decryptor(item.encryptedValue) : INFISICAL_SECRET_VALUE_HIDDEN_MASK,
+          secretValueHidden: !viewSecretValue,
           secretComment: decryptor(item.encryptedComment),
           environment: importEnv.slug,
           workspace: "", // This field should not be used, it's only here to keep the older Python SDK versions backwards compatible with the new Postgres backend.
@@ -267,6 +274,8 @@ export const fnSecretsV2FromImports = async ({
         processedImport.secrets = unique(processedImport.secrets, (i) => i.key);
         return Promise.allSettled(
           processedImport.secrets.map(async (decryptedSecret, index) => {
+            if (decryptedSecret.secretValueHidden) return;
+
             const expandedSecretValue = await expandSecretReferences({
               value: decryptedSecret.secretValue,
               secretPath: processedImport.secretPath,

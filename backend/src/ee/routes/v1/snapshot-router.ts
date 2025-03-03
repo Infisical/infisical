@@ -31,11 +31,11 @@ export const registerSnapshotRouter = async (server: FastifyZodProvider) => {
             secretVersions: secretRawSchema
               .omit({ _id: true, environment: true, workspace: true, type: true })
               .extend({
+                secretValueHidden: z.boolean(),
                 secretId: z.string(),
                 tags: SecretTagsSchema.pick({
                   id: true,
                   slug: true,
-                  name: true,
                   color: true
                 }).array()
               })
@@ -56,6 +56,7 @@ export const registerSnapshotRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         id: req.params.secretSnapshotId
       });
+
       return { secretSnapshot };
     }
   });

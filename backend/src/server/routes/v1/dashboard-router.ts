@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { z } from "zod";
 
-import { ActionProjectType, SecretFoldersSchema, SecretImportsSchema, SecretTagsSchema } from "@app/db/schemas";
+import { ActionProjectType, SecretFoldersSchema, SecretImportsSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import {
   ProjectPermissionDynamicSecretActions,
@@ -15,7 +15,7 @@ import { secretsLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { SanitizedDynamicSecretSchema, secretRawSchema } from "@app/server/routes/sanitizedSchemas";
+import { SanitizedDynamicSecretSchema, SanitizedTagSchema, secretRawSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
@@ -116,16 +116,10 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           dynamicSecrets: SanitizedDynamicSecretSchema.extend({ environment: z.string() }).array().optional(),
           secrets: secretRawSchema
             .extend({
+              secretValueHidden: z.boolean(),
               secretPath: z.string().optional(),
               secretMetadata: ResourceMetadataSchema.optional(),
-              tags: SecretTagsSchema.pick({
-                id: true,
-                slug: true,
-                color: true
-              })
-                .extend({ name: z.string() })
-                .array()
-                .optional()
+              tags: SanitizedTagSchema.array().optional()
             })
             .array()
             .optional(),
@@ -294,6 +288,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
         if (remainingLimit > 0 && totalSecretCount > adjustedOffset) {
           secrets = await server.services.secret.getSecretsRawMultiEnv({
+            viewSecretValue: true,
             actorId: req.permission.id,
             actor: req.permission.type,
             actorOrgId: req.permission.orgId,
@@ -393,6 +388,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           .optional(),
         search: z.string().trim().describe(DASHBOARD.SECRET_DETAILS_LIST.search).optional(),
         tags: z.string().trim().transform(decodeURIComponent).describe(DASHBOARD.SECRET_DETAILS_LIST.tags).optional(),
+        viewSecretValue: booleanSchema.default(true),
         includeSecrets: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeSecrets),
         includeFolders: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeFolders),
         includeDynamicSecrets: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeDynamicSecrets),
@@ -410,16 +406,10 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           dynamicSecrets: SanitizedDynamicSecretSchema.array().optional(),
           secrets: secretRawSchema
             .extend({
+              secretValueHidden: z.boolean(),
               secretPath: z.string().optional(),
               secretMetadata: ResourceMetadataSchema.optional(),
-              tags: SecretTagsSchema.pick({
-                id: true,
-                slug: true,
-                color: true
-              })
-                .extend({ name: z.string() })
-                .array()
-                .optional()
+              tags: SanitizedTagSchema.array().optional()
             })
             .array()
             .optional(),
@@ -601,23 +591,25 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           });
 
           if (remainingLimit > 0 && totalSecretCount > adjustedOffset) {
-            const secretsRaw = await server.services.secret.getSecretsRaw({
-              actorId: req.permission.id,
-              actor: req.permission.type,
-              actorOrgId: req.permission.orgId,
-              environment,
-              actorAuthMethod: req.permission.authMethod,
-              projectId,
-              path: secretPath,
-              orderBy,
-              orderDirection,
-              search,
-              limit: remainingLimit,
-              offset: adjustedOffset,
-              tagSlugs: tags
-            });
-
-            secrets = secretsRaw.secrets;
+            secrets = (
+              await server.services.secret.getSecretsRaw({
+                actorId: req.permission.id,
+                actor: req.permission.type,
+                viewSecretValue: req.query.viewSecretValue,
+                throwOnMissingReadValuePermission: false,
+                actorOrgId: req.permission.orgId,
+                environment,
+                actorAuthMethod: req.permission.authMethod,
+                projectId,
+                path: secretPath,
+                orderBy,
+                orderDirection,
+                search,
+                limit: remainingLimit,
+                offset: adjustedOffset,
+                tagSlugs: tags
+              })
+            ).secrets;
 
             await server.services.auditLog.createAuditLog({
               projectId,
@@ -698,14 +690,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             .extend({
               secretPath: z.string().optional(),
               secretMetadata: ResourceMetadataSchema.optional(),
-              tags: SecretTagsSchema.pick({
-                id: true,
-                slug: true,
-                color: true
-              })
-                .extend({ name: z.string() })
-                .array()
-                .optional()
+              tags: SanitizedTagSchema.array().optional()
             })
             .array()
             .optional()
@@ -862,22 +847,17 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         projectId: z.string().trim(),
         environment: z.string().trim(),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
-        keys: z.string().trim().transform(decodeURIComponent)
+        keys: z.string().trim().transform(decodeURIComponent),
+        viewSecretValue: booleanSchema.default(false)
       }),
       response: {
         200: z.object({
           secrets: secretRawSchema
             .extend({
+              secretValueHidden: z.boolean(),
               secretPath: z.string().optional(),
               secretMetadata: ResourceMetadataSchema.optional(),
-              tags: SecretTagsSchema.pick({
-                id: true,
-                slug: true,
-                color: true
-              })
-                .extend({ name: z.string() })
-                .array()
-                .optional()
+              tags: SanitizedTagSchema.array().optional()
             })
             .array()
             .optional()
@@ -886,7 +866,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { secretPath, projectId, environment } = req.query;
+      const { secretPath, projectId, environment, viewSecretValue } = req.query;
 
       const keys = req.query.keys?.split(",").filter((key) => Boolean(key.trim())) ?? [];
       if (!keys.length) throw new BadRequestError({ message: "One or more keys required" });
@@ -895,6 +875,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
+        viewSecretValue,
         environment,
         actorAuthMethod: req.permission.authMethod,
         projectId,

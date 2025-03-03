@@ -39,6 +39,7 @@ type Props = {
   isVisible?: boolean;
   isImportedSecret: boolean;
   environment: string;
+  secretValueHidden: boolean;
   secretPath: string;
   onSecretCreate: (env: string, key: string, value: string) => Promise<void>;
   onSecretUpdate: (
@@ -58,6 +59,7 @@ export const SecretEditRow = ({
   isImportedSecret,
   onSecretUpdate,
   secretName,
+  secretValueHidden,
   onSecretCreate,
   onSecretDelete,
   environment,
@@ -140,24 +142,33 @@ export const SecretEditRow = ({
       />
 
       <div className="flex-grow border-r border-r-mineshaft-600 pl-1 pr-2">
-        <Controller
-          disabled={isImportedSecret && !defaultValue}
-          control={control}
-          name="value"
-          render={({ field }) => (
-            <InfisicalSecretInput
-              {...field}
-              isReadOnly={isImportedSecret}
-              value={field.value as string}
-              key="secret-input"
-              isVisible={isVisible}
-              secretPath={secretPath}
-              environment={environment}
-              isImport={isImportedSecret}
-            />
-          )}
-        />
+        {secretValueHidden ? (
+          <Tooltip content="You do not have permission to read the value of this secret.">
+            <div className="flex w-80 flex-grow items-center py-1 pl-4 pr-2">
+              <span className="blur">********</span>
+            </div>
+          </Tooltip>
+        ) : (
+          <Controller
+            disabled={isImportedSecret && !defaultValue}
+            control={control}
+            name="value"
+            render={({ field }) => (
+              <InfisicalSecretInput
+                {...field}
+                isReadOnly={isImportedSecret}
+                value={field.value as string}
+                key="secret-input"
+                isVisible={isVisible}
+                secretPath={secretPath}
+                environment={environment}
+                isImport={isImportedSecret}
+              />
+            )}
+          />
+        )}
       </div>
+
       <div
         className={twMerge(
           "flex w-24 justify-center space-x-3 pl-2 transition-all",
