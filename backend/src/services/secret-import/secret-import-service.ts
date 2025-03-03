@@ -94,7 +94,7 @@ export const secretImportServiceFactory = ({
 
     // check if user has permission to import from target path
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.ReadValue,
+      ProjectPermissionSecretActions.DescribeSecret,
       subject(ProjectPermissionSub.Secrets, {
         environment: data.environment,
         secretPath: data.path
@@ -406,7 +406,7 @@ export const secretImportServiceFactory = ({
 
     // check if user has permission to import from target path
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.ReadValue,
+      ProjectPermissionSecretActions.DescribeSecret,
       subject(ProjectPermissionSub.Secrets, {
         environment: secretImportDoc.importEnv.slug,
         secretPath: secretImportDoc.importPath
@@ -646,6 +646,7 @@ export const secretImportServiceFactory = ({
       const importedSecrets = await fnSecretsV2FromImports({
         secretImports,
         folderDAL,
+        viewSecretValue: true,
         secretDAL: secretV2BridgeDAL,
         secretImportDAL,
         decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),

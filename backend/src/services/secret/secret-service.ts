@@ -667,7 +667,15 @@ export const secretServiceFactory = ({
           environment,
           secretPath: groupedPaths[secret.folderId][0].path
         })),
-        imports: importedSecrets
+        imports: importedSecrets.map((el) => {
+          return {
+            ...el,
+            secrets: el.secrets.map((secret) => ({
+              ...secret,
+              secretValueHidden: false
+            }))
+          };
+        })
       };
     }
 
@@ -974,7 +982,7 @@ export const secretServiceFactory = ({
       });
 
       const secretValueHidden = !permission.can(
-        ProjectPermissionSecretActions.Edit,
+        ProjectPermissionSecretActions.ReadValue,
         subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
       );
 
@@ -1299,6 +1307,7 @@ export const secretServiceFactory = ({
     expandSecretReferences,
     recursive,
     tagSlugs = [],
+    throwOnMissingReadValuePermission = true,
     ...paramsV2
   }: TGetSecretsRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
@@ -1310,6 +1319,7 @@ export const secretServiceFactory = ({
         actor,
         actorOrgId,
         viewSecretValue,
+        throwOnMissingReadValuePermission,
         environment,
         path,
         recursive,
@@ -1318,6 +1328,7 @@ export const secretServiceFactory = ({
         tagSlugs,
         ...paramsV2
       });
+
       return { secrets, imports };
     }
 
@@ -1370,6 +1381,7 @@ export const secretServiceFactory = ({
       const importedEntries = decryptedImportSecrets.reduce(
         (
           accum: {
+            secretValueHidden: boolean;
             secretKey: string;
             secretPath: string;
             workspace: string;
@@ -1413,6 +1425,7 @@ export const secretServiceFactory = ({
         Object.keys(secretsGroupByPath).map((groupedPath) =>
           Promise.allSettled(
             secretsGroupByPath[groupedPath].map(async (decryptedSecret, index) => {
+              if (decryptedSecret.secretValueHidden) return;
               const expandedSecretValue = await expandSecret({
                 value: decryptedSecret.secretValue,
                 secretPath: groupedPath,
@@ -1429,6 +1442,7 @@ export const secretServiceFactory = ({
         processedImports.map((processedImport) =>
           Promise.allSettled(
             processedImport.secrets.map(async (decryptedSecret, index) => {
+              if (decryptedSecret.secretValueHidden) return;
               const expandedSecretValue = await expandSecret({
                 value: decryptedSecret.secretValue,
                 secretPath: path,

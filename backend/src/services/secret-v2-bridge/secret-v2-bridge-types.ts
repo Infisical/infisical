@@ -38,6 +38,7 @@ export type TGetSecretsDTO = {
   recursive?: boolean;
   tagSlugs?: string[];
   viewSecretValue: boolean;
+  throwOnMissingReadValuePermission?: boolean;
   metadataFilter?: {
     key?: string;
     value?: string;
@@ -49,6 +50,11 @@ export type TGetSecretsDTO = {
   search?: string;
   keys?: string[];
 } & TProjectPermission;
+
+export type TGetSecretsMissingReadValuePermissionDTO = Omit<
+  TGetSecretsDTO,
+  "viewSecretValue" | "recursive" | "expandSecretReferences"
+>;
 
 export type TGetASecretDTO = {
   secretName: string;
@@ -167,7 +173,7 @@ export type TFnSecretBulkInsert = {
     }
   >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;
-  secretDAL: Pick<TSecretV2BridgeDALFactory, "insertMany" | "upsertSecretReferences">;
+  secretDAL: Pick<TSecretV2BridgeDALFactory, "insertMany" | "upsertSecretReferences" | "find">;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "find">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
@@ -191,7 +197,7 @@ export type TFnSecretBulkUpdate = {
     data: TRequireReferenceIfValue & { tags?: string[]; secretMetadata?: ResourceMetadataDTO };
   }[];
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
-  secretDAL: Pick<TSecretV2BridgeDALFactory, "bulkUpdate" | "upsertSecretReferences">;
+  secretDAL: Pick<TSecretV2BridgeDALFactory, "bulkUpdate" | "upsertSecretReferences" | "find">;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "deleteTagsToSecretV2" | "find">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;

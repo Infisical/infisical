@@ -442,7 +442,7 @@ export const ProjectPermissionV1Schema = z.discriminatedUnion("subject", [
   z.object({
     subject: z.literal(ProjectPermissionSub.Secrets).describe("The entity this permission pertains to."),
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretActions).describe(
       "Describe what action an entity can take."
     ),
     conditions: SecretConditionV1Schema.describe(
@@ -947,7 +947,17 @@ export const backfillPermissionV1SchemaToV2Schema = (
     subject: ProjectPermissionSub.SecretImports as const
   }));
 
+  const secretPolicies = secretSubjects.map(({ subject, ...el }) => ({
+    subject: ProjectPermissionSub.Secrets as const,
+    ...el,
+    action:
+      el.action.includes(ProjectPermissionActions.Read) && !el.action.includes(ProjectPermissionSecretActions.ReadValue)
+        ? el.action.concat(ProjectPermissionSecretActions.ReadValue)
+        : el.action
+  }));
+
   const secretFolderPolicies = secretSubjects
+
     .map(({ subject, ...el }) => ({
       ...el,
       // read permission is not needed anymore
@@ -989,6 +999,7 @@ export const backfillPermissionV1SchemaToV2Schema = (
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore-error this is valid ts
     secretImportPolicies,
+    secretPolicies,
     dynamicSecretPolicies,
     hasReadOnlyFolder.length ? [] : secretFolderPolicies
   );

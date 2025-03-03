@@ -144,11 +144,7 @@ export const SecretEditRow = ({
       <div className="flex-grow border-r border-r-mineshaft-600 pl-1 pr-2">
         {secretValueHidden ? (
           <Tooltip content="You do not have permission to read the value of this secret.">
-            <div
-              className="flex w-80 flex-grow items-center py-1 pl-4 pr-2"
-              tabIndex={0}
-              role="button"
-            >
+            <div className="flex w-80 flex-grow items-center py-1 pl-4 pr-2">
               <span className="blur">********</span>
             </div>
           </Tooltip>

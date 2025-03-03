@@ -148,7 +148,16 @@ export const fnSecretBulkInsert = async ({
     await secretVersionTagDAL.insertMany(newSecretVersionTags, tx);
   }
 
-  return newSecrets.map((secret) => ({ ...secret, _id: secret.id }));
+  const secretsWithTags = await secretDAL.find(
+    {
+      $in: {
+        [`${TableName.SecretV2}.id` as "id"]: newSecrets.map((s) => s.id)
+      }
+    },
+    { tx }
+  );
+
+  return secretsWithTags.map((secret) => ({ ...secret, _id: secret.id }));
 };
 
 export const fnSecretBulkUpdate = async ({
@@ -286,7 +295,15 @@ export const fnSecretBulkUpdate = async ({
     tx
   );
 
-  return newSecrets.map((secret) => ({ ...secret, _id: secret.id }));
+  const secretsWithTags = await secretDAL.find(
+    {
+      $in: {
+        [`${TableName.SecretV2}.id` as "id"]: newSecrets.map((s) => s.id)
+      }
+    },
+    { tx }
+  );
+  return secretsWithTags.map((secret) => ({ ...secret, _id: secret.id }));
 };
 
 export const fnSecretBulkDelete = async ({
@@ -627,7 +644,7 @@ export const reshapeBridgeSecret = (
     }[];
     secretMetadata?: ResourceMetadataDTO;
   },
-  secretValueHidden?: boolean
+  secretValueHidden: boolean
 ) => ({
   secretKey: secret.key,
   secretPath,
