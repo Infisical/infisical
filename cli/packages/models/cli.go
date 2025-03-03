@@ -5,7 +5,7 @@ import "time"
 type UserCredentials struct {
 	Email        string `json:"email"`
 	PrivateKey   string `json:"privateKey"`
-	JTWToken     string `json:"JTWToken"`
+	JWTToken     string `json:"JWTToken"`
 	RefreshToken string `json:"RefreshToken"`
 }
 
@@ -66,6 +66,12 @@ type DynamicSecretLease struct {
 type TokenDetails struct {
 	Type   string
 	Token  string
+	Source string
+}
+
+// ProjectDetails contains the project ID and its source
+type ProjectDetails struct {
+	ID     string
 	Source string
 }
 
