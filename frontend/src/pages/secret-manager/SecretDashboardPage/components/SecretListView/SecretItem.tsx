@@ -307,6 +307,7 @@ export const SecretItem = memo(
               <div key="actions" className="flex h-8 flex-shrink-0 self-start transition-all">
                 <Tooltip content="Copy secret">
                   <IconButton
+                    isDisabled={secret.secretValueHidden}
                     ariaLabel="copy-value"
                     variant="plain"
                     size="sm"
@@ -514,6 +515,7 @@ export const SecretItem = memo(
                     )}
                   </ProjectPermissionCan>
                   <IconButton
+                    isDisabled={secret.secretValueHidden}
                     className="w-0 overflow-hidden p-0 group-hover:mr-2 group-hover:w-5 data-[state=open]:w-6"
                     variant="plain"
                     size="md"

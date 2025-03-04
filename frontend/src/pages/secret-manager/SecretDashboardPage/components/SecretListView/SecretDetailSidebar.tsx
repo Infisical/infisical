@@ -314,19 +314,25 @@ export const SecretDetailSidebar = ({
                                   {...field}
                                   autoFocus={false}
                                 />
-                                <Button
-                                  className="px-2 py-[0.43rem] font-normal"
-                                  variant="outline_bg"
-                                  leftIcon={<FontAwesomeIcon icon={faShare} />}
-                                  onClick={() => {
-                                    const value = secret?.valueOverride ?? secret?.value;
-                                    if (value) {
-                                      handleSecretShare(value);
-                                    }
-                                  }}
+                                <Tooltip
+                                  content="You don't have permission to view the secret value."
+                                  isDisabled={!secret?.secretValueHidden}
                                 >
-                                  Share
-                                </Button>
+                                  <Button
+                                    isDisabled={secret?.secretValueHidden}
+                                    className="px-2 py-[0.43rem] font-normal"
+                                    variant="outline_bg"
+                                    leftIcon={<FontAwesomeIcon icon={faShare} />}
+                                    onClick={() => {
+                                      const value = secret?.valueOverride ?? secret?.value;
+                                      if (value) {
+                                        handleSecretShare(value);
+                                      }
+                                    }}
+                                  >
+                                    Share
+                                  </Button>
+                                </Tooltip>
                               </div>
                             </FormControl>
                           </div>
