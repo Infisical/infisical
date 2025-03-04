@@ -12,10 +12,10 @@ import (
 	"strconv"
 	"syscall"
 
+	udplistener "github.com/Infisical/infisical-merge/packages/gateway/udp_listener"
 	"github.com/pion/logging"
 	"github.com/pion/turn/v4"
 	"github.com/rs/zerolog/log"
-	"golang.org/x/sys/unix"
 	"gopkg.in/yaml.v2"
 )
 
@@ -115,18 +115,7 @@ func (g *GatewayRelay) Run() error {
 	// this allows us to add logging, storage or modify inbound/outbound traffic
 	// UDP listeners share the same local address:port with setting SO_REUSEPORT and the kernel
 	// will load-balance received packets per the IP 5-tuple
-	listenerConfig := &net.ListenConfig{
-		Control: func(network, address string, conn syscall.RawConn) error { // nolint: revive
-			var operr error
-			if err = conn.Control(func(fd uintptr) {
-				operr = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, unix.SO_REUSEPORT, 1)
-			}); err != nil {
-				return err
-			}
-
-			return operr
-		},
-	}
+	listenerConfig := udplistener.SetupListenerConfig()
 
 	publicIP := g.Config.PublicIP
 	relayAddressGenerator := &turn.RelayAddressGeneratorPortRange{
