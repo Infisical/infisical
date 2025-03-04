@@ -9,7 +9,7 @@ export type TCreateFolderDTO = {
   environment: string;
   path: string;
   name: string;
-  description?: string;
+  description?: string | null;
 } & TProjectPermission;
 
 export type TUpdateFolderDTO = {
@@ -17,7 +17,7 @@ export type TUpdateFolderDTO = {
   path: string;
   id: string;
   name: string;
-  description?: string;
+  description?: string | null;
 } & TProjectPermission;
 
 export type TUpdateManyFoldersDTO = {
@@ -27,7 +27,7 @@ export type TUpdateManyFoldersDTO = {
     path: string;
     id: string;
     name: string;
-    description?: string;
+    description?: string | null;
   }[];
 } & Omit<TProjectPermission, "projectId">;
 

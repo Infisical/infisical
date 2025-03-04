@@ -128,7 +128,7 @@ export const ActionBar = ({
 
   const { currentWorkspace } = useWorkspace();
 
-  const handleFolderCreate = async (folderName: string, description: string | undefined) => {
+  const handleFolderCreate = async (folderName: string, description: string | null) => {
     try {
       await createFolder({
         name: folderName,

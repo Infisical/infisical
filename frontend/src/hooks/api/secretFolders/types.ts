@@ -25,7 +25,7 @@ export type TCreateFolderDTO = {
   environment: string;
   name: string;
   path?: string;
-  description?: string
+  description?: string | null;
 };
 
 export type TUpdateFolderDTO = {
@@ -34,7 +34,7 @@ export type TUpdateFolderDTO = {
   name: string;
   folderId: string;
   path?: string;
-  description?: string
+  description?: string | null;
 };
 
 export type TDeleteFolderDTO = {
@@ -52,6 +52,6 @@ export type TUpdateFolderBatchDTO = {
     environment: string;
     id: string;
     path?: string;
-    description?: string;
+    description?: string | null;
   }[];
 };

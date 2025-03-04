@@ -1,5 +1,5 @@
 import { subject } from "@casl/ability";
-import { faClose, faFolder, faPencilSquare } from "@fortawesome/free-solid-svg-icons";
+import { faClose, faFolder, faPencilSquare, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
@@ -43,7 +43,7 @@ export const FolderListView = ({
   const { mutateAsync: updateFolder } = useUpdateFolder();
   const { mutateAsync: deleteFolder } = useDeleteFolder();
 
-  const handleFolderUpdate = async (newFolderName: string, newFolderDescription: string | undefined) => {    
+  const handleFolderUpdate = async (newFolderName: string, newFolderDescription: string | null) => {
     try {
       const { id: folderId } = popUp.updateFolder.data as TSecretFolder;
       await updateFolder({
@@ -117,14 +117,18 @@ export const FolderListView = ({
             }}
             onClick={() => handleFolderClick(name)}
           >
-            <Tooltip
-              position="right"
-              className="flex items-center space-x-4 max-w-lg py-4 whitespace-pre-wrap"
-              content={description}
-            >
-              <div>{name}</div>
-            </Tooltip>
-            </div>
+            {name}
+            {
+              description &&
+              <Tooltip
+                position="right"
+                className="flex items-center space-x-4 max-w-lg py-4 whitespace-pre-wrap"
+                content={description}
+              >
+                <FontAwesomeIcon icon={faInfoCircle} className="text-mineshaft-400 ml-1" />
+              </Tooltip>
+            }
+          </div>
           <div className="flex items-center space-x-4 border-l border-mineshaft-600 px-3 py-3">
             <ProjectPermissionCan
               I={ProjectPermissionActions.Edit}

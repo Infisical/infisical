@@ -7,8 +7,8 @@ import { Button, FormControl, Input, ModalClose } from "@app/components/v2";
 import { TextArea } from "@app/components/v2/TextArea/TextArea";
 
 type Props = {
-  onCreateFolder?: (folderName: string, description: string | undefined) => Promise<void>;
-  onUpdateFolder?: (folderName: string, description: string | undefined) => Promise<void>;
+  onCreateFolder?: (folderName: string, description: string | null) => Promise<void>;
+  onUpdateFolder?: (folderName: string, description: string | null) => Promise<void>;
   isEdit?: boolean;
   defaultFolderName?: string;
   defaultDescription?: string;
@@ -48,7 +48,7 @@ export const FolderForm = ({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: defaultFolderName,
-      description:defaultDescription
+      description: defaultDescription || ""
     }
   });
 
@@ -67,7 +67,7 @@ export const FolderForm = ({
   };
 
   const onSubmit = async ({ name, description }: TFormData) => {
-    const descriptionShaped = description?.trim() === "" ? undefined : description;
+    const descriptionShaped = description && description.trim() !== "" ? description : null;
 
     if (isEdit) {
       await onUpdateFolder?.(name, descriptionShaped);

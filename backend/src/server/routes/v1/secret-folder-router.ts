@@ -48,7 +48,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
           .transform(prefixWithSlash)
           .transform(removeTrailingSlash)
           .describe(FOLDERS.CREATE.directory),
-        description: z.string().optional().describe(FOLDERS.CREATE.description)
+        description: z.string().optional().nullable().describe(FOLDERS.CREATE.description)
       }),
       response: {
         200: z.object({
@@ -79,7 +79,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
             folderId: folder.id,
             folderName: folder.name,
             folderPath: path,
-            description: req.body.description
+            ...(req.body.description ? { description: req.body.description } : {})
           }
         }
       });
@@ -129,7 +129,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
           .transform(prefixWithSlash)
           .transform(removeTrailingSlash)
           .describe(FOLDERS.UPDATE.directory),
-        description: z.string().optional().describe(FOLDERS.UPDATE.description)
+        description: z.string().optional().nullable().describe(FOLDERS.UPDATE.description)
       }),
       response: {
         200: z.object({
@@ -201,7 +201,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
               .transform(prefixWithSlash)
               .transform(removeTrailingSlash)
               .describe(FOLDERS.UPDATE.path),
-            description: z.string().optional().describe(FOLDERS.UPDATE.description)
+            description: z.string().optional().nullable().describe(FOLDERS.UPDATE.description)
           })
           .array()
           .min(1)

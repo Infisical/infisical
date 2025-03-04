@@ -251,7 +251,7 @@ export const OverviewPage = () => {
     "updateFolder"
   ] as const);
 
-  const handleFolderCreate = async (folderName: string, description: string | undefined) => {    
+  const handleFolderCreate = async (folderName: string, description: string | null) => {    
     const promises = userAvailableEnvs.map((env) => {
       const environment = env.slug;
       return createFolder({
@@ -280,7 +280,7 @@ export const OverviewPage = () => {
     }
   };
 
-  const handleFolderUpdate = async (newFolderName: string, description: string | undefined) => {
+  const handleFolderUpdate = async (newFolderName: string, description: string | null) => {
     const { name: oldFolderName } = popUp.updateFolder.data as TSecretFolder;
 
     const updatedFolders: TUpdateFolderBatchDTO["folders"] = [];
