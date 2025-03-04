@@ -46,6 +46,7 @@ import {
 } from "@app/components/secrets/SecretReferenceDetails";
 
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
+import { Blur } from "@app/components/v2/Blur";
 import {
   FontAwesomeSpriteName,
   formSchema,
@@ -283,15 +284,7 @@ export const SecretItem = memo(
                   )}
                 />
               ) : secretValueHidden ? (
-                <Tooltip content="You do not have permission to read the value of this secret.">
-                  <div
-                    className="flex w-80 flex-grow items-center py-1 pl-4 pr-2"
-                    tabIndex={0}
-                    role="button"
-                  >
-                    <span className="blur">********</span>
-                  </div>
-                </Tooltip>
+                <Blur tooltipText="You do not have permission to read the value of this secret." />
               ) : (
                 <Controller
                   name="value"

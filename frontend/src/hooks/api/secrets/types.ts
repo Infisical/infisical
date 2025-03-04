@@ -98,6 +98,7 @@ export type SecretVersions = {
   envId: string;
   secretKey: string;
   secretValue?: string;
+  secretValueHidden: boolean;
   secretComment?: string;
   tags: WsTag[];
   __v: number;

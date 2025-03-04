@@ -75,7 +75,7 @@ export const useGetSnapshotSecrets = ({ snapshotId }: TSnapshotDataProps) =>
           id: secretVersion.secretId,
           env: data.environment.slug,
           key: secretVersion.secretKey,
-          secretValueHidden: false,
+          secretValueHidden: secretVersion.secretValueHidden,
           value: secretVersion.secretValue || "",
           tags: secretVersion.tags,
           comment: secretVersion.secretComment,

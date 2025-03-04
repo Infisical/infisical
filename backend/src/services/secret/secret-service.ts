@@ -667,15 +667,7 @@ export const secretServiceFactory = ({
           environment,
           secretPath: groupedPaths[secret.folderId][0].path
         })),
-        imports: importedSecrets.map((el) => {
-          return {
-            ...el,
-            secrets: el.secrets.map((secret) => ({
-              ...secret,
-              secretValueHidden: false
-            }))
-          };
-        })
+        imports: importedSecrets
       };
     }
 
@@ -2399,19 +2391,42 @@ export const secretServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
-    const secretVersions = await secretVersionDAL.find({ secretId }, { offset, limit, sort: [["createdAt", "desc"]] });
-    return secretVersions.map((el) =>
-      decryptSecretRaw(
+    const secretVersions = await secretVersionDAL.findBySecretId(secretId, {
+      offset,
+      limit,
+      sort: [["createdAt", "desc"]]
+    });
+    return secretVersions.map((el) => {
+      const secretKey = decryptSymmetric128BitHexKeyUTF8({
+        ciphertext: secret.secretKeyCiphertext,
+        iv: secret.secretKeyIV,
+        tag: secret.secretKeyTag,
+        key: botKey
+      });
+
+      const secretValueHidden = permission.cannot(
+        ProjectPermissionSecretActions.ReadValue,
+        subject(ProjectPermissionSub.Secrets, {
+          environment: folder.environment.envSlug,
+          secretPath: "/",
+          secretName: secretKey,
+          ...(el.tags?.length && {
+            secretTags: el.tags.map((tag) => tag.slug)
+          })
+        })
+      );
+
+      return decryptSecretRaw(
         {
-          secretValueHidden: false,
+          secretValueHidden,
           ...el,
           workspace: folder.projectId,
           environment: folder.environment.envSlug,
           secretPath: "/"
         },
         botKey
-      )
-    );
+      );
+    });
   };
 
   const attachTags = async ({

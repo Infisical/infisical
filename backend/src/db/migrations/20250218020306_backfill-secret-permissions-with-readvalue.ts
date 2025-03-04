@@ -221,20 +221,25 @@ export async function down(knex: Knex): Promise<void> {
   }, []);
 
   if (updatedServiceTokens.length > 0) {
-    await knex(TableName.ServiceToken)
-      .whereIn(
-        "id",
-        updatedServiceTokens.map((t) => t.id)
-      )
-      .update({
-        // @ts-expect-error -- raw query
-        permissions: knex.raw(
-          `CASE id 
-          ${updatedServiceTokens.map((t) => `WHEN '${t.id}' THEN ?::text[]`).join(" ")}
-        END`,
-          updatedServiceTokens.map((t) => t.permissions)
+    for (let i = 0; i < updatedServiceTokens.length; i += CHUNK_SIZE) {
+      const chunk = updatedServiceTokens.slice(i, i + CHUNK_SIZE);
+
+      // eslint-disable-next-line no-await-in-loop
+      await knex(TableName.ServiceToken)
+        .whereIn(
+          "id",
+          chunk.map((t) => t.id)
         )
-      });
+        .update({
+          // @ts-expect-error -- raw query
+          permissions: knex.raw(
+            `CASE id
+          ${chunk.map((t) => `WHEN '${t.id}' THEN ?::text[]`).join(" ")}
+        END`,
+            chunk.map((t) => t.permissions)
+          )
+        });
+    }
   }
 
   const updatedRoles = projectRoles.reduce<typeof projectRoles>((acc, projectRole) => {

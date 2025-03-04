@@ -25,6 +25,7 @@ import {
   ModalTrigger,
   Tooltip
 } from "@app/components/v2";
+import { Blur } from "@app/components/v2/Blur";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useToggle } from "@app/hooks";
@@ -143,11 +144,7 @@ export const SecretEditRow = ({
 
       <div className="flex-grow border-r border-r-mineshaft-600 pl-1 pr-2">
         {secretValueHidden ? (
-          <Tooltip content="You do not have permission to read the value of this secret.">
-            <div className="flex w-80 flex-grow items-center py-1 pl-4 pr-2">
-              <span className="blur">********</span>
-            </div>
-          </Tooltip>
+          <Blur tooltipText="You do not have permission to read the value of this secret." />
         ) : (
           <Controller
             disabled={isImportedSecret && !defaultValue}
