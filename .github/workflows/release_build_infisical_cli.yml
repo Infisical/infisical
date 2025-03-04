@@ -26,7 +26,7 @@ jobs:
             CLI_TESTS_INFISICAL_VAULT_FILE_PASSPHRASE: ${{ secrets.CLI_TESTS_INFISICAL_VAULT_FILE_PASSPHRASE }}
 
     npm-release:
-        runs-on: ubuntu-20.04
+        runs-on: ubuntu-22.04
         env:
             working-directory: ./npm
         needs:
@@ -83,7 +83,7 @@ jobs:
                   NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
     goreleaser:
-        runs-on: ubuntu-20.04
+        runs-on: ubuntu-22.04
         needs: [cli-integration-tests]
         steps:
             - uses: actions/checkout@v3
