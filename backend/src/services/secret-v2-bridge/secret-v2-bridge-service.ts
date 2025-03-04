@@ -2114,16 +2114,26 @@ export const secretV2BridgeServiceFactory = ({
         [`${TableName.SecretV2}.id` as "id"]: secretIds
       }
     });
+
+    const sourceActions = [
+      ProjectPermissionSecretActions.Delete,
+      ProjectPermissionSecretActions.ReadValue,
+      ProjectPermissionSecretActions.DescribeSecret
+    ] as const;
+    const destinationActions = [ProjectPermissionSecretActions.Create, ProjectPermissionSecretActions.Edit] as const;
+
     sourceSecrets.forEach((secret) => {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretActions.Delete,
-        subject(ProjectPermissionSub.Secrets, {
-          environment: sourceEnvironment,
-          secretPath: sourceSecretPath,
-          secretName: secret.key,
-          secretTags: secret.tags.map((el) => el.slug)
-        })
-      );
+      for (const sourceAction of sourceActions) {
+        ForbiddenError.from(permission).throwUnlessCan(
+          sourceAction,
+          subject(ProjectPermissionSub.Secrets, {
+            environment: sourceEnvironment,
+            secretPath: sourceSecretPath,
+            secretName: secret.key,
+            secretTags: secret.tags.map((el) => el.slug)
+          })
+        );
+      }
     });
 
     if (sourceSecrets.length !== secretIds.length) {
@@ -2198,27 +2208,17 @@ export const secretV2BridgeServiceFactory = ({
 
       // permission check whether can create or edit the ones in the destination folder
       locallyCreatedSecrets.forEach((secret) => {
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionSecretActions.Create,
-          subject(ProjectPermissionSub.Secrets, {
-            environment: destinationEnvironment,
-            secretPath: destinationEnvironment,
-            secretName: secret.key,
-            secretTags: secret.tags.map((el) => el.slug)
-          })
-        );
-      });
-
-      locallyUpdatedSecrets.forEach((secret) => {
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionSecretActions.Edit,
-          subject(ProjectPermissionSub.Secrets, {
-            environment: destinationEnvironment,
-            secretPath: destinationEnvironment,
-            secretName: secret.key,
-            secretTags: secret.tags.map((el) => el.slug)
-          })
-        );
+        for (const destinationAction of destinationActions) {
+          ForbiddenError.from(permission).throwUnlessCan(
+            destinationAction,
+            subject(ProjectPermissionSub.Secrets, {
+              environment: destinationEnvironment,
+              secretPath: destinationFolder.path,
+              secretName: secret.key,
+              secretTags: secret.tags.map((el) => el.slug)
+            })
+          );
+        }
       });
 
       const destinationFolderPolicy = await secretApprovalPolicyService.getSecretApprovalPolicy(

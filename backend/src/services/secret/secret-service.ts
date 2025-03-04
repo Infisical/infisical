@@ -6,6 +6,7 @@ import {
   ActionProjectType,
   ProjectMembershipRole,
   ProjectUpgradeStatus,
+  ProjectVersion,
   SecretEncryptionAlgo,
   SecretKeyEncoding,
   SecretsSchema,
@@ -2730,7 +2731,7 @@ export const secretServiceFactory = ({
         message: `Project with slug '${projectSlug}' not found`
       });
     }
-    if (project.version === 3) {
+    if (project.version === ProjectVersion.V3) {
       return secretV2BridgeService.moveSecrets({
         sourceEnvironment,
         sourceSecretPath,
@@ -2754,34 +2755,6 @@ export const secretServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-
-    const permissionChecks = [
-      {
-        action: ProjectPermissionSecretActions.Delete,
-        subject: {
-          environment: sourceEnvironment,
-          secretPath: sourceSecretPath
-        }
-      },
-      {
-        action: ProjectPermissionSecretActions.Create,
-        subject: {
-          environment: destinationEnvironment,
-          secretPath: destinationSecretPath
-        }
-      },
-      {
-        action: ProjectPermissionSecretActions.Edit,
-        subject: {
-          environment: destinationEnvironment,
-          secretPath: destinationSecretPath
-        }
-      }
-    ] as const;
-
-    for (const { action, subject: permissionSubject } of permissionChecks) {
-      ForbiddenError.from(permission).throwUnlessCan(action, subject(ProjectPermissionSub.Secrets, permissionSubject));
-    }
 
     const { botKey } = await projectBotService.getBotKey(project.id);
     if (!botKey) {
@@ -2810,11 +2783,9 @@ export const secretServiceFactory = ({
       });
     }
 
-    const sourceSecrets = await secretDAL.find({
+    const sourceSecrets = await secretDAL.findManySecretsWithTags({
       type: SecretType.Shared,
-      $in: {
-        id: secretIds
-      }
+      secretIds
     });
 
     if (sourceSecrets.length !== secretIds.length) {
@@ -2823,21 +2794,60 @@ export const secretServiceFactory = ({
       });
     }
 
-    const decryptedSourceSecrets = sourceSecrets.map((secret) => ({
-      ...secret,
-      secretKey: decryptSymmetric128BitHexKeyUTF8({
+    const sourceActions = [
+      ProjectPermissionSecretActions.Delete,
+      ProjectPermissionSecretActions.DescribeSecret,
+      ProjectPermissionSecretActions.ReadValue
+    ] as const;
+    const destinationActions = [ProjectPermissionSecretActions.Create, ProjectPermissionSecretActions.Edit] as const;
+
+    const decryptedSourceSecrets = sourceSecrets.map((secret) => {
+      const secretKey = decryptSymmetric128BitHexKeyUTF8({
         ciphertext: secret.secretKeyCiphertext,
         iv: secret.secretKeyIV,
         tag: secret.secretKeyTag,
         key: botKey
-      }),
-      secretValue: decryptSymmetric128BitHexKeyUTF8({
-        ciphertext: secret.secretValueCiphertext,
-        iv: secret.secretValueIV,
-        tag: secret.secretValueTag,
-        key: botKey
-      })
-    }));
+      });
+
+      for (const destinationAction of destinationActions) {
+        ForbiddenError.from(permission).throwUnlessCan(
+          destinationAction,
+          subject(ProjectPermissionSub.Secrets, {
+            environment: destinationEnvironment,
+            secretPath: destinationSecretPath,
+            secretName: secretKey,
+            ...(secret.tags.length && {
+              secretTags: secret.tags.map((t) => t.id)
+            })
+          })
+        );
+      }
+
+      for (const sourceAction of sourceActions) {
+        ForbiddenError.from(permission).throwUnlessCan(
+          sourceAction,
+          subject(ProjectPermissionSub.Secrets, {
+            environment: sourceEnvironment,
+            secretPath: sourceSecretPath,
+            secretName: secretKey,
+            ...(secret.tags.length && {
+              secretTags: secret.tags.map((t) => t.id)
+            })
+          })
+        );
+      }
+
+      return {
+        ...secret,
+        secretKey,
+        secretValue: decryptSymmetric128BitHexKeyUTF8({
+          ciphertext: secret.secretValueCiphertext,
+          iv: secret.secretValueIV,
+          tag: secret.secretValueTag,
+          key: botKey
+        })
+      };
+    });
 
     let isSourceUpdated = false;
     let isDestinationUpdated = false;
