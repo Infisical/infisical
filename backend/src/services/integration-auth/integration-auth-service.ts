@@ -1851,6 +1851,7 @@ export const integrationAuthServiceFactory = ({
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
 
     const vercelApps = await getAppsVercel({
+      includeCustomEnvironments: true,
       accessToken,
       teamId
     });

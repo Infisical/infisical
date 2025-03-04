@@ -134,7 +134,15 @@ const getAppsHeroku = async ({ accessToken }: { accessToken: string }) => {
  * Return list of names of apps for Vercel integration
  * This is re-used for getting custom environments for Vercel
  */
-export const getAppsVercel = async ({ accessToken, teamId }: { teamId?: string | null; accessToken: string }) => {
+export const getAppsVercel = async ({
+  accessToken,
+  teamId,
+  includeCustomEnvironments
+}: {
+  teamId?: string | null;
+  accessToken: string;
+  includeCustomEnvironments?: boolean;
+}) => {
   const apps: Array<{ name: string; appId: string; customEnvironments: Array<{ slug: string; id: string }> }> = [];
 
   const limit = "20";
@@ -145,12 +153,6 @@ export const getAppsVercel = async ({ accessToken, teamId }: { teamId?: string |
     projects: {
       name: string;
       id: string;
-      customEnvironments?: {
-        id: string;
-        type: string;
-        description: string;
-        slug: string;
-      }[];
     }[];
     pagination: {
       count: number;
@@ -158,6 +160,20 @@ export const getAppsVercel = async ({ accessToken, teamId }: { teamId?: string |
       prev: number;
     };
   }
+
+  const getProjectCustomEnvironments = async (projectId: string) => {
+    const { data } = await request.get<{ environments: { id: string; slug: string }[] }>(
+      `${IntegrationUrls.VERCEL_API_URL}/v9/projects/${projectId}/custom-environments`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Accept-Encoding": "application/json"
+        }
+      }
+    );
+
+    return data.environments;
+  };
 
   while (hasMorePages) {
     const params: { [key: string]: string } = {
@@ -180,17 +196,38 @@ export const getAppsVercel = async ({ accessToken, teamId }: { teamId?: string |
       }
     });
 
-    data.projects.forEach((a) => {
-      apps.push({
-        name: a.name,
-        appId: a.id,
-        customEnvironments:
-          a.customEnvironments?.map((env) => ({
-            slug: env.slug,
-            id: env.id
-          })) ?? []
+    if (includeCustomEnvironments) {
+      const projectsWithCustomEnvironments = await Promise.all(
+        data.projects.map(async (a) => {
+          const customEnvironments = await getProjectCustomEnvironments(a.id);
+
+          return {
+            ...a,
+            customEnvironments
+          };
+        })
+      );
+
+      projectsWithCustomEnvironments.forEach((a) => {
+        apps.push({
+          name: a.name,
+          appId: a.id,
+          customEnvironments:
+            a.customEnvironments?.map((env) => ({
+              slug: env.slug,
+              id: env.id
+            })) ?? []
+        });
       });
-    });
+    } else {
+      data.projects.forEach((a) => {
+        apps.push({
+          name: a.name,
+          appId: a.id,
+          customEnvironments: []
+        });
+      });
+    }
 
     next = data.pagination.next;
 
