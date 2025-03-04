@@ -86,7 +86,7 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
         tlsOptions: {
           ca: relayDetails.certChain,
           cert: relayDetails.certificate,
-          key: relayDetails.privateKey
+          key: relayDetails.privateKey.toString()
         }
       }
     );

@@ -1,6 +1,7 @@
 /* eslint-disable no-await-in-loop */
 import crypto from "node:crypto";
 import net from "node:net";
+
 import quic from "@infisical/quic";
 
 import { BadRequestError } from "../errors";
