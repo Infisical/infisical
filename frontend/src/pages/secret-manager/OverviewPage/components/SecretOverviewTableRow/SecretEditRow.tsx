@@ -219,6 +219,7 @@ export const SecretEditRow = ({
             <div className="opacity-0 group-hover:opacity-100">
               <Tooltip content="Copy Secret">
                 <IconButton
+                  isDisabled={secretValueHidden}
                   ariaLabel="copy-value"
                   onClick={handleCopySecretToClipboard}
                   variant="plain"
