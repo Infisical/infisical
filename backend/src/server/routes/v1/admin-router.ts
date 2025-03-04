@@ -212,6 +212,27 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "PATCH",
+    url: "/user-management/users/:userId/admin-access",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        userId: z.string()
+      })
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      await server.services.superAdmin.grantServerAdminAccessToUser(req.params.userId);
+    }
+  });
+
+  server.route({
     method: "GET",
     url: "/encryption-strategies",
     config: {

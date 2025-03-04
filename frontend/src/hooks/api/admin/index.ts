@@ -3,7 +3,8 @@ export {
   useCreateAdminUser,
   useUpdateAdminSlackConfig,
   useUpdateServerConfig,
-  useUpdateServerEncryptionStrategy
+  useUpdateServerEncryptionStrategy,
+  useAdminGrantServerAdminAccess
 } from "./mutation";
 export {
   useAdminGetUsers,

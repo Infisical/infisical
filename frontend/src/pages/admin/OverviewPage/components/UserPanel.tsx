@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { faMagnifyingGlass, faUsers, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass, faUsers, faEllipsis } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -9,7 +9,6 @@ import {
   Button,
   DeleteActionModal,
   EmptyState,
-  IconButton,
   Input,
   Table,
   TableContainer,
@@ -18,21 +17,33 @@ import {
   Td,
   Th,
   THead,
-  Tr
+  Tr,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
 } from "@app/components/v2";
 import { useSubscription, useUser } from "@app/context";
 import { useDebounce, usePopUp } from "@app/hooks";
-import { useAdminDeleteUser, useAdminGetUsers } from "@app/hooks/api";
+import {
+  useAdminDeleteUser,
+  useAdminGetUsers,
+  useAdminGrantServerAdminAccess
+} from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+
+const deleteUserUpgradePlanMessage = "Deleting users via Admin UI";
+const addServerAdminUpgradePlanMessage = "Granting another user Server Admin permissions";
 
 const UserPanelTable = ({
   handlePopUpOpen
 }: {
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["removeUser", "upgradePlan"]>,
+    popUpName: keyof UsePopUpState<["removeUser", "upgradePlan", "upgradeToServerAdmin"]>,
     data?: {
       username: string;
       id: string;
+      message?: string;
     }
   ) => void;
 }) => {
@@ -87,22 +98,49 @@ const UserPanelTable = ({
                         <Td>
                           {userId !== id && (
                             <div className="flex justify-end">
-                              <IconButton
-                                size="lg"
-                                colorSchema="danger"
-                                variant="plain"
-                                ariaLabel="update"
-                                isDisabled={userId === id}
-                                onClick={() => {
-                                  if (!subscription?.instanceUserManagement) {
-                                    handlePopUpOpen("upgradePlan");
-                                    return;
-                                  }
-                                  handlePopUpOpen("removeUser", { username, id });
-                                }}
-                              >
-                                <FontAwesomeIcon icon={faXmark} />
-                              </IconButton>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild className="rounded-lg">
+                                  <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
+                                    <FontAwesomeIcon size="sm" icon={faEllipsis} />
+                                  </div>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start" className="p-1">
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (!subscription?.instanceUserManagement) {
+                                        handlePopUpOpen("upgradePlan", {
+                                          username,
+                                          id,
+                                          message: deleteUserUpgradePlanMessage
+                                        });
+                                        return;
+                                      }
+                                      handlePopUpOpen("removeUser", { username, id });
+                                    }}
+                                  >
+                                    Remove User
+                                  </DropdownMenuItem>
+                                  {!superAdmin && (
+                                    <DropdownMenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (!subscription?.instanceUserManagement) {
+                                          handlePopUpOpen("upgradePlan", {
+                                            username,
+                                            id,
+                                            message: addServerAdminUpgradePlanMessage
+                                          });
+                                          return;
+                                        }
+                                        handlePopUpOpen("upgradeToServerAdmin", { username, id });
+                                      }}
+                                    >
+                                      Make User Server Admin
+                                    </DropdownMenuItem>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           )}
                         </Td>
@@ -134,10 +172,12 @@ const UserPanelTable = ({
 export const UserPanel = () => {
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "removeUser",
-    "upgradePlan"
+    "upgradePlan",
+    "upgradeToServerAdmin"
   ] as const);
 
   const { mutateAsync: deleteUser } = useAdminDeleteUser();
+  const { mutateAsync: grantAdminAccess } = useAdminGrantServerAdminAccess();
 
   const handleRemoveUser = async () => {
     const { id } = popUp?.removeUser?.data as { id: string; username: string };
@@ -158,6 +198,25 @@ export const UserPanel = () => {
     handlePopUpClose("removeUser");
   };
 
+  const handleGrantServerAdminAccess = async () => {
+    const { id } = popUp?.upgradeToServerAdmin?.data as { id: string; username: string };
+
+    try {
+      await grantAdminAccess(id);
+      createNotification({
+        type: "success",
+        text: "Successfully granted server admin access to user"
+      });
+    } catch {
+      createNotification({
+        type: "error",
+        text: "Error granting server admin access to user"
+      });
+    }
+
+    handlePopUpClose("upgradeToServerAdmin");
+  };
+
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4">
@@ -173,10 +232,21 @@ export const UserPanel = () => {
         onChange={(isOpen) => handlePopUpToggle("removeUser", isOpen)}
         onDeleteApproved={handleRemoveUser}
       />
+      <DeleteActionModal
+        isOpen={popUp.upgradeToServerAdmin.isOpen}
+        title={`Are you sure want to grant Server Admin permissions to ${
+          (popUp?.upgradeToServerAdmin?.data as { id: string; username: string })?.username || ""
+        }?`}
+        subTitle=""
+        onChange={(isOpen) => handlePopUpToggle("upgradeToServerAdmin", isOpen)}
+        deleteKey="confirm"
+        onDeleteApproved={handleGrantServerAdminAccess}
+        buttonText="Grant Access"
+      />
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="Deleting users via Admin UI is only available on Infisical's Pro plan and above."
+        text={`${popUp?.upgradePlan?.data?.message} is only available on Infisical's Pro plan and above.`}
       />
     </div>
   );

@@ -291,6 +291,15 @@ export const superAdminServiceFactory = ({
     return user;
   };
 
+  const grantServerAdminAccessToUser = async (userId: string) => {
+    if (!licenseService.onPremFeatures?.instanceUserManagement) {
+      throw new BadRequestError({
+        message: "Failed to grant server admin access to user due to plan restriction. Upgrade to Infisical's Pro plan."
+      });
+    }
+    await userDAL.updateById(userId, { superAdmin: true });
+  };
+
   const getAdminSlackConfig = async () => {
     const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
 
@@ -381,6 +390,7 @@ export const superAdminServiceFactory = ({
     deleteUser,
     getAdminSlackConfig,
     updateRootEncryptionStrategy,
-    getConfiguredEncryptionStrategies
+    getConfiguredEncryptionStrategies,
+    grantServerAdminAccessToUser
   };
 };

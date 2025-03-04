@@ -70,6 +70,21 @@ export const useAdminDeleteUser = () => {
   });
 };
 
+export const useAdminGrantServerAdminAccess = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      await apiRequest.patch(`/api/v1/admin/user-management/users/${userId}/admin-access`);
+      return {};
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [adminStandaloneKeys.getUsers]
+      });
+    }
+  });
+};
+
 export const useUpdateAdminSlackConfig = () => {
   const queryClient = useQueryClient();
   return useMutation<AdminSlackConfig, object, TUpdateAdminSlackConfigDTO>({
