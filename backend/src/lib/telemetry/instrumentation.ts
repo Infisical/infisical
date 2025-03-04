@@ -1,7 +1,6 @@
 import opentelemetry, { diag, DiagConsoleLogger, DiagLogLevel } from "@opentelemetry/api";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-proto";
 import { PrometheusExporter } from "@opentelemetry/exporter-prometheus";
-import { HostMetrics } from "@opentelemetry/host-metrics";
 import { registerInstrumentations } from "@opentelemetry/instrumentation";
 import { HttpInstrumentation } from "@opentelemetry/instrumentation-http";
 import { Resource } from "@opentelemetry/resources";
@@ -67,9 +66,6 @@ const initTelemetryInstrumentation = ({
     resource,
     readers: metricReaders
   });
-
-  const hostMetrics = new HostMetrics({ meterProvider });
-  hostMetrics.start();
 
   opentelemetry.metrics.setGlobalMeterProvider(meterProvider);
 
