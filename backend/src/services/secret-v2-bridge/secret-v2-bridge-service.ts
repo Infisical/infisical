@@ -77,7 +77,13 @@ type TSecretV2BridgeServiceFactoryDep = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs">;
   folderDAL: Pick<
     TSecretFolderDALFactory,
-    "findBySecretPath" | "updateById" | "findById" | "findByManySecretPath" | "find" | "findBySecretPathMultiEnv"
+    | "findBySecretPath"
+    | "updateById"
+    | "findById"
+    | "findByManySecretPath"
+    | "find"
+    | "findBySecretPathMultiEnv"
+    | "findSecretPathByFolderIds"
   >;
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "handleSecretReminder" | "removeSecretReminder">;
@@ -1959,10 +1965,17 @@ export const secretV2BridgeServiceFactory = ({
     secretId
   }: TGetSecretVersionsDTO) => {
     const secret = await secretDAL.findById(secretId);
+
     if (!secret) throw new NotFoundError({ message: `Secret with ID '${secretId}' not found` });
 
     const folder = await folderDAL.findById(secret.folderId);
     if (!folder) throw new NotFoundError({ message: `Folder with ID '${secret.folderId}' not found` });
+
+    const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(folder.projectId, [folder.id]);
+
+    if (!folderWithPath) {
+      throw new NotFoundError({ message: `Folder with ID '${folder.id}' not found` });
+    }
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -1988,7 +2001,7 @@ export const secretV2BridgeServiceFactory = ({
         ProjectPermissionSecretActions.ReadValue,
         subject(ProjectPermissionSub.Secrets, {
           environment: folder.environment.envSlug,
-          secretPath: "/",
+          secretPath: folderWithPath.path,
           secretName: el.key,
           ...(el.tags?.length && {
             secretTags: el.tags.map((tag) => tag.slug)
@@ -1998,7 +2011,7 @@ export const secretV2BridgeServiceFactory = ({
       return reshapeBridgeSecret(
         folder.projectId,
         folder.environment.envSlug,
-        "/",
+        folderWithPath.path,
         {
           ...el,
           value: el.encryptedValue ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString() : "",

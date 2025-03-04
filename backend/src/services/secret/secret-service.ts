@@ -100,7 +100,7 @@ type TSecretServiceFactoryDep = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   folderDAL: Pick<
     TSecretFolderDALFactory,
-    "findBySecretPath" | "updateById" | "findById" | "findByManySecretPath" | "find"
+    "findBySecretPath" | "updateById" | "findById" | "findByManySecretPath" | "find" | "findSecretPathByFolderIds"
   >;
   secretV2BridgeService: TSecretV2BridgeServiceFactory;
   secretBlindIndexDAL: TSecretBlindIndexDALFactory;
@@ -2378,6 +2378,12 @@ export const secretServiceFactory = ({
     const folder = await folderDAL.findById(secret.folderId);
     if (!folder) throw new NotFoundError({ message: `Folder with ID '${secret.folderId}' not found` });
 
+    const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(folder.projectId, [folder.id]);
+
+    if (!folderWithPath) {
+      throw new NotFoundError({ message: `Folder with ID '${folder.id}' not found` });
+    }
+
     const { botKey } = await projectBotService.getBotKey(folder.projectId);
     if (!botKey)
       throw new NotFoundError({ message: `Project bot for project with ID '${folder.projectId}' not found` });
@@ -2408,7 +2414,7 @@ export const secretServiceFactory = ({
         ProjectPermissionSecretActions.ReadValue,
         subject(ProjectPermissionSub.Secrets, {
           environment: folder.environment.envSlug,
-          secretPath: "/",
+          secretPath: folderWithPath.path,
           secretName: secretKey,
           ...(el.tags?.length && {
             secretTags: el.tags.map((tag) => tag.slug)
@@ -2422,7 +2428,7 @@ export const secretServiceFactory = ({
           ...el,
           workspace: folder.projectId,
           environment: folder.environment.envSlug,
-          secretPath: "/"
+          secretPath: folderWithPath.path
         },
         botKey
       );
