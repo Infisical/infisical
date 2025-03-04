@@ -137,7 +137,7 @@ const getAppsHeroku = async ({ accessToken }: { accessToken: string }) => {
 export const getAppsVercel = async ({
   accessToken,
   teamId,
-  includeCustomEnvironments = false
+  includeCustomEnvironments
 }: {
   teamId?: string | null;
   accessToken: string;
@@ -207,8 +207,6 @@ export const getAppsVercel = async ({
           };
         })
       );
-
-      console.log(projectsWithCustomEnvironments);
 
       projectsWithCustomEnvironments.forEach((a) => {
         apps.push({
