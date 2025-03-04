@@ -122,7 +122,10 @@ export const secretFolderServiceFactory = ({
         }
       }
 
-      const doc = await folderDAL.create({ name, envId: env.id, version: 1, parentId: parentFolderId, description }, tx);
+      const doc = await folderDAL.create(
+        { name, envId: env.id, version: 1, parentId: parentFolderId, description },
+        tx
+      );
       await folderVersionDAL.create(
         {
           name: doc.name,

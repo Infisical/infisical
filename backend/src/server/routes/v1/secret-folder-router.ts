@@ -129,7 +129,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
           .transform(prefixWithSlash)
           .transform(removeTrailingSlash)
           .describe(FOLDERS.UPDATE.directory),
-        description: z.string().optional().describe(FOLDERS.UPDATE.description),
+        description: z.string().optional().describe(FOLDERS.UPDATE.description)
       }),
       response: {
         200: z.object({
@@ -148,7 +148,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         ...req.body,
         projectId: req.body.workspaceId,
         id: req.params.folderId,
-        path,
+        path
       });
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -201,7 +201,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
               .transform(prefixWithSlash)
               .transform(removeTrailingSlash)
               .describe(FOLDERS.UPDATE.path),
-            description: z.string().optional().describe(FOLDERS.UPDATE.description),
+            description: z.string().optional().describe(FOLDERS.UPDATE.description)
           })
           .array()
           .min(1)
