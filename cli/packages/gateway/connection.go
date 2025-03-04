@@ -3,20 +3,49 @@ package gateway
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"net"
+	"strings"
 	"sync"
 
+	"github.com/quic-go/quic-go"
 	"github.com/rs/zerolog/log"
 )
 
-func handleConnection(conn net.Conn) {
-	defer conn.Close()
-	log.Info().Msgf("New connection from: %s", conn.RemoteAddr().String())
+func handleConnection(ctx context.Context, quicConn quic.Connection) {
+	log.Info().Msgf("New connection from: %s", quicConn.RemoteAddr().String())
+	// Use WaitGroup to track all streams
+	var wg sync.WaitGroup
+	for {
+		// Accept the first stream, which we'll use for commands
+		stream, err := quicConn.AcceptStream(ctx)
+		if err != nil {
+			log.Printf("Failed to accept QUIC stream: %v", err)
+			break
+		}
+		wg.Add(1)
+		go func(stream quic.Stream) {
+			defer wg.Done()
+			defer stream.Close()
+
+			handleStream(stream, quicConn)
+		}(stream)
+	}
+
+	wg.Wait()
+	log.Printf("All streams closed for connection: %s", quicConn.RemoteAddr().String())
+}
+
+func handleStream(stream quic.Stream, quicConn quic.Connection) {
+	streamID := stream.StreamID()
+	log.Printf("New stream %d from: %s", streamID, quicConn.RemoteAddr().String())
 
 	// Use buffered reader for better handling of fragmented data
-	reader := bufio.NewReader(conn)
+	reader := bufio.NewReader(stream)
+	defer stream.Close()
+
 	for {
 		msg, err := reader.ReadBytes('\n')
 		if err != nil {
@@ -32,6 +61,7 @@ func handleConnection(conn net.Conn) {
 
 		switch string(cmd) {
 		case "FORWARD-TCP":
+			log.Info().Msg("Starting secure connector proxy...")
 			proxyAddress := string(bytes.Split(args, []byte(" "))[0])
 			destTarget, err := net.Dial("tcp", proxyAddress)
 			if err != nil {
@@ -56,10 +86,10 @@ func handleConnection(conn net.Conn) {
 				}
 			}
 
-			CopyData(conn, destTarget)
+			CopyDataFromQuicToTcp(stream, destTarget)
 			return
 		case "PING":
-			if _, err := conn.Write([]byte("PONG")); err != nil {
+			if _, err := stream.Write([]byte("PONG\n")); err != nil {
 				log.Error().Msgf("Error writing PONG response: %v", err)
 			}
 			return
@@ -74,34 +104,38 @@ type CloseWrite interface {
 	CloseWrite() error
 }
 
-func CopyData(src, dst net.Conn) {
+func CopyDataFromQuicToTcp(quicStream quic.Stream, tcpConn net.Conn) {
+	// Create a WaitGroup to wait for both copy operations
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	copyAndClose := func(dst, src net.Conn, done chan<- bool) {
+	// Start copying from QUIC stream to TCP
+	go func() {
 		defer wg.Done()
-		_, err := io.Copy(dst, src)
-		if err != nil && !errors.Is(err, io.EOF) {
-			log.Error().Msgf("Copy error: %v", err)
+		if _, err := io.Copy(tcpConn, quicStream); err != nil {
+			log.Error().Msgf("Error copying quic->postgres: %v", err)
 		}
 
-		// Signal we're done writing
-		done <- true
-
-		// Half close the connection if possible
-		if c, ok := dst.(CloseWrite); ok {
-			c.CloseWrite()
+		if e, ok := tcpConn.(CloseWrite); ok {
+			log.Debug().Msg("Closing TCP write end")
+			e.CloseWrite()
+		} else {
+			log.Debug().Msg("TCP connection does not support CloseWrite")
 		}
-	}
+	}()
 
-	done1 := make(chan bool, 1)
-	done2 := make(chan bool, 1)
-
-	go copyAndClose(dst, src, done1)
-	go copyAndClose(src, dst, done2)
+	// Start copying from TCP to QUIC stream
+	go func() {
+		defer wg.Done()
+		if _, err := io.Copy(quicStream, tcpConn); err != nil {
+			log.Debug().Msgf("Error copying postgres->quic: %v", err)
+		}
+		// Close the write side of the QUIC stream
+		if err := quicStream.Close(); err != nil && !strings.Contains(err.Error(), "close called for canceled stream") {
+			log.Error().Msgf("Error closing QUIC stream write: %v", err)
+		}
+	}()
 
 	// Wait for both copies to complete
-	<-done1
-	<-done2
 	wg.Wait()
 }

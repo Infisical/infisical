@@ -1,5 +1,4 @@
 import crypto from "node:crypto";
-
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import { z } from "zod";
@@ -474,7 +473,7 @@ export const gatewayServiceFactory = ({
       relayHost,
       relayPort: Number(relayPort),
       tlsOptions: {
-        key: privateKey,
+        key: privateKey.toString(),
         ca: `${gatewayCaCert.toString("pem")}\n${rootCaCert.toString("pem")}`.trim(),
         cert: clientCert.toString("pem")
       },

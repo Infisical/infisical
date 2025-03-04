@@ -15,6 +15,8 @@ import (
 	"github.com/pion/logging"
 	"github.com/pion/turn/v4"
 	"github.com/rs/zerolog/log"
+
+	"github.com/quic-go/quic-go"
 )
 
 type GatewayConfig struct {
@@ -56,13 +58,12 @@ func (g *Gateway) ConnectWithRelay() error {
 	if relayPort == "5349" {
 		log.Info().Msgf("Provided relay port %s. Using TLS", relayPort)
 		conn, err = tls.Dial("tcp", relayDetails.TurnServerAddress, &tls.Config{
-			InsecureSkipVerify: false,
-			ServerName:         relayAddress,
+			ServerName: relayAddress,
 		})
 	} else {
 		log.Info().Msgf("Provided relay port %s. Using non TLS connection.", relayPort)
-		peerAddr, err := net.ResolveTCPAddr("tcp", relayDetails.TurnServerAddress)
-		if err != nil {
+		peerAddr, errPeer := net.ResolveTCPAddr("tcp", relayDetails.TurnServerAddress)
+		if errPeer != nil {
 			return fmt.Errorf("Failed to parse turn server address: %w", err)
 		}
 		conn, err = net.DialTCP("tcp", nil, peerAddr)
@@ -116,20 +117,20 @@ func (g *Gateway) Listen(ctx context.Context) error {
 	// Allocate a relay socket on the TURN server. On success, it
 	// will return a net.PacketConn which represents the remote
 	// socket.
-	relayNonTlsConn, err := g.client.AllocateTCP()
+	relayUdpConnection, err := g.client.Allocate()
 	if err != nil {
 		return fmt.Errorf("Failed to allocate relay connection: %w", err)
 	}
 
-	log.Info().Msg(relayNonTlsConn.Addr().String())
+	log.Info().Msg(relayUdpConnection.LocalAddr().String())
 	defer func() {
-		if closeErr := relayNonTlsConn.Close(); closeErr != nil {
+		if closeErr := relayUdpConnection.Close(); closeErr != nil {
 			log.Error().Msgf("Failed to close connection: %s", closeErr)
 		}
 	}()
 
 	gatewayCert, err := api.CallExchangeRelayCertV1(g.httpClient, api.ExchangeRelayCertRequestV1{
-		RelayAddress: relayNonTlsConn.Addr().String(),
+		RelayAddress: relayUdpConnection.LocalAddr().String(),
 	})
 	if err != nil {
 		return err
@@ -144,45 +145,58 @@ func (g *Gateway) Listen(ctx context.Context) error {
 
 	if g.config.InfisicalStaticIp != "" {
 		log.Info().Msgf("Found static ip from Infisical: %s. Creating permission IP lifecycle", g.config.InfisicalStaticIp)
-		peerAddr, err := net.ResolveTCPAddr("tcp", g.config.InfisicalStaticIp)
+		peerAddr, err := net.ResolveUDPAddr("udp", g.config.InfisicalStaticIp)
 		if err != nil {
 			return fmt.Errorf("Failed to parse infisical static ip: %w", err)
 		}
-		g.registerPermissionLifecycle(func() error {
-			err := relayNonTlsConn.CreatePermissions(peerAddr)
-			return err
-		}, shutdownCh)
+		err = g.client.CreatePermission(peerAddr)
+		if err != nil {
+			return fmt.Errorf("Failed to set permission: %w", err)
+		}
 	}
 
 	cert, err := tls.X509KeyPair([]byte(gatewayCert.Certificate), []byte(gatewayCert.PrivateKey))
 	if err != nil {
-		return fmt.Errorf("failed to parse cert: %s", err)
+		return fmt.Errorf("failed to parse cert: %w", err)
 	}
 
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM([]byte(gatewayCert.CertificateChain))
 
-	relayConn := tls.NewListener(relayNonTlsConn, &tls.Config{
+	// Setup QUIC server
+	tlsConfig := &tls.Config{
 		Certificates: []tls.Certificate{cert},
 		MinVersion:   tls.VersionTLS12,
 		ClientCAs:    caCertPool,
 		ClientAuth:   tls.RequireAndVerifyClientCert,
-	})
+		NextProtos:   []string{"infisical-gateway"},
+	}
+
+	// Setup QUIC listener on the relayConn
+	quicConfig := &quic.Config{
+		EnableDatagrams: true,
+		MaxIdleTimeout:  30 * time.Second,
+		KeepAlivePeriod: 15 * time.Second,
+	}
+
+	quicListener, err := quic.Listen(relayUdpConnection, tlsConfig, quicConfig)
+	if err != nil {
+		return fmt.Errorf("Failed to listen for QUIC: %w", err)
+	}
+	defer quicListener.Close()
+
+	log.Printf("Listener started on %s", quicListener.Addr())
 
 	errCh := make(chan error, 1)
 	log.Info().Msg("Gateway started successfully")
 	g.registerHeartBeat(errCh, shutdownCh)
-	g.registerRelayIsActive(relayNonTlsConn.Addr().String(), errCh, shutdownCh)
+	g.registerRelayIsActive(relayUdpConnection.LocalAddr().String(), tlsConfig, quicConfig, errCh, shutdownCh)
 
 	// Create a WaitGroup to track active connections
 	var wg sync.WaitGroup
 
 	go func() {
 		for {
-			if relayDeadlineConn, ok := relayConn.(*net.TCPListener); ok {
-				relayDeadlineConn.SetDeadline(time.Now().Add(1 * time.Second))
-			}
-
 			select {
 			case <-ctx.Done():
 				return
@@ -190,67 +204,42 @@ func (g *Gateway) Listen(ctx context.Context) error {
 				return
 			default:
 				// Accept new relay connection
-				conn, err := relayConn.Accept()
+				quicConn, err := quicListener.Accept(context.Background())
 				if err != nil {
-					// Check if it's a timeout error (which we expect due to our deadline)
-					if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-						continue
-					}
-
-					if !strings.Contains(err.Error(), "data contains incomplete STUN or TURN frame") {
-						log.Error().Msgf("Failed to accept connection: %v", err)
-					}
+					log.Printf("Failed to accept QUIC connection: %v", err)
 					continue
 				}
 
-				tlsConn, ok := conn.(*tls.Conn)
-				if !ok {
-					log.Error().Msg("Failed to convert to TLS connection")
-					conn.Close()
-					continue
-				}
-
-				// Set a deadline for the handshake to prevent hanging
-				tlsConn.SetDeadline(time.Now().Add(10 * time.Second))
-				err = tlsConn.Handshake()
-				// Clear the deadline after handshake
-				tlsConn.SetDeadline(time.Time{})
-				if err != nil {
-					log.Error().Msgf("TLS handshake failed: %v", err)
-					conn.Close()
-					continue
-				}
-
-				// Get connection state which contains certificate information
-				state := tlsConn.ConnectionState()
-				if len(state.PeerCertificates) > 0 {
-					organizationUnit := state.PeerCertificates[0].Subject.OrganizationalUnit
-					commonName := state.PeerCertificates[0].Subject.CommonName
+				tlsState := quicConn.ConnectionState().TLS
+				if len(tlsState.PeerCertificates) > 0 {
+					organizationUnit := tlsState.PeerCertificates[0].Subject.OrganizationalUnit
+					commonName := tlsState.PeerCertificates[0].Subject.CommonName
 					if organizationUnit[0] != "gateway-client" || commonName != "cloud" {
-						log.Error().Msgf("Client certificate verification failed. Received %s, %s", organizationUnit, commonName)
-						conn.Close()
+						errMsg := fmt.Sprintf("Client certificate verification failed. Received %s, %s", organizationUnit, commonName)
+						log.Error().Msg(errMsg)
+						quicConn.CloseWithError(1, errMsg)
 						continue
 					}
 				}
 
 				// Handle the connection in a goroutine
 				wg.Add(1)
-				go func(c net.Conn) {
+				go func(c quic.Connection) {
 					defer wg.Done()
-					defer c.Close()
+					defer c.CloseWithError(0, "connection closed")
 
 					// Monitor parent context to close this connection when needed
 					go func() {
 						select {
 						case <-ctx.Done():
-							c.Close() // Force close connection when context is canceled
+							c.CloseWithError(0, "connection closed") // Force close connection when context is canceled
 						case <-shutdownCh:
-							c.Close() // Force close connection when accepting loop is done
+							c.CloseWithError(0, "connection closed") // Force close connection when accepting loop is done
 						}
 					}()
 
-					handleConnection(c)
-				}(conn)
+					handleConnection(ctx, c)
+				}(quicConn)
 			}
 		}
 	}()
@@ -282,7 +271,7 @@ func (g *Gateway) Listen(ctx context.Context) error {
 }
 
 func (g *Gateway) registerHeartBeat(errCh chan error, done chan bool) {
-	ticker := time.NewTicker(1 * time.Hour)
+	ticker := time.NewTicker(30 * time.Minute)
 
 	go func() {
 		time.Sleep(10 * time.Second)
@@ -306,26 +295,7 @@ func (g *Gateway) registerHeartBeat(errCh chan error, done chan bool) {
 	}()
 }
 
-func (g *Gateway) registerPermissionLifecycle(permissionFn func() error, done chan bool) {
-	ticker := time.NewTicker(3 * time.Minute)
-
-	go func() {
-		// wait for 5 mins
-		permissionFn()
-		log.Printf("Created permission for incoming connections")
-		for {
-			select {
-			case <-done:
-				ticker.Stop()
-				return
-			case <-ticker.C:
-				permissionFn()
-			}
-		}
-	}()
-}
-
-func (g *Gateway) registerRelayIsActive(serverAddr string, errCh chan error, done chan bool) {
+func (g *Gateway) registerRelayIsActive(serverAddr string, tlsConf *tls.Config, quicConf *quic.Config, errCh chan error, done chan bool) {
 	ticker := time.NewTicker(10 * time.Second)
 
 	go func() {
@@ -336,14 +306,19 @@ func (g *Gateway) registerRelayIsActive(serverAddr string, errCh chan error, don
 				ticker.Stop()
 				return
 			case <-ticker.C:
-				conn, err := net.Dial("tcp", serverAddr)
-				if err != nil {
-					errCh <- err
-					return
-				}
-				if conn != nil {
-					conn.Close()
-				}
+				func() {
+					ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second) // 3s handshake timeout
+					defer cancel()
+					conn, err := quic.DialAddr(ctx, serverAddr, tlsConf, quicConf)
+					if conn != nil {
+						conn.CloseWithError(0, "connection closed")
+					}
+					// this error means quic connection is alive
+					if err != nil && !strings.Contains(err.Error(), "tls: failed to verify certificate") {
+						errCh <- err
+						return
+					}
+				}()
 			}
 		}
 	}()
