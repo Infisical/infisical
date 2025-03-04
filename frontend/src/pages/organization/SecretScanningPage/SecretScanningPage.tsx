@@ -72,8 +72,11 @@ export const SecretScanningPage = withPermission(
     const { mutateAsync: linkGitAppInstallationWithOrganization } =
       useLinkGitAppInstallationWithOrg();
     const { mutateAsync: createNewIntegrationSession } = useCreateNewInstallationSession();
-    const { data: installationStatus, isPending: isSecretScanningInstatllationStatusLoading } =
-      useGetSecretScanningInstallationStatus(organizationId);
+    const {
+      data: installationStatus,
+      isPending: isSecretScanningInstatllationStatusLoading,
+      refetch: refetchSecretScanningInstallationStatus
+    } = useGetSecretScanningInstallationStatus(organizationId);
     const integrationEnabled =
       !isSecretScanningInstatllationStatusLoading && installationStatus?.appInstallationCompleted;
 
@@ -91,7 +94,7 @@ export const SecretScanningPage = withPermission(
               await navigate({
                 to: "/organization/secret-scanning"
               });
-              window.location.reload();
+              refetchSecretScanningInstallationStatus();
             }
 
             console.log("installation verification complete");
