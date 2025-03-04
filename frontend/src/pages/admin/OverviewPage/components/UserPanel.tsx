@@ -102,7 +102,6 @@ const UserPanelTable = ({
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="start" className="p-1">
                                   <DropdownMenuItem
-                                    className="hover:!bg-red-500 hover:!text-white"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       if (!subscription?.instanceUserManagement) {
@@ -114,9 +113,8 @@ const UserPanelTable = ({
                                   >
                                     Remove User
                                   </DropdownMenuItem>
-                                  {(!superAdmin && 
+                                  {!superAdmin && ( 
                                     <DropdownMenuItem
-                                      className="hover:!bg-yellow/20 hover:!text-yellow"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         if (!subscription?.instanceUserManagement) {
