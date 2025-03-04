@@ -32,21 +32,20 @@ import {
 } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-const deleteUserUpgradePlanMessage = "Deleting users via Admin UI"
-const addServerAdminUpgradePlanMessage = "Granting another user Server Admin permissions"
+const deleteUserUpgradePlanMessage = "Deleting users via Admin UI";
+const addServerAdminUpgradePlanMessage = "Granting another user Server Admin permissions";
 
 const UserPanelTable = ({
-  handlePopUpOpen,
-  setUpgradePlanMessage
+  handlePopUpOpen
 }: {
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<["removeUser", "upgradePlan", "upgradeToServerAdmin"]>,
     data?: {
       username: string;
       id: string;
+      message?: string;
     }
   ) => void;
-  setUpgradePlanMessage: (message: string) => void;
 }) => {
   const [searchUserFilter, setSearchUserFilter] = useState("");
   const { user } = useUser();
@@ -110,8 +109,11 @@ const UserPanelTable = ({
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       if (!subscription?.instanceUserManagement) {
-                                        setUpgradePlanMessage(deleteUserUpgradePlanMessage)
-                                        handlePopUpOpen("upgradePlan");
+                                        handlePopUpOpen("upgradePlan", {
+                                          username,
+                                          id,
+                                          message: deleteUserUpgradePlanMessage
+                                        });
                                         return;
                                       }
                                       handlePopUpOpen("removeUser", { username, id });
@@ -119,13 +121,16 @@ const UserPanelTable = ({
                                   >
                                     Remove User
                                   </DropdownMenuItem>
-                                  {!superAdmin && ( 
+                                  {!superAdmin && (
                                     <DropdownMenuItem
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         if (!subscription?.instanceUserManagement) {
-                                          setUpgradePlanMessage(addServerAdminUpgradePlanMessage)
-                                          handlePopUpOpen("upgradePlan");
+                                          handlePopUpOpen("upgradePlan", {
+                                            username,
+                                            id,
+                                            message: addServerAdminUpgradePlanMessage
+                                          });
                                           return;
                                         }
                                         handlePopUpOpen("upgradeToServerAdmin", { username, id });
@@ -171,8 +176,6 @@ export const UserPanel = () => {
     "upgradeToServerAdmin"
   ] as const);
 
-  const [upgradePlanMessage, setUpgradePlanMessage] = useState<string>(deleteUserUpgradePlanMessage)
-  
   const { mutateAsync: deleteUser } = useAdminDeleteUser();
   const { mutateAsync: grantAdminAccess } = useAdminGrantServerAdminAccess();
 
@@ -219,7 +222,7 @@ export const UserPanel = () => {
       <div className="mb-4">
         <p className="text-xl font-semibold text-mineshaft-100">Users</p>
       </div>
-      <UserPanelTable handlePopUpOpen={handlePopUpOpen} setUpgradePlanMessage={setUpgradePlanMessage}/>
+      <UserPanelTable handlePopUpOpen={handlePopUpOpen} />
       <DeleteActionModal
         isOpen={popUp.removeUser.isOpen}
         deleteKey="remove"
@@ -243,7 +246,7 @@ export const UserPanel = () => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={`${upgradePlanMessage} is only available on Infisical's Pro plan and above.`}
+        text={`${popUp?.upgradePlan?.data?.message} is only available on Infisical's Pro plan and above.`}
       />
     </div>
   );
