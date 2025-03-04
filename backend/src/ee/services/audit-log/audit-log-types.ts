@@ -1141,6 +1141,7 @@ interface CreateFolderEvent {
     folderId: string;
     folderName: string;
     folderPath: string;
+    description?: string;
   };
 }
 
