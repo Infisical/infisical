@@ -3,12 +3,9 @@ ARG POSTHOG_API_KEY=posthog-api-key
 ARG INTERCOM_ID=intercom-id
 ARG CAPTCHA_SITE_KEY=captcha-site-key
 
-FROM  node:20-alpine AS base
+FROM node:20-slim AS base
 
 FROM base AS frontend-dependencies
-
-# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
-RUN apk add --no-cache libc6-compat
 
 WORKDIR /app
 
@@ -45,8 +42,8 @@ RUN npm run build
 FROM base AS frontend-runner
 WORKDIR /app
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 non-root-user
+RUN groupadd --system --gid 1001 nodejs
+RUN useradd --system --uid 1001 --gid nodejs non-root-user
 
 COPY --from=frontend-builder --chown=non-root-user:nodejs /app/dist ./
 
@@ -56,21 +53,23 @@ USER non-root-user
 ## BACKEND
 ##
 FROM base AS backend-build
-RUN addgroup --system --gid 1001 nodejs \
-  && adduser --system --uid 1001 non-root-user
 
 WORKDIR /app
 
 # Install all required dependencies for build
-RUN apk --update add \
+RUN apt-get update && apt-get install -y \
     python3 \
     make \
     g++ \
     unixodbc \
-    freetds \
+    freetds-bin \
     unixodbc-dev \
     libc-dev \
-    freetds-dev
+    freetds-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd --system --gid 1001 nodejs
+RUN useradd --system --uid 1001 --gid nodejs non-root-user
 
 COPY backend/package*.json ./
 RUN npm ci --only-production
@@ -86,18 +85,19 @@ FROM base AS backend-runner
 WORKDIR /app
 
 # Install all required dependencies for runtime
-RUN apk --update add \
+RUN apt-get update && apt-get install -y \
     python3 \
     make \
     g++ \
     unixodbc \
-    freetds \
+    freetds-bin \
     unixodbc-dev \
     libc-dev \
-    freetds-dev
+    freetds-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 # Configure ODBC
-RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/libtdsodbc.so\nSetup = /usr/lib/libtdsodbc.so\nFileUsage = 1\n" > /etc/odbcinst.ini
+RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsS.so\nFileUsage = 1\n" > /etc/odbcinst.ini
 
 COPY backend/package*.json ./
 RUN npm ci --only-production
@@ -109,34 +109,35 @@ RUN mkdir frontend-build
 # Production stage
 FROM base AS production
 
-RUN apk add --upgrade --no-cache ca-certificates
-RUN apk add --no-cache bash curl && curl -1sLf \
-  'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' | bash \
-  && apk add infisical=0.31.1 && apk add --no-cache git
-
-WORKDIR /
-
-# Install all required runtime dependencies
-RUN apk --update add \
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    bash \
+    curl \
+    git \
     python3 \
     make \
     g++ \
     unixodbc \
-    freetds \
+    freetds-bin \
     unixodbc-dev \
     libc-dev \
     freetds-dev \
-    bash \
-    curl \
-    git \
-    openssh
+    openssh-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Infisical CLI
+RUN curl -1sLf 'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' | bash \
+    && apt-get update && apt-get install -y infisical=0.31.1 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /
 
 # Configure ODBC in production
-RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/libtdsodbc.so\nSetup = /usr/lib/libtdsodbc.so\nFileUsage = 1\n" > /etc/odbcinst.ini
+RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsS.so\nFileUsage = 1\n" > /etc/odbcinst.ini
 
 # Setup user permissions
-RUN addgroup --system --gid 1001 nodejs \
-  && adduser --system --uid 1001 non-root-user
+RUN groupadd --system --gid 1001 nodejs \
+  && useradd --system --uid 1001 --gid nodejs non-root-user
 
 # Give non-root-user permission to update SSL certs
 RUN chown -R non-root-user /etc/ssl/certs
@@ -154,9 +155,7 @@ ENV INTERCOM_ID=$INTERCOM_ID
 ARG CAPTCHA_SITE_KEY
 ENV CAPTCHA_SITE_KEY=$CAPTCHA_SITE_KEY
 
-
 COPY --from=backend-runner /app /backend
-
 COPY --from=frontend-runner /app ./backend/frontend-build
 
 ARG INFISICAL_PLATFORM_VERSION

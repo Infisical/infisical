@@ -1,9 +1,7 @@
 /* eslint-disable no-await-in-loop */
 import crypto from "node:crypto";
 import net from "node:net";
-
-import { QUICClient } from "@infisical/quic";
-import { CryptoError } from "@infisical/quic/dist/native";
+import quic from "@infisical/quic";
 
 import { BadRequestError } from "../errors";
 import { logger } from "../logger";
@@ -29,7 +27,7 @@ const createQuicConnection = async (
   identityId: string,
   orgId: string
 ) => {
-  const client = await QUICClient.createQUICClient({
+  const client = await quic.QUICClient.createQUICClient({
     host: relayHost,
     port: relayPort,
     config: {
@@ -39,24 +37,24 @@ const createQuicConnection = async (
       applicationProtos: ["infisical-gateway"],
       verifyPeer: true,
       verifyCallback: async (certs) => {
-        if (!certs || certs.length === 0) return CryptoError.CertificateRequired;
+        if (!certs || certs.length === 0) return quic.native.CryptoError.CertificateRequired;
         const serverCertificate = new crypto.X509Certificate(Buffer.from(certs[0]));
         const caCertificate = new crypto.X509Certificate(tlsOptions.ca);
         const isValidServerCertificate = serverCertificate.checkIssued(caCertificate);
-        if (!isValidServerCertificate) return CryptoError.BadCertificate;
+        if (!isValidServerCertificate) return quic.native.CryptoError.BadCertificate;
 
         const subjectDetails = parseSubjectDetails(serverCertificate.subject);
         if (subjectDetails.OU !== "Gateway" || subjectDetails.CN !== identityId || subjectDetails.O !== orgId) {
-          return CryptoError.CertificateUnknown;
+          return quic.native.CryptoError.CertificateUnknown;
         }
 
         if (new Date() > new Date(serverCertificate.validTo) || new Date() < new Date(serverCertificate.validFrom)) {
-          return CryptoError.CertificateExpired;
+          return quic.native.CryptoError.CertificateExpired;
         }
 
         const formatedRelayHost =
           process.env.NODE_ENV === "development" ? relayHost.replace("host.docker.internal", "127.0.0.1") : relayHost;
-        if (!serverCertificate.checkIP(formatedRelayHost)) return CryptoError.BadCertificate;
+        if (!serverCertificate.checkIP(formatedRelayHost)) return quic.native.CryptoError.BadCertificate;
       },
       maxIdleTimeout: 90000,
       keepAliveIntervalTime: 30000
@@ -90,14 +88,14 @@ export const pingGatewayAndVerify = async ({
   orgId
 }: TPingGatewayAndVerifyDTO) => {
   let lastError: Error | null = null;
-  const quic = await createQuicConnection(relayHost, relayPort, tlsOptions, identityId, orgId).catch((err) => {
+  const quicClient = await createQuicConnection(relayHost, relayPort, tlsOptions, identityId, orgId).catch((err) => {
     throw new BadRequestError({
       error: err as Error
     });
   });
   for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
     try {
-      const stream = quic.connection.newStream("bidi");
+      const stream = quicClient.connection.newStream("bidi");
       const pingWriter = stream.writable.getWriter();
       await pingWriter.write(Buffer.from("PING\n"));
       pingWriter.releaseLock();
@@ -131,7 +129,7 @@ export const pingGatewayAndVerify = async ({
         });
       }
     } finally {
-      await quic.destroy();
+      await quicClient.destroy();
     }
   }
 
@@ -164,7 +162,7 @@ const setupProxyServer = async ({
   identityId: string;
   orgId: string;
 }): Promise<TProxyServer> => {
-  const quic = await createQuicConnection(relayHost, relayPort, tlsOptions, identityId, orgId).catch((err) => {
+  const quicClient = await createQuicConnection(relayHost, relayPort, tlsOptions, identityId, orgId).catch((err) => {
     throw new BadRequestError({
       error: err as Error
     });
@@ -179,7 +177,7 @@ const setupProxyServer = async ({
         clientConn.setKeepAlive(true, 30000); // 30 seconds
         clientConn.setNoDelay(true);
 
-        const stream = quic.connection.newStream("bidi");
+        const stream = quicClient.connection.newStream("bidi");
         // Send FORWARD-TCP command
         const forwardWriter = stream.writable.getWriter();
         await forwardWriter.write(Buffer.from(`FORWARD-TCP ${targetHost}:${targetPort}\n`));
@@ -272,7 +270,7 @@ const setupProxyServer = async ({
     });
 
     server.on("close", async () => {
-      await quic?.destroy();
+      await quicClient?.destroy();
     });
 
     /* eslint-enable */
@@ -291,7 +289,7 @@ const setupProxyServer = async ({
         port: address.port,
         cleanup: async () => {
           server.close();
-          await quic?.destroy();
+          await quicClient?.destroy();
         }
       });
     });
