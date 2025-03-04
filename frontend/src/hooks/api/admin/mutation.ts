@@ -74,7 +74,7 @@ export const useAdminGrantServerAdminAccess = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (userId: string) => {
-      await apiRequest.patch("/api/v1/admin/user-management/users/grant-admin-access", { userId });
+      await apiRequest.patch(`/api/v1/admin/user-management/users/${userId}/admin-access`);
       return {};
     },
     onSuccess: () => {

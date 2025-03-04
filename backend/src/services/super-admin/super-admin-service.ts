@@ -297,10 +297,7 @@ export const superAdminServiceFactory = ({
         message: "Failed to grant server admin access to user due to plan restriction. Upgrade to Infisical's Pro plan."
       });
     }
-
-    await userDAL.transaction(async (tx) => {
-      await userDAL.updateById(userId, { superAdmin: true }, tx);
-    });
+    await userDAL.updateById(userId, { superAdmin: true });
   };
 
   const getAdminSlackConfig = async () => {
