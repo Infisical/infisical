@@ -28,14 +28,14 @@ type GatewayRelay struct {
 }
 
 type GatewayRelayConfig struct {
-	PublicIP          string `json:"public_ip"`
-	Port              int    `json:"port"`
-	Realm             string `json:"realm"`
-	AuthSecret        string `json:"auth_secret"`
-	RelayMinPort      uint16 `json:"relay_min_port"`
-	RelayMaxPort      uint16 `json:"relay_max_port"`
-	TlsCertPath       string `json:"tls_cert_path"`
-	TlsPrivateKeyPath string `json:"tls_private_key_path"`
+	PublicIP          string `yaml:"public_ip"`
+	Port              int    `yaml:"port"`
+	Realm             string `yaml:"realm"`
+	AuthSecret        string `yaml:"auth_secret"`
+	RelayMinPort      uint16 `yaml:"relay_min_port"`
+	RelayMaxPort      uint16 `yaml:"relay_max_port"`
+	TlsCertPath       string `yaml:"tls_cert_path"`
+	TlsPrivateKeyPath string `yaml:"tls_private_key_path"`
 
 	tls          tls.Certificate
 	isTlsEnabled bool
@@ -138,6 +138,7 @@ func (g *GatewayRelay) Run() error {
 
 	threadNum := runtime.NumCPU()
 	listenerConfigs := make([]turn.ListenerConfig, threadNum)
+	var connAddress string
 	for i := 0; i < threadNum; i++ {
 		conn, listErr := listenerConfig.Listen(context.Background(), addr.Network(), addr.String())
 		if listErr != nil {
@@ -155,8 +156,7 @@ func (g *GatewayRelay) Run() error {
 		} else {
 			listenerConfigs[i].Listener = conn
 		}
-
-		log.Printf("Server %d listening on %s\n", i, conn.Addr().String())
+		connAddress = conn.Addr().String()
 	}
 
 	loggerF := logging.NewDefaultLoggerFactory()
@@ -174,6 +174,7 @@ func (g *GatewayRelay) Run() error {
 		return fmt.Errorf("Failed to start server: %w", err)
 	}
 
+	log.Info().Msgf("Relay listening on %s\n", connAddress)
 	// Block until user sends SIGINT or SIGTERM
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
