@@ -228,7 +228,7 @@ export const OverviewPage = () => {
     setPage
   });
 
-  const { folderNames, getFolderByNameAndEnv, isFolderPresentInEnv } = useFolderOverview(folders);
+  const { folderNamesAndDescriptions, getFolderByNameAndEnv, isFolderPresentInEnv } = useFolderOverview(folders);
 
   const { dynamicSecretNames, isDynamicSecretPresentInEnv } =
     useDynamicSecretOverview(dynamicSecrets);
@@ -251,14 +251,15 @@ export const OverviewPage = () => {
     "updateFolder"
   ] as const);
 
-  const handleFolderCreate = async (folderName: string) => {
+  const handleFolderCreate = async (folderName: string, description: string | null) => {    
     const promises = userAvailableEnvs.map((env) => {
       const environment = env.slug;
       return createFolder({
         name: folderName,
         path: secretPath,
         environment,
-        projectId: workspaceId
+        projectId: workspaceId,
+        description
       });
     });
 
@@ -279,7 +280,7 @@ export const OverviewPage = () => {
     }
   };
 
-  const handleFolderUpdate = async (newFolderName: string) => {
+  const handleFolderUpdate = async (newFolderName: string, description: string | null) => {
     const { name: oldFolderName } = popUp.updateFolder.data as TSecretFolder;
 
     const updatedFolders: TUpdateFolderBatchDTO["folders"] = [];
@@ -296,7 +297,8 @@ export const OverviewPage = () => {
             environment: env.slug,
             name: newFolderName,
             id: folder.id,
-            path: secretPath
+            path: secretPath,
+            description
           });
         }
       }
@@ -1027,7 +1029,7 @@ export const OverviewPage = () => {
                 )}
                 {!isOverviewLoading && visibleEnvs.length > 0 && (
                   <>
-                    {folderNames.map((folderName, index) => (
+                    {folderNamesAndDescriptions.map(({name: folderName, description}, index) => (
                       <SecretOverviewFolderRow
                         folderName={folderName}
                         isFolderPresentInEnv={isFolderPresentInEnv}
@@ -1039,7 +1041,7 @@ export const OverviewPage = () => {
                         key={`overview-${folderName}-${index + 1}`}
                         onClick={handleFolderClick}
                         onToggleFolderEdit={(name: string) =>
-                          handlePopUpOpen("updateFolder", { name })
+                          handlePopUpOpen("updateFolder", { name, description })
                         }
                       />
                     ))}
@@ -1159,7 +1161,9 @@ export const OverviewPage = () => {
           <FolderForm
             isEdit
             defaultFolderName={(popUp.updateFolder?.data as Pick<TSecretFolder, "name">)?.name}
+            defaultDescription={(popUp.updateFolder?.data as Pick<TSecretFolder, "description">)?.description}
             onUpdateFolder={handleFolderUpdate}
+            showDescriptionOverwriteWarning
           />
         </ModalContent>
       </Modal>

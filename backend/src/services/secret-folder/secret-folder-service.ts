@@ -50,7 +50,8 @@ export const secretFolderServiceFactory = ({
     actorOrgId,
     name,
     environment,
-    path: secretPath
+    path: secretPath,
+    description
   }: TCreateFolderDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -121,7 +122,10 @@ export const secretFolderServiceFactory = ({
         }
       }
 
-      const doc = await folderDAL.create({ name, envId: env.id, version: 1, parentId: parentFolderId }, tx);
+      const doc = await folderDAL.create(
+        { name, envId: env.id, version: 1, parentId: parentFolderId, description },
+        tx
+      );
       await folderVersionDAL.create(
         {
           name: doc.name,
@@ -170,7 +174,7 @@ export const secretFolderServiceFactory = ({
     const result = await folderDAL.transaction(async (tx) =>
       Promise.all(
         folders.map(async (newFolder) => {
-          const { environment, path: secretPath, id, name } = newFolder;
+          const { environment, path: secretPath, id, name, description } = newFolder;
 
           const parentFolder = await folderDAL.findBySecretPath(project.id, environment, secretPath);
           if (!parentFolder) {
@@ -217,7 +221,7 @@ export const secretFolderServiceFactory = ({
 
           const [doc] = await folderDAL.update(
             { envId: env.id, id: folder.id, parentId: parentFolder.id },
-            { name },
+            { name, description },
             tx
           );
           await folderVersionDAL.create(
@@ -259,7 +263,8 @@ export const secretFolderServiceFactory = ({
     name,
     environment,
     path: secretPath,
-    id
+    id,
+    description
   }: TUpdateFolderDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -312,7 +317,7 @@ export const secretFolderServiceFactory = ({
     const newFolder = await folderDAL.transaction(async (tx) => {
       const [doc] = await folderDAL.update(
         { envId: env.id, id: folder.id, parentId: parentFolder.id, isReserved: false },
-        { name },
+        { name, description },
         tx
       );
       await folderVersionDAL.create(

@@ -638,7 +638,8 @@ export const FOLDERS = {
     environment: "The slug of the environment to create the folder in.",
     name: "The name of the folder to create.",
     path: "The path of the folder to create.",
-    directory: "The directory of the folder to create. (Deprecated in favor of path)"
+    directory: "The directory of the folder to create. (Deprecated in favor of path)",
+    description: "An optional description label for the folder."
   },
   UPDATE: {
     folderId: "The ID of the folder to update.",
@@ -647,7 +648,8 @@ export const FOLDERS = {
     path: "The path of the folder to update.",
     directory: "The new directory of the folder to update. (Deprecated in favor of path)",
     projectSlug: "The slug of the project where the folder is located.",
-    workspaceId: "The ID of the project where the folder is located."
+    workspaceId: "The ID of the project where the folder is located.",
+    description: "An optional description label for the folder."
   },
   DELETE: {
     folderIdOrName: "The ID or name of the folder to delete.",
