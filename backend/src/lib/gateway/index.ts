@@ -1,6 +1,8 @@
 /* eslint-disable no-await-in-loop */
+import crypto from "node:crypto";
 import net from "node:net";
-import tls from "node:tls";
+
+import quic from "@infisical/quic";
 
 import { BadRequestError } from "../errors";
 import { logger } from "../logger";
@@ -8,34 +10,71 @@ import { logger } from "../logger";
 const DEFAULT_MAX_RETRIES = 3;
 const DEFAULT_RETRY_DELAY = 1000; // 1 second
 
-const createTLSConnection = (relayHost: string, relayPort: number, tlsOptions: tls.TlsOptions = {}) => {
-  return new Promise<tls.TLSSocket>((resolve, reject) => {
-    // @ts-expect-error this is resolved in next connect
-    const socket = new tls.TLSSocket(null, {
-      rejectUnauthorized: true,
-      ...tlsOptions
-    });
-
-    const cleanup = () => {
-      socket.removeAllListeners();
-      socket.end();
-    };
-
-    socket.once("error", (err) => {
-      cleanup();
-      reject(err);
-    });
-
-    socket.connect(relayPort, relayHost, () => {
-      resolve(socket);
-    });
+const parseSubjectDetails = (data: string) => {
+  const values: Record<string, string> = {};
+  data.split("\n").forEach((el) => {
+    const [key, value] = el.split("=");
+    values[key.trim()] = value.trim();
   });
+  return values;
+};
+
+type TTlsOption = { ca: string; cert: string; key: string };
+
+const createQuicConnection = async (
+  relayHost: string,
+  relayPort: number,
+  tlsOptions: TTlsOption,
+  identityId: string,
+  orgId: string
+) => {
+  const client = await quic.QUICClient.createQUICClient({
+    host: relayHost,
+    port: relayPort,
+    config: {
+      ca: tlsOptions.ca,
+      cert: tlsOptions.cert,
+      key: tlsOptions.key,
+      applicationProtos: ["infisical-gateway"],
+      verifyPeer: true,
+      verifyCallback: async (certs) => {
+        if (!certs || certs.length === 0) return quic.native.CryptoError.CertificateRequired;
+        const serverCertificate = new crypto.X509Certificate(Buffer.from(certs[0]));
+        const caCertificate = new crypto.X509Certificate(tlsOptions.ca);
+        const isValidServerCertificate = serverCertificate.checkIssued(caCertificate);
+        if (!isValidServerCertificate) return quic.native.CryptoError.BadCertificate;
+
+        const subjectDetails = parseSubjectDetails(serverCertificate.subject);
+        if (subjectDetails.OU !== "Gateway" || subjectDetails.CN !== identityId || subjectDetails.O !== orgId) {
+          return quic.native.CryptoError.CertificateUnknown;
+        }
+
+        if (new Date() > new Date(serverCertificate.validTo) || new Date() < new Date(serverCertificate.validFrom)) {
+          return quic.native.CryptoError.CertificateExpired;
+        }
+
+        const formatedRelayHost =
+          process.env.NODE_ENV === "development" ? relayHost.replace("host.docker.internal", "127.0.0.1") : relayHost;
+        if (!serverCertificate.checkIP(formatedRelayHost)) return quic.native.CryptoError.BadCertificate;
+      },
+      maxIdleTimeout: 90000,
+      keepAliveIntervalTime: 30000
+    },
+    crypto: {
+      ops: {
+        randomBytes: async (data) => {
+          crypto.getRandomValues(new Uint8Array(data));
+        }
+      }
+    }
+  });
+  return client;
 };
 
 type TPingGatewayAndVerifyDTO = {
   relayHost: string;
   relayPort: number;
-  tlsOptions: tls.TlsOptions;
+  tlsOptions: TTlsOption;
   maxRetries?: number;
   identityId: string;
   orgId: string;
@@ -44,56 +83,44 @@ type TPingGatewayAndVerifyDTO = {
 export const pingGatewayAndVerify = async ({
   relayHost,
   relayPort,
-  tlsOptions = {},
+  tlsOptions,
   maxRetries = DEFAULT_MAX_RETRIES,
   identityId,
   orgId
 }: TPingGatewayAndVerifyDTO) => {
   let lastError: Error | null = null;
-
+  const quicClient = await createQuicConnection(relayHost, relayPort, tlsOptions, identityId, orgId).catch((err) => {
+    throw new BadRequestError({
+      error: err as Error
+    });
+  });
   for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
     try {
-      const socket = await createTLSConnection(relayHost, relayPort, tlsOptions);
-      socket.setTimeout(2000);
+      const stream = quicClient.connection.newStream("bidi");
+      const pingWriter = stream.writable.getWriter();
+      await pingWriter.write(Buffer.from("PING\n"));
+      pingWriter.releaseLock();
 
-      const pingResult = await new Promise((resolve, reject) => {
-        socket.once("timeout", () => {
-          socket.destroy();
-          reject(new Error("Timeout"));
+      // Read PONG response
+      const reader = stream.readable.getReader();
+      const { value, done } = await reader.read();
+
+      if (done) {
+        throw new BadRequestError({
+          message: "Gateway closed before receiving PONG"
         });
-        socket.once("close", () => {
-          socket.destroy();
+      }
+
+      const response = Buffer.from(value).toString();
+
+      if (response !== "PONG\n" && response !== "PONG") {
+        throw new BadRequestError({
+          message: `Failed to Ping. Unexpected response: ${response}`
         });
+      }
 
-        socket.once("end", () => {
-          socket.destroy();
-        });
-        socket.once("error", (err) => {
-          reject(err);
-        });
-
-        socket.write(Buffer.from("PING\n"), () => {
-          socket.once("data", (data) => {
-            const response = (data as string).toString();
-            const certificate = socket.getPeerCertificate();
-
-            if (certificate.subject.CN !== identityId || certificate.subject.O !== orgId) {
-              throw new BadRequestError({
-                message: `Invalid gateway. Certificate not found for ${identityId} in organization ${orgId}`
-              });
-            }
-
-            if (response === "PONG") {
-              resolve(true);
-            } else {
-              reject(new Error(`Unexpected response: ${response}`));
-            }
-          });
-        });
-      });
-
-      socket.end();
-      return pingResult;
+      reader.releaseLock();
+      return;
     } catch (err) {
       lastError = err as Error;
 
@@ -102,6 +129,8 @@ export const pingGatewayAndVerify = async ({
           setTimeout(resolve, DEFAULT_RETRY_DELAY);
         });
       }
+    } finally {
+      await quicClient.destroy();
     }
   }
 
@@ -114,76 +143,125 @@ export const pingGatewayAndVerify = async ({
 interface TProxyServer {
   server: net.Server;
   port: number;
-  cleanup: () => void;
+  cleanup: () => Promise<void>;
 }
 
-const setupProxyServer = ({
+const setupProxyServer = async ({
   targetPort,
   targetHost,
-  tlsOptions = {},
+  tlsOptions,
   relayHost,
-  relayPort
+  relayPort,
+  identityId,
+  orgId
 }: {
   targetHost: string;
   targetPort: number;
   relayPort: number;
   relayHost: string;
-  tlsOptions: tls.TlsOptions;
+  tlsOptions: TTlsOption;
+  identityId: string;
+  orgId: string;
 }): Promise<TProxyServer> => {
+  const quicClient = await createQuicConnection(relayHost, relayPort, tlsOptions, identityId, orgId).catch((err) => {
+    throw new BadRequestError({
+      error: err as Error
+    });
+  });
+
   return new Promise((resolve, reject) => {
     const server = net.createServer();
 
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
-    server.on("connection", async (clientSocket) => {
+    server.on("connection", async (clientConn) => {
       try {
-        const targetSocket = await createTLSConnection(relayHost, relayPort, tlsOptions);
+        clientConn.setKeepAlive(true, 30000); // 30 seconds
+        clientConn.setNoDelay(true);
 
-        targetSocket.write(Buffer.from(`FORWARD-TCP ${targetHost}:${targetPort}\n`), () => {
-          clientSocket.on("data", (data) => {
-            const flushed = targetSocket.write(data);
-            if (!flushed) {
-              clientSocket.pause();
-              targetSocket.once("drain", () => {
-                clientSocket.resume();
-              });
-            }
-          });
+        const stream = quicClient.connection.newStream("bidi");
+        // Send FORWARD-TCP command
+        const forwardWriter = stream.writable.getWriter();
+        await forwardWriter.write(Buffer.from(`FORWARD-TCP ${targetHost}:${targetPort}\n`));
+        forwardWriter.releaseLock();
+        /* eslint-disable @typescript-eslint/no-misused-promises */
+        // Set up bidirectional copy
+        const setupCopy = async () => {
+          // Client to QUIC
+          // eslint-disable-next-line
+          (async () => {
+            try {
+              const writer = stream.writable.getWriter();
 
-          targetSocket.on("data", (data) => {
-            const flushed = clientSocket.write(data as string);
-            if (!flushed) {
-              targetSocket.pause();
-              clientSocket.once("drain", () => {
-                targetSocket.resume();
+              // Create a handler for client data
+              clientConn.on("data", async (chunk) => {
+                await writer.write(chunk);
               });
+
+              // Handle client connection close
+              clientConn.on("end", async () => {
+                await writer.close();
+              });
+
+              clientConn.on("error", async (err) => {
+                await writer.abort(err);
+              });
+            } catch (err) {
+              clientConn.destroy();
             }
-          });
+          })();
+
+          // QUIC to Client
+          void (async () => {
+            try {
+              const reader = stream.readable.getReader();
+
+              let reading = true;
+              while (reading) {
+                const { value, done } = await reader.read();
+
+                if (done) {
+                  reading = false;
+                  clientConn.end(); // Close client connection when QUIC stream ends
+                  break;
+                }
+
+                // Write data to TCP client
+                const canContinue = clientConn.write(Buffer.from(value));
+
+                // Handle backpressure
+                if (!canContinue) {
+                  await new Promise((res) => {
+                    clientConn.once("drain", res);
+                  });
+                }
+              }
+            } catch (err) {
+              clientConn.destroy();
+            }
+          })();
+        };
+        await setupCopy();
+        //
+        // Handle connection closure
+        clientConn.on("close", async () => {
+          await stream.destroy();
         });
 
-        const cleanup = () => {
-          clientSocket?.unpipe();
-          clientSocket?.end();
-          targetSocket?.unpipe();
-          targetSocket?.end();
+        const cleanup = async () => {
+          clientConn?.destroy();
+          await stream.destroy();
         };
 
-        clientSocket.on("error", (err) => {
+        clientConn.on("error", (err) => {
           logger.error(err, "Client socket error");
-          cleanup();
+          void cleanup();
           reject(err);
         });
 
-        targetSocket.on("error", (err) => {
-          logger.error(err, "Target socket error");
-          cleanup();
-          reject(err);
-        });
-
-        clientSocket.on("end", cleanup);
-        targetSocket.on("end", cleanup);
+        clientConn.on("end", cleanup);
       } catch (err) {
         logger.error(err, "Failed to establish target connection:");
-        clientSocket.end();
+        clientConn.end();
         reject(err);
       }
     });
@@ -191,6 +269,12 @@ const setupProxyServer = ({
     server.on("error", (err) => {
       reject(err);
     });
+
+    server.on("close", async () => {
+      await quicClient?.destroy();
+    });
+
+    /* eslint-enable */
 
     server.listen(0, () => {
       const address = server.address();
@@ -204,8 +288,9 @@ const setupProxyServer = ({
       resolve({
         server,
         port: address.port,
-        cleanup: () => {
+        cleanup: async () => {
           server.close();
+          await quicClient?.destroy();
         }
       });
     });
@@ -217,8 +302,7 @@ interface ProxyOptions {
   targetPort: number;
   relayHost: string;
   relayPort: number;
-  tlsOptions?: tls.TlsOptions;
-  maxRetries?: number;
+  tlsOptions: TTlsOption;
   identityId: string;
   orgId: string;
 }
@@ -227,29 +311,18 @@ export const withGatewayProxy = async (
   callback: (port: number) => Promise<void>,
   options: ProxyOptions
 ): Promise<void> => {
-  const {
-    relayHost,
-    relayPort,
+  const { relayHost, relayPort, targetHost, targetPort, tlsOptions, identityId, orgId } = options;
+
+  // Setup the proxy server
+  const { port, cleanup } = await setupProxyServer({
     targetHost,
     targetPort,
-    tlsOptions = {},
-    maxRetries = DEFAULT_MAX_RETRIES,
-    identityId,
-    orgId
-  } = options;
-
-  // First, try to ping the gateway
-  await pingGatewayAndVerify({
-    relayHost,
     relayPort,
+    relayHost,
     tlsOptions,
-    maxRetries,
     identityId,
     orgId
   });
-
-  // Setup the proxy server
-  const { port, cleanup } = await setupProxyServer({ targetHost, targetPort, relayPort, relayHost, tlsOptions });
 
   try {
     // Execute the callback with the allocated port
@@ -259,6 +332,6 @@ export const withGatewayProxy = async (
     throw new BadRequestError({ message: (err as Error)?.message });
   } finally {
     // Ensure cleanup happens regardless of success or failure
-    cleanup();
+    await cleanup();
   }
 };

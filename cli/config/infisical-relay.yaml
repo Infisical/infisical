@@ -1,0 +1,3 @@
+public_ip: 127.0.0.1
+auth_secret: changeThisOnProduction
+realm: infisical.org

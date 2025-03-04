@@ -109,12 +109,43 @@ var gatewayCmd = &cobra.Command{
 	},
 }
 
+var gatewayRelayCmd = &cobra.Command{
+	Example:               `infisical gateway relay`,
+	Short:                 "Used to run infisical gateway relay",
+	Use:                   "relay",
+	DisableFlagsInUseLine: true,
+	Args:                  cobra.NoArgs,
+	Run: func(cmd *cobra.Command, args []string) {
+		relayConfigFilePath, err := cmd.Flags().GetString("config")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
+		if relayConfigFilePath == "" {
+			util.HandleError(fmt.Errorf("Missing config file"))
+		}
+
+		gatewayRelay, err := gateway.NewGatewayRelay(relayConfigFilePath)
+		if err != nil {
+			util.HandleError(err, "Failed to initialize gateway")
+		}
+		err = gatewayRelay.Run()
+		if err != nil {
+			util.HandleError(err, "Failed to start gateway")
+		}
+	},
+}
+
 func init() {
 	gatewayCmd.SetHelpFunc(func(command *cobra.Command, strings []string) {
 		command.Flags().MarkHidden("domain")
 		command.Parent().HelpFunc()(command, strings)
 	})
 	gatewayCmd.Flags().String("token", "", "Connect with Infisical using machine identity access token")
+
+	gatewayRelayCmd.Flags().String("config", "", "Relay config yaml file path")
+
+	gatewayCmd.AddCommand(gatewayRelayCmd)
 
 	rootCmd.AddCommand(gatewayCmd)
 }

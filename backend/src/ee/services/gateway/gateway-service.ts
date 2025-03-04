@@ -474,7 +474,7 @@ export const gatewayServiceFactory = ({
       relayHost,
       relayPort: Number(relayPort),
       tlsOptions: {
-        key: privateKey,
+        key: privateKey.toString(),
         ca: `${gatewayCaCert.toString("pem")}\n${rootCaCert.toString("pem")}`.trim(),
         cert: clientCert.toString("pem")
       },
