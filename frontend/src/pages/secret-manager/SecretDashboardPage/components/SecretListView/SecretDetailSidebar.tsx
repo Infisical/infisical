@@ -661,8 +661,8 @@ export const SecretDetailSidebar = ({
                 <div className="mb-2 pl-1">Version History</div>
                 <div className="thin-scrollbar flex h-48 flex-col space-y-2 overflow-y-auto overflow-x-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 dark:[color-scheme:dark]">
                   {secretVersion?.map(
-                    ({ createdAt, secretValue, version, id, secretValueHidden }) => (
-                      <div className="flex flex-row">
+                    ({ createdAt, secretValue, version, id, secretValueHidden }, index) => (
+                      <div key={`secret-version-${index + 1}`} className="flex flex-row">
                         <div key={id} className="flex w-full flex-col space-y-1">
                           <div className="flex items-center">
                             <div className="w-10">
