@@ -1,8 +1,9 @@
 import opentelemetry, { diag, DiagConsoleLogger, DiagLogLevel } from "@opentelemetry/api";
-import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-proto";
 import { PrometheusExporter } from "@opentelemetry/exporter-prometheus";
+import { HostMetrics } from "@opentelemetry/host-metrics";
 import { registerInstrumentations } from "@opentelemetry/instrumentation";
+import { HttpInstrumentation } from "@opentelemetry/instrumentation-http";
 import { Resource } from "@opentelemetry/resources";
 import { AggregationTemporality, MeterProvider, PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from "@opentelemetry/semantic-conventions";
@@ -67,10 +68,13 @@ const initTelemetryInstrumentation = ({
     readers: metricReaders
   });
 
+  const hostMetrics = new HostMetrics({ meterProvider });
+  hostMetrics.start();
+
   opentelemetry.metrics.setGlobalMeterProvider(meterProvider);
 
   registerInstrumentations({
-    instrumentations: [getNodeAutoInstrumentations()]
+    instrumentations: [new HttpInstrumentation()]
   });
 };
 
