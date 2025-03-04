@@ -122,6 +122,7 @@ RUN apt-get update && apt-get install -y \
     unixodbc-dev \
     libc-dev \
     freetds-dev \
+		wget \
     openssh-client \
     && rm -rf /var/lib/apt/lists/*
 
