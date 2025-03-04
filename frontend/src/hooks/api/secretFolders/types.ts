@@ -5,6 +5,7 @@ export enum ReservedFolders {
 export type TSecretFolder = {
   id: string;
   name: string;
+  description?: string;
 };
 
 export type TGetProjectFoldersDTO = {
@@ -24,6 +25,7 @@ export type TCreateFolderDTO = {
   environment: string;
   name: string;
   path?: string;
+  description?: string
 };
 
 export type TUpdateFolderDTO = {
@@ -32,6 +34,7 @@ export type TUpdateFolderDTO = {
   name: string;
   folderId: string;
   path?: string;
+  description?: string
 };
 
 export type TDeleteFolderDTO = {
@@ -49,5 +52,6 @@ export type TUpdateFolderBatchDTO = {
     environment: string;
     id: string;
     path?: string;
+    description?: string;
   }[];
 };

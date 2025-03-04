@@ -2,13 +2,22 @@ import { useCallback, useMemo } from "react";
 
 import { DashboardProjectSecretsOverview } from "@app/hooks/api/dashboard/types";
 
+type FolderNameAndDescription = {
+  name: string;
+  description?: string;
+};
+
 export const useFolderOverview = (folders: DashboardProjectSecretsOverview["folders"]) => {
-  const folderNames = useMemo(() => {
-    const names = new Set<string>();
+  const folderNamesAndDescriptions = useMemo(() => {
+    const namesAndDescriptions = new Map<string, FolderNameAndDescription>();
+  
     folders?.forEach((folder) => {
-      names.add(folder.name);
+      if (!namesAndDescriptions.has(folder.name)) {
+        namesAndDescriptions.set(folder.name, { name: folder.name, description: folder.description });
+      }
     });
-    return [...names];
+  
+    return Array.from(namesAndDescriptions.values());
   }, [folders]);
 
   const isFolderPresentInEnv = useCallback(
@@ -31,7 +40,7 @@ export const useFolderOverview = (folders: DashboardProjectSecretsOverview["fold
     [folders]
   );
 
-  return { folderNames, isFolderPresentInEnv, getFolderByNameAndEnv };
+  return { folderNamesAndDescriptions, isFolderPresentInEnv, getFolderByNameAndEnv };
 };
 
 export const useDynamicSecretOverview = (

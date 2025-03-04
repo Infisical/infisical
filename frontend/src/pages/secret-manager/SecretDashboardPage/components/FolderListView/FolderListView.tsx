@@ -11,6 +11,7 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteFolder, useUpdateFolder } from "@app/hooks/api";
 import { TSecretFolder } from "@app/hooks/api/secretFolders/types";
+import { Tooltip } from "@app/components/v2/Tooltip/Tooltip";
 
 import { FolderForm } from "../ActionBar/FolderForm";
 
@@ -42,7 +43,7 @@ export const FolderListView = ({
   const { mutateAsync: updateFolder } = useUpdateFolder();
   const { mutateAsync: deleteFolder } = useDeleteFolder();
 
-  const handleFolderUpdate = async (newFolderName: string) => {
+  const handleFolderUpdate = async (newFolderName: string, newFolderDescription: string | undefined) => {    
     try {
       const { id: folderId } = popUp.updateFolder.data as TSecretFolder;
       await updateFolder({
@@ -50,7 +51,8 @@ export const FolderListView = ({
         name: newFolderName,
         path: secretPath,
         environment,
-        projectId: workspaceId
+        projectId: workspaceId,
+        description: newFolderDescription
       });
       handlePopUpClose("updateFolder");
       createNotification({
@@ -98,7 +100,7 @@ export const FolderListView = ({
 
   return (
     <>
-      {folders.map(({ name, id }) => (
+      {folders.map(({ name, id, description }) => (
         <div
           key={id}
           className="group flex cursor-pointer border-b border-mineshaft-600 hover:bg-mineshaft-700"
@@ -115,8 +117,14 @@ export const FolderListView = ({
             }}
             onClick={() => handleFolderClick(name)}
           >
-            {name}
-          </div>
+            <Tooltip
+              position="right"
+              className="flex items-center space-x-4 max-w-lg py-4 whitespace-pre-wrap"
+              content={description}
+            >
+              <div>{name}</div>
+            </Tooltip>
+            </div>
           <div className="flex items-center space-x-4 border-l border-mineshaft-600 px-3 py-3">
             <ProjectPermissionCan
               I={ProjectPermissionActions.Edit}
@@ -130,7 +138,7 @@ export const FolderListView = ({
                   variant="plain"
                   size="sm"
                   className="p-0 opacity-0 group-hover:opacity-100"
-                  onClick={() => handlePopUpOpen("updateFolder", { id, name })}
+                  onClick={() => handlePopUpOpen("updateFolder", { id, name, description })}
                   isDisabled={!isAllowed}
                 >
                   <FontAwesomeIcon icon={faPencilSquare} size="lg" />
@@ -167,6 +175,7 @@ export const FolderListView = ({
           <FolderForm
             isEdit
             defaultFolderName={(popUp.updateFolder?.data as TSecretFolder)?.name}
+            defaultDescription={(popUp.updateFolder?.data as TSecretFolder)?.description}
             onUpdateFolder={handleFolderUpdate}
           />
         </ModalContent>

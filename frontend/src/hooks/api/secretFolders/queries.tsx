@@ -148,12 +148,13 @@ export const useUpdateFolder = () => {
   const queryClient = useQueryClient();
 
   return useMutation<object, object, TUpdateFolderDTO>({
-    mutationFn: async ({ path = "/", folderId, name, environment, projectId }) => {
+    mutationFn: async ({ path = "/", folderId, name, environment, projectId, description }) => {
       const { data } = await apiRequest.patch(`/api/v1/folders/${folderId}`, {
         name,
         environment,
         workspaceId: projectId,
-        path
+        path,
+        description
       });
       return data;
     },

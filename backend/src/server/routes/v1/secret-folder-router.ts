@@ -47,7 +47,8 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
           .default("/")
           .transform(prefixWithSlash)
           .transform(removeTrailingSlash)
-          .describe(FOLDERS.CREATE.directory)
+          .describe(FOLDERS.CREATE.directory),
+        description: z.string().optional().describe(FOLDERS.CREATE.description)
       }),
       response: {
         200: z.object({
@@ -65,7 +66,8 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         actorOrgId: req.permission.orgId,
         ...req.body,
         projectId: req.body.workspaceId,
-        path
+        path,
+        description: req.body.description
       });
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -76,7 +78,8 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
             environment: req.body.environment,
             folderId: folder.id,
             folderName: folder.name,
-            folderPath: path
+            folderPath: path,
+            description: req.body.description
           }
         }
       });
@@ -125,7 +128,8 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
           .default("/")
           .transform(prefixWithSlash)
           .transform(removeTrailingSlash)
-          .describe(FOLDERS.UPDATE.directory)
+          .describe(FOLDERS.UPDATE.directory),
+        description: z.string().optional().describe(FOLDERS.UPDATE.description),
       }),
       response: {
         200: z.object({
@@ -144,7 +148,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         ...req.body,
         projectId: req.body.workspaceId,
         id: req.params.folderId,
-        path
+        path,
       });
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -196,7 +200,8 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
               .default("/")
               .transform(prefixWithSlash)
               .transform(removeTrailingSlash)
-              .describe(FOLDERS.UPDATE.path)
+              .describe(FOLDERS.UPDATE.path),
+            description: z.string().optional().describe(FOLDERS.UPDATE.description),
           })
           .array()
           .min(1)
