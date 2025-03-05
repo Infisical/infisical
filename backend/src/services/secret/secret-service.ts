@@ -2814,11 +2814,7 @@ export const secretServiceFactory = ({
           destinationAction,
           subject(ProjectPermissionSub.Secrets, {
             environment: destinationEnvironment,
-            secretPath: destinationSecretPath,
-            secretName: secretKey,
-            ...(secret.tags.length && {
-              secretTags: secret.tags.map((t) => t.id)
-            })
+            secretPath: destinationSecretPath
           })
         );
       }
@@ -2828,11 +2824,7 @@ export const secretServiceFactory = ({
           sourceAction,
           subject(ProjectPermissionSub.Secrets, {
             environment: sourceEnvironment,
-            secretPath: sourceSecretPath,
-            secretName: secretKey,
-            ...(secret.tags.length && {
-              secretTags: secret.tags.map((t) => t.id)
-            })
+            secretPath: sourceSecretPath
           })
         );
       }
