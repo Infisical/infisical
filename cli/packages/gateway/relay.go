@@ -13,6 +13,7 @@ import (
 	"syscall"
 
 	udplistener "github.com/Infisical/infisical-merge/packages/gateway/udp_listener"
+	"github.com/Infisical/infisical-merge/packages/systemd"
 	"github.com/pion/logging"
 	"github.com/pion/turn/v4"
 	"github.com/rs/zerolog/log"
@@ -164,6 +165,9 @@ func (g *GatewayRelay) Run() error {
 	}
 
 	log.Info().Msgf("Relay listening on %s\n", connAddress)
+
+	// make this compatiable with systemd notify mode
+	systemd.SdNotify(false, systemd.SdNotifyReady)
 	// Block until user sends SIGINT or SIGTERM
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
