@@ -13,7 +13,8 @@ export const SecretApprovalRequestsReviewersSchema = z.object({
   requestId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  reviewerUserId: z.string().uuid()
+  reviewerUserId: z.string().uuid(),
+  comment: z.string().nullable().optional()
 });
 
 export type TSecretApprovalRequestsReviewers = z.infer<typeof SecretApprovalRequestsReviewersSchema>;
