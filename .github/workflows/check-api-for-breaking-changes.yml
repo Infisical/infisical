@@ -64,6 +64,9 @@ jobs:
 
           if [ $HEALTHY -ne 1 ]; then
             echo "Container did not become healthy in time"
+
+            echo "Container logs:"
+            docker logs infisical-api
             exit 1
           fi
       - name: Install openapi-diff
