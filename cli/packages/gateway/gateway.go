@@ -141,19 +141,11 @@ func (g *Gateway) Listen(ctx context.Context) error {
 	g.config.Certificate = gatewayCert.Certificate
 	g.config.CertificateChain = gatewayCert.CertificateChain
 
+	errCh := make(chan error, 1)
 	shutdownCh := make(chan bool, 1)
 
-	if g.config.InfisicalStaticIp != "" {
-		log.Info().Msgf("Found static ip from Infisical: %s. Creating permission IP lifecycle", g.config.InfisicalStaticIp)
-		peerAddr, err := net.ResolveUDPAddr("udp", g.config.InfisicalStaticIp)
-		if err != nil {
-			return fmt.Errorf("Failed to parse infisical static ip: %w", err)
-		}
-		err = g.client.CreatePermission(peerAddr)
-		if err != nil {
-			return fmt.Errorf("Failed to set permission: %w", err)
-		}
-	}
+	g.registerPermissionRefresh(ctx, errCh)
+	g.registerHeartBeat(ctx, errCh)
 
 	cert, err := tls.X509KeyPair([]byte(gatewayCert.Certificate), []byte(gatewayCert.PrivateKey))
 	if err != nil {
@@ -175,9 +167,11 @@ func (g *Gateway) Listen(ctx context.Context) error {
 	// Setup QUIC listener on the relayConn
 	quicConfig := &quic.Config{
 		EnableDatagrams: true,
-		MaxIdleTimeout:  30 * time.Second,
-		KeepAlivePeriod: 15 * time.Second,
+		MaxIdleTimeout:  10 * time.Second,
+		KeepAlivePeriod: 2 * time.Second,
 	}
+
+	g.registerRelayIsActive(ctx, relayUdpConnection.LocalAddr().String(), tlsConfig, quicConfig, errCh)
 
 	quicListener, err := quic.Listen(relayUdpConnection, tlsConfig, quicConfig)
 	if err != nil {
@@ -187,12 +181,8 @@ func (g *Gateway) Listen(ctx context.Context) error {
 
 	log.Printf("Listener started on %s", quicListener.Addr())
 
-	errCh := make(chan error, 1)
 	log.Info().Msg("Gateway started successfully")
-	g.registerHeartBeat(errCh, shutdownCh)
-	g.registerRelayIsActive(relayUdpConnection.LocalAddr().String(), tlsConfig, quicConfig, errCh, shutdownCh)
 
-	// Create a WaitGroup to track active connections
 	var wg sync.WaitGroup
 
 	go func() {
@@ -248,6 +238,7 @@ func (g *Gateway) Listen(ctx context.Context) error {
 	case <-ctx.Done():
 		log.Info().Msg("Shutting down gateway...")
 	case err = <-errCh:
+		log.Error().Err(err).Msg("Gateway error occurred")
 	}
 
 	// Signal the accept loop to stop
@@ -270,7 +261,7 @@ func (g *Gateway) Listen(ctx context.Context) error {
 	return err
 }
 
-func (g *Gateway) registerHeartBeat(errCh chan error, done chan bool) {
+func (g *Gateway) registerHeartBeat(ctx context.Context, errCh chan error) {
 	ticker := time.NewTicker(30 * time.Minute)
 	defer ticker.Stop()
 
@@ -283,7 +274,7 @@ func (g *Gateway) registerHeartBeat(errCh chan error, done chan bool) {
 			}
 
 			select {
-			case <-done:
+			case <-ctx.Done():
 				return
 			case <-ticker.C:
 			}
@@ -291,32 +282,90 @@ func (g *Gateway) registerHeartBeat(errCh chan error, done chan bool) {
 	}()
 }
 
-func (g *Gateway) registerRelayIsActive(serverAddr string, tlsConf *tls.Config, quicConf *quic.Config, errCh chan error, done chan bool) {
-	ticker := time.NewTicker(10 * time.Second)
+func (g *Gateway) registerRelayIsActive(ctx context.Context, serverAddr string, tlsConf *tls.Config, quicConf *quic.Config, errCh chan error) {
+	ticker := time.NewTicker(5 * time.Second)
+	maxFailures := 3
+	failures := 0
 
 	go func() {
-		time.Sleep(5 * time.Second)
+		time.Sleep(2 * time.Second)
 		for {
 			select {
-			case <-done:
-				ticker.Stop()
+			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				func() {
-					ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-					defer cancel()
-					conn, err := quic.DialAddr(ctx, serverAddr, tlsConf, quicConf)
-					if conn != nil {
-						conn.CloseWithError(0, "connection closed")
-					}
-					// If we get a TLS verification error, that means the QUIC connection is working
-					// Any other error means the connection is not working
-					if err != nil && !strings.Contains(err.Error(), "tls: failed to verify certificate") {
-						log.Error().Err(err).Msg("Relay connection check failed")
+				conn, err := quic.DialAddr(ctx, serverAddr, tlsConf, quicConf)
+				if conn != nil {
+					failures = 0
+					conn.CloseWithError(0, "connection closed")
+				}
+
+				if err != nil && !strings.Contains(err.Error(), "tls: failed to verify certificate") {
+					failures++
+					log.Warn().Err(err).Int("failures", failures).Msg("Relay connection check failed")
+
+					if failures >= maxFailures {
 						errCh <- fmt.Errorf("relay connection check failed: %w", err)
 					}
-				}()
+				}
 			}
 		}
 	}()
+}
+
+func (g *Gateway) registerPermissionRefresh(ctx context.Context, errCh chan error) {
+	if g.config.InfisicalStaticIp == "" {
+		return
+	}
+
+	log.Info().Msg("Starting TURN permission refresh routine")
+
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+
+		g.refreshPermission(errCh)
+
+		for {
+			select {
+			case <-ctx.Done():
+				log.Info().Msg("Context cancelled, stopping TURN permission refresh")
+				return
+			case <-ticker.C:
+				g.refreshPermission(errCh)
+			}
+		}
+	}()
+}
+
+func (g *Gateway) refreshPermission(errCh chan error) {
+	log.Info().Msg("Attempting to refresh TURN permission")
+	maxRetries := 3
+	retryDelay := 5 * time.Second
+
+	var lastErr error
+	for i := 0; i < maxRetries; i++ {
+		peerAddr, err := net.ResolveUDPAddr("udp", g.config.InfisicalStaticIp)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to resolve static IP for permission refresh")
+			continue
+		}
+
+		if err := g.client.CreatePermission(peerAddr); err != nil {
+			lastErr = err
+			log.Warn().Err(err).Int("attempt", i+1).Msg("Failed to refresh TURN permission, retrying...")
+			time.Sleep(retryDelay)
+			continue
+		}
+
+		log.Info().Msg("Successfully refreshed TURN permission")
+		return
+	}
+
+	if lastErr != nil {
+		log.Error().Err(lastErr).Msg("Failed to refresh TURN permission after retries")
+		if reconnectErr := g.ConnectWithRelay(); reconnectErr != nil {
+			errCh <- fmt.Errorf("failed to refresh permissions and reconnect: %w", reconnectErr)
+		}
+	}
 }
