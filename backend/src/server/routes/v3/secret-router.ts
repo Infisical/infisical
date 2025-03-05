@@ -382,7 +382,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/raw/:secretName/:id",
+    url: "/raw/:secretName",
     config: {
       rateLimit: secretsLimit
     },
@@ -394,11 +394,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        secretName: z.string().trim().describe(RAW_SECRETS.GET.secretName),
-        id: z.string().trim()
+        secretName: z.string().trim().describe(RAW_SECRETS.GET.secretName)
       }),
       querystring: z.object({
-        testRequiredField: z.string().describe("test required field"),
         workspaceId: z.string().trim().optional().describe(RAW_SECRETS.GET.workspaceId),
         workspaceSlug: z.string().trim().optional().describe(RAW_SECRETS.GET.workspaceSlug),
         environment: z.string().trim().optional().describe(RAW_SECRETS.GET.environment),
