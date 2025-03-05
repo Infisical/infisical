@@ -1234,7 +1234,7 @@ export const secretV2BridgeServiceFactory = ({
         decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
         expandSecretReferences: shouldExpandSecretReferences ? expandSecretReferences : undefined,
         hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) => {
-          const canDescribe = permission.can(
+          return permission.can(
             ProjectPermissionSecretActions.DescribeSecret,
             subject(ProjectPermissionSub.Secrets, {
               environment: expandEnvironment,
@@ -1243,17 +1243,6 @@ export const secretV2BridgeServiceFactory = ({
               secretTags: expandSecretTags
             })
           );
-          const canReadValue = permission.can(
-            ProjectPermissionSecretActions.ReadValue,
-            subject(ProjectPermissionSub.Secrets, {
-              environment: expandEnvironment,
-              secretPath: expandSecretPath,
-              secretName: expandSecretKey,
-              secretTags: expandSecretTags
-            })
-          );
-
-          return viewSecretValue ? canDescribe && canReadValue : canDescribe;
         }
       });
 
@@ -1261,6 +1250,30 @@ export const secretV2BridgeServiceFactory = ({
         for (let j = 0; j < importedSecrets[i].secrets.length; j += 1) {
           const importedSecret = importedSecrets[i].secrets[j];
           if (secretName === importedSecret.key) {
+            let secretValueHidden = true;
+
+            if (viewSecretValue) {
+              if (
+                !permission.can(
+                  ProjectPermissionSecretActions.ReadValue,
+                  subject(ProjectPermissionSub.Secrets, {
+                    environment: importedSecret.environment,
+                    secretPath: importedSecrets[i].secretPath,
+                    secretName: importedSecret.key,
+                    secretTags: (importedSecret.secretTags || []).map((el) => el.slug)
+                  })
+                ) &&
+                secretType !== SecretType.Personal
+              ) {
+                throw new ForbiddenRequestError({
+                  message: `You do not have permission to view secret import value on secret with name '${secretName}'`,
+                  name: "ForbiddenReadSecretError"
+                });
+              }
+
+              secretValueHidden = false;
+            }
+
             return reshapeBridgeSecret(
               projectId,
               importedSecrets[i].environment,
@@ -1270,7 +1283,7 @@ export const secretV2BridgeServiceFactory = ({
                 value: importedSecret.secretValue || "",
                 comment: importedSecret.secretComment || ""
               },
-              importedSecret.secretValueHidden
+              secretValueHidden
             );
           }
         }
