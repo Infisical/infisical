@@ -28,8 +28,9 @@ require (
 	github.com/rs/zerolog v1.26.1
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.8.1
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	golang.org/x/crypto v0.35.0
+	golang.org/x/sys v0.30.0
 	golang.org/x/term v0.29.0
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -115,7 +116,6 @@ require (
 	golang.org/x/net v0.35.0 // indirect
 	golang.org/x/oauth2 v0.21.0 // indirect
 	golang.org/x/sync v0.11.0 // indirect
-	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
 	golang.org/x/time v0.6.0 // indirect
 	golang.org/x/tools v0.30.0 // indirect
@@ -139,3 +139,5 @@ require (
 )
 
 replace github.com/zalando/go-keyring => github.com/Infisical/go-keyring v1.0.2
+
+replace github.com/pion/turn/v4 => github.com/Infisical/turn/v4 v4.0.0
