@@ -19,8 +19,6 @@ const sanitizedSlackIntegrationSchema = WorkflowIntegrationsSchema.pick({
   })
 );
 
-// test change // //
-
 export const registerSlackRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
 
