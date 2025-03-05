@@ -341,9 +341,9 @@ func (g *Gateway) registerRelayIsActive(ctx context.Context, relayAddress string
 					EnableDatagrams: true,
 				}
 				func() {
-					ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+					checkCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
 					defer cancel()
-					conn, err := quic.DialAddr(ctx, relayAddress, tlsConfig, quicConfig)
+					conn, err := quic.DialAddr(checkCtx, relayAddress, tlsConfig, quicConfig)
 					if err != nil {
 						failures++
 						log.Warn().Err(err).Int("failures", failures).Msg("Relay connection check failed")
