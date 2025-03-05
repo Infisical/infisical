@@ -5,6 +5,7 @@ import { ActionProjectType, SecretFoldersSchema, SecretImportsSchema } from "@ap
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import {
   ProjectPermissionDynamicSecretActions,
+  ProjectPermissionSecretActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { DASHBOARD } from "@app/lib/api-docs";
@@ -688,6 +689,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             .optional(),
           secrets: secretRawSchema
             .extend({
+              secretValueHidden: z.boolean(),
               secretPath: z.string().optional(),
               secretMetadata: ResourceMetadataSchema.optional(),
               tags: SanitizedTagSchema.array().optional()
@@ -734,6 +736,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
       const secrets = await server.services.secret.getSecretsRawByFolderMappings(
         {
+          filterByAction: ProjectPermissionSecretActions.DescribeSecret,
           projectId,
           folderMappings,
           filters: {

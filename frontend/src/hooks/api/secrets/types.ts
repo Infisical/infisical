@@ -113,6 +113,7 @@ export type TGetProjectSecretsKey = {
   environment: string;
   secretPath?: string;
   includeImports?: boolean;
+  viewSecretValue?: boolean;
   expandSecretReferences?: boolean;
 };
 
