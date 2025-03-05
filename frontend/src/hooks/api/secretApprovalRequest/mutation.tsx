@@ -13,9 +13,10 @@ export const useUpdateSecretApprovalReviewStatus = () => {
   const queryClient = useQueryClient();
 
   return useMutation<object, object, TUpdateSecretApprovalReviewStatusDTO>({
-    mutationFn: async ({ id, status }) => {
+    mutationFn: async ({ id, status, comment }) => {
       const { data } = await apiRequest.post(`/api/v1/secret-approval-requests/${id}/review`, {
-        status
+        status,
+        comment
       });
       return data;
     },

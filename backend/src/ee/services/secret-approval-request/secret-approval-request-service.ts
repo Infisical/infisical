@@ -320,6 +320,7 @@ export const secretApprovalRequestServiceFactory = ({
     approvalId,
     actor,
     status,
+    comment,
     actorId,
     actorAuthMethod,
     actorOrgId
@@ -372,15 +373,18 @@ export const secretApprovalRequestServiceFactory = ({
         return secretApprovalRequestReviewerDAL.create(
           {
             status,
+            comment,
             requestId: secretApprovalRequest.id,
             reviewerUserId: actorId
           },
           tx
         );
       }
-      return secretApprovalRequestReviewerDAL.updateById(review.id, { status }, tx);
+
+      return secretApprovalRequestReviewerDAL.updateById(review.id, { status, comment }, tx);
     });
-    return reviewStatus;
+
+    return { ...reviewStatus, projectId: secretApprovalRequest.projectId };
   };
 
   const updateApprovalStatus = async ({

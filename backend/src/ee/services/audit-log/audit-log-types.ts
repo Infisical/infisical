@@ -22,6 +22,7 @@ import {
 } from "@app/services/secret-sync/secret-sync-types";
 
 import { KmipPermission } from "../kmip/kmip-enum";
+import { ApprovalStatus } from "../secret-approval-request/secret-approval-request-types";
 
 export type TListProjectAuditLogDTO = {
   filter: {
@@ -165,6 +166,7 @@ export enum EventType {
   SECRET_APPROVAL_REQUEST = "secret-approval-request",
   SECRET_APPROVAL_CLOSED = "secret-approval-closed",
   SECRET_APPROVAL_REOPENED = "secret-approval-reopened",
+  SECRET_APPROVAL_REQUEST_REVIEWED = "secret-approval-request-reviewed",
   SIGN_SSH_KEY = "sign-ssh-key",
   ISSUE_SSH_CREDS = "issue-ssh-creds",
   CREATE_SSH_CA = "create-ssh-certificate-authority",
@@ -1311,6 +1313,16 @@ interface SecretApprovalRequest {
     committedBy: string;
     secretApprovalRequestSlug: string;
     secretApprovalRequestId: string;
+  };
+}
+
+interface SecretApprovalRequestReviewed {
+  type: EventType.SECRET_APPROVAL_REQUEST_REVIEWED;
+  metadata: {
+    secretApprovalRequestId: string;
+    reviewedBy: string;
+    status: ApprovalStatus;
+    comment: string;
   };
 }
 
@@ -2482,4 +2494,5 @@ export type Event =
   | KmipOperationRevokeEvent
   | KmipOperationLocateEvent
   | KmipOperationRegisterEvent
-  | CreateSecretRequestEvent;
+  | CreateSecretRequestEvent
+  | SecretApprovalRequestReviewed;
