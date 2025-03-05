@@ -261,7 +261,7 @@ export const SecretApprovalRequestChanges = ({
               <DropdownMenuContent align="end" asChild className="mt-3">
                 <form onSubmit={handleSubmit(handleSubmitReview)}>
                   <div className="flex w-[400px] flex-col space-y-2 p-5">
-                    <div className="font-medium">Finish your review</div>
+                    <div className="text-lg font-medium">Finish your review</div>
                     <Controller
                       control={control}
                       name="comment"
@@ -271,7 +271,7 @@ export const SecretApprovalRequestChanges = ({
                             {...field}
                             placeholder="Leave a comment..."
                             reSize="none"
-                            className="h-48 border border-mineshaft-600 bg-bunker-800"
+                            className="text-md mt-2 h-48 border border-mineshaft-600 bg-bunker-800"
                           />
                         </FormControl>
                       )}
