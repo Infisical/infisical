@@ -10,6 +10,7 @@ import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-sche
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import { TFnSecretBulkDelete, TFnSecretBulkInsert, TFnSecretBulkUpdate } from "./secret-v2-bridge-types";
+import { ActorType } from "../auth/auth-type";
 
 const INTERPOLATION_SYNTAX_REG = /\${([a-zA-Z0-9-_.]+)}/g;
 // akhilmhdh: JS regex with global save state in .test
@@ -62,6 +63,7 @@ export const fnSecretBulkInsert = async ({
   resourceMetadataDAL,
   secretTagDAL,
   secretVersionTagDAL,
+  actor,
   tx
 }: TFnSecretBulkInsert) => {
   const sanitizedInputSecrets = inputSecrets.map(
@@ -90,6 +92,9 @@ export const fnSecretBulkInsert = async ({
     })
   );
 
+  const userActorId = actor && actor.type === ActorType.USER ? actor.actorId : undefined;
+  const identityActorId = actor && actor.type !== ActorType.USER ? actor.actorId : undefined;
+
   const newSecrets = await secretDAL.insertMany(
     sanitizedInputSecrets.map((el) => ({ ...el, folderId })),
     tx
@@ -106,6 +111,9 @@ export const fnSecretBulkInsert = async ({
     sanitizedInputSecrets.map((el) => ({
       ...el,
       folderId,
+      userActorId,
+      identityActorId,
+      actorType: actor?.type,
       secretId: newSecretGroupedByKeyName[el.key][0].id
     })),
     tx
@@ -157,8 +165,12 @@ export const fnSecretBulkUpdate = async ({
   secretVersionDAL,
   secretTagDAL,
   secretVersionTagDAL,
-  resourceMetadataDAL
+  resourceMetadataDAL,
+  actor
 }: TFnSecretBulkUpdate) => {
+  const userActorId = actor && actor?.type === ActorType.USER ? actor?.actorId : undefined;
+  const identityActorId = actor && actor?.type !== ActorType.USER ? actor?.actorId : undefined;
+
   const sanitizedInputSecrets = inputSecrets.map(
     ({
       filter,
@@ -216,7 +228,10 @@ export const fnSecretBulkUpdate = async ({
         encryptedValue,
         reminderRepeatDays,
         folderId,
-        secretId
+        secretId,
+        userActorId,
+        identityActorId,
+        actorType: actor?.type
       })
     ),
     tx
@@ -616,6 +631,11 @@ export const reshapeBridgeSecret = (
   secret: Omit<TSecretsV2, "encryptedValue" | "encryptedComment"> & {
     value: string;
     comment: string;
+    actor?: {
+      actorType?: string;
+      actorId?: string;
+      name?: string;
+    };
     tags?: {
       id: string;
       slug: string;
@@ -636,6 +656,7 @@ export const reshapeBridgeSecret = (
   _id: secret.id,
   id: secret.id,
   user: secret.userId,
+  actor: secret.actor,
   tags: secret.tags,
   skipMultilineEncoding: secret.skipMultilineEncoding,
   secretReminderRepeatDays: secret.reminderRepeatDays,

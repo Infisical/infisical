@@ -168,6 +168,10 @@ export type TFnSecretBulkInsert = {
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
+  actor?: {
+    type: string;
+    actorId: string;
+  };
 };
 
 type TRequireReferenceIfValue =
@@ -192,6 +196,10 @@ export type TFnSecretBulkUpdate = {
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "deleteTagsToSecretV2">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
+  actor?: {
+    type: string;
+    actorId: string;
+  };
   tx?: Knex;
 };
 

@@ -370,7 +370,20 @@ export const secretSnapshotServiceFactory = ({
         const secrets = await secretV2BridgeDAL.insertMany(
           rollbackSnaps.flatMap(({ secretVersions, folderId }) =>
             secretVersions.map(
-              ({ latestSecretVersion, version, updatedAt, createdAt, secretId, envId, id, tags, ...el }) => ({
+              ({
+                latestSecretVersion,
+                version,
+                updatedAt,
+                createdAt,
+                secretId,
+                envId,
+                id,
+                tags,
+                userActorId,
+                identityActorId,
+                actorType,
+                ...el
+              }) => ({
                 ...el,
                 id: secretId,
                 version: deletedTopLevelSecsGroupById[secretId] ? latestSecretVersion + 1 : latestSecretVersion,

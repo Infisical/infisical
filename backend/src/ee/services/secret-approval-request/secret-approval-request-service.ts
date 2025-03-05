@@ -761,7 +761,11 @@ export const secretApprovalRequestServiceFactory = ({
               secretDAL,
               secretVersionDAL,
               secretTagDAL,
-              secretVersionTagDAL
+              secretVersionTagDAL,
+              actor: {
+                type: actor,
+                actorId
+              }
             })
           : [];
         const updatedSecrets = secretUpdationCommits.length
@@ -807,7 +811,11 @@ export const secretApprovalRequestServiceFactory = ({
               secretDAL,
               secretVersionDAL,
               secretTagDAL,
-              secretVersionTagDAL
+              secretVersionTagDAL,
+              actor: {
+                type: actor,
+                actorId
+              }
             })
           : [];
         const deletedSecret = secretDeletionCommits.length
