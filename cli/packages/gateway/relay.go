@@ -3,6 +3,7 @@ package gateway
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"net"
@@ -13,6 +14,7 @@ import (
 	"syscall"
 
 	udplistener "github.com/Infisical/infisical-merge/packages/gateway/udp_listener"
+	"github.com/Infisical/infisical-merge/packages/systemd"
 	"github.com/pion/logging"
 	"github.com/pion/turn/v4"
 	"github.com/rs/zerolog/log"
@@ -36,8 +38,10 @@ type GatewayRelayConfig struct {
 	RelayMaxPort      uint16 `yaml:"relay_max_port"`
 	TlsCertPath       string `yaml:"tls_cert_path"`
 	TlsPrivateKeyPath string `yaml:"tls_private_key_path"`
+	TlsCaPath         string `yaml:"tls_ca_path"`
 
 	tls          tls.Certificate
+	tlsCa        string
 	isTlsEnabled bool
 }
 
@@ -78,19 +82,19 @@ func NewGatewayRelay(configFilePath string) (*GatewayRelay, error) {
 			return nil, errMissingTlsCert
 		}
 
-		tlsCertFile, err := os.ReadFile(cfg.TlsCertPath)
+		cert, err := tls.LoadX509KeyPair(cfg.TlsCertPath, cfg.TlsPrivateKeyPath)
 		if err != nil {
-			return nil, err
-		}
-		tlsPrivateKeyFile, err := os.ReadFile(cfg.TlsPrivateKeyPath)
-		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("Failed to read load server tls key pair: %w", err)
 		}
 
-		cert, err := tls.LoadX509KeyPair(string(tlsCertFile), string(tlsPrivateKeyFile))
-		if err != nil {
-			return nil, err
+		if cfg.TlsCaPath != "" {
+			ca, err := os.ReadFile(cfg.TlsCaPath)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to read tls ca: %w", err)
+			}
+			cfg.tlsCa = string(ca)
 		}
+
 		cfg.tls = cert
 		cfg.isTlsEnabled = true
 	}
@@ -139,8 +143,12 @@ func (g *GatewayRelay) Run() error {
 		}
 
 		if g.Config.isTlsEnabled {
+			caCertPool := x509.NewCertPool()
+			caCertPool.AppendCertsFromPEM([]byte(g.Config.tlsCa))
+
 			listenerConfigs[i].Listener = tls.NewListener(conn, &tls.Config{
 				Certificates: []tls.Certificate{g.Config.tls},
+				ClientCAs:    caCertPool,
 			})
 		} else {
 			listenerConfigs[i].Listener = conn
@@ -164,6 +172,9 @@ func (g *GatewayRelay) Run() error {
 	}
 
 	log.Info().Msgf("Relay listening on %s\n", connAddress)
+
+	// make this compatiable with systemd notify mode
+	systemd.SdNotify(false, systemd.SdNotifyReady)
 	// Block until user sends SIGINT or SIGTERM
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)

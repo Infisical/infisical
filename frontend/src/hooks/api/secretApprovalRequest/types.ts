@@ -44,6 +44,7 @@ export type TSecretApprovalRequest = {
   reviewers: {
     userId: string;
     status: ApprovalStatus;
+    comment: string;
     email: string;
     firstName: string;
     lastName: string;
@@ -114,6 +115,7 @@ export type TGetSecretApprovalRequestDetails = {
 
 export type TUpdateSecretApprovalReviewStatusDTO = {
   status: ApprovalStatus;
+  comment?: string;
   id: string;
 };
 

@@ -6,11 +6,13 @@ import (
 	"crypto/x509"
 	"fmt"
 	"net"
+	"os"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/Infisical/infisical-merge/packages/api"
+	"github.com/Infisical/infisical-merge/packages/systemd"
 	"github.com/go-resty/resty/v2"
 	"github.com/pion/logging"
 	"github.com/pion/turn/v4"
@@ -75,6 +77,10 @@ func (g *Gateway) ConnectWithRelay() error {
 
 	// Start a new TURN Client and wrap our net.Conn in a STUNConn
 	// This allows us to simulate datagram based communication over a net.Conn
+	logger := logging.NewDefaultLoggerFactory()
+	if os.Getenv("LOG_LEVEL") == "debug" {
+		logger.DefaultLogLevel = logging.LogLevelDebug
+	}
 	cfg := &turn.ClientConfig{
 		STUNServerAddr: relayDetails.TurnServerAddress,
 		TURNServerAddr: relayDetails.TurnServerAddress,
@@ -82,7 +88,7 @@ func (g *Gateway) ConnectWithRelay() error {
 		Username:       relayDetails.TurnServerUsername,
 		Password:       relayDetails.TurnServerPassword,
 		Realm:          relayDetails.TurnServerRealm,
-		LoggerFactory:  logging.NewDefaultLoggerFactory(),
+		LoggerFactory:  logger,
 	}
 
 	client, err := turn.NewClient(cfg)
@@ -95,10 +101,6 @@ func (g *Gateway) ConnectWithRelay() error {
 		TurnServerPassword: relayDetails.TurnServerPassword,
 		TurnServerAddress:  relayDetails.TurnServerAddress,
 		InfisicalStaticIp:  relayDetails.InfisicalStaticIp,
-	}
-	// if port not specific allow all port
-	if relayDetails.InfisicalStaticIp != "" && !strings.Contains(relayDetails.InfisicalStaticIp, ":") {
-		g.config.InfisicalStaticIp = g.config.InfisicalStaticIp + ":0"
 	}
 
 	g.client = client
@@ -144,7 +146,10 @@ func (g *Gateway) Listen(ctx context.Context) error {
 	errCh := make(chan error, 1)
 	shutdownCh := make(chan bool, 1)
 
-	g.registerPermissionRefresh(ctx, errCh)
+	if err = g.createPermissionForStaticIps(g.config.InfisicalStaticIp); err != nil {
+		return err
+	}
+
 	g.registerHeartBeat(ctx, errCh)
 
 	cert, err := tls.X509KeyPair([]byte(gatewayCert.Certificate), []byte(gatewayCert.PrivateKey))
@@ -171,8 +176,7 @@ func (g *Gateway) Listen(ctx context.Context) error {
 		KeepAlivePeriod: 2 * time.Second,
 	}
 
-	g.registerRelayIsActive(ctx, relayUdpConnection.LocalAddr().String(), tlsConfig, quicConfig, errCh)
-
+	g.registerRelayIsActive(ctx, relayUdpConnection.LocalAddr().String(), errCh)
 	quicListener, err := quic.Listen(relayUdpConnection, tlsConfig, quicConfig)
 	if err != nil {
 		return fmt.Errorf("Failed to listen for QUIC: %w", err)
@@ -234,6 +238,8 @@ func (g *Gateway) Listen(ctx context.Context) error {
 		}
 	}()
 
+	// make this compatiable with systemd notify mode
+	systemd.SdNotify(false, systemd.SdNotifyReady)
 	select {
 	case <-ctx.Done():
 		log.Info().Msg("Shutting down gateway...")
@@ -282,8 +288,40 @@ func (g *Gateway) registerHeartBeat(ctx context.Context, errCh chan error) {
 	}()
 }
 
-func (g *Gateway) registerRelayIsActive(ctx context.Context, serverAddr string, tlsConf *tls.Config, quicConf *quic.Config, errCh chan error) {
-	ticker := time.NewTicker(5 * time.Second)
+func (g *Gateway) createPermissionForStaticIps(staticIps string) error {
+	if staticIps == "" {
+		return fmt.Errorf("Missing Infisical static ips for permission")
+	}
+
+	splittedIps := strings.Split(staticIps, ",")
+	resolvedIps := make([]net.Addr, 0)
+	for _, ip := range splittedIps {
+		ip = strings.TrimSpace(ip)
+		if ip == "" {
+			continue
+		}
+
+		// if port not specific allow all port
+		if !strings.Contains(ip, ":") {
+			ip = ip + ":0"
+		}
+
+		peerAddr, err := net.ResolveUDPAddr("udp", ip)
+		if err != nil {
+			return fmt.Errorf("Failed to resolve static ip for permission: %w", err)
+		}
+
+		resolvedIps = append(resolvedIps, peerAddr)
+	}
+
+	if err := g.client.CreatePermission(resolvedIps...); err != nil {
+		return fmt.Errorf("Failed to set ip permission: %w", err)
+	}
+	return nil
+}
+
+func (g *Gateway) registerRelayIsActive(ctx context.Context, relayAddress string, errCh chan error) error {
+	ticker := time.NewTicker(10 * time.Second)
 	maxFailures := 3
 	failures := 0
 
@@ -294,78 +332,32 @@ func (g *Gateway) registerRelayIsActive(ctx context.Context, serverAddr string, 
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				conn, err := quic.DialAddr(ctx, serverAddr, tlsConf, quicConf)
-				if conn != nil {
-					failures = 0
-					conn.CloseWithError(0, "connection closed")
+				// Configure TLS to skip verification
+				tlsConfig := &tls.Config{
+					InsecureSkipVerify: true,
+					NextProtos:         []string{"infisical-gateway"},
 				}
-
-				if err != nil && !strings.Contains(err.Error(), "tls: failed to verify certificate") {
-					failures++
-					log.Warn().Err(err).Int("failures", failures).Msg("Relay connection check failed")
-
-					if failures >= maxFailures {
-						errCh <- fmt.Errorf("relay connection check failed: %w", err)
+				quicConfig := &quic.Config{
+					EnableDatagrams: true,
+				}
+				func() {
+					checkCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+					defer cancel()
+					conn, err := quic.DialAddr(checkCtx, relayAddress, tlsConfig, quicConfig)
+					if err != nil {
+						failures++
+						log.Warn().Err(err).Int("failures", failures).Msg("Relay connection check failed")
+						if failures >= maxFailures {
+							errCh <- fmt.Errorf("relay connection check failed: %w", err)
+						}
 					}
-				}
+					if conn != nil {
+						conn.CloseWithError(0, "closed")
+					}
+				}()
 			}
 		}
 	}()
-}
 
-func (g *Gateway) registerPermissionRefresh(ctx context.Context, errCh chan error) {
-	if g.config.InfisicalStaticIp == "" {
-		return
-	}
-
-	log.Info().Msg("Starting TURN permission refresh routine")
-
-	go func() {
-		ticker := time.NewTicker(30 * time.Second)
-		defer ticker.Stop()
-
-		g.refreshPermission(errCh)
-
-		for {
-			select {
-			case <-ctx.Done():
-				log.Info().Msg("Context cancelled, stopping TURN permission refresh")
-				return
-			case <-ticker.C:
-				g.refreshPermission(errCh)
-			}
-		}
-	}()
-}
-
-func (g *Gateway) refreshPermission(errCh chan error) {
-	log.Info().Msg("Attempting to refresh TURN permission")
-	maxRetries := 3
-	retryDelay := 5 * time.Second
-
-	var lastErr error
-	for i := 0; i < maxRetries; i++ {
-		peerAddr, err := net.ResolveUDPAddr("udp", g.config.InfisicalStaticIp)
-		if err != nil {
-			log.Error().Err(err).Msg("Failed to resolve static IP for permission refresh")
-			continue
-		}
-
-		if err := g.client.CreatePermission(peerAddr); err != nil {
-			lastErr = err
-			log.Warn().Err(err).Int("attempt", i+1).Msg("Failed to refresh TURN permission, retrying...")
-			time.Sleep(retryDelay)
-			continue
-		}
-
-		log.Info().Msg("Successfully refreshed TURN permission")
-		return
-	}
-
-	if lastErr != nil {
-		log.Error().Err(lastErr).Msg("Failed to refresh TURN permission after retries")
-		if reconnectErr := g.ConnectWithRelay(); reconnectErr != nil {
-			errCh <- fmt.Errorf("failed to refresh permissions and reconnect: %w", reconnectErr)
-		}
-	}
+	return nil
 }

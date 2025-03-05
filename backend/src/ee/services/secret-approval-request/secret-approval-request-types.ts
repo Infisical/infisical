@@ -80,6 +80,7 @@ export type TStatusChangeDTO = {
 export type TReviewRequestDTO = {
   approvalId: string;
   status: ApprovalStatus;
+  comment?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TApprovalRequestCountDTO = TProjectPermission;
