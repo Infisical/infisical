@@ -284,6 +284,10 @@ export const secretServiceFactory = ({
         secretVersionDAL,
         secretTagDAL,
         secretVersionTagDAL,
+        actor: {
+          type: actor,
+          actorId
+        },
         tx
       })
     );
@@ -429,6 +433,10 @@ export const secretServiceFactory = ({
         secretVersionDAL,
         secretTagDAL,
         secretVersionTagDAL,
+        actor: {
+          type: actor,
+          actorId
+        },
         tx
       })
     );
@@ -822,6 +830,10 @@ export const secretServiceFactory = ({
         secretVersionDAL,
         secretTagDAL,
         secretVersionTagDAL,
+        actor: {
+          type: actor,
+          actorId
+        },
         tx
       })
     );
@@ -931,7 +943,11 @@ export const secretServiceFactory = ({
         secretDAL,
         secretVersionDAL,
         secretTagDAL,
-        secretVersionTagDAL
+        secretVersionTagDAL,
+        actor: {
+          type: actor,
+          actorId
+        }
       })
     );
 
@@ -2404,6 +2420,10 @@ export const secretServiceFactory = ({
         secretVersionDAL,
         secretTagDAL,
         secretVersionTagDAL,
+        actor: {
+          type: actor,
+          actorId
+        },
         tx
       })
     );
@@ -2514,6 +2534,10 @@ export const secretServiceFactory = ({
         secretVersionDAL,
         secretTagDAL,
         secretVersionTagDAL,
+        actor: {
+          type: actor,
+          actorId
+        },
         tx
       })
     );
@@ -2848,6 +2872,10 @@ export const secretServiceFactory = ({
             secretDAL,
             tx,
             secretTagDAL,
+            actor: {
+              type: actor,
+              actorId
+            },
             secretVersionTagDAL,
             inputSecrets: locallyCreatedSecrets.map((doc) => {
               return {
@@ -2879,6 +2907,10 @@ export const secretServiceFactory = ({
             tx,
             secretTagDAL,
             secretVersionTagDAL,
+            actor: {
+              type: actor,
+              actorId
+            },
             inputSecrets: locallyUpdatedSecrets.map((doc) => {
               return {
                 filter: {

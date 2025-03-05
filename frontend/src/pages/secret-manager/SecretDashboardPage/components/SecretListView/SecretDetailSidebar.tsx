@@ -9,11 +9,14 @@ import {
   faPlus,
   faShare,
   faTag,
-  faTrash
+  faTrash,
+  faUser,
+  faDesktop,
+  faServer
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -49,6 +52,8 @@ import { useGetSecretVersion } from "@app/hooks/api";
 import { useGetSecretAccessList } from "@app/hooks/api/secrets/queries";
 import { SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 import { ProjectType } from "@app/hooks/api/workspace/types";
+import { ActorType } from "@app/hooks/api/auditLogs/enums";
+import { useGetWorkspaceUsers } from "@app/hooks/api";
 
 import { CreateReminderForm } from "./CreateReminderForm";
 import { formSchema, SecretActionType, TFormSchema } from "./SecretListView.utils";
@@ -120,7 +125,9 @@ export const SecretDetailSidebar = ({
     {}
   );
   const selectTagSlugs = selectedTags.map((i) => i.slug);
-
+  const navigate = useNavigate();
+  const { data: members = [] } = useGetWorkspaceUsers(currentWorkspace.id);
+  
   const cannotEditSecret = permission.cannot(
     ProjectPermissionActions.Edit,
     subject(ProjectPermissionSub.Secrets, {
@@ -200,6 +207,41 @@ export const SecretDetailSidebar = ({
 
   const secretReminderRepeatDays = watch("reminderRepeatDays");
   const secretReminderNote = watch("reminderNote");
+
+  const getModifiedByIcon = (userType: string) => {
+    switch (userType) {
+      case ActorType.USER:
+        return faUser;
+      case ActorType.IDENTITY:
+        return faDesktop;
+      default:
+        return faServer;
+    }
+  }
+
+  const getUserMembershipId = (actorId: string) => {
+    return members.filter((member) => member.user?.id === actorId)?.[0].id || null;
+  }
+
+  const getLinkToModifyHistoryEntity = (actorId: string, actorType: string) => {
+    switch(actorType) {
+      case ActorType.USER:
+        return `/${ProjectType.SecretManager}/${currentWorkspace.id}/members/${getUserMembershipId(actorId)}`;
+      case ActorType.IDENTITY:
+        return `/${ProjectType.SecretManager}/${currentWorkspace.id}/identities/${actorId}`;
+      default:
+        return null;
+    }
+  }
+
+  const onModifyHistoryClick = (actorId: string | undefined, actorType: string) => {
+    if (actorId && actorType !== ActorType.PLATFORM) { 
+      const redirectLink = getLinkToModifyHistoryEntity(actorId, actorType);
+      if (redirectLink) {
+        navigate({ to: redirectLink });
+      }
+    }
+  }
 
   return (
     <>
@@ -618,7 +660,7 @@ export const SecretDetailSidebar = ({
               <div className="mb-4flex-grow dark cursor-default text-sm text-bunker-300">
                 <div className="mb-2 pl-1">Version History</div>
                 <div className="thin-scrollbar flex h-48 flex-col space-y-2 overflow-y-auto overflow-x-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 dark:[color-scheme:dark]">
-                  {secretVersion?.map(({ createdAt, secretValue, version, id }) => (
+                  {secretVersion?.map(({ createdAt, secretValue, version, id, actor }) => (
                     <div className="flex flex-row">
                       <div key={id} className="flex w-full flex-col space-y-1">
                         <div className="flex items-center">
@@ -633,36 +675,29 @@ export const SecretDetailSidebar = ({
                           <div className="relative w-10">
                             <div className="absolute bottom-0 left-3 top-0 mt-0.5 border-l border-mineshaft-400/60" />
                           </div>
-                          <div className="flex flex-row">
-                            <div className="h-min w-fit rounded-sm bg-primary-500/10 px-1 text-primary-300/70">
-                              Value:
-                            </div>
-                            <div className="group break-all pl-1 font-mono">
-                              <div className="relative hidden cursor-pointer transition-all duration-200 group-[.show-value]:inline">
-                                <button
-                                  type="button"
-                                  className="select-none"
-                                  onClick={(e) => {
-                                    navigator.clipboard.writeText(secretValue || "");
-                                    const target = e.currentTarget;
-                                    target.style.borderBottom = "1px dashed";
-                                    target.style.paddingBottom = "-1px";
-
-                                    // Create and insert popup
-                                    const popup = document.createElement("div");
-                                    popup.className =
-                                      "w-16 flex justify-center absolute top-6 left-0 text-xs text-primary-100 bg-mineshaft-800 px-1 py-0.5 rounded-md border border-primary-500/50";
-                                    popup.textContent = "Copied!";
-                                    target.parentElement?.appendChild(popup);
-
-                                    // Remove popup and border after delay
-                                    setTimeout(() => {
-                                      popup.remove();
-                                      target.style.borderBottom = "none";
-                                    }, 3000);
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter" || e.key === " ") {
+                          <div className="flex flex-col w-full cursor-default">
+                            {actor && (
+                              <div className="flex flex-row">
+                                <div className="flex flex-row w-fit text-sm">
+                                  Modified by: 
+                                  <Tooltip content={actor.name}>
+                                    <div onClick={() => onModifyHistoryClick(actor.actorId, actor.actorType)} className="cursor-pointer">
+                                      <FontAwesomeIcon icon={getModifiedByIcon(actor.actorType)} className="ml-2"/>
+                                    </div>
+                                  </Tooltip>
+                                </div>
+                              </div>
+                            )}
+                            <div className="flex flex-row">
+                              <div className="h-min w-fit rounded-sm bg-primary-500/10 px-1 text-primary-300/70">
+                                Value:
+                              </div>
+                              <div className="group break-all pl-1 font-mono">
+                                <div className="relative hidden cursor-pointer transition-all duration-200 group-[.show-value]:inline">
+                                  <button
+                                    type="button"
+                                    className="select-none"
+                                    onClick={(e) => {
                                       navigator.clipboard.writeText(secretValue || "");
                                       const target = e.currentTarget;
                                       target.style.borderBottom = "1px dashed";
@@ -680,51 +715,72 @@ export const SecretDetailSidebar = ({
                                         popup.remove();
                                         target.style.borderBottom = "none";
                                       }, 3000);
-                                    }
-                                  }}
-                                >
-                                  {secretValue}
-                                </button>
-                                <button
-                                  type="button"
-                                  className="ml-1 cursor-pointer"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    e.currentTarget
-                                      .closest(".group")
-                                      ?.classList.remove("show-value");
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter" || e.key === " ") {
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter" || e.key === " ") {
+                                        navigator.clipboard.writeText(secretValue || "");
+                                        const target = e.currentTarget;
+                                        target.style.borderBottom = "1px dashed";
+                                        target.style.paddingBottom = "-1px";
+
+                                        // Create and insert popup
+                                        const popup = document.createElement("div");
+                                        popup.className =
+                                          "w-16 flex justify-center absolute top-6 left-0 text-xs text-primary-100 bg-mineshaft-800 px-1 py-0.5 rounded-md border border-primary-500/50";
+                                        popup.textContent = "Copied!";
+                                        target.parentElement?.appendChild(popup);
+
+                                        // Remove popup and border after delay
+                                        setTimeout(() => {
+                                          popup.remove();
+                                          target.style.borderBottom = "none";
+                                        }, 3000);
+                                      }
+                                    }}
+                                  >
+                                    {secretValue}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="ml-1 cursor-pointer"
+                                    onClick={(e) => {
                                       e.stopPropagation();
                                       e.currentTarget
                                         .closest(".group")
                                         ?.classList.remove("show-value");
-                                    }
-                                  }}
-                                >
-                                  <FontAwesomeIcon icon={faEyeSlash} />
-                                </button>
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter" || e.key === " ") {
+                                        e.stopPropagation();
+                                        e.currentTarget
+                                          .closest(".group")
+                                          ?.classList.remove("show-value");
+                                      }
+                                    }}
+                                  >
+                                    <FontAwesomeIcon icon={faEyeSlash} />
+                                  </button>
+                                </div>
+                                <span className="group-[.show-value]:hidden">
+                                  {secretValue?.replace(/./g, "*")}
+                                  <button
+                                    type="button"
+                                    className="ml-1 cursor-pointer"
+                                    onClick={(e) => {
+                                      e.currentTarget.closest(".group")?.classList.add("show-value");
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter" || e.key === " ") {
+                                        e.currentTarget
+                                          .closest(".group")
+                                          ?.classList.add("show-value");
+                                      }
+                                    }}
+                                  >
+                                    <FontAwesomeIcon icon={faEye} />
+                                  </button>
+                                </span>
                               </div>
-                              <span className="group-[.show-value]:hidden">
-                                {secretValue?.replace(/./g, "*")}
-                                <button
-                                  type="button"
-                                  className="ml-1 cursor-pointer"
-                                  onClick={(e) => {
-                                    e.currentTarget.closest(".group")?.classList.add("show-value");
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter" || e.key === " ") {
-                                      e.currentTarget
-                                        .closest(".group")
-                                        ?.classList.add("show-value");
-                                    }
-                                  }}
-                                >
-                                  <FontAwesomeIcon icon={faEye} />
-                                </button>
-                              </span>
                             </div>
                           </div>
                         </div>
