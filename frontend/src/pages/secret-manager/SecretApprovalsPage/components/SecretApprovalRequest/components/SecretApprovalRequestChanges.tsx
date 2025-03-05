@@ -372,7 +372,40 @@ export const SecretApprovalRequestChanges = ({
             )
           )}
         </div>
-        <div className="mt-8 flex items-center space-x-6 rounded-lg bg-mineshaft-800 px-5 py-6">
+        <div className="mt-4 flex flex-col items-center rounded-lg">
+          {secretApprovalRequestDetails?.policy?.approvers
+            .filter((requiredApprover) => reviewedUsers?.[requiredApprover.userId])
+            .map((requiredApprover) => {
+              const reviewer = reviewedUsers?.[requiredApprover.userId];
+              return (
+                <div
+                  className="mb-4 flex w-full flex-col rounded-md bg-mineshaft-800 p-6"
+                  key={`required-approver-${requiredApprover.userId}`}
+                >
+                  <div>
+                    <span className="ml-1">
+                      {`${requiredApprover.firstName || ""} ${requiredApprover.lastName || ""}`} (
+                      {requiredApprover?.email}) has{" "}
+                    </span>
+                    <span
+                      className={`${reviewer?.status === ApprovalStatus.APPROVED ? "text-green-500" : "text-red-500"}`}
+                    >
+                      {reviewer?.status === ApprovalStatus.APPROVED ? "approved" : "rejected"}
+                    </span>{" "}
+                    the request.
+                  </div>
+                  {reviewer?.comment && (
+                    <FormControl label="Comment" className="mb-0 mt-2">
+                      <TextArea value={reviewer.comment} isDisabled reSize="none">
+                        {reviewer?.comment && reviewer.comment}
+                      </TextArea>
+                    </FormControl>
+                  )}
+                </div>
+              );
+            })}
+        </div>
+        <div className="flex items-center space-x-6 rounded-lg bg-mineshaft-800 px-5 py-6">
           <SecretApprovalRequestAction
             canApprove={canApprove}
             approvalRequestId={secretApprovalRequestDetails.id}
