@@ -117,24 +117,27 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                 <div className="flex flex-grow flex-wrap justify-start gap-8">
                   {actions.map(({ label, value }) => {
                     if (typeof value !== "string") return undefined;
+
                     return (
                       <Controller
                         key={`${el.id}-${label}`}
                         name={`permissions.${subject}.${rootIndex}.${value}` as any}
                         control={control}
                         defaultValue={false}
-                        render={({ field }) => (
-                          <div className="flex items-center justify-center">
-                            <Checkbox
-                              isDisabled={isDisabled}
-                              isChecked={Boolean(field.value)}
-                              onCheckedChange={field.onChange}
-                              id={`permissions.${subject}.${rootIndex}.${String(value)}`}
-                            >
-                              {label}
-                            </Checkbox>
-                          </div>
-                        )}
+                        render={({ field }) => {
+                          return (
+                            <div className="flex items-center justify-center">
+                              <Checkbox
+                                isDisabled={isDisabled}
+                                isChecked={Boolean(field.value)}
+                                onCheckedChange={field.onChange}
+                                id={`permissions.${subject}.${rootIndex}.${String(value)}`}
+                              >
+                                {label}
+                              </Checkbox>
+                            </div>
+                          );
+                        }}
                       />
                     );
                   })}

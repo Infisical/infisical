@@ -79,6 +79,7 @@ export const decryptSecrets = (
       id: encSecret.id,
       env: encSecret.environment,
       key: secretKey,
+      secretValueHidden: encSecret.secretValueHidden,
       value: secretValue,
       tags: encSecret.tags,
       comment: secretComment,
