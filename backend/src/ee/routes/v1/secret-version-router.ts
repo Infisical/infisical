@@ -22,7 +22,11 @@ export const registerSecretVersionRouter = async (server: FastifyZodProvider) =>
       }),
       response: {
         200: z.object({
-          secretVersions: secretRawSchema.array()
+          secretVersions: secretRawSchema
+            .extend({
+              secretValueHidden: z.boolean()
+            })
+            .array()
         })
       }
     },
@@ -37,6 +41,7 @@ export const registerSecretVersionRouter = async (server: FastifyZodProvider) =>
         offset: req.query.offset,
         secretId: req.params.secretId
       });
+
       return { secretVersions };
     }
   });
