@@ -166,7 +166,7 @@ export enum EventType {
   SECRET_APPROVAL_REQUEST = "secret-approval-request",
   SECRET_APPROVAL_CLOSED = "secret-approval-closed",
   SECRET_APPROVAL_REOPENED = "secret-approval-reopened",
-  SECRET_APPROVAL_REQUEST_REVIEWED = "secret-approval-request-reviewed",
+  SECRET_APPROVAL_REQUEST_REVIEW = "secret-approval-request-review",
   SIGN_SSH_KEY = "sign-ssh-key",
   ISSUE_SSH_CREDS = "issue-ssh-creds",
   CREATE_SSH_CA = "create-ssh-certificate-authority",
@@ -1316,8 +1316,8 @@ interface SecretApprovalRequest {
   };
 }
 
-interface SecretApprovalRequestReviewed {
-  type: EventType.SECRET_APPROVAL_REQUEST_REVIEWED;
+interface SecretApprovalRequestReview {
+  type: EventType.SECRET_APPROVAL_REQUEST_REVIEW;
   metadata: {
     secretApprovalRequestId: string;
     reviewedBy: string;
@@ -2495,4 +2495,4 @@ export type Event =
   | KmipOperationLocateEvent
   | KmipOperationRegisterEvent
   | CreateSecretRequestEvent
-  | SecretApprovalRequestReviewed;
+  | SecretApprovalRequestReview;

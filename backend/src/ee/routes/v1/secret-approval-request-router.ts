@@ -185,7 +185,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         orgId: req.permission.orgId,
         projectId: review.projectId,
         event: {
-          type: EventType.SECRET_APPROVAL_REQUEST_REVIEWED,
+          type: EventType.SECRET_APPROVAL_REQUEST_REVIEW,
           metadata: {
             secretApprovalRequestId: review.requestId,
             reviewedBy: review.reviewerUserId,

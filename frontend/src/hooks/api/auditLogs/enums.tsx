@@ -151,5 +151,5 @@ export enum EventType {
   KMIP_OPERATION_REVOKE = "kmip-operation-revoke",
   KMIP_OPERATION_LOCATE = "kmip-operation-locate",
   KMIP_OPERATION_REGISTER = "kmip-operation-register",
-  SECRET_APPROVAL_REQUEST_REVIEWED = "secret-approval-request-reviewed"
+  SECRET_APPROVAL_REQUEST_REVIEW = "secret-approval-request-review"
 }
