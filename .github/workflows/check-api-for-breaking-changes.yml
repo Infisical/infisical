@@ -65,7 +65,7 @@ jobs:
             # Check if container is running
             if docker ps | grep infisical-api; then
               # Try to access the API endpoint
-              if curl -s -f http://localhost:4000/api/health > /dev/null 2>&1; then
+              if curl -s -f http://localhost:4000/api/status > /dev/null 2>&1; then
                 echo "API endpoint is responding. Container seems healthy."
                 HEALTHY=1
                 break
