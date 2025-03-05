@@ -15,11 +15,7 @@ import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSecretActions,
-  ProjectPermissionSub
-} from "../permission/project-permission";
+import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TSecretRotationDALFactory } from "./secret-rotation-dal";
 import { TSecretRotationQueueFactory } from "./secret-rotation-queue";
 import { TSecretRotationEncData } from "./secret-rotation-queue/secret-rotation-queue-types";
@@ -110,7 +106,7 @@ export const secretRotationServiceFactory = ({
       });
     }
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.Edit,
+      ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })
     );
 

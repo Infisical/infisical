@@ -1,6 +1,6 @@
 import z from "zod";
 
-import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionActions } from "@app/ee/services/permission/project-permission";
 import { RAW_SECRETS } from "@app/lib/api-docs";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { readLimit } from "@app/server/config/rateLimiter";
@@ -9,7 +9,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 
 const AccessListEntrySchema = z
   .object({
-    allowedActions: z.nativeEnum(ProjectPermissionSecretActions).array(),
+    allowedActions: z.nativeEnum(ProjectPermissionActions).array(),
     id: z.string(),
     membershipId: z.string(),
     name: z.string()

@@ -21,7 +21,6 @@ import {
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { AxiosError } from "axios";
 import FileSaver from "file-saver";
 import { twMerge } from "tailwind-merge";
 
@@ -55,7 +54,7 @@ import {
 import { usePopUp } from "@app/hooks";
 import { useCreateFolder, useDeleteSecretBatch, useMoveSecrets } from "@app/hooks/api";
 import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
-import { ApiErrorTypes, SecretType, TApiErrors, WsTag } from "@app/hooks/api/types";
+import { SecretType, WsTag } from "@app/hooks/api/types";
 import { SecretSearchInput } from "@app/pages/secret-manager/OverviewPage/components/SecretSearchInput";
 
 import {
@@ -153,71 +152,51 @@ export const ActionBar = ({
   };
 
   const handleSecretDownload = async () => {
-    try {
-      const { secrets: localSecrets, imports: localImportedSecrets } = await fetchProjectSecrets({
-        workspaceId,
-        expandSecretReferences: true,
-        includeImports: true,
-        environment,
-        secretPath
+    const { secrets: localSecrets, imports: localImportedSecrets } = await fetchProjectSecrets({
+      workspaceId,
+      expandSecretReferences: true,
+      includeImports: true,
+      environment,
+      secretPath
+    });
+    const secretsPicked = new Set<string>();
+    const secretsToDownload: { key: string; value?: string; comment?: string }[] = [];
+    localSecrets.forEach((el) => {
+      secretsPicked.add(el.secretKey);
+      secretsToDownload.push({
+        key: el.secretKey,
+        value: el.secretValue,
+        comment: el.secretComment
       });
-      const secretsPicked = new Set<string>();
-      const secretsToDownload: { key: string; value?: string; comment?: string }[] = [];
-      localSecrets.forEach((el) => {
-        secretsPicked.add(el.secretKey);
-        secretsToDownload.push({
-          key: el.secretKey,
-          value: el.secretValue,
-          comment: el.secretComment
-        });
-      });
+    });
 
-      for (let i = localImportedSecrets.length - 1; i >= 0; i -= 1) {
-        for (let j = localImportedSecrets[i].secrets.length - 1; j >= 0; j -= 1) {
-          const secret = localImportedSecrets[i].secrets[j];
-          if (!secretsPicked.has(secret.secretKey)) {
-            secretsToDownload.push({
-              key: secret.secretKey,
-              value: secret.secretValue,
-              comment: secret.secretComment
-            });
-          }
-          secretsPicked.add(secret.secretKey);
-        }
-      }
-
-      const file = secretsToDownload
-        .sort((a, b) => a.key.toLowerCase().localeCompare(b.key.toLowerCase()))
-        .reduce(
-          (prev, { key, comment, value }, index) =>
-            prev +
-            (comment
-              ? `${index === 0 ? "#" : "\n#"} ${comment}\n${key}=${value}\n`
-              : `${key}=${value}\n`),
-          ""
-        );
-
-      const blob = new Blob([file], { type: "text/plain;charset=utf-8" });
-      FileSaver.saveAs(blob, `${environment}.env`);
-    } catch (err) {
-      if (err instanceof AxiosError) {
-        const error = err?.response?.data as TApiErrors;
-
-        if (error?.error === ApiErrorTypes.ForbiddenError && error.message.includes("readValue")) {
-          createNotification({
-            title: "You don't have permission to download secrets",
-            text: "You don't have permission to view one or more of the secrets in the current folder. Please contact your administrator.",
-            type: "error"
+    for (let i = localImportedSecrets.length - 1; i >= 0; i -= 1) {
+      for (let j = localImportedSecrets[i].secrets.length - 1; j >= 0; j -= 1) {
+        const secret = localImportedSecrets[i].secrets[j];
+        if (!secretsPicked.has(secret.secretKey)) {
+          secretsToDownload.push({
+            key: secret.secretKey,
+            value: secret.secretValue,
+            comment: secret.secretComment
           });
-          return;
         }
+        secretsPicked.add(secret.secretKey);
       }
-      createNotification({
-        title: "Failed to download secrets",
-        text: "Please try again later.",
-        type: "error"
-      });
     }
+
+    const file = secretsToDownload
+      .sort((a, b) => a.key.toLowerCase().localeCompare(b.key.toLowerCase()))
+      .reduce(
+        (prev, { key, comment, value }, index) =>
+          prev +
+          (comment
+            ? `${index === 0 ? "#" : "\n#"} ${comment}\n${key}=${value}\n`
+            : `${key}=${value}\n`),
+        ""
+      );
+
+    const blob = new Blob([file], { type: "text/plain;charset=utf-8" });
+    FileSaver.saveAs(blob, `${environment}.env`);
   };
 
   const handleSecretBulkDelete = async () => {

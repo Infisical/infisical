@@ -1,11 +1,16 @@
 import { z } from "zod";
 
-import { SecretApprovalRequestsReviewersSchema, SecretApprovalRequestsSchema, UsersSchema } from "@app/db/schemas";
+import {
+  SecretApprovalRequestsReviewersSchema,
+  SecretApprovalRequestsSchema,
+  SecretTagsSchema,
+  UsersSchema
+} from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApprovalStatus, RequestState } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { SanitizedTagSchema, secretRawSchema } from "@app/server/routes/sanitizedSchemas";
+import { secretRawSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
@@ -245,6 +250,14 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     }
   });
 
+  const tagSchema = SecretTagsSchema.pick({
+    id: true,
+    slug: true,
+    color: true
+  })
+    .array()
+    .optional();
+
   server.route({
     method: "GET",
     url: "/:id",
@@ -278,7 +291,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
                 .omit({ _id: true, environment: true, workspace: true, type: true, version: true })
                 .extend({
                   op: z.string(),
-                  tags: SanitizedTagSchema.array().optional(),
+                  tags: tagSchema,
                   secretMetadata: ResourceMetadataSchema.nullish(),
                   secret: z
                     .object({
@@ -297,7 +310,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
                       secretKey: z.string(),
                       secretValue: z.string().optional(),
                       secretComment: z.string().optional(),
-                      tags: SanitizedTagSchema.array().optional(),
+                      tags: tagSchema,
                       secretMetadata: ResourceMetadataSchema.nullish()
                     })
                     .optional()

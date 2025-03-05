@@ -3,7 +3,6 @@ import { faLock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Td, Tooltip, Tr } from "@app/components/v2";
-import { Blur } from "@app/components/v2/Blur";
 
 type Props = {
   environments: { name: string; slug: string }[];
@@ -26,7 +25,7 @@ export const SecretNoAccessOverviewTableRow = ({ environments = [], count }: Pro
                   <div className="text-bunker-300">
                     <FontAwesomeIcon className="block" icon={faLock} />
                   </div>
-                  <Blur />
+                  <div className="blur-sm">NO ACCESS</div>
                 </div>
               </Tooltip>
             </div>

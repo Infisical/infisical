@@ -25,7 +25,6 @@ import {
   ModalTrigger,
   Tooltip
 } from "@app/components/v2";
-import { Blur } from "@app/components/v2/Blur";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useToggle } from "@app/hooks";
@@ -40,7 +39,6 @@ type Props = {
   isVisible?: boolean;
   isImportedSecret: boolean;
   environment: string;
-  secretValueHidden: boolean;
   secretPath: string;
   onSecretCreate: (env: string, key: string, value: string) => Promise<void>;
   onSecretUpdate: (
@@ -60,7 +58,6 @@ export const SecretEditRow = ({
   isImportedSecret,
   onSecretUpdate,
   secretName,
-  secretValueHidden,
   onSecretCreate,
   onSecretDelete,
   environment,
@@ -143,29 +140,24 @@ export const SecretEditRow = ({
       />
 
       <div className="flex-grow border-r border-r-mineshaft-600 pl-1 pr-2">
-        {secretValueHidden ? (
-          <Blur tooltipText="You do not have permission to read the value of this secret." />
-        ) : (
-          <Controller
-            disabled={isImportedSecret && !defaultValue}
-            control={control}
-            name="value"
-            render={({ field }) => (
-              <InfisicalSecretInput
-                {...field}
-                isReadOnly={isImportedSecret}
-                value={field.value as string}
-                key="secret-input"
-                isVisible={isVisible}
-                secretPath={secretPath}
-                environment={environment}
-                isImport={isImportedSecret}
-              />
-            )}
-          />
-        )}
+        <Controller
+          disabled={isImportedSecret && !defaultValue}
+          control={control}
+          name="value"
+          render={({ field }) => (
+            <InfisicalSecretInput
+              {...field}
+              isReadOnly={isImportedSecret}
+              value={field.value as string}
+              key="secret-input"
+              isVisible={isVisible}
+              secretPath={secretPath}
+              environment={environment}
+              isImport={isImportedSecret}
+            />
+          )}
+        />
       </div>
-
       <div
         className={twMerge(
           "flex w-24 justify-center space-x-3 pl-2 transition-all",
@@ -219,7 +211,6 @@ export const SecretEditRow = ({
             <div className="opacity-0 group-hover:opacity-100">
               <Tooltip content="Copy Secret">
                 <IconButton
-                  isDisabled={secretValueHidden}
                   ariaLabel="copy-value"
                   onClick={handleCopySecretToClipboard}
                   variant="plain"

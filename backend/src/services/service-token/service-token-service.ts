@@ -5,11 +5,7 @@ import bcrypt from "bcrypt";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSecretActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import { ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 
@@ -71,7 +67,7 @@ export const serviceTokenServiceFactory = ({
 
     scopes.forEach(({ environment, secretPath }) => {
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretActions.Create,
+        ProjectPermissionActions.Create,
         subject(ProjectPermissionSub.Secrets, { environment, secretPath })
       );
     });

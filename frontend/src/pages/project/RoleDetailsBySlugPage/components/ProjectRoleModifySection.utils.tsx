@@ -9,7 +9,6 @@ import {
   PermissionConditionOperators,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionKmipActions,
-  ProjectPermissionSecretActions,
   ProjectPermissionSecretSyncActions,
   TPermissionCondition,
   TPermissionConditionOperators
@@ -21,14 +20,6 @@ const GeneralPolicyActionSchema = z.object({
   edit: z.boolean().optional(),
   delete: z.boolean().optional(),
   create: z.boolean().optional()
-});
-
-const SecretPolicyActionSchema = z.object({
-  read: z.boolean().optional(), // describe secret
-  edit: z.boolean().optional(),
-  delete: z.boolean().optional(),
-  create: z.boolean().optional(),
-  readValue: z.boolean().optional()
 });
 
 const CmekPolicyActionSchema = z.object({
@@ -123,7 +114,7 @@ export const projectRoleFormSchema = z.object({
     .refine((val) => val !== "custom", { message: "Cannot use custom as its a keyword" }),
   permissions: z
     .object({
-      [ProjectPermissionSub.Secrets]: SecretPolicyActionSchema.extend({
+      [ProjectPermissionSub.Secrets]: GeneralPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
         conditions: ConditionSchema
       })
@@ -292,28 +283,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           });
           return;
         }
-
-        if (subject === ProjectPermissionSub.Secrets) {
-          const canRead = action.includes(ProjectPermissionSecretActions.DescribeSecret);
-          const canEdit = action.includes(ProjectPermissionSecretActions.Edit);
-          const canDelete = action.includes(ProjectPermissionSecretActions.Delete);
-          const canCreate = action.includes(ProjectPermissionSecretActions.Create);
-          const canReadValue = action.includes(ProjectPermissionSecretActions.ReadValue);
-
-          // from above statement we are sure it won't be undefined
-          formVal[subject]!.push({
-            read: canRead,
-            create: canCreate,
-            edit: canEdit,
-            delete: canDelete,
-            readValue: canReadValue,
-            conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
-            inverted
-          });
-
-          return;
-        }
-
         // for other subjects
         const canRead = action.includes(ProjectPermissionActions.Read);
         const canEdit = action.includes(ProjectPermissionActions.Edit);
@@ -514,9 +483,8 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   [ProjectPermissionSub.Secrets]: {
     title: "Secrets",
     actions: [
-      { label: "Describe Secret", value: "read" },
+      { label: "Read", value: "read" },
       { label: "Create", value: "create" },
-      { label: "Read Value", value: "readValue" },
       { label: "Modify", value: "edit" },
       { label: "Remove", value: "delete" }
     ]

@@ -180,8 +180,6 @@ export type TGetSecretsRawDTO = {
   expandSecretReferences?: boolean;
   path: string;
   environment: string;
-  viewSecretValue: boolean;
-  throwOnMissingReadValuePermission?: boolean;
   includeImports?: boolean;
   recursive?: boolean;
   tagSlugs?: string[];
@@ -207,7 +205,6 @@ export type TGetASecretRawDTO = {
   secretName: string;
   path: string;
   environment: string;
-  viewSecretValue: boolean;
   expandSecretReferences?: boolean;
   type: "shared" | "personal";
   includeImports?: boolean;
@@ -412,7 +409,7 @@ export type TCreateManySecretsRawFnFactory = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
-    "insertMany" | "upsertSecretReferences" | "findBySecretKeys" | "bulkUpdate" | "deleteMany" | "find"
+    "insertMany" | "upsertSecretReferences" | "findBySecretKeys" | "bulkUpdate" | "deleteMany"
   >;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
@@ -449,7 +446,7 @@ export type TUpdateManySecretsRawFnFactory = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
-    "insertMany" | "upsertSecretReferences" | "findBySecretKeys" | "bulkUpdate" | "deleteMany" | "find"
+    "insertMany" | "upsertSecretReferences" | "findBySecretKeys" | "bulkUpdate" | "deleteMany"
   >;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;

@@ -20,7 +20,6 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { Blur } from "@app/components/v2/Blur";
 import { useToggle } from "@app/hooks";
 import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
@@ -121,25 +120,11 @@ export const SecretItem = ({ mode, preSecret, postSecret }: Props) => {
                   <Td className="border-r border-mineshaft-600">Value</Td>
                   {isModified && (
                     <Td className="border-r border-mineshaft-600">
-                      {preSecret?.secretValueHidden ? (
-                        <Blur
-                          className="w-min"
-                          tooltipText="You do not have permission to read the value of this secret."
-                        />
-                      ) : (
-                        <SecretInput value={preSecret?.value} />
-                      )}
+                      <SecretInput value={preSecret?.value} />
                     </Td>
                   )}
                   <Td>
-                    {postSecret?.secretValueHidden ? (
-                      <Blur
-                        className="w-min"
-                        tooltipText="You do not have permission to read the value of this secret."
-                      />
-                    ) : (
-                      <SecretInput value={postSecret?.value} />
-                    )}
+                    <SecretInput value={postSecret?.value} />
                   </Td>
                 </Tr>
                 {Boolean(preSecret?.idOverride || postSecret?.idOverride) && (

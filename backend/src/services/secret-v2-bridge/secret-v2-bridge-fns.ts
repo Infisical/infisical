@@ -7,7 +7,6 @@ import { logger } from "@app/lib/logger";
 
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-schema";
-import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import { TFnSecretBulkDelete, TFnSecretBulkInsert, TFnSecretBulkUpdate } from "./secret-v2-bridge-types";
@@ -103,7 +102,6 @@ export const fnSecretBulkInsert = async ({
       [`${TableName.SecretV2}Id` as const]: newSecretGroupedByKeyName[key][0].id
     }))
   );
-
   const secretVersions = await secretVersionDAL.insertMany(
     sanitizedInputSecrets.map((el) => ({
       ...el,
@@ -139,7 +137,6 @@ export const fnSecretBulkInsert = async ({
   if (newSecretTags.length) {
     const secTags = await secretTagDAL.saveTagsToSecretV2(newSecretTags, tx);
     const secVersionsGroupBySecId = groupBy(secretVersions, (i) => i.secretId);
-
     const newSecretVersionTags = secTags.flatMap(({ secrets_v2Id, secret_tagsId }) => ({
       [`${TableName.SecretVersionV2}Id` as const]: secVersionsGroupBySecId[secrets_v2Id][0].id,
       [`${TableName.SecretTag}Id` as const]: secret_tagsId
@@ -148,16 +145,7 @@ export const fnSecretBulkInsert = async ({
     await secretVersionTagDAL.insertMany(newSecretVersionTags, tx);
   }
 
-  const secretsWithTags = await secretDAL.find(
-    {
-      $in: {
-        [`${TableName.SecretV2}.id` as "id"]: newSecrets.map((s) => s.id)
-      }
-    },
-    { tx }
-  );
-
-  return secretsWithTags.map((secret) => ({ ...secret, _id: secret.id }));
+  return newSecrets.map((secret) => ({ ...secret, _id: secret.id }));
 };
 
 export const fnSecretBulkUpdate = async ({
@@ -295,15 +283,7 @@ export const fnSecretBulkUpdate = async ({
     tx
   );
 
-  const secretsWithTags = await secretDAL.find(
-    {
-      $in: {
-        [`${TableName.SecretV2}.id` as "id"]: newSecrets.map((s) => s.id)
-      }
-    },
-    { tx }
-  );
-  return secretsWithTags.map((secret) => ({ ...secret, _id: secret.id }));
+  return newSecrets.map((secret) => ({ ...secret, _id: secret.id }));
 };
 
 export const fnSecretBulkDelete = async ({
@@ -536,7 +516,7 @@ export const expandSecretReferencesFactory = ({
             const referredValue = await fetchSecret(environment, secretPath, secretKey);
             if (!canExpandValue(environment, secretPath, secretKey, referredValue.tags))
               throw new ForbiddenRequestError({
-                message: `You are attempting to reference secret named ${secretKey} from environment ${environment} in path ${secretPath} which you do not have access to read value on.`
+                message: `You are attempting to reference secret named ${secretKey} from environment ${environment} in path ${secretPath} which you do not have access to.`
               });
 
             const cacheKey = getCacheUniqueKey(environment, secretPath);
@@ -555,7 +535,7 @@ export const expandSecretReferencesFactory = ({
             const referedValue = await fetchSecret(secretReferenceEnvironment, secretReferencePath, secretReferenceKey);
             if (!canExpandValue(secretReferenceEnvironment, secretReferencePath, secretReferenceKey, referedValue.tags))
               throw new ForbiddenRequestError({
-                message: `You are attempting to reference secret named ${secretReferenceKey} from environment ${secretReferenceEnvironment} in path ${secretReferencePath} which you do not have access to read value on.`
+                message: `You are attempting to reference secret named ${secretReferenceKey} from environment ${secretReferenceEnvironment} in path ${secretReferencePath} which you do not have access to.`
               });
 
             const cacheKey = getCacheUniqueKey(secretReferenceEnvironment, secretReferencePath);
@@ -643,13 +623,13 @@ export const reshapeBridgeSecret = (
       name: string;
     }[];
     secretMetadata?: ResourceMetadataDTO;
-  },
-  secretValueHidden: boolean
+  }
 ) => ({
   secretKey: secret.key,
   secretPath,
   workspace: workspaceId,
   environment,
+  secretValue: secret.value || "",
   secretComment: secret.comment || "",
   version: secret.version,
   type: secret.type,
@@ -663,15 +643,5 @@ export const reshapeBridgeSecret = (
   metadata: secret.metadata,
   secretMetadata: secret.secretMetadata,
   createdAt: secret.createdAt,
-  updatedAt: secret.updatedAt,
-
-  ...(secretValueHidden
-    ? {
-        secretValue: INFISICAL_SECRET_VALUE_HIDDEN_MASK,
-        secretValueHidden: true
-      }
-    : {
-        secretValue: secret.value || "",
-        secretValueHidden: false
-      })
+  updatedAt: secret.updatedAt
 });

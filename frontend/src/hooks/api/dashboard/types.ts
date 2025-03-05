@@ -69,7 +69,6 @@ export type TGetDashboardProjectSecretsDetailsDTO = Omit<
   TGetDashboardProjectSecretsOverviewDTO,
   "environments"
 > & {
-  viewSecretValue: boolean;
   environment: string;
   includeImports?: boolean;
   tags: Record<string, boolean>;

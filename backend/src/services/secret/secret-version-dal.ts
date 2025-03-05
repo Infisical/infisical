@@ -1,9 +1,9 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { SecretVersionsSchema, TableName, TSecretVersions, TSecretVersionsUpdate } from "@app/db/schemas";
+import { TableName, TSecretVersions, TSecretVersionsUpdate } from "@app/db/schemas";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
-import { ormify, selectAllTableCols, sqlNestRelationships, TFindOpt } from "@app/lib/knex";
+import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 import { QueueName } from "@app/queue";
 
@@ -11,50 +11,6 @@ export type TSecretVersionDALFactory = ReturnType<typeof secretVersionDALFactory
 
 export const secretVersionDALFactory = (db: TDbClient) => {
   const secretVersionOrm = ormify(db, TableName.SecretVersion);
-
-  const findBySecretId = async (secretId: string, { offset, limit, sort, tx }: TFindOpt<TSecretVersions> = {}) => {
-    try {
-      const query = (tx || db.replicaNode())(TableName.SecretVersion)
-        .where(`${TableName.SecretVersion}.secretId`, secretId)
-        .leftJoin(TableName.Secret, `${TableName.SecretVersion}.secretId`, `${TableName.Secret}.id`)
-        .leftJoin(TableName.JnSecretTag, `${TableName.Secret}.id`, `${TableName.JnSecretTag}.${TableName.Secret}Id`)
-        .leftJoin(TableName.SecretTag, `${TableName.JnSecretTag}.${TableName.SecretTag}Id`, `${TableName.SecretTag}.id`)
-        .select(selectAllTableCols(TableName.SecretVersion))
-        .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
-        .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
-        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"));
-
-      if (limit) void query.limit(limit);
-      if (offset) void query.offset(offset);
-      if (sort) {
-        void query.orderBy(sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls })));
-      }
-
-      const docs = await query;
-
-      const data = sqlNestRelationships({
-        data: docs,
-        key: "id",
-        parentMapper: (el) => ({ _id: el.id, ...SecretVersionsSchema.parse(el) }),
-        childrenMapper: [
-          {
-            key: "tagId",
-            label: "tags" as const,
-            mapper: ({ tagId: id, tagColor: color, tagSlug: slug }) => ({
-              id,
-              color,
-              slug,
-              name: slug
-            })
-          }
-        ]
-      });
-
-      return data;
-    } catch (error) {
-      throw new DatabaseError({ error, name: `${TableName.SecretVersion}: FindBySecretId` });
-    }
-  };
 
   // This will fetch all latest secret versions from a folder
   const findLatestVersionByFolderId = async (folderId: string, tx?: Knex) => {
@@ -193,7 +149,6 @@ export const secretVersionDALFactory = (db: TDbClient) => {
     findLatestVersionMany,
     bulkUpdate,
     findLatestVersionByFolderId,
-    findBySecretId,
     bulkUpdateNoVersionIncrement
   };
 };

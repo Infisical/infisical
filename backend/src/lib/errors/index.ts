@@ -1,5 +1,4 @@
 /* eslint-disable max-classes-per-file */
-
 export class DatabaseError extends Error {
   name: string;
 

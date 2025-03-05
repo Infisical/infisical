@@ -1,5 +1,4 @@
 import { FontAwesomeSymbol, Input, Tooltip } from "@app/components/v2";
-import { Blur } from "@app/components/v2/Blur";
 
 import { FontAwesomeSpriteName } from "./SecretListView.utils";
 
@@ -35,7 +34,13 @@ export const SecretNoAccessListView = ({ count }: Props) => {
                 className="w-full px-0 blur-sm placeholder:text-red-500 focus:text-bunker-100 focus:ring-transparent"
               />
             </div>
-            <Blur />
+            <div
+              className="flex w-80 flex-grow items-center border-x border-mineshaft-600 py-1 pl-4 pr-2"
+              tabIndex={0}
+              role="button"
+            >
+              <span className="blur">********</span>
+            </div>
           </div>
         </Tooltip>
       ))}

@@ -46,8 +46,7 @@ export enum ApiErrorTypes {
   ValidationError = "ValidationFailure",
   BadRequestError = "BadRequest",
   UnauthorizedError = "UnauthorizedError",
-  ForbiddenError = "PermissionDenied",
-  CustomForbiddenError = "ForbiddenError"
+  ForbiddenError = "PermissionDenied"
 }
 
 export type TApiErrors =
@@ -68,12 +67,6 @@ export type TApiErrors =
       error: ApiErrorTypes.ForbiddenError;
       message: string;
       details: PureAbility["rules"];
-      statusCode: 403;
-    }
-  | {
-      reqId: string;
-      error: ApiErrorTypes.CustomForbiddenError;
-      message: string;
       statusCode: 403;
     }
   | {

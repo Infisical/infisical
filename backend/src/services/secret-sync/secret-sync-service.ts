@@ -3,7 +3,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
-  ProjectPermissionSecretActions,
+  ProjectPermissionActions,
   ProjectPermissionSecretSyncActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -179,7 +179,7 @@ export const secretSyncServiceFactory = ({
     );
 
     ForbiddenError.from(projectPermission).throwUnlessCan(
-      ProjectPermissionSecretActions.ReadValue,
+      ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, {
         environment,
         secretPath
@@ -270,7 +270,7 @@ export const secretSyncServiceFactory = ({
         throw new BadRequestError({ message: "Must specify both source environment and secret path" });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretActions.ReadValue,
+        ProjectPermissionActions.Read,
         subject(ProjectPermissionSub.Secrets, {
           environment: updatedEnvironment,
           secretPath: updatedSecretPath
