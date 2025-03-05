@@ -35,7 +35,20 @@ jobs:
           echo "SECRET_SCANNING_GIT_APP_ID=793712" >> .env
           echo "SECRET_SCANNING_PRIVATE_KEY=some-random" >> .env
           echo "SECRET_SCANNING_WEBHOOK_SECRET=some-random" >> .env
-          docker run --name infisical-api -d -p 4000:4000 -e DB_CONNECTION_URI=$DB_CONNECTION_URI -e REDIS_URL=$REDIS_URL -e JWT_AUTH_SECRET=$JWT_AUTH_SECRET -e ENCRYPTION_KEY=$ENCRYPTION_KEY --env-file .env --entrypoint '/bin/sh' infisical-api
+
+          echo "Examining built image:"
+          docker image inspect infisical-api | grep -A 5 "Entrypoint"
+          
+          docker run --name infisical-api -d -p 4000:4000 \
+            -e DB_CONNECTION_URI=$DB_CONNECTION_URI \
+            -e REDIS_URL=$REDIS_URL \
+            -e JWT_AUTH_SECRET=$JWT_AUTH_SECRET \
+            -e ENCRYPTION_KEY=$ENCRYPTION_KEY \
+            --env-file .env \
+            infisical-api
+          
+          echo "Container status right after creation:"
+          docker ps -a | grep infisical-api
         env:
           REDIS_URL: redis://172.17.0.1:6379
           DB_CONNECTION_URI: postgres://infisical:infisical@172.17.0.1:5432/infisical?sslmode=disable
@@ -49,24 +62,33 @@ jobs:
           SECONDS=0
           HEALTHY=0
           while [ $SECONDS -lt 60 ]; do
-            if docker ps | grep infisical-api | grep -q healthy; then
-              echo "Container is healthy."
-              HEALTHY=1
+            # Check if container is running
+            if docker ps | grep infisical-api; then
+              # Try to access the API endpoint
+              if curl -s -f http://localhost:4000/api/health > /dev/null 2>&1; then
+                echo "API endpoint is responding. Container seems healthy."
+                HEALTHY=1
+                break
+              fi
+            else
+              echo "Container is not running!"
+              docker ps -a | grep infisical-api
               break
             fi
+            
             echo "Waiting for container to be healthy... ($SECONDS seconds elapsed)"
-
-            docker logs infisical-api
-
-            sleep 2
-            SECONDS=$((SECONDS+2))
+            sleep 5
+            SECONDS=$((SECONDS+5))
           done
-
+          
           if [ $HEALTHY -ne 1 ]; then
             echo "Container did not become healthy in time"
-
-            echo "Container logs:"
-            docker logs infisical-api
+            echo "Container status:"
+            docker ps -a | grep infisical-api
+            echo "Container logs (if any):"
+            docker logs infisical-api || echo "No logs available"
+            echo "Container inspection:"
+            docker inspect infisical-api | grep -A 5 "State"
             exit 1
           fi
       - name: Install openapi-diff
@@ -74,7 +96,8 @@ jobs:
       - name: Running OpenAPI Spec diff action
         run: oasdiff breaking https://app.infisical.com/api/docs/json http://localhost:4000/api/docs/json --fail-on ERR
       - name: cleanup
+        if: always()
         run: |
           docker compose -f "docker-compose.dev.yml" down
-          docker stop infisical-api
-          docker remove infisical-api
+          docker stop infisical-api || true
+          docker rm infisical-api || true
