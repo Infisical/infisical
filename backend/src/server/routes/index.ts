@@ -1073,6 +1073,7 @@ export const registerRoutes = async (
   const secretService = secretServiceFactory({
     folderDAL,
     secretVersionDAL,
+    secretV2BridgeDAL,
     secretVersionTagDAL,
     secretBlindIndexDAL,
     permissionService,

@@ -382,6 +382,48 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
+    url: "/raw/id/:secretId",
+    config: {
+      rateLimit: secretsLimit
+    },
+    schema: {
+      params: z.object({
+        secretId: z.string()
+      }),
+      response: {
+        200: z.object({
+          secret: secretRawSchema.extend({
+            secretPath: z.string(),
+            tags: SecretTagsSchema.pick({
+              id: true,
+              slug: true,
+              color: true
+            })
+              .extend({ name: z.string() })
+              .array()
+              .optional(),
+            secretMetadata: ResourceMetadataSchema.optional()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { secretId } = req.params;
+      const secret = await server.services.secret.getSecretByIdRaw({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        secretId
+      });
+
+      return { secret };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/raw/:secretName",
     config: {
       rateLimit: secretsLimit

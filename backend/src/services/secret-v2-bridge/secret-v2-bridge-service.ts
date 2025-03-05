@@ -28,6 +28,7 @@ import { KmsDataKey } from "../kms/kms-types";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TSecretQueueFactory } from "../secret/secret-queue";
+import { TGetASecretByIdDTO } from "../secret/secret-types";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
@@ -73,7 +74,13 @@ type TSecretV2BridgeServiceFactoryDep = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs">;
   folderDAL: Pick<
     TSecretFolderDALFactory,
-    "findBySecretPath" | "updateById" | "findById" | "findByManySecretPath" | "find" | "findBySecretPathMultiEnv"
+    | "findBySecretPath"
+    | "updateById"
+    | "findById"
+    | "findByManySecretPath"
+    | "find"
+    | "findBySecretPathMultiEnv"
+    | "findSecretPathByFolderIds"
   >;
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "handleSecretReminder" | "removeSecretReminder">;
@@ -953,6 +960,70 @@ export const secretV2BridgeServiceFactory = ({
       secrets: decryptedSecrets,
       imports: importedSecrets
     };
+  };
+
+  const getSecretById = async ({ actorId, actor, actorOrgId, actorAuthMethod, secret }: TGetASecretByIdDTO) => {
+    const folder = await folderDAL.findById(secret.folderId);
+    if (!folder) {
+      throw new NotFoundError({
+        message: `Folder with id '${secret.folderId}' not found`,
+        name: "GetSecretById"
+      });
+    }
+
+    const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(folder.projectId, [folder.id]);
+
+    if (!folderWithPath) {
+      throw new NotFoundError({
+        message: `Folder with id '${folder.id}' not found`,
+        name: "GetSecretById"
+      });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: folder.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.Secrets, {
+        environment: folder.environment.envSlug,
+        secretPath: folderWithPath.path,
+        secretName: secret.key,
+        secretTags: secret.tags.map((i) => i.slug)
+      })
+    );
+
+    if (secret.type === SecretType.Personal && secret.userId !== actorId) {
+      throw new ForbiddenRequestError({
+        message: "You are not allowed to access this secret",
+        name: "GetSecretById"
+      });
+    }
+
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: folder.projectId
+    });
+
+    const secretValue = secret.encryptedValue
+      ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
+      : "";
+
+    const secretComment = secret.encryptedComment
+      ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
+      : "";
+
+    return reshapeBridgeSecret(folder.projectId, folder.environment.envSlug, folderWithPath.path, {
+      ...secret,
+      value: secretValue,
+      comment: secretComment
+    });
   };
 
   const getSecretByName = async ({
@@ -2237,6 +2308,7 @@ export const secretV2BridgeServiceFactory = ({
     getSecretsCountMultiEnv,
     getSecretsMultiEnv,
     getSecretReferenceTree,
-    getSecretsByFolderMappings
+    getSecretsByFolderMappings,
+    getSecretById
   };
 };
