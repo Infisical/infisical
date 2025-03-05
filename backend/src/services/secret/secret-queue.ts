@@ -402,7 +402,8 @@ export const secretQueueFactory = ({
       expandSecretReferences,
       secretImportDAL,
       secretImports,
-      hasSecretAccess: () => true
+      hasSecretAccess: () => true,
+      viewSecretValue: true
     });
 
     for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {

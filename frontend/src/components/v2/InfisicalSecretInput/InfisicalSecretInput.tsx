@@ -120,6 +120,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
 
     const isPopupOpen = Boolean(suggestionSource.isOpen) && isFocused;
     const { data: secrets } = useGetProjectSecrets({
+      viewSecretValue: false,
       environment: suggestionSource.environment || "",
       secretPath: suggestionSource.secretPath || "",
       workspaceId,
