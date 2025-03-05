@@ -61,7 +61,6 @@ func handleStream(stream quic.Stream, quicConn quic.Connection) {
 
 		switch string(cmd) {
 		case "FORWARD-TCP":
-			log.Info().Msg("Starting secure connector proxy...")
 			proxyAddress := string(bytes.Split(args, []byte(" "))[0])
 			destTarget, err := net.Dial("tcp", proxyAddress)
 			if err != nil {
@@ -69,6 +68,7 @@ func handleStream(stream quic.Stream, quicConn quic.Connection) {
 				return
 			}
 			defer destTarget.Close()
+			log.Info().Msgf("Starting secure transmission between %s->%s", quicConn.LocalAddr().String(), destTarget.LocalAddr().String())
 
 			// Handle buffered data
 			buffered := reader.Buffered()
@@ -87,6 +87,7 @@ func handleStream(stream quic.Stream, quicConn quic.Connection) {
 			}
 
 			CopyDataFromQuicToTcp(stream, destTarget)
+			log.Info().Msgf("Ending secure transmission between %s->%s", quicConn.LocalAddr().String(), destTarget.LocalAddr().String())
 			return
 		case "PING":
 			if _, err := stream.Write([]byte("PONG\n")); err != nil {
