@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Helmet } from "react-helmet";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useSearch } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, NoticeBanner, PageHeader, Pagination } from "@app/components/v2";
@@ -35,6 +35,8 @@ export const SecretScanningPage = withPermission(
     const queryParams = useSearch({
       from: ROUTE_PATHS.Organization.SecretScanning.id
     });
+
+    const navigate = useNavigate();
 
     const { control, watch } = useForm<SecretScanningFilterFormData>({
       resolver: zodResolver(secretScanningFilterFormSchema),
@@ -70,8 +72,11 @@ export const SecretScanningPage = withPermission(
     const { mutateAsync: linkGitAppInstallationWithOrganization } =
       useLinkGitAppInstallationWithOrg();
     const { mutateAsync: createNewIntegrationSession } = useCreateNewInstallationSession();
-    const { data: installationStatus, isPending: isSecretScanningInstatllationStatusLoading } =
-      useGetSecretScanningInstallationStatus(organizationId);
+    const {
+      data: installationStatus,
+      isPending: isSecretScanningInstatllationStatusLoading,
+      refetch: refetchSecretScanningInstallationStatus
+    } = useGetSecretScanningInstallationStatus(organizationId);
     const integrationEnabled =
       !isSecretScanningInstatllationStatusLoading && installationStatus?.appInstallationCompleted;
 
@@ -86,7 +91,10 @@ export const SecretScanningPage = withPermission(
               sessionId: String(queryParams.state)
             });
             if (isLinked) {
-              window.location.reload();
+              await navigate({
+                to: "/organization/secret-scanning"
+              });
+              refetchSecretScanningInstallationStatus();
             }
 
             console.log("installation verification complete");
