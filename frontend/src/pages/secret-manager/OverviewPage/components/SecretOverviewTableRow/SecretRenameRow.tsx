@@ -10,8 +10,12 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { IconButton, Input, Spinner, Tooltip } from "@app/components/v2";
-import { ProjectPermissionSub, useProjectPermission, useWorkspace } from "@app/context";
-import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useProjectPermission,
+  useWorkspace
+} from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useUpdateSecretV3 } from "@app/hooks/api";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/types";
@@ -51,8 +55,8 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
       secretTags: (secretDetails?.tags || []).map((i) => i.slug)
     });
     const isSecretInEnvReadOnly =
-      permission.can(ProjectPermissionSecretActions.DescribeSecret, secretPermissionSubject) &&
-      permission.cannot(ProjectPermissionSecretActions.Edit, secretPermissionSubject);
+      permission.can(ProjectPermissionActions.Read, secretPermissionSubject) &&
+      permission.cannot(ProjectPermissionActions.Edit, secretPermissionSubject);
     if (isSecretInEnvReadOnly) {
       return true;
     }

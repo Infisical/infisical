@@ -13,7 +13,7 @@ import {
   TSecrets
 } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import {
   buildSecretBlindIndexFromName,
@@ -50,8 +50,6 @@ import {
   TUpdateManySecretsRawFn,
   TUpdateManySecretsRawFnFactory
 } from "./secret-types";
-
-export const INFISICAL_SECRET_VALUE_HIDDEN_MASK = "<hidden-by-infisical>";
 
 export const generateSecretBlindIndexBySalt = async (secretName: string, secretBlindIndexDoc: TSecretBlindIndexes) => {
   const appCfg = getConfig();
@@ -192,7 +190,7 @@ export const recursivelyGetSecretPaths = ({
     const allowedPaths = paths.filter(
       (folder) =>
         permission.can(
-          ProjectPermissionSecretActions.ReadValue,
+          ProjectPermissionActions.Read,
           subject(ProjectPermissionSub.Secrets, {
             environment,
             secretPath: folder.path
@@ -346,7 +344,6 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
 
 export const decryptSecretRaw = (
   secret: TSecrets & {
-    secretValueHidden: boolean;
     workspace: string;
     environment: string;
     secretPath: string;
@@ -365,14 +362,12 @@ export const decryptSecretRaw = (
     key
   });
 
-  const secretValue = !secret.secretValueHidden
-    ? decryptSymmetric128BitHexKeyUTF8({
-        ciphertext: secret.secretValueCiphertext,
-        iv: secret.secretValueIV,
-        tag: secret.secretValueTag,
-        key
-      })
-    : INFISICAL_SECRET_VALUE_HIDDEN_MASK;
+  const secretValue = decryptSymmetric128BitHexKeyUTF8({
+    ciphertext: secret.secretValueCiphertext,
+    iv: secret.secretValueIV,
+    tag: secret.secretValueTag,
+    key
+  });
 
   let secretComment = "";
 
@@ -390,7 +385,6 @@ export const decryptSecretRaw = (
     secretPath: secret.secretPath,
     workspace: secret.workspace,
     environment: secret.environment,
-    secretValueHidden: secret.secretValueHidden,
     secretValue,
     secretComment,
     version: secret.version,
@@ -1202,24 +1196,4 @@ export const fnDeleteProjectSecretReminders = async (
       );
     }
   }
-};
-
-export const conditionallyHideSecretValue = (
-  shouldHideValue: boolean,
-  {
-    secretValueCiphertext,
-    secretValueIV,
-    secretValueTag
-  }: {
-    secretValueCiphertext: string;
-    secretValueIV: string;
-    secretValueTag: string;
-  }
-) => {
-  return {
-    secretValueCiphertext: shouldHideValue ? INFISICAL_SECRET_VALUE_HIDDEN_MASK : secretValueCiphertext,
-    secretValueIV: shouldHideValue ? INFISICAL_SECRET_VALUE_HIDDEN_MASK : secretValueIV,
-    secretValueTag: shouldHideValue ? INFISICAL_SECRET_VALUE_HIDDEN_MASK : secretValueTag,
-    secretValueHidden: shouldHideValue
-  };
 };

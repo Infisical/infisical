@@ -221,13 +221,10 @@ export const SecretOverviewTableRow = ({
                               secretPath={secretPath}
                               isVisible={isSecretVisible}
                               secretName={secretKey}
-                              secretValueHidden={secret?.secretValueHidden || false}
                               defaultValue={
-                                secret?.secretValueHidden
-                                  ? ""
-                                  : secret?.valueOverride ||
-                                    secret?.value ||
-                                    importedSecret?.secret?.value
+                                secret?.valueOverride ||
+                                secret?.value ||
+                                importedSecret?.secret?.value
                               }
                               secretId={secret?.id}
                               isOverride={Boolean(secret?.valueOverride)}

@@ -169,48 +169,6 @@ export const secretDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findManySecretsWithTags = async (
-    filter: {
-      secretIds: string[];
-      type: SecretType;
-    },
-    tx?: Knex
-  ) => {
-    try {
-      const secrets = await (tx || db.replicaNode())(TableName.Secret)
-        .whereIn(`${TableName.Secret}.id` as "id", filter.secretIds)
-        .where("type", filter.type)
-        .leftJoin(TableName.JnSecretTag, `${TableName.Secret}.id`, `${TableName.JnSecretTag}.${TableName.Secret}Id`)
-        .leftJoin(TableName.SecretTag, `${TableName.JnSecretTag}.${TableName.SecretTag}Id`, `${TableName.SecretTag}.id`)
-        .select(selectAllTableCols(TableName.Secret))
-        .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
-        .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
-        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"));
-
-      const data = sqlNestRelationships({
-        data: secrets,
-        key: "id",
-        parentMapper: (el) => ({ _id: el.id, ...SecretsSchema.parse(el) }),
-        childrenMapper: [
-          {
-            key: "tagId",
-            label: "tags" as const,
-            mapper: ({ tagId: id, tagColor: color, tagSlug: slug }) => ({
-              id,
-              color,
-              slug,
-              name: slug
-            })
-          }
-        ]
-      });
-
-      return data;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "get many secrets with tags" });
-    }
-  };
-
   const findByFolderIds = async (folderIds: string[], userId?: string, tx?: Knex) => {
     try {
       // check if not uui then userId id is null (corner case because service token's ID is not UUI in effort to keep backwards compatibility from mongo)
@@ -485,7 +443,6 @@ export const secretDALFactory = (db: TDbClient) => {
     upsertSecretReferences,
     findReferencedSecretReferences,
     findAllProjectSecretValues,
-    pruneSecretReminders,
-    findManySecretsWithTags
+    pruneSecretReminders
   };
 };

@@ -26,13 +26,8 @@ import {
 
 export const secretKeys = {
   // this is also used in secretSnapshot part
-  getProjectSecret: ({
-    workspaceId,
-    environment,
-    secretPath,
-    viewSecretValue
-  }: TGetProjectSecretsKey) =>
-    [{ workspaceId, environment, secretPath, viewSecretValue }, "secrets"] as const,
+  getProjectSecret: ({ workspaceId, environment, secretPath }: TGetProjectSecretsKey) =>
+    [{ workspaceId, environment, secretPath }, "secrets"] as const,
   getSecretVersion: (secretId: string) => [{ secretId }, "secret-versions"] as const,
   getSecretAccessList: ({
     workspaceId,
@@ -49,15 +44,13 @@ export const fetchProjectSecrets = async ({
   environment,
   secretPath,
   includeImports,
-  expandSecretReferences,
-  viewSecretValue
+  expandSecretReferences
 }: TGetProjectSecretsKey) => {
   const { data } = await apiRequest.get<SecretV3RawResponse>("/api/v3/secrets/raw", {
     params: {
       environment,
       workspaceId,
       secretPath,
-      viewSecretValue,
       expandSecretReferences,
       include_imports: includeImports
     }
@@ -75,7 +68,6 @@ export const mergePersonalSecrets = (rawSecrets: SecretV3Raw[]) => {
       env: el.environment,
       key: el.secretKey,
       value: el.secretValue,
-      secretValueHidden: el.secretValueHidden,
       tags: el.tags || [],
       comment: el.secretComment || "",
       reminderRepeatDays: el.secretReminderRepeatDays,
@@ -115,7 +107,6 @@ export const useGetProjectSecrets = ({
   workspaceId,
   environment,
   secretPath,
-  viewSecretValue,
   options
 }: TGetProjectSecretsDTO & {
   options?: Omit<
@@ -132,13 +123,8 @@ export const useGetProjectSecrets = ({
     ...options,
     // wait for all values to be available
     enabled: Boolean(workspaceId && environment) && (options?.enabled ?? true),
-    queryKey: secretKeys.getProjectSecret({
-      workspaceId,
-      environment,
-      secretPath,
-      viewSecretValue
-    }),
-    queryFn: () => fetchProjectSecrets({ workspaceId, environment, secretPath, viewSecretValue }),
+    queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath }),
+    queryFn: () => fetchProjectSecrets({ workspaceId, environment, secretPath }),
     select: useCallback(
       (data: Awaited<ReturnType<typeof fetchProjectSecrets>>) => mergePersonalSecrets(data.secrets),
       []

@@ -9,14 +9,12 @@ import {
   faPlus,
   faShare,
   faTag,
-  faTrash,
-  faTriangleExclamation
+  faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
@@ -46,7 +44,6 @@ import {
   useProjectPermission,
   useWorkspace
 } from "@app/context";
-import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp, useToggle } from "@app/hooks";
 import { useGetSecretVersion } from "@app/hooks/api";
 import { useGetSecretAccessList } from "@app/hooks/api/secrets/queries";
@@ -125,7 +122,7 @@ export const SecretDetailSidebar = ({
   const selectTagSlugs = selectedTags.map((i) => i.slug);
 
   const cannotEditSecret = permission.cannot(
-    ProjectPermissionSecretActions.Edit,
+    ProjectPermissionActions.Edit,
     subject(ProjectPermissionSub.Secrets, {
       environment,
       secretPath,
@@ -133,29 +130,16 @@ export const SecretDetailSidebar = ({
       secretTags: selectTagSlugs
     })
   );
-
-  const cannotReadSecretValue = permission.cannot(
-    ProjectPermissionSecretActions.ReadValue,
-    subject(ProjectPermissionSub.Secrets, {
-      environment,
-      secretPath,
-      secretName: secretKey,
-      secretTags: selectTagSlugs
-    })
-  );
-
   const isReadOnly =
     permission.can(
-      ProjectPermissionSecretActions.DescribeSecret,
+      ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, {
         environment,
         secretPath,
         secretName: secretKey,
         secretTags: selectTagSlugs
       })
-    ) &&
-    cannotEditSecret &&
-    cannotReadSecretValue;
+    ) && cannotEditSecret;
 
   const overrideAction = watch("overrideAction");
   const isOverridden =
@@ -208,16 +192,9 @@ export const SecretDetailSidebar = ({
     await onSaveSecret(secret, { ...secret, ...data }, () => reset());
   };
 
-  const handleReminderSubmit = async (
-    reminderRepeatDays: number | null | undefined,
-    reminderNote: string | null | undefined
-  ) => {
-    await onSaveSecret(
-      secret,
-      { ...secret, reminderRepeatDays, reminderNote, isReminderEvent: true },
-      () => {}
-    );
-  };
+  const handleReminderSubmit = async (reminderRepeatDays: number | null | undefined, reminderNote: string | null | undefined) => {
+    await onSaveSecret(secret, { ...secret, reminderRepeatDays, reminderNote, isReminderEvent: true }, () => { });
+  }
 
   const [createReminderFormOpen, setCreateReminderFormOpen] = useToggle(false);
 
@@ -236,7 +213,7 @@ export const SecretDetailSidebar = ({
           if (data) {
             setValue("reminderRepeatDays", data.days, { shouldDirty: false });
             setValue("reminderNote", data.note, { shouldDirty: false });
-            handleReminderSubmit(data.days, data.note);
+            handleReminderSubmit(data.days, data.note)
           }
         }}
       />
@@ -284,62 +261,37 @@ export const SecretDetailSidebar = ({
                         key="secret-value"
                         control={control}
                         render={({ field }) => (
-                          <div className="flex items-center gap-2">
-                            <FormControl
-                              className="flex-1"
-                              helperText={
-                                cannotReadSecretValue ? (
-                                  <div className="flex space-x-2">
-                                    <FontAwesomeIcon
-                                      icon={faTriangleExclamation}
-                                      className="mt-0.5 text-yellow-400"
-                                    />
-                                    <span>
-                                      The value of this secret is hidden because you do not have the
-                                      read secret value permission.
-                                    </span>
-                                  </div>
-                                ) : undefined
-                              }
-                              label="Value"
-                            >
-                              <div className="flex items-center gap-2">
-                                <InfisicalSecretInput
-                                  isReadOnly={isReadOnly}
-                                  environment={environment}
-                                  secretPath={secretPath}
-                                  key="secret-value"
-                                  isDisabled={isOverridden || !isAllowed}
-                                  containerClassName="text-bunker-300 w-full hover:border-primary-400/50 border border-mineshaft-600 bg-bunker-800 px-2 py-1.5"
-                                  {...field}
-                                  autoFocus={false}
-                                />
-                                <Tooltip
-                                  content="You don't have permission to view the secret value."
-                                  isDisabled={!secret?.secretValueHidden}
-                                >
-                                  <Button
-                                    isDisabled={secret?.secretValueHidden}
-                                    className="px-2 py-[0.43rem] font-normal"
-                                    variant="outline_bg"
-                                    leftIcon={<FontAwesomeIcon icon={faShare} />}
-                                    onClick={() => {
-                                      const value = secret?.valueOverride ?? secret?.value;
-                                      if (value) {
-                                        handleSecretShare(value);
-                                      }
-                                    }}
-                                  >
-                                    Share
-                                  </Button>
-                                </Tooltip>
-                              </div>
-                            </FormControl>
-                          </div>
+                          <FormControl label="Value">
+                            <InfisicalSecretInput
+                              isReadOnly={isReadOnly}
+                              environment={environment}
+                              secretPath={secretPath}
+                              key="secret-value"
+                              isDisabled={isOverridden || !isAllowed}
+                              containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-bunker-800 px-2 py-1.5"
+                              {...field}
+                              autoFocus={false}
+                            />
+                          </FormControl>
                         )}
                       />
                     )}
                   </ProjectPermissionCan>
+                </div>
+                <div className="ml-1 mt-1.5 flex items-center">
+                  <Button
+                    className="w-full px-2 py-[0.43rem] font-normal"
+                    variant="outline_bg"
+                    leftIcon={<FontAwesomeIcon icon={faShare} />}
+                    onClick={() => {
+                      const value = secret?.valueOverride ?? secret?.value;
+                      if (value) {
+                        handleSecretShare(value);
+                      }
+                    }}
+                  >
+                    Share
+                  </Button>
                 </div>
               </div>
               <div className="mb-2 rounded border border-mineshaft-600 bg-mineshaft-900 p-4 px-0 pb-0">
@@ -666,34 +618,51 @@ export const SecretDetailSidebar = ({
               <div className="mb-4flex-grow dark cursor-default text-sm text-bunker-300">
                 <div className="mb-2 pl-1">Version History</div>
                 <div className="thin-scrollbar flex h-48 flex-col space-y-2 overflow-y-auto overflow-x-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 dark:[color-scheme:dark]">
-                  {secretVersion?.map(
-                    ({ createdAt, secretValue, version, id, secretValueHidden }, index) => (
-                      <div key={`secret-version-${index + 1}`} className="flex flex-row">
-                        <div key={id} className="flex w-full flex-col space-y-1">
-                          <div className="flex items-center">
-                            <div className="w-10">
-                              <div className="w-fit rounded-md border border-mineshaft-600 bg-mineshaft-700 px-1 text-sm text-mineshaft-300">
-                                v{version}
-                              </div>
+                  {secretVersion?.map(({ createdAt, secretValue, version, id }) => (
+                    <div className="flex flex-row">
+                      <div key={id} className="flex w-full flex-col space-y-1">
+                        <div className="flex items-center">
+                          <div className="w-10">
+                            <div className="w-fit rounded-md border border-mineshaft-600 bg-mineshaft-700 px-1 text-sm text-mineshaft-300">
+                              v{version}
                             </div>
-                            <div>{format(new Date(createdAt), "Pp")}</div>
                           </div>
-                          <div className="flex w-full cursor-default">
-                            <div className="relative w-10">
-                              <div className="absolute bottom-0 left-3 top-0 mt-0.5 border-l border-mineshaft-400/60" />
+                          <div>{format(new Date(createdAt), "Pp")}</div>
+                        </div>
+                        <div className="flex w-full cursor-default">
+                          <div className="relative w-10">
+                            <div className="absolute bottom-0 left-3 top-0 mt-0.5 border-l border-mineshaft-400/60" />
+                          </div>
+                          <div className="flex flex-row">
+                            <div className="h-min w-fit rounded-sm bg-primary-500/10 px-1 text-primary-300/70">
+                              Value:
                             </div>
-                            <div className="flex flex-row">
-                              <div className="h-min w-fit rounded-sm bg-primary-500/10 px-1 text-primary-300/70">
-                                Value:
-                              </div>
-                              <div className="group break-all pl-1 font-mono">
-                                <div className="relative hidden cursor-pointer transition-all duration-200 group-[.show-value]:inline">
-                                  <button
-                                    type="button"
-                                    className="select-none"
-                                    onClick={(e) => {
-                                      if (secretValueHidden) return;
+                            <div className="group break-all pl-1 font-mono">
+                              <div className="relative hidden cursor-pointer transition-all duration-200 group-[.show-value]:inline">
+                                <button
+                                  type="button"
+                                  className="select-none"
+                                  onClick={(e) => {
+                                    navigator.clipboard.writeText(secretValue || "");
+                                    const target = e.currentTarget;
+                                    target.style.borderBottom = "1px dashed";
+                                    target.style.paddingBottom = "-1px";
 
+                                    // Create and insert popup
+                                    const popup = document.createElement("div");
+                                    popup.className =
+                                      "w-16 flex justify-center absolute top-6 left-0 text-xs text-primary-100 bg-mineshaft-800 px-1 py-0.5 rounded-md border border-primary-500/50";
+                                    popup.textContent = "Copied!";
+                                    target.parentElement?.appendChild(popup);
+
+                                    // Remove popup and border after delay
+                                    setTimeout(() => {
+                                      popup.remove();
+                                      target.style.borderBottom = "none";
+                                    }, 3000);
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
                                       navigator.clipboard.writeText(secretValue || "");
                                       const target = e.currentTarget;
                                       target.style.borderBottom = "1px dashed";
@@ -711,109 +680,72 @@ export const SecretDetailSidebar = ({
                                         popup.remove();
                                         target.style.borderBottom = "none";
                                       }, 3000);
-                                    }}
-                                    onKeyDown={(e) => {
-                                      if (secretValueHidden) return;
-
-                                      if (e.key === "Enter" || e.key === " ") {
-                                        navigator.clipboard.writeText(secretValue || "");
-                                        const target = e.currentTarget;
-                                        target.style.borderBottom = "1px dashed";
-                                        target.style.paddingBottom = "-1px";
-
-                                        // Create and insert popup
-                                        const popup = document.createElement("div");
-                                        popup.className =
-                                          "w-16 flex justify-center absolute top-6 left-0 text-xs text-primary-100 bg-mineshaft-800 px-1 py-0.5 rounded-md border border-primary-500/50";
-                                        popup.textContent = "Copied!";
-                                        target.parentElement?.appendChild(popup);
-
-                                        // Remove popup and border after delay
-                                        setTimeout(() => {
-                                          popup.remove();
-                                          target.style.borderBottom = "none";
-                                        }, 3000);
-                                      }
-                                    }}
-                                  >
-                                    <Tooltip
-                                      className="break-normal text-xs"
-                                      content="You do not have permission to view this secret value"
-                                      isDisabled={!secretValueHidden}
-                                    >
-                                      <span
-                                        className={twMerge(
-                                          secretValueHidden && "text-xs text-bunker-300 opacity-40"
-                                        )}
-                                      >
-                                        {secretValueHidden ? "Hidden" : secretValue}
-                                      </span>
-                                    </Tooltip>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="ml-1 cursor-pointer"
-                                    onClick={(e) => {
+                                    }
+                                  }}
+                                >
+                                  {secretValue}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="ml-1 cursor-pointer"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.currentTarget
+                                      .closest(".group")
+                                      ?.classList.remove("show-value");
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
                                       e.stopPropagation();
                                       e.currentTarget
                                         .closest(".group")
                                         ?.classList.remove("show-value");
-                                    }}
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter" || e.key === " ") {
-                                        e.stopPropagation();
-                                        e.currentTarget
-                                          .closest(".group")
-                                          ?.classList.remove("show-value");
-                                      }
-                                    }}
-                                  >
-                                    <FontAwesomeIcon icon={faEyeSlash} />
-                                  </button>
-                                </div>
-                                <span className="group-[.show-value]:hidden">
-                                  {secretValueHidden ? "******" : secretValue?.replace(/./g, "*")}
-                                  <button
-                                    type="button"
-                                    className="ml-1 cursor-pointer"
-                                    onClick={(e) => {
+                                    }
+                                  }}
+                                >
+                                  <FontAwesomeIcon icon={faEyeSlash} />
+                                </button>
+                              </div>
+                              <span className="group-[.show-value]:hidden">
+                                {secretValue?.replace(/./g, "*")}
+                                <button
+                                  type="button"
+                                  className="ml-1 cursor-pointer"
+                                  onClick={(e) => {
+                                    e.currentTarget.closest(".group")?.classList.add("show-value");
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
                                       e.currentTarget
                                         .closest(".group")
                                         ?.classList.add("show-value");
-                                    }}
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter" || e.key === " ") {
-                                        e.currentTarget
-                                          .closest(".group")
-                                          ?.classList.add("show-value");
-                                      }
-                                    }}
-                                  >
-                                    <FontAwesomeIcon icon={faEye} />
-                                  </button>
-                                </span>
-                              </div>
+                                    }
+                                  }}
+                                >
+                                  <FontAwesomeIcon icon={faEye} />
+                                </button>
+                              </span>
                             </div>
                           </div>
                         </div>
-                        <div
-                          className={`flex items-center justify-center ${version === secretVersion.length ? "hidden" : ""}`}
-                        >
-                          <Tooltip content="Restore Secret Value">
-                            <IconButton
-                              ariaLabel="Restore"
-                              variant="outline_bg"
-                              size="sm"
-                              className="h-8 w-8 rounded-md"
-                              onClick={() => setValue("value", secretValue)}
-                            >
-                              <FontAwesomeIcon icon={faArrowRotateRight} />
-                            </IconButton>
-                          </Tooltip>
-                        </div>
                       </div>
-                    )
-                  )}
+                      <div
+                        className={`flex items-center justify-center ${version === secretVersion.length ? "hidden" : ""}`}
+                      >
+                        <Tooltip content="Restore Secret Value">
+                          <IconButton
+                            ariaLabel="Restore"
+                            variant="outline_bg"
+                            size="sm"
+                            className="h-8 w-8 rounded-md"
+                            onClick={() => setValue("value", secretValue)}
+                          >
+                            <FontAwesomeIcon icon={faArrowRotateRight} />
+                          </IconButton>
+                        </Tooltip>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
               <div className="dark mb-4 flex-grow text-sm text-bunker-300">

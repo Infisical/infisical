@@ -6,7 +6,6 @@ import {
   ActionProjectType,
   ProjectMembershipRole,
   ProjectUpgradeStatus,
-  ProjectVersion,
   SecretEncryptionAlgo,
   SecretKeyEncoding,
   SecretsSchema,
@@ -14,11 +13,7 @@ import {
 } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSecretActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
@@ -53,7 +48,6 @@ import { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bri
 import { TGetSecretReferencesTreeDTO } from "../secret-v2-bridge/secret-v2-bridge-types";
 import { TSecretDALFactory } from "./secret-dal";
 import {
-  conditionallyHideSecretValue,
   decryptSecretRaw,
   fnSecretBlindIndexCheck,
   fnSecretBulkDelete,
@@ -101,7 +95,7 @@ type TSecretServiceFactoryDep = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   folderDAL: Pick<
     TSecretFolderDALFactory,
-    "findBySecretPath" | "updateById" | "findById" | "findByManySecretPath" | "find" | "findSecretPathByFolderIds"
+    "findBySecretPath" | "updateById" | "findById" | "findByManySecretPath" | "find"
   >;
   secretV2BridgeService: TSecretV2BridgeServiceFactory;
   secretBlindIndexDAL: TSecretBlindIndexDALFactory;
@@ -210,7 +204,7 @@ export const secretServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.Create,
+      ProjectPermissionActions.Create,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
@@ -328,7 +322,7 @@ export const secretServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.Edit,
+      ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
@@ -450,22 +444,7 @@ export const secretServiceFactory = ({
         environmentSlug: folder.environment.slug
       });
     }
-
-    const secretValueHidden = !permission.can(
-      ProjectPermissionSecretActions.ReadValue,
-      subject(ProjectPermissionSub.Secrets, {
-        environment,
-        secretPath: path
-      })
-    );
-
-    return {
-      ...updatedSecret[0],
-      ...conditionallyHideSecretValue(secretValueHidden, updatedSecret[0]),
-      workspace: projectId,
-      environment,
-      secretPath: path
-    };
+    return { ...updatedSecret[0], workspace: projectId, environment, secretPath: path };
   };
 
   const deleteSecret = async ({
@@ -488,7 +467,7 @@ export const secretServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.Delete,
+      ProjectPermissionActions.Delete,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
@@ -561,19 +540,7 @@ export const secretServiceFactory = ({
       });
     }
 
-    const secretValueHidden = !permission.can(
-      ProjectPermissionSecretActions.ReadValue,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
-    );
-
-    return {
-      ...deletedSecret[0],
-      ...conditionallyHideSecretValue(secretValueHidden, deletedSecret[0]),
-      _id: deletedSecret[0].id,
-      workspace: projectId,
-      environment,
-      secretPath: path
-    };
+    return { ...deletedSecret[0], _id: deletedSecret[0].id, workspace: projectId, environment, secretPath: path };
   };
 
   const getSecrets = async ({
@@ -622,7 +589,7 @@ export const secretServiceFactory = ({
       paths = deepPaths.map(({ folderId, path: p }) => ({ folderId, path: p }));
     } else {
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretActions.ReadValue,
+        ProjectPermissionActions.Read,
         subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
       );
 
@@ -647,7 +614,7 @@ export const secretServiceFactory = ({
         actor === ActorType.SERVICE
           ? true
           : permission.can(
-              ProjectPermissionSecretActions.ReadValue,
+              ProjectPermissionActions.Read,
               subject(ProjectPermissionSub.Secrets, {
                 environment: importEnv.slug,
                 secretPath: importPath
@@ -704,7 +671,7 @@ export const secretServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.ReadValue,
+      ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
@@ -754,7 +721,7 @@ export const secretServiceFactory = ({
         actor === ActorType.SERVICE
           ? true
           : permission.can(
-              ProjectPermissionSecretActions.ReadValue,
+              ProjectPermissionActions.Read,
               subject(ProjectPermissionSub.Secrets, {
                 environment: importEnv.slug,
                 secretPath: importPath
@@ -772,7 +739,6 @@ export const secretServiceFactory = ({
           if (secretBlindIndex === importedSecrets[i].secrets[j].secretBlindIndex) {
             return {
               ...importedSecrets[i].secrets[j],
-              secretValueHidden: false,
               workspace: projectId,
               environment: importedSecrets[i].environment,
               secretPath: importedSecrets[i].secretPath
@@ -783,13 +749,7 @@ export const secretServiceFactory = ({
     }
     if (!secret) throw new NotFoundError({ message: `Secret with name '${secretName}' not found` });
 
-    return {
-      ...secret,
-      secretValueHidden: false, // Always false because we check permission at the beginning of the function
-      workspace: projectId,
-      environment,
-      secretPath: path
-    };
+    return { ...secret, workspace: projectId, environment, secretPath: path };
   };
 
   const createManySecret = async ({
@@ -811,7 +771,7 @@ export const secretServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.Create,
+      ProjectPermissionActions.Create,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
@@ -899,7 +859,7 @@ export const secretServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.Edit,
+      ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
@@ -941,8 +901,8 @@ export const secretServiceFactory = ({
     if (tagIds.length !== tags.length) throw new NotFoundError({ message: "One or more tags not found" });
 
     const references = await getSecretReference(projectId);
-    const secrets = await secretDAL.transaction(async (tx) => {
-      const updatedSecrets = await fnSecretBulkUpdate({
+    const secrets = await secretDAL.transaction(async (tx) =>
+      fnSecretBulkUpdate({
         folderId,
         projectId,
         tx,
@@ -972,18 +932,8 @@ export const secretServiceFactory = ({
         secretVersionDAL,
         secretTagDAL,
         secretVersionTagDAL
-      });
-
-      const secretValueHidden = !permission.can(
-        ProjectPermissionSecretActions.ReadValue,
-        subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
-      );
-
-      return updatedSecrets.map((secret) => ({
-        ...secret,
-        ...conditionallyHideSecretValue(secretValueHidden, secret)
-      }));
-    });
+      })
+    );
 
     await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({
@@ -1017,7 +967,7 @@ export const secretServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.Delete,
+      ProjectPermissionActions.Delete,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
@@ -1069,15 +1019,7 @@ export const secretServiceFactory = ({
         }
       }
 
-      const secretValueHidden = !permission.can(
-        ProjectPermissionSecretActions.ReadValue,
-        subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
-      );
-
-      return secrets.map((secret) => ({
-        ...secret,
-        ...conditionallyHideSecretValue(secretValueHidden, secret)
-      }));
+      return secrets;
     });
 
     await snapshotService.performSnapshot(folderId);
@@ -1238,7 +1180,6 @@ export const secretServiceFactory = ({
       secretName,
       path: secretPath,
       environment,
-      viewSecretValue: false,
       type: "shared"
     });
 
@@ -1253,11 +1194,10 @@ export const secretServiceFactory = ({
         | (typeof groupPermissions)[number]
     ) => {
       const allowedActions = [
-        ProjectPermissionSecretActions.DescribeSecret,
-        ProjectPermissionSecretActions.ReadValue,
-        ProjectPermissionSecretActions.Delete,
-        ProjectPermissionSecretActions.Create,
-        ProjectPermissionSecretActions.Edit
+        ProjectPermissionActions.Read,
+        ProjectPermissionActions.Delete,
+        ProjectPermissionActions.Create,
+        ProjectPermissionActions.Edit
       ].filter((action) =>
         entityPermission.permission.can(
           action,
@@ -1294,13 +1234,11 @@ export const secretServiceFactory = ({
     actorId,
     actorOrgId,
     actorAuthMethod,
-    viewSecretValue,
     environment,
     includeImports,
     expandSecretReferences,
     recursive,
     tagSlugs = [],
-    throwOnMissingReadValuePermission = true,
     ...paramsV2
   }: TGetSecretsRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
@@ -1311,8 +1249,6 @@ export const secretServiceFactory = ({
         actorId,
         actor,
         actorOrgId,
-        viewSecretValue,
-        throwOnMissingReadValuePermission,
         environment,
         path,
         recursive,
@@ -1321,7 +1257,6 @@ export const secretServiceFactory = ({
         tagSlugs,
         ...paramsV2
       });
-
       return { secrets, imports };
     }
 
@@ -1350,20 +1285,14 @@ export const secretServiceFactory = ({
       recursive
     });
 
-    const decryptedSecrets = secrets.map((el) => decryptSecretRaw({ ...el, secretValueHidden: false }, botKey));
+    const decryptedSecrets = secrets.map((el) => decryptSecretRaw(el, botKey));
     const filteredSecrets = tagSlugs.length
       ? decryptedSecrets.filter((secret) => Boolean(secret.tags?.find((el) => tagSlugs.includes(el.slug))))
       : decryptedSecrets;
     const processedImports = (imports || [])?.map(({ secrets: importedSecrets, ...el }) => {
       const decryptedImportSecrets = importedSecrets.map((sec) =>
         decryptSecretRaw(
-          {
-            ...sec,
-            environment: el.environment,
-            workspace: projectId,
-            secretPath: el.secretPath,
-            secretValueHidden: false
-          },
+          { ...sec, environment: el.environment, workspace: projectId, secretPath: el.secretPath },
           botKey
         )
       );
@@ -1374,7 +1303,6 @@ export const secretServiceFactory = ({
       const importedEntries = decryptedImportSecrets.reduce(
         (
           accum: {
-            secretValueHidden: boolean;
             secretKey: string;
             secretPath: string;
             workspace: string;
@@ -1418,7 +1346,6 @@ export const secretServiceFactory = ({
         Object.keys(secretsGroupByPath).map((groupedPath) =>
           Promise.allSettled(
             secretsGroupByPath[groupedPath].map(async (decryptedSecret, index) => {
-              if (decryptedSecret.secretValueHidden) return;
               const expandedSecretValue = await expandSecret({
                 value: decryptedSecret.secretValue,
                 secretPath: groupedPath,
@@ -1435,7 +1362,6 @@ export const secretServiceFactory = ({
         processedImports.map((processedImport) =>
           Promise.allSettled(
             processedImport.secrets.map(async (decryptedSecret, index) => {
-              if (decryptedSecret.secretValueHidden) return;
               const expandedSecretValue = await expandSecret({
                 value: decryptedSecret.secretValue,
                 secretPath: path,
@@ -1461,7 +1387,6 @@ export const secretServiceFactory = ({
     path,
     actor,
     environment,
-    viewSecretValue,
     projectId: workspaceId,
     expandSecretReferences,
     projectSlug,
@@ -1481,7 +1406,6 @@ export const secretServiceFactory = ({
         includeImports,
         actorAuthMethod,
         path,
-        viewSecretValue,
         actorOrgId,
         actor,
         actorId,
@@ -1512,7 +1436,6 @@ export const secretServiceFactory = ({
         message: `Project bot for project with ID '${projectId}' not found. Please upgrade your project.`,
         name: "bot_not_found_error"
       });
-
     const decryptedSecret = decryptSecretRaw(encryptedSecret, botKey);
 
     if (expandSecretReferences) {
@@ -1531,10 +1454,7 @@ export const secretServiceFactory = ({
       decryptedSecret.secretValue = expandedSecretValue || "";
     }
 
-    return {
-      secretMetadata: undefined,
-      ...decryptedSecret
-    };
+    return { secretMetadata: undefined, ...decryptedSecret };
   };
 
   const createSecretRaw = async ({
@@ -1685,16 +1605,7 @@ export const secretServiceFactory = ({
       tags: tagIds
     });
 
-    return {
-      type: SecretProtectionType.Direct as const,
-      secret: decryptSecretRaw(
-        {
-          ...secret,
-          secretValueHidden: false
-        },
-        botKey
-      )
-    };
+    return { type: SecretProtectionType.Direct as const, secret: decryptSecretRaw(secret, botKey) };
   };
 
   const updateSecretRaw = async ({
@@ -2090,7 +2001,7 @@ export const secretServiceFactory = ({
     return {
       type: SecretProtectionType.Direct as const,
       secrets: secrets.map((secret) =>
-        decryptSecretRaw({ ...secret, workspace: projectId, environment, secretPath, secretValueHidden: false }, botKey)
+        decryptSecretRaw({ ...secret, workspace: projectId, environment, secretPath }, botKey)
       )
     };
   };
@@ -2379,12 +2290,6 @@ export const secretServiceFactory = ({
     const folder = await folderDAL.findById(secret.folderId);
     if (!folder) throw new NotFoundError({ message: `Folder with ID '${secret.folderId}' not found` });
 
-    const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(folder.projectId, [folder.id]);
-
-    if (!folderWithPath) {
-      throw new NotFoundError({ message: `Folder with ID '${folder.id}' not found` });
-    }
-
     const { botKey } = await projectBotService.getBotKey(folder.projectId);
     if (!botKey)
       throw new NotFoundError({ message: `Project bot for project with ID '${folder.projectId}' not found` });
@@ -2398,42 +2303,18 @@ export const secretServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
-    const secretVersions = await secretVersionDAL.findBySecretId(secretId, {
-      offset,
-      limit,
-      sort: [["createdAt", "desc"]]
-    });
-    return secretVersions.map((el) => {
-      const secretKey = decryptSymmetric128BitHexKeyUTF8({
-        ciphertext: secret.secretKeyCiphertext,
-        iv: secret.secretKeyIV,
-        tag: secret.secretKeyTag,
-        key: botKey
-      });
-
-      const secretValueHidden = permission.cannot(
-        ProjectPermissionSecretActions.ReadValue,
-        subject(ProjectPermissionSub.Secrets, {
-          environment: folder.environment.envSlug,
-          secretPath: folderWithPath.path,
-          secretName: secretKey,
-          ...(el.tags?.length && {
-            secretTags: el.tags.map((tag) => tag.slug)
-          })
-        })
-      );
-
-      return decryptSecretRaw(
+    const secretVersions = await secretVersionDAL.find({ secretId }, { offset, limit, sort: [["createdAt", "desc"]] });
+    return secretVersions.map((el) =>
+      decryptSecretRaw(
         {
-          secretValueHidden,
           ...el,
           workspace: folder.projectId,
           environment: folder.environment.envSlug,
-          secretPath: folderWithPath.path
+          secretPath: "/"
         },
         botKey
-      );
-    });
+      )
+    );
   };
 
   const attachTags = async ({
@@ -2459,7 +2340,7 @@ export const secretServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.Edit,
+      ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })
     );
 
@@ -2565,7 +2446,7 @@ export const secretServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.Edit,
+      ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })
     );
 
@@ -2731,7 +2612,7 @@ export const secretServiceFactory = ({
         message: `Project with slug '${projectSlug}' not found`
       });
     }
-    if (project.version === ProjectVersion.V3) {
+    if (project.version === 3) {
       return secretV2BridgeService.moveSecrets({
         sourceEnvironment,
         sourceSecretPath,
@@ -2755,6 +2636,30 @@ export const secretServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Delete,
+      subject(ProjectPermissionSub.Secrets, {
+        environment: sourceEnvironment,
+        secretPath: sourceSecretPath
+      })
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Create,
+      subject(ProjectPermissionSub.Secrets, {
+        environment: destinationEnvironment,
+        secretPath: destinationSecretPath
+      })
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Edit,
+      subject(ProjectPermissionSub.Secrets, {
+        environment: destinationEnvironment,
+        secretPath: destinationSecretPath
+      })
+    );
 
     const { botKey } = await projectBotService.getBotKey(project.id);
     if (!botKey) {
@@ -2783,9 +2688,11 @@ export const secretServiceFactory = ({
       });
     }
 
-    const sourceSecrets = await secretDAL.findManySecretsWithTags({
+    const sourceSecrets = await secretDAL.find({
       type: SecretType.Shared,
-      secretIds
+      $in: {
+        id: secretIds
+      }
     });
 
     if (sourceSecrets.length !== secretIds.length) {
@@ -2794,52 +2701,21 @@ export const secretServiceFactory = ({
       });
     }
 
-    const sourceActions = [
-      ProjectPermissionSecretActions.Delete,
-      ProjectPermissionSecretActions.DescribeSecret,
-      ProjectPermissionSecretActions.ReadValue
-    ] as const;
-    const destinationActions = [ProjectPermissionSecretActions.Create, ProjectPermissionSecretActions.Edit] as const;
-
-    const decryptedSourceSecrets = sourceSecrets.map((secret) => {
-      const secretKey = decryptSymmetric128BitHexKeyUTF8({
+    const decryptedSourceSecrets = sourceSecrets.map((secret) => ({
+      ...secret,
+      secretKey: decryptSymmetric128BitHexKeyUTF8({
         ciphertext: secret.secretKeyCiphertext,
         iv: secret.secretKeyIV,
         tag: secret.secretKeyTag,
         key: botKey
-      });
-
-      for (const destinationAction of destinationActions) {
-        ForbiddenError.from(permission).throwUnlessCan(
-          destinationAction,
-          subject(ProjectPermissionSub.Secrets, {
-            environment: destinationEnvironment,
-            secretPath: destinationSecretPath
-          })
-        );
-      }
-
-      for (const sourceAction of sourceActions) {
-        ForbiddenError.from(permission).throwUnlessCan(
-          sourceAction,
-          subject(ProjectPermissionSub.Secrets, {
-            environment: sourceEnvironment,
-            secretPath: sourceSecretPath
-          })
-        );
-      }
-
-      return {
-        ...secret,
-        secretKey,
-        secretValue: decryptSymmetric128BitHexKeyUTF8({
-          ciphertext: secret.secretValueCiphertext,
-          iv: secret.secretValueIV,
-          tag: secret.secretValueTag,
-          key: botKey
-        })
-      };
-    });
+      }),
+      secretValue: decryptSymmetric128BitHexKeyUTF8({
+        ciphertext: secret.secretValueCiphertext,
+        iv: secret.secretValueIV,
+        tag: secret.secretValueTag,
+        key: botKey
+      })
+    }));
 
     let isSourceUpdated = false;
     let isDestinationUpdated = false;

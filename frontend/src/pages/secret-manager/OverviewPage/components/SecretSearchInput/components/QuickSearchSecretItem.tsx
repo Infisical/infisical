@@ -110,31 +110,21 @@ export const QuickSearchSecretItem = ({
             </Badge>
           )}
           {isSingleEnv ? (
-            <Tooltip
-              isDisabled={!groupSecret?.secretValueHidden}
-              content={
-                groupSecret?.secretValueHidden
-                  ? "You do not have permission to view this secret value"
-                  : ""
-              }
+            <IconButton
+              size="md"
+              variant="plain"
+              colorSchema="secondary"
+              ariaLabel="Copy secret value"
+              onClick={(e) => {
+                e.stopPropagation();
+                const el = envSlugMap.get(groupSecret.env)?.name;
+                if (el) {
+                  handleCopy(groupSecret.value!, el);
+                }
+              }}
             >
-              <IconButton
-                size="md"
-                isDisabled={groupSecret?.secretValueHidden}
-                variant="plain"
-                colorSchema="secondary"
-                ariaLabel="Copy secret value"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const el = envSlugMap.get(groupSecret.env)?.name;
-                  if (el) {
-                    handleCopy(groupSecret.value!, el);
-                  }
-                }}
-              >
-                <FontAwesomeIcon icon={isUrlCopied ? faCheck : faCopy} />
-              </IconButton>
-            </Tooltip>
+              <FontAwesomeIcon icon={isUrlCopied ? faCheck : faCopy} />
+            </IconButton>
           ) : (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -168,24 +158,14 @@ export const QuickSearchSecretItem = ({
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Tooltip
-                isDisabled={!groupSecret?.secretValueHidden}
-                content={
-                  groupSecret?.secretValueHidden
-                    ? "You do not have permission to view this secret value"
-                    : ""
-                }
+              <IconButton
+                size="md"
+                variant="plain"
+                colorSchema="secondary"
+                ariaLabel="View secret value"
               >
-                <IconButton
-                  size="md"
-                  isDisabled={groupSecret?.secretValueHidden}
-                  variant="plain"
-                  colorSchema="secondary"
-                  ariaLabel="View secret value"
-                >
-                  <FontAwesomeIcon icon={faEye} />
-                </IconButton>
-              </Tooltip>
+                <FontAwesomeIcon icon={faEye} />
+              </IconButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Hover to Reveal...</DropdownMenuLabel>

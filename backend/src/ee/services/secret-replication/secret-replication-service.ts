@@ -265,7 +265,6 @@ export const secretReplicationServiceFactory = ({
         folderDAL,
         secretImportDAL,
         decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
-        viewSecretValue: true,
         hasSecretAccess: () => true
       });
       // secrets that gets replicated across imports

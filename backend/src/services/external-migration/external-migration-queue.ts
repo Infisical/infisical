@@ -27,9 +27,9 @@ export type TExternalMigrationQueueFactoryDep = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findLastEnvPosition" | "create" | "findOne">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 
-  secretDAL: Pick<TSecretV2BridgeDALFactory, "insertMany" | "upsertSecretReferences" | "findBySecretKeys" | "find">;
+  secretDAL: Pick<TSecretV2BridgeDALFactory, "insertMany" | "upsertSecretReferences" | "findBySecretKeys">;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "create">;
-  secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "create" | "find">;
+  secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "create">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany" | "create">;
 
   folderDAL: Pick<TSecretFolderDALFactory, "create" | "findBySecretPath" | "findOne" | "findById">;

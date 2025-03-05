@@ -19,7 +19,6 @@ import {
 import { getKeyValue } from "@app/helpers/parseEnvVar";
 import { useCreateFolder, useCreateSecretV3, useCreateWsTag, useGetWsTags } from "@app/hooks/api";
 import { SecretType } from "@app/hooks/api/types";
-import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 
 const typeSchema = z
   .object({
@@ -276,7 +275,7 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
               isMulti
               options={environments.filter((environment) =>
                 permission.can(
-                  ProjectPermissionSecretActions.Create,
+                  ProjectPermissionActions.Create,
                   subject(ProjectPermissionSub.Secrets, {
                     environment: environment.slug,
                     secretPath,

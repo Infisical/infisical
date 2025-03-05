@@ -94,7 +94,7 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
         iv: z.string().trim(),
         tag: z.string().trim(),
         expiresIn: z.number().nullable(),
-        permissions: z.enum(["read", "write", "readValue"]).array()
+        permissions: z.enum(["read", "write"]).array()
       }),
       response: {
         200: z.object({
