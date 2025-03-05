@@ -183,7 +183,7 @@ export const fnSecretsV2FromImports = async ({
     depth: number;
     parentImportedSecrets: (TSecretsV2 & {
       secretValueHidden: boolean;
-      secretTags: { slug: string; name: string; id: string; color: string }[];
+      secretTags: { slug: string; name: string; id: string; color?: string | null }[];
     })[];
   }[] = [{ secretImports: rootSecretImports, depth: 0, parentImportedSecrets: [] }];
 
