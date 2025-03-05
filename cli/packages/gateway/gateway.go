@@ -272,24 +272,20 @@ func (g *Gateway) Listen(ctx context.Context) error {
 
 func (g *Gateway) registerHeartBeat(errCh chan error, done chan bool) {
 	ticker := time.NewTicker(30 * time.Minute)
+	defer ticker.Stop()
 
 	go func() {
-		time.Sleep(10 * time.Second)
-		log.Info().Msg("Registering first heart beat")
-		err := api.CallGatewayHeartBeatV1(g.httpClient)
-		if err != nil {
-			log.Error().Msgf("Failed to register heartbeat: %s", err)
-		}
-
 		for {
+			if err := api.CallGatewayHeartBeatV1(g.httpClient); err != nil {
+				errCh <- err
+			} else {
+				log.Info().Msg("Gateway is reachable by Infisical")
+			}
+
 			select {
 			case <-done:
-				ticker.Stop()
 				return
 			case <-ticker.C:
-				log.Info().Msg("Registering heart beat")
-				err := api.CallGatewayHeartBeatV1(g.httpClient)
-				errCh <- err
 			}
 		}
 	}()
@@ -307,16 +303,17 @@ func (g *Gateway) registerRelayIsActive(serverAddr string, tlsConf *tls.Config, 
 				return
 			case <-ticker.C:
 				func() {
-					ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second) // 3s handshake timeout
+					ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 					defer cancel()
 					conn, err := quic.DialAddr(ctx, serverAddr, tlsConf, quicConf)
 					if conn != nil {
 						conn.CloseWithError(0, "connection closed")
 					}
-					// this error means quic connection is alive
+					// If we get a TLS verification error, that means the QUIC connection is working
+					// Any other error means the connection is not working
 					if err != nil && !strings.Contains(err.Error(), "tls: failed to verify certificate") {
-						errCh <- err
-						return
+						log.Error().Err(err).Msg("Relay connection check failed")
+						errCh <- fmt.Errorf("relay connection check failed: %w", err)
 					}
 				}()
 			}
