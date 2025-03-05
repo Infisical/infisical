@@ -58,6 +58,7 @@ const schema = z.object({
   permissions: z
     .object({
       read: z.boolean(),
+      readValue: z.boolean(),
       write: z.boolean()
     })
     .required()
@@ -296,13 +297,18 @@ export const AddServiceTokenModal = ({ popUp, handlePopUpToggle }: Props) => {
               name="permissions"
               defaultValue={{
                 read: true,
+                readValue: false,
                 write: false
               }}
               render={({ field: { onChange, value }, fieldState: { error } }) => {
                 const options = [
                   {
-                    label: "Read (default)",
+                    label: "Describe Secret (default)",
                     value: "read"
+                  },
+                  {
+                    label: "Read Value (optional)",
+                    value: "readValue"
                   },
                   {
                     label: "Write (optional)",

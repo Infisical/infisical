@@ -1,10 +1,10 @@
 import { z } from "zod";
 
-import { SecretSnapshotsSchema, SecretTagsSchema } from "@app/db/schemas";
+import { SecretSnapshotsSchema } from "@app/db/schemas";
 import { PROJECTS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { secretRawSchema } from "@app/server/routes/sanitizedSchemas";
+import { SanitizedTagSchema, secretRawSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerSnapshotRouter = async (server: FastifyZodProvider) => {
@@ -31,12 +31,9 @@ export const registerSnapshotRouter = async (server: FastifyZodProvider) => {
             secretVersions: secretRawSchema
               .omit({ _id: true, environment: true, workspace: true, type: true })
               .extend({
+                secretValueHidden: z.boolean(),
                 secretId: z.string(),
-                tags: SecretTagsSchema.pick({
-                  id: true,
-                  slug: true,
-                  color: true
-                }).array()
+                tags: SanitizedTagSchema.array()
               })
               .array(),
             folderVersion: z.object({ id: z.string(), name: z.string() }).array(),
@@ -55,6 +52,7 @@ export const registerSnapshotRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         id: req.params.secretSnapshotId
       });
+
       return { secretSnapshot };
     }
   });

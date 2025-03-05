@@ -11,6 +11,7 @@ import {
   useProjectPermission,
   useWorkspace
 } from "@app/context";
+import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { useDeleteFolder, useDeleteSecretBatch } from "@app/hooks/api";
 import {
@@ -58,7 +59,7 @@ export const SelectionPanel = ({ secretPath, resetSelectedEntries, selectedEntri
   // user should have the ability to delete secrets/folders in at least one of the envs
   const shouldShowDelete = userAvailableEnvs.some((env) =>
     permission.can(
-      ProjectPermissionActions.Delete,
+      ProjectPermissionSecretActions.Delete,
       subject(ProjectPermissionSub.Secrets, {
         environment: env.slug,
         secretPath,
@@ -110,7 +111,7 @@ export const SelectionPanel = ({ secretPath, resetSelectedEntries, selectedEntri
         (accum: TDeleteSecretBatchDTO["secrets"], secretRecord) => {
           const entry = secretRecord[env.slug];
           const canDeleteSecret = permission.can(
-            ProjectPermissionActions.Delete,
+            ProjectPermissionSecretActions.Delete,
             subject(ProjectPermissionSub.Secrets, {
               environment: env.slug,
               secretPath,
