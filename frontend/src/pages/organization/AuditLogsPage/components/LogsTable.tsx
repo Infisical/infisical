@@ -106,7 +106,7 @@ export const LogsTable = ({
           className="mb-20 mt-4 px-4 py-3 text-sm"
           isFullWidth
           variant="star"
-          isLoading={isFetchingNextPage}
+          isLoading={isFetchingNextPage || isPending}
           isDisabled={isFetchingNextPage || !hasNextPage}
           onClick={() => fetchNextPage()}
         >
