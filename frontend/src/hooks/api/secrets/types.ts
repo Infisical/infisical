@@ -102,10 +102,10 @@ export type SecretVersions = {
   createdAt: string;
   updatedAt: string;
   actor?: {
-    actorId?: string,
-    actorType: string,
-    name?: string
-  };
+    actorId?: string | null;
+    actorType?: string | null;
+    name?: string | null;
+  } | null;
 };
 
 // dto

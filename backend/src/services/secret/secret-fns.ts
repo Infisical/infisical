@@ -525,6 +525,7 @@ export const fnSecretBulkInsert = async ({
   secretVersionDAL,
   secretTagDAL,
   secretVersionTagDAL,
+  actor,
   tx
 }: TFnSecretBulkInsert) => {
   const sanitizedInputSecrets = inputSecrets.map(
@@ -579,9 +580,17 @@ export const fnSecretBulkInsert = async ({
       [`${TableName.Secret}Id` as const]: newSecretGroupByBlindIndex[secretBlindIndex as string][0].id
     }))
   );
+
+  const userActorId = actor && actor?.type === ActorType.USER ? actor?.actorId : undefined;
+  const identityActorId = actor && actor?.type !== ActorType.USER ? actor?.actorId : undefined;
+  const actorType = actor?.type || ActorType.PLATFORM;
+
   const secretVersions = await secretVersionDAL.insertMany(
     sanitizedInputSecrets.map((el) => ({
       ...el,
+      userActorId,
+      identityActorId,
+      actorType,
       secretId: newSecretGroupByBlindIndex[el.secretBlindIndex as string][0].id
     })),
     tx
@@ -614,7 +623,8 @@ export const fnSecretBulkUpdate = async ({
   secretDAL,
   secretVersionDAL,
   secretTagDAL,
-  secretVersionTagDAL
+  secretVersionTagDAL,
+  actor
 }: TFnSecretBulkUpdate) => {
   const sanitizedInputSecrets = inputSecrets.map(
     ({
@@ -664,10 +674,17 @@ export const fnSecretBulkUpdate = async ({
     })
   );
 
+  const userActorId = actor && actor?.type === ActorType.USER ? actor?.actorId : undefined;
+  const identityActorId = actor && actor?.type !== ActorType.USER ? actor?.actorId : undefined;
+  const actorType = actor?.type || ActorType.PLATFORM;
+
   const newSecrets = await secretDAL.bulkUpdate(sanitizedInputSecrets, tx);
   const secretVersions = await secretVersionDAL.insertMany(
     newSecrets.map(({ id, createdAt, updatedAt, ...el }) => ({
       ...el,
+      userActorId,
+      identityActorId,
+      actorType,
       secretId: id
     })),
     tx

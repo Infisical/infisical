@@ -48,12 +48,11 @@ import {
   useWorkspace
 } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
-import { useGetSecretVersion } from "@app/hooks/api";
+import { useGetSecretVersion, useGetWorkspaceUsers } from "@app/hooks/api";
 import { useGetSecretAccessList } from "@app/hooks/api/secrets/queries";
 import { SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
-import { useGetWorkspaceUsers } from "@app/hooks/api";
 
 import { CreateReminderForm } from "./CreateReminderForm";
 import { formSchema, SecretActionType, TFormSchema } from "./SecretListView.utils";
@@ -127,7 +126,7 @@ export const SecretDetailSidebar = ({
   const selectTagSlugs = selectedTags.map((i) => i.slug);
   const navigate = useNavigate();
   const { data: members = [] } = useGetWorkspaceUsers(currentWorkspace.id);
-  
+
   const cannotEditSecret = permission.cannot(
     ProjectPermissionActions.Edit,
     subject(ProjectPermissionSub.Secrets, {
@@ -199,9 +198,16 @@ export const SecretDetailSidebar = ({
     await onSaveSecret(secret, { ...secret, ...data }, () => reset());
   };
 
-  const handleReminderSubmit = async (reminderRepeatDays: number | null | undefined, reminderNote: string | null | undefined) => {
-    await onSaveSecret(secret, { ...secret, reminderRepeatDays, reminderNote, isReminderEvent: true }, () => { });
-  }
+  const handleReminderSubmit = async (
+    reminderRepeatDays: number | null | undefined,
+    reminderNote: string | null | undefined
+  ) => {
+    await onSaveSecret(
+      secret,
+      { ...secret, reminderRepeatDays, reminderNote, isReminderEvent: true },
+      () => {}
+    );
+  };
 
   const [createReminderFormOpen, setCreateReminderFormOpen] = useToggle(false);
 
@@ -217,14 +223,23 @@ export const SecretDetailSidebar = ({
       default:
         return faServer;
     }
-  }
+  };
+
+  const getModifiedByName = (userType: string, userName: string | undefined) => {
+    switch (userType) {
+      case ActorType.PLATFORM:
+        return "System-generated";
+      default:
+        return userName;
+    }
+  };
 
   const getUserMembershipId = (actorId: string) => {
     return members.filter((member) => member.user?.id === actorId)?.[0].id || null;
-  }
+  };
 
   const getLinkToModifyHistoryEntity = (actorId: string, actorType: string) => {
-    switch(actorType) {
+    switch (actorType) {
       case ActorType.USER:
         return `/${ProjectType.SecretManager}/${currentWorkspace.id}/members/${getUserMembershipId(actorId)}`;
       case ActorType.IDENTITY:
@@ -232,16 +247,16 @@ export const SecretDetailSidebar = ({
       default:
         return null;
     }
-  }
+  };
 
   const onModifyHistoryClick = (actorId: string | undefined, actorType: string) => {
-    if (actorId && actorType !== ActorType.PLATFORM) { 
+    if (actorId && actorType !== ActorType.PLATFORM) {
       const redirectLink = getLinkToModifyHistoryEntity(actorId, actorType);
       if (redirectLink) {
         navigate({ to: redirectLink });
       }
     }
-  }
+  };
 
   return (
     <>
@@ -255,7 +270,7 @@ export const SecretDetailSidebar = ({
           if (data) {
             setValue("reminderRepeatDays", data.days, { shouldDirty: false });
             setValue("reminderNote", data.note, { shouldDirty: false });
-            handleReminderSubmit(data.days, data.note)
+            handleReminderSubmit(data.days, data.note);
           }
         }}
       />
@@ -675,15 +690,23 @@ export const SecretDetailSidebar = ({
                           <div className="relative w-10">
                             <div className="absolute bottom-0 left-3 top-0 mt-0.5 border-l border-mineshaft-400/60" />
                           </div>
-                          <div className="flex flex-col w-full cursor-default">
+                          <div className="flex w-full cursor-default flex-col">
                             {actor && (
                               <div className="flex flex-row">
-                                <div className="flex flex-row w-fit text-sm">
-                                  Modified by: 
-                                  <Tooltip content={actor.name}>
+                                <div className="flex w-fit flex-row text-sm">
+                                  Modified by:
+                                  <Tooltip content={getModifiedByName(actor.actorType, actor.name)}>
                                     {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
-                                    <div onClick={() => onModifyHistoryClick(actor.actorId, actor.actorType)} className="cursor-pointer">
-                                      <FontAwesomeIcon icon={getModifiedByIcon(actor.actorType)} className="ml-2"/>
+                                    <div
+                                      onClick={() =>
+                                        onModifyHistoryClick(actor.actorId, actor.actorType)
+                                      }
+                                      className="cursor-pointer"
+                                    >
+                                      <FontAwesomeIcon
+                                        icon={getModifiedByIcon(actor.actorType)}
+                                        className="ml-2"
+                                      />
                                     </div>
                                   </Tooltip>
                                 </div>
@@ -697,7 +720,7 @@ export const SecretDetailSidebar = ({
                                 <div className="relative hidden cursor-pointer transition-all duration-200 group-[.show-value]:inline">
                                   <button
                                     type="button"
-                                    className="select-none"
+                                    className="select-none text-left"
                                     onClick={(e) => {
                                       navigator.clipboard.writeText(secretValue || "");
                                       const target = e.currentTarget;

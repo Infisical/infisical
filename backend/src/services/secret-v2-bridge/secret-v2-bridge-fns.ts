@@ -94,6 +94,7 @@ export const fnSecretBulkInsert = async ({
 
   const userActorId = actor && actor.type === ActorType.USER ? actor.actorId : undefined;
   const identityActorId = actor && actor.type !== ActorType.USER ? actor.actorId : undefined;
+  const actorType = actor?.type || ActorType.PLATFORM;
 
   const newSecrets = await secretDAL.insertMany(
     sanitizedInputSecrets.map((el) => ({ ...el, folderId })),
@@ -113,7 +114,7 @@ export const fnSecretBulkInsert = async ({
       folderId,
       userActorId,
       identityActorId,
-      actorType: actor?.type,
+      actorType,
       secretId: newSecretGroupedByKeyName[el.key][0].id
     })),
     tx
@@ -170,6 +171,7 @@ export const fnSecretBulkUpdate = async ({
 }: TFnSecretBulkUpdate) => {
   const userActorId = actor && actor?.type === ActorType.USER ? actor?.actorId : undefined;
   const identityActorId = actor && actor?.type !== ActorType.USER ? actor?.actorId : undefined;
+  const actorType = actor?.type || ActorType.PLATFORM;
 
   const sanitizedInputSecrets = inputSecrets.map(
     ({
@@ -231,7 +233,7 @@ export const fnSecretBulkUpdate = async ({
         secretId,
         userActorId,
         identityActorId,
-        actorType: actor?.type
+        actorType
       })
     ),
     tx

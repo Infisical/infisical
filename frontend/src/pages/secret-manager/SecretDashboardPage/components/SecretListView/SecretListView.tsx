@@ -238,10 +238,12 @@ export const SecretListView = ({
         if (!isReminderEvent) {
           handlePopUpClose("secretDetail");
         }
-        
+
         let successMessage;
         if (isReminderEvent) {
-          successMessage = reminderRepeatDays ? "Successfully saved secret reminder" : "Successfully deleted secret reminder";
+          successMessage = reminderRepeatDays 
+            ? "Successfully saved secret reminder" 
+            : "Successfully deleted secret reminder";
         } else {
           successMessage = "Successfully saved secrets";
         }

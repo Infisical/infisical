@@ -39,6 +39,7 @@ import {
   secretRotationPreSetFn
 } from "./secret-rotation-queue-fn";
 import { TSecretRotationData, TSecretRotationDbFn, TSecretRotationEncData } from "./secret-rotation-queue-types";
+import { ActorType } from "@app/services/auth/auth-type";
 
 export type TSecretRotationQueueFactory = ReturnType<typeof secretRotationQueueFactory>;
 
@@ -332,6 +333,7 @@ export const secretRotationQueueFactory = ({
           await secretVersionV2BridgeDAL.insertMany(
             updatedSecrets.map(({ id, updatedAt, createdAt, ...el }) => ({
               ...el,
+              actorType: ActorType.PLATFORM,
               secretId: id
             })),
             tx

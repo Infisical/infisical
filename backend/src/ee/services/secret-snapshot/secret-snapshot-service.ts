@@ -34,6 +34,7 @@ import { TSnapshotFolderDALFactory } from "./snapshot-folder-dal";
 import { TSnapshotSecretDALFactory } from "./snapshot-secret-dal";
 import { TSnapshotSecretV2DALFactory } from "./snapshot-secret-v2-dal";
 import { getFullFolderPath } from "./snapshot-service-fns";
+import { ActorType } from "@app/services/auth/auth-type";
 
 type TSecretSnapshotServiceFactoryDep = {
   snapshotDAL: TSnapshotDALFactory;
@@ -414,8 +415,18 @@ export const secretSnapshotServiceFactory = ({
           })),
           tx
         );
+        const userActorId = actor === ActorType.USER ? actorId : undefined;
+        const identityActorId = actor !== ActorType.USER ? actorId : undefined;
+        const actorType = actor || ActorType.PLATFORM;
+
         const secretVersions = await secretVersionV2BridgeDAL.insertMany(
-          secrets.map(({ id, updatedAt, createdAt, ...el }) => ({ ...el, secretId: id })),
+          secrets.map(({ id, updatedAt, createdAt, ...el }) => ({
+            ...el,
+            secretId: id,
+            userActorId,
+            identityActorId,
+            actorType
+          })),
           tx
         );
         await secretVersionV2TagBridgeDAL.insertMany(

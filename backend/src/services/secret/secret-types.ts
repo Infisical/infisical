@@ -324,7 +324,7 @@ export type TFnSecretBulkInsert = {
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
   actor?: {
     type?: string;
-    actorId: string;
+    actorId?: string;
   };
 };
 
@@ -342,7 +342,7 @@ export type TFnSecretBulkUpdate = {
   tx?: Knex;
   actor?: {
     type?: string;
-    actorId: string;
+    actorId?: string;
   };
 };
 
