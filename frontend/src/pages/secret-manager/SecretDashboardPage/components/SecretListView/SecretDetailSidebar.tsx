@@ -5,14 +5,14 @@ import {
   faArrowRotateRight,
   faCheckCircle,
   faClock,
+  faDesktop,
   faEyeSlash,
   faPlus,
+  faServer,
   faShare,
   faTag,
   faTrash,
-  faUser,
-  faDesktop,
-  faServer
+  faUser
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -48,11 +48,11 @@ import {
   useWorkspace
 } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
-import { useGetSecretVersion, useGetWorkspaceUsers } from "@app/hooks/api";
+import { useGetSecretVersion } from "@app/hooks/api";
+import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { useGetSecretAccessList } from "@app/hooks/api/secrets/queries";
 import { SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 import { ProjectType } from "@app/hooks/api/workspace/types";
-import { ActorType } from "@app/hooks/api/auditLogs/enums";
 
 import { CreateReminderForm } from "./CreateReminderForm";
 import { formSchema, SecretActionType, TFormSchema } from "./SecretListView.utils";
@@ -125,7 +125,6 @@ export const SecretDetailSidebar = ({
   );
   const selectTagSlugs = selectedTags.map((i) => i.slug);
   const navigate = useNavigate();
-  const { data: members = [] } = useGetWorkspaceUsers(currentWorkspace.id);
 
   const cannotEditSecret = permission.cannot(
     ProjectPermissionActions.Edit,
@@ -225,7 +224,10 @@ export const SecretDetailSidebar = ({
     }
   };
 
-  const getModifiedByName = (userType: string | undefined | null, userName: string | null | undefined) => {
+  const getModifiedByName = (
+    userType: string | undefined | null,
+    userName: string | null | undefined
+  ) => {
     switch (userType) {
       case ActorType.PLATFORM:
         return "System-generated";
@@ -234,15 +236,14 @@ export const SecretDetailSidebar = ({
     }
   };
 
-  const getUserMembershipId = (actorId: string) => {
-    const foundMember = members.find((member) => member.user?.id === actorId);
-    return foundMember?.id || null;
-  };
-
-  const getLinkToModifyHistoryEntity = (actorId: string, actorType: string) => {
+  const getLinkToModifyHistoryEntity = (
+    actorId: string,
+    actorType: string,
+    membershipId: string | null = ""
+  ) => {
     switch (actorType) {
       case ActorType.USER:
-        return `/${ProjectType.SecretManager}/${currentWorkspace.id}/members/${getUserMembershipId(actorId)}`;
+        return `/${ProjectType.SecretManager}/${currentWorkspace.id}/members/${membershipId}`;
       case ActorType.IDENTITY:
         return `/${ProjectType.SecretManager}/${currentWorkspace.id}/identities/${actorId}`;
       default:
@@ -250,9 +251,13 @@ export const SecretDetailSidebar = ({
     }
   };
 
-  const onModifyHistoryClick = (actorId: string | undefined | null, actorType: string | undefined | null) => {
+  const onModifyHistoryClick = (
+    actorId: string | undefined | null,
+    actorType: string | undefined | null,
+    membershipId: string | undefined | null
+  ) => {
     if (actorType && actorId && actorType !== ActorType.PLATFORM) {
-      const redirectLink = getLinkToModifyHistoryEntity(actorId, actorType);
+      const redirectLink = getLinkToModifyHistoryEntity(actorId, actorType, membershipId);
       if (redirectLink) {
         navigate({ to: redirectLink });
       }
@@ -700,7 +705,11 @@ export const SecretDetailSidebar = ({
                                     {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
                                     <div
                                       onClick={() =>
-                                        onModifyHistoryClick(actor.actorId, actor.actorType)
+                                        onModifyHistoryClick(
+                                          actor.actorId,
+                                          actor.actorType,
+                                          actor.membershipId
+                                        )
                                       }
                                       className="cursor-pointer"
                                     >
@@ -792,7 +801,9 @@ export const SecretDetailSidebar = ({
                                     type="button"
                                     className="ml-1 cursor-pointer"
                                     onClick={(e) => {
-                                      e.currentTarget.closest(".group")?.classList.add("show-value");
+                                      e.currentTarget
+                                        .closest(".group")
+                                        ?.classList.add("show-value");
                                     }}
                                     onKeyDown={(e) => {
                                       if (e.key === "Enter" || e.key === " ") {

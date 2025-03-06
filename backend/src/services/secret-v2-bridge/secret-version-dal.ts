@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName, TSecretVersionsV2, TSecretVersionsV2Update } from "@app/db/schemas";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
-import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { ormify, selectAllTableCols, TFindOpt } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 import { QueueName } from "@app/queue";
 
@@ -119,11 +120,60 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
     logger.info(`${QueueName.DailyResourceCleanUp}: pruning secret version v2 completed`);
   };
 
+  const findVersionsBySecretIdWithActors = async (
+    secretId: string,
+    projectId: string,
+    { offset, limit, sort = [["createdAt", "desc"]] }: TFindOpt<TSecretVersionsV2> = {},
+    tx?: Knex
+  ) => {
+    try {
+      const query = (tx || db)(TableName.SecretVersionV2)
+        .where(`${TableName.SecretVersionV2}.secretId`, secretId)
+        .leftJoin(TableName.Users, `${TableName.Users}.id`, `${TableName.SecretVersionV2}.userActorId`)
+        .leftJoin(
+          TableName.ProjectMembership,
+          `${TableName.ProjectMembership}.userId`,
+          `${TableName.SecretVersionV2}.userActorId`
+        )
+        .leftJoin(TableName.Identity, `${TableName.Identity}.id`, `${TableName.SecretVersionV2}.identityActorId`)
+        .select(
+          selectAllTableCols(TableName.SecretVersionV2),
+          `${TableName.Users}.username as userActorName`,
+          `${TableName.Identity}.name as identityActorName`,
+          `${TableName.ProjectMembership}.id as membershipId`
+        );
+
+      if (limit) void query.limit(limit);
+      if (offset) void query.offset(offset);
+      if (sort) {
+        void query.orderBy(
+          sort.map(([column, order, nulls]) => ({
+            column: `${TableName.SecretVersionV2}.${column as string}`,
+            order,
+            nulls
+          }))
+        );
+      }
+
+      const docs: Array<
+        TSecretVersionsV2 & {
+          userActorName: string | undefined | null;
+          identityActorName: string | undefined | null;
+          membershipId: string | undefined | null;
+        }
+      > = await query;
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindVersionsBySecretIdWithActors" });
+    }
+  };
+
   return {
     ...secretVersionV2Orm,
     pruneExcessVersions,
     findLatestVersionMany,
     bulkUpdate,
-    findLatestVersionByFolderId
+    findLatestVersionByFolderId,
+    findVersionsBySecretIdWithActors
   };
 };

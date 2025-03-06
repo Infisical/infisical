@@ -23,7 +23,6 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { ActorType } from "../auth/auth-type";
-import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -33,7 +32,6 @@ import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
-import { TUserDALFactory } from "../user/user-dal";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import {
   expandSecretReferencesFactory,
@@ -87,8 +85,6 @@ type TSecretV2BridgeServiceFactoryDep = {
   >;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
-  userDAL: Pick<TUserDALFactory, "find">;
-  identityDAL: Pick<TIdentityDALFactory, "find">;
 };
 
 export type TSecretV2BridgeServiceFactory = ReturnType<typeof secretV2BridgeServiceFactory>;
@@ -111,9 +107,7 @@ export const secretV2BridgeServiceFactory = ({
   secretApprovalRequestDAL,
   secretApprovalRequestSecretDAL,
   kmsService,
-  resourceMetadataDAL,
-  userDAL,
-  identityDAL
+  resourceMetadataDAL
 }: TSecretV2BridgeServiceFactoryDep) => {
   const $validateSecretReferences = async (
     projectId: string,
@@ -1715,36 +1709,15 @@ export const secretV2BridgeServiceFactory = ({
       type: KmsDataKey.SecretManager,
       projectId: folder.projectId
     });
-    const secretVersions = await secretVersionDAL.find({ secretId }, { offset, limit, sort: [["createdAt", "desc"]] });
-
-    const userIds = Array.from(
-      new Set(secretVersions.map((version) => version.userActorId).filter(Boolean))
-    ) as string[];
-
-    const users = userIds.length > 0 ? await userDAL.find({ $in: { id: userIds } }) : [];
-    const usersById = groupBy(users, (user) => user.id);
-
-    const identitiesIds = Array.from(
-      new Set(secretVersions.map((version) => version.identityActorId).filter(Boolean))
-    ) as string[];
-    const identities = identitiesIds.length > 0 ? await identityDAL.find({ $in: { id: identitiesIds } }) : [];
-    const identitiesById = groupBy(identities, (identity) => identity.id);
+    const secretVersions = await secretVersionDAL.findVersionsBySecretIdWithActors(secretId, folder.projectId, {
+      offset,
+      limit,
+      sort: [["createdAt", "desc"]]
+    });
 
     return secretVersions.map((el) => {
-      let entityId;
-      let actorName;
-      if (el.userActorId) {
-        actorName = usersById[el.userActorId]?.[0]?.username;
-        entityId = el.userActorId;
-      } else if (el.identityActorId) {
-        actorName = identitiesById[el.identityActorId]?.[0]?.name;
-        entityId = el.identityActorId;
-      }
-      const actorEntity = el.actorType ? { actorType: el.actorType, actorId: entityId, name: actorName } : undefined;
-
       return reshapeBridgeSecret(folder.projectId, folder.environment.envSlug, "/", {
         ...el,
-        actor: actorEntity,
         value: el.encryptedValue ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString() : "",
         comment: el.encryptedComment ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString() : ""
       });

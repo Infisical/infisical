@@ -116,7 +116,8 @@ export const secretRawSchema = z.object({
     .object({
       actorId: z.string().nullable().optional(),
       actorType: z.string().nullable().optional(),
-      name: z.string().nullable().optional()
+      name: z.string().nullable().optional(),
+      membershipId: z.string().nullable().optional()
     })
     .optional()
     .nullable()

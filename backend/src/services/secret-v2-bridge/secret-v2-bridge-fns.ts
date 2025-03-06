@@ -633,11 +633,12 @@ export const reshapeBridgeSecret = (
   secret: Omit<TSecretsV2, "encryptedValue" | "encryptedComment"> & {
     value: string;
     comment: string;
-    actor?: {
-      actorType?: string;
-      actorId?: string;
-      name?: string;
-    };
+    userActorName?: string | null;
+    identityActorName?: string | null;
+    userActorId?: string | null;
+    identityActorId?: string | null;
+    membershipId?: string | null;
+    actorType?: string | null;
     tags?: {
       id: string;
       slug: string;
@@ -658,7 +659,14 @@ export const reshapeBridgeSecret = (
   _id: secret.id,
   id: secret.id,
   user: secret.userId,
-  actor: secret.actor,
+  actor: secret.actorType
+    ? {
+        actorType: secret.actorType,
+        actorId: secret.userActorId || secret.identityActorId,
+        name: secret.identityActorName || secret.userActorName,
+        membershipId: secret.membershipId
+      }
+    : undefined,
   tags: secret.tags,
   skipMultilineEncoding: secret.skipMultilineEncoding,
   secretReminderRepeatDays: secret.reminderRepeatDays,
