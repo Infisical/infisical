@@ -964,7 +964,7 @@ export const secretV2BridgeServiceFactory = ({
 
   const getSecretById = async ({ actorId, actor, actorOrgId, actorAuthMethod, secretId }: TGetASecretByIdDTO) => {
     const secret = await secretDAL.findOneWithTags({
-      id: secretId
+      [`${TableName.SecretV2}.id` as "id"]: secretId
     });
 
     if (!secret) {
