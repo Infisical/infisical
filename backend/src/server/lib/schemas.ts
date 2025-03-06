@@ -21,3 +21,10 @@ export const slugSchema = ({ min = 1, max = 32, field = "Slug" }: SlugSchemaInpu
       message: `${field} field can only contain lowercase letters, numbers, and hyphens`
     });
 };
+
+export const OrganizationNameSchema = z
+  .string()
+  .trim()
+  .min(1, { message: "Name must be at least 1 character" })
+  .max(64, { message: "Name must be 64 or fewer characters" })
+  .regex(/^[a-zA-Z0-9\-_\s]+$/, "Name can only contain alphanumeric characters, dashes, underscores, and spaces");

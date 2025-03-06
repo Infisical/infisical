@@ -78,7 +78,7 @@ export const CreateOrgModal: FC<CreateOrgModalProps> = ({ isOpen, onClose }) => 
   };
 
   return (
-    <Modal isOpen={isOpen}>
+    <Modal modal={false} isOpen={isOpen}>
       <ModalContent
         title="Create Organization"
         subTitle="Looks like you're not part of any organizations. Create one to start using Infisical"
