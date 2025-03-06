@@ -91,7 +91,7 @@ export const auditLogDALFactory = (db: TDbClient) => {
       }
 
       if (projectId && secretPath) {
-        void sqlQuery.whereRaw(`"eventMetadata" @> jsonb_build_object('secretPath', ?::text)`, [secretPath]);
+        void sqlQuery.whereRaw(`"eventMetadata" ->> 'secretPath' = ?::text`, [secretPath]);
       }
 
       // Filter by actor type
@@ -112,8 +112,8 @@ export const auditLogDALFactory = (db: TDbClient) => {
         void sqlQuery.whereRaw(`"${TableName.AuditLog}"."createdAt" <= ?::timestamptz`, [endDate]);
       }
 
-      // we timeout long running queries to prevent DB resource issues (2 minutes)
-      const docs = await sqlQuery.timeout(1000 * 120);
+      // we time out long-running queries to prevent DB resource issues (a little les than 30 seconds [server timeout])
+      const docs = await sqlQuery.timeout(1000 * 29.5);
 
       return docs;
     } catch (error) {
