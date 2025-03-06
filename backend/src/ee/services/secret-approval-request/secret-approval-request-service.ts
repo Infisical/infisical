@@ -1157,7 +1157,7 @@ export const secretApprovalRequestServiceFactory = ({
           secretPath,
           projectId,
           requestId: secretApprovalRequest.id,
-          secretKeys: [...new Set(Object.values(data).flatMap(arr => arr?.map(item => item.secretName) ?? []))]
+          secretKeys: [...new Set(Object.values(data).flatMap((arr) => arr?.map((item) => item.secretName) ?? []))]
         }
       }
     });
@@ -1458,7 +1458,7 @@ export const secretApprovalRequestServiceFactory = ({
           secretPath,
           projectId,
           requestId: secretApprovalRequest.id,
-          secretKeys: [...new Set(Object.values(data).flatMap(arr => arr?.map(item => item.secretKey) ?? []))]
+          secretKeys: [...new Set(Object.values(data).flatMap((arr) => arr?.map((item) => item.secretKey) ?? []))]
         }
       }
     });
