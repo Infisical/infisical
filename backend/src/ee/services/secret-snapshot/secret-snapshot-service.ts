@@ -380,6 +380,7 @@ export const secretSnapshotServiceFactory = ({
                 envId,
                 id,
                 tags,
+                // exclude the bottom fields from the secret - they are for versioning only.
                 userActorId,
                 identityActorId,
                 actorType,
