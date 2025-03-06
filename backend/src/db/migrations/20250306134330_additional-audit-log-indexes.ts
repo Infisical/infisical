@@ -13,7 +13,7 @@ export async function up(knex: Knex): Promise<void> {
   });
 
   if (hasEventMetadataCol) {
-    await knex.raw(`CREATE INDEX idx_audit_logs_secret_path
+    await knex.raw(`CREATE INDEX IF NOT EXISTS idx_audit_logs_secret_path
       ON audit_logs ("projectId", ("eventMetadata"->>'secretPath'), "createdAt" DESC);`);
   }
 }
