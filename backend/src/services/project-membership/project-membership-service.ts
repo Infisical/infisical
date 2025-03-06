@@ -4,10 +4,10 @@ import ms from "ms";
 
 import { ActionProjectType, ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { validatePrivilegeChangeOperation } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
-import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -86,7 +86,7 @@ export const projectMembershipServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
 
     const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
 
@@ -130,7 +130,7 @@ export const projectMembershipServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
 
     const [membership] = await projectMembershipDAL.findAllProjectMembers(projectId, { username });
     if (!membership) throw new NotFoundError({ message: `Project membership not found for user '${username}'` });
@@ -153,7 +153,7 @@ export const projectMembershipServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
 
     const [membership] = await projectMembershipDAL.findAllProjectMembers(projectId, { id });
     if (!membership) throw new NotFoundError({ message: `Project membership not found for user ${id}` });
@@ -180,7 +180,7 @@ export const projectMembershipServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Member);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member);
     const orgMembers = await orgDAL.findMembership({
       [`${TableName.OrgMembership}.orgId` as "orgId"]: project.orgId,
       $in: {
@@ -261,7 +261,7 @@ export const projectMembershipServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Member);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member);
 
     const membershipUser = await userDAL.findUserByProjectMembershipId(membershipId);
     if (membershipUser?.isGhost || membershipUser?.projectId !== projectId) {
@@ -274,7 +274,12 @@ export const projectMembershipServiceFactory = ({
         projectId
       );
 
-      const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, rolePermission);
+      const hasRequiredPriviledges = validatePrivilegeChangeOperation(
+        ProjectPermissionMemberActions.ManagePrivileges,
+        ProjectPermissionSub.Member,
+        permission,
+        rolePermission
+      );
 
       if (!hasRequiredPriviledges) {
         throw new ForbiddenRequestError({
@@ -361,7 +366,7 @@ export const projectMembershipServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Member);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Delete, ProjectPermissionSub.Member);
 
     const member = await userDAL.findUserByProjectMembershipId(membershipId);
 
@@ -397,7 +402,7 @@ export const projectMembershipServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Member);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Delete, ProjectPermissionSub.Member);
 
     const project = await projectDAL.findById(projectId);
 
