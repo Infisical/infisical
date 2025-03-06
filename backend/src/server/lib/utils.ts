@@ -1,3 +1,5 @@
+export const QUERY_TIMEOUT = 121000; // 2 mins (query timeout) with padding
+
 export const extendTimeout =
   (timeoutMs: number) =>
   (request: { raw: { socket: { setTimeout: (ms: number) => void } } }, reply: unknown, done: () => void) => {

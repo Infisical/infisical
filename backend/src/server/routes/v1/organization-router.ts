@@ -14,7 +14,7 @@ import { AUDIT_LOGS, ORGANIZATIONS } from "@app/lib/api-docs";
 import { getLastMidnightDateISO, removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
-import { extendTimeout } from "@app/server/lib/utils";
+import { extendTimeout, QUERY_TIMEOUT } from "@app/server/lib/utils";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode, MfaMethod } from "@app/services/auth/auth-type";
 import { sanitizedOrganizationSchema } from "@app/services/org/org-schema";
@@ -109,7 +109,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    preHandler: extendTimeout(121000), // 2 mins (query timeout) with padding
+    preHandler: extendTimeout(QUERY_TIMEOUT),
     schema: {
       description: "Get all audit logs for an organization",
       querystring: z.object({
