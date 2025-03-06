@@ -7,6 +7,7 @@ import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { InternalServerError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
@@ -34,7 +35,6 @@ import { TSnapshotFolderDALFactory } from "./snapshot-folder-dal";
 import { TSnapshotSecretDALFactory } from "./snapshot-secret-dal";
 import { TSnapshotSecretV2DALFactory } from "./snapshot-secret-v2-dal";
 import { getFullFolderPath } from "./snapshot-service-fns";
-import { ActorType } from "@app/services/auth/auth-type";
 
 type TSecretSnapshotServiceFactoryDep = {
   snapshotDAL: TSnapshotDALFactory;

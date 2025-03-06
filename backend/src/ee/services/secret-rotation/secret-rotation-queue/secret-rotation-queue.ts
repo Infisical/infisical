@@ -13,6 +13,7 @@ import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
@@ -39,7 +40,6 @@ import {
   secretRotationPreSetFn
 } from "./secret-rotation-queue-fn";
 import { TSecretRotationData, TSecretRotationDbFn, TSecretRotationEncData } from "./secret-rotation-queue-types";
-import { ActorType } from "@app/services/auth/auth-type";
 
 export type TSecretRotationQueueFactory = ReturnType<typeof secretRotationQueueFactory>;
 
