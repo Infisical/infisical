@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 import { z } from "zod";
 
-import { SecretType, TSecretBlindIndexes, TSecrets, TSecretsInsert, TSecretsUpdate, TSecretsV2 } from "@app/db/schemas";
+import { SecretType, TSecretBlindIndexes, TSecrets, TSecretsInsert, TSecretsUpdate } from "@app/db/schemas";
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
@@ -122,14 +122,7 @@ export type TGetASecretDTO = {
 } & TProjectPermission;
 
 export type TGetASecretByIdDTO = {
-  secret: TSecretsV2 & {
-    tags: {
-      id: string;
-      color?: string | null;
-      slug: string;
-      name: string;
-    }[];
-  };
+  secretId: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TCreateBulkSecretDTO = {

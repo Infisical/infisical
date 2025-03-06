@@ -9,8 +9,7 @@ import {
   SecretEncryptionAlgo,
   SecretKeyEncoding,
   SecretsSchema,
-  SecretType,
-  TableName
+  SecretType
 } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -45,7 +44,6 @@ import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsFromImports } from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
-import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bridge-service";
 import { TGetSecretReferencesTreeDTO } from "../secret-v2-bridge/secret-v2-bridge-types";
 import { TSecretDALFactory } from "./secret-dal";
@@ -92,7 +90,6 @@ import { TSecretVersionTagDALFactory } from "./secret-version-tag-dal";
 
 type TSecretServiceFactoryDep = {
   secretDAL: TSecretDALFactory;
-  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findOneWithTags">;
   secretTagDAL: TSecretTagDALFactory;
   secretVersionDAL: TSecretVersionDALFactory;
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findProjectBySlug" | "findById">;
@@ -128,7 +125,6 @@ type TSecretServiceFactoryDep = {
 export type TSecretServiceFactory = ReturnType<typeof secretServiceFactory>;
 export const secretServiceFactory = ({
   secretDAL,
-  secretV2BridgeDAL,
   projectEnvDAL,
   secretTagDAL,
   secretVersionDAL,
@@ -1388,33 +1384,15 @@ export const secretServiceFactory = ({
   };
 
   const getSecretByIdRaw = async ({ secretId, actorId, actor, actorOrgId, actorAuthMethod }: TGetASecretByIdRawDTO) => {
-    const sec = await secretV2BridgeDAL.findOneWithTags({
-      [`${TableName.SecretV2}.id` as "id"]: secretId
+    const secret = await secretV2BridgeService.getSecretById({
+      secretId,
+      actorId,
+      actor,
+      actorOrgId,
+      actorAuthMethod
     });
 
-    if (!sec) {
-      throw new NotFoundError({
-        message: `Secret with id '${secretId}' not found`,
-        name: "GetSecretById"
-      });
-    }
-
-    const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(sec.projectId);
-
-    if (shouldUseSecretV2Bridge) {
-      const secret = await secretV2BridgeService.getSecretById({
-        secret: sec,
-        actorId,
-        actor,
-        actorOrgId,
-        actorAuthMethod
-      });
-
-      return secret;
-    }
-    throw new BadRequestError({
-      message: "Project version not supported. Please upgrade your project."
-    });
+    return secret;
   };
 
   const getSecretByNameRaw = async ({

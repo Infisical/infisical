@@ -962,20 +962,23 @@ export const secretV2BridgeServiceFactory = ({
     };
   };
 
-  const getSecretById = async ({ actorId, actor, actorOrgId, actorAuthMethod, secret }: TGetASecretByIdDTO) => {
-    const folder = await folderDAL.findById(secret.folderId);
-    if (!folder) {
+  const getSecretById = async ({ actorId, actor, actorOrgId, actorAuthMethod, secretId }: TGetASecretByIdDTO) => {
+    const secret = await secretDAL.findOneWithTags({
+      id: secretId
+    });
+
+    if (!secret) {
       throw new NotFoundError({
-        message: `Folder with id '${secret.folderId}' not found`,
+        message: `Secret with ID '${secretId}' not found`,
         name: "GetSecretById"
       });
     }
 
-    const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(folder.projectId, [folder.id]);
+    const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(secret.projectId, [secret.folderId]);
 
     if (!folderWithPath) {
       throw new NotFoundError({
-        message: `Folder with id '${folder.id}' not found`,
+        message: `Folder with id '${secret.folderId}' not found`,
         name: "GetSecretById"
       });
     }
@@ -983,7 +986,7 @@ export const secretV2BridgeServiceFactory = ({
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      projectId: folder.projectId,
+      projectId: secret.projectId,
       actorAuthMethod,
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
@@ -992,7 +995,7 @@ export const secretV2BridgeServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, {
-        environment: folder.environment.envSlug,
+        environment: folderWithPath.environmentSlug,
         secretPath: folderWithPath.path,
         secretName: secret.key,
         secretTags: secret.tags.map((i) => i.slug)
@@ -1008,7 +1011,7 @@ export const secretV2BridgeServiceFactory = ({
 
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
-      projectId: folder.projectId
+      projectId: secret.projectId
     });
 
     const secretValue = secret.encryptedValue
@@ -1019,7 +1022,7 @@ export const secretV2BridgeServiceFactory = ({
       ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
       : "";
 
-    return reshapeBridgeSecret(folder.projectId, folder.environment.envSlug, folderWithPath.path, {
+    return reshapeBridgeSecret(secret.projectId, folderWithPath.environmentSlug, folderWithPath.path, {
       ...secret,
       value: secretValue,
       comment: secretComment
