@@ -214,7 +214,7 @@ export const SecretDetailSidebar = ({
   const secretReminderRepeatDays = watch("reminderRepeatDays");
   const secretReminderNote = watch("reminderNote");
 
-  const getModifiedByIcon = (userType: string) => {
+  const getModifiedByIcon = (userType: string | undefined | null) => {
     switch (userType) {
       case ActorType.USER:
         return faUser;
@@ -225,7 +225,7 @@ export const SecretDetailSidebar = ({
     }
   };
 
-  const getModifiedByName = (userType: string, userName: string | undefined) => {
+  const getModifiedByName = (userType: string | undefined | null, userName: string | null | undefined) => {
     switch (userType) {
       case ActorType.PLATFORM:
         return "System-generated";
@@ -235,7 +235,8 @@ export const SecretDetailSidebar = ({
   };
 
   const getUserMembershipId = (actorId: string) => {
-    return members.filter((member) => member.user?.id === actorId)?.[0].id || null;
+    const foundMember = members.find((member) => member.user?.id === actorId);
+    return foundMember?.id || null;
   };
 
   const getLinkToModifyHistoryEntity = (actorId: string, actorType: string) => {
@@ -249,8 +250,8 @@ export const SecretDetailSidebar = ({
     }
   };
 
-  const onModifyHistoryClick = (actorId: string | undefined, actorType: string) => {
-    if (actorId && actorType !== ActorType.PLATFORM) {
+  const onModifyHistoryClick = (actorId: string | undefined | null, actorType: string | undefined | null) => {
+    if (actorType && actorId && actorType !== ActorType.PLATFORM) {
       const redirectLink = getLinkToModifyHistoryEntity(actorId, actorType);
       if (redirectLink) {
         navigate({ to: redirectLink });

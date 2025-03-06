@@ -38,13 +38,13 @@ export async function down(knex: Knex): Promise<void> {
     });
   }
 
-  if (!hasSecretVersionV2IdentityActorId) {
+  if (hasSecretVersionV2IdentityActorId) {
     await knex.schema.alterTable(TableName.SecretVersionV2, (t) => {
       t.dropColumn("identityActorId");
     });
   }
 
-  if (!hasSecretVersionV2ActorType) {
+  if (hasSecretVersionV2ActorType) {
     await knex.schema.alterTable(TableName.SecretVersionV2, (t) => {
       t.dropColumn("actorType");
     });
