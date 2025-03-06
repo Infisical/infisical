@@ -136,6 +136,8 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
           `${TableName.SecretVersionV2}.userActorId`
         )
         .leftJoin(TableName.Identity, `${TableName.Identity}.id`, `${TableName.SecretVersionV2}.identityActorId`)
+        .where(`${TableName.ProjectMembership}.projectId`, projectId)
+        .orWhereNull(`${TableName.ProjectMembership}.projectId`)
         .select(
           selectAllTableCols(TableName.SecretVersionV2),
           `${TableName.Users}.username as userActorName`,
