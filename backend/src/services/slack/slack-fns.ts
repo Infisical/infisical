@@ -50,6 +50,7 @@ const buildSlackPayload = (notification: TSlackNotification) => {
       const messageBody = `A secret approval request has been opened by ${payload.userEmail}.
 *Environment*: ${payload.environment}
 *Secret path*: ${payload.secretPath || "/"}
+*Secret${payload.secretKeys.length > 1 ? "s" : ""}*: ${payload.secretKeys.join(', ')} 
 
 View the complete details <${appCfg.SITE_URL}/secret-manager/${payload.projectId}/approval?requestId=${
         payload.requestId
