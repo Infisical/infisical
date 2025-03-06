@@ -203,7 +203,7 @@
         },
         {
           "group": "Gateway",
-          "pages": ["documentation/platform/gateways/overview"]
+          "pages": ["documentation/platform/gateways/overview", "documentation/platform/gateways/gateway-security"]
         },
         "documentation/platform/project-templates",
         {
