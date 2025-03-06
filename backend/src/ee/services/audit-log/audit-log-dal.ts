@@ -112,7 +112,7 @@ export const auditLogDALFactory = (db: TDbClient) => {
         void sqlQuery.whereRaw(`"${TableName.AuditLog}"."createdAt" <= ?::timestamptz`, [endDate]);
       }
 
-      // we time out long-running queries to prevent DB resource issues (a little les than 30 seconds [server timeout])
+      // we time out long-running queries to prevent DB resource issues (a little less than 30 seconds [server timeout])
       const docs = await sqlQuery.timeout(1000 * 29.5);
 
       return docs;
