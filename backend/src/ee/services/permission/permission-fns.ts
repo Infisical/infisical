@@ -1,6 +1,12 @@
+import { MongoAbility } from "@casl/ability";
+
 import { TOrganizations } from "@app/db/schemas";
+import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { ActorAuthMethod, AuthMethod } from "@app/services/auth/auth-type";
+
+import { OrgPermissionSet } from "./org-permission";
+import { ProjectPermissionSet } from "./project-permission";
 
 function isAuthMethodSaml(actorAuthMethod: ActorAuthMethod) {
   if (!actorAuthMethod) return false;
@@ -43,4 +49,19 @@ const escapeHandlebarsMissingMetadata = (obj: Record<string, string>) => {
   return new Proxy(obj, handler);
 };
 
-export { escapeHandlebarsMissingMetadata, isAuthMethodSaml, validateOrgSSO };
+// This function serves as a transition layer between the old and new privilege management system
+// the old privilege management system is based on the actor having more privileges than the managed permission
+// the new privilege management system is based on the actor having the appropriate permission to perform the privilege change,
+// regardless of the actor's privilege level.
+const validatePrivilegeChangeOperation = (
+  action: OrgPermissionSet[0] | ProjectPermissionSet[0],
+  subject: OrgPermissionSet[1] | ProjectPermissionSet[1],
+  actorPermission: MongoAbility,
+  managedPermission: MongoAbility
+) => {
+  // first we ensure if the actor has the permission to manage the privilege
+  // if not, we check if the actor is indeed more privileged than the managed permission
+  return actorPermission.can(action, subject) || isAtLeastAsPrivileged(actorPermission, managedPermission);
+};
+
+export { escapeHandlebarsMissingMetadata, isAuthMethodSaml, validateOrgSSO, validatePrivilegeChangeOperation };
