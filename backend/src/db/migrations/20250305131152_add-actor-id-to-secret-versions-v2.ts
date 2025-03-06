@@ -4,11 +4,11 @@ import { TableName } from "@app/db/schemas";
 
 export async function up(knex: Knex): Promise<void> {
   if (await knex.schema.hasTable(TableName.SecretVersionV2)) {
-    await knex.schema.alterTable(TableName.SecretVersionV2, (t) => {
-      const hasSecretVersionV2UserActorId = await knex.schema.hasColumn(TableName.SecretVersionV2, "userActorId");
-      const hasSecretVersionV2IdentityActorId = await knex.schema.hasColumn(TableName.SecretVersionV2, "identityActorId");
-      const hasSecretVersionV2ActorType = await knex.schema.hasColumn(TableName.SecretVersionV2, "actorType");
+    const hasSecretVersionV2UserActorId = await knex.schema.hasColumn(TableName.SecretVersionV2, "userActorId");
+    const hasSecretVersionV2IdentityActorId = await knex.schema.hasColumn(TableName.SecretVersionV2, "identityActorId");
+    const hasSecretVersionV2ActorType = await knex.schema.hasColumn(TableName.SecretVersionV2, "actorType");
 
+    await knex.schema.alterTable(TableName.SecretVersionV2, (t) => {
       if (!hasSecretVersionV2UserActorId) {
         t.uuid("userActorId");
         t.foreign("userActorId").references("id").inTable(TableName.Users);
