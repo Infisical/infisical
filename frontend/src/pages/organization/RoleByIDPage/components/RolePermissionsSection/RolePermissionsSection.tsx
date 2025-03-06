@@ -15,6 +15,8 @@ import {
 } from "../OrgRoleModifySection.utils";
 import { OrgPermissionAdminConsoleRow } from "./OrgPermissionAdminConsoleRow";
 import { OrgGatewayPermissionRow } from "./OrgPermissionGatewayRow";
+import { OrgPermissionGroupRow } from "./OrgPermissionGroupRow";
+import { OrgPermissionIdentityRow } from "./OrgPermissionIdentityRow";
 import { OrgPermissionKmipRow } from "./OrgPermissionKmipRow";
 import { OrgRoleWorkspaceRow } from "./OrgRoleWorkspaceRow";
 import { RolePermissionRow } from "./RolePermissionRow";
@@ -23,14 +25,6 @@ const SIMPLE_PERMISSION_OPTIONS = [
   {
     title: "User Management",
     formName: "member"
-  },
-  {
-    title: "Group Management",
-    formName: "groups"
-  },
-  {
-    title: "Machine Identity Management",
-    formName: "identity"
   },
   {
     title: "Usage & Billing",
@@ -167,6 +161,16 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
                   />
                 );
               })}
+              <OrgPermissionIdentityRow
+                control={control}
+                setValue={setValue}
+                isEditable={isCustomRole}
+              />
+              <OrgPermissionGroupRow
+                control={control}
+                setValue={setValue}
+                isEditable={isCustomRole}
+              />
               <OrgPermissionAppConnectionRow
                 control={control}
                 setValue={setValue}
