@@ -140,4 +140,4 @@ require (
 
 replace github.com/zalando/go-keyring => github.com/Infisical/go-keyring v1.0.2
 
-replace github.com/pion/turn/v4 => github.com/Infisical/turn/v4 v4.0.0
+replace github.com/pion/turn/v4 => github.com/Infisical/turn/v4 v4.0.1
