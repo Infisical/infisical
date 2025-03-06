@@ -710,10 +710,6 @@ export const secretReplicationServiceFactory = ({
                   tx,
                   secretTagDAL,
                   secretVersionTagDAL,
-                  actor: {
-                    type: actor,
-                    actorId
-                  },
                   inputSecrets: locallyCreatedSecrets.map((doc) => {
                     return {
                       keyEncoding: doc.keyEncoding,
@@ -745,10 +741,6 @@ export const secretReplicationServiceFactory = ({
                   tx,
                   secretTagDAL,
                   secretVersionTagDAL,
-                  actor: {
-                    type: actor,
-                    actorId
-                  },
                   inputSecrets: locallyUpdatedSecrets.map((doc) => {
                     return {
                       filter: {

@@ -322,10 +322,6 @@ export type TFnSecretBulkInsert = {
   secretVersionDAL: Pick<TSecretVersionDALFactory, "insertMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecret">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
-  actor?: {
-    type?: string;
-    actorId?: string;
-  };
 };
 
 export type TFnSecretBulkUpdate = {
@@ -340,10 +336,6 @@ export type TFnSecretBulkUpdate = {
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecret" | "deleteTagsManySecret">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
   tx?: Knex;
-  actor?: {
-    type?: string;
-    actorId?: string;
-  };
 };
 
 export type TAttachSecretTagsDTO = {
