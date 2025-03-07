@@ -71,6 +71,7 @@ import {
   TDeleteManySecretRawDTO,
   TDeleteSecretDTO,
   TDeleteSecretRawDTO,
+  TGetASecretByIdRawDTO,
   TGetASecretDTO,
   TGetASecretRawDTO,
   TGetSecretAccessListDTO,
@@ -95,7 +96,7 @@ type TSecretServiceFactoryDep = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   folderDAL: Pick<
     TSecretFolderDALFactory,
-    "findBySecretPath" | "updateById" | "findById" | "findByManySecretPath" | "find"
+    "findBySecretPath" | "updateById" | "findById" | "findByManySecretPath" | "find" | "findSecretPathByFolderIds"
   >;
   secretV2BridgeService: TSecretV2BridgeServiceFactory;
   secretBlindIndexDAL: TSecretBlindIndexDALFactory;
@@ -1380,6 +1381,18 @@ export const secretServiceFactory = ({
       secrets: filteredSecrets,
       imports: processedImports
     };
+  };
+
+  const getSecretByIdRaw = async ({ secretId, actorId, actor, actorOrgId, actorAuthMethod }: TGetASecretByIdRawDTO) => {
+    const secret = await secretV2BridgeService.getSecretById({
+      secretId,
+      actorId,
+      actor,
+      actorOrgId,
+      actorAuthMethod
+    });
+
+    return secret;
   };
 
   const getSecretByNameRaw = async ({
@@ -3088,6 +3101,7 @@ export const secretServiceFactory = ({
     getSecretsRawMultiEnv,
     getSecretReferenceTree,
     getSecretsRawByFolderMappings,
-    getSecretAccessList
+    getSecretAccessList,
+    getSecretByIdRaw
   };
 };
