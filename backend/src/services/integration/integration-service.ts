@@ -1,6 +1,7 @@
-import { ForbiddenError, subject } from "@casl/ability";
+import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { CheckForbiddenErrorSecretsSubject } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
   ProjectPermissionActions,
@@ -95,13 +96,10 @@ export const integrationServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.ReadValue,
-      subject(ProjectPermissionSub.Secrets, {
-        environment: sourceEnvironment,
-        secretPath
-      })
-    );
+    CheckForbiddenErrorSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
+      environment: sourceEnvironment,
+      secretPath
+    });
 
     const folder = await folderDAL.findBySecretPath(integrationAuth.projectId, sourceEnvironment, secretPath);
     if (!folder) {
@@ -178,13 +176,10 @@ export const integrationServiceFactory = ({
     const newSecretPath = secretPath || integration.secretPath;
 
     if (environment || secretPath) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretActions.ReadValue,
-        subject(ProjectPermissionSub.Secrets, {
-          environment: newEnvironment,
-          secretPath: newSecretPath
-        })
-      );
+      CheckForbiddenErrorSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
+        environment: newEnvironment,
+        secretPath: newSecretPath
+      });
     }
 
     const folder = await folderDAL.findBySecretPath(integration.projectId, newEnvironment, newSecretPath);

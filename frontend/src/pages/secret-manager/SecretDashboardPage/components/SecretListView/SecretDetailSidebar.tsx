@@ -52,6 +52,7 @@ import { useGetSecretVersion } from "@app/hooks/api";
 import { useGetSecretAccessList } from "@app/hooks/api/secrets/queries";
 import { SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 import { ProjectType } from "@app/hooks/api/workspace/types";
+import { secretsPermissionCan } from "@app/lib/fn/permission";
 
 import { CreateReminderForm } from "./CreateReminderForm";
 import { formSchema, SecretActionType, TFormSchema } from "./SecretListView.utils";
@@ -134,26 +135,24 @@ export const SecretDetailSidebar = ({
     })
   );
 
-  const cannotReadSecretValue = permission.cannot(
+  const cannotReadSecretValue = !secretsPermissionCan(
+    permission,
     ProjectPermissionSecretActions.ReadValue,
-    subject(ProjectPermissionSub.Secrets, {
+    {
       environment,
       secretPath,
       secretName: secretKey,
       secretTags: selectTagSlugs
-    })
+    }
   );
 
   const isReadOnly =
-    permission.can(
-      ProjectPermissionSecretActions.DescribeSecret,
-      subject(ProjectPermissionSub.Secrets, {
-        environment,
-        secretPath,
-        secretName: secretKey,
-        secretTags: selectTagSlugs
-      })
-    ) &&
+    secretsPermissionCan(permission, ProjectPermissionSecretActions.DescribeSecret, {
+      environment,
+      secretPath,
+      secretName: secretKey,
+      secretTags: selectTagSlugs
+    }) &&
     cannotEditSecret &&
     cannotReadSecretValue;
 

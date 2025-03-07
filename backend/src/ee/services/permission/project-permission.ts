@@ -18,7 +18,8 @@ export enum ProjectPermissionActions {
 }
 
 export enum ProjectPermissionSecretActions {
-  DescribeSecret = "read",
+  DescribeAndReadValue = "read",
+  DescribeSecret = "describeSecret",
   ReadValue = "readValue",
   Create = "create",
   Edit = "edit",
@@ -564,6 +565,7 @@ const buildAdminPermissionRules = () => {
 
   can(
     [
+      // not adding DescribeAndReadValue, because it's already covered by DescribeSecret and ReadValue
       ProjectPermissionSecretActions.DescribeSecret,
       ProjectPermissionSecretActions.ReadValue,
       ProjectPermissionSecretActions.Create,
@@ -632,6 +634,7 @@ const buildMemberPermissionRules = () => {
 
   can(
     [
+      // not adding DescribeAndReadValue, because it's already covered by DescribeSecret and ReadValue
       ProjectPermissionSecretActions.DescribeSecret,
       ProjectPermissionSecretActions.ReadValue,
       ProjectPermissionSecretActions.Edit,
@@ -808,6 +811,7 @@ export const projectMemberPermissions = buildMemberPermissionRules();
 const buildViewerPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
 
+  // not adding DescribeAndReadValue, because it's already covered by DescribeSecret and ReadValue
   can(ProjectPermissionSecretActions.DescribeSecret, ProjectPermissionSub.Secrets);
   can(ProjectPermissionSecretActions.ReadValue, ProjectPermissionSub.Secrets);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretFolders);
@@ -852,7 +856,6 @@ export const buildServiceTokenProjectPermission = (
 ) => {
   const canWrite = permission.includes("write");
   const canRead = permission.includes("read");
-  const canReadValue = permission.includes("readValue");
 
   const { can, build } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
   scopes.forEach(({ secretPath, environment }) => {
@@ -876,7 +879,7 @@ export const buildServiceTokenProjectPermission = (
             environment
           });
         }
-        if (canRead) {
+        if (canRead && subject !== ProjectPermissionSub.Secrets) {
           can(ProjectPermissionActions.Read, subject, {
             // @ts-expect-error type
             secretPath: { $glob: secretPath },
@@ -884,9 +887,15 @@ export const buildServiceTokenProjectPermission = (
           });
         }
 
-        if (subject === ProjectPermissionSub.Secrets && canReadValue) {
+        if (subject === ProjectPermissionSub.Secrets && canRead) {
           // @ts-expect-error type
           can(ProjectPermissionSecretActions.ReadValue, subject as ProjectPermissionSub.Secrets, {
+            secretPath: { $glob: secretPath },
+            environment
+          });
+
+          // @ts-expect-error type
+          can(ProjectPermissionSecretActions.DescribeSecret, subject as ProjectPermissionSub.Secrets, {
             secretPath: { $glob: secretPath },
             environment
           });

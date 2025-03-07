@@ -15,6 +15,7 @@ import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionCo
 import { useToggle } from "@app/hooks";
 import { useUpdateSecretV3 } from "@app/hooks/api";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/types";
+import { secretsPermissionCan } from "@app/lib/fn/permission";
 
 enum SecretActionType {
   Created = "created",
@@ -51,8 +52,11 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
       secretTags: (secretDetails?.tags || []).map((i) => i.slug)
     });
     const isSecretInEnvReadOnly =
-      permission.can(ProjectPermissionSecretActions.DescribeSecret, secretPermissionSubject) &&
-      permission.cannot(ProjectPermissionSecretActions.Edit, secretPermissionSubject);
+      secretsPermissionCan(
+        permission,
+        ProjectPermissionSecretActions.DescribeSecret,
+        secretPermissionSubject
+      ) && permission.cannot(ProjectPermissionSecretActions.Edit, secretPermissionSubject);
     if (isSecretInEnvReadOnly) {
       return true;
     }

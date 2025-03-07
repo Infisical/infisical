@@ -47,6 +47,7 @@ import {
 
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { Blur } from "@app/components/v2/Blur";
+import { secretsPermissionCan } from "@app/lib/fn/permission";
 import {
   FontAwesomeSpriteName,
   formSchema,
@@ -131,15 +132,12 @@ export const SecretItem = memo(
     });
 
     const isReadOnly =
-      permission.can(
-        ProjectPermissionSecretActions.DescribeSecret,
-        subject(ProjectPermissionSub.Secrets, {
-          environment,
-          secretPath,
-          secretName,
-          secretTags: selectedTagSlugs
-        })
-      ) &&
+      secretsPermissionCan(permission, ProjectPermissionSecretActions.DescribeSecret, {
+        environment,
+        secretPath,
+        secretName,
+        secretTags: selectedTagSlugs
+      }) &&
       permission.cannot(
         ProjectPermissionSecretActions.Edit,
         subject(ProjectPermissionSub.Secrets, {

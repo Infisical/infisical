@@ -8,7 +8,8 @@ export enum ProjectPermissionActions {
 }
 
 export enum ProjectPermissionSecretActions {
-  DescribeSecret = "read",
+  DescribeAndReadValue = "read",
+  DescribeSecret = "describeSecret",
   ReadValue = "readValue",
   Create = "create",
   Edit = "edit",

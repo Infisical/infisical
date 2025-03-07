@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-argument */
 // akhilmhdh: I did this, quite strange bug with eslint. Everything do have a type stil has this error
-import { ForbiddenError, subject } from "@casl/ability";
+import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, TableName, TSecretTagJunctionInsert, TSecretV2TagJunctionInsert } from "@app/db/schemas";
 import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
@@ -11,6 +11,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
+import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "@app/services/secret/secret-fns";
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
 import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -21,6 +22,7 @@ import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secre
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
+import { CheckCanSecretsSubject, CheckForbiddenErrorSecretsSubject } from "../permission/permission-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import {
   ProjectPermissionActions,
@@ -38,7 +40,6 @@ import { TSnapshotFolderDALFactory } from "./snapshot-folder-dal";
 import { TSnapshotSecretDALFactory } from "./snapshot-secret-dal";
 import { TSnapshotSecretV2DALFactory } from "./snapshot-secret-v2-dal";
 import { getFullFolderPath } from "./snapshot-service-fns";
-import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "@app/services/secret/secret-fns";
 
 type TSecretSnapshotServiceFactoryDep = {
   snapshotDAL: TSnapshotDALFactory;
@@ -101,10 +102,10 @@ export const secretSnapshotServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
 
     // We need to check if the user has access to the secrets in the folder. If we don't do this, a user could theoretically access snapshot secret values even if they don't have read access to the secrets in the folder.
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.DescribeSecret,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
-    );
+    CheckForbiddenErrorSecretsSubject(permission, ProjectPermissionSecretActions.DescribeSecret, {
+      environment,
+      secretPath: path
+    });
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) {
@@ -138,10 +139,10 @@ export const secretSnapshotServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
 
     // We need to check if the user has access to the secrets in the folder. If we don't do this, a user could theoretically access snapshot secret values even if they don't have read access to the secrets in the folder.
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.DescribeSecret,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
-    );
+    CheckForbiddenErrorSecretsSubject(permission, ProjectPermissionSecretActions.DescribeSecret, {
+      environment,
+      secretPath: path
+    });
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder)
@@ -185,15 +186,12 @@ export const secretSnapshotServiceFactory = ({
       snapshotDetails = {
         ...encryptedSnapshotDetails,
         secretVersions: encryptedSnapshotDetails.secretVersions.map((el) => {
-          const canReadValue = permission.can(
-            ProjectPermissionSecretActions.ReadValue,
-            subject(ProjectPermissionSub.Secrets, {
-              environment: encryptedSnapshotDetails.environment.slug,
-              secretPath: fullFolderPath,
-              secretName: el.key,
-              secretTags: el.tags.length ? el.tags.map((tag) => tag.slug) : undefined
-            })
-          );
+          const canReadValue = CheckCanSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
+            environment: encryptedSnapshotDetails.environment.slug,
+            secretPath: fullFolderPath,
+            secretName: el.key,
+            secretTags: el.tags.length ? el.tags.map((tag) => tag.slug) : undefined
+          });
 
           let secretValue = "";
           if (canReadValue) {
@@ -237,15 +235,12 @@ export const secretSnapshotServiceFactory = ({
             key: botKey
           });
 
-          const canReadValue = permission.can(
-            ProjectPermissionSecretActions.ReadValue,
-            subject(ProjectPermissionSub.Secrets, {
-              environment: encryptedSnapshotDetails.environment.slug,
-              secretPath: fullFolderPath,
-              secretName: secretKey,
-              secretTags: el.tags.length ? el.tags.map((tag) => tag.slug) : undefined
-            })
-          );
+          const canReadValue = CheckCanSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
+            environment: encryptedSnapshotDetails.environment.slug,
+            secretPath: fullFolderPath,
+            secretName: secretKey,
+            secretTags: el.tags.length ? el.tags.map((tag) => tag.slug) : undefined
+          });
 
           let secretValue = "";
 

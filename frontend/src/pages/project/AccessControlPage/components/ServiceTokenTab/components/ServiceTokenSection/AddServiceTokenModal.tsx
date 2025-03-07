@@ -303,12 +303,8 @@ export const AddServiceTokenModal = ({ popUp, handlePopUpToggle }: Props) => {
               render={({ field: { onChange, value }, fieldState: { error } }) => {
                 const options = [
                   {
-                    label: "Describe Secret (default)",
+                    label: "Read (default)",
                     value: "read"
-                  },
-                  {
-                    label: "Read Value (optional)",
-                    value: "readValue"
                   },
                   {
                     label: "Write (optional)",
