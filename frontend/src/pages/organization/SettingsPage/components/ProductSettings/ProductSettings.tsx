@@ -38,7 +38,9 @@ const ProductConfigSection = () => {
     <div className="mb-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
       <div className="py-4">
         <div className="mb-2 flex justify-between">
-          <h3 className="text-md text-mineshaft-100">Display All Members Invite</h3>
+          <h3 className="text-md text-mineshaft-100">
+            Display All Members Invite on Project Creation
+          </h3>
           <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
             {(isAllowed) => (
               <Switch
@@ -51,7 +53,7 @@ const ProductConfigSection = () => {
           </OrgPermissionCan>
         </div>
         <p className="text-sm text-mineshaft-300">
-          Control whether to display all members in the invite section
+          Control whether to display all members in the invite section on project creation
         </p>
       </div>
     </div>

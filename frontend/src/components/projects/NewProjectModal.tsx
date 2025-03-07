@@ -51,7 +51,7 @@ const formSchema = z.object({
     .trim()
     .max(256, "Description too long, max length is 256 characters")
     .optional(),
-  addMembers: z.boolean(),
+  addMembers: z.boolean().default(false),
   kmsKeyId: z.string(),
   template: z.string()
 });
