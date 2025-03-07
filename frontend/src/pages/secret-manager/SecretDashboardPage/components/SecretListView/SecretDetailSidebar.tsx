@@ -463,7 +463,7 @@ export const SecretDetailSidebar = ({
                       <div
                         className={`grid auto-cols-min grid-flow-col gap-2 overflow-hidden ${tagFields.fields.length > 0 ? "pt-2" : ""}`}
                       >
-                        {tagFields.fields.map(({ tagColor, id: formId, slug, id }) => (
+                        {tagFields.fields.map(({ tagColor, id: formId, slug }) => (
                           <Tag
                             className="flex w-min items-center space-x-2"
                             key={formId}
@@ -472,7 +472,8 @@ export const SecretDetailSidebar = ({
                                 createNotification({ type: "error", text: "Access denied" });
                                 return;
                               }
-                              const tag = tags?.find(({ id: tagId }) => id === tagId);
+
+                              const tag = tags?.find(({ slug: tagSlug }) => slug === tagSlug);
                               if (tag) handleTagSelect(tag);
                             }}
                           >
