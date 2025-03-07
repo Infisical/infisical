@@ -1156,7 +1156,8 @@ export const secretApprovalRequestServiceFactory = ({
           environment: env.name,
           secretPath,
           projectId,
-          requestId: secretApprovalRequest.id
+          requestId: secretApprovalRequest.id,
+          secretKeys: [...new Set(Object.values(data).flatMap((arr) => arr?.map((item) => item.secretName) ?? []))]
         }
       }
     });
@@ -1456,7 +1457,8 @@ export const secretApprovalRequestServiceFactory = ({
           environment: env.name,
           secretPath,
           projectId,
-          requestId: secretApprovalRequest.id
+          requestId: secretApprovalRequest.id,
+          secretKeys: [...new Set(Object.values(data).flatMap((arr) => arr?.map((item) => item.secretKey) ?? []))]
         }
       }
     });
