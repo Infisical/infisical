@@ -114,20 +114,27 @@ export const integrationAuthServiceFactory = ({
   const listOrgIntegrationAuth = async ({ actorId, actor, actorOrgId, actorAuthMethod }: TGenericPermission) => {
     const authorizations = await integrationAuthDAL.getByOrg(actorOrgId as string);
 
-    return Promise.all(
-      authorizations.filter(async (auth) => {
-        const { permission } = await permissionService.getProjectPermission({
-          actor,
-          actorId,
-          projectId: auth.projectId,
-          actorAuthMethod,
-          actorOrgId,
-          actionProjectType: ActionProjectType.SecretManager
-        });
+    const filteredAuthorizations = await Promise.all(
+      authorizations.map(async (auth) => {
+        try {
+          const { permission } = await permissionService.getProjectPermission({
+            actor,
+            actorId,
+            projectId: auth.projectId,
+            actorAuthMethod,
+            actorOrgId,
+            actionProjectType: ActionProjectType.SecretManager
+          });
 
-        return permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
+          return permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations) ? auth : null;
+        } catch (error) {
+          // user does not belong to the project that the integration auth belongs to
+          return null;
+        }
       })
     );
+
+    return filteredAuthorizations.filter((auth) => auth !== null);
   };
 
   const getIntegrationAuth = async ({ actor, id, actorId, actorAuthMethod, actorOrgId }: TGetIntegrationAuthDTO) => {
