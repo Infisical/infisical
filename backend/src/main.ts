@@ -83,6 +83,10 @@ const run = async () => {
     process.exit(0);
   });
 
+  process.on("uncaughtException", (error) => {
+    logger.error(error, "CRITICAL ERROR: Uncaught Exception");
+  });
+
   await server.listen({
     port: envConfig.PORT,
     host: envConfig.HOST,
