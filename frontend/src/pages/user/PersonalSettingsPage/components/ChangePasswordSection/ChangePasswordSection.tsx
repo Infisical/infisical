@@ -11,7 +11,8 @@ import attemptChangePassword from "@app/components/utilities/attemptChangePasswo
 import checkPassword from "@app/components/utilities/checks/password/checkPassword";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { useUser } from "@app/context";
-import { useSendPasswordSetupEmail } from "@app/hooks/api/auth/queries";
+import { useResetUserPasswordV2, useSendPasswordSetupEmail } from "@app/hooks/api/auth/queries";
+import { UserEncryptionVersion } from "@app/hooks/api/auth/types";
 
 type Errors = {
   tooShort?: string;
@@ -47,6 +48,7 @@ export const ChangePasswordSection = () => {
   const [errors, setErrors] = useState<Errors>({});
   const [isLoading, setIsLoading] = useState(false);
   const sendSetupPasswordEmail = useSendPasswordSetupEmail();
+  const { mutateAsync: resetPasswordV2 } = useResetUserPasswordV2();
 
   const onFormSubmit = async ({ oldPassword, newPassword }: FormData) => {
     try {
@@ -56,13 +58,20 @@ export const ChangePasswordSection = () => {
       });
 
       if (errorCheck) return;
-
       setIsLoading(true);
-      await attemptChangePassword({
-        email: user.username,
-        currentPassword: oldPassword,
-        newPassword
-      });
+
+      if (user.encryptionVersion === UserEncryptionVersion.V2) {
+        await resetPasswordV2({
+          oldPassword,
+          newPassword
+        });
+      } else {
+        await attemptChangePassword({
+          email: user.username,
+          currentPassword: oldPassword,
+          newPassword
+        });
+      }
 
       setIsLoading(false);
       createNotification({

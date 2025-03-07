@@ -45,6 +45,30 @@ export const validateSignUpAuthorization = (token: string, userId: string, valid
   if (decodedToken.userId !== userId) throw new UnauthorizedError();
 };
 
+export const validatePasswordResetAuthorization = (token?: string) => {
+  if (!token) throw new UnauthorizedError();
+
+  const appCfg = getConfig();
+  const [AUTH_TOKEN_TYPE, AUTH_TOKEN_VALUE] = <[string, string]>token?.split(" ", 2) ?? [null, null];
+  if (AUTH_TOKEN_TYPE === null) {
+    throw new UnauthorizedError({ message: "Missing Authorization Header in the request header." });
+  }
+  if (AUTH_TOKEN_TYPE.toLowerCase() !== "bearer") {
+    throw new UnauthorizedError({
+      message: `The provided authentication type '${AUTH_TOKEN_TYPE}' is not supported.`
+    });
+  }
+  if (AUTH_TOKEN_VALUE === null) {
+    throw new UnauthorizedError({
+      message: "Missing Authorization Body in the request header"
+    });
+  }
+
+  const decodedToken = jwt.verify(AUTH_TOKEN_VALUE, appCfg.AUTH_SECRET) as AuthModeProviderSignUpTokenPayload;
+
+  return decodedToken;
+};
+
 export const enforceUserLockStatus = (isLocked: boolean, temporaryLockDateEnd?: Date | null) => {
   if (isLocked) {
     throw new ForbiddenRequestError({

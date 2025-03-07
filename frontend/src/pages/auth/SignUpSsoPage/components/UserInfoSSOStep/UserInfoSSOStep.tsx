@@ -2,6 +2,7 @@ import crypto from "crypto";
 
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "@tanstack/react-router";
 import jsrp from "jsrp";
 import nacl from "tweetnacl";
 import { encodeBase64 } from "tweetnacl-util";
@@ -17,12 +18,12 @@ import { useToggle } from "@app/hooks";
 import { completeAccountSignup, useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
 
 type Props = {
-  setStep: (step: number) => void;
   username: string;
   password: string;
   setPassword: (value: string) => void;
@@ -50,7 +51,6 @@ export const UserInfoSSOStep = ({
   providerOrganizationName,
   password,
   setPassword,
-  setStep,
   providerAuthToken
 }: Props) => {
   const [nameError, setNameError] = useState(false);
@@ -63,6 +63,7 @@ export const UserInfoSSOStep = ({
   const { t } = useTranslation();
   const { mutateAsync: selectOrganization } = useSelectOrganization();
   const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
+  const navigate = useNavigate();
 
   useEffect(() => {
     const randomPassword = crypto.randomBytes(32).toString("hex");
@@ -202,7 +203,9 @@ export const UserInfoSSOStep = ({
                   }
 
                   localStorage.setItem("orgData.id", orgId);
-                  setStep(2);
+                  navigate({
+                    to: `/organization/${ProjectType.SecretManager}/overview` as const
+                  });
                 } catch (error) {
                   setIsLoading(false);
                   console.error(error);

@@ -3,7 +3,9 @@ import { ForbiddenError } from "@casl/ability";
 import { SecretKeyEncoding } from "@app/db/schemas";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+
 import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
+
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
@@ -31,6 +33,7 @@ type TUserServiceFactoryDep = {
     | "createUserAction"
     | "findUserEncKeyByUserId"
     | "delete"
+    | "updateUserEncryptionByUserId"
   >;
   userAliasDAL: Pick<TUserAliasDALFactory, "find" | "insertMany">;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "findByUserId">;

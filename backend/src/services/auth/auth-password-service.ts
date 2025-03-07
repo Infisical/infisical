@@ -4,6 +4,8 @@ import jwt from "jsonwebtoken";
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
+import { infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
+import { generateUserSrpKeys } from "@app/lib/crypto/srp";
 import { BadRequestError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 
@@ -12,10 +14,13 @@ import { TokenType } from "../auth-token/auth-token-types";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TTotpConfigDALFactory } from "../totp/totp-config-dal";
 import { TUserDALFactory } from "../user/user-dal";
+import { UserEncryption } from "../user/user-types";
 import { TAuthDALFactory } from "./auth-dal";
 import {
+  ResetPasswordV2Type,
   TChangePasswordDTO,
   TCreateBackupPrivateKeyDTO,
+  TResetPasswordV2DTO,
   TResetPasswordViaBackupKeyDTO,
   TSetupPasswordViaBackupKeyDTO
 } from "./auth-password-type";
@@ -114,26 +119,35 @@ export const authPaswordServiceFactory = ({
    * Email password reset flow via email. Step 1 send email
    */
   const sendPasswordResetEmail = async (email: string) => {
+    const startTime = Date.now();
+
     const user = await userDAL.findUserByUsername(email);
-    // ignore as user is not found to avoid an outside entity to identify infisical registered accounts
-    if (!user || (user && !user.isAccepted)) return;
 
-    const cfg = getConfig();
-    const token = await tokenService.createTokenForUser({
-      type: TokenType.TOKEN_EMAIL_PASSWORD_RESET,
-      userId: user.id
-    });
+    if (user && user.isAccepted) {
+      const cfg = getConfig();
+      const token = await tokenService.createTokenForUser({
+        type: TokenType.TOKEN_EMAIL_PASSWORD_RESET,
+        userId: user.id
+      });
 
-    await smtpService.sendMail({
-      template: SmtpTemplates.ResetPassword,
-      recipients: [email],
-      subjectLine: "Infisical password reset",
-      substitutions: {
-        email,
-        token,
-        callback_url: cfg.SITE_URL ? `${cfg.SITE_URL}/password-reset` : ""
-      }
-    });
+      await smtpService.sendMail({
+        template: SmtpTemplates.ResetPassword,
+        recipients: [email],
+        subjectLine: "Infisical password reset",
+        substitutions: {
+          email,
+          token,
+          callback_url: cfg.SITE_URL ? `${cfg.SITE_URL}/password-reset` : ""
+        }
+      });
+    }
+
+    const elapsedTime = Date.now() - startTime;
+    // daniel: ensure each request takes 8 seconds to prevent timing attacks
+    if (elapsedTime < 8_000) {
+      // eslint-disable-next-line no-promise-executor-return
+      await new Promise((resolve) => setTimeout(resolve, 8_000 - elapsedTime));
+    }
   };
 
   /*
@@ -142,6 +156,11 @@ export const authPaswordServiceFactory = ({
   const verifyPasswordResetEmail = async (email: string, code: string) => {
     const cfg = getConfig();
     const user = await userDAL.findUserByUsername(email);
+
+    const userEnc = await userDAL.findUserEncKeyByUserId(user.id);
+
+    if (!userEnc) throw new BadRequestError({ message: "Failed to find user encryption data" });
+
     // ignore as user is not found to avoid an outside entity to identify infisical registered accounts
     if (!user || (user && !user.isAccepted)) {
       throw new Error("Failed email verification for pass reset");
@@ -162,8 +181,95 @@ export const authPaswordServiceFactory = ({
       { expiresIn: cfg.JWT_SIGNUP_LIFETIME }
     );
 
-    return { token, user };
+    return { token, user, userEncryptionVersion: userEnc.encryptionVersion as UserEncryption };
   };
+
+  const resetPasswordV2 = async ({ userId, newPassword, type, oldPassword }: TResetPasswordV2DTO) => {
+    const cfg = getConfig();
+
+    const user = await userDAL.findUserEncKeyByUserId(userId);
+    if (!user) {
+      throw new BadRequestError({ message: `User encryption key not found for user with ID '${userId}'` });
+    }
+
+    if (!user.hashedPassword) {
+      throw new BadRequestError({ message: "Unable to reset password, no password is set" });
+    }
+
+    if (!user.authMethods?.includes(AuthMethod.EMAIL)) {
+      throw new BadRequestError({ message: "Unable to reset password, no email authentication method is configured" });
+    }
+
+    // we check the old password if the user is resetting their password while logged in
+    if (type === ResetPasswordV2Type.LoggedInReset) {
+      if (!oldPassword) {
+        throw new BadRequestError({ message: "Current password is required." });
+      }
+
+      const isValid = await bcrypt.compare(oldPassword, user.hashedPassword);
+      if (!isValid) {
+        throw new BadRequestError({ message: "Incorrect current password." });
+      }
+    }
+
+    const newHashedPassword = await bcrypt.hash(newPassword, cfg.BCRYPT_SALT_ROUND);
+
+    // we need to get the original private key first for v2
+    let privateKey: string;
+    if (
+      user.serverEncryptedPrivateKey &&
+      user.serverEncryptedPrivateKeyTag &&
+      user.serverEncryptedPrivateKeyIV &&
+      user.serverEncryptedPrivateKeyEncoding &&
+      user.encryptionVersion === UserEncryption.V2
+    ) {
+      privateKey = infisicalSymmetricDecrypt({
+        iv: user.serverEncryptedPrivateKeyIV,
+        tag: user.serverEncryptedPrivateKeyTag,
+        ciphertext: user.serverEncryptedPrivateKey,
+        keyEncoding: user.serverEncryptedPrivateKeyEncoding as SecretKeyEncoding
+      });
+    } else {
+      throw new BadRequestError({
+        message: "Cannot reset password without current credentials or recovery method",
+        name: "Reset password"
+      });
+    }
+
+    const encKeys = await generateUserSrpKeys(user.username, newPassword, {
+      publicKey: user.publicKey,
+      privateKey
+    });
+
+    const { tag, iv, ciphertext, encoding } = infisicalSymmetricEncypt(privateKey);
+
+    await userDAL.transaction(async (tx) => {
+      await userDAL.updateUserEncryptionByUserId(
+        userId,
+        {
+          hashedPassword: newHashedPassword,
+
+          // srp params
+          salt: encKeys.salt,
+          verifier: encKeys.verifier,
+
+          protectedKey: encKeys.protectedKey,
+          protectedKeyIV: encKeys.protectedKeyIV,
+          protectedKeyTag: encKeys.protectedKeyTag,
+          encryptedPrivateKey: encKeys.encryptedPrivateKey,
+          iv: encKeys.encryptedPrivateKeyIV,
+          tag: encKeys.encryptedPrivateKeyTag,
+
+          serverEncryptedPrivateKey: ciphertext,
+          serverEncryptedPrivateKeyIV: iv,
+          serverEncryptedPrivateKeyTag: tag,
+          serverEncryptedPrivateKeyEncoding: encoding
+        },
+        tx
+      );
+    });
+  };
+
   /*
    * Reset password of a user via backup key
    * */
@@ -391,6 +497,7 @@ export const authPaswordServiceFactory = ({
     createBackupPrivateKey,
     getBackupPrivateKeyOfUser,
     sendPasswordSetupEmail,
-    setupPassword
+    setupPassword,
+    resetPasswordV2
   };
 };

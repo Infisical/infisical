@@ -72,8 +72,9 @@ export const VerifyEmailPage = () => {
             Forgot your password?
           </p>
           <div className="mt-4 flex flex-row items-center justify-center md:mx-2 md:pb-4">
-            <p className="flex w-max justify-center text-sm text-gray-400">
-              You will need your emergency kit. Enter your email to start account recovery.
+            <p className="flex w-max justify-center text-center text-sm text-gray-400">
+              Enter your email to start the password reset process. You will receive an email with
+              instructions.
             </p>
           </div>
           <div className="mt-4 flex max-h-24 w-full items-center justify-center rounded-lg md:mt-0 md:max-h-28 md:p-2">
