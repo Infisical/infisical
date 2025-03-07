@@ -243,31 +243,27 @@ export const authPaswordServiceFactory = ({
 
     const { tag, iv, ciphertext, encoding } = infisicalSymmetricEncypt(privateKey);
 
-    await userDAL.transaction(async (tx) => {
-      await userDAL.updateUserEncryptionByUserId(
-        userId,
-        {
-          hashedPassword: newHashedPassword,
+    await userDAL.updateUserEncryptionByUserId(userId, {
+      hashedPassword: newHashedPassword,
 
-          // srp params
-          salt: encKeys.salt,
-          verifier: encKeys.verifier,
+      // srp params
+      salt: encKeys.salt,
+      verifier: encKeys.verifier,
 
-          protectedKey: encKeys.protectedKey,
-          protectedKeyIV: encKeys.protectedKeyIV,
-          protectedKeyTag: encKeys.protectedKeyTag,
-          encryptedPrivateKey: encKeys.encryptedPrivateKey,
-          iv: encKeys.encryptedPrivateKeyIV,
-          tag: encKeys.encryptedPrivateKeyTag,
+      protectedKey: encKeys.protectedKey,
+      protectedKeyIV: encKeys.protectedKeyIV,
+      protectedKeyTag: encKeys.protectedKeyTag,
+      encryptedPrivateKey: encKeys.encryptedPrivateKey,
+      iv: encKeys.encryptedPrivateKeyIV,
+      tag: encKeys.encryptedPrivateKeyTag,
 
-          serverEncryptedPrivateKey: ciphertext,
-          serverEncryptedPrivateKeyIV: iv,
-          serverEncryptedPrivateKeyTag: tag,
-          serverEncryptedPrivateKeyEncoding: encoding
-        },
-        tx
-      );
+      serverEncryptedPrivateKey: ciphertext,
+      serverEncryptedPrivateKeyIV: iv,
+      serverEncryptedPrivateKeyTag: tag,
+      serverEncryptedPrivateKeyEncoding: encoding
     });
+
+    await tokenService.revokeAllMySessions(userId);
   };
 
   /*

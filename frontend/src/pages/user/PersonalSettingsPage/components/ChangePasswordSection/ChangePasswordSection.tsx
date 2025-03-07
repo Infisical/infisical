@@ -13,6 +13,7 @@ import { Button, FormControl, Input } from "@app/components/v2";
 import { useUser } from "@app/context";
 import { useResetUserPasswordV2, useSendPasswordSetupEmail } from "@app/hooks/api/auth/queries";
 import { UserEncryptionVersion } from "@app/hooks/api/auth/types";
+import { useNavigate } from "@tanstack/react-router";
 
 type Errors = {
   tooShort?: string;
@@ -36,6 +37,7 @@ export type FormData = z.infer<typeof schema>;
 
 export const ChangePasswordSection = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const { user } = useUser();
   const { reset, control, handleSubmit } = useForm({
@@ -80,7 +82,7 @@ export const ChangePasswordSection = () => {
       });
 
       reset();
-      window.location.href = "/login";
+      navigate({ to: "/login" });
     } catch (err) {
       console.error(err);
       setIsLoading(false);
