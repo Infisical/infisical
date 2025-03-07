@@ -50,6 +50,7 @@ export type TUpdateAdminSlackConfigDTO = {
 export type AdminGetUsersFilters = {
   limit: number;
   searchTerm: string;
+  adminsOnly: boolean;
 };
 
 export type AdminSlackConfig = {

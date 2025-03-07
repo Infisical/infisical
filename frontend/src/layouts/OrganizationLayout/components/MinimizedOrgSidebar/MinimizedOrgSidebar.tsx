@@ -50,6 +50,7 @@ import { ProjectType } from "@app/hooks/api/workspace/types";
 import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
 import { MenuIconButton } from "../MenuIconButton";
+import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
 
 const getPlan = (subscription: SubscriptionPlan) => {
   if (subscription.dynamicSecret) return "Enterprise Plan";
@@ -89,6 +90,7 @@ export const MinimizedOrgSidebar = () => {
   const [openSupport, setOpenSupport] = useState(false);
   const [openUser, setOpenUser] = useState(false);
   const [openOrg, setOpenOrg] = useState(false);
+  const [openAdmins, setOpenAdmins] = useState(false);
 
   const { user } = useUser();
   const { mutateAsync } = useGetOrgTrialUrl();
@@ -392,6 +394,31 @@ export const MinimizedOrgSidebar = () => {
                 : "mb-4"
             } flex w-full cursor-default flex-col items-center px-1 text-sm text-mineshaft-400`}
           >
+            <DropdownMenu open={openAdmins} onOpenChange={setOpenAdmins}>
+              <DropdownMenuTrigger
+                onMouseEnter={() => setOpenAdmins(true)}
+                onMouseLeave={() => setOpenAdmins(false)}
+                asChild
+              >
+                <div className="w-full">
+                  <MenuIconButton lottieIconMode="reverse" icon="groups" isSelected={openAdmins}>
+                    Admins
+                  </MenuIconButton>
+                </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                onMouseEnter={() => setOpenAdmins(true)}
+                onMouseLeave={() => setOpenAdmins(false)}
+                align="start"
+                side="right"
+                className="mb-2 w-[60vh] p-1"
+              >
+                <DropdownMenuLabel>Server Administrators</DropdownMenuLabel>
+                <div className="h-[30vh]">
+                  <ServerAdminsPanel />
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <DropdownMenu open={openSupport} onOpenChange={setOpenSupport}>
               <DropdownMenuTrigger
                 onMouseEnter={() => setOpenSupport(true)}

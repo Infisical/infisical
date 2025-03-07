@@ -118,7 +118,12 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       querystring: z.object({
         searchTerm: z.string().default(""),
         offset: z.coerce.number().default(0),
-        limit: z.coerce.number().max(100).default(20)
+        limit: z.coerce.number().max(100).default(20),
+        // TODO: remove this once z.coerce.boolean() is supported
+        adminsOnly: z
+          .string()
+          .transform((val) => val === "true")
+          .default("false")
       }),
       response: {
         200: z.object({
