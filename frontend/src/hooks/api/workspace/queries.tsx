@@ -251,12 +251,13 @@ export const useUpdateProject = () => {
   const queryClient = useQueryClient();
 
   return useMutation<Workspace, object, UpdateProjectDTO>({
-    mutationFn: async ({ projectID, newProjectName, newProjectDescription }) => {
+    mutationFn: async ({ projectID, newProjectName, newProjectDescription, newSlug }) => {
       const { data } = await apiRequest.patch<{ workspace: Workspace }>(
         `/api/v1/workspace/${projectID}`,
         {
           name: newProjectName,
-          description: newProjectDescription
+          description: newProjectDescription,
+          slug: newSlug
         }
       );
       return data.workspace;
