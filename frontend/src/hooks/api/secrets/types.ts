@@ -101,6 +101,12 @@ export type SecretVersions = {
   skipMultilineEncoding?: boolean;
   createdAt: string;
   updatedAt: string;
+  actor?: {
+    actorId?: string | null;
+    actorType?: string | null;
+    name?: string | null;
+    membershipId?: string | null;
+  } | null;
 };
 
 // dto

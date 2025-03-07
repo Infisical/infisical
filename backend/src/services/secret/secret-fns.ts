@@ -579,6 +579,7 @@ export const fnSecretBulkInsert = async ({
       [`${TableName.Secret}Id` as const]: newSecretGroupByBlindIndex[secretBlindIndex as string][0].id
     }))
   );
+
   const secretVersions = await secretVersionDAL.insertMany(
     sanitizedInputSecrets.map((el) => ({
       ...el,

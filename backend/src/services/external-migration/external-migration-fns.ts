@@ -772,6 +772,10 @@ export const importDataIntoInfisicalFn = async ({
             secretVersionDAL,
             secretTagDAL,
             secretVersionTagDAL,
+            actor: {
+              type: actor,
+              actorId
+            },
             tx
           });
         }
