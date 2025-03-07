@@ -87,6 +87,10 @@ const run = async () => {
     logger.error(error, "CRITICAL ERROR: Uncaught Exception");
   });
 
+  process.on("unhandledRejection", (error) => {
+    logger.error(error, "CRITICAL ERROR: Unhandled Promise Rejection");
+  });
+
   await server.listen({
     port: envConfig.PORT,
     host: envConfig.HOST,
