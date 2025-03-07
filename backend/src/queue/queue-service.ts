@@ -21,6 +21,7 @@ import {
   TQueueSecretSyncSyncSecretsByIdDTO,
   TQueueSendSecretSyncActionFailedNotificationsDTO
 } from "@app/services/secret-sync/secret-sync-types";
+import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
 
 export enum QueueName {
   SecretRotation = "secret-rotation",
@@ -107,7 +108,7 @@ export type TQueueJobTypes = {
   };
   [QueueName.SecretWebhook]: {
     name: QueueJobs.SecWebhook;
-    payload: { projectId: string; environment: string; secretPath: string; depth?: number };
+    payload: TWebhookPayloads;
   };
 
   [QueueName.AccessTokenStatusUpdate]:
