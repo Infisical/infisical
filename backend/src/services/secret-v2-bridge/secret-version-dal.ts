@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
@@ -171,12 +172,102 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
     logger.info(`${QueueName.DailyResourceCleanUp}: pruning secret version v2 completed`);
   };
 
+  const findVersionsBySecretIdWithActors = async (
+    secretId: string,
+    projectId: string,
+    { offset, limit, sort = [["createdAt", "desc"]] }: TFindOpt<TSecretVersionsV2> = {},
+    tx?: Knex
+  ) => {
+    try {
+      const query = (tx || db)(TableName.SecretVersionV2)
+        .leftJoin(TableName.Users, `${TableName.Users}.id`, `${TableName.SecretVersionV2}.userActorId`)
+        .leftJoin(
+          TableName.ProjectMembership,
+          `${TableName.ProjectMembership}.userId`,
+          `${TableName.SecretVersionV2}.userActorId`
+        )
+        .leftJoin(TableName.Identity, `${TableName.Identity}.id`, `${TableName.SecretVersionV2}.identityActorId`)
+        // Add tag-related joins
+        .leftJoin(TableName.SecretV2, `${TableName.SecretVersionV2}.secretId`, `${TableName.SecretV2}.id`)
+        .leftJoin(
+          TableName.SecretV2JnTag,
+          `${TableName.SecretV2}.id`,
+          `${TableName.SecretV2JnTag}.${TableName.SecretV2}Id`
+        )
+        .leftJoin(
+          TableName.SecretTag,
+          `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
+          `${TableName.SecretTag}.id`
+        )
+        .where((qb) => {
+          void qb.where(`${TableName.SecretVersionV2}.secretId`, secretId);
+          void qb.where(`${TableName.ProjectMembership}.projectId`, projectId);
+        })
+        .orWhere((qb) => {
+          void qb.where(`${TableName.SecretVersionV2}.secretId`, secretId);
+          void qb.whereNull(`${TableName.ProjectMembership}.projectId`);
+        })
+        .select(
+          selectAllTableCols(TableName.SecretVersionV2),
+          db.ref("username").withSchema(TableName.Users).as("userActorName"),
+          db.ref("name").withSchema(TableName.Identity).as("identityActorName"),
+          db.ref("id").withSchema(TableName.ProjectMembership).as("membershipId"),
+          db.ref("id").withSchema(TableName.SecretTag).as("tagId"),
+          db.ref("color").withSchema(TableName.SecretTag).as("tagColor"),
+          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug")
+        );
+
+      if (limit) void query.limit(limit);
+      if (offset) void query.offset(offset);
+      if (sort) {
+        void query.orderBy(
+          sort.map(([column, order, nulls]) => ({
+            column: `${TableName.SecretVersionV2}.${column as string}`,
+            order,
+            nulls
+          }))
+        );
+      }
+
+      const docs = await query;
+
+      const data = sqlNestRelationships({
+        data: docs,
+        key: "id",
+        parentMapper: (el) => ({
+          _id: el.id,
+          ...SecretVersionsV2Schema.parse(el),
+          userActorName: el.userActorName,
+          identityActorName: el.identityActorName,
+          membershipId: el.membershipId
+        }),
+        childrenMapper: [
+          {
+            key: "tagId",
+            label: "tags" as const,
+            mapper: ({ tagId: id, tagColor: color, tagSlug: slug }) => ({
+              id,
+              color,
+              slug,
+              name: slug
+            })
+          }
+        ]
+      });
+
+      return data;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindVersionsBySecretIdWithActors" });
+    }
+  };
+
   return {
     ...secretVersionV2Orm,
     pruneExcessVersions,
     findLatestVersionMany,
     bulkUpdate,
     findLatestVersionByFolderId,
-    findBySecretId
+    findBySecretId,
+    findVersionsBySecretIdWithActors
   };
 };

@@ -121,6 +121,10 @@ export type TGetASecretDTO = {
   version?: number;
 } & TProjectPermission;
 
+export type TGetASecretByIdDTO = {
+  secretId: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TCreateBulkSecretDTO = {
   path: string;
   environment: string;
@@ -214,6 +218,10 @@ export type TGetASecretRawDTO = {
   version?: number;
   projectSlug?: string;
   projectId?: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TGetASecretByIdRawDTO = {
+  secretId: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TCreateSecretRawDTO = TProjectPermission & {

@@ -16,7 +16,8 @@ import {
   TDeleteWebhookDTO,
   TListWebhookDTO,
   TTestWebhookDTO,
-  TUpdateWebhookDTO
+  TUpdateWebhookDTO,
+  WebhookEvents
 } from "./webhook-types";
 
 type TWebhookServiceFactoryDep = {
@@ -144,12 +145,15 @@ export const webhookServiceFactory = ({
       await triggerWebhookRequest(
         webhook,
         (value) => secretManagerDecryptor({ cipherTextBlob: value }).toString(),
-        getWebhookPayload("test", {
-          workspaceName: project.name,
-          workspaceId: webhook.projectId,
-          environment: webhook.environment.slug,
-          secretPath: webhook.secretPath,
-          type: webhook.type
+        getWebhookPayload({
+          type: "test" as WebhookEvents.SecretModified,
+          payload: {
+            projectName: project.name,
+            projectId: webhook.projectId,
+            environment: webhook.environment.slug,
+            secretPath: webhook.secretPath,
+            type: webhook.type
+          }
         })
       );
     } catch (err) {

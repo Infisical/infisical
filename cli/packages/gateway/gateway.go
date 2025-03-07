@@ -176,7 +176,7 @@ func (g *Gateway) Listen(ctx context.Context) error {
 		KeepAlivePeriod: 2 * time.Second,
 	}
 
-	g.registerRelayIsActive(ctx, relayUdpConnection.LocalAddr().String(), errCh)
+	g.registerRelayIsActive(ctx, errCh)
 	quicListener, err := quic.Listen(relayUdpConnection, tlsConfig, quicConfig)
 	if err != nil {
 		return fmt.Errorf("Failed to listen for QUIC: %w", err)
@@ -320,39 +320,49 @@ func (g *Gateway) createPermissionForStaticIps(staticIps string) error {
 	return nil
 }
 
-func (g *Gateway) registerRelayIsActive(ctx context.Context, relayAddress string, errCh chan error) error {
-	ticker := time.NewTicker(10 * time.Second)
+func (g *Gateway) registerRelayIsActive(ctx context.Context, errCh chan error) error {
+	ticker := time.NewTicker(15 * time.Second)
 	maxFailures := 3
 	failures := 0
 
+	log.Info().Msg("Starting relay connection health check")
+
 	go func() {
-		time.Sleep(2 * time.Second)
+		time.Sleep(5 * time.Second)
 		for {
 			select {
 			case <-ctx.Done():
+				log.Info().Msg("Stopping relay connection health check")
 				return
 			case <-ticker.C:
-				// Configure TLS to skip verification
-				tlsConfig := &tls.Config{
-					InsecureSkipVerify: true,
-					NextProtos:         []string{"infisical-gateway"},
-				}
-				quicConfig := &quic.Config{
-					EnableDatagrams: true,
-				}
 				func() {
-					checkCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
-					defer cancel()
-					conn, err := quic.DialAddr(checkCtx, relayAddress, tlsConfig, quicConfig)
-					if err != nil {
+					log.Debug().Msg("Performing relay connection health check")
+
+					if g.client == nil {
 						failures++
-						log.Warn().Err(err).Int("failures", failures).Msg("Relay connection check failed")
+						log.Warn().Int("failures", failures).Msg("TURN client is nil")
+						if failures >= maxFailures {
+							errCh <- fmt.Errorf("relay connection check failed: TURN client is nil")
+						}
+						return
+					}
+
+					// we try to refresh permissions - this is a lightweight operation
+					// that will fail immediately if the UDP connection is broken. good for health check
+					log.Debug().Msg("Refreshing TURN permissions to verify connection")
+					if err := g.createPermissionForStaticIps(g.config.InfisicalStaticIp); err != nil {
+						failures++
+						log.Warn().Err(err).Int("failures", failures).Msg("Failed to refresh TURN permissions")
 						if failures >= maxFailures {
 							errCh <- fmt.Errorf("relay connection check failed: %w", err)
 						}
+						return
 					}
-					if conn != nil {
-						conn.CloseWithError(0, "closed")
+
+					log.Debug().Msg("Successfully refreshed TURN permissions - connection is healthy")
+					if failures > 0 {
+						log.Info().Int("previous_failures", failures).Msg("Relay connection restored")
+						failures = 0
 					}
 				}()
 			}

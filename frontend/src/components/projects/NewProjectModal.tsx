@@ -14,7 +14,6 @@ import {
   AccordionItem,
   AccordionTrigger,
   Button,
-  Checkbox,
   FormControl,
   Input,
   Modal,
@@ -33,13 +32,7 @@ import {
   useUser
 } from "@app/context";
 import { getProjectHomePage } from "@app/helpers/project";
-import {
-  fetchOrgUsers,
-  useAddUserToWsNonE2EE,
-  useCreateWorkspace,
-  useGetExternalKmsList,
-  useGetUserWorkspaces
-} from "@app/hooks/api";
+import { useCreateWorkspace, useGetExternalKmsList, useGetUserWorkspaces } from "@app/hooks/api";
 import { INTERNAL_KMS_KEY_ID } from "@app/hooks/api/kms/types";
 import { InfisicalProjectTemplate, useListProjectTemplates } from "@app/hooks/api/projectTemplates";
 import { ProjectType } from "@app/hooks/api/workspace/types";
@@ -51,7 +44,6 @@ const formSchema = z.object({
     .trim()
     .max(256, "Description too long, max length is 256 characters")
     .optional(),
-  addMembers: z.boolean(),
   kmsKeyId: z.string(),
   template: z.string()
 });
@@ -73,7 +65,6 @@ const NewProjectForm = ({ onOpenChange, projectType }: NewProjectFormProps) => {
   const { user } = useUser();
   const createWs = useCreateWorkspace();
   const { refetch: refetchWorkspaces } = useGetUserWorkspaces();
-  const addUsersToProject = useAddUserToWsNonE2EE();
   const { subscription } = useSubscription();
 
   const canReadProjectTemplates = permission.can(
@@ -111,7 +102,6 @@ const NewProjectForm = ({ onOpenChange, projectType }: NewProjectFormProps) => {
   const onCreateProject = async ({
     name,
     description,
-    addMembers,
     kmsKeyId,
     template
   }: TAddProjectFormData) => {
@@ -128,21 +118,6 @@ const NewProjectForm = ({ onOpenChange, projectType }: NewProjectFormProps) => {
         template,
         type: projectType
       });
-      const { id: newProjectId } = project;
-
-      if (addMembers) {
-        const orgUsers = await fetchOrgUsers(currentOrg.id);
-        await addUsersToProject.mutateAsync({
-          usernames: orgUsers
-            .filter(
-              (member) => member.user.username !== user.username && member.status === "accepted"
-            )
-            .map((member) => member.user.username),
-          projectId: newProjectId,
-          orgId: currentOrg.id
-        });
-      }
-
       await refetchWorkspaces();
 
       createNotification({ text: "Project created", type: "success" });
@@ -246,31 +221,7 @@ const NewProjectForm = ({ onOpenChange, projectType }: NewProjectFormProps) => {
           )}
         />
       </div>
-      <div className="mt-4 pl-1">
-        <Controller
-          control={control}
-          name="addMembers"
-          defaultValue={false}
-          render={({ field: { onBlur, value, onChange } }) => (
-            <OrgPermissionCan I={OrgPermissionActions.Read} a={OrgPermissionSubjects.Member}>
-              {(isAllowed) => (
-                <div>
-                  <Checkbox
-                    id="add-project-layout"
-                    isChecked={value}
-                    onCheckedChange={onChange}
-                    isDisabled={!isAllowed}
-                    onBlur={onBlur}
-                  >
-                    Add all members of my organization to this project
-                  </Checkbox>
-                </div>
-              )}
-            </OrgPermissionCan>
-          )}
-        />
-      </div>
-      <div className="mt-14 flex">
+      <div className="mt-4 flex">
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="advance-settings" className="data-[state=open]:border-none">
             <AccordionTrigger className="h-fit flex-none pl-1 text-sm">

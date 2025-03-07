@@ -5,16 +5,20 @@ import {
   faArrowRotateRight,
   faCheckCircle,
   faClock,
+  faCopy,
+  faDesktop,
   faEyeSlash,
   faPlus,
+  faServer,
   faShare,
   faTag,
   faTrash,
-  faTriangleExclamation
+  faTriangleExclamation,
+  faUser
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
@@ -49,6 +53,7 @@ import {
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp, useToggle } from "@app/hooks";
 import { useGetSecretVersion } from "@app/hooks/api";
+import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { useGetSecretAccessList } from "@app/hooks/api/secrets/queries";
 import { SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 import { ProjectType } from "@app/hooks/api/workspace/types";
@@ -124,6 +129,7 @@ export const SecretDetailSidebar = ({
     {}
   );
   const selectTagSlugs = selectedTags.map((i) => i.slug);
+  const navigate = useNavigate();
 
   const cannotEditSecret = permission.cannot(
     ProjectPermissionSecretActions.Edit,
@@ -222,6 +228,57 @@ export const SecretDetailSidebar = ({
 
   const secretReminderRepeatDays = watch("reminderRepeatDays");
   const secretReminderNote = watch("reminderNote");
+
+  const getModifiedByIcon = (userType: string | undefined | null) => {
+    switch (userType) {
+      case ActorType.USER:
+        return faUser;
+      case ActorType.IDENTITY:
+        return faDesktop;
+      default:
+        return faServer;
+    }
+  };
+
+  const getModifiedByName = (
+    userType: string | undefined | null,
+    userName: string | null | undefined
+  ) => {
+    switch (userType) {
+      case ActorType.PLATFORM:
+        return "System-generated";
+      default:
+        return userName;
+    }
+  };
+
+  const getLinkToModifyHistoryEntity = (
+    actorId: string,
+    actorType: string,
+    membershipId: string | null = ""
+  ) => {
+    switch (actorType) {
+      case ActorType.USER:
+        return `/${ProjectType.SecretManager}/${currentWorkspace.id}/members/${membershipId}`;
+      case ActorType.IDENTITY:
+        return `/${ProjectType.SecretManager}/${currentWorkspace.id}/identities/${actorId}`;
+      default:
+        return null;
+    }
+  };
+
+  const onModifyHistoryClick = (
+    actorId: string | undefined | null,
+    actorType: string | undefined | null,
+    membershipId: string | undefined | null
+  ) => {
+    if (actorType && actorId && actorType !== ActorType.PLATFORM) {
+      const redirectLink = getLinkToModifyHistoryEntity(actorId, actorType, membershipId);
+      if (redirectLink) {
+        navigate({ to: redirectLink });
+      }
+    }
+  };
 
   return (
     <>
@@ -666,7 +723,7 @@ export const SecretDetailSidebar = ({
                 <div className="mb-2 pl-1">Version History</div>
                 <div className="thin-scrollbar flex h-48 flex-col space-y-2 overflow-y-auto overflow-x-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 dark:[color-scheme:dark]">
                   {secretVersion?.map(
-                    ({ createdAt, secretValue, version, id, secretValueHidden }, index) => (
+                    ({ createdAt, secretValue, version, id, secretValueHidden, actor }, index) => (
                       <div key={`secret-version-${index + 1}`} className="flex flex-row">
                         <div key={id} className="flex w-full flex-col space-y-1">
                           <div className="flex items-center">
@@ -677,10 +734,38 @@ export const SecretDetailSidebar = ({
                             </div>
                             <div>{format(new Date(createdAt), "Pp")}</div>
                           </div>
-                          <div className="flex w-full cursor-default">
-                            <div className="relative w-10">
-                              <div className="absolute bottom-0 left-3 top-0 mt-0.5 border-l border-mineshaft-400/60" />
-                            </div>
+                          <div>{format(new Date(createdAt), "Pp")}</div>
+                        </div>
+                        <div className="flex w-full cursor-default">
+                          <div className="relative w-10">
+                            <div className="absolute bottom-0 left-3 top-0 mt-0.5 border-l border-mineshaft-400/60" />
+                          </div>
+                          <div className="flex w-full cursor-default flex-col">
+                            {actor && (
+                              <div className="flex flex-row">
+                                <div className="flex w-fit flex-row text-sm">
+                                  Modified by:
+                                  <Tooltip content={getModifiedByName(actor.actorType, actor.name)}>
+                                    {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+                                    <div
+                                      onClick={() =>
+                                        onModifyHistoryClick(
+                                          actor.actorId,
+                                          actor.actorType,
+                                          actor.membershipId
+                                        )
+                                      }
+                                      className="cursor-pointer"
+                                    >
+                                      <FontAwesomeIcon
+                                        icon={getModifiedByIcon(actor.actorType)}
+                                        className="ml-2"
+                                      />
+                                    </div>
+                                  </Tooltip>
+                                </div>
+                              </div>
+                            )}
                             <div className="flex flex-row">
                               <div className="h-min w-fit rounded-sm bg-primary-500/10 px-1 text-primary-300/70">
                                 Value:
@@ -689,7 +774,7 @@ export const SecretDetailSidebar = ({
                                 <div className="relative hidden cursor-pointer transition-all duration-200 group-[.show-value]:inline">
                                   <button
                                     type="button"
-                                    className="select-none"
+                                    className="select-none text-left"
                                     onClick={(e) => {
                                       if (secretValueHidden) return;
 
@@ -965,29 +1050,49 @@ export const SecretDetailSidebar = ({
                       </Button>
                     )}
                   </ProjectPermissionCan>
-                  <ProjectPermissionCan
-                    I={ProjectPermissionActions.Delete}
-                    a={subject(ProjectPermissionSub.Secrets, {
-                      environment,
-                      secretPath,
-                      secretName: secretKey,
-                      secretTags: selectTagSlugs
-                    })}
-                  >
-                    {(isAllowed) => (
+                  <div className="flex items-center gap-2">
+                    <Tooltip content="Copy Secret ID">
                       <IconButton
-                        colorSchema="danger"
-                        ariaLabel="Delete Secret"
-                        className="border border-mineshaft-600 bg-mineshaft-700 hover:border-red-500/70 hover:bg-red-600/20"
-                        isDisabled={!isAllowed}
-                        onClick={onDeleteSecret}
+                        variant="outline_bg"
+                        ariaLabel="Copy Secret ID"
+                        onClick={async () => {
+                          await navigator.clipboard.writeText(secret.id);
+
+                          createNotification({
+                            title: "Secret ID Copied",
+                            text: "The secret ID has been copied to your clipboard.",
+                            type: "success"
+                          });
+                        }}
                       >
-                        <Tooltip content="Delete Secret">
-                          <FontAwesomeIcon icon={faTrash} />
-                        </Tooltip>
+                        <FontAwesomeIcon icon={faCopy} />
                       </IconButton>
-                    )}
-                  </ProjectPermissionCan>
+                    </Tooltip>
+                    <ProjectPermissionCan
+                      I={ProjectPermissionActions.Delete}
+                      a={subject(ProjectPermissionSub.Secrets, {
+                        environment,
+                        secretPath,
+                        secretName: secretKey,
+                        secretTags: selectTagSlugs
+                      })}
+                    >
+                      {(isAllowed) => (
+                        <Tooltip content="Delete Secret">
+                          <IconButton
+                            colorSchema="danger"
+                            variant="outline_bg"
+                            ariaLabel="Delete Secret"
+                            className="border border-mineshaft-600 bg-mineshaft-700 hover:border-red-500/70 hover:bg-red-600/20"
+                            isDisabled={!isAllowed}
+                            onClick={onDeleteSecret}
+                          >
+                            <FontAwesomeIcon icon={faTrash} />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                    </ProjectPermissionCan>
+                  </div>
                 </div>
               </div>
             </div>
