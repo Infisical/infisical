@@ -119,35 +119,31 @@ export const authPaswordServiceFactory = ({
    * Email password reset flow via email. Step 1 send email
    */
   const sendPasswordResetEmail = async (email: string) => {
-    const startTime = Date.now();
+    const sendEmail = async () => {
+      const user = await userDAL.findUserByUsername(email);
 
-    const user = await userDAL.findUserByUsername(email);
+      if (user && user.isAccepted) {
+        const cfg = getConfig();
+        const token = await tokenService.createTokenForUser({
+          type: TokenType.TOKEN_EMAIL_PASSWORD_RESET,
+          userId: user.id
+        });
 
-    if (user && user.isAccepted) {
-      const cfg = getConfig();
-      const token = await tokenService.createTokenForUser({
-        type: TokenType.TOKEN_EMAIL_PASSWORD_RESET,
-        userId: user.id
-      });
+        await smtpService.sendMail({
+          template: SmtpTemplates.ResetPassword,
+          recipients: [email],
+          subjectLine: "Infisical password reset",
+          substitutions: {
+            email,
+            token,
+            callback_url: cfg.SITE_URL ? `${cfg.SITE_URL}/password-reset` : ""
+          }
+        });
+      }
+    };
 
-      await smtpService.sendMail({
-        template: SmtpTemplates.ResetPassword,
-        recipients: [email],
-        subjectLine: "Infisical password reset",
-        substitutions: {
-          email,
-          token,
-          callback_url: cfg.SITE_URL ? `${cfg.SITE_URL}/password-reset` : ""
-        }
-      });
-    }
-
-    const elapsedTime = Date.now() - startTime;
-    // daniel: ensure each request takes 8 seconds to prevent timing attacks
-    if (elapsedTime < 8_000) {
-      // eslint-disable-next-line no-promise-executor-return
-      await new Promise((resolve) => setTimeout(resolve, 8_000 - elapsedTime));
-    }
+    // note(daniel): run in background to prevent timing attacks
+    void sendEmail();
   };
 
   /*

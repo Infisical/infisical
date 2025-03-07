@@ -103,8 +103,10 @@ export const VerifyEmailPage = () => {
             Look for an email in your inbox.
           </p>
           <div className="mt-4 flex flex-row items-center justify-center md:mx-2 md:pb-4">
-            <p className="flex w-max justify-center text-center text-sm text-gray-400">
-              An email with instructions has been sent to {email}.
+            <p className="w-max text-center text-sm text-gray-400">
+              If the email is in our system, you will receive an email at{" "}
+              <span className="italic">{email}</span> with instructions on how to reset your
+              password.
             </p>
           </div>
         </div>
