@@ -26,6 +26,7 @@ export type UpdateOrgDTO = {
   defaultMembershipRoleSlug?: string;
   enforceMfa?: boolean;
   selectedMfaMethod?: MfaMethod;
+  displayAllMembersInvite?: boolean;
 };
 
 export type BillingDetails = {

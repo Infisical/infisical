@@ -246,30 +246,32 @@ const NewProjectForm = ({ onOpenChange, projectType }: NewProjectFormProps) => {
           )}
         />
       </div>
-      <div className="mt-4 pl-1">
-        <Controller
-          control={control}
-          name="addMembers"
-          defaultValue={false}
-          render={({ field: { onBlur, value, onChange } }) => (
-            <OrgPermissionCan I={OrgPermissionActions.Read} a={OrgPermissionSubjects.Member}>
-              {(isAllowed) => (
-                <div>
-                  <Checkbox
-                    id="add-project-layout"
-                    isChecked={value}
-                    onCheckedChange={onChange}
-                    isDisabled={!isAllowed}
-                    onBlur={onBlur}
-                  >
-                    Add all members of my organization to this project
-                  </Checkbox>
-                </div>
-              )}
-            </OrgPermissionCan>
-          )}
-        />
-      </div>
+      {currentOrg?.displayAllMembersInvite && (
+        <div className="mt-4 pl-1">
+          <Controller
+            control={control}
+            name="addMembers"
+            defaultValue={false}
+            render={({ field: { onBlur, value, onChange } }) => (
+              <OrgPermissionCan I={OrgPermissionActions.Read} a={OrgPermissionSubjects.Member}>
+                {(isAllowed) => (
+                  <div>
+                    <Checkbox
+                      id="add-project-layout"
+                      isChecked={value}
+                      onCheckedChange={onChange}
+                      isDisabled={!isAllowed}
+                      onBlur={onBlur}
+                    >
+                      Add all members of my organization to this project
+                    </Checkbox>
+                  </div>
+                )}
+              </OrgPermissionCan>
+            )}
+          />
+        </div>
+      )}
       <div className="mt-14 flex">
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="advance-settings" className="data-[state=open]:border-none">

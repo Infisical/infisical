@@ -22,7 +22,8 @@ export const OrganizationsSchema = z.object({
   kmsEncryptedDataKey: zodBuffer.nullable().optional(),
   defaultMembershipRole: z.string().default("member"),
   enforceMfa: z.boolean().default(false),
-  selectedMfaMethod: z.string().nullable().optional()
+  selectedMfaMethod: z.string().nullable().optional(),
+  displayAllMembersInvite: z.boolean().default(true)
 });
 
 export type TOrganizations = z.infer<typeof OrganizationsSchema>;

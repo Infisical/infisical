@@ -11,6 +11,7 @@ import { OrgAuthTab } from "../OrgAuthTab";
 import { OrgEncryptionTab } from "../OrgEncryptionTab";
 import { OrgGeneralTab } from "../OrgGeneralTab";
 import { OrgWorkflowIntegrationTab } from "../OrgWorkflowIntegrationTab/OrgWorkflowIntegrationTab";
+import { ProductSettings } from "../ProductSettings/ProductSettings";
 import { ProjectTemplatesTab } from "../ProjectTemplatesTab";
 
 export const OrgTabGroup = () => {
@@ -20,6 +21,7 @@ export const OrgTabGroup = () => {
   const tabs = [
     { name: "General", key: "tab-org-general", component: OrgGeneralTab },
     { name: "Security", key: "tab-org-security", component: OrgAuthTab },
+    { name: "Products", key: "tab-org-products", component: ProductSettings },
     { name: "Encryption", key: "tab-org-encryption", component: OrgEncryptionTab },
     {
       name: "Workflow Integrations",

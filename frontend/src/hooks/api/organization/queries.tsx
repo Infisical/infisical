@@ -109,7 +109,8 @@ export const useUpdateOrg = () => {
       orgId,
       defaultMembershipRoleSlug,
       enforceMfa,
-      selectedMfaMethod
+      selectedMfaMethod,
+      displayAllMembersInvite
     }) => {
       return apiRequest.patch(`/api/v1/organization/${orgId}`, {
         name,
@@ -118,7 +119,8 @@ export const useUpdateOrg = () => {
         slug,
         defaultMembershipRoleSlug,
         enforceMfa,
-        selectedMfaMethod
+        selectedMfaMethod,
+        displayAllMembersInvite
       });
     },
     onSuccess: () => {

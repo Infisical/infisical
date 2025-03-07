@@ -72,6 +72,7 @@ export type TUpdateOrgDTO = {
     defaultMembershipRoleSlug: string;
     enforceMfa: boolean;
     selectedMfaMethod: MfaMethod;
+    displayAllMembersInvite: boolean;
   }>;
 } & TOrgPermission;
 
