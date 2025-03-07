@@ -13,7 +13,7 @@ export async function up(knex: Knex): Promise<void> {
 export async function down(knex: Knex): Promise<void> {
   if (await knex.schema.hasColumn(TableName.Organization, "displayAllMembersInvite")) {
     await knex.schema.alterTable(TableName.Organization, (t) => {
-      t.boolean("displayAllMembersInvite");
+      t.dropColumn("displayAllMembersInvite");
     });
   }
 }
