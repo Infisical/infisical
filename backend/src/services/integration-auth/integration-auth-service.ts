@@ -134,7 +134,7 @@ export const integrationAuthServiceFactory = ({
       })
     );
 
-    return filteredAuthorizations.filter((auth) => auth !== null);
+    return filteredAuthorizations.filter((auth): auth is NonNullable<typeof auth> => auth !== null);
   };
 
   const getIntegrationAuth = async ({ actor, id, actorId, actorAuthMethod, actorOrgId }: TGetIntegrationAuthDTO) => {
