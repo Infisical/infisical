@@ -613,6 +613,9 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
           `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
           `${TableName.SecretTag}.id`
         )
+
+        .leftJoin(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+        .leftJoin(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .leftJoin(TableName.ResourceMetadata, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
         .select(selectAllTableCols(TableName.SecretV2))
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
@@ -622,12 +625,13 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
           db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
           db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue")
-        );
+        )
+        .select(db.ref("projectId").withSchema(TableName.Environment).as("projectId"));
 
       const docs = sqlNestRelationships({
         data: rawDocs,
         key: "id",
-        parentMapper: (el) => ({ _id: el.id, ...SecretsV2Schema.parse(el) }),
+        parentMapper: (el) => ({ _id: el.id, projectId: el.projectId, ...SecretsV2Schema.parse(el) }),
         childrenMapper: [
           {
             key: "tagId",

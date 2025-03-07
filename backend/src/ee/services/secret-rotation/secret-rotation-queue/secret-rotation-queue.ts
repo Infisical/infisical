@@ -13,6 +13,7 @@ import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
@@ -332,6 +333,7 @@ export const secretRotationQueueFactory = ({
           await secretVersionV2BridgeDAL.insertMany(
             updatedSecrets.map(({ id, updatedAt, createdAt, ...el }) => ({
               ...el,
+              actorType: ActorType.PLATFORM,
               secretId: id
             })),
             tx

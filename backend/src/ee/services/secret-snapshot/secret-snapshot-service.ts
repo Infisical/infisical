@@ -7,6 +7,7 @@ import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { InternalServerError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
@@ -370,7 +371,21 @@ export const secretSnapshotServiceFactory = ({
         const secrets = await secretV2BridgeDAL.insertMany(
           rollbackSnaps.flatMap(({ secretVersions, folderId }) =>
             secretVersions.map(
-              ({ latestSecretVersion, version, updatedAt, createdAt, secretId, envId, id, tags, ...el }) => ({
+              ({
+                latestSecretVersion,
+                version,
+                updatedAt,
+                createdAt,
+                secretId,
+                envId,
+                id,
+                tags,
+                // exclude the bottom fields from the secret - they are for versioning only.
+                userActorId,
+                identityActorId,
+                actorType,
+                ...el
+              }) => ({
                 ...el,
                 id: secretId,
                 version: deletedTopLevelSecsGroupById[secretId] ? latestSecretVersion + 1 : latestSecretVersion,
@@ -401,8 +416,18 @@ export const secretSnapshotServiceFactory = ({
           })),
           tx
         );
+        const userActorId = actor === ActorType.USER ? actorId : undefined;
+        const identityActorId = actor !== ActorType.USER ? actorId : undefined;
+        const actorType = actor || ActorType.PLATFORM;
+
         const secretVersions = await secretVersionV2BridgeDAL.insertMany(
-          secrets.map(({ id, updatedAt, createdAt, ...el }) => ({ ...el, secretId: id })),
+          secrets.map(({ id, updatedAt, createdAt, ...el }) => ({
+            ...el,
+            secretId: id,
+            userActorId,
+            identityActorId,
+            actorType
+          })),
           tx
         );
         await secretVersionV2TagBridgeDAL.insertMany(

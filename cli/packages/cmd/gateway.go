@@ -137,15 +137,10 @@ var gatewayRelayCmd = &cobra.Command{
 }
 
 func init() {
-	gatewayCmd.SetHelpFunc(func(command *cobra.Command, strings []string) {
-		command.Flags().MarkHidden("domain")
-		command.Parent().HelpFunc()(command, strings)
-	})
 	gatewayCmd.Flags().String("token", "", "Connect with Infisical using machine identity access token")
 
 	gatewayRelayCmd.Flags().String("config", "", "Relay config yaml file path")
 
 	gatewayCmd.AddCommand(gatewayRelayCmd)
-
 	rootCmd.AddCommand(gatewayCmd)
 }

@@ -62,6 +62,7 @@ export type TSlackNotification =
         secretPath: string;
         requestId: string;
         projectId: string;
+        secretKeys: string[];
       };
     }
   | {

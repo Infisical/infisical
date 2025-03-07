@@ -1,5 +1,5 @@
 public_ip: 127.0.0.1
-auth_secret: changeThisOnProduction
+auth_secret: example-auth-secret
 realm: infisical.org
 # set port 5349 for tls
 # port: 5349

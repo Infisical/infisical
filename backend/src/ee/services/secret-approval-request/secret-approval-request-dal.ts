@@ -100,6 +100,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         tx.ref("lastName").withSchema("committerUser").as("committerUserLastName"),
         tx.ref("reviewerUserId").withSchema(TableName.SecretApprovalRequestReviewer),
         tx.ref("status").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerStatus"),
+        tx.ref("comment").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerComment"),
         tx.ref("email").withSchema("secretApprovalReviewerUser").as("reviewerEmail"),
         tx.ref("username").withSchema("secretApprovalReviewerUser").as("reviewerUsername"),
         tx.ref("firstName").withSchema("secretApprovalReviewerUser").as("reviewerFirstName"),
@@ -162,8 +163,10 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
               reviewerEmail: email,
               reviewerLastName: lastName,
               reviewerUsername: username,
-              reviewerFirstName: firstName
-            }) => (userId ? { userId, status, email, firstName, lastName, username } : undefined)
+              reviewerFirstName: firstName,
+              reviewerComment: comment
+            }) =>
+              userId ? { userId, status, email, firstName, lastName, username, comment: comment ?? "" } : undefined
           },
           {
             key: "approverUserId",

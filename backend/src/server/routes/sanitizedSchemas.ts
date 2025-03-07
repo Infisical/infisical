@@ -111,7 +111,16 @@ export const secretRawSchema = z.object({
   secretReminderRepeatDays: z.number().nullable().optional(),
   skipMultilineEncoding: z.boolean().default(false).nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  actor: z
+    .object({
+      actorId: z.string().nullable().optional(),
+      actorType: z.string().nullable().optional(),
+      name: z.string().nullable().optional(),
+      membershipId: z.string().nullable().optional()
+    })
+    .optional()
+    .nullable()
 });
 
 export const ProjectPermissionSchema = z.object({

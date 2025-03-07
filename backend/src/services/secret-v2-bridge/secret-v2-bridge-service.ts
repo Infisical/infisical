@@ -28,6 +28,7 @@ import { KmsDataKey } from "../kms/kms-types";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TSecretQueueFactory } from "../secret/secret-queue";
+import { TGetASecretByIdDTO } from "../secret/secret-types";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
@@ -73,7 +74,13 @@ type TSecretV2BridgeServiceFactoryDep = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs">;
   folderDAL: Pick<
     TSecretFolderDALFactory,
-    "findBySecretPath" | "updateById" | "findById" | "findByManySecretPath" | "find" | "findBySecretPathMultiEnv"
+    | "findBySecretPath"
+    | "updateById"
+    | "findById"
+    | "findByManySecretPath"
+    | "find"
+    | "findBySecretPathMultiEnv"
+    | "findSecretPathByFolderIds"
   >;
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "handleSecretReminder" | "removeSecretReminder">;
@@ -301,6 +308,10 @@ export const secretV2BridgeServiceFactory = ({
         secretVersionDAL,
         secretTagDAL,
         secretVersionTagDAL,
+        actor: {
+          type: actor,
+          actorId
+        },
         tx
       })
     );
@@ -483,6 +494,10 @@ export const secretV2BridgeServiceFactory = ({
         secretVersionDAL,
         secretTagDAL,
         secretVersionTagDAL,
+        actor: {
+          type: actor,
+          actorId
+        },
         tx
       })
     );
@@ -947,6 +962,73 @@ export const secretV2BridgeServiceFactory = ({
     };
   };
 
+  const getSecretById = async ({ actorId, actor, actorOrgId, actorAuthMethod, secretId }: TGetASecretByIdDTO) => {
+    const secret = await secretDAL.findOneWithTags({
+      [`${TableName.SecretV2}.id` as "id"]: secretId
+    });
+
+    if (!secret) {
+      throw new NotFoundError({
+        message: `Secret with ID '${secretId}' not found`,
+        name: "GetSecretById"
+      });
+    }
+
+    const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(secret.projectId, [secret.folderId]);
+
+    if (!folderWithPath) {
+      throw new NotFoundError({
+        message: `Folder with id '${secret.folderId}' not found`,
+        name: "GetSecretById"
+      });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: secret.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.Secrets, {
+        environment: folderWithPath.environmentSlug,
+        secretPath: folderWithPath.path,
+        secretName: secret.key,
+        secretTags: secret.tags.map((i) => i.slug)
+      })
+    );
+
+    if (secret.type === SecretType.Personal && secret.userId !== actorId) {
+      throw new ForbiddenRequestError({
+        message: "You are not allowed to access this secret",
+        name: "GetSecretById"
+      });
+    }
+
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: secret.projectId
+    });
+
+    const secretValue = secret.encryptedValue
+      ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
+      : "";
+
+    const secretComment = secret.encryptedComment
+      ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
+      : "";
+
+    return reshapeBridgeSecret(secret.projectId, folderWithPath.environmentSlug, folderWithPath.path, {
+      ...secret,
+      value: secretValue,
+      comment: secretComment
+    });
+  };
+
   const getSecretByName = async ({
     actorId,
     actor,
@@ -1230,6 +1312,10 @@ export const secretV2BridgeServiceFactory = ({
         secretVersionDAL,
         secretTagDAL,
         secretVersionTagDAL,
+        actor: {
+          type: actor,
+          actorId
+        },
         tx
       })
     );
@@ -1490,6 +1576,10 @@ export const secretV2BridgeServiceFactory = ({
           secretVersionDAL,
           secretTagDAL,
           secretVersionTagDAL,
+          actor: {
+            type: actor,
+            actorId
+          },
           resourceMetadataDAL
         });
         updatedSecrets.push(...bulkUpdatedSecrets.map((el) => ({ ...el, secretPath: folder.path })));
@@ -1522,6 +1612,10 @@ export const secretV2BridgeServiceFactory = ({
             secretVersionDAL,
             secretTagDAL,
             secretVersionTagDAL,
+            actor: {
+              type: actor,
+              actorId
+            },
             tx
           });
           updatedSecrets.push(...bulkInsertedSecrets.map((el) => ({ ...el, secretPath: folder.path })));
@@ -1689,14 +1783,19 @@ export const secretV2BridgeServiceFactory = ({
       type: KmsDataKey.SecretManager,
       projectId: folder.projectId
     });
-    const secretVersions = await secretVersionDAL.find({ secretId }, { offset, limit, sort: [["createdAt", "desc"]] });
-    return secretVersions.map((el) =>
-      reshapeBridgeSecret(folder.projectId, folder.environment.envSlug, "/", {
+    const secretVersions = await secretVersionDAL.findVersionsBySecretIdWithActors(secretId, folder.projectId, {
+      offset,
+      limit,
+      sort: [["createdAt", "desc"]]
+    });
+
+    return secretVersions.map((el) => {
+      return reshapeBridgeSecret(folder.projectId, folder.environment.envSlug, "/", {
         ...el,
         value: el.encryptedValue ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString() : "",
         comment: el.encryptedComment ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString() : ""
-      })
-    );
+      });
+    });
   };
 
   // this is a backfilling API for secret references
@@ -1956,6 +2055,10 @@ export const secretV2BridgeServiceFactory = ({
             secretTagDAL,
             resourceMetadataDAL,
             secretVersionTagDAL,
+            actor: {
+              type: actor,
+              actorId
+            },
             inputSecrets: locallyCreatedSecrets.map((doc) => {
               return {
                 type: doc.type,
@@ -1982,6 +2085,10 @@ export const secretV2BridgeServiceFactory = ({
             tx,
             secretTagDAL,
             secretVersionTagDAL,
+            actor: {
+              type: actor,
+              actorId
+            },
             inputSecrets: locallyUpdatedSecrets.map((doc) => {
               return {
                 filter: {
@@ -2204,6 +2311,7 @@ export const secretV2BridgeServiceFactory = ({
     getSecretsCountMultiEnv,
     getSecretsMultiEnv,
     getSecretReferenceTree,
-    getSecretsByFolderMappings
+    getSecretsByFolderMappings,
+    getSecretById
   };
 };

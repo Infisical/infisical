@@ -2,13 +2,15 @@
 import crypto from "node:crypto";
 import net from "node:net";
 
-import * as quic from "@infisical/quic";
+import quicDefault, * as quicModule from "@infisical/quic";
 
 import { BadRequestError } from "../errors";
 import { logger } from "../logger";
 
 const DEFAULT_MAX_RETRIES = 3;
 const DEFAULT_RETRY_DELAY = 1000; // 1 second
+
+const quic = quicDefault || quicModule;
 
 const parseSubjectDetails = (data: string) => {
   const values: Record<string, string> = {};
