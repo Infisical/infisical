@@ -4,7 +4,8 @@ import {
   faEllipsis,
   faFilter,
   faMagnifyingGlass,
-  faUsers
+  faUsers,
+  faUserShield
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
@@ -23,7 +24,6 @@ import {
   EmptyState,
   IconButton,
   Input,
-  Switch,
   Table,
   TableContainer,
   TableSkeleton,
@@ -97,24 +97,19 @@ const UserPanelTable = ({
               <FontAwesomeIcon icon={faFilter} />
             </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>Filter Users</DropdownMenuLabel>
+          <DropdownMenuContent align="end" className="p-0">
+            <DropdownMenuLabel>Filter By</DropdownMenuLabel>
             <DropdownMenuItem
               onClick={(e) => {
                 e.preventDefault();
                 setAdminsOnly(!adminsOnly);
               }}
-              icon={adminsOnly && <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />}
+              icon={adminsOnly && <FontAwesomeIcon icon={faCheckCircle} />}
               iconPos="right"
             >
-              <div className="flex w-full items-center justify-between">
-                <span>Admins Only</span>
-                <Switch
-                  id="admins-only"
-                  isChecked={adminsOnly}
-                  onCheckedChange={(checked) => setAdminsOnly(checked)}
-                  className="data-[state=checked]:bg-primary-400"
-                />
+              <div className="flex items-center gap-2">
+                <FontAwesomeIcon icon={faUserShield} className="text-yellow-700" />
+                <span>Server Admins</span>
               </div>
             </DropdownMenuItem>
           </DropdownMenuContent>

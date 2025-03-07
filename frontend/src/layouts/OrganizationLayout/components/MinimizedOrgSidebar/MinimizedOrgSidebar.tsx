@@ -30,6 +30,8 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  Modal,
+  ModalContent,
   Tooltip
 } from "@app/components/v2";
 import { envConfig } from "@app/config/env";
@@ -78,6 +80,11 @@ export const INFISICAL_SUPPORT_OPTIONS = [
     <FontAwesomeIcon key={4} className="pr-4 text-sm" icon={faEnvelope} />,
     "Email Support",
     "mailto:support@infisical.com"
+  ],
+  [
+    <FontAwesomeIcon key={5} className="pr-4 text-sm" icon={faUsers} />,
+    "Instance Admins",
+    "server-admins"
   ]
 ];
 
@@ -90,7 +97,7 @@ export const MinimizedOrgSidebar = () => {
   const [openSupport, setOpenSupport] = useState(false);
   const [openUser, setOpenUser] = useState(false);
   const [openOrg, setOpenOrg] = useState(false);
-  const [openAdmins, setOpenAdmins] = useState(false);
+  const [showAdminsModal, setShowAdminsModal] = useState(false);
 
   const { user } = useUser();
   const { mutateAsync } = useGetOrgTrialUrl();
@@ -394,31 +401,6 @@ export const MinimizedOrgSidebar = () => {
                 : "mb-4"
             } flex w-full cursor-default flex-col items-center px-1 text-sm text-mineshaft-400`}
           >
-            <DropdownMenu open={openAdmins} onOpenChange={setOpenAdmins}>
-              <DropdownMenuTrigger
-                onMouseEnter={() => setOpenAdmins(true)}
-                onMouseLeave={() => setOpenAdmins(false)}
-                asChild
-              >
-                <div className="w-full">
-                  <MenuIconButton lottieIconMode="reverse" icon="groups" isSelected={openAdmins}>
-                    Admins
-                  </MenuIconButton>
-                </div>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                onMouseEnter={() => setOpenAdmins(true)}
-                onMouseLeave={() => setOpenAdmins(false)}
-                align="start"
-                side="right"
-                className="mb-2 w-[60vh] p-1"
-              >
-                <DropdownMenuLabel>Server Administrators</DropdownMenuLabel>
-                <div className="h-[30vh]">
-                  <ServerAdminsPanel />
-                </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
             <DropdownMenu open={openSupport} onOpenChange={setOpenSupport}>
               <DropdownMenuTrigger
                 onMouseEnter={() => setOpenSupport(true)}
@@ -439,17 +421,30 @@ export const MinimizedOrgSidebar = () => {
               >
                 {INFISICAL_SUPPORT_OPTIONS.map(([icon, text, url]) => (
                   <DropdownMenuItem key={url as string}>
-                    <a
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      href={String(url)}
-                      className="flex w-full items-center rounded-md font-normal text-mineshaft-300 duration-200"
-                    >
-                      <div className="relative flex w-full cursor-pointer select-none items-center justify-start rounded-md">
-                        {icon}
-                        <div className="text-sm">{text}</div>
-                      </div>
-                    </a>
+                    {url === "server-admins" ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowAdminsModal(true)}
+                        className="flex w-full items-center rounded-md font-normal text-mineshaft-300 duration-200"
+                      >
+                        <div className="relative flex w-full cursor-pointer select-none items-center justify-start rounded-md">
+                          {icon}
+                          <div className="text-sm">{text}</div>
+                        </div>
+                      </button>
+                    ) : (
+                      <a
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        href={String(url)}
+                        className="flex w-full items-center rounded-md font-normal text-mineshaft-300 duration-200"
+                      >
+                        <div className="relative flex w-full cursor-pointer select-none items-center justify-start rounded-md">
+                          {icon}
+                          <div className="text-sm">{text}</div>
+                        </div>
+                      </a>
+                    )}
                   </DropdownMenuItem>
                 ))}
                 {envConfig.PLATFORM_VERSION && (
@@ -567,6 +562,17 @@ export const MinimizedOrgSidebar = () => {
           </div>
         </nav>
       </aside>
+      <Modal isOpen={showAdminsModal} onOpenChange={setShowAdminsModal}>
+        <ModalContent
+          title="Server Administrators"
+          subTitle="View all server administrators"
+          className="max-w-[50%]"
+        >
+          <div className="mb-2 max-h-[70vh]">
+            <ServerAdminsPanel />
+          </div>
+        </ModalContent>
+      </Modal>
       <CreateOrgModal
         isOpen={popUp?.createOrg?.isOpen}
         onClose={() => handlePopUpToggle("createOrg", false)}

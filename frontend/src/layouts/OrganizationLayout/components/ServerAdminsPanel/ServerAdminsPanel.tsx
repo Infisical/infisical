@@ -37,7 +37,7 @@ export const ServerAdminsPanel = () => {
   const isEmpty = !isPending && (!adminUsers || adminUsers.length === 0);
 
   return (
-    <div className="flex flex-col">
+    <div className="flex h-full flex-col">
       <div className="mb-4 px-4">
         <Input
           value={searchUserFilter}
@@ -47,16 +47,16 @@ export const ServerAdminsPanel = () => {
           className="w-full"
         />
       </div>
-      <div className="mb-2 w-full px-2">
-        <TableContainer>
-          <Table>
-            <THead>
+      <div className="flex-1 px-2">
+        <TableContainer className="flex max-h-[500px] flex-col overflow-auto">
+          <Table className="w-full table-fixed">
+            <THead className="sticky top-0 bg-bunker-800">
               <Tr>
                 <Th className="w-1/2">Name</Th>
                 <Th className="w-1/2">Email</Th>
               </Tr>
             </THead>
-            <TBody className="h-full">
+            <TBody>
               {isPending && <TableSkeleton columns={2} innerKey="admins" />}
               {!isPending &&
                 adminUsers?.map(({ user }) => {
@@ -65,9 +65,9 @@ export const ServerAdminsPanel = () => {
                       ? `${user.firstName} ${user.lastName}`
                       : user.username;
                   return (
-                    <Tr key={`admin-${user.id}`} className="w-full">
-                      <Td className="w-1/2 truncate">{name}</Td>
-                      <Td className="w-1/2 truncate">{user.email}</Td>
+                    <Tr key={`admin-${user.id}`}>
+                      <Td className="w-1/2 break-words">{name}</Td>
+                      <Td className="w-1/2 break-words">{user.email}</Td>
                     </Tr>
                   );
                 })}
