@@ -25,6 +25,7 @@ import {
   TSetupPasswordViaBackupKeyDTO
 } from "./auth-password-type";
 import { ActorType, AuthMethod, AuthTokenType } from "./auth-type";
+import { logger } from "@app/lib/logger";
 
 type TAuthPasswordServiceFactoryDep = {
   authDAL: TAuthDALFactory;
@@ -143,7 +144,7 @@ export const authPaswordServiceFactory = ({
     };
 
     // note(daniel): run in background to prevent timing attacks
-    void sendEmail();
+    void sendEmail().catch((err) => logger.error(err, "Failed to send password reset email"));
   };
 
   /*
