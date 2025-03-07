@@ -1,6 +1,7 @@
-import { ForbiddenError, subject } from "@casl/ability";
+import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { CheckForbiddenErrorSecretsSubject } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
   ProjectPermissionSecretActions,
@@ -178,13 +179,10 @@ export const secretSyncServiceFactory = ({
       ProjectPermissionSub.SecretSyncs
     );
 
-    ForbiddenError.from(projectPermission).throwUnlessCan(
-      ProjectPermissionSecretActions.ReadValue,
-      subject(ProjectPermissionSub.Secrets, {
-        environment,
-        secretPath
-      })
-    );
+    CheckForbiddenErrorSecretsSubject(projectPermission, ProjectPermissionSecretActions.ReadValue, {
+      environment,
+      secretPath
+    });
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
 
@@ -269,13 +267,10 @@ export const secretSyncServiceFactory = ({
       if (!updatedEnvironment || !updatedSecretPath)
         throw new BadRequestError({ message: "Must specify both source environment and secret path" });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretActions.ReadValue,
-        subject(ProjectPermissionSub.Secrets, {
-          environment: updatedEnvironment,
-          secretPath: updatedSecretPath
-        })
-      );
+      CheckForbiddenErrorSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
+        environment: updatedEnvironment,
+        secretPath: updatedSecretPath
+      });
 
       const newFolder = await folderDAL.findBySecretPath(secretSync.projectId, updatedEnvironment, updatedSecretPath);
 

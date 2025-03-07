@@ -10,6 +10,7 @@ import {
 } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { CheckForbiddenErrorSecretsSubject } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
   ProjectPermissionActions,
@@ -764,10 +765,7 @@ export const projectServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.DescribeSecret,
-      ProjectPermissionSub.Secrets
-    );
+    CheckForbiddenErrorSecretsSubject(permission, ProjectPermissionSecretActions.DescribeSecret);
 
     const project = await projectDAL.findProjectById(projectId);
 

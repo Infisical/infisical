@@ -13,6 +13,7 @@ import {
   SecretType
 } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { CheckCanSecretsSubject, CheckForbiddenErrorSecretsSubject } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
   ProjectPermissionActions,
@@ -452,13 +453,10 @@ export const secretServiceFactory = ({
       });
     }
 
-    const secretValueHidden = !permission.can(
-      ProjectPermissionSecretActions.ReadValue,
-      subject(ProjectPermissionSub.Secrets, {
-        environment,
-        secretPath: path
-      })
-    );
+    const secretValueHidden = !CheckCanSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
+      environment,
+      secretPath: path
+    });
 
     return {
       ...updatedSecret[0],
@@ -562,10 +560,10 @@ export const secretServiceFactory = ({
       });
     }
 
-    const secretValueHidden = !permission.can(
-      ProjectPermissionSecretActions.ReadValue,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
-    );
+    const secretValueHidden = !CheckCanSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
+      environment,
+      secretPath: path
+    });
 
     return {
       ...deletedSecret[0],
@@ -622,10 +620,10 @@ export const secretServiceFactory = ({
 
       paths = deepPaths.map(({ folderId, path: p }) => ({ folderId, path: p }));
     } else {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretActions.ReadValue,
-        subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
-      );
+      CheckForbiddenErrorSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
+        environment,
+        secretPath: path
+      });
 
       const folder = await folderDAL.findBySecretPath(projectId, environment, path);
       if (!folder) return { secrets: [], imports: [] };
@@ -647,13 +645,10 @@ export const secretServiceFactory = ({
         // if its service token allow full access over imported one
         actor === ActorType.SERVICE
           ? true
-          : permission.can(
-              ProjectPermissionSecretActions.ReadValue,
-              subject(ProjectPermissionSub.Secrets, {
-                environment: importEnv.slug,
-                secretPath: importPath
-              })
-            )
+          : CheckCanSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
+              environment: importEnv.slug,
+              secretPath: importPath
+            })
       );
       const importedSecrets = await fnSecretsFromImports({
         allowedImports,
@@ -704,10 +699,11 @@ export const secretServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.ReadValue,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
-    );
+    CheckForbiddenErrorSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
+      environment,
+      secretPath: path
+    });
+
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder)
       throw new NotFoundError({
@@ -754,14 +750,12 @@ export const secretServiceFactory = ({
         // if its service token allow full access over imported one
         actor === ActorType.SERVICE
           ? true
-          : permission.can(
-              ProjectPermissionSecretActions.ReadValue,
-              subject(ProjectPermissionSub.Secrets, {
-                environment: importEnv.slug,
-                secretPath: importPath
-              })
-            )
+          : CheckCanSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
+              environment: importEnv.slug,
+              secretPath: importPath
+            })
       );
+
       const importedSecrets = await fnSecretsFromImports({
         allowedImports,
         secretDAL,
@@ -975,10 +969,10 @@ export const secretServiceFactory = ({
         secretVersionTagDAL
       });
 
-      const secretValueHidden = !permission.can(
-        ProjectPermissionSecretActions.ReadValue,
-        subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
-      );
+      const secretValueHidden = !CheckCanSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
+        environment,
+        secretPath: path
+      });
 
       return updatedSecrets.map((secret) => ({
         ...secret,
@@ -1069,11 +1063,10 @@ export const secretServiceFactory = ({
           });
         }
       }
-
-      const secretValueHidden = !permission.can(
-        ProjectPermissionSecretActions.ReadValue,
-        subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
-      );
+      const secretValueHidden = !CheckCanSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
+        environment,
+        secretPath: path
+      });
 
       return secrets.map((secret) => ({
         ...secret,
@@ -1259,8 +1252,20 @@ export const secretServiceFactory = ({
         ProjectPermissionSecretActions.Delete,
         ProjectPermissionSecretActions.Create,
         ProjectPermissionSecretActions.Edit
-      ].filter((action) =>
-        entityPermission.permission.can(
+      ].filter((action) => {
+        if (
+          action === ProjectPermissionSecretActions.DescribeSecret ||
+          action === ProjectPermissionSecretActions.ReadValue
+        ) {
+          return CheckCanSecretsSubject(entityPermission.permission, action, {
+            environment,
+            secretPath,
+            secretName,
+            secretTags: secret?.tags?.map((el) => el.slug)
+          });
+        }
+
+        return entityPermission.permission.can(
           action,
           subject(ProjectPermissionSub.Secrets, {
             environment,
@@ -1268,8 +1273,8 @@ export const secretServiceFactory = ({
             secretName,
             secretTags: secret?.tags?.map((el) => el.slug)
           })
-        )
-      );
+        );
+      });
 
       return {
         ...entityPermission,
@@ -2424,17 +2429,14 @@ export const secretServiceFactory = ({
         key: botKey
       });
 
-      const secretValueHidden = permission.cannot(
-        ProjectPermissionSecretActions.ReadValue,
-        subject(ProjectPermissionSub.Secrets, {
-          environment: folder.environment.envSlug,
-          secretPath: folderWithPath.path,
-          secretName: secretKey,
-          ...(el.tags?.length && {
-            secretTags: el.tags.map((tag) => tag.slug)
-          })
+      const secretValueHidden = !CheckCanSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
+        environment: folder.environment.envSlug,
+        secretPath: folderWithPath.path,
+        secretName: secretKey,
+        ...(el.tags?.length && {
+          secretTags: el.tags.map((tag) => tag.slug)
         })
-      );
+      });
 
       return decryptSecretRaw(
         {
@@ -2833,13 +2835,23 @@ export const secretServiceFactory = ({
       }
 
       for (const sourceAction of sourceActions) {
-        ForbiddenError.from(permission).throwUnlessCan(
-          sourceAction,
-          subject(ProjectPermissionSub.Secrets, {
+        if (
+          sourceAction === ProjectPermissionSecretActions.ReadValue ||
+          sourceAction === ProjectPermissionSecretActions.DescribeSecret
+        ) {
+          CheckForbiddenErrorSecretsSubject(permission, sourceAction, {
             environment: sourceEnvironment,
             secretPath: sourceSecretPath
-          })
-        );
+          });
+        } else {
+          ForbiddenError.from(permission).throwUnlessCan(
+            sourceAction,
+            subject(ProjectPermissionSub.Secrets, {
+              environment: sourceEnvironment,
+              secretPath: sourceSecretPath
+            })
+          );
+        }
       }
 
       return {

@@ -1,6 +1,107 @@
+/* eslint-disable no-nested-ternary */
+import { ForbiddenError, MongoAbility, subject } from "@casl/ability";
+import { z } from "zod";
+
 import { TOrganizations } from "@app/db/schemas";
-import { ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { ActorAuthMethod, AuthMethod } from "@app/services/auth/auth-type";
+
+import {
+  ProjectPermissionSecretActions,
+  ProjectPermissionSet,
+  ProjectPermissionSub,
+  ProjectPermissionV2Schema,
+  SecretSubjectFields
+} from "./project-permission";
+
+export function CheckForbiddenErrorSecretsSubject(
+  permission: MongoAbility<ProjectPermissionSet>,
+  action: Extract<
+    ProjectPermissionSecretActions,
+    ProjectPermissionSecretActions.ReadValue | ProjectPermissionSecretActions.DescribeSecret
+  >,
+  subjectFields?: SecretSubjectFields
+) {
+  try {
+    if (subjectFields) {
+      ForbiddenError.from(permission).throwUnlessCan(action, subject(ProjectPermissionSub.Secrets, subjectFields));
+    } else {
+      ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.Secrets);
+    }
+  } catch {
+    if (subjectFields) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionSecretActions.DescribeAndReadValue,
+        subject(ProjectPermissionSub.Secrets, subjectFields)
+      );
+    } else {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionSecretActions.DescribeAndReadValue,
+        ProjectPermissionSub.Secrets
+      );
+    }
+  }
+}
+
+export function CheckCanSecretsSubject(
+  permission: MongoAbility<ProjectPermissionSet>,
+  action: Extract<
+    ProjectPermissionSecretActions,
+    ProjectPermissionSecretActions.DescribeSecret | ProjectPermissionSecretActions.ReadValue
+  >,
+  subjectFields?: SecretSubjectFields
+) {
+  let canNewPermission = false;
+  let canOldPermission = false;
+
+  if (subjectFields) {
+    canNewPermission = permission.can(action, subject(ProjectPermissionSub.Secrets, subjectFields));
+    canOldPermission = permission.can(
+      ProjectPermissionSecretActions.DescribeAndReadValue,
+      subject(ProjectPermissionSub.Secrets, subjectFields)
+    );
+  } else {
+    canNewPermission = permission.can(action, ProjectPermissionSub.Secrets);
+    canOldPermission = permission.can(
+      ProjectPermissionSecretActions.DescribeAndReadValue,
+      ProjectPermissionSub.Secrets
+    );
+  }
+
+  return canNewPermission || canOldPermission;
+}
+
+const OptionalArrayPermissionSchema = ProjectPermissionV2Schema.array().optional();
+export function checkForInvalidPermissionCombination(permissions: z.infer<typeof OptionalArrayPermissionSchema>) {
+  if (!permissions) return;
+
+  for (const permission of permissions) {
+    if (permission.subject === ProjectPermissionSub.Secrets) {
+      if (permission.action.includes(ProjectPermissionSecretActions.DescribeAndReadValue)) {
+        const hasReadValue = permission.action.includes(ProjectPermissionSecretActions.ReadValue);
+        const hasDescribeSecret = permission.action.includes(ProjectPermissionSecretActions.DescribeSecret);
+
+        if (!hasReadValue && !hasDescribeSecret) return;
+
+        const hasBothDescribeAndReadValue =
+          permission.action.includes(ProjectPermissionSecretActions.DescribeSecret) &&
+          permission.action.includes(ProjectPermissionSecretActions.ReadValue);
+
+        throw new BadRequestError({
+          message: `You have selected Full Read Access, and ${
+            hasBothDescribeAndReadValue
+              ? "both Read Value and Describe Secret"
+              : hasReadValue
+                ? "Read Value"
+                : hasDescribeSecret
+                  ? "Describe Secret"
+                  : ""
+          }. You cannot select Read Value or Describe Secret if you have selected Full Read Access.`
+        });
+      }
+    }
+  }
+}
 
 function isAuthMethodSaml(actorAuthMethod: ActorAuthMethod) {
   if (!actorAuthMethod) return false;

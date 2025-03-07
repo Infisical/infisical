@@ -77,6 +77,7 @@ import {
   TSecretApprovalDetailsDTO,
   TStatusChangeDTO
 } from "./secret-approval-request-types";
+import { CheckForbiddenErrorSecretsSubject } from "../permission/permission-fns";
 
 type TSecretApprovalRequestServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -917,10 +918,11 @@ export const secretApprovalRequestServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.ReadValue,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-    );
+
+    CheckForbiddenErrorSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
+      environment,
+      secretPath
+    });
 
     await projectDAL.checkProjectUpgradeStatus(projectId);
 
