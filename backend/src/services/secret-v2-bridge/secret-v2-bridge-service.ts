@@ -1127,15 +1127,12 @@ export const secretV2BridgeServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, {
-        environment: folderWithPath.environmentSlug,
-        secretPath: folderWithPath.path,
-        secretName: secret.key,
-        secretTags: secret.tags.map((i) => i.slug)
-      })
-    );
+    CheckForbiddenErrorSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
+      environment: folderWithPath.environmentSlug,
+      secretPath: folderWithPath.path,
+      secretName: secret.key,
+      secretTags: secret.tags.map((i) => i.slug)
+    });
 
     if (secret.type === SecretType.Personal && secret.userId !== actorId) {
       throw new ForbiddenRequestError({
