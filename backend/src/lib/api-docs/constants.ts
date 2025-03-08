@@ -666,6 +666,7 @@ export const SECRETS = {
     secretPath: "The path of the secret to attach tags to.",
     type: "The type of the secret to attach tags to. (shared/personal)",
     environment: "The slug of the environment where the secret is located",
+    viewSecretValue: "Whether or not to retrieve the secret value.",
     projectSlug: "The slug of the project where the secret is located.",
     tagSlugs: "An array of existing tag slugs to attach to the secret."
   },
@@ -689,6 +690,7 @@ export const RAW_SECRETS = {
       "The slug of the project to list secrets from. This parameter is only applicable by machine identities.",
     environment: "The slug of the environment to list secrets from.",
     secretPath: "The secret path to list secrets from.",
+    viewSecretValue: "Whether or not to retrieve the secret value.",
     includeImports: "Weather to include imported secrets or not.",
     tagSlugs: "The comma separated tag slugs to filter secrets.",
     metadataFilter:
@@ -717,6 +719,7 @@ export const RAW_SECRETS = {
     secretPath: "The path of the secret to get.",
     version: "The version of the secret to get.",
     type: "The type of the secret to get.",
+    viewSecretValue: "Whether or not to retrieve the secret value.",
     includeImports: "Weather to include imported secrets or not."
   },
   UPDATE: {

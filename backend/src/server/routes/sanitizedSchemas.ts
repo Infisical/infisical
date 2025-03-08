@@ -7,6 +7,7 @@ import {
   ProjectRolesSchema,
   ProjectsSchema,
   SecretApprovalPoliciesSchema,
+  SecretTagsSchema,
   UsersSchema
 } from "@app/db/schemas";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -240,4 +241,12 @@ export const SanitizedProjectSchema = ProjectsSchema.pick({
   pitVersionLimit: true,
   kmsCertificateKeyId: true,
   auditLogsRetentionDays: true
+});
+
+export const SanitizedTagSchema = SecretTagsSchema.pick({
+  id: true,
+  slug: true,
+  color: true
+}).extend({
+  name: z.string()
 });

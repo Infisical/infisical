@@ -207,6 +207,7 @@ export const useGetProjectSecretsDetails = (
     search = "",
     includeSecrets,
     includeFolders,
+    viewSecretValue,
     includeImports,
     includeDynamicSecrets,
     tags
@@ -231,6 +232,7 @@ export const useGetProjectSecretsDetails = (
       limit,
       orderBy,
       orderDirection,
+      viewSecretValue,
       offset,
       projectId,
       environment,
@@ -247,6 +249,7 @@ export const useGetProjectSecretsDetails = (
         limit,
         orderBy,
         orderDirection,
+        viewSecretValue,
         offset,
         projectId,
         environment,
