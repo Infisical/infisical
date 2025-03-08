@@ -1154,11 +1154,17 @@ export const secretV2BridgeServiceFactory = ({
       ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
       : "";
 
-    return reshapeBridgeSecret(secret.projectId, folderWithPath.environmentSlug, folderWithPath.path, {
-      ...secret,
-      value: secretValue,
-      comment: secretComment
-    });
+    return reshapeBridgeSecret(
+      secret.projectId,
+      folderWithPath.environmentSlug,
+      folderWithPath.path,
+      {
+        ...secret,
+        value: secretValue,
+        comment: secretComment
+      },
+      false
+    );
   };
 
   const getSecretByName = async ({
