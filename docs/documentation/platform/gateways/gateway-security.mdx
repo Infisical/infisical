@@ -1,0 +1,110 @@
+---
+title: "Gateway Security Architecture"
+sidebarTitle: "Architecture"
+description: "Understand the security model and tenant isolation of Infisical's Gateway"
+---
+
+# Gateway Security Architecture
+
+The Infisical Gateway enables Infisical Cloud to securely interact with private resources using mutual TLS authentication and private PKI (Public Key Infrastructure) system to ensure secure, isolated communication between multiple tenants. 
+This document explains the internal security architecture and how tenant isolation is maintained.
+
+## Security Model Overview
+
+### Private PKI System
+Each organization (tenant) in Infisical has its own private PKI system consisting of:
+
+1. **Root CA**: The ultimate trust anchor for the organization
+2. **Intermediate CAs**:
+   - Client CA: Issues certificates for cloud components
+   - Gateway CA: Issues certificates for gateway instances
+
+This hierarchical structure ensures complete isolation between organizations as each has its own independent certificate chain.
+
+### Certificate Hierarchy
+```
+Root CA (Organization Specific)
+├── Client CA
+│   └── Client Certificates (Cloud Components)
+└── Gateway CA
+    └── Gateway Certificates (Gateway Instances)
+```
+
+## Communication Security
+
+### 1. Gateway Registration
+When a gateway is first deployed:
+
+1. Establishes initial connection using machine identity token
+2. Allocates a relay address for communication
+3. Exchanges certificates through a secure handshake:
+   - Gateway receives a unique certificate signed by organization's Gateway CA along with certificate chain for verification
+
+### 2. Mutual TLS Authentication
+All communication between gateway and cloud uses mutual TLS (mTLS):
+
+- **Gateway Authentication**:
+  - Presents certificate signed by organization's Gateway CA
+  - Certificate contains unique identifiers (Organization ID, Gateway ID)
+  - Cloud validates complete certificate chain
+
+- **Cloud Authentication**:
+  - Presents certificate signed by organization's Client CA
+  - Certificate includes required organizational unit ("gateway-client")
+  - Gateway validates certificate chain back to organization's root CA
+
+### 3. Relay Communication
+The relay system provides secure tunneling:
+
+1. **Connection Establishment**:
+   - Uses QUIC protocol over UDP for efficient, secure communication
+   - Provides built-in encryption, congestion control, and multiplexing
+   - Enables faster connection establishment and reduced latency
+   - Each organization's traffic is isolated using separate relay sessions
+
+2. **Traffic Isolation**:
+   - Each gateway gets unique relay credentials
+   - Traffic is end-to-end encrypted using QUIC's TLS 1.3
+   - Organization's private keys never leave their environment
+
+## Tenant Isolation
+
+### Certificate-Based Isolation
+- Each organization has unique root CA and intermediate CAs
+- Certificates contain organization-specific identifiers
+- Cross-tenant communication is cryptographically impossible
+
+### Gateway-Project Mapping
+- Gateways are explicitly mapped to specific projects
+- Access controls enforce organization boundaries
+- Project-level permissions determine resource accessibility
+
+### Resource Access Control
+1. **Project Verification**:
+   - Gateway verifies project membership
+   - Validates organization ownership
+   - Enforces project-level permissions
+
+2. **Resource Restrictions**:
+   - Gateways only accept connections to approved resources
+   - Each connection requires explicit project authorization
+   - Resources remain private to their assigned organization
+
+## Security Measures
+
+### Certificate Lifecycle
+- Certificates have limited validity periods
+- Automatic certificate rotation
+- Immediate certificate revocation capabilities
+
+### Monitoring and Verification
+1. **Continuous Verification**:
+   - Regular heartbeat checks
+   - Certificate chain validation
+   - Connection state monitoring
+
+2. **Security Controls**:
+   - Automatic connection termination on verification failure
+   - Audit logging of all access attempts
+   - Machine identity based authentication
+
