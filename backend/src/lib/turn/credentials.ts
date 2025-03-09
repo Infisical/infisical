@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 
-const TURN_TOKEN_TTL = 60 * 60 * 1000; // 24 hours in milliseconds
+const TURN_TOKEN_TTL = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 export const getTurnCredentials = (id: string, authSecret: string, ttl = TURN_TOKEN_TTL) => {
   const timestamp = Math.floor((Date.now() + ttl) / 1000);
   const username = `${timestamp}:${id}`;
