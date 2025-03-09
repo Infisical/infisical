@@ -14,6 +14,7 @@ import (
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/systemd"
 	"github.com/go-resty/resty/v2"
+	"github.com/pion/dtls/v3"
 	"github.com/pion/logging"
 	"github.com/pion/turn/v4"
 	"github.com/rs/zerolog/log"
@@ -54,26 +55,6 @@ func (g *Gateway) ConnectWithRelay() error {
 		return err
 	}
 	relayAddress, relayPort := strings.Split(relayDetails.TurnServerAddress, ":")[0], strings.Split(relayDetails.TurnServerAddress, ":")[1]
-	var conn net.Conn
-
-	// Dial TURN Server
-	if relayPort == "5349" {
-		log.Info().Msgf("Provided relay port %s. Using TLS", relayPort)
-		conn, err = tls.Dial("tcp", relayDetails.TurnServerAddress, &tls.Config{
-			ServerName: relayAddress,
-		})
-	} else {
-		log.Info().Msgf("Provided relay port %s. Using non TLS connection.", relayPort)
-		peerAddr, errPeer := net.ResolveTCPAddr("tcp", relayDetails.TurnServerAddress)
-		if errPeer != nil {
-			return fmt.Errorf("Failed to parse turn server address: %w", err)
-		}
-		conn, err = net.DialTCP("tcp", nil, peerAddr)
-	}
-
-	if err != nil {
-		return fmt.Errorf("Failed to connect with relay server: %w", err)
-	}
 
 	// Start a new TURN Client and wrap our net.Conn in a STUNConn
 	// This allows us to simulate datagram based communication over a net.Conn
@@ -81,17 +62,48 @@ func (g *Gateway) ConnectWithRelay() error {
 	if os.Getenv("LOG_LEVEL") == "debug" {
 		logger.DefaultLogLevel = logging.LogLevelDebug
 	}
-	cfg := &turn.ClientConfig{
+
+	turnClientCfg := &turn.ClientConfig{
 		STUNServerAddr: relayDetails.TurnServerAddress,
 		TURNServerAddr: relayDetails.TurnServerAddress,
-		Conn:           turn.NewSTUNConn(conn),
 		Username:       relayDetails.TurnServerUsername,
 		Password:       relayDetails.TurnServerPassword,
 		Realm:          relayDetails.TurnServerRealm,
 		LoggerFactory:  logger,
 	}
 
-	client, err := turn.NewClient(cfg)
+	turnAddr, err := net.ResolveUDPAddr("udp4", relayDetails.TurnServerAddress)
+	if err != nil {
+		return fmt.Errorf("Failed to parse turn server address: %w", err)
+	}
+
+	// Dial TURN Server
+	if relayPort == "5349" {
+		caCertPool := x509.NewCertPool()
+		a, _ := os.ReadFile("/Users/akhilmhdh/Akhi/infisical-gateway-poc/certificates/test/ca-cert.pem")
+		// caCertPool.AppendCertsFromPEM([]byte(g.config.CertificateChain))
+		caCertPool.AppendCertsFromPEM(a)
+
+		log.Info().Msgf("Provided relay port %s. Using TLS", relayPort)
+		conn, err := dtls.Dial("udp", turnAddr, &dtls.Config{
+			ServerName: relayAddress,
+			RootCAs:    caCertPool,
+		})
+		if err != nil {
+			return fmt.Errorf("Failed to connect with relay server: %w", err)
+		}
+		turnClientCfg.Conn = turn.NewSTUNConn(conn)
+	} else {
+		log.Info().Msgf("Provided relay port %s. Using non TLS connection.", relayPort)
+		conn, err := net.ListenPacket("udp4", turnAddr.String())
+		if err != nil {
+			return fmt.Errorf("Failed to connect with relay server: %w", err)
+		}
+
+		turnClientCfg.Conn = conn
+	}
+
+	client, err := turn.NewClient(turnClientCfg)
 	if err != nil {
 		return fmt.Errorf("Failed to create relay client: %w", err)
 	}
@@ -168,7 +180,6 @@ func (g *Gateway) Listen(ctx context.Context) error {
 		ClientAuth:   tls.RequireAndVerifyClientCert,
 		NextProtos:   []string{"infisical-gateway"},
 	}
-
 	// Setup QUIC listener on the relayConn
 	quicConfig := &quic.Config{
 		EnableDatagrams: true,
@@ -176,7 +187,6 @@ func (g *Gateway) Listen(ctx context.Context) error {
 		KeepAlivePeriod: 2 * time.Second,
 	}
 
-	g.registerRelayIsActive(ctx, errCh)
 	quicListener, err := quic.Listen(relayUdpConnection, tlsConfig, quicConfig)
 	if err != nil {
 		return fmt.Errorf("Failed to listen for QUIC: %w", err)
@@ -184,6 +194,8 @@ func (g *Gateway) Listen(ctx context.Context) error {
 	defer quicListener.Close()
 
 	log.Printf("Listener started on %s", quicListener.Addr())
+
+	g.registerRelayIsActive(ctx, quicListener.Addr().String(), errCh)
 
 	log.Info().Msg("Gateway started successfully")
 
@@ -320,13 +332,12 @@ func (g *Gateway) createPermissionForStaticIps(staticIps string) error {
 	return nil
 }
 
-func (g *Gateway) registerRelayIsActive(ctx context.Context, errCh chan error) error {
+func (g *Gateway) registerRelayIsActive(ctx context.Context, addr string, errCh chan error) error {
 	ticker := time.NewTicker(15 * time.Second)
 	maxFailures := 3
 	failures := 0
 
 	log.Info().Msg("Starting relay connection health check")
-
 	go func() {
 		time.Sleep(5 * time.Second)
 		for {
@@ -335,36 +346,26 @@ func (g *Gateway) registerRelayIsActive(ctx context.Context, errCh chan error) e
 				log.Info().Msg("Stopping relay connection health check")
 				return
 			case <-ticker.C:
-				func() {
-					log.Debug().Msg("Performing relay connection health check")
-
-					if g.client == nil {
-						failures++
-						log.Warn().Int("failures", failures).Msg("TURN client is nil")
-						if failures >= maxFailures {
-							errCh <- fmt.Errorf("relay connection check failed: TURN client is nil")
-						}
+				log.Debug().Msg("Performing relay connection health check")
+				ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+				defer cancel()
+				// Try to establish a QUIC connection
+				conn, err := quic.DialAddr(ctx, addr, &tls.Config{
+					InsecureSkipVerify: false, // Skip certificate verification
+					NextProtos:         []string{"infisical-gateway"},
+				}, nil)
+				if err != nil && !strings.Contains(err.Error(), "tls:") {
+					failures++
+					log.Warn().Err(err).Int("failures", failures).Msg("Failed to refresh TURN permissions")
+					if failures >= maxFailures {
+						errCh <- fmt.Errorf("relay connection check failed: %w", err)
 						return
 					}
-
-					// we try to refresh permissions - this is a lightweight operation
-					// that will fail immediately if the UDP connection is broken. good for health check
-					log.Debug().Msg("Refreshing TURN permissions to verify connection")
-					if err := g.createPermissionForStaticIps(g.config.InfisicalStaticIp); err != nil {
-						failures++
-						log.Warn().Err(err).Int("failures", failures).Msg("Failed to refresh TURN permissions")
-						if failures >= maxFailures {
-							errCh <- fmt.Errorf("relay connection check failed: %w", err)
-						}
-						return
-					}
-
-					log.Debug().Msg("Successfully refreshed TURN permissions - connection is healthy")
-					if failures > 0 {
-						log.Info().Int("previous_failures", failures).Msg("Relay connection restored")
-						failures = 0
-					}
-				}()
+					continue
+				}
+				if conn != nil {
+					defer conn.CloseWithError(0, "All good")
+				}
 			}
 		}
 	}()
