@@ -80,9 +80,7 @@ func (g *Gateway) ConnectWithRelay() error {
 	// Dial TURN Server
 	if relayPort == "5349" {
 		caCertPool := x509.NewCertPool()
-		a, _ := os.ReadFile("/Users/akhilmhdh/Akhi/infisical-gateway-poc/certificates/test/ca-cert.pem")
-		// caCertPool.AppendCertsFromPEM([]byte(g.config.CertificateChain))
-		caCertPool.AppendCertsFromPEM(a)
+		caCertPool.AppendCertsFromPEM([]byte(g.config.CertificateChain))
 
 		log.Info().Msgf("Provided relay port %s. Using TLS", relayPort)
 		conn, err := dtls.Dial("udp", turnAddr, &dtls.Config{
