@@ -8,7 +8,10 @@ import {
 import {
   PermissionConditionOperators,
   ProjectPermissionDynamicSecretActions,
+  ProjectPermissionGroupActions,
+  ProjectPermissionIdentityActions,
   ProjectPermissionKmipActions,
+  ProjectPermissionMemberActions,
   ProjectPermissionSecretSyncActions,
   TPermissionCondition,
   TPermissionConditionOperators
@@ -55,6 +58,30 @@ const KmipPolicyActionSchema = z.object({
   [ProjectPermissionKmipActions.UpdateClients]: z.boolean().optional(),
   [ProjectPermissionKmipActions.DeleteClients]: z.boolean().optional(),
   [ProjectPermissionKmipActions.GenerateClientCertificates]: z.boolean().optional()
+});
+
+const MemberPolicyActionSchema = z.object({
+  [ProjectPermissionMemberActions.Read]: z.boolean().optional(),
+  [ProjectPermissionMemberActions.Create]: z.boolean().optional(),
+  [ProjectPermissionMemberActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionMemberActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionMemberActions.ManagePrivileges]: z.boolean().optional()
+});
+
+const IdentityPolicyActionSchema = z.object({
+  [ProjectPermissionIdentityActions.Read]: z.boolean().optional(),
+  [ProjectPermissionIdentityActions.Create]: z.boolean().optional(),
+  [ProjectPermissionIdentityActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionIdentityActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionIdentityActions.ManagePrivileges]: z.boolean().optional()
+});
+
+const GroupPolicyActionSchema = z.object({
+  [ProjectPermissionGroupActions.Read]: z.boolean().optional(),
+  [ProjectPermissionGroupActions.Create]: z.boolean().optional(),
+  [ProjectPermissionGroupActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionGroupActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionGroupActions.ManagePrivileges]: z.boolean().optional()
 });
 
 const SecretRollbackPolicyActionSchema = z.object({
@@ -138,14 +165,14 @@ export const projectRoleFormSchema = z.object({
       })
         .array()
         .default([]),
-      [ProjectPermissionSub.Identity]: GeneralPolicyActionSchema.extend({
+      [ProjectPermissionSub.Identity]: IdentityPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
         conditions: ConditionSchema
       })
         .array()
         .default([]),
-      [ProjectPermissionSub.Member]: GeneralPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.Groups]: GeneralPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.Member]: MemberPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.Groups]: GroupPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Role]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Integrations]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Webhooks]: GeneralPolicyActionSchema.array().default([]),
@@ -234,9 +261,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.DynamicSecrets,
         ProjectPermissionSub.SecretFolders,
         ProjectPermissionSub.SecretImports,
-        ProjectPermissionSub.Member,
-        ProjectPermissionSub.Groups,
-        ProjectPermissionSub.Identity,
         ProjectPermissionSub.Role,
         ProjectPermissionSub.Integrations,
         ProjectPermissionSub.Webhooks,
@@ -388,6 +412,65 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canGenerateClientCerts)
         formVal[subject]![0][ProjectPermissionKmipActions.GenerateClientCertificates] = true;
 
+      return;
+    }
+
+    if (subject === ProjectPermissionSub.Member) {
+      const canRead = action.includes(ProjectPermissionMemberActions.Read);
+      const canCreate = action.includes(ProjectPermissionMemberActions.Create);
+      const canEdit = action.includes(ProjectPermissionMemberActions.Edit);
+      const canDelete = action.includes(ProjectPermissionMemberActions.Delete);
+      const canManagePrivileges = action.includes(ProjectPermissionMemberActions.ManagePrivileges);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      // from above statement we are sure it won't be undefined
+      if (canRead) formVal[subject]![0][ProjectPermissionMemberActions.Read] = true;
+      if (canCreate) formVal[subject]![0][ProjectPermissionMemberActions.Create] = true;
+      if (canEdit) formVal[subject]![0][ProjectPermissionMemberActions.Edit] = true;
+      if (canDelete) formVal[subject]![0][ProjectPermissionMemberActions.Delete] = true;
+      if (canManagePrivileges)
+        formVal[subject]![0][ProjectPermissionMemberActions.ManagePrivileges] = true;
+      return;
+    }
+
+    if (subject === ProjectPermissionSub.Identity) {
+      const canRead = action.includes(ProjectPermissionIdentityActions.Read);
+      const canCreate = action.includes(ProjectPermissionIdentityActions.Create);
+      const canEdit = action.includes(ProjectPermissionIdentityActions.Edit);
+      const canDelete = action.includes(ProjectPermissionIdentityActions.Delete);
+      const canManagePrivileges = action.includes(
+        ProjectPermissionIdentityActions.ManagePrivileges
+      );
+
+      if (!formVal[subject]) formVal[subject] = [{ conditions: [] }];
+
+      // from above statement we are sure it won't be undefined
+      if (canRead) formVal[subject]![0][ProjectPermissionIdentityActions.Read] = true;
+      if (canCreate) formVal[subject]![0][ProjectPermissionIdentityActions.Create] = true;
+      if (canEdit) formVal[subject]![0][ProjectPermissionIdentityActions.Edit] = true;
+      if (canDelete) formVal[subject]![0][ProjectPermissionIdentityActions.Delete] = true;
+      if (canManagePrivileges)
+        formVal[subject]![0][ProjectPermissionIdentityActions.ManagePrivileges] = true;
+      return;
+    }
+
+    if (subject === ProjectPermissionSub.Groups) {
+      const canRead = action.includes(ProjectPermissionGroupActions.Read);
+      const canCreate = action.includes(ProjectPermissionGroupActions.Create);
+      const canEdit = action.includes(ProjectPermissionGroupActions.Edit);
+      const canDelete = action.includes(ProjectPermissionGroupActions.Delete);
+      const canManagePrivileges = action.includes(ProjectPermissionGroupActions.ManagePrivileges);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      // from above statement we are sure it won't be undefined
+      if (canRead) formVal[subject]![0][ProjectPermissionGroupActions.Read] = true;
+      if (canCreate) formVal[subject]![0][ProjectPermissionGroupActions.Create] = true;
+      if (canEdit) formVal[subject]![0][ProjectPermissionGroupActions.Edit] = true;
+      if (canDelete) formVal[subject]![0][ProjectPermissionGroupActions.Delete] = true;
+      if (canManagePrivileges)
+        formVal[subject]![0][ProjectPermissionGroupActions.ManagePrivileges] = true;
       return;
     }
 
@@ -571,28 +654,31 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   [ProjectPermissionSub.Member]: {
     title: "User Management",
     actions: [
-      { label: "View all members", value: "read" },
-      { label: "Invite members", value: "create" },
-      { label: "Edit members", value: "edit" },
-      { label: "Remove members", value: "delete" }
+      { label: "Read", value: ProjectPermissionMemberActions.Read },
+      { label: "Add", value: ProjectPermissionMemberActions.Create },
+      { label: "Modify", value: ProjectPermissionMemberActions.Edit },
+      { label: "Remove", value: ProjectPermissionMemberActions.Delete },
+      { label: "Manage Privileges", value: ProjectPermissionMemberActions.ManagePrivileges }
     ]
   },
   [ProjectPermissionSub.Identity]: {
     title: "Machine Identity Management",
     actions: [
-      { label: "Read", value: "read" },
-      { label: "Add", value: "create" },
-      { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" }
+      { label: "Read", value: ProjectPermissionIdentityActions.Read },
+      { label: "Add", value: ProjectPermissionIdentityActions.Create },
+      { label: "Modify", value: ProjectPermissionIdentityActions.Edit },
+      { label: "Remove", value: ProjectPermissionIdentityActions.Delete },
+      { label: "Manage Privileges", value: ProjectPermissionIdentityActions.ManagePrivileges }
     ]
   },
   [ProjectPermissionSub.Groups]: {
     title: "Group Management",
     actions: [
-      { label: "Read", value: "read" },
-      { label: "Create", value: "create" },
-      { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" }
+      { label: "Read", value: ProjectPermissionGroupActions.Read },
+      { label: "Create", value: ProjectPermissionGroupActions.Create },
+      { label: "Modify", value: ProjectPermissionGroupActions.Edit },
+      { label: "Remove", value: ProjectPermissionGroupActions.Delete },
+      { label: "Manage Privileges", value: ProjectPermissionGroupActions.ManagePrivileges }
     ]
   },
   [ProjectPermissionSub.Webhooks]: {

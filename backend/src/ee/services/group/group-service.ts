@@ -3,7 +3,6 @@ import slugify from "@sindresorhus/slugify";
 
 import { OrgMembershipRole, TOrgRoles } from "@app/db/schemas";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
-import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
@@ -14,7 +13,8 @@ import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
-import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
+import { OrgPermissionGroupActions, OrgPermissionSubjects } from "../permission/org-permission";
+import { validatePrivilegeChangeOperation } from "../permission/permission-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { TGroupDALFactory } from "./group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "./group-fns";
@@ -74,7 +74,7 @@ export const groupServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Groups);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Create, OrgPermissionSubjects.Groups);
 
     const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.groups)
@@ -87,7 +87,14 @@ export const groupServiceFactory = ({
       actorOrgId
     );
     const isCustomRole = Boolean(customRole);
-    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, rolePermission);
+
+    const hasRequiredPriviledges = validatePrivilegeChangeOperation(
+      OrgPermissionGroupActions.ManagePrivileges,
+      OrgPermissionSubjects.Groups,
+      permission,
+      rolePermission
+    );
+
     if (!hasRequiredPriviledges)
       throw new ForbiddenRequestError({ message: "Failed to create a more privileged group" });
 
@@ -135,7 +142,7 @@ export const groupServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Groups);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
 
     const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.groups)
@@ -156,7 +163,13 @@ export const groupServiceFactory = ({
       );
 
       const isCustomRole = Boolean(customOrgRole);
-      const hasRequiredNewRolePermission = isAtLeastAsPrivileged(permission, rolePermission);
+      const hasRequiredNewRolePermission = validatePrivilegeChangeOperation(
+        OrgPermissionGroupActions.ManagePrivileges,
+        OrgPermissionSubjects.Groups,
+        permission,
+        rolePermission
+      );
+
       if (!hasRequiredNewRolePermission)
         throw new ForbiddenRequestError({ message: "Failed to create a more privileged group" });
       if (isCustomRole) customRole = customOrgRole;
@@ -206,7 +219,7 @@ export const groupServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Groups);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Delete, OrgPermissionSubjects.Groups);
 
     const plan = await licenseService.getPlan(actorOrgId);
 
@@ -233,7 +246,7 @@ export const groupServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Groups);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
 
     const group = await groupDAL.findById(id);
     if (!group) {
@@ -266,7 +279,7 @@ export const groupServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Groups);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
 
     const group = await groupDAL.findOne({
       orgId: actorOrgId,
@@ -301,7 +314,7 @@ export const groupServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Groups);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
 
     // check if group with slug exists
     const group = await groupDAL.findOne({
@@ -329,7 +342,13 @@ export const groupServiceFactory = ({
     const { permission: groupRolePermission } = await permissionService.getOrgPermissionByRole(group.role, actorOrgId);
 
     // check if user has broader or equal to privileges than group
-    const hasRequiredPrivileges = isAtLeastAsPrivileged(permission, groupRolePermission);
+    const hasRequiredPrivileges = validatePrivilegeChangeOperation(
+      OrgPermissionGroupActions.AddMembers,
+      OrgPermissionSubjects.Groups,
+      permission,
+      groupRolePermission
+    );
+
     if (!hasRequiredPrivileges)
       throw new ForbiddenRequestError({ message: "Failed to add user to more privileged group" });
 
@@ -368,7 +387,7 @@ export const groupServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Groups);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
 
     // check if group with slug exists
     const group = await groupDAL.findOne({
@@ -396,7 +415,13 @@ export const groupServiceFactory = ({
     const { permission: groupRolePermission } = await permissionService.getOrgPermissionByRole(group.role, actorOrgId);
 
     // check if user has broader or equal to privileges than group
-    const hasRequiredPrivileges = isAtLeastAsPrivileged(permission, groupRolePermission);
+    const hasRequiredPrivileges = validatePrivilegeChangeOperation(
+      OrgPermissionGroupActions.RemoveMembers,
+      OrgPermissionSubjects.Groups,
+      permission,
+      groupRolePermission
+    );
+
     if (!hasRequiredPrivileges)
       throw new ForbiddenRequestError({ message: "Failed to delete user from more privileged group" });
 

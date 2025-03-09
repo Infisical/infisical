@@ -3,14 +3,18 @@ import { PackRule, packRules, unpackRules } from "@casl/ability/extra";
 import ms from "ms";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
-import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { UnpackedPermissionSchema } from "@app/server/routes/sanitizedSchema/permission";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 
+import { validatePrivilegeChangeOperation } from "../permission/permission-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSet, ProjectPermissionSub } from "../permission/project-permission";
+import {
+  ProjectPermissionMemberActions,
+  ProjectPermissionSet,
+  ProjectPermissionSub
+} from "../permission/project-permission";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "./project-user-additional-privilege-dal";
 import {
   ProjectUserAdditionalPrivilegeTemporaryMode,
@@ -63,7 +67,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Member);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member);
     const { permission: targetUserPermission } = await permissionService.getProjectPermission({
       actor: ActorType.USER,
       actorId: projectMembership.userId,
@@ -76,7 +80,14 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     // we need to validate that the privilege given is not higher than the assigning users permission
     // @ts-expect-error this is expected error because of one being really accurate rule definition other being a bit more broader. Both are valid casl rules
     targetUserPermission.update(targetUserPermission.rules.concat(customPermission));
-    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, targetUserPermission);
+
+    const hasRequiredPriviledges = validatePrivilegeChangeOperation(
+      ProjectPermissionMemberActions.ManagePrivileges,
+      ProjectPermissionSub.Member,
+      permission,
+      targetUserPermission
+    );
+
     if (!hasRequiredPriviledges)
       throw new ForbiddenRequestError({ message: "Failed to update more privileged identity" });
 
@@ -150,7 +161,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Member);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member);
     const { permission: targetUserPermission } = await permissionService.getProjectPermission({
       actor: ActorType.USER,
       actorId: projectMembership.userId,
@@ -163,8 +174,13 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     // we need to validate that the privilege given is not higher than the assigning users permission
     // @ts-expect-error this is expected error because of one being really accurate rule definition other being a bit more broader. Both are valid casl rules
     targetUserPermission.update(targetUserPermission.rules.concat(dto.permissions || []));
-    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, targetUserPermission);
-    if (!hasRequiredPriviledges)
+    const hasRequiredPrivileges = validatePrivilegeChangeOperation(
+      ProjectPermissionMemberActions.ManagePrivileges,
+      ProjectPermissionSub.Member,
+      permission,
+      targetUserPermission
+    );
+    if (!hasRequiredPrivileges)
       throw new ForbiddenRequestError({ message: "Failed to update more privileged identity" });
 
     if (dto?.slug) {
@@ -236,7 +252,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Member);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member);
 
     const deletedPrivilege = await projectUserAdditionalPrivilegeDAL.deleteById(userPrivilege.id);
     return {
@@ -273,7 +289,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
 
     return {
       ...userPrivilege,
@@ -300,7 +316,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
 
     const userPrivileges = await projectUserAdditionalPrivilegeDAL.find(
       {
