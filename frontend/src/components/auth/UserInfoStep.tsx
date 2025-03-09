@@ -11,6 +11,7 @@ import { encodeBase64 } from "tweetnacl-util";
 import { initProjectHelper } from "@app/helpers/project";
 import { completeAccountSignup, useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
+import { onRequestError } from "@app/hooks/api/reactQuery";
 
 import InputField from "../basic/InputField";
 import checkPassword from "../utilities/checks/password/checkPassword";
@@ -206,6 +207,7 @@ export default function UserInfoStep({
 
               incrementStep();
             } catch (error) {
+              onRequestError(error);
               setIsLoading(false);
               console.error(error);
             }
