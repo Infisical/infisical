@@ -345,10 +345,10 @@ func (g *Gateway) registerRelayIsActive(ctx context.Context, addr string, errCh 
 				return
 			case <-ticker.C:
 				log.Debug().Msg("Performing relay connection health check")
-				ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+				ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
 				defer cancel()
 				// Try to establish a QUIC connection
-				conn, err := quic.DialAddr(ctx, addr, &tls.Config{
+				conn, err := quic.DialAddr(ctxTimeout, addr, &tls.Config{
 					InsecureSkipVerify: false, // Skip certificate verification
 					NextProtos:         []string{"infisical-gateway"},
 				}, nil)
