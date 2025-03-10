@@ -3,15 +3,15 @@ import { packRules } from "@casl/ability/extra";
 import ms from "ms";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
-import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
+import { validatePrivilegeChangeOperation } from "../permission/permission-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
+import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TIdentityProjectAdditionalPrivilegeV2DALFactory } from "./identity-project-additional-privilege-v2-dal";
 import {
   IdentityProjectAdditionalPrivilegeTemporaryMode,
@@ -64,7 +64,7 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Edit,
+      ProjectPermissionIdentityActions.Edit,
       subject(ProjectPermissionSub.Identity, { identityId })
     );
     const { permission: targetIdentityPermission } = await permissionService.getProjectPermission({
@@ -79,7 +79,12 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
     // we need to validate that the privilege given is not higher than the assigning users permission
     // @ts-expect-error this is expected error because of one being really accurate rule definition other being a bit more broader. Both are valid casl rules
     targetIdentityPermission.update(targetIdentityPermission.rules.concat(customPermission));
-    const permissionBoundary = validatePermissionBoundary(permission, targetIdentityPermission);
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      ProjectPermissionIdentityActions.ManagePrivileges,
+      ProjectPermissionSub.Identity,
+      permission,
+      targetIdentityPermission
+    );
     if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",
@@ -150,7 +155,7 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Edit,
+      ProjectPermissionIdentityActions.Edit,
       subject(ProjectPermissionSub.Identity, { identityId: identityProjectMembership.identityId })
     );
     const { permission: targetIdentityPermission } = await permissionService.getProjectPermission({
@@ -165,7 +170,12 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
     // we need to validate that the privilege given is not higher than the assigning users permission
     // @ts-expect-error this is expected error because of one being really accurate rule definition other being a bit more broader. Both are valid casl rules
     targetIdentityPermission.update(targetIdentityPermission.rules.concat(data.permissions || []));
-    const permissionBoundary = validatePermissionBoundary(permission, targetIdentityPermission);
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      ProjectPermissionIdentityActions.ManagePrivileges,
+      ProjectPermissionSub.Identity,
+      permission,
+      targetIdentityPermission
+    );
     if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",
@@ -236,7 +246,7 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Edit,
+      ProjectPermissionIdentityActions.Edit,
       subject(ProjectPermissionSub.Identity, { identityId: identityProjectMembership.identityId })
     );
     const { permission: identityRolePermission } = await permissionService.getProjectPermission({
@@ -247,7 +257,12 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-    const permissionBoundary = validatePermissionBoundary(permission, identityRolePermission);
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      ProjectPermissionIdentityActions.ManagePrivileges,
+      ProjectPermissionSub.Identity,
+      permission,
+      identityRolePermission
+    );
     if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",
@@ -287,7 +302,7 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
+      ProjectPermissionIdentityActions.Read,
       subject(ProjectPermissionSub.Identity, { identityId: identityProjectMembership.identityId })
     );
 
@@ -322,7 +337,7 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
+      ProjectPermissionIdentityActions.Read,
       subject(ProjectPermissionSub.Identity, { identityId: identityProjectMembership.identityId })
     );
 
@@ -358,7 +373,7 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
+      ProjectPermissionIdentityActions.Read,
       subject(ProjectPermissionSub.Identity, { identityId: identityProjectMembership.identityId })
     );
 

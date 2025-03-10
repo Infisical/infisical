@@ -2,9 +2,9 @@ import { ForbiddenError } from "@casl/ability";
 import ms from "ms";
 
 import { ActionProjectType, ProjectMembershipRole, SecretKeyEncoding, TGroups } from "@app/db/schemas";
+import { validatePrivilegeChangeOperation } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { validatePermissionBoundary } from "@app/lib/casl/boundary";
+import { ProjectPermissionGroupActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { decryptAsymmetric, encryptAsymmetric } from "@app/lib/crypto";
 import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -78,7 +78,7 @@ export const groupProjectServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Groups);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionGroupActions.Create, ProjectPermissionSub.Groups);
 
     let group: TGroups | null = null;
     if (isUuidV4(groupIdOrName)) {
@@ -102,7 +102,12 @@ export const groupProjectServiceFactory = ({
         project.id
       );
 
-      const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        ProjectPermissionGroupActions.ManagePrivileges,
+        ProjectPermissionSub.Groups,
+        permission,
+        rolePermission
+      );
       if (!permissionBoundary.isValid)
         throw new ForbiddenRequestError({
           name: "PermissionBoundaryError",
@@ -256,7 +261,7 @@ export const groupProjectServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Groups);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionGroupActions.Edit, ProjectPermissionSub.Groups);
 
     const group = await groupDAL.findOne({ orgId: actorOrgId, id: groupId });
     if (!group) throw new NotFoundError({ message: `Failed to find group with ID ${groupId}` });
@@ -269,7 +274,12 @@ export const groupProjectServiceFactory = ({
         requestedRoleChange,
         project.id
       );
-      const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        ProjectPermissionGroupActions.ManagePrivileges,
+        ProjectPermissionSub.Groups,
+        permission,
+        rolePermission
+      );
       if (!permissionBoundary.isValid)
         throw new ForbiddenRequestError({
           name: "PermissionBoundaryError",
@@ -360,7 +370,7 @@ export const groupProjectServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Groups);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionGroupActions.Delete, ProjectPermissionSub.Groups);
 
     const deletedProjectGroup = await groupProjectDAL.transaction(async (tx) => {
       const groupMembers = await userGroupMembershipDAL.findGroupMembersNotInProject(group.id, project.id, tx);
@@ -405,7 +415,7 @@ export const groupProjectServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Groups);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionGroupActions.Read, ProjectPermissionSub.Groups);
 
     const groupMemberships = await groupProjectDAL.findByProjectId(project.id);
     return groupMemberships;
@@ -433,7 +443,7 @@ export const groupProjectServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Groups);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionGroupActions.Read, ProjectPermissionSub.Groups);
 
     const [groupMembership] = await groupProjectDAL.findByProjectId(project.id, {
       groupId

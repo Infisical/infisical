@@ -20,7 +20,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useRevokeIdentityTokenAuthToken } from "@app/hooks/api";
 import { IdentityAccessToken } from "@app/hooks/api/identities/types";
@@ -79,7 +79,7 @@ export const IdentityTokenAuthTokensTable = ({ tokens, identityId }: Props) => {
     <div className="col-span-2 mt-3">
       <div className="flex items-end justify-between border-b border-mineshaft-500 pb-2">
         <span className="text-bunker-300">Access Tokens</span>
-        <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Identity}>
+        <OrgPermissionCan I={OrgPermissionIdentityActions.Edit} a={OrgPermissionSubjects.Identity}>
           {(isAllowed) => (
             <Button
               size="xs"
@@ -144,7 +144,7 @@ export const IdentityTokenAuthTokensTable = ({ tokens, identityId }: Props) => {
                       <Td>
                         <div className="flex items-center gap-2">
                           <OrgPermissionCan
-                            I={OrgPermissionActions.Edit}
+                            I={OrgPermissionIdentityActions.Edit}
                             a={OrgPermissionSubjects.Identity}
                           >
                             {(isAllowed) => (
@@ -169,7 +169,7 @@ export const IdentityTokenAuthTokensTable = ({ tokens, identityId }: Props) => {
                           </OrgPermissionCan>
                           {!isAccessTokenRevoked && (
                             <OrgPermissionCan
-                              I={OrgPermissionActions.Edit}
+                              I={OrgPermissionIdentityActions.Edit}
                               a={OrgPermissionSubjects.Identity}
                             >
                               {(isAllowed) => (

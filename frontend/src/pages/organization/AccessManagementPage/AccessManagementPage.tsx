@@ -4,7 +4,13 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { OrgPermissionActions, OrgPermissionSubjects, useOrgPermission } from "@app/context";
+import {
+  OrgPermissionActions,
+  OrgPermissionGroupActions,
+  OrgPermissionIdentityActions,
+  OrgPermissionSubjects,
+  useOrgPermission
+} from "@app/context";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
 import { OrgGroupsTab, OrgIdentityTab, OrgMembersTab, OrgRoleTabSection } from "./components";
@@ -37,13 +43,16 @@ export const AccessManagementPage = () => {
     {
       key: OrgAccessControlTabSections.Groups,
       label: "Groups",
-      isHidden: permission.cannot(OrgPermissionActions.Read, OrgPermissionSubjects.Groups),
+      isHidden: permission.cannot(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups),
       component: OrgGroupsTab
     },
     {
       key: OrgAccessControlTabSections.Identities,
       label: "Identities",
-      isHidden: permission.cannot(OrgPermissionActions.Read, OrgPermissionSubjects.Identity),
+      isHidden: permission.cannot(
+        OrgPermissionIdentityActions.Read,
+        OrgPermissionSubjects.Identity
+      ),
       component: OrgIdentityTab
     },
     {

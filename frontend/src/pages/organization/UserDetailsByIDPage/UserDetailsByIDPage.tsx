@@ -140,7 +140,7 @@ const Page = withPermission(
                     <DropdownMenuContent align="end" className="p-1">
                       <OrgPermissionCan
                         I={OrgPermissionActions.Edit}
-                        a={OrgPermissionSubjects.Identity}
+                        a={OrgPermissionSubjects.Member}
                       >
                         {(isAllowed) => (
                           <DropdownMenuItem
