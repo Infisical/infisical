@@ -26,8 +26,8 @@ Refer to the table below for a list of subjects and the actions they support.
 | Subject                   | Actions                                                                                                     |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | `role`                    | `read`, `create`, `edit`, `delete`                                                                          |
-| `member`                  | `read`, `create`, `edit`, `delete`                                                                          |
-| `groups`                  | `read`, `create`, `edit`, `delete`                                                                          |
+| `member`                  | `read`, `create`, `edit`, `delete`, `manage-privileges`                                                     |
+| `groups`                  | `read`, `create`, `edit`, `delete`, `manage-privileges`                                                     |
 | `settings`                | `read`, `create`, `edit`, `delete`                                                                          |
 | `integrations`            | `read`, `create`, `edit`, `delete`                                                                          |
 | `webhooks`                | `read`, `create`, `edit`, `delete`                                                                          |
@@ -44,7 +44,7 @@ Refer to the table below for a list of subjects and the actions they support.
 | `secret-rollback`         | `read`, `create`                                                                                            |
 | `secret-approval`         | `read`, `create`, `edit`, `delete`                                                                          |
 | `secret-rotation`         | `read`, `create`, `edit`, `delete`                                                                          |
-| `identity`                | `read`, `create`, `edit`, `delete`                                                                          |
+| `identity`                | `read`, `create`, `edit`, `delete`, `manage-privileges`                                                     |
 | `certificate-authorities` | `read`, `create`, `edit`, `delete`                                                                          |
 | `certificates`            | `read`, `create`, `edit`, `delete`                                                                          |
 | `certificate-templates`   | `read`, `create`, `edit`, `delete`                                                                          |
@@ -64,23 +64,23 @@ Refer to the table below for a list of subjects and the actions they support.
   `read`, `create`, `edit`, `delete`.
 </Note>
 
-| Subject               | Actions                                          |
-| --------------------- | ------------------------------------------------ |
-| `workspace`           | `read`, `create`                                 |
-| `role`                | `read`, `create`, `edit`, `delete`               |
-| `member`              | `read`, `create`, `edit`, `delete`               |
-| `secret-scanning`     | `read`, `create`, `edit`, `delete`               |
-| `settings`            | `read`, `create`, `edit`, `delete`               |
-| `incident-account`    | `read`, `create`, `edit`, `delete`               |
-| `sso`                 | `read`, `create`, `edit`, `delete`               |
-| `scim`                | `read`, `create`, `edit`, `delete`               |
-| `ldap`                | `read`, `create`, `edit`, `delete`               |
-| `groups`              | `read`, `create`, `edit`, `delete`               |
-| `billing`             | `read`, `create`, `edit`, `delete`               |
-| `identity`            | `read`, `create`, `edit`, `delete`               |
-| `project-templates`   | `read`, `create`, `edit`, `delete`               |
-| `app-connections`     | `read`, `create`, `edit`, `delete`, `connect`    |
-| `kms`                 | `read`                                           |
+| Subject             | Actions                                                                                                             |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `workspace`         | `read`, `create`                                                                                                    |
+| `role`              | `read`, `create`, `edit`, `delete`                                                                                  |
+| `member`            | `read`, `create`, `edit`, `delete`                                                                                  |
+| `secret-scanning`   | `read`, `create`, `edit`, `delete`                                                                                  |
+| `settings`          | `read`, `create`, `edit`, `delete`                                                                                  |
+| `incident-account`  | `read`, `create`, `edit`, `delete`                                                                                  |
+| `sso`               | `read`, `create`, `edit`, `delete`                                                                                  |
+| `scim`              | `read`, `create`, `edit`, `delete`                                                                                  |
+| `ldap`              | `read`, `create`, `edit`, `delete`                                                                                  |
+| `groups`            | `read`, `create`, `edit`, `delete`, `manage-privileges`, `add-members`, `remove-members`                            |
+| `billing`           | `read`, `create`, `edit`, `delete`                                                                                  |
+| `identity`          | `read`, `create`, `edit`, `delete`, `manage-privileges`, `revoke-auth`, `create-token`, `delete-token`, `get-token` |
+| `project-templates` | `read`, `create`, `edit`, `delete`                                                                                  |
+| `app-connections`   | `read`, `create`, `edit`, `delete`, `connect`                                                                       |
+| `kms`               | `read`                                                                                                              |
 
 </Tab>
 </Tabs>
