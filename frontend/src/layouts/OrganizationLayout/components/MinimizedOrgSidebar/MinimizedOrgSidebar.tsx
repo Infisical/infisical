@@ -30,10 +30,13 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  Modal,
+  ModalContent,
   Tooltip
 } from "@app/components/v2";
 import { envConfig } from "@app/config/env";
 import { useOrganization, useSubscription, useUser } from "@app/context";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import { usePopUp, useToggle } from "@app/hooks";
 import {
   useGetOrganizations,
@@ -50,6 +53,7 @@ import { ProjectType } from "@app/hooks/api/workspace/types";
 import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
 import { MenuIconButton } from "../MenuIconButton";
+import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
 
 const getPlan = (subscription: SubscriptionPlan) => {
   if (subscription.dynamicSecret) return "Enterprise Plan";
@@ -77,6 +81,11 @@ export const INFISICAL_SUPPORT_OPTIONS = [
     <FontAwesomeIcon key={4} className="pr-4 text-sm" icon={faEnvelope} />,
     "Email Support",
     "mailto:support@infisical.com"
+  ],
+  [
+    <FontAwesomeIcon key={5} className="pr-4 text-sm" icon={faUsers} />,
+    "Instance Admins",
+    "server-admins"
   ]
 ];
 
@@ -89,6 +98,7 @@ export const MinimizedOrgSidebar = () => {
   const [openSupport, setOpenSupport] = useState(false);
   const [openUser, setOpenUser] = useState(false);
   const [openOrg, setOpenOrg] = useState(false);
+  const [showAdminsModal, setShowAdminsModal] = useState(false);
 
   const { user } = useUser();
   const { mutateAsync } = useGetOrgTrialUrl();
@@ -410,21 +420,39 @@ export const MinimizedOrgSidebar = () => {
                 side="right"
                 className="p-1"
               >
-                {INFISICAL_SUPPORT_OPTIONS.map(([icon, text, url]) => (
-                  <DropdownMenuItem key={url as string}>
-                    <a
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      href={String(url)}
-                      className="flex w-full items-center rounded-md font-normal text-mineshaft-300 duration-200"
-                    >
-                      <div className="relative flex w-full cursor-pointer select-none items-center justify-start rounded-md">
-                        {icon}
-                        <div className="text-sm">{text}</div>
-                      </div>
-                    </a>
-                  </DropdownMenuItem>
-                ))}
+                {INFISICAL_SUPPORT_OPTIONS.map(([icon, text, url]) => {
+                  if (url === "server-admins" && isInfisicalCloud()) {
+                    return null;
+                  }
+                  return (
+                    <DropdownMenuItem key={url as string}>
+                      {url === "server-admins" ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowAdminsModal(true)}
+                          className="flex w-full items-center rounded-md font-normal text-mineshaft-300 duration-200"
+                        >
+                          <div className="relative flex w-full cursor-pointer select-none items-center justify-start rounded-md">
+                            {icon}
+                            <div className="text-sm">{text}</div>
+                          </div>
+                        </button>
+                      ) : (
+                        <a
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          href={String(url)}
+                          className="flex w-full items-center rounded-md font-normal text-mineshaft-300 duration-200"
+                        >
+                          <div className="relative flex w-full cursor-pointer select-none items-center justify-start rounded-md">
+                            {icon}
+                            <div className="text-sm">{text}</div>
+                          </div>
+                        </a>
+                      )}
+                    </DropdownMenuItem>
+                  );
+                })}
                 {envConfig.PLATFORM_VERSION && (
                   <div className="mb-2 mt-2 w-full cursor-default pl-5 text-sm duration-200 hover:text-mineshaft-200">
                     <FontAwesomeIcon icon={faInfo} className="mr-4 px-[0.1rem]" />
@@ -540,6 +568,13 @@ export const MinimizedOrgSidebar = () => {
           </div>
         </nav>
       </aside>
+      <Modal isOpen={showAdminsModal} onOpenChange={setShowAdminsModal}>
+        <ModalContent title="Server Administrators" subTitle="View all server administrators">
+          <div className="mb-2">
+            <ServerAdminsPanel />
+          </div>
+        </ModalContent>
+      </Modal>
       <CreateOrgModal
         isOpen={popUp?.createOrg?.isOpen}
         onClose={() => handlePopUpToggle("createOrg", false)}
