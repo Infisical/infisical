@@ -187,6 +187,17 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
           `${TableName.SecretVersionV2}.userActorId`
         )
         .leftJoin(TableName.Identity, `${TableName.Identity}.id`, `${TableName.SecretVersionV2}.identityActorId`)
+        .leftJoin(TableName.SecretV2, `${TableName.SecretVersionV2}.secretId`, `${TableName.SecretV2}.id`)
+        .leftJoin(
+          TableName.SecretV2JnTag,
+          `${TableName.SecretV2}.id`,
+          `${TableName.SecretV2JnTag}.${TableName.SecretV2}Id`
+        )
+        .leftJoin(
+          TableName.SecretTag,
+          `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
+          `${TableName.SecretTag}.id`
+        )
         .where((qb) => {
           void qb.where(`${TableName.SecretVersionV2}.secretId`, secretId);
           void qb.where(`${TableName.ProjectMembership}.projectId`, projectId);
@@ -197,9 +208,12 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
         })
         .select(
           selectAllTableCols(TableName.SecretVersionV2),
-          `${TableName.Users}.username as userActorName`,
-          `${TableName.Identity}.name as identityActorName`,
-          `${TableName.ProjectMembership}.id as membershipId`
+          db.ref("username").withSchema(TableName.Users).as("userActorName"),
+          db.ref("name").withSchema(TableName.Identity).as("identityActorName"),
+          db.ref("id").withSchema(TableName.ProjectMembership).as("membershipId"),
+          db.ref("id").withSchema(TableName.SecretTag).as("tagId"),
+          db.ref("color").withSchema(TableName.SecretTag).as("tagColor"),
+          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug")
         );
 
       if (limit) void query.limit(limit);
@@ -214,14 +228,33 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
         );
       }
 
-      const docs: Array<
-        TSecretVersionsV2 & {
-          userActorName: string | undefined | null;
-          identityActorName: string | undefined | null;
-          membershipId: string | undefined | null;
-        }
-      > = await query;
-      return docs;
+      const docs = await query;
+
+      const data = sqlNestRelationships({
+        data: docs,
+        key: "id",
+        parentMapper: (el) => ({
+          _id: el.id,
+          ...SecretVersionsV2Schema.parse(el),
+          userActorName: el.userActorName,
+          identityActorName: el.identityActorName,
+          membershipId: el.membershipId
+        }),
+        childrenMapper: [
+          {
+            key: "tagId",
+            label: "tags" as const,
+            mapper: ({ tagId: id, tagColor: color, tagSlug: slug }) => ({
+              id,
+              color,
+              slug,
+              name: slug
+            })
+          }
+        ]
+      });
+
+      return data;
     } catch (error) {
       throw new DatabaseError({ error, name: "FindVersionsBySecretIdWithActors" });
     }
