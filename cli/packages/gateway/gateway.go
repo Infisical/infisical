@@ -79,13 +79,9 @@ func (g *Gateway) ConnectWithRelay() error {
 
 	// Dial TURN Server
 	if relayPort == "5349" {
-		caCertPool := x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM([]byte(g.config.CertificateChain))
-
 		log.Info().Msgf("Provided relay port %s. Using TLS", relayPort)
 		conn, err := dtls.Dial("udp", turnAddr, &dtls.Config{
 			ServerName: relayAddress,
-			RootCAs:    caCertPool,
 		})
 		if err != nil {
 			return fmt.Errorf("Failed to connect with relay server: %w", err)
