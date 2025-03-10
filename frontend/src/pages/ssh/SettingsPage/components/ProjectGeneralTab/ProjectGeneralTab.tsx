@@ -1,11 +1,12 @@
+import { ProjectOverviewChangeSection } from "@app/components/project/ProjectOverviewChangeSection";
+
 import { AuditLogsRetentionSection } from "../AuditLogsRetentionSection";
 import { DeleteProjectSection } from "../DeleteProjectSection";
-import { ProjectOverviewChangeSection } from "../ProjectOverviewChangeSection";
 
 export const ProjectGeneralTab = () => {
   return (
     <div>
-      <ProjectOverviewChangeSection />
+      <ProjectOverviewChangeSection showSlugField />
       <AuditLogsRetentionSection />
       <DeleteProjectSection />
     </div>

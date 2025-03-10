@@ -1,3 +1,4 @@
+import { ProjectOverviewChangeSection } from "@app/components/project/ProjectOverviewChangeSection";
 import { useWorkspace } from "@app/context";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/workspace/types";
 
@@ -7,7 +8,6 @@ import { BackfillSecretReferenceSecretion } from "../BackfillSecretReferenceSect
 import { DeleteProjectSection } from "../DeleteProjectSection";
 import { EnvironmentSection } from "../EnvironmentSection";
 import { PointInTimeVersionLimitSection } from "../PointInTimeVersionLimitSection";
-import { ProjectOverviewChangeSection } from "../ProjectOverviewChangeSection";
 import { RebuildSecretIndicesSection } from "../RebuildSecretIndicesSection/RebuildSecretIndicesSection";
 import { SecretTagsSection } from "../SecretTagsSection";
 
@@ -17,7 +17,7 @@ export const ProjectGeneralTab = () => {
 
   return (
     <div>
-      <ProjectOverviewChangeSection />
+      <ProjectOverviewChangeSection showSlugField />
       {isSecretManager && <EnvironmentSection />}
       {isSecretManager && <SecretTagsSection />}
       {isSecretManager && <AutoCapitalizationSection />}

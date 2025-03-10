@@ -563,11 +563,24 @@ export const projectServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
 
+    if (update.slug) {
+      const existingProject = await projectDAL.findOne({
+        slug: update.slug,
+        orgId: actorOrgId
+      });
+      if (existingProject && existingProject.id !== project.id) {
+        throw new BadRequestError({
+          message: `Failed to update project slug. The project "${existingProject.name}" with the slug "${existingProject.slug}" already exists in your organization. Please choose a unique slug for your project.`
+        });
+      }
+    }
+
     const updatedProject = await projectDAL.updateById(project.id, {
       name: update.name,
       description: update.description,
       autoCapitalization: update.autoCapitalization,
-      enforceCapitalization: update.autoCapitalization
+      enforceCapitalization: update.autoCapitalization,
+      slug: update.slug
     });
 
     return updatedProject;
