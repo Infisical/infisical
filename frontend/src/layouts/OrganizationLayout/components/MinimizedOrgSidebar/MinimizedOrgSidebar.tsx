@@ -36,6 +36,7 @@ import {
 } from "@app/components/v2";
 import { envConfig } from "@app/config/env";
 import { useOrganization, useSubscription, useUser } from "@app/context";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import { usePopUp, useToggle } from "@app/hooks";
 import {
   useGetOrganizations,
@@ -419,34 +420,39 @@ export const MinimizedOrgSidebar = () => {
                 side="right"
                 className="p-1"
               >
-                {INFISICAL_SUPPORT_OPTIONS.map(([icon, text, url]) => (
-                  <DropdownMenuItem key={url as string}>
-                    {url === "server-admins" ? (
-                      <button
-                        type="button"
-                        onClick={() => setShowAdminsModal(true)}
-                        className="flex w-full items-center rounded-md font-normal text-mineshaft-300 duration-200"
-                      >
-                        <div className="relative flex w-full cursor-pointer select-none items-center justify-start rounded-md">
-                          {icon}
-                          <div className="text-sm">{text}</div>
-                        </div>
-                      </button>
-                    ) : (
-                      <a
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        href={String(url)}
-                        className="flex w-full items-center rounded-md font-normal text-mineshaft-300 duration-200"
-                      >
-                        <div className="relative flex w-full cursor-pointer select-none items-center justify-start rounded-md">
-                          {icon}
-                          <div className="text-sm">{text}</div>
-                        </div>
-                      </a>
-                    )}
-                  </DropdownMenuItem>
-                ))}
+                {INFISICAL_SUPPORT_OPTIONS.map(([icon, text, url]) => {
+                  if (url === "server-admins" && isInfisicalCloud()) {
+                    return null;
+                  }
+                  return (
+                    <DropdownMenuItem key={url as string}>
+                      {url === "server-admins" ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowAdminsModal(true)}
+                          className="flex w-full items-center rounded-md font-normal text-mineshaft-300 duration-200"
+                        >
+                          <div className="relative flex w-full cursor-pointer select-none items-center justify-start rounded-md">
+                            {icon}
+                            <div className="text-sm">{text}</div>
+                          </div>
+                        </button>
+                      ) : (
+                        <a
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          href={String(url)}
+                          className="flex w-full items-center rounded-md font-normal text-mineshaft-300 duration-200"
+                        >
+                          <div className="relative flex w-full cursor-pointer select-none items-center justify-start rounded-md">
+                            {icon}
+                            <div className="text-sm">{text}</div>
+                          </div>
+                        </a>
+                      )}
+                    </DropdownMenuItem>
+                  );
+                })}
                 {envConfig.PLATFORM_VERSION && (
                   <div className="mb-2 mt-2 w-full cursor-default pl-5 text-sm duration-200 hover:text-mineshaft-200">
                     <FontAwesomeIcon icon={faInfo} className="mr-4 px-[0.1rem]" />
