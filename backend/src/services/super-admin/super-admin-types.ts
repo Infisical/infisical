@@ -20,6 +20,7 @@ export type TAdminGetUsersDTO = {
   offset: number;
   limit: number;
   searchTerm: string;
+  adminsOnly: boolean;
 };
 
 export enum LoginMethod {

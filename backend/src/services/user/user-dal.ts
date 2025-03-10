@@ -23,15 +23,18 @@ export const userDALFactory = (db: TDbClient) => {
     limit,
     offset,
     searchTerm,
-    sortBy
+    sortBy,
+    adminsOnly
   }: {
     limit: number;
     offset: number;
     searchTerm: string;
     sortBy?: keyof TUsers;
+    adminsOnly: boolean;
   }) => {
     try {
       let query = db.replicaNode()(TableName.Users).where("isGhost", "=", false);
+
       if (searchTerm) {
         query = query.where((qb) => {
           void qb
@@ -40,6 +43,10 @@ export const userDALFactory = (db: TDbClient) => {
             .orWhereILike("lastName", `%${searchTerm}%`)
             .orWhereLike("username", `%${searchTerm}%`);
         });
+      }
+
+      if (adminsOnly) {
+        query = query.where("superAdmin", true);
       }
 
       if (sortBy) {
