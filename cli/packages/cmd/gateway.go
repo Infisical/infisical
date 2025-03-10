@@ -1,10 +1,6 @@
 package cmd
 
 import (
-	// "fmt"
-
-	// "github.com/Infisical/infisical-merge/packages/api"
-	// "github.com/Infisical/infisical-merge/packages/models"
 	"context"
 	"fmt"
 	"os"
@@ -14,13 +10,8 @@ import (
 
 	"github.com/Infisical/infisical-merge/packages/gateway"
 	"github.com/Infisical/infisical-merge/packages/util"
-	"github.com/rs/zerolog/log"
-
-	// "github.com/Infisical/infisical-merge/packages/visualize"
-	// "github.com/rs/zerolog/log"
-
-	// "github.com/go-resty/resty/v2"
 	"github.com/posthog/posthog-go"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
@@ -38,6 +29,16 @@ var gatewayCmd = &cobra.Command{
 
 		if token == nil {
 			util.HandleError(fmt.Errorf("Token not found"))
+		}
+
+		domain, err := cmd.Flags().GetString("domain")
+		if err != nil {
+			util.HandleError(err, "Unable to parse domain flag")
+		}
+
+		// Try to install systemd service if possible
+		if err := gateway.InstallGatewaySystemdService(token.Token, domain); err != nil {
+			log.Warn().Msgf("Failed to install systemd service: %v", err)
 		}
 
 		Telemetry.CaptureEvent("cli-command:gateway", posthog.NewProperties().Set("version", util.CLI_VERSION))
