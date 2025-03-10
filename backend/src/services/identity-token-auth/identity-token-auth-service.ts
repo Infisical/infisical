@@ -245,18 +245,18 @@ export const identityTokenAuthServiceFactory = ({
       actorOrgId
     );
 
-    if (
-      !validatePrivilegeChangeOperation(
-        OrgPermissionIdentityActions.RevokeAuth,
-        OrgPermissionSubjects.Identity,
-        permission,
-        rolePermission
-      )
-    ) {
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      OrgPermissionIdentityActions.RevokeAuth,
+      OrgPermissionSubjects.Identity,
+      permission,
+      rolePermission
+    );
+    if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
-        message: "Failed to revoke Token Auth of identity with more privileged role"
+        name: "PermissionBoundaryError",
+        message: "Failed to revoke token auth of identity with more privileged role",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
-    }
 
     const revokedIdentityTokenAuth = await identityTokenAuthDAL.transaction(async (tx) => {
       const deletedTokenAuth = await identityTokenAuthDAL.delete({ identityId }, tx);
@@ -303,16 +303,17 @@ export const identityTokenAuthServiceFactory = ({
       actorOrgId
     );
 
-    const hasPriviledge = validatePrivilegeChangeOperation(
+    const permissionBoundary = validatePrivilegeChangeOperation(
       OrgPermissionIdentityActions.CreateToken,
       OrgPermissionSubjects.Identity,
       permission,
       rolePermission
     );
-
-    if (!hasPriviledge)
+    if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
-        message: "Failed to create token for identity with more privileged role"
+        name: "PermissionBoundaryError",
+        message: "Failed to create token for identity with more privileged role",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
     const identityTokenAuth = await identityTokenAuthDAL.findOne({ identityId });
@@ -429,17 +430,17 @@ export const identityTokenAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-
-    const hasPriviledge = validatePrivilegeChangeOperation(
+    const permissionBoundary = validatePrivilegeChangeOperation(
       OrgPermissionIdentityActions.CreateToken,
       OrgPermissionSubjects.Identity,
       permission,
       rolePermission
     );
-
-    if (!hasPriviledge)
+    if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
-        message: "Failed to update token for identity with more privileged role"
+        name: "PermissionBoundaryError",
+        message: "Failed to update token for identity with more privileged role",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
     const [token] = await identityAccessTokenDAL.update(

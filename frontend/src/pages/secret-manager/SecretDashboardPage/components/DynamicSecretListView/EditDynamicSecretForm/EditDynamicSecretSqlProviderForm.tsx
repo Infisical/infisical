@@ -36,7 +36,7 @@ const formSchema = z.object({
       revocationStatement: z.string().min(1),
       renewStatement: z.string().optional(),
       ca: z.string().optional(),
-      projectGatewayId: z.string().optional()
+      projectGatewayId: z.string().optional().nullable()
     })
     .partial(),
   defaultTTL: z.string().superRefine((val, ctx) => {
@@ -207,7 +207,7 @@ export const EditDynamicSecretSqlProviderForm = ({
                 helperText=""
               >
                 <Select
-                  value={value}
+                  value={value || undefined}
                   onValueChange={onChange}
                   className="w-full border border-mineshaft-500"
                   dropdownContainerClassName="max-w-none"

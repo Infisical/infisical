@@ -367,17 +367,17 @@ export const identityUaServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-
-    if (
-      !validatePrivilegeChangeOperation(
-        OrgPermissionIdentityActions.RevokeAuth,
-        OrgPermissionSubjects.Identity,
-        permission,
-        rolePermission
-      )
-    )
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      OrgPermissionIdentityActions.RevokeAuth,
+      OrgPermissionSubjects.Identity,
+      permission,
+      rolePermission
+    );
+    if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
-        message: "Failed to revoke universal auth of identity with more privileged role"
+        name: "PermissionBoundaryError",
+        message: "Failed to revoke universal auth of identity with more privileged role",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
     const revokedIdentityUniversalAuth = await identityUaDAL.transaction(async (tx) => {
@@ -422,17 +422,17 @@ export const identityUaServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-
-    if (
-      !validatePrivilegeChangeOperation(
-        OrgPermissionIdentityActions.CreateToken,
-        OrgPermissionSubjects.Identity,
-        permission,
-        rolePermission
-      )
-    )
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      OrgPermissionIdentityActions.CreateToken,
+      OrgPermissionSubjects.Identity,
+      permission,
+      rolePermission
+    );
+    if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
-        message: "Failed to add identity to project with more privileged role"
+        name: "PermissionBoundaryError",
+        message: "Failed to create client secret for a more privileged identity.",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
     const appCfg = getConfig();
@@ -490,16 +490,17 @@ export const identityUaServiceFactory = ({
       actorOrgId
     );
 
-    if (
-      !validatePrivilegeChangeOperation(
-        OrgPermissionIdentityActions.GetToken,
-        OrgPermissionSubjects.Identity,
-        permission,
-        rolePermission
-      )
-    )
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      OrgPermissionIdentityActions.GetToken,
+      OrgPermissionSubjects.Identity,
+      permission,
+      rolePermission
+    );
+    if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
-        message: "Failed to get identity client secret with more privileged role"
+        name: "PermissionBoundaryError",
+        message: "Failed to get identity client secret with more privileged role",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
     const identityUniversalAuth = await identityUaDAL.findOne({
@@ -546,17 +547,17 @@ export const identityUaServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-
-    if (
-      !validatePrivilegeChangeOperation(
-        OrgPermissionIdentityActions.GetToken,
-        OrgPermissionSubjects.Identity,
-        permission,
-        rolePermission
-      )
-    )
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      OrgPermissionIdentityActions.GetToken,
+      OrgPermissionSubjects.Identity,
+      permission,
+      rolePermission
+    );
+    if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
-        message: "Failed to read identity client secret of project with more privileged role"
+        name: "PermissionBoundaryError",
+        message: "Failed to read identity client secret of identity with more privileged role",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
     const clientSecret = await identityUaClientSecretDAL.findById(clientSecretId);
@@ -597,22 +598,24 @@ export const identityUaServiceFactory = ({
       actorOrgId
     );
 
-    if (
-      !validatePrivilegeChangeOperation(
-        OrgPermissionIdentityActions.DeleteToken,
-        OrgPermissionSubjects.Identity,
-        permission,
-        rolePermission
-      )
-    ) {
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      OrgPermissionIdentityActions.DeleteToken,
+      OrgPermissionSubjects.Identity,
+      permission,
+      rolePermission
+    );
+    if (!permissionBoundary.isValid) {
       throw new ForbiddenRequestError({
-        message: "Failed to revoke identity client secret with more privileged role"
+        name: "PermissionBoundaryError",
+        message: "Failed to revoke identity client secret with more privileged role",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
     }
 
     const clientSecret = await identityUaClientSecretDAL.updateById(clientSecretId, {
       isClientSecretRevoked: true
     });
+
     return { ...clientSecret, identityId, orgId: identityMembershipOrg.orgId };
   };
 

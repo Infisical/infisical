@@ -57,14 +57,18 @@ export const identityServiceFactory = ({
       orgId
     );
     const isCustomRole = Boolean(customRole);
-    const hasRequiredPriviledges = validatePrivilegeChangeOperation(
+    const permissionBoundary = validatePrivilegeChangeOperation(
       OrgPermissionIdentityActions.ManagePrivileges,
       OrgPermissionSubjects.Identity,
       permission,
       rolePermission
     );
-    if (!hasRequiredPriviledges)
-      throw new ForbiddenRequestError({ message: "Failed to create a more privileged identity" });
+    if (!permissionBoundary.isValid)
+      throw new ForbiddenRequestError({
+        name: "PermissionBoundaryError",
+        message: "Failed to create a more privileged identity",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
+      });
 
     const plan = await licenseService.getPlan(orgId);
 
@@ -134,15 +138,18 @@ export const identityServiceFactory = ({
       );
 
       const isCustomRole = Boolean(customOrgRole);
-      const hasRequiredNewRolePermission = validatePrivilegeChangeOperation(
+      const appliedRolePermissionBoundary = validatePrivilegeChangeOperation(
         OrgPermissionIdentityActions.ManagePrivileges,
         OrgPermissionSubjects.Identity,
         permission,
         rolePermission
       );
-
-      if (!hasRequiredNewRolePermission)
-        throw new ForbiddenRequestError({ message: "Failed to create a more privileged identity" });
+      if (!appliedRolePermissionBoundary.isValid)
+        throw new ForbiddenRequestError({
+          name: "PermissionBoundaryError",
+          message: "Failed to create a more privileged identity",
+          details: { missingPermissions: appliedRolePermissionBoundary.missingPermissions }
+        });
       if (isCustomRole) customRole = customOrgRole;
     }
 
@@ -207,6 +214,7 @@ export const identityServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
+
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Delete, OrgPermissionSubjects.Identity);
 
     const deletedIdentity = await identityDAL.deleteById(id);

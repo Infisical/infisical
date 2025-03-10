@@ -88,15 +88,18 @@ export const groupServiceFactory = ({
     );
     const isCustomRole = Boolean(customRole);
 
-    const hasRequiredPriviledges = validatePrivilegeChangeOperation(
+    const permissionBoundary = validatePrivilegeChangeOperation(
       OrgPermissionGroupActions.ManagePrivileges,
       OrgPermissionSubjects.Groups,
       permission,
       rolePermission
     );
-
-    if (!hasRequiredPriviledges)
-      throw new ForbiddenRequestError({ message: "Failed to create a more privileged group" });
+    if (!permissionBoundary.isValid)
+      throw new ForbiddenRequestError({
+        name: "PermissionBoundaryError",
+        message: "Failed to create a more privileged group",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
+      });
 
     const group = await groupDAL.transaction(async (tx) => {
       const existingGroup = await groupDAL.findOne({ orgId: actorOrgId, name }, tx);
@@ -163,15 +166,18 @@ export const groupServiceFactory = ({
       );
 
       const isCustomRole = Boolean(customOrgRole);
-      const hasRequiredNewRolePermission = validatePrivilegeChangeOperation(
+      const permissionBoundary = validatePrivilegeChangeOperation(
         OrgPermissionGroupActions.ManagePrivileges,
         OrgPermissionSubjects.Groups,
         permission,
         rolePermission
       );
-
-      if (!hasRequiredNewRolePermission)
-        throw new ForbiddenRequestError({ message: "Failed to create a more privileged group" });
+      if (!permissionBoundary.isValid)
+        throw new ForbiddenRequestError({
+          name: "PermissionBoundaryError",
+          message: "Failed to update a more privileged group",
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
       if (isCustomRole) customRole = customOrgRole;
     }
 
@@ -342,15 +348,18 @@ export const groupServiceFactory = ({
     const { permission: groupRolePermission } = await permissionService.getOrgPermissionByRole(group.role, actorOrgId);
 
     // check if user has broader or equal to privileges than group
-    const hasRequiredPrivileges = validatePrivilegeChangeOperation(
-      OrgPermissionGroupActions.AddMembers,
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      OrgPermissionGroupActions.ManagePrivileges,
       OrgPermissionSubjects.Groups,
       permission,
       groupRolePermission
     );
-
-    if (!hasRequiredPrivileges)
-      throw new ForbiddenRequestError({ message: "Failed to add user to more privileged group" });
+    if (!permissionBoundary.isValid)
+      throw new ForbiddenRequestError({
+        name: "PermissionBoundaryError",
+        message: "Failed to add user to more privileged group",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
+      });
 
     const user = await userDAL.findOne({ username });
     if (!user) throw new NotFoundError({ message: `Failed to find user with username ${username}` });
@@ -415,15 +424,18 @@ export const groupServiceFactory = ({
     const { permission: groupRolePermission } = await permissionService.getOrgPermissionByRole(group.role, actorOrgId);
 
     // check if user has broader or equal to privileges than group
-    const hasRequiredPrivileges = validatePrivilegeChangeOperation(
-      OrgPermissionGroupActions.RemoveMembers,
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      OrgPermissionGroupActions.ManagePrivileges,
       OrgPermissionSubjects.Groups,
       permission,
       groupRolePermission
     );
-
-    if (!hasRequiredPrivileges)
-      throw new ForbiddenRequestError({ message: "Failed to delete user from more privileged group" });
+    if (!permissionBoundary.isValid)
+      throw new ForbiddenRequestError({
+        name: "PermissionBoundaryError",
+        message: "Failed to delete user from more privileged group",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
+      });
 
     const user = await userDAL.findOne({ username });
     if (!user) throw new NotFoundError({ message: `Failed to find user with username ${username}` });

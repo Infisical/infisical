@@ -274,18 +274,18 @@ export const projectMembershipServiceFactory = ({
         projectId
       );
 
-      const hasRequiredPriviledges = validatePrivilegeChangeOperation(
+      const permissionBoundary = validatePrivilegeChangeOperation(
         ProjectPermissionMemberActions.ManagePrivileges,
         ProjectPermissionSub.Member,
         permission,
         rolePermission
       );
-
-      if (!hasRequiredPriviledges) {
+      if (!permissionBoundary.isValid)
         throw new ForbiddenRequestError({
-          message: `Failed to change to a more privileged role ${requestedRoleChange}`
+          name: "PermissionBoundaryError",
+          message: `Failed to change to a more privileged role ${requestedRoleChange}`,
+          details: { missingPermissions: permissionBoundary.missingPermissions }
         });
-      }
     }
 
     // validate custom roles input

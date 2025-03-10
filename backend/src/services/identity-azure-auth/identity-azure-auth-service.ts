@@ -312,17 +312,17 @@ export const identityAzureAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-
-    if (
-      !validatePrivilegeChangeOperation(
-        OrgPermissionIdentityActions.RevokeAuth,
-        OrgPermissionSubjects.Identity,
-        permission,
-        rolePermission
-      )
-    )
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      OrgPermissionIdentityActions.RevokeAuth,
+      OrgPermissionSubjects.Identity,
+      permission,
+      rolePermission
+    );
+    if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
-        message: "Failed to revoke azure auth of identity with more privileged role"
+        name: "PermissionBoundaryError",
+        message: "Failed to revoke azure auth of identity with more privileged role",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
     const revokedIdentityAzureAuth = await identityAzureAuthDAL.transaction(async (tx) => {

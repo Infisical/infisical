@@ -1,7 +1,7 @@
 import { MongoAbility } from "@casl/ability";
 
 import { TOrganizations } from "@app/db/schemas";
-import { isAtLeastAsPrivileged } from "@app/lib/casl";
+import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { ActorAuthMethod, AuthMethod } from "@app/services/auth/auth-type";
 
@@ -60,8 +60,15 @@ const validatePrivilegeChangeOperation = (
   managedPermission: MongoAbility
 ) => {
   // first we ensure if the actor has the permission to manage the privilege
-  // if not, we check if the actor is indeed more privileged than the managed permission
-  return actorPermission.can(action, subject) || isAtLeastAsPrivileged(actorPermission, managedPermission);
+  if (actorPermission.can(action, subject)) {
+    return {
+      isValid: true,
+      missingPermissions: []
+    };
+  }
+
+  // if not, we check if the actor is indeed more privileged than the managed permission - this is the old system
+  return validatePermissionBoundary(actorPermission, managedPermission);
 };
 
 export { escapeHandlebarsMissingMetadata, isAuthMethodSaml, validateOrgSSO, validatePrivilegeChangeOperation };

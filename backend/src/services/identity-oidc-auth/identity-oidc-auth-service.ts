@@ -428,18 +428,18 @@ export const identityOidcAuthServiceFactory = ({
       actorOrgId
     );
 
-    if (
-      !validatePrivilegeChangeOperation(
-        OrgPermissionIdentityActions.RevokeAuth,
-        OrgPermissionSubjects.Identity,
-        permission,
-        rolePermission
-      )
-    ) {
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      OrgPermissionIdentityActions.RevokeAuth,
+      OrgPermissionSubjects.Identity,
+      permission,
+      rolePermission
+    );
+    if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
-        message: "Failed to revoke OIDC auth of identity with more privileged role"
+        name: "PermissionBoundaryError",
+        message: "Failed to revoke oidc auth of identity with more privileged role",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
-    }
 
     const revokedIdentityOidcAuth = await identityOidcAuthDAL.transaction(async (tx) => {
       const deletedOidcAuth = await identityOidcAuthDAL.delete({ identityId }, tx);

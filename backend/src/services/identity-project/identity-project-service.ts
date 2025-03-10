@@ -90,16 +90,18 @@ export const identityProjectServiceFactory = ({
         projectId
       );
 
-      const hasRequiredPriviledges = validatePrivilegeChangeOperation(
+      const permissionBoundary = validatePrivilegeChangeOperation(
         ProjectPermissionIdentityActions.ManagePrivileges,
         ProjectPermissionSub.Identity,
         permission,
         rolePermission
       );
-
-      if (!hasRequiredPriviledges) {
-        throw new ForbiddenRequestError({ message: "Failed to change to a more privileged role" });
-      }
+      if (!permissionBoundary.isValid)
+        throw new ForbiddenRequestError({
+          name: "PermissionBoundaryError",
+          message: "Failed to assign to a more privileged role",
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
     }
 
     // validate custom roles input
@@ -189,15 +191,18 @@ export const identityProjectServiceFactory = ({
         projectId
       );
 
-      const hasRequiredPriviledges = validatePrivilegeChangeOperation(
+      const permissionBoundary = validatePrivilegeChangeOperation(
         ProjectPermissionIdentityActions.ManagePrivileges,
         ProjectPermissionSub.Identity,
         permission,
         rolePermission
       );
-      if (!hasRequiredPriviledges) {
-        throw new ForbiddenRequestError({ message: "Failed to change to a more privileged role" });
-      }
+      if (!permissionBoundary.isValid)
+        throw new ForbiddenRequestError({
+          name: "PermissionBoundaryError",
+          message: "Failed to change to a more privileged role",
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
     }
 
     // validate custom roles input

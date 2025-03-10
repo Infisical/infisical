@@ -358,17 +358,17 @@ export const identityGcpAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-
-    const hasRequiredPrivileges = validatePrivilegeChangeOperation(
+    const permissionBoundary = validatePrivilegeChangeOperation(
       OrgPermissionIdentityActions.RevokeAuth,
       OrgPermissionSubjects.Identity,
       permission,
       rolePermission
     );
-
-    if (!hasRequiredPrivileges)
+    if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
-        message: "Failed to revoke gcp auth of identity with more privileged role"
+        name: "PermissionBoundaryError",
+        message: "Failed to revoke gcp auth of identity with more privileged role",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
     const revokedIdentityGcpAuth = await identityGcpAuthDAL.transaction(async (tx) => {

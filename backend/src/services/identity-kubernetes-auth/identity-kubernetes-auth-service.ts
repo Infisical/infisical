@@ -487,17 +487,17 @@ export const identityKubernetesAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-
-    if (
-      !validatePrivilegeChangeOperation(
-        OrgPermissionIdentityActions.RevokeAuth,
-        OrgPermissionSubjects.Identity,
-        permission,
-        rolePermission
-      )
-    )
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      OrgPermissionIdentityActions.RevokeAuth,
+      OrgPermissionSubjects.Identity,
+      permission,
+      rolePermission
+    );
+    if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
-        message: "Failed to revoke kubernetes auth of identity with more privileged role"
+        name: "PermissionBoundaryError",
+        message: "Failed to revoke kubernetes auth of identity with more privileged role",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
     const revokedIdentityKubernetesAuth = await identityKubernetesAuthDAL.transaction(async (tx) => {

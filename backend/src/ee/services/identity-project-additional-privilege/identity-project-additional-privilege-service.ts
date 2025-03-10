@@ -93,14 +93,18 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     // we need to validate that the privilege given is not higher than the assigning users permission
     // @ts-expect-error this is expected error because of one being really accurate rule definition other being a bit more broader. Both are valid casl rules
     targetIdentityPermission.update(targetIdentityPermission.rules.concat(customPermission));
-    const hasRequiredPrivileges = validatePrivilegeChangeOperation(
+    const permissionBoundary = validatePrivilegeChangeOperation(
       ProjectPermissionIdentityActions.ManagePrivileges,
       ProjectPermissionSub.Identity,
       permission,
       targetIdentityPermission
     );
-    if (!hasRequiredPrivileges)
-      throw new ForbiddenRequestError({ message: "Failed to update more privileged identity" });
+    if (!permissionBoundary.isValid)
+      throw new ForbiddenRequestError({
+        name: "PermissionBoundaryError",
+        message: "Failed to update more privileged identity",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
+      });
 
     const existingSlug = await identityProjectAdditionalPrivilegeDAL.findOne({
       slug,
@@ -182,14 +186,18 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     // we need to validate that the privilege given is not higher than the assigning users permission
     // @ts-expect-error this is expected error because of one being really accurate rule definition other being a bit more broader. Both are valid casl rules
     targetIdentityPermission.update(targetIdentityPermission.rules.concat(data.permissions || []));
-    const hasRequiredPrivileges = validatePrivilegeChangeOperation(
+    const permissionBoundary = validatePrivilegeChangeOperation(
       ProjectPermissionIdentityActions.ManagePrivileges,
       ProjectPermissionSub.Identity,
       permission,
       targetIdentityPermission
     );
-    if (!hasRequiredPrivileges)
-      throw new ForbiddenRequestError({ message: "Failed to update more privileged identity" });
+    if (!permissionBoundary.isValid)
+      throw new ForbiddenRequestError({
+        name: "PermissionBoundaryError",
+        message: "Failed to update more privileged identity",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
+      });
 
     const identityPrivilege = await identityProjectAdditionalPrivilegeDAL.findOne({
       slug,
@@ -283,14 +291,18 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-
-    const hasRequiredPrivileges = validatePrivilegeChangeOperation(
+    const permissionBoundary = validatePrivilegeChangeOperation(
       ProjectPermissionIdentityActions.ManagePrivileges,
       ProjectPermissionSub.Identity,
       permission,
       identityRolePermission
     );
-    if (!hasRequiredPrivileges) throw new ForbiddenRequestError({ message: "Failed to edit more privileged identity" });
+    if (!permissionBoundary.isValid)
+      throw new ForbiddenRequestError({
+        name: "PermissionBoundaryError",
+        message: "Failed to edit more privileged identity",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
+      });
 
     const identityPrivilege = await identityProjectAdditionalPrivilegeDAL.findOne({
       slug,

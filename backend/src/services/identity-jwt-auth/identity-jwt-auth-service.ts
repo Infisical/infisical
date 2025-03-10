@@ -508,19 +508,18 @@ export const identityJwtAuthServiceFactory = ({
       actorOrgId
     );
 
-    // revoke auth identity - org permission
-    if (
-      !validatePrivilegeChangeOperation(
-        OrgPermissionIdentityActions.RevokeAuth,
-        OrgPermissionSubjects.Identity,
-        permission,
-        rolePermission
-      )
-    ) {
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      OrgPermissionIdentityActions.RevokeAuth,
+      OrgPermissionSubjects.Identity,
+      permission,
+      rolePermission
+    );
+    if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
-        message: "Failed to revoke JWT auth of identity with more privileged role"
+        name: "PermissionBoundaryError",
+        message: "Failed to revoke jwt auth of identity with more privileged role",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
-    }
 
     const revokedIdentityJwtAuth = await identityJwtAuthDAL.transaction(async (tx) => {
       const deletedJwtAuth = await identityJwtAuthDAL.delete({ identityId }, tx);

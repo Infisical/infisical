@@ -80,16 +80,18 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     // we need to validate that the privilege given is not higher than the assigning users permission
     // @ts-expect-error this is expected error because of one being really accurate rule definition other being a bit more broader. Both are valid casl rules
     targetUserPermission.update(targetUserPermission.rules.concat(customPermission));
-
-    const hasRequiredPriviledges = validatePrivilegeChangeOperation(
+    const permissionBoundary = validatePrivilegeChangeOperation(
       ProjectPermissionMemberActions.ManagePrivileges,
       ProjectPermissionSub.Member,
       permission,
       targetUserPermission
     );
-
-    if (!hasRequiredPriviledges)
-      throw new ForbiddenRequestError({ message: "Failed to update more privileged identity" });
+    if (!permissionBoundary.isValid)
+      throw new ForbiddenRequestError({
+        name: "PermissionBoundaryError",
+        message: "Failed to update more privileged user",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
+      });
 
     const existingSlug = await projectUserAdditionalPrivilegeDAL.findOne({
       slug,
@@ -174,14 +176,18 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     // we need to validate that the privilege given is not higher than the assigning users permission
     // @ts-expect-error this is expected error because of one being really accurate rule definition other being a bit more broader. Both are valid casl rules
     targetUserPermission.update(targetUserPermission.rules.concat(dto.permissions || []));
-    const hasRequiredPrivileges = validatePrivilegeChangeOperation(
+    const permissionBoundary = validatePrivilegeChangeOperation(
       ProjectPermissionMemberActions.ManagePrivileges,
       ProjectPermissionSub.Member,
       permission,
       targetUserPermission
     );
-    if (!hasRequiredPrivileges)
-      throw new ForbiddenRequestError({ message: "Failed to update more privileged identity" });
+    if (!permissionBoundary.isValid)
+      throw new ForbiddenRequestError({
+        name: "PermissionBoundaryError",
+        message: "Failed to update more privileged user",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
+      });
 
     if (dto?.slug) {
       const existingSlug = await projectUserAdditionalPrivilegeDAL.findOne({

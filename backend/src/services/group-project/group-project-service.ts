@@ -102,16 +102,18 @@ export const groupProjectServiceFactory = ({
         project.id
       );
 
-      const hasRequiredPrivileges = validatePrivilegeChangeOperation(
+      const permissionBoundary = validatePrivilegeChangeOperation(
         ProjectPermissionGroupActions.ManagePrivileges,
         ProjectPermissionSub.Groups,
         permission,
         rolePermission
       );
-
-      if (!hasRequiredPrivileges) {
-        throw new ForbiddenRequestError({ message: "Failed to assign group to a more privileged role" });
-      }
+      if (!permissionBoundary.isValid)
+        throw new ForbiddenRequestError({
+          name: "PermissionBoundaryError",
+          message: "Failed to assign group to a more privileged role",
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
     }
 
     // validate custom roles input
@@ -272,17 +274,18 @@ export const groupProjectServiceFactory = ({
         requestedRoleChange,
         project.id
       );
-
-      const hasRequiredPrivileges = validatePrivilegeChangeOperation(
+      const permissionBoundary = validatePrivilegeChangeOperation(
         ProjectPermissionGroupActions.ManagePrivileges,
         ProjectPermissionSub.Groups,
         permission,
         rolePermission
       );
-
-      if (!hasRequiredPrivileges) {
-        throw new ForbiddenRequestError({ message: "Failed to assign group to a more privileged role" });
-      }
+      if (!permissionBoundary.isValid)
+        throw new ForbiddenRequestError({
+          name: "PermissionBoundaryError",
+          message: "Failed to assign group to a more privileged role",
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
     }
 
     // validate custom roles input

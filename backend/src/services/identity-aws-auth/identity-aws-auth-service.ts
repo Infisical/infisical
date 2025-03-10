@@ -339,16 +339,17 @@ export const identityAwsAuthServiceFactory = ({
       actorOrgId
     );
 
-    if (
-      !validatePrivilegeChangeOperation(
-        OrgPermissionIdentityActions.RevokeAuth,
-        OrgPermissionSubjects.Identity,
-        permission,
-        rolePermission
-      )
-    )
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      OrgPermissionIdentityActions.RevokeAuth,
+      OrgPermissionSubjects.Identity,
+      permission,
+      rolePermission
+    );
+    if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
-        message: "Failed to revoke aws auth of identity with more privileged role"
+        name: "PermissionBoundaryError",
+        message: "Failed to revoke aws auth of identity with more privileged role",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
     const revokedIdentityAwsAuth = await identityAwsAuthDAL.transaction(async (tx) => {

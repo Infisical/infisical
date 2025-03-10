@@ -122,7 +122,8 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         reqId: req.id,
         statusCode: HttpStatusCodes.Forbidden,
         message: error.message,
-        error: error.name
+        error: error.name,
+        details: error?.details
       });
     } else if (error instanceof RateLimitError) {
       void res.status(HttpStatusCodes.TooManyRequests).send({
