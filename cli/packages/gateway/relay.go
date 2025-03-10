@@ -4,7 +4,6 @@
 package gateway
 
 import (
-	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -12,12 +11,13 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"runtime"
+
+	// "runtime"
 	"strconv"
 	"syscall"
 
-	udplistener "github.com/Infisical/infisical-merge/packages/gateway/udp_listener"
 	"github.com/Infisical/infisical-merge/packages/systemd"
+	"github.com/pion/dtls/v3"
 	"github.com/pion/logging"
 	"github.com/pion/turn/v4"
 	"github.com/rs/zerolog/log"
@@ -108,7 +108,7 @@ func NewGatewayRelay(configFilePath string) (*GatewayRelay, error) {
 }
 
 func (g *GatewayRelay) Run() error {
-	addr, err := net.ResolveTCPAddr("tcp", "0.0.0.0:"+strconv.Itoa(g.Config.Port))
+	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:"+strconv.Itoa(g.Config.Port))
 	if err != nil {
 		return fmt.Errorf("Failed to parse server address: %s", err)
 	}
@@ -116,13 +116,6 @@ func (g *GatewayRelay) Run() error {
 	// NewLongTermAuthHandler takes a pion.LeveledLogger. This allows you to intercept messages
 	// and process them yourself.
 	logger := logging.NewDefaultLeveledLoggerForScope("lt-creds", logging.LogLevelTrace, os.Stdout)
-
-	// Create `numThreads` UDP listeners to pass into pion/turn
-	// pion/turn itself doesn't allocate any UDP sockets, but lets the user pass them in
-	// this allows us to add logging, storage or modify inbound/outbound traffic
-	// UDP listeners share the same local address:port with setting SO_REUSEPORT and the kernel
-	// will load-balance received packets per the IP 5-tuple
-	listenerConfig := udplistener.SetupListenerConfig()
 
 	publicIP := g.Config.PublicIP
 	relayAddressGenerator := &turn.RelayAddressGeneratorPortRange{
@@ -132,49 +125,54 @@ func (g *GatewayRelay) Run() error {
 		MaxPort:      g.Config.RelayMaxPort,
 	}
 
-	threadNum := runtime.NumCPU()
-	listenerConfigs := make([]turn.ListenerConfig, threadNum)
-	var connAddress string
-	for i := 0; i < threadNum; i++ {
-		conn, listErr := listenerConfig.Listen(context.Background(), addr.Network(), addr.String())
-		if listErr != nil {
-			return fmt.Errorf("Failed to allocate TCP listener at %s:%s %s", addr.Network(), addr.String(), listErr)
-		}
-
-		listenerConfigs[i] = turn.ListenerConfig{
-			RelayAddressGenerator: relayAddressGenerator,
-		}
-
-		if g.Config.isTlsEnabled {
-			caCertPool := x509.NewCertPool()
-			caCertPool.AppendCertsFromPEM([]byte(g.Config.tlsCa))
-
-			listenerConfigs[i].Listener = tls.NewListener(conn, &tls.Config{
-				Certificates: []tls.Certificate{g.Config.tls},
-				ClientCAs:    caCertPool,
-			})
-		} else {
-			listenerConfigs[i].Listener = conn
-		}
-		connAddress = conn.Addr().String()
-	}
-
 	loggerF := logging.NewDefaultLoggerFactory()
 	loggerF.DefaultLogLevel = logging.LogLevelDebug
+
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM([]byte(g.Config.tlsCa))
+
+	listenerConfigs := make([]turn.ListenerConfig, 0)
+	packetConfigs := make([]turn.PacketConnConfig, 0)
+
+	if g.Config.isTlsEnabled {
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM([]byte(g.Config.tlsCa))
+		dtlsServer, err := dtls.Listen("udp", addr, &dtls.Config{
+			Certificates: []tls.Certificate{g.Config.tls},
+			ClientCAs:    caCertPool,
+		})
+		if err != nil {
+			return fmt.Errorf("Failed to start dtls server: %w", err)
+		}
+		listenerConfigs = append(listenerConfigs, turn.ListenerConfig{
+			RelayAddressGenerator: relayAddressGenerator,
+			Listener:              dtlsServer,
+		})
+	} else {
+		udpListener, err := net.ListenPacket("udp4", "0.0.0.0:"+strconv.Itoa(g.Config.Port))
+		if err != nil {
+			return fmt.Errorf("Failed to relay udp listener: %w", err)
+		}
+		packetConfigs = append(packetConfigs, turn.PacketConnConfig{
+			RelayAddressGenerator: relayAddressGenerator,
+			PacketConn:            udpListener,
+		})
+	}
 
 	server, err := turn.NewServer(turn.ServerConfig{
 		Realm:       g.Config.Realm,
 		AuthHandler: turn.LongTermTURNRESTAuthHandler(g.Config.AuthSecret, logger),
 		// PacketConnConfigs is a list of UDP Listeners and the configuration around them
-		ListenerConfigs: listenerConfigs,
-		LoggerFactory:   loggerF,
+		ListenerConfigs:   listenerConfigs,
+		PacketConnConfigs: packetConfigs,
+		LoggerFactory:     loggerF,
 	})
 
 	if err != nil {
 		return fmt.Errorf("Failed to start server: %w", err)
 	}
 
-	log.Info().Msgf("Relay listening on %s\n", connAddress)
+	log.Info().Msgf("Relay listening on %d\n", g.Config.Port)
 
 	// make this compatiable with systemd notify mode
 	systemd.SdNotify(false, systemd.SdNotifyReady)

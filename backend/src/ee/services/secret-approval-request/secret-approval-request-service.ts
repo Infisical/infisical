@@ -503,7 +503,7 @@ export const secretApprovalRequestServiceFactory = ({
     if (!hasMinApproval && !isSoftEnforcement)
       throw new BadRequestError({ message: "Doesn't have minimum approvals needed" });
 
-    const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+    const { botKey, shouldUseSecretV2Bridge, project } = await projectBotService.getBotKey(projectId);
     let mergeStatus;
     if (shouldUseSecretV2Bridge) {
       // this cycle if for bridged secrets
@@ -861,7 +861,6 @@ export const secretApprovalRequestServiceFactory = ({
 
     if (isSoftEnforcement) {
       const cfg = getConfig();
-      const project = await projectDAL.findProjectById(projectId);
       const env = await projectEnvDAL.findOne({ id: policy.envId });
       const requestedByUser = await userDAL.findOne({ id: actorId });
       const approverUsers = await userDAL.find({
@@ -1156,7 +1155,8 @@ export const secretApprovalRequestServiceFactory = ({
           environment: env.name,
           secretPath,
           projectId,
-          requestId: secretApprovalRequest.id
+          requestId: secretApprovalRequest.id,
+          secretKeys: [...new Set(Object.values(data).flatMap((arr) => arr?.map((item) => item.secretName) ?? []))]
         }
       }
     });
@@ -1456,7 +1456,8 @@ export const secretApprovalRequestServiceFactory = ({
           environment: env.name,
           secretPath,
           projectId,
-          requestId: secretApprovalRequest.id
+          requestId: secretApprovalRequest.id,
+          secretKeys: [...new Set(Object.values(data).flatMap((arr) => arr?.map((item) => item.secretKey) ?? []))]
         }
       }
     });

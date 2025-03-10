@@ -61,6 +61,7 @@ import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TWebhookDALFactory } from "../webhook/webhook-dal";
 import { fnTriggerWebhook } from "../webhook/webhook-fns";
+import { WebhookEvents } from "../webhook/webhook-types";
 import { TSecretDALFactory } from "./secret-dal";
 import { interpolateSecrets } from "./secret-fns";
 import {
@@ -623,7 +624,14 @@ export const secretQueueFactory = ({
     await queueService.queue(
       QueueName.SecretWebhook,
       QueueJobs.SecWebhook,
-      { environment, projectId, secretPath },
+      {
+        type: WebhookEvents.SecretModified,
+        payload: {
+          environment,
+          projectId,
+          secretPath
+        }
+      },
       {
         jobId: `secret-webhook-${environment}-${projectId}-${secretPath}`,
         removeOnFail: { count: 5 },
@@ -1055,6 +1063,8 @@ export const secretQueueFactory = ({
 
     const organization = await orgDAL.findOrgByProjectId(projectId);
     const project = await projectDAL.findById(projectId);
+    const secret = await secretV2BridgeDAL.findById(data.secretId);
+    const [folder] = await folderDAL.findSecretPathByFolderIds(project.id, [secret.folderId]);
 
     if (!organization) {
       logger.info(`secretReminderQueue.process: [secretDocument=${data.secretId}] no organization found`);
@@ -1081,6 +1091,19 @@ export const secretQueueFactory = ({
         reminderNote: data.note, // May not be present.
         projectName: project.name,
         organizationName: organization.name
+      }
+    });
+
+    await queueService.queue(QueueName.SecretWebhook, QueueJobs.SecWebhook, {
+      type: WebhookEvents.SecretReminderExpired,
+      payload: {
+        projectName: project.name,
+        projectId: project.id,
+        secretPath: folder?.path,
+        environment: folder?.environmentSlug || "",
+        reminderNote: data.note,
+        secretName: secret?.key,
+        secretId: data.secretId
       }
     });
   });
@@ -1490,14 +1513,17 @@ export const secretQueueFactory = ({
   queueService.start(QueueName.SecretWebhook, async (job) => {
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
-      projectId: job.data.projectId
+      projectId: job.data.payload.projectId
     });
 
     await fnTriggerWebhook({
-      ...job.data,
+      projectId: job.data.payload.projectId,
+      environment: job.data.payload.environment,
+      secretPath: job.data.payload.secretPath || "/",
       projectEnvDAL,
-      webhookDAL,
       projectDAL,
+      webhookDAL,
+      event: job.data,
       secretManagerDecryptor: (value) => secretManagerDecryptor({ cipherTextBlob: value }).toString()
     });
   });

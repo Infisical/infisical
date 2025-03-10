@@ -96,6 +96,7 @@ export const pingGatewayAndVerify = async ({
       error: err as Error
     });
   });
+
   for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
     try {
       const stream = quicClient.connection.newStream("bidi");
@@ -108,17 +109,13 @@ export const pingGatewayAndVerify = async ({
       const { value, done } = await reader.read();
 
       if (done) {
-        throw new BadRequestError({
-          message: "Gateway closed before receiving PONG"
-        });
+        throw new Error("Gateway closed before receiving PONG");
       }
 
       const response = Buffer.from(value).toString();
 
       if (response !== "PONG\n" && response !== "PONG") {
-        throw new BadRequestError({
-          message: `Failed to Ping. Unexpected response: ${response}`
-        });
+        throw new Error(`Failed to Ping. Unexpected response: ${response}`);
       }
 
       reader.releaseLock();
@@ -146,6 +143,7 @@ interface TProxyServer {
   server: net.Server;
   port: number;
   cleanup: () => Promise<void>;
+  getProxyError: () => string;
 }
 
 const setupProxyServer = async ({
@@ -170,6 +168,7 @@ const setupProxyServer = async ({
       error: err as Error
     });
   });
+  const proxyErrorMsg = [""];
 
   return new Promise((resolve, reject) => {
     const server = net.createServer();
@@ -185,31 +184,33 @@ const setupProxyServer = async ({
         const forwardWriter = stream.writable.getWriter();
         await forwardWriter.write(Buffer.from(`FORWARD-TCP ${targetHost}:${targetPort}\n`));
         forwardWriter.releaseLock();
-        /* eslint-disable @typescript-eslint/no-misused-promises */
+
         // Set up bidirectional copy
-        const setupCopy = async () => {
+        const setupCopy = () => {
           // Client to QUIC
           // eslint-disable-next-line
           (async () => {
-            try {
-              const writer = stream.writable.getWriter();
+            const writer = stream.writable.getWriter();
 
-              // Create a handler for client data
-              clientConn.on("data", async (chunk) => {
-                await writer.write(chunk);
+            // Create a handler for client data
+            clientConn.on("data", (chunk) => {
+              writer.write(chunk).catch((err) => {
+                proxyErrorMsg.push((err as Error)?.message);
               });
+            });
 
-              // Handle client connection close
-              clientConn.on("end", async () => {
-                await writer.close();
+            // Handle client connection close
+            clientConn.on("end", () => {
+              writer.close().catch((err) => {
+                logger.error(err);
               });
+            });
 
-              clientConn.on("error", async (err) => {
-                await writer.abort(err);
+            clientConn.on("error", (clientConnErr) => {
+              writer.abort(clientConnErr?.message).catch((err) => {
+                proxyErrorMsg.push((err as Error)?.message);
               });
-            } catch (err) {
-              clientConn.destroy();
-            }
+            });
           })();
 
           // QUIC to Client
@@ -238,15 +239,18 @@ const setupProxyServer = async ({
                 }
               }
             } catch (err) {
+              proxyErrorMsg.push((err as Error)?.message);
               clientConn.destroy();
             }
           })();
         };
-        await setupCopy();
-        //
+
+        setupCopy();
         // Handle connection closure
-        clientConn.on("close", async () => {
-          await stream.destroy();
+        clientConn.on("close", () => {
+          stream.destroy().catch((err) => {
+            proxyErrorMsg.push((err as Error)?.message);
+          });
         });
 
         const cleanup = async () => {
@@ -254,13 +258,18 @@ const setupProxyServer = async ({
           await stream.destroy();
         };
 
-        clientConn.on("error", (err) => {
-          logger.error(err, "Client socket error");
-          void cleanup();
-          reject(err);
+        clientConn.on("error", (clientConnErr) => {
+          logger.error(clientConnErr, "Client socket error");
+          cleanup().catch((err) => {
+            logger.error(err, "Client conn cleanup");
+          });
         });
 
-        clientConn.on("end", cleanup);
+        clientConn.on("end", () => {
+          cleanup().catch((err) => {
+            logger.error(err, "Client conn end");
+          });
+        });
       } catch (err) {
         logger.error(err, "Failed to establish target connection:");
         clientConn.end();
@@ -272,11 +281,11 @@ const setupProxyServer = async ({
       reject(err);
     });
 
-    server.on("close", async () => {
-      await quicClient?.destroy();
+    server.on("close", () => {
+      quicClient?.destroy().catch((err) => {
+        logger.error(err, "Failed to destroy quic client");
+      });
     });
-
-    /* eslint-enable */
 
     server.listen(0, () => {
       const address = server.address();
@@ -293,7 +302,8 @@ const setupProxyServer = async ({
         cleanup: async () => {
           server.close();
           await quicClient?.destroy();
-        }
+        },
+        getProxyError: () => proxyErrorMsg.join(",")
       });
     });
   });
@@ -316,7 +326,7 @@ export const withGatewayProxy = async (
   const { relayHost, relayPort, targetHost, targetPort, tlsOptions, identityId, orgId } = options;
 
   // Setup the proxy server
-  const { port, cleanup } = await setupProxyServer({
+  const { port, cleanup, getProxyError } = await setupProxyServer({
     targetHost,
     targetPort,
     relayPort,
@@ -330,8 +340,12 @@ export const withGatewayProxy = async (
     // Execute the callback with the allocated port
     await callback(port);
   } catch (err) {
-    logger.error(err, "Failed to proxy");
-    throw new BadRequestError({ message: (err as Error)?.message });
+    const proxyErrorMessage = getProxyError();
+    if (proxyErrorMessage) {
+      logger.error(new Error(proxyErrorMessage), "Failed to proxy");
+    }
+    logger.error(err, "Failed to do gateway");
+    throw new BadRequestError({ message: proxyErrorMessage || (err as Error)?.message });
   } finally {
     // Ensure cleanup happens regardless of success or failure
     await cleanup();

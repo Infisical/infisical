@@ -5,6 +5,7 @@ import {
   faArrowRotateRight,
   faCheckCircle,
   faClock,
+  faCopy,
   faDesktop,
   faEyeSlash,
   faPlus,
@@ -462,7 +463,7 @@ export const SecretDetailSidebar = ({
                       <div
                         className={`grid auto-cols-min grid-flow-col gap-2 overflow-hidden ${tagFields.fields.length > 0 ? "pt-2" : ""}`}
                       >
-                        {tagFields.fields.map(({ tagColor, id: formId, slug, id }) => (
+                        {tagFields.fields.map(({ tagColor, id: formId, slug }) => (
                           <Tag
                             className="flex w-min items-center space-x-2"
                             key={formId}
@@ -471,7 +472,8 @@ export const SecretDetailSidebar = ({
                                 createNotification({ type: "error", text: "Access denied" });
                                 return;
                               }
-                              const tag = tags?.find(({ id: tagId }) => id === tagId);
+
+                              const tag = tags?.find(({ slug: tagSlug }) => slug === tagSlug);
                               if (tag) handleTagSelect(tag);
                             }}
                           >
@@ -990,29 +992,49 @@ export const SecretDetailSidebar = ({
                       </Button>
                     )}
                   </ProjectPermissionCan>
-                  <ProjectPermissionCan
-                    I={ProjectPermissionActions.Delete}
-                    a={subject(ProjectPermissionSub.Secrets, {
-                      environment,
-                      secretPath,
-                      secretName: secretKey,
-                      secretTags: selectTagSlugs
-                    })}
-                  >
-                    {(isAllowed) => (
+                  <div className="flex items-center gap-2">
+                    <Tooltip content="Copy Secret ID">
                       <IconButton
-                        colorSchema="danger"
-                        ariaLabel="Delete Secret"
-                        className="border border-mineshaft-600 bg-mineshaft-700 hover:border-red-500/70 hover:bg-red-600/20"
-                        isDisabled={!isAllowed}
-                        onClick={onDeleteSecret}
+                        variant="outline_bg"
+                        ariaLabel="Copy Secret ID"
+                        onClick={async () => {
+                          await navigator.clipboard.writeText(secret.id);
+
+                          createNotification({
+                            title: "Secret ID Copied",
+                            text: "The secret ID has been copied to your clipboard.",
+                            type: "success"
+                          });
+                        }}
                       >
-                        <Tooltip content="Delete Secret">
-                          <FontAwesomeIcon icon={faTrash} />
-                        </Tooltip>
+                        <FontAwesomeIcon icon={faCopy} />
                       </IconButton>
-                    )}
-                  </ProjectPermissionCan>
+                    </Tooltip>
+                    <ProjectPermissionCan
+                      I={ProjectPermissionActions.Delete}
+                      a={subject(ProjectPermissionSub.Secrets, {
+                        environment,
+                        secretPath,
+                        secretName: secretKey,
+                        secretTags: selectTagSlugs
+                      })}
+                    >
+                      {(isAllowed) => (
+                        <Tooltip content="Delete Secret">
+                          <IconButton
+                            colorSchema="danger"
+                            variant="outline_bg"
+                            ariaLabel="Delete Secret"
+                            className="border border-mineshaft-600 bg-mineshaft-700 hover:border-red-500/70 hover:bg-red-600/20"
+                            isDisabled={!isAllowed}
+                            onClick={onDeleteSecret}
+                          >
+                            <FontAwesomeIcon icon={faTrash} />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                    </ProjectPermissionCan>
+                  </div>
                 </div>
               </div>
             </div>

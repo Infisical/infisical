@@ -241,8 +241,8 @@ export const SecretListView = ({
 
         let successMessage;
         if (isReminderEvent) {
-          successMessage = reminderRepeatDays 
-            ? "Successfully saved secret reminder" 
+          successMessage = reminderRepeatDays
+            ? "Successfully saved secret reminder"
             : "Successfully deleted secret reminder";
         } else {
           successMessage = "Successfully saved secrets";
