@@ -83,7 +83,7 @@ export const LogsTableRow = ({ auditLog, isOrgAuditLogs, showActorColumn }: Prop
     hours %= 12;
     hours = hours || 12; // the hour '0' should be '12'
 
-    const formattedDate = `${day}-${month}-${year} at ${hours}:${minutes} ${period}`;
+    const formattedDate = `${month}-${day}-${year} at ${hours}:${minutes} ${period}`;
     return formattedDate;
   };
 
