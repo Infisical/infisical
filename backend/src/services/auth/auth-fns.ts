@@ -66,6 +66,12 @@ export const validatePasswordResetAuthorization = (token?: string) => {
 
   const decodedToken = jwt.verify(AUTH_TOKEN_VALUE, appCfg.AUTH_SECRET) as AuthModeProviderSignUpTokenPayload;
 
+  if (decodedToken.authTokenType !== AuthTokenType.SIGNUP_TOKEN) {
+    throw new UnauthorizedError({
+      message: `The provided authentication token type is not supported.`
+    });
+  }
+
   return decodedToken;
 };
 
