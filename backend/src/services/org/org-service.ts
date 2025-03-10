@@ -19,9 +19,13 @@ import {
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  OrgPermissionActions,
+  OrgPermissionGroupActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { getConfig } from "@app/lib/config/env";
@@ -183,7 +187,7 @@ export const orgServiceFactory = ({
 
   const getOrgGroups = async ({ actor, actorId, orgId, actorAuthMethod, actorOrgId }: TGetOrgGroupsDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Groups);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
     const groups = await groupDAL.findByOrgId(orgId);
     return groups;
   };
@@ -845,7 +849,7 @@ export const orgServiceFactory = ({
           actionProjectType: ActionProjectType.Any
         });
         ForbiddenError.from(projectPermission).throwUnlessCan(
-          ProjectPermissionActions.Create,
+          ProjectPermissionMemberActions.Create,
           ProjectPermissionSub.Member
         );
         const existingMembers = await projectMembershipDAL.find(

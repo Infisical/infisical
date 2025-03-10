@@ -3,7 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import { IconButton, Td, Tooltip, Tr } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import { OrgPermissionGroupActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useOidcManageGroupMembershipsEnabled } from "@app/hooks/api";
 import { TGroupUser } from "@app/hooks/api/groups/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -39,7 +39,7 @@ export const GroupMembershipRow = ({
         </Tooltip>
       </Td>
       <Td className="justify-end">
-        <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Groups}>
+        <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
           {(isAllowed) => {
             return (
               <Tooltip

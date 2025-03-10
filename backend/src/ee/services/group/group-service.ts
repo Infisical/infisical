@@ -349,7 +349,7 @@ export const groupServiceFactory = ({
 
     // check if user has broader or equal to privileges than group
     const permissionBoundary = validatePrivilegeChangeOperation(
-      OrgPermissionGroupActions.ManagePrivileges,
+      OrgPermissionGroupActions.AddMembers,
       OrgPermissionSubjects.Groups,
       permission,
       groupRolePermission
@@ -425,7 +425,7 @@ export const groupServiceFactory = ({
 
     // check if user has broader or equal to privileges than group
     const permissionBoundary = validatePrivilegeChangeOperation(
-      OrgPermissionGroupActions.ManagePrivileges,
+      OrgPermissionGroupActions.RemoveMembers,
       OrgPermissionSubjects.Groups,
       permission,
       groupRolePermission
