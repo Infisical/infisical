@@ -565,7 +565,7 @@ const buildAdminPermissionRules = () => {
 
   can(
     [
-      // not adding DescribeAndReadValue, because it's already covered by DescribeSecret and ReadValue
+      ProjectPermissionSecretActions.DescribeAndReadValue,
       ProjectPermissionSecretActions.DescribeSecret,
       ProjectPermissionSecretActions.ReadValue,
       ProjectPermissionSecretActions.Create,
@@ -634,7 +634,7 @@ const buildMemberPermissionRules = () => {
 
   can(
     [
-      // not adding DescribeAndReadValue, because it's already covered by DescribeSecret and ReadValue
+      ProjectPermissionSecretActions.DescribeAndReadValue,
       ProjectPermissionSecretActions.DescribeSecret,
       ProjectPermissionSecretActions.ReadValue,
       ProjectPermissionSecretActions.Edit,
@@ -811,7 +811,7 @@ export const projectMemberPermissions = buildMemberPermissionRules();
 const buildViewerPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
 
-  // not adding DescribeAndReadValue, because it's already covered by DescribeSecret and ReadValue
+  can(ProjectPermissionSecretActions.DescribeAndReadValue, ProjectPermissionSub.Secrets);
   can(ProjectPermissionSecretActions.DescribeSecret, ProjectPermissionSub.Secrets);
   can(ProjectPermissionSecretActions.ReadValue, ProjectPermissionSub.Secrets);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretFolders);

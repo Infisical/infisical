@@ -14,7 +14,7 @@ import {
   SecretSubjectFields
 } from "./project-permission";
 
-export function CheckForbiddenErrorSecretsSubject(
+export function throwIfMissingSecretReadValueOrDescribePermission(
   permission: MongoAbility<ProjectPermissionSet> | PureAbility,
   action: Extract<
     ProjectPermissionSecretActions,
@@ -43,7 +43,7 @@ export function CheckForbiddenErrorSecretsSubject(
   }
 }
 
-export function CheckCanSecretsSubject(
+export function hasSecretReadValueOrDescribePermission(
   permission: MongoAbility<ProjectPermissionSet>,
   action: Extract<
     ProjectPermissionSecretActions,
@@ -83,12 +83,10 @@ export function checkForInvalidPermissionCombination(permissions: z.infer<typeof
 
         if (!hasReadValue && !hasDescribeSecret) return;
 
-        const hasBothDescribeAndReadValue =
-          permission.action.includes(ProjectPermissionSecretActions.DescribeSecret) &&
-          permission.action.includes(ProjectPermissionSecretActions.ReadValue);
+        const hasBothDescribeAndReadValue = hasReadValue && hasDescribeSecret;
 
         throw new BadRequestError({
-          message: `You have selected Full Read Access, and ${
+          message: `You have selected Read, and ${
             hasBothDescribeAndReadValue
               ? "both Read Value and Describe Secret"
               : hasReadValue
@@ -96,7 +94,7 @@ export function checkForInvalidPermissionCombination(permissions: z.infer<typeof
                 : hasDescribeSecret
                   ? "Describe Secret"
                   : ""
-          }. You cannot select Read Value or Describe Secret if you have selected Full Read Access.`
+          }. You cannot select Read Value or Describe Secret if you have selected Read. The Read permission is a legacy action which has been replaced by Describe Secret and Read Value.`
         });
       }
     }

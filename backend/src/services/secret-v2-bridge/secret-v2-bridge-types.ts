@@ -349,5 +349,5 @@ export type TGetSecretsRawByFolderMappingsDTO = {
   folderMappings: { folderId: string; path: string; environment: string }[];
   userId: string;
   filters: TFindSecretsByFolderIdsFilter;
-  filterByAction?: ProjectPermissionSecretActions;
+  filterByAction?: ProjectPermissionSecretActions.DescribeSecret | ProjectPermissionSecretActions.ReadValue;
 };

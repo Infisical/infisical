@@ -57,7 +57,7 @@ import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { useGetSecretAccessList } from "@app/hooks/api/secrets/queries";
 import { SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 import { ProjectType } from "@app/hooks/api/workspace/types";
-import { secretsPermissionCan } from "@app/lib/fn/permission";
+import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
 import { CreateReminderForm } from "./CreateReminderForm";
 import { formSchema, SecretActionType, TFormSchema } from "./SecretListView.utils";
@@ -141,7 +141,7 @@ export const SecretDetailSidebar = ({
     })
   );
 
-  const cannotReadSecretValue = !secretsPermissionCan(
+  const cannotReadSecretValue = !hasSecretReadValueOrDescribePermission(
     permission,
     ProjectPermissionSecretActions.ReadValue,
     {
@@ -153,12 +153,16 @@ export const SecretDetailSidebar = ({
   );
 
   const isReadOnly =
-    secretsPermissionCan(permission, ProjectPermissionSecretActions.DescribeSecret, {
-      environment,
-      secretPath,
-      secretName: secretKey,
-      secretTags: selectTagSlugs
-    }) &&
+    hasSecretReadValueOrDescribePermission(
+      permission,
+      ProjectPermissionSecretActions.DescribeSecret,
+      {
+        environment,
+        secretPath,
+        secretName: secretKey,
+        secretTags: selectTagSlugs
+      }
+    ) &&
     cannotEditSecret &&
     cannotReadSecretValue;
 
@@ -361,11 +365,11 @@ export const SecretDetailSidebar = ({
                             >
                               <div className="flex items-center gap-2">
                                 <InfisicalSecretInput
-                                  isReadOnly={isReadOnly}
+                                  isReadOnly={isReadOnly || !isAllowed}
                                   environment={environment}
                                   secretPath={secretPath}
                                   key="secret-value"
-                                  isDisabled={isOverridden || !isAllowed}
+                                  isDisabled={isOverridden}
                                   containerClassName="text-bunker-300 w-full hover:border-primary-400/50 border border-mineshaft-600 bg-bunker-800 px-2 py-1.5"
                                   {...field}
                                   autoFocus={false}

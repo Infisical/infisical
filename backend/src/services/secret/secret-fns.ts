@@ -11,7 +11,7 @@ import {
   TSecretFolders,
   TSecrets
 } from "@app/db/schemas";
-import { CheckCanSecretsSubject } from "@app/ee/services/permission/permission-fns";
+import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
@@ -191,7 +191,7 @@ export const recursivelyGetSecretPaths = ({
     // Filter out paths that the user does not have permission to access, and paths that are not in the current path
     const allowedPaths = paths.filter(
       (folder) =>
-        CheckCanSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
+        hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
           environment,
           secretPath: folder.path
         }) && folder.path.startsWith(currentPath === "/" ? "" : currentPath)

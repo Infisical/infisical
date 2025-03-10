@@ -29,11 +29,11 @@ const GeneralPolicyActionSchema = z.object({
 
 const SecretPolicyActionSchema = z.object({
   [ProjectPermissionSecretActions.DescribeAndReadValue]: z.boolean().optional(), // existing read, gives both describe and read value
-  [ProjectPermissionSecretActions.DescribeSecret]: z.boolean().optional(), // describe secret, cannot read value
-  [ProjectPermissionSecretActions.ReadValue]: z.boolean().optional(), // read value
-  [ProjectPermissionSecretActions.Edit]: z.boolean().optional(), // edit secret
-  [ProjectPermissionSecretActions.Delete]: z.boolean().optional(), // delete secret
-  [ProjectPermissionSecretActions.Create]: z.boolean().optional() // create secret
+  [ProjectPermissionSecretActions.DescribeSecret]: z.boolean().optional(),
+  [ProjectPermissionSecretActions.ReadValue]: z.boolean().optional(),
+  [ProjectPermissionSecretActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionSecretActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionSecretActions.Create]: z.boolean().optional()
 });
 
 const CmekPolicyActionSchema = z.object({

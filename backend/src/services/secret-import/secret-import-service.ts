@@ -4,7 +4,10 @@ import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { CheckCanSecretsSubject, CheckForbiddenErrorSecretsSubject } from "@app/ee/services/permission/permission-fns";
+import {
+  hasSecretReadValueOrDescribePermission,
+  throwIfMissingSecretReadValueOrDescribePermission
+} from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
   ProjectPermissionActions,
@@ -94,7 +97,7 @@ export const secretImportServiceFactory = ({
     );
 
     // check if user has permission to import from target path
-    CheckForbiddenErrorSecretsSubject(permission, ProjectPermissionSecretActions.DescribeSecret, {
+    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
       environment: data.environment,
       secretPath: data.path
     });
@@ -404,7 +407,7 @@ export const secretImportServiceFactory = ({
     if (!secretImportDoc.isReplication) throw new BadRequestError({ message: "Import is not in replication mode" });
 
     // check if user has permission to import from target path
-    CheckForbiddenErrorSecretsSubject(permission, ProjectPermissionSecretActions.DescribeSecret, {
+    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
       environment: secretImportDoc.importEnv.slug,
       secretPath: secretImportDoc.importPath
     });
@@ -595,7 +598,7 @@ export const secretImportServiceFactory = ({
     // so anything based on this order will also be in right position
     const secretImports = await secretImportDAL.find({ folderId: folder.id, isReplication: false });
     const allowedImports = secretImports.filter((el) =>
-      CheckCanSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
+      hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
         environment: el.importEnv.slug,
         secretPath: el.importPath
       })
@@ -645,7 +648,7 @@ export const secretImportServiceFactory = ({
         secretImportDAL,
         decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
         hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) =>
-          CheckCanSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
+          hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
             environment: expandEnvironment,
             secretPath: expandSecretPath,
             secretName: expandSecretKey,
@@ -663,7 +666,7 @@ export const secretImportServiceFactory = ({
       });
 
     const allowedImports = secretImports.filter((el) =>
-      CheckCanSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
+      hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
         environment: el.importEnv.slug,
         secretPath: el.importPath
       })

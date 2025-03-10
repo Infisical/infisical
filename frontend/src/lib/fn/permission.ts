@@ -7,7 +7,7 @@ import {
   SecretSubjectFields
 } from "@app/context/ProjectPermissionContext/types";
 
-export function secretsPermissionCan(
+export function hasSecretReadValueOrDescribePermission(
   permission: MongoAbility<ProjectPermissionSet>,
   action: Extract<
     ProjectPermissionSecretActions,

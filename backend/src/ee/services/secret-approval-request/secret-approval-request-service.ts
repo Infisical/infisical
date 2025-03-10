@@ -77,7 +77,7 @@ import {
   TSecretApprovalDetailsDTO,
   TStatusChangeDTO
 } from "./secret-approval-request-types";
-import { CheckForbiddenErrorSecretsSubject } from "../permission/permission-fns";
+import { throwIfMissingSecretReadValueOrDescribePermission } from "../permission/permission-fns";
 
 type TSecretApprovalRequestServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -919,7 +919,7 @@ export const secretApprovalRequestServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    CheckForbiddenErrorSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
+    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
       environment,
       secretPath
     });

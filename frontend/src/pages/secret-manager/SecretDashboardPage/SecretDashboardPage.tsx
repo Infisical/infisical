@@ -38,7 +38,7 @@ import { useGetProjectSecretsDetails } from "@app/hooks/api/dashboard";
 import { DashboardSecretsOrderBy } from "@app/hooks/api/dashboard/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectType } from "@app/hooks/api/workspace/types";
-import { secretsPermissionCan } from "@app/lib/fn/permission";
+import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
 import { SecretTableResourceCount } from "../OverviewPage/components/SecretTableResourceCount";
 import { SecretV2MigrationSection } from "../OverviewPage/components/SecretV2MigrationSection";
@@ -105,7 +105,7 @@ const Page = () => {
   const projectSlug = currentWorkspace?.slug || "";
   const secretPath = (routerQueryParams.secretPath as string) || "/";
 
-  const canReadSecret = secretsPermissionCan(
+  const canReadSecret = hasSecretReadValueOrDescribePermission(
     permission,
     ProjectPermissionSecretActions.DescribeSecret,
     {
@@ -116,7 +116,7 @@ const Page = () => {
     }
   );
 
-  const canReadSecretValue = secretsPermissionCan(
+  const canReadSecretValue = hasSecretReadValueOrDescribePermission(
     permission,
     ProjectPermissionSecretActions.ReadValue,
     {

@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { CheckForbiddenErrorSecretsSubject } from "@app/ee/services/permission/permission-fns";
+import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
   ProjectPermissionActions,
@@ -96,7 +96,7 @@ export const integrationServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
 
-    CheckForbiddenErrorSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
+    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
       environment: sourceEnvironment,
       secretPath
     });
@@ -176,7 +176,7 @@ export const integrationServiceFactory = ({
     const newSecretPath = secretPath || integration.secretPath;
 
     if (environment || secretPath) {
-      CheckForbiddenErrorSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
+      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
         environment: newEnvironment,
         secretPath: newSecretPath
       });

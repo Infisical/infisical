@@ -13,7 +13,10 @@ import {
   SecretType
 } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { CheckCanSecretsSubject, CheckForbiddenErrorSecretsSubject } from "@app/ee/services/permission/permission-fns";
+import {
+  hasSecretReadValueOrDescribePermission,
+  throwIfMissingSecretReadValueOrDescribePermission
+} from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
   ProjectPermissionActions,
@@ -453,10 +456,14 @@ export const secretServiceFactory = ({
       });
     }
 
-    const secretValueHidden = !CheckCanSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
-      environment,
-      secretPath: path
-    });
+    const secretValueHidden = !hasSecretReadValueOrDescribePermission(
+      permission,
+      ProjectPermissionSecretActions.ReadValue,
+      {
+        environment,
+        secretPath: path
+      }
+    );
 
     return {
       ...updatedSecret[0],
@@ -560,10 +567,14 @@ export const secretServiceFactory = ({
       });
     }
 
-    const secretValueHidden = !CheckCanSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
-      environment,
-      secretPath: path
-    });
+    const secretValueHidden = !hasSecretReadValueOrDescribePermission(
+      permission,
+      ProjectPermissionSecretActions.ReadValue,
+      {
+        environment,
+        secretPath: path
+      }
+    );
 
     return {
       ...deletedSecret[0],
@@ -620,7 +631,7 @@ export const secretServiceFactory = ({
 
       paths = deepPaths.map(({ folderId, path: p }) => ({ folderId, path: p }));
     } else {
-      CheckForbiddenErrorSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
+      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
         environment,
         secretPath: path
       });
@@ -645,7 +656,7 @@ export const secretServiceFactory = ({
         // if its service token allow full access over imported one
         actor === ActorType.SERVICE
           ? true
-          : CheckCanSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
+          : hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
               environment: importEnv.slug,
               secretPath: importPath
             })
@@ -699,7 +710,7 @@ export const secretServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    CheckForbiddenErrorSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
+    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
       environment,
       secretPath: path
     });
@@ -750,7 +761,7 @@ export const secretServiceFactory = ({
         // if its service token allow full access over imported one
         actor === ActorType.SERVICE
           ? true
-          : CheckCanSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
+          : hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
               environment: importEnv.slug,
               secretPath: importPath
             })
@@ -969,10 +980,14 @@ export const secretServiceFactory = ({
         secretVersionTagDAL
       });
 
-      const secretValueHidden = !CheckCanSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
-        environment,
-        secretPath: path
-      });
+      const secretValueHidden = !hasSecretReadValueOrDescribePermission(
+        permission,
+        ProjectPermissionSecretActions.ReadValue,
+        {
+          environment,
+          secretPath: path
+        }
+      );
 
       return updatedSecrets.map((secret) => ({
         ...secret,
@@ -1063,10 +1078,14 @@ export const secretServiceFactory = ({
           });
         }
       }
-      const secretValueHidden = !CheckCanSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
-        environment,
-        secretPath: path
-      });
+      const secretValueHidden = !hasSecretReadValueOrDescribePermission(
+        permission,
+        ProjectPermissionSecretActions.ReadValue,
+        {
+          environment,
+          secretPath: path
+        }
+      );
 
       return secrets.map((secret) => ({
         ...secret,
@@ -1257,7 +1276,7 @@ export const secretServiceFactory = ({
           action === ProjectPermissionSecretActions.DescribeSecret ||
           action === ProjectPermissionSecretActions.ReadValue
         ) {
-          return CheckCanSecretsSubject(entityPermission.permission, action, {
+          return hasSecretReadValueOrDescribePermission(entityPermission.permission, action, {
             environment,
             secretPath,
             secretName,
@@ -2429,14 +2448,18 @@ export const secretServiceFactory = ({
         key: botKey
       });
 
-      const secretValueHidden = !CheckCanSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
-        environment: folder.environment.envSlug,
-        secretPath: folderWithPath.path,
-        secretName: secretKey,
-        ...(el.tags?.length && {
-          secretTags: el.tags.map((tag) => tag.slug)
-        })
-      });
+      const secretValueHidden = !hasSecretReadValueOrDescribePermission(
+        permission,
+        ProjectPermissionSecretActions.ReadValue,
+        {
+          environment: folder.environment.envSlug,
+          secretPath: folderWithPath.path,
+          secretName: secretKey,
+          ...(el.tags?.length && {
+            secretTags: el.tags.map((tag) => tag.slug)
+          })
+        }
+      );
 
       return decryptSecretRaw(
         {
@@ -2839,7 +2862,7 @@ export const secretServiceFactory = ({
           sourceAction === ProjectPermissionSecretActions.ReadValue ||
           sourceAction === ProjectPermissionSecretActions.DescribeSecret
         ) {
-          CheckForbiddenErrorSecretsSubject(permission, sourceAction, {
+          throwIfMissingSecretReadValueOrDescribePermission(permission, sourceAction, {
             environment: sourceEnvironment,
             secretPath: sourceSecretPath
           });

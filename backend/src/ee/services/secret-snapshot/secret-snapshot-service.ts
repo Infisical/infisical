@@ -23,7 +23,10 @@ import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secre
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
-import { CheckCanSecretsSubject, CheckForbiddenErrorSecretsSubject } from "../permission/permission-fns";
+import {
+  hasSecretReadValueOrDescribePermission,
+  throwIfMissingSecretReadValueOrDescribePermission
+} from "../permission/permission-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import {
   ProjectPermissionActions,
@@ -103,7 +106,7 @@ export const secretSnapshotServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
 
     // We need to check if the user has access to the secrets in the folder. If we don't do this, a user could theoretically access snapshot secret values even if they don't have read access to the secrets in the folder.
-    CheckForbiddenErrorSecretsSubject(permission, ProjectPermissionSecretActions.DescribeSecret, {
+    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
       environment,
       secretPath: path
     });
@@ -140,7 +143,7 @@ export const secretSnapshotServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
 
     // We need to check if the user has access to the secrets in the folder. If we don't do this, a user could theoretically access snapshot secret values even if they don't have read access to the secrets in the folder.
-    CheckForbiddenErrorSecretsSubject(permission, ProjectPermissionSecretActions.DescribeSecret, {
+    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
       environment,
       secretPath: path
     });
@@ -187,12 +190,16 @@ export const secretSnapshotServiceFactory = ({
       snapshotDetails = {
         ...encryptedSnapshotDetails,
         secretVersions: encryptedSnapshotDetails.secretVersions.map((el) => {
-          const canReadValue = CheckCanSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
-            environment: encryptedSnapshotDetails.environment.slug,
-            secretPath: fullFolderPath,
-            secretName: el.key,
-            secretTags: el.tags.length ? el.tags.map((tag) => tag.slug) : undefined
-          });
+          const canReadValue = hasSecretReadValueOrDescribePermission(
+            permission,
+            ProjectPermissionSecretActions.ReadValue,
+            {
+              environment: encryptedSnapshotDetails.environment.slug,
+              secretPath: fullFolderPath,
+              secretName: el.key,
+              secretTags: el.tags.length ? el.tags.map((tag) => tag.slug) : undefined
+            }
+          );
 
           let secretValue = "";
           if (canReadValue) {
@@ -236,12 +243,16 @@ export const secretSnapshotServiceFactory = ({
             key: botKey
           });
 
-          const canReadValue = CheckCanSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
-            environment: encryptedSnapshotDetails.environment.slug,
-            secretPath: fullFolderPath,
-            secretName: secretKey,
-            secretTags: el.tags.length ? el.tags.map((tag) => tag.slug) : undefined
-          });
+          const canReadValue = hasSecretReadValueOrDescribePermission(
+            permission,
+            ProjectPermissionSecretActions.ReadValue,
+            {
+              environment: encryptedSnapshotDetails.environment.slug,
+              secretPath: fullFolderPath,
+              secretName: secretKey,
+              secretTags: el.tags.length ? el.tags.map((tag) => tag.slug) : undefined
+            }
+          );
 
           let secretValue = "";
 
