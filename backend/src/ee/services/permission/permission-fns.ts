@@ -1,5 +1,5 @@
 /* eslint-disable no-nested-ternary */
-import { ForbiddenError, MongoAbility, subject } from "@casl/ability";
+import { ForbiddenError, MongoAbility, PureAbility, subject } from "@casl/ability";
 import { z } from "zod";
 
 import { TOrganizations } from "@app/db/schemas";
@@ -15,7 +15,7 @@ import {
 } from "./project-permission";
 
 export function CheckForbiddenErrorSecretsSubject(
-  permission: MongoAbility<ProjectPermissionSet>,
+  permission: MongoAbility<ProjectPermissionSet> | PureAbility,
   action: Extract<
     ProjectPermissionSecretActions,
     ProjectPermissionSecretActions.ReadValue | ProjectPermissionSecretActions.DescribeSecret

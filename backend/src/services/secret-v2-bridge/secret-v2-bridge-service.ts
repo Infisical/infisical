@@ -1,4 +1,4 @@
-import { ForbiddenError, PureAbility, subject } from "@casl/ability";
+import { ForbiddenError, MongoAbility, subject } from "@casl/ability";
 import { Knex } from "knex";
 import { z } from "zod";
 
@@ -15,6 +15,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import {
   ProjectPermissionActions,
   ProjectPermissionSecretActions,
+  ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
@@ -123,7 +124,7 @@ export const secretV2BridgeServiceFactory = ({
 }: TSecretV2BridgeServiceFactoryDep) => {
   const $validateSecretReferences = async (
     projectId: string,
-    permission: PureAbility,
+    permission: MongoAbility<ProjectPermissionSet>,
     references: ReturnType<typeof getAllSecretReferences>["nestedReferences"],
     tx?: Knex
   ) => {
@@ -131,6 +132,7 @@ export const secretV2BridgeServiceFactory = ({
 
     const uniqueReferenceEnvironmentSlugs = Array.from(new Set(references.map((el) => el.environment)));
     const referencesEnvironments = await projectEnvDAL.findBySlugs(projectId, uniqueReferenceEnvironmentSlugs, tx);
+
     if (referencesEnvironments.length !== uniqueReferenceEnvironmentSlugs.length)
       throw new BadRequestError({
         message: `Referenced environment not found. Missing ${diff(
@@ -147,6 +149,7 @@ export const secretV2BridgeServiceFactory = ({
       })),
       tx
     );
+
     const referencesFolderGroupByPath = groupBy(referredFolders.filter(Boolean), (i) => `${i?.envId}-${i?.path}`);
     const referredSecrets = await secretDAL.find(
       {
@@ -194,15 +197,12 @@ export const secretV2BridgeServiceFactory = ({
 
     const referredSecretsGroupBySecretKey = groupBy(referredSecrets, (i) => i.key);
     references.forEach((el) => {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionActions.Read,
-        subject(ProjectPermissionSub.Secrets, {
-          environment: el.environment,
-          secretPath: el.secretPath,
-          secretName: el.secretKey,
-          tags: referredSecretsGroupBySecretKey[el.secretKey][0]?.tags?.map((i) => i.slug)
-        })
-      );
+      CheckForbiddenErrorSecretsSubject(permission, ProjectPermissionSecretActions.ReadValue, {
+        environment: el.environment,
+        secretPath: el.secretPath,
+        secretName: el.secretKey,
+        secretTags: referredSecretsGroupBySecretKey[el.secretKey][0]?.tags?.map((i) => i.slug)
+      });
     });
 
     return referredSecrets;
@@ -277,6 +277,7 @@ export const secretV2BridgeServiceFactory = ({
     const allSecretReferences = nestedReferences.concat(
       localReferences.map((el) => ({ secretKey: el, secretPath, environment }))
     );
+
     await $validateSecretReferences(projectId, permission, allSecretReferences);
 
     const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
