@@ -92,7 +92,7 @@ jobs:
             exit 1
           fi
       - name: Install openapi-diff
-        run: go install github.com/tufin/oasdiff@latest
+        run: go install github.com/oasdiff/oasdiff@latest
       - name: Running OpenAPI Spec diff action
         run: oasdiff breaking https://app.infisical.com/api/docs/json http://localhost:4000/api/docs/json --fail-on ERR
       - name: cleanup
