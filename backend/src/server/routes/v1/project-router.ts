@@ -311,6 +311,10 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         slug: z
           .string()
           .trim()
+          .regex(
+            /^[a-z0-9]+(?:[_-][a-z0-9]+)*$/,
+            "Project slug can only contain lowercase letters and numbers, with optional single hyphens (-) or underscores (_) between words. Cannot start or end with a hyphen or underscore."
+          )
           .max(64, { message: "Slug must be 64 characters or fewer" })
           .optional()
           .describe(PROJECTS.UPDATE.slug)

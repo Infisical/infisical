@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -23,7 +23,10 @@ const formSchemaWithSlug = baseFormSchema.extend({
     .string()
     .min(1, "Required")
     .max(64, "Too long, maximum length is 64 characters")
-    .regex(/^[a-zA-Z0-9-]+$/, "Only letters, numbers and hyphens are allowed")
+    .regex(
+      /^[a-z0-9]+(?:[_-][a-z0-9]+)*$/,
+      "Project slug can only contain lowercase letters and numbers, with optional single hyphens (-) or underscores (_) between words. Cannot start or end with a hyphen or underscore."
+    )
 });
 
 type BaseFormData = z.infer<typeof baseFormSchema>;
@@ -35,12 +38,12 @@ type Props = {
 
 export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) => {
   const { currentWorkspace } = useWorkspace();
-  const [currentSlug, setCurrentSlug] = useState(currentWorkspace?.slug);
   const { mutateAsync, isPending } = useUpdateProject();
-
-  const { handleSubmit, control, reset } = useForm<BaseFormData | FormDataWithSlug>({
+  const { handleSubmit, control, reset, watch } = useForm<BaseFormData | FormDataWithSlug>({
     resolver: zodResolver(showSlugField ? formSchemaWithSlug : baseFormSchema)
   });
+
+  const currentSlug = showSlugField ? watch("slug") : currentWorkspace?.slug;
 
   useEffect(() => {
     if (currentWorkspace) {
@@ -49,7 +52,6 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
         description: currentWorkspace.description ?? "",
         ...(showSlugField && { slug: currentWorkspace.slug })
       });
-      setCurrentSlug(currentWorkspace.slug);
     }
   }, [currentWorkspace, showSlugField]);
 
@@ -66,10 +68,6 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
             newSlug: data.slug !== currentWorkspace.slug ? data.slug : undefined
           })
       });
-
-      if (showSlugField && "slug" in data) {
-        setCurrentSlug(data.slug);
-      }
 
       createNotification({
         text: "Successfully updated project overview",
