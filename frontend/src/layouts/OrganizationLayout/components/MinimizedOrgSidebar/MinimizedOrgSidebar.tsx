@@ -563,12 +563,8 @@ export const MinimizedOrgSidebar = () => {
         </nav>
       </aside>
       <Modal isOpen={showAdminsModal} onOpenChange={setShowAdminsModal}>
-        <ModalContent
-          title="Server Administrators"
-          subTitle="View all server administrators"
-          className="max-w-[50%]"
-        >
-          <div className="mb-2 max-h-[70vh]">
+        <ModalContent title="Server Administrators" subTitle="View all server administrators">
+          <div className="mb-2">
             <ServerAdminsPanel />
           </div>
         </ModalContent>
