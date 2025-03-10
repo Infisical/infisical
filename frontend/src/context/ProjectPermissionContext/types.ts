@@ -7,6 +7,15 @@ export enum ProjectPermissionActions {
   Delete = "delete"
 }
 
+export enum ProjectPermissionSecretActions {
+  DescribeAndReadValue = "read",
+  DescribeSecret = "describeSecret",
+  ReadValue = "readValue",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
+}
+
 export enum ProjectPermissionDynamicSecretActions {
   ReadRootCredential = "read-root-credential",
   CreateRootCredential = "create-root-credential",
@@ -138,7 +147,7 @@ export type SecretImportSubjectFields = {
 
 export type ProjectPermissionSet =
   | [
-      ProjectPermissionActions,
+      ProjectPermissionSecretActions,
       (
         | ProjectPermissionSub.Secrets
         | (ForcedSubject<ProjectPermissionSub.Secrets> & SecretSubjectFields)

@@ -17,6 +17,15 @@ export enum ProjectPermissionActions {
   Delete = "delete"
 }
 
+export enum ProjectPermissionSecretActions {
+  DescribeAndReadValue = "read",
+  DescribeSecret = "describeSecret",
+  ReadValue = "readValue",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
+}
+
 export enum ProjectPermissionCmekActions {
   Read = "read",
   Create = "create",
@@ -115,7 +124,7 @@ export type IdentityManagementSubjectFields = {
 
 export type ProjectPermissionSet =
   | [
-      ProjectPermissionActions,
+      ProjectPermissionSecretActions,
       ProjectPermissionSub.Secrets | (ForcedSubject<ProjectPermissionSub.Secrets> & SecretSubjectFields)
     ]
   | [
@@ -429,6 +438,7 @@ const GeneralPermissionSchema = [
   })
 ];
 
+// Do not update this schema anymore, as it's kept purely for backwards compatability. Update V2 schema only.
 export const ProjectPermissionV1Schema = z.discriminatedUnion("subject", [
   z.object({
     subject: z.literal(ProjectPermissionSub.Secrets).describe("The entity this permission pertains to."),
@@ -460,7 +470,7 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
   z.object({
     subject: z.literal(ProjectPermissionSub.Secrets).describe("The entity this permission pertains to."),
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretActions).describe(
       "Describe what action an entity can take."
     ),
     conditions: SecretConditionV2Schema.describe(
@@ -517,7 +527,6 @@ const buildAdminPermissionRules = () => {
 
   // Admins get full access to everything
   [
-    ProjectPermissionSub.Secrets,
     ProjectPermissionSub.SecretFolders,
     ProjectPermissionSub.SecretImports,
     ProjectPermissionSub.SecretApproval,
@@ -550,9 +559,21 @@ const buildAdminPermissionRules = () => {
         ProjectPermissionActions.Create,
         ProjectPermissionActions.Delete
       ],
-      el as ProjectPermissionSub
+      el
     );
   });
+
+  can(
+    [
+      // not adding DescribeAndReadValue, because it's already covered by DescribeSecret and ReadValue
+      ProjectPermissionSecretActions.DescribeSecret,
+      ProjectPermissionSecretActions.ReadValue,
+      ProjectPermissionSecretActions.Create,
+      ProjectPermissionSecretActions.Edit,
+      ProjectPermissionSecretActions.Delete
+    ],
+    ProjectPermissionSub.Secrets
+  );
 
   can(
     [
@@ -613,10 +634,12 @@ const buildMemberPermissionRules = () => {
 
   can(
     [
-      ProjectPermissionActions.Read,
-      ProjectPermissionActions.Edit,
-      ProjectPermissionActions.Create,
-      ProjectPermissionActions.Delete
+      // not adding DescribeAndReadValue, because it's already covered by DescribeSecret and ReadValue
+      ProjectPermissionSecretActions.DescribeSecret,
+      ProjectPermissionSecretActions.ReadValue,
+      ProjectPermissionSecretActions.Edit,
+      ProjectPermissionSecretActions.Create,
+      ProjectPermissionSecretActions.Delete
     ],
     ProjectPermissionSub.Secrets
   );
@@ -788,7 +811,9 @@ export const projectMemberPermissions = buildMemberPermissionRules();
 const buildViewerPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
 
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets);
+  // not adding DescribeAndReadValue, because it's already covered by DescribeSecret and ReadValue
+  can(ProjectPermissionSecretActions.DescribeSecret, ProjectPermissionSub.Secrets);
+  can(ProjectPermissionSecretActions.ReadValue, ProjectPermissionSub.Secrets);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretFolders);
   can(ProjectPermissionDynamicSecretActions.ReadRootCredential, ProjectPermissionSub.DynamicSecrets);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretImports);
@@ -831,6 +856,7 @@ export const buildServiceTokenProjectPermission = (
 ) => {
   const canWrite = permission.includes("write");
   const canRead = permission.includes("read");
+
   const { can, build } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
   scopes.forEach(({ secretPath, environment }) => {
     [ProjectPermissionSub.Secrets, ProjectPermissionSub.SecretImports, ProjectPermissionSub.SecretFolders].forEach(
@@ -853,9 +879,23 @@ export const buildServiceTokenProjectPermission = (
             environment
           });
         }
-        if (canRead) {
+        if (canRead && subject !== ProjectPermissionSub.Secrets) {
           can(ProjectPermissionActions.Read, subject, {
             // @ts-expect-error type
+            secretPath: { $glob: secretPath },
+            environment
+          });
+        }
+
+        if (subject === ProjectPermissionSub.Secrets && canRead) {
+          // @ts-expect-error type
+          can(ProjectPermissionSecretActions.ReadValue, subject as ProjectPermissionSub.Secrets, {
+            secretPath: { $glob: secretPath },
+            environment
+          });
+
+          // @ts-expect-error type
+          can(ProjectPermissionSecretActions.DescribeSecret, subject as ProjectPermissionSub.Secrets, {
             secretPath: { $glob: secretPath },
             environment
           });
@@ -916,7 +956,17 @@ export const backfillPermissionV1SchemaToV2Schema = (
     subject: ProjectPermissionSub.SecretImports as const
   }));
 
+  const secretPolicies = secretSubjects.map(({ subject, ...el }) => ({
+    subject: ProjectPermissionSub.Secrets as const,
+    ...el,
+    action:
+      el.action.includes(ProjectPermissionActions.Read) && !el.action.includes(ProjectPermissionSecretActions.ReadValue)
+        ? el.action.concat(ProjectPermissionSecretActions.ReadValue)
+        : el.action
+  }));
+
   const secretFolderPolicies = secretSubjects
+
     .map(({ subject, ...el }) => ({
       ...el,
       // read permission is not needed anymore
@@ -958,6 +1008,7 @@ export const backfillPermissionV1SchemaToV2Schema = (
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore-error this is valid ts
     secretImportPolicies,
+    secretPolicies,
     dynamicSecretPolicies,
     hasReadOnlyFolder.length ? [] : secretFolderPolicies
   );
