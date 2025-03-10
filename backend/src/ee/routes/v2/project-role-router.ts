@@ -38,7 +38,9 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
           .describe(PROJECT_ROLE.CREATE.slug),
         name: z.string().min(1).trim().describe(PROJECT_ROLE.CREATE.name),
         description: z.string().trim().nullish().describe(PROJECT_ROLE.CREATE.description),
-        permissions: ProjectPermissionV2Schema.array().describe(PROJECT_ROLE.CREATE.permissions)
+        permissions: ProjectPermissionV2Schema.array()
+          .describe(PROJECT_ROLE.CREATE.permissions)
+          .refine(checkForInvalidPermissionCombination)
       }),
       response: {
         200: z.object({

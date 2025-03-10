@@ -81,7 +81,8 @@ export function checkForInvalidPermissionCombination(permissions: z.infer<typeof
         const hasReadValue = permission.action.includes(ProjectPermissionSecretActions.ReadValue);
         const hasDescribeSecret = permission.action.includes(ProjectPermissionSecretActions.DescribeSecret);
 
-        if (!hasReadValue && !hasDescribeSecret) return;
+        // eslint-disable-next-line no-continue
+        if (!hasReadValue && !hasDescribeSecret) continue;
 
         const hasBothDescribeAndReadValue = hasReadValue && hasDescribeSecret;
 
@@ -99,6 +100,8 @@ export function checkForInvalidPermissionCombination(permissions: z.infer<typeof
       }
     }
   }
+
+  return true;
 }
 
 function isAuthMethodSaml(actorAuthMethod: ActorAuthMethod) {

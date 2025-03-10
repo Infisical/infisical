@@ -2,6 +2,7 @@ import slugify from "@sindresorhus/slugify";
 import ms from "ms";
 import { z } from "zod";
 
+import { checkForInvalidPermissionCombination } from "@app/ee/services/permission/permission-fns";
 import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
 import { ProjectUserAdditionalPrivilegeTemporaryMode } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-types";
 import { PROJECT_USER_ADDITIONAL_PRIVILEGE } from "@app/lib/api-docs";
@@ -23,7 +24,9 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
       body: z.object({
         projectMembershipId: z.string().min(1).describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.projectMembershipId),
         slug: slugSchema({ min: 1, max: 60 }).optional().describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.slug),
-        permissions: ProjectPermissionV2Schema.array().describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.permissions),
+        permissions: ProjectPermissionV2Schema.array()
+          .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.permissions)
+          .refine(checkForInvalidPermissionCombination),
         type: z.discriminatedUnion("isTemporary", [
           z.object({
             isTemporary: z.literal(false)
@@ -81,7 +84,8 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
           slug: slugSchema({ min: 1, max: 60 }).describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.UPDATE.slug),
           permissions: ProjectPermissionV2Schema.array()
             .optional()
-            .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.UPDATE.permissions),
+            .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.UPDATE.permissions)
+            .refine(checkForInvalidPermissionCombination),
           type: z.discriminatedUnion("isTemporary", [
             z.object({ isTemporary: z.literal(false).describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.UPDATE.isTemporary) }),
             z.object({
