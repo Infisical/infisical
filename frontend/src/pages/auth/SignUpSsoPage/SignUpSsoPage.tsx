@@ -6,7 +6,6 @@ import { jwtDecode } from "jwt-decode";
 
 import { ROUTE_PATHS } from "@app/const/routes";
 
-import { BackupPDFStep } from "./components/BackupPDFStep";
 import { EmailConfirmationStep } from "./components/EmailConfirmationStep";
 import { UserInfoSSOStep } from "./components/UserInfoSSOStep";
 
@@ -57,13 +56,8 @@ export const SignupSsoPage = () => {
             providerOrganizationName={organizationName}
             password={password}
             setPassword={setPassword}
-            setStep={setStep}
             providerAuthToken={token}
           />
-        );
-      case 2:
-        return (
-          <BackupPDFStep email={username} password={password} name={`${firstName} ${lastName}`} />
         );
       default:
         return <div />;

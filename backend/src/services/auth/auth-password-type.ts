@@ -13,6 +13,18 @@ export type TChangePasswordDTO = {
   password: string;
 };
 
+export enum ResetPasswordV2Type {
+  Recovery = "recovery",
+  LoggedInReset = "logged-in-reset"
+}
+
+export type TResetPasswordV2DTO = {
+  type: ResetPasswordV2Type;
+  userId: string;
+  newPassword: string;
+  oldPassword?: string;
+};
+
 export type TResetPasswordViaBackupKeyDTO = {
   userId: string;
   protectedKey: string;

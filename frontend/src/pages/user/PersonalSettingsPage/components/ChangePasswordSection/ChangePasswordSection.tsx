@@ -11,7 +11,9 @@ import attemptChangePassword from "@app/components/utilities/attemptChangePasswo
 import checkPassword from "@app/components/utilities/checks/password/checkPassword";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { useUser } from "@app/context";
-import { useSendPasswordSetupEmail } from "@app/hooks/api/auth/queries";
+import { useResetUserPasswordV2, useSendPasswordSetupEmail } from "@app/hooks/api/auth/queries";
+import { UserEncryptionVersion } from "@app/hooks/api/auth/types";
+import { useNavigate } from "@tanstack/react-router";
 
 type Errors = {
   tooShort?: string;
@@ -35,6 +37,7 @@ export type FormData = z.infer<typeof schema>;
 
 export const ChangePasswordSection = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const { user } = useUser();
   const { reset, control, handleSubmit } = useForm({
@@ -47,6 +50,7 @@ export const ChangePasswordSection = () => {
   const [errors, setErrors] = useState<Errors>({});
   const [isLoading, setIsLoading] = useState(false);
   const sendSetupPasswordEmail = useSendPasswordSetupEmail();
+  const { mutateAsync: resetPasswordV2 } = useResetUserPasswordV2();
 
   const onFormSubmit = async ({ oldPassword, newPassword }: FormData) => {
     try {
@@ -56,13 +60,20 @@ export const ChangePasswordSection = () => {
       });
 
       if (errorCheck) return;
-
       setIsLoading(true);
-      await attemptChangePassword({
-        email: user.username,
-        currentPassword: oldPassword,
-        newPassword
-      });
+
+      if (user.encryptionVersion === UserEncryptionVersion.V2) {
+        await resetPasswordV2({
+          oldPassword,
+          newPassword
+        });
+      } else {
+        await attemptChangePassword({
+          email: user.username,
+          currentPassword: oldPassword,
+          newPassword
+        });
+      }
 
       setIsLoading(false);
       createNotification({
@@ -71,7 +82,7 @@ export const ChangePasswordSection = () => {
       });
 
       reset();
-      window.location.href = "/login";
+      navigate({ to: "/login" });
     } catch (err) {
       console.error(err);
       setIsLoading(false);

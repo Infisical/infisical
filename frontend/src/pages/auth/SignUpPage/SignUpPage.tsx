@@ -5,7 +5,6 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
 
 import CodeInputStep from "@app/components/auth/CodeInputStep";
-import DownloadBackupPDF from "@app/components/auth/DonwloadBackupPDFStep";
 import EnterEmailStep from "@app/components/auth/EnterEmailStep";
 import InitialSignupStep from "@app/components/auth/InitialSignupStep";
 import TeamInviteStep from "@app/components/auth/TeamInviteStep";
@@ -72,7 +71,7 @@ export const SignUpPage = () => {
         incrementStep();
       }
 
-      if (!serverDetails?.emailConfigured && step === 5) {
+      if (!serverDetails?.emailConfigured && step === 4) {
         navigate({
           to: `/organization/${ProjectType.SecretManager}/overview` as const
         });
@@ -115,17 +114,6 @@ export const SignUpPage = () => {
           attributionSource={attributionSource}
           setAttributionSource={setAttributionSource}
           providerAuthToken={undefined}
-        />
-      );
-    }
-
-    if (registerStep === 4) {
-      return (
-        <DownloadBackupPDF
-          incrementStep={incrementStep}
-          email={email}
-          password={password}
-          name={name}
         />
       );
     }

@@ -6,6 +6,7 @@ import { authRateLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { validateSignUpAuthorization } from "@app/services/auth/auth-fns";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { UserEncryption } from "@app/services/user/user-types";
 
 export const registerPasswordRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -113,20 +114,16 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          message: z.string(),
           user: UsersSchema,
-          token: z.string()
+          token: z.string(),
+          userEncryptionVersion: z.nativeEnum(UserEncryption)
         })
       }
     },
     handler: async (req) => {
-      const { token, user } = await server.services.password.verifyPasswordResetEmail(req.body.email, req.body.code);
+      const passwordReset = await server.services.password.verifyPasswordResetEmail(req.body.email, req.body.code);
 
-      return {
-        message: "Successfully verified email",
-        user,
-        token
-      };
+      return passwordReset;
     }
   });
 

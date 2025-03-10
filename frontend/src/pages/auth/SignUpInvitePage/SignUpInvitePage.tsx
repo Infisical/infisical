@@ -4,7 +4,7 @@ import crypto from "crypto";
 
 import { useState } from "react";
 import { Helmet } from "react-helmet";
-import { faWarning, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import jsrp from "jsrp";
@@ -16,7 +16,6 @@ import InputField from "@app/components/basic/InputField";
 import checkPassword from "@app/components/utilities/checks/password/checkPassword";
 import Aes256Gcm from "@app/components/utilities/cryptography/aes-256-gcm";
 import { deriveArgonKey } from "@app/components/utilities/cryptography/crypto";
-import issueBackupKey from "@app/components/utilities/cryptography/issueBackupKey";
 import { saveTokenToLocalStorage } from "@app/components/utilities/saveTokenToLocalStorage";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button } from "@app/components/v2";
@@ -54,8 +53,6 @@ export const SignupInvitePage = () => {
   const [lastNameError, setLastNameError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState(1);
-  const [, setBackupKeyError] = useState(false);
-  const [, setBackupKeyIssued] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
 
   const [shouldShowMfa, toggleShowMfa] = useToggle(false);
@@ -205,7 +202,9 @@ export const SignupInvitePage = () => {
 
                 localStorage.setItem("orgData.id", orgId);
 
-                setStep(3);
+                navigate({
+                  to: `/organization/${ProjectType.SecretManager}/overview` as const
+                });
               };
 
               await completeSignupFlow();
@@ -367,44 +366,6 @@ export const SignupInvitePage = () => {
     </div>
   );
 
-  // Step 4 of the sign up process (download the emergency kit pdf)
-  const step4 = (
-    <div className="h-7/12 mx-1 mb-36 flex w-full max-w-xs flex-col items-center rounded-xl border border-mineshaft-600 bg-mineshaft-800 px-4 pb-6 pt-8 drop-shadow-xl md:mb-16 md:max-w-lg md:px-6">
-      <p className="flex justify-center bg-gradient-to-br from-white to-mineshaft-300 bg-clip-text text-center text-4xl font-semibold text-transparent">
-        Save your Emergency Kit
-      </p>
-      <div className="text-md mt-4 flex w-full max-w-md flex-col items-center justify-center rounded-md px-2 text-gray-400 md:mt-8">
-        <div>
-          If you get locked out of your account, your Emergency Kit is the only way to sign in.
-        </div>
-        <div className="mt-3">We recommend you download it and keep it somewhere safe.</div>
-      </div>
-      <div className="mx-auto mt-4 flex w-full max-w-xs flex-row items-center rounded-md bg-white/10 p-2 text-gray-400 md:max-w-md">
-        <FontAwesomeIcon icon={faWarning} className="ml-2 mr-4 text-4xl" />
-        It contains your Secret Key which we cannot access or recover for you if you lose it.
-      </div>
-      <div className="mx-auto mt-4 flex max-h-24 max-w-max flex-col items-center justify-center px-2 py-3 text-lg md:px-4 md:py-5">
-        <Button
-          onClick={async () => {
-            await issueBackupKey({
-              email,
-              password,
-              personalName: `${firstName} ${lastName}`,
-              setBackupKeyError,
-              setBackupKeyIssued
-            });
-            navigate({
-              to: `/organization/${ProjectType.SecretManager}/overview` as const
-            });
-          }}
-          size="lg"
-        >
-          Download PDF
-        </Button>
-      </div>
-    </div>
-  );
-
   return (
     <div className="flex h-screen flex-col items-center justify-center bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
       <Helmet>
@@ -425,7 +386,8 @@ export const SignupInvitePage = () => {
               <img src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical Logo" />
             </div>
           </Link>
-          {step === 1 ? stepConfirmEmail : step === 2 ? main : step4}
+          {step === 1 && stepConfirmEmail}
+          {step === 2 && main}
         </>
       )}
     </div>
