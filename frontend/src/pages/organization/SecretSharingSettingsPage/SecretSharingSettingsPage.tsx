@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { PageHeader } from "@app/components/v2";
 import {
-  OrgPermissionAppConnectionActions,
+  OrgPermissionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import { withPermission } from "@app/hoc";
@@ -29,7 +29,7 @@ export const SecretSharingSettingsPage = withPermission(
     );
   },
   {
-    action: OrgPermissionAppConnectionActions.Edit,
+    action: OrgPermissionActions.Edit,
     subject: OrgPermissionSubjects.Settings
   }
 );
