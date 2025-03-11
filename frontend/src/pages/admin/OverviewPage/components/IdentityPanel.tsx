@@ -16,7 +16,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { useDebounce } from "@app/hooks";
-import { useAdminGetIdentities } from "@app/hooks/api/admin/queries.ts";
+import { useAdminGetIdentities } from "@app/hooks/api/admin/queries";
 
 const IdentityPanelTable = () => {
   const [searchIdentityFilter, setSearchIdentityFilter] = useState("");

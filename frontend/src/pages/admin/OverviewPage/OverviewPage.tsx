@@ -34,7 +34,7 @@ import { EncryptionPanel } from "./components/EncryptionPanel";
 import { IntegrationPanel } from "./components/IntegrationPanel";
 import { RateLimitPanel } from "./components/RateLimitPanel";
 import { UserPanel } from "./components/UserPanel";
-import { IdentityPanel } from "@app/pages/admin/OverviewPage/components/IdentityPanel.tsx";
+import { IdentityPanel } from "@app/pages/admin/OverviewPage/components/IdentityPanel";
 
 enum TabSections {
   Settings = "settings",

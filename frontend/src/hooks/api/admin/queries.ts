@@ -10,7 +10,7 @@ import {
   TGetServerRootKmsEncryptionDetails,
   TServerConfig
 } from "./types";
-import { Identity } from "@app/hooks/api/identities/types.ts";
+import { Identity } from "@app/hooks/api/identities/types";
 
 export const adminStandaloneKeys = {
   getUsers: "get-users",
