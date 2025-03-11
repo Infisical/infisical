@@ -40,6 +40,8 @@ export const DatabricksSyncFields = () => {
             isError={Boolean(error)}
             errorText={error?.message}
             label="Secret Scope"
+            tooltipClassName="max-w-md"
+            tooltipText="Infisical recommends creating a designated Databricks secret scope for your sync to prevent removal of secrets not managed by Infisical."
             helperText={
               <Tooltip
                 className="max-w-md"

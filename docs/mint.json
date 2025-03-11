@@ -644,8 +644,7 @@
             "api-reference/endpoints/oidc-auth/attach",
             "api-reference/endpoints/oidc-auth/retrieve",
             "api-reference/endpoints/oidc-auth/update",
-            "api-reference/endpoints/oidc-auth/revoke",
-            "integrations/frameworks/terraform-cloud"
+            "api-reference/endpoints/oidc-auth/revoke"
           ]
         },
         {
