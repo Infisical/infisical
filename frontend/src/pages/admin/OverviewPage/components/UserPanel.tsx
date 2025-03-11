@@ -42,7 +42,6 @@ import {
 } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-const deleteUserUpgradePlanMessage = "Deleting users via Admin UI";
 const addServerAdminUpgradePlanMessage = "Granting another user Server Admin permissions";
 
 const UserPanelTable = ({
@@ -156,14 +155,6 @@ const UserPanelTable = ({
                                   <DropdownMenuItem
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      if (!subscription?.instanceUserManagement) {
-                                        handlePopUpOpen("upgradePlan", {
-                                          username,
-                                          id,
-                                          message: deleteUserUpgradePlanMessage
-                                        });
-                                        return;
-                                      }
                                       handlePopUpOpen("removeUser", { username, id });
                                     }}
                                   >
