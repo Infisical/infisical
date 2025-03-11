@@ -170,6 +170,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           identities: IdentitiesSchema.pick({
             name: true,
+            authMethod: true,
             id: true
           }).array()
         })
