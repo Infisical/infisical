@@ -17,7 +17,7 @@ After=network.target
 [Service]
 Type=simple
 EnvironmentFile=/etc/infisical/gateway.conf
-ExecStart=/usr/local/bin/infisical gateway
+ExecStart=infisical gateway
 Restart=on-failure
 InaccessibleDirectories=/home
 PrivateTmp=yes
