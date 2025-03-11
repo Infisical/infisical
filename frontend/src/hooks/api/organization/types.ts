@@ -15,6 +15,7 @@ export type Organization = {
   defaultMembershipRole: string;
   enforceMfa: boolean;
   selectedMfaMethod?: MfaMethod;
+  secretShareSendToAnyone?: boolean;
 };
 
 export type UpdateOrgDTO = {
@@ -26,6 +27,7 @@ export type UpdateOrgDTO = {
   defaultMembershipRoleSlug?: string;
   enforceMfa?: boolean;
   selectedMfaMethod?: MfaMethod;
+  secretShareSendToAnyone?: boolean;
 };
 
 export type BillingDetails = {

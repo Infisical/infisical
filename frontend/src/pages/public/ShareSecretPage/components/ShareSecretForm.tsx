@@ -7,6 +7,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, IconButton, Input, Select, SelectItem } from "@app/components/v2";
+import { useOrganization } from "@app/context";
 import { useTimedReset } from "@app/hooks";
 import { useCreatePublicSharedSecret, useCreateSharedSecret } from "@app/hooks/api";
 import { SecretSharingAccessType } from "@app/hooks/api/secretSharing";
@@ -45,6 +46,7 @@ type Props = {
 
 export const ShareSecretForm = ({ isPublic, value }: Props) => {
   const [secretLink, setSecretLink] = useState("");
+  const { currentOrg } = useOrganization();
   const [, isCopyingSecret, setCopyTextSecret] = useTimedReset<string>({
     initialState: "Copy to clipboard"
   });
@@ -120,7 +122,14 @@ export const ShareSecretForm = ({ isPublic, value }: Props) => {
               isError={Boolean(error)}
               errorText={error?.message}
             >
-              <Input {...field} placeholder="API Key" type="text" autoComplete="off" autoCorrect="off" spellCheck="false" />
+              <Input
+                {...field}
+                placeholder="API Key"
+                type="text"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck="false"
+              />
             </FormControl>
           )}
         />
@@ -155,7 +164,16 @@ export const ShareSecretForm = ({ isPublic, value }: Props) => {
             errorText={error?.message}
             isOptional
           >
-            <Input {...field} placeholder="Password" type="password" autoComplete="new-password" autoCorrect="off" spellCheck="false" aria-autocomplete="none" data-form-type="other" />
+            <Input
+              {...field}
+              placeholder="Password"
+              type="password"
+              autoComplete="new-password"
+              autoCorrect="off"
+              spellCheck="false"
+              aria-autocomplete="none"
+              data-form-type="other"
+            />
           </FormControl>
         )}
       />
@@ -214,7 +232,9 @@ export const ShareSecretForm = ({ isPublic, value }: Props) => {
                 onValueChange={(e) => onChange(e)}
                 className="w-full"
               >
-                <SelectItem value={SecretSharingAccessType.Anyone}>Anyone</SelectItem>
+                {currentOrg?.secretShareSendToAnyone && (
+                  <SelectItem value={SecretSharingAccessType.Anyone}>Anyone</SelectItem>
+                )}
                 <SelectItem value={SecretSharingAccessType.Organization}>
                   People within your organization
                 </SelectItem>
