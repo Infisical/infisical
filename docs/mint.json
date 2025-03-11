@@ -339,6 +339,7 @@
             "cli/commands/secrets",
             "cli/commands/dynamic-secrets",
             "cli/commands/ssh",
+            "cli/commands/gateway",
             "cli/commands/export",
             "cli/commands/token",
             "cli/commands/service-token",

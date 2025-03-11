@@ -45,19 +45,53 @@ Once authenticated, the Gateway establishes a secure connection with Infisical t
   </Step>
 
   <Step title="Deploy the Gateway">
-    Use the Infisical CLI to deploy the Gateway. You can log in with your machine identity and start the Gateway in one command. The example below demonstrates how to deploy the Gateway using the Universal Auth method:
-    ```bash
-    infisical gateway --token $(infisical login --method=universal-auth --client-id=<> --client-secret=<> --plain)
-    ```
-    Alternatively, if you already have the token, use it directly with the `--token` flag:
-    ```bash
-    infisical gateway --token <your-machine-identity-token>
-    ```
-    Or set it as an environment variable:
-    ```bash
-    export INFISICAL_TOKEN=<your-machine-identity-token>
-    infisical gateway
-    ```
+    Use the Infisical CLI to deploy the Gateway. You can run it directly or install it as a systemd service for production:
+
+    <Tabs>
+      <Tab title="Production (systemd)">
+        For production deployments on Linux, install the Gateway as a systemd service:
+        ```bash
+        sudo infisical gateway install --token <your-machine-identity-token> --domain <your-infisical-domain>
+        sudo systemctl start infisical-gateway
+        ```
+        This will install and start the Gateway as a secure systemd service that:
+        - Runs with restricted privileges:
+          - Runs as root user (required for secure token management)
+          - Restricted access to home directories
+          - Private temporary directory
+        - Automatically restarts on failure
+        - Starts on system boot
+        - Manages token and domain configuration securely in `/etc/infisical/gateway.conf`
+
+        <Warning>
+          The install command requires:
+          - Linux operating system
+          - Root/sudo privileges
+          - Systemd
+        </Warning>
+      </Tab>
+
+      <Tab title="Development (direct)">
+        For development or testing, you can run the Gateway directly. Log in with your machine identity and start the Gateway in one command:
+        ```bash
+        infisical gateway --token $(infisical login --method=universal-auth --client-id=<> --client-secret=<> --plain)
+        ```
+
+        Alternatively, if you already have the token, use it directly with the `--token` flag:
+        ```bash
+        infisical gateway --token <your-machine-identity-token>
+        ```
+
+        Or set it as an environment variable:
+        ```bash
+        export INFISICAL_TOKEN=<your-machine-identity-token>
+        infisical gateway
+        ```
+      </Tab>
+    </Tabs>
+
+    For detailed information about the gateway command and its options, see the [gateway command documentation](/cli/commands/gateway).
+
     <Note>
       Ensure the deployed Gateway has network access to the private resources you intend to connect with Infisical.
     </Note>
@@ -78,4 +112,3 @@ Once authenticated, the Gateway establishes a secure connection with Infisical t
     Once added to a project, the Gateway becomes available for use by any feature that supports Gateways within that project.
   </Step>
 </Steps>
-
