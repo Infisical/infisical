@@ -20,6 +20,7 @@ import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-
 import { SecretUpdateMode } from "../secret-v2-bridge/secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "../secret-v2-bridge/secret-version-tag-dal";
+import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
 
 type TPartialSecret = Pick<TSecrets, "id" | "secretReminderRepeatDays" | "secretReminderNote">;
 
@@ -180,10 +181,18 @@ export enum SecretsOrderBy {
   Name = "name" // "key" for secrets but using name for use across resources
 }
 
+export type TGetAccessibleSecretsDTO = {
+  secretPath: string;
+  environment: string;
+  filterByAction: ProjectPermissionSecretActions.DescribeSecret | ProjectPermissionSecretActions.ReadValue;
+} & TProjectPermission;
+
 export type TGetSecretsRawDTO = {
   expandSecretReferences?: boolean;
   path: string;
   environment: string;
+  viewSecretValue: boolean;
+  throwOnMissingReadValuePermission?: boolean;
   includeImports?: boolean;
   recursive?: boolean;
   tagSlugs?: string[];
@@ -209,6 +218,7 @@ export type TGetASecretRawDTO = {
   secretName: string;
   path: string;
   environment: string;
+  viewSecretValue: boolean;
   expandSecretReferences?: boolean;
   type: "shared" | "personal";
   includeImports?: boolean;
@@ -417,7 +427,7 @@ export type TCreateManySecretsRawFnFactory = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
-    "insertMany" | "upsertSecretReferences" | "findBySecretKeys" | "bulkUpdate" | "deleteMany"
+    "insertMany" | "upsertSecretReferences" | "findBySecretKeys" | "bulkUpdate" | "deleteMany" | "find"
   >;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
@@ -454,7 +464,7 @@ export type TUpdateManySecretsRawFnFactory = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
-    "insertMany" | "upsertSecretReferences" | "findBySecretKeys" | "bulkUpdate" | "deleteMany"
+    "insertMany" | "upsertSecretReferences" | "findBySecretKeys" | "bulkUpdate" | "deleteMany" | "find"
   >;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
