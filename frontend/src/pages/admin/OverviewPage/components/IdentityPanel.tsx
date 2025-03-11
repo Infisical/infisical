@@ -47,20 +47,16 @@ const IdentityPanelTable = () => {
           <Table>
             <THead>
               <Tr>
-                <Th className="w-1/2">Name</Th>
-                <Th className="w-1/2">Auth Method</Th>
+                <Th>Name</Th>
               </Tr>
             </THead>
             <TBody>
               {isPending && <TableSkeleton columns={2} innerKey="identities" />}
               {!isPending &&
                 data?.pages?.map((identities) =>
-                  identities.map(({ name, authMethod, id }) => (
+                  identities.map(({ name, id }) => (
                     <Tr key={`identity-${id}`} className="w-full">
-                      <Td className="w-1/2">{name}</Td>
-                      <Td className="w-1/2">
-                        {authMethod || <span className={"italic text-mineshaft-400"}>None</span>}
-                      </Td>
+                      <Td>{name}</Td>
                     </Tr>
                   ))
                 )}
