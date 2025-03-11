@@ -7,6 +7,7 @@ import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 import { infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { generateUserSrpKeys } from "@app/lib/crypto/srp";
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
@@ -25,7 +26,6 @@ import {
   TSetupPasswordViaBackupKeyDTO
 } from "./auth-password-type";
 import { ActorType, AuthMethod, AuthTokenType } from "./auth-type";
-import { logger } from "@app/lib/logger";
 
 type TAuthPasswordServiceFactoryDep = {
   authDAL: TAuthDALFactory;

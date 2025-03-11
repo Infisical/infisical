@@ -1,8 +1,7 @@
+import { randomInt } from "crypto";
 import handlebars from "handlebars";
 import knex from "knex";
-import { customAlphabet } from "nanoid";
 import { z } from "zod";
-import { randomInt } from 'crypto';
 
 import { withGatewayProxy } from "@app/lib/gateway";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -21,7 +20,7 @@ const DEFAULT_PASSWORD_REQUIREMENTS = {
     digits: 1,
     symbols: 0
   },
-  allowedSymbols: '-_.~!*'
+  allowedSymbols: "-_.~!*"
 };
 
 const ORACLE_PASSWORD_REQUIREMENTS = {
@@ -35,38 +34,46 @@ const generatePassword = (provider: SqlProviders, requirements?: PasswordRequire
 
   try {
     const { length, required, allowedSymbols } = finalReqs;
-    
+
     const chars = {
-      lowercase: 'abcdefghijklmnopqrstuvwxyz',
-      uppercase: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
-      digits: '0123456789',
-      symbols: allowedSymbols || '-_.~!*'
+      lowercase: "abcdefghijklmnopqrstuvwxyz",
+      uppercase: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+      digits: "0123456789",
+      symbols: allowedSymbols || "-_.~!*"
     };
 
     const parts: string[] = [];
-    
+
     if (required.lowercase > 0) {
-      parts.push(...Array(required.lowercase).fill(0).map(() => 
-        chars.lowercase[randomInt(chars.lowercase.length)]
-      ));
+      parts.push(
+        ...Array(required.lowercase)
+          .fill(0)
+          .map(() => chars.lowercase[randomInt(chars.lowercase.length)])
+      );
     }
 
     if (required.uppercase > 0) {
-      parts.push(...Array(required.uppercase).fill(0).map(() => 
-        chars.uppercase[randomInt(chars.uppercase.length)]
-      ));
+      parts.push(
+        ...Array(required.uppercase)
+          .fill(0)
+          .map(() => chars.uppercase[randomInt(chars.uppercase.length)])
+      );
     }
 
     if (required.digits > 0) {
-      parts.push(...Array(required.digits).fill(0).map(() => 
-        chars.digits[randomInt(chars.digits.length)]
-      ));
+      parts.push(
+        ...Array(required.digits)
+          .fill(0)
+          .map(() => chars.digits[randomInt(chars.digits.length)])
+      );
     }
 
     if (required.symbols > 0) {
-      parts.push(...Array(required.symbols).fill(0).map(() => 
-        chars.symbols[randomInt(chars.symbols.length)]
-      ));
+      parts.push(
+        ...Array(required.symbols)
+          .fill(0)
+          .map(() => chars.symbols[randomInt(chars.symbols.length)])
+      );
     }
 
     const requiredTotal = Object.values(required).reduce<number>((a, b) => a + b, 0);
@@ -75,21 +82,23 @@ const generatePassword = (provider: SqlProviders, requirements?: PasswordRequire
     const allowedChars = Object.entries(chars)
       .filter(([key]) => required[key as keyof typeof required] > 0)
       .map(([, value]) => value)
-      .join('');
+      .join("");
 
-    parts.push(...Array(remainingLength).fill(0).map(() => 
-      allowedChars[randomInt(allowedChars.length)]
-    ));
+    parts.push(
+      ...Array(remainingLength)
+        .fill(0)
+        .map(() => allowedChars[randomInt(allowedChars.length)])
+    );
 
     // shuffle the array to mix up the characters
-    for (let i = parts.length - 1; i > 0; i--) {
+    for (let i = parts.length - 1; i > 0; i -= 1) {
       const j = randomInt(i + 1);
       [parts[i], parts[j]] = [parts[j], parts[i]];
     }
 
-    return parts.join('');
+    return parts.join("");
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = error instanceof Error ? error.message : "Unknown error";
     throw new Error(`Failed to generate password: ${message}`);
   }
 };

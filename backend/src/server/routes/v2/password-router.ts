@@ -1,10 +1,10 @@
 import { z } from "zod";
 
 import { authRateLimit } from "@app/server/config/rateLimiter";
-import { validatePasswordResetAuthorization } from "@app/services/auth/auth-fns";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { validatePasswordResetAuthorization } from "@app/services/auth/auth-fns";
 import { ResetPasswordV2Type } from "@app/services/auth/auth-password-type";
+import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerPasswordRouter = async (server: FastifyZodProvider) => {
   server.route({
