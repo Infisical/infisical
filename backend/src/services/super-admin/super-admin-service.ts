@@ -282,12 +282,6 @@ export const superAdminServiceFactory = ({
   };
 
   const deleteUser = async (userId: string) => {
-    if (!licenseService.onPremFeatures?.instanceUserManagement) {
-      throw new BadRequestError({
-        message: "Failed to delete user due to plan restriction. Upgrade to Infisical's Pro plan."
-      });
-    }
-
     const user = await userDAL.deleteById(userId);
     return user;
   };
