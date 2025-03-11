@@ -15,21 +15,8 @@
           lazygit
 
           nodejs_20
+          infisical
         ];
-
-        shellHook = ''
-          # Define a writable directory for global npm packages
-          export NPM_CONFIG_PREFIX="$HOME/.npm-global"
-          export PATH="$NPM_CONFIG_PREFIX/bin:$PATH"
-
-          # Ensure the directory exists
-          mkdir -p "$NPM_CONFIG_PREFIX"
-
-          # Install Infisical CLI only if it's not already installed
-          if ! command -v infisical &>/dev/null; then
-            npm install -g @infisical/cli
-          fi
-        '';
       };
   };
 }
