@@ -174,9 +174,7 @@ export const certificateEstServiceFactory = ({
     if (!estConfig.disableBootstrapCertValidation) {
       const caCerts = estConfig.caChain
         .match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g)
-        ?.map((cert) => {
-          return new x509.X509Certificate(cert);
-        });
+        ?.map((cert) => new x509.X509Certificate(cert));
 
       if (!caCerts) {
         throw new BadRequestError({ message: "Failed to parse certificate chain" });

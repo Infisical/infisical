@@ -6,8 +6,8 @@ import {
   projectViewerPermission
 } from "@app/ee/services/permission/project-permission";
 
-export const getPredefinedRoles = (projectId: string, roleFilter?: ProjectMembershipRole) => {
-  return [
+export const getPredefinedRoles = (projectId: string, roleFilter?: ProjectMembershipRole) =>
+  [
     {
       id: "b11b49a9-09a9-4443-916a-4246f9ff2c69", // dummy userid
       projectId,
@@ -49,4 +49,3 @@ export const getPredefinedRoles = (projectId: string, roleFilter?: ProjectMember
       updatedAt: new Date()
     }
   ].filter(({ slug }) => !roleFilter || roleFilter.includes(slug));
-};

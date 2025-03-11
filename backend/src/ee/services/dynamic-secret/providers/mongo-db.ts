@@ -12,9 +12,7 @@ const generatePassword = (size = 48) => {
   return customAlphabet(charset, 48)(size);
 };
 
-const generateUsername = () => {
-  return alphaNumericNanoId(32);
-};
+const generateUsername = () => alphaNumericNanoId(32);
 
 export const MongoDBProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
@@ -87,11 +85,9 @@ export const MongoDBProvider = (): TDynamicProviderFns => {
     return { entityId: username };
   };
 
-  const renew = async (_inputs: unknown, entityId: string) => {
+  const renew = async (_inputs: unknown, entityId: string) =>
     // No renewal necessary
-    return { entityId };
-  };
-
+    ({ entityId });
   return {
     validateProviderInputs,
     validateConnection,

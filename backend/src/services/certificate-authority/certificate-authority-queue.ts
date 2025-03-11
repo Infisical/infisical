@@ -109,15 +109,13 @@ export const certificateAuthorityQueueFactory = ({
       issuer: ca.dn,
       thisUpdate: new Date(),
       nextUpdate: new Date("2025/12/12"), // TODO: depends on configured rebuild interval
-      entries: revokedCerts.map((revokedCert) => {
-        return {
-          serialNumber: revokedCert.serialNumber,
-          revocationDate: new Date(revokedCert.revokedAt as Date),
-          reason: revokedCert.revocationReason as number,
-          invalidity: new Date("2022/01/01"),
-          issuer: ca.dn
-        };
-      }),
+      entries: revokedCerts.map((revokedCert) => ({
+        serialNumber: revokedCert.serialNumber,
+        revocationDate: new Date(revokedCert.revokedAt as Date),
+        reason: revokedCert.revocationReason as number,
+        invalidity: new Date("2022/01/01"),
+        issuer: ca.dn
+      })),
       signingAlgorithm: alg,
       signingKey: sk
     });

@@ -26,9 +26,9 @@ export const validateAltNamesField = z
     (data) => {
       if (data === "") return true;
       // Split and validate each alt name
-      return data.split(", ").every((name) => {
-        return hostnameRegex.test(name) || z.string().email().safeParse(name).success || isValidIp(name);
-      });
+      return data
+        .split(", ")
+        .every((name) => hostnameRegex.test(name) || z.string().email().safeParse(name).success || isValidIp(name));
     },
     {
       message: "Each alt name must be a valid hostname or email address"

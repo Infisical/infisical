@@ -527,12 +527,10 @@ export const projectServiceFactory = ({
       const workspaceMappedToRoles = groupBy(customRoles, (role) => role.projectId);
 
       const workspacesWithRoles = await Promise.all(
-        workspaces.map(async (workspace) => {
-          return {
-            ...workspace,
-            roles: [...(workspaceMappedToRoles[workspace.id] || []), ...getPredefinedRoles(workspace.id)]
-          };
-        })
+        workspaces.map(async (workspace) => ({
+          ...workspace,
+          roles: [...(workspaceMappedToRoles[workspace.id] || []), ...getPredefinedRoles(workspace.id)]
+        }))
       );
 
       return workspacesWithRoles;

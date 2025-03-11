@@ -36,8 +36,8 @@ import {
   validateAzureKeyVaultConnectionCredentials
 } from "./azure-key-vault";
 
-export const listAppConnectionOptions = () => {
-  return [
+export const listAppConnectionOptions = () =>
+  [
     getAwsConnectionListItem(),
     getGitHubConnectionListItem(),
     getGcpConnectionListItem(),
@@ -45,7 +45,6 @@ export const listAppConnectionOptions = () => {
     getAzureAppConfigurationConnectionListItem(),
     getDatabricksConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
-};
 
 export const encryptAppConnectionCredentials = async ({
   orgId,
@@ -137,8 +136,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
 export const decryptAppConnection = async (
   appConnection: TAppConnections,
   kmsService: TAppConnectionServiceFactoryDep["kmsService"]
-) => {
-  return {
+) =>
+  ({
     ...appConnection,
     credentials: await decryptAppConnectionCredentials({
       encryptedCredentials: appConnection.encryptedCredentials,
@@ -146,5 +145,4 @@ export const decryptAppConnection = async (
       kmsService
     }),
     credentialsHash: generateHash(appConnection.encryptedCredentials)
-  } as TAppConnection;
-};
+  }) as TAppConnection;

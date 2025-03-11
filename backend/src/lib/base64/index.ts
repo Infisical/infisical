@@ -23,6 +23,4 @@ export const isBase64 = (
   return new RegExp(`^${regex}$`, "gi").test(v);
 };
 
-export const getBase64SizeInBytes = (base64String: string) => {
-  return Buffer.from(base64String, "base64").length;
-};
+export const getBase64SizeInBytes = (base64String: string) => Buffer.from(base64String, "base64").length;

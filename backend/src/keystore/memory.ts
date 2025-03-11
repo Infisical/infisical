@@ -25,14 +25,11 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
       }
       return null;
     },
-    incrementBy: async () => {
-      return 1;
-    },
-    acquireLock: () => {
-      return Promise.resolve({
+    incrementBy: async () => 1,
+    acquireLock: () =>
+      Promise.resolve({
         release: () => {}
-      }) as Promise<Lock>;
-    },
+      }) as Promise<Lock>,
     waitTillReady: async () => {}
   };
 };

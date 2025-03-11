@@ -18,8 +18,8 @@ export const buildAuthMethods = ({
   azureId?: string;
   tokenId?: string;
   jwtId?: string;
-}) => {
-  return [
+}) =>
+  [
     ...[uaId ? IdentityAuthMethod.UNIVERSAL_AUTH : null],
     ...[gcpId ? IdentityAuthMethod.GCP_AUTH : null],
     ...[awsId ? IdentityAuthMethod.AWS_AUTH : null],
@@ -29,4 +29,3 @@ export const buildAuthMethods = ({
     ...[tokenId ? IdentityAuthMethod.TOKEN_AUTH : null],
     ...[jwtId ? IdentityAuthMethod.JWT_AUTH : null]
   ].filter((authMethod) => authMethod) as IdentityAuthMethod[];
-};

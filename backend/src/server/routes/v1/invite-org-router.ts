@@ -95,16 +95,15 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      return server.services.org.resendOrgMemberInvitation({
+    handler: async (req) =>
+      server.services.org.resendOrgMemberInvitation({
         orgId: req.permission.orgId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         membershipId: req.body.membershipId
-      });
-    }
+      })
   });
 
   server.route({

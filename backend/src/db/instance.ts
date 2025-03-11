@@ -20,9 +20,7 @@ export const initDbConnection = ({
   // eslint-disable-next-line
   let readReplicaDbs: Knex<any, unknown[]>[];
   // @ts-expect-error the querybuilder type is expected but our intension is to return  a knex instance
-  knex.QueryBuilder.extend("primaryNode", () => {
-    return db;
-  });
+  knex.QueryBuilder.extend("primaryNode", () => db);
 
   // @ts-expect-error the querybuilder type is expected but our intension is to return  a knex instance
   knex.QueryBuilder.extend("replicaNode", () => {
@@ -111,13 +109,9 @@ export const initAuditLogDbConnection = ({
   });
 
   // we add these overrides so that auditLogDb and the primary DB are interchangeable
-  db.primaryNode = () => {
-    return db;
-  };
+  db.primaryNode = () => db;
 
-  db.replicaNode = () => {
-    return db;
-  };
+  db.replicaNode = () => db;
 
   return db;
 };

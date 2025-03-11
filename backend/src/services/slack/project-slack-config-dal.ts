@@ -9,8 +9,8 @@ export type TProjectSlackConfigDALFactory = ReturnType<typeof projectSlackConfig
 export const projectSlackConfigDALFactory = (db: TDbClient) => {
   const projectSlackConfigOrm = ormify(db, TableName.ProjectSlackConfigs);
 
-  const getIntegrationDetailsByProject = (projectId: string, tx?: Knex) => {
-    return (tx || db.replicaNode())(TableName.ProjectSlackConfigs)
+  const getIntegrationDetailsByProject = (projectId: string, tx?: Knex) =>
+    (tx || db.replicaNode())(TableName.ProjectSlackConfigs)
       .join(
         TableName.SlackIntegrations,
         `${TableName.ProjectSlackConfigs}.slackIntegrationId`,
@@ -19,7 +19,6 @@ export const projectSlackConfigDALFactory = (db: TDbClient) => {
       .where("projectId", "=", projectId)
       .select(selectAllTableCols(TableName.ProjectSlackConfigs), selectAllTableCols(TableName.SlackIntegrations))
       .first();
-  };
 
   return { ...projectSlackConfigOrm, getIntegrationDetailsByProject };
 };

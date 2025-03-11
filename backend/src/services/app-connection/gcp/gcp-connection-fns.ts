@@ -17,13 +17,11 @@ import {
   TGcpConnectionConfig
 } from "./gcp-connection-types";
 
-export const getGcpConnectionListItem = () => {
-  return {
-    name: "GCP" as const,
-    app: AppConnection.GCP as const,
-    methods: Object.values(GcpConnectionMethod) as [GcpConnectionMethod.ServiceAccountImpersonation]
-  };
-};
+export const getGcpConnectionListItem = () => ({
+  name: "GCP" as const,
+  app: AppConnection.GCP as const,
+  methods: Object.values(GcpConnectionMethod) as [GcpConnectionMethod.ServiceAccountImpersonation]
+});
 
 export const getGcpConnectionAuthToken = async (appConnection: TGcpConnectionConfig) => {
   const appCfg = getConfig();

@@ -8,15 +8,13 @@ export const buildScimUserList = ({
   scimUsers: TScimUser[];
   startIndex: number;
   limit: number;
-}): TListScimUsers => {
-  return {
-    Resources: scimUsers,
-    itemsPerPage: limit,
-    schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
-    startIndex,
-    totalResults: scimUsers.length
-  };
-};
+}): TListScimUsers => ({
+  Resources: scimUsers,
+  itemsPerPage: limit,
+  schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
+  startIndex,
+  totalResults: scimUsers.length
+});
 
 export const parseScimFilter = (filterToParse: string | undefined) => {
   if (!filterToParse) return {};
@@ -95,15 +93,13 @@ export const buildScimGroupList = ({
   scimGroups: TScimGroup[];
   startIndex: number;
   limit: number;
-}): TListScimGroups => {
-  return {
-    Resources: scimGroups,
-    itemsPerPage: limit,
-    schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
-    startIndex,
-    totalResults: scimGroups.length
-  };
-};
+}): TListScimGroups => ({
+  Resources: scimGroups,
+  itemsPerPage: limit,
+  schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
+  startIndex,
+  totalResults: scimGroups.length
+});
 
 export const buildScimGroup = ({
   groupId,

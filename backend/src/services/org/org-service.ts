@@ -1067,8 +1067,8 @@ export const orgServiceFactory = ({
     await Promise.allSettled(
       mailsForProjectInvitation
         .filter((el) => Boolean(el.email.length))
-        .map(async (el) => {
-          return smtpService.sendMail({
+        .map(async (el) =>
+          smtpService.sendMail({
             template: SmtpTemplates.WorkspaceInvite,
             subjectLine: "Infisical project invitation",
             recipients: el.email,
@@ -1076,8 +1076,8 @@ export const orgServiceFactory = ({
               workspaceName: el.projectName,
               callback_url: `${appCfg.SITE_URL}/login`
             }
-          });
-        })
+          })
+        )
     );
 
     if (!appCfg.isSmtpConfigured) {

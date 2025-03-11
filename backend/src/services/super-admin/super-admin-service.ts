@@ -7,6 +7,7 @@ import { getConfig } from "@app/lib/config/env";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 
 import { TAuthLoginFactory } from "../auth/auth-login-service";
 import { AuthMethod } from "../auth/auth-type";
@@ -143,8 +144,8 @@ export const superAdminServiceFactory = ({
 
       const canServerAdminAccessAfterApply =
         data.enabledLoginMethods.some((loginMethod) =>
-          loginMethodToAuthMethod[loginMethod as LoginMethod].some(
-            (authMethod) => superAdminUser.authMethods?.includes(authMethod)
+          loginMethodToAuthMethod[loginMethod as LoginMethod].some((authMethod) =>
+            superAdminUser.authMethods?.includes(authMethod)
           )
         ) ||
         isUserSamlAccessEnabled ||
@@ -271,15 +272,14 @@ export const superAdminServiceFactory = ({
     return { token, user: userInfo, organization };
   };
 
-  const getUsers = ({ offset, limit, searchTerm, adminsOnly }: TAdminGetUsersDTO) => {
-    return userDAL.getUsersByFilter({
+  const getUsers = ({ offset, limit, searchTerm, adminsOnly }: TAdminGetUsersDTO) =>
+    userDAL.getUsersByFilter({
       limit,
       offset,
       searchTerm,
       sortBy: "username",
       adminsOnly
     });
-  };
 
   const deleteUser = async (userId: string) => {
     const user = await userDAL.deleteById(userId);

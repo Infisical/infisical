@@ -35,9 +35,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Databricks]: DATABRICKS_SYNC_LIST_OPTION
 };
 
-export const listSecretSyncOptions = () => {
-  return Object.values(SECRET_SYNC_LIST_OPTIONS).sort((a, b) => a.name.localeCompare(b.name));
-};
+export const listSecretSyncOptions = () =>
+  Object.values(SECRET_SYNC_LIST_OPTIONS).sort((a, b) => a.name.localeCompare(b.name));
 
 type TSyncSecretDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
@@ -218,7 +217,7 @@ export const parseSyncErrorMessage = (err: unknown): string => {
   } else if (err instanceof AxiosError) {
     errorMessage = err?.response?.data
       ? JSON.stringify(err?.response?.data)
-      : err?.message ?? "An unknown error occurred.";
+      : (err?.message ?? "An unknown error occurred.");
   } else {
     errorMessage = (err as Error)?.message || "An unknown error occurred.";
   }

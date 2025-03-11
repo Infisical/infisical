@@ -2936,23 +2936,21 @@ export const secretServiceFactory = ({
         { tx }
       );
 
-      const decryptedDestinationSecrets = destinationSecretsFromDB.map((secret) => {
-        return {
-          ...secret,
-          secretKey: decryptSymmetric128BitHexKeyUTF8({
-            ciphertext: secret.secretKeyCiphertext,
-            iv: secret.secretKeyIV,
-            tag: secret.secretKeyTag,
-            key: botKey
-          }),
-          secretValue: decryptSymmetric128BitHexKeyUTF8({
-            ciphertext: secret.secretValueCiphertext,
-            iv: secret.secretValueIV,
-            tag: secret.secretValueTag,
-            key: botKey
-          })
-        };
-      });
+      const decryptedDestinationSecrets = destinationSecretsFromDB.map((secret) => ({
+        ...secret,
+        secretKey: decryptSymmetric128BitHexKeyUTF8({
+          ciphertext: secret.secretKeyCiphertext,
+          iv: secret.secretKeyIV,
+          tag: secret.secretKeyTag,
+          key: botKey
+        }),
+        secretValue: decryptSymmetric128BitHexKeyUTF8({
+          ciphertext: secret.secretValueCiphertext,
+          iv: secret.secretValueIV,
+          tag: secret.secretValueTag,
+          key: botKey
+        })
+      }));
 
       const destinationSecretsGroupedByBlindIndex = groupBy(
         decryptedDestinationSecrets.filter(({ secretBlindIndex }) => Boolean(secretBlindIndex)),
@@ -3055,8 +3053,40 @@ export const secretServiceFactory = ({
             tx,
             secretTagDAL,
             secretVersionTagDAL,
-            inputSecrets: locallyCreatedSecrets.map((doc) => {
-              return {
+            inputSecrets: locallyCreatedSecrets.map((doc) => ({
+              keyEncoding: doc.keyEncoding,
+              algorithm: doc.algorithm,
+              type: doc.type,
+              metadata: doc.metadata,
+              secretKeyIV: doc.secretKeyIV,
+              secretKeyTag: doc.secretKeyTag,
+              secretKeyCiphertext: doc.secretKeyCiphertext,
+              secretValueIV: doc.secretValueIV,
+              secretValueTag: doc.secretValueTag,
+              secretValueCiphertext: doc.secretValueCiphertext,
+              secretBlindIndex: doc.secretBlindIndex,
+              secretCommentIV: doc.secretCommentIV,
+              secretCommentTag: doc.secretCommentTag,
+              secretCommentCiphertext: doc.secretCommentCiphertext,
+              skipMultilineEncoding: doc.skipMultilineEncoding
+            }))
+          });
+        }
+        if (locallyUpdatedSecrets.length) {
+          await fnSecretBulkUpdate({
+            projectId: project.id,
+            folderId: destinationFolder.id,
+            secretVersionDAL,
+            secretDAL,
+            tx,
+            secretTagDAL,
+            secretVersionTagDAL,
+            inputSecrets: locallyUpdatedSecrets.map((doc) => ({
+              filter: {
+                folderId: destinationFolder.id,
+                id: destinationSecretsGroupedByBlindIndex[doc.secretBlindIndex as string][0].id
+              },
+              data: {
                 keyEncoding: doc.keyEncoding,
                 algorithm: doc.algorithm,
                 type: doc.type,
@@ -3072,44 +3102,8 @@ export const secretServiceFactory = ({
                 secretCommentTag: doc.secretCommentTag,
                 secretCommentCiphertext: doc.secretCommentCiphertext,
                 skipMultilineEncoding: doc.skipMultilineEncoding
-              };
-            })
-          });
-        }
-        if (locallyUpdatedSecrets.length) {
-          await fnSecretBulkUpdate({
-            projectId: project.id,
-            folderId: destinationFolder.id,
-            secretVersionDAL,
-            secretDAL,
-            tx,
-            secretTagDAL,
-            secretVersionTagDAL,
-            inputSecrets: locallyUpdatedSecrets.map((doc) => {
-              return {
-                filter: {
-                  folderId: destinationFolder.id,
-                  id: destinationSecretsGroupedByBlindIndex[doc.secretBlindIndex as string][0].id
-                },
-                data: {
-                  keyEncoding: doc.keyEncoding,
-                  algorithm: doc.algorithm,
-                  type: doc.type,
-                  metadata: doc.metadata,
-                  secretKeyIV: doc.secretKeyIV,
-                  secretKeyTag: doc.secretKeyTag,
-                  secretKeyCiphertext: doc.secretKeyCiphertext,
-                  secretValueIV: doc.secretValueIV,
-                  secretValueTag: doc.secretValueTag,
-                  secretValueCiphertext: doc.secretValueCiphertext,
-                  secretBlindIndex: doc.secretBlindIndex,
-                  secretCommentIV: doc.secretCommentIV,
-                  secretCommentTag: doc.secretCommentTag,
-                  secretCommentCiphertext: doc.secretCommentCiphertext,
-                  skipMultilineEncoding: doc.skipMultilineEncoding
-                }
-              };
-            })
+              }
+            }))
           });
         }
 

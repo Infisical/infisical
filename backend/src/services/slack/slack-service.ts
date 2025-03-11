@@ -209,13 +209,9 @@ export const slackServiceFactory = ({
         },
         // for our use-case we don't need to implement this because this will only be used
         // when listening for events from slack
-        fetchInstallation: () => {
-          return {} as never;
-        },
+        fetchInstallation: () => ({}) as never,
         // for our use-case we don't need to implement this yet
-        deleteInstallation: () => {
-          return {} as never;
-        }
+        deleteInstallation: () => ({}) as never
       }
     });
   };

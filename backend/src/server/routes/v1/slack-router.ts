@@ -328,12 +328,9 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
       const installer = await server.services.slack.getSlackInstaller();
 
       return installer.handleCallback(req.raw, res.raw, {
-        failureAsync: async () => {
-          return res.redirect(appCfg.SITE_URL as string);
-        },
-        successAsync: async () => {
-          return res.redirect(`${appCfg.SITE_URL}/organization/settings?selectedTab=workflow-integrations`);
-        }
+        failureAsync: async () => res.redirect(appCfg.SITE_URL as string),
+        successAsync: async () =>
+          res.redirect(`${appCfg.SITE_URL}/organization/settings?selectedTab=workflow-integrations`)
       });
     }
   });

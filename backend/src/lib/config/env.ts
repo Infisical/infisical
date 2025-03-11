@@ -291,20 +291,18 @@ export const initEnvConfig = (logger?: CustomLogger) => {
   return envCfg;
 };
 
-export const formatSmtpConfig = () => {
-  return {
-    host: envCfg.SMTP_HOST,
-    port: envCfg.SMTP_PORT,
-    auth:
-      envCfg.SMTP_USERNAME && envCfg.SMTP_PASSWORD
-        ? { user: envCfg.SMTP_USERNAME, pass: envCfg.SMTP_PASSWORD }
-        : undefined,
-    secure: envCfg.SMTP_PORT === 465,
-    from: `"${envCfg.SMTP_FROM_NAME}" <${envCfg.SMTP_FROM_ADDRESS}>`,
-    ignoreTLS: envCfg.SMTP_IGNORE_TLS,
-    requireTLS: envCfg.SMTP_REQUIRE_TLS,
-    tls: {
-      rejectUnauthorized: envCfg.SMTP_TLS_REJECT_UNAUTHORIZED
-    }
-  };
-};
+export const formatSmtpConfig = () => ({
+  host: envCfg.SMTP_HOST,
+  port: envCfg.SMTP_PORT,
+  auth:
+    envCfg.SMTP_USERNAME && envCfg.SMTP_PASSWORD
+      ? { user: envCfg.SMTP_USERNAME, pass: envCfg.SMTP_PASSWORD }
+      : undefined,
+  secure: envCfg.SMTP_PORT === 465,
+  from: `"${envCfg.SMTP_FROM_NAME}" <${envCfg.SMTP_FROM_ADDRESS}>`,
+  ignoreTLS: envCfg.SMTP_IGNORE_TLS,
+  requireTLS: envCfg.SMTP_REQUIRE_TLS,
+  tls: {
+    rejectUnauthorized: envCfg.SMTP_TLS_REJECT_UNAUTHORIZED
+  }
+});

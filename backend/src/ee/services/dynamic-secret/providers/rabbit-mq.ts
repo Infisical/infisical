@@ -15,9 +15,7 @@ const generatePassword = () => {
   return customAlphabet(charset, 64)();
 };
 
-const generateUsername = () => {
-  return alphaNumericNanoId(32);
-};
+const generateUsername = () => alphaNumericNanoId(32);
 
 type TCreateRabbitMQUser = {
   axiosInstance: Axios;
@@ -141,11 +139,9 @@ export const RabbitMqProvider = (): TDynamicProviderFns => {
     return { entityId };
   };
 
-  const renew = async (_inputs: unknown, entityId: string) => {
+  const renew = async (_inputs: unknown, entityId: string) =>
     // No renewal necessary
-    return { entityId };
-  };
-
+    ({ entityId });
   return {
     validateProviderInputs,
     validateConnection,

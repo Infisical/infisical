@@ -296,7 +296,7 @@ export const sshCertificateAuthorityServiceFactory = ({
 
     // set [keyId] depending on if [allowCustomKeyIds] is true or false
     const keyId = sshCertificateTemplate.allowCustomKeyIds
-      ? requestedKeyId ?? `${actor}-${actorId}`
+      ? (requestedKeyId ?? `${actor}-${actorId}`)
       : `${actor}-${actorId}`;
 
     const sshCaSecret = await sshCertificateAuthoritySecretDAL.findOne({ sshCaId: sshCertificateTemplate.sshCaId });
@@ -418,7 +418,7 @@ export const sshCertificateAuthorityServiceFactory = ({
 
     // set [keyId] depending on if [allowCustomKeyIds] is true or false
     const keyId = sshCertificateTemplate.allowCustomKeyIds
-      ? requestedKeyId ?? `${actor}-${actorId}`
+      ? (requestedKeyId ?? `${actor}-${actorId}`)
       : `${actor}-${actorId}`;
 
     const sshCaSecret = await sshCertificateAuthoritySecretDAL.findOne({ sshCaId: sshCertificateTemplate.sshCaId });

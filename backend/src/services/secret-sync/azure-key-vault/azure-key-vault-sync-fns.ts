@@ -43,9 +43,9 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
     // disabled keys to skip sending updates to
     const disabledAzureKeyVaultSecretKeys = getAzureKeyVaultSecrets
       .filter(({ attributes }) => !attributes.enabled)
-      .map((getAzureKeyVaultSecret) => {
-        return getAzureKeyVaultSecret.id.substring(getAzureKeyVaultSecret.id.lastIndexOf("/") + 1);
-      });
+      .map((getAzureKeyVaultSecret) =>
+        getAzureKeyVaultSecret.id.substring(getAzureKeyVaultSecret.id.lastIndexOf("/") + 1)
+      );
 
     let lastSlashIndex: number;
     const res = (

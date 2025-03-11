@@ -20,8 +20,8 @@ export const isValidLdapFilter = (filter: string) => {
  * @param ldapConfig - The LDAP configuration to test
  * @returns {Boolean} isConnected - Whether or not the connection was successful
  */
-export const testLDAPConfig = async (ldapConfig: TLDAPConfig): Promise<boolean> => {
-  return new Promise((resolve) => {
+export const testLDAPConfig = async (ldapConfig: TLDAPConfig): Promise<boolean> =>
+  new Promise((resolve) => {
     const ldapClient = ldapjs.createClient({
       url: ldapConfig.url,
       bindDN: ldapConfig.bindDN,
@@ -53,7 +53,6 @@ export const testLDAPConfig = async (ldapConfig: TLDAPConfig): Promise<boolean> 
       }
     });
   });
-};
 
 /**
  * Search for groups in the LDAP server
@@ -66,8 +65,8 @@ export const searchGroups = async (
   ldapConfig: TLDAPConfig,
   filter: string,
   base: string
-): Promise<{ dn: string; cn: string }[]> => {
-  return new Promise((resolve, reject) => {
+): Promise<{ dn: string; cn: string }[]> =>
+  new Promise((resolve, reject) => {
     const ldapClient = ldapjs.createClient({
       url: ldapConfig.url,
       bindDN: ldapConfig.bindDN,
@@ -115,4 +114,3 @@ export const searchGroups = async (
       }
     );
   });
-};

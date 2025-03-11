@@ -11,9 +11,7 @@ export const createCircularCache = <T>(bufferSize = 10) => {
     bufferIndex = (bufferIndex + 1) % bufferSize;
   };
 
-  const getItem = (id: string) => {
-    return bufferItems.find((i) => i.id === id)?.item;
-  };
+  const getItem = (id: string) => bufferItems.find((i) => i.id === id)?.item;
 
   return { push, getItem };
 };

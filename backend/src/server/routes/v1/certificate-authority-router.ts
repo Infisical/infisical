@@ -50,12 +50,11 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
             .describe(CERTIFICATE_AUTHORITIES.CREATE.requireTemplateForIssuance)
         })
         .refine(
-          (data) => {
+          (data) =>
             // Check that at least one of the specified fields is non-empty
-            return [data.commonName, data.organization, data.ou, data.country, data.province, data.locality].some(
+            [data.commonName, data.organization, data.ou, data.country, data.province, data.locality].some(
               (field) => field !== ""
-            );
-          },
+            ),
           {
             message:
               "At least one of the fields commonName, organization, ou, country, province, or locality must be non-empty",

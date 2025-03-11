@@ -19,11 +19,10 @@ type TPermissionConditionShape = {
 
 const getPermissionSetID = (action: string, subject: string) => `${action}:${subject}`;
 const invertTheOperation = (shouldInvert: boolean, operation: boolean) => (shouldInvert ? !operation : operation);
-const formatConditionOperator = (condition: TPermissionConditionShape | string) => {
-  return (
-    typeof condition === "string" ? { [PermissionConditionOperators.$EQ]: condition } : condition
-  ) as TPermissionConditionShape;
-};
+const formatConditionOperator = (condition: TPermissionConditionShape | string) =>
+  (typeof condition === "string"
+    ? { [PermissionConditionOperators.$EQ]: condition }
+    : condition) as TPermissionConditionShape;
 
 const isOperatorsASubset = (parentSet: TPermissionConditionShape, subset: TPermissionConditionShape) => {
   // we compute each operator against each other in left hand side and right hand side

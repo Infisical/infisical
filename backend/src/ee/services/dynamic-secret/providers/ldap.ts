@@ -21,9 +21,7 @@ const encodePassword = (password?: string) => {
   return base64Password;
 };
 
-const generateUsername = () => {
-  return alphaNumericNanoId(20);
-};
+const generateUsername = () => alphaNumericNanoId(20);
 
 const generateLDIF = ({
   username,
@@ -52,8 +50,8 @@ export const LdapProvider = (): TDynamicProviderFns => {
     return providerInputs;
   };
 
-  const $getClient = async (providerInputs: z.infer<typeof LdapSchema>): Promise<ldapjs.Client> => {
-    return new Promise((resolve, reject) => {
+  const $getClient = async (providerInputs: z.infer<typeof LdapSchema>): Promise<ldapjs.Client> =>
+    new Promise((resolve, reject) => {
       const client = ldapjs.createClient({
         url: providerInputs.url,
         tlsOptions: {
@@ -79,7 +77,6 @@ export const LdapProvider = (): TDynamicProviderFns => {
         }
       });
     });
-  };
 
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
@@ -267,11 +264,9 @@ export const LdapProvider = (): TDynamicProviderFns => {
     return { entityId };
   };
 
-  const renew = async (inputs: unknown, entityId: string) => {
+  const renew = async (inputs: unknown, entityId: string) =>
     // No renewal necessary
-    return { entityId };
-  };
-
+    ({ entityId });
   return {
     validateProviderInputs,
     validateConnection,
