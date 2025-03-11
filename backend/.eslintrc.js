@@ -10,7 +10,6 @@ module.exports = {
     "plugin:@typescript-eslint/recommended-type-checked",
     "airbnb-base",
     "airbnb-typescript/base",
-    "plugin:prettier/recommended",
     "prettier"
   ],
   plugins: ["@typescript-eslint", "simple-import-sort", "import"],
