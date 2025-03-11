@@ -23,6 +23,12 @@ export type TAdminGetUsersDTO = {
   adminsOnly: boolean;
 };
 
+export type TAdminGetIdentitiesDTO = {
+  offset: number;
+  limit: number;
+  searchTerm: string;
+};
+
 export enum LoginMethod {
   EMAIL = "email",
   GOOGLE = "google",

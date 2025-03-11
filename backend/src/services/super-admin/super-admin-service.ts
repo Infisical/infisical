@@ -19,9 +19,11 @@ import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { UserAliasType } from "../user-alias/user-alias-types";
 import { TSuperAdminDALFactory } from "./super-admin-dal";
-import { LoginMethod, TAdminGetUsersDTO, TAdminSignUpDTO } from "./super-admin-types";
+import { LoginMethod, TAdminGetIdentitiesDTO, TAdminGetUsersDTO, TAdminSignUpDTO } from "./super-admin-types";
+import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 
 type TSuperAdminServiceFactoryDep = {
+  identityDAL: Pick<TIdentityDALFactory, "getIdentitiesByFilter">;
   serverCfgDAL: TSuperAdminDALFactory;
   userDAL: TUserDALFactory;
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne">;
@@ -51,6 +53,7 @@ const ADMIN_CONFIG_DB_UUID = "00000000-0000-0000-0000-000000000000";
 export const superAdminServiceFactory = ({
   serverCfgDAL,
   userDAL,
+  identityDAL,
   userAliasDAL,
   authService,
   orgService,
@@ -143,8 +146,8 @@ export const superAdminServiceFactory = ({
 
       const canServerAdminAccessAfterApply =
         data.enabledLoginMethods.some((loginMethod) =>
-          loginMethodToAuthMethod[loginMethod as LoginMethod].some(
-            (authMethod) => superAdminUser.authMethods?.includes(authMethod)
+          loginMethodToAuthMethod[loginMethod as LoginMethod].some((authMethod) =>
+            superAdminUser.authMethods?.includes(authMethod)
           )
         ) ||
         isUserSamlAccessEnabled ||
@@ -292,6 +295,15 @@ export const superAdminServiceFactory = ({
     return user;
   };
 
+  const getIdentities = ({ offset, limit, searchTerm }: TAdminGetIdentitiesDTO) => {
+    return identityDAL.getIdentitiesByFilter({
+      limit,
+      offset,
+      searchTerm,
+      sortBy: "name"
+    });
+  };
+
   const grantServerAdminAccessToUser = async (userId: string) => {
     if (!licenseService.onPremFeatures?.instanceUserManagement) {
       throw new BadRequestError({
@@ -389,6 +401,7 @@ export const superAdminServiceFactory = ({
     adminSignUp,
     getUsers,
     deleteUser,
+    getIdentities,
     getAdminSlackConfig,
     updateRootEncryptionStrategy,
     getConfiguredEncryptionStrategies,

@@ -53,6 +53,11 @@ export type AdminGetUsersFilters = {
   adminsOnly: boolean;
 };
 
+export type AdminGetIdentitiesFilters = {
+  limit: number;
+  searchTerm: string;
+};
+
 export type AdminSlackConfig = {
   clientId: string;
   clientSecret: string;

@@ -635,6 +635,7 @@ export const registerRoutes = async (
   });
   const superAdminService = superAdminServiceFactory({
     userDAL,
+    identityDAL,
     userAliasDAL,
     authService: loginService,
     serverCfgDAL: superAdminDAL,
