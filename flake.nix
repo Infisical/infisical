@@ -14,6 +14,7 @@
           git
           lazygit
 
+          python312Full
           nodejs_20
           nodePackages.prettier
           infisical
