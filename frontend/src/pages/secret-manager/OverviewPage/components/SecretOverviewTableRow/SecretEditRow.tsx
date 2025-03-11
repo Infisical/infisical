@@ -27,9 +27,11 @@ import {
 } from "@app/components/v2";
 import { Blur } from "@app/components/v2/Blur";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
+import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useToggle } from "@app/hooks";
 import { SecretType } from "@app/hooks/api/types";
+import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
 type Props = {
   defaultValue?: string | null;
@@ -79,6 +81,9 @@ export const SecretEditRow = ({
       value: defaultValue || null
     }
   });
+
+  const { permission } = useProjectPermission();
+
   const [isDeleting, setIsDeleting] = useToggle();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
@@ -119,6 +124,11 @@ export const SecretEditRow = ({
     }
     reset({ value });
   };
+
+  const canReadSecretValue = hasSecretReadValueOrDescribePermission(
+    permission,
+    ProjectPermissionSecretActions.ReadValue
+  );
 
   const handleDeleteSecret = useCallback(async () => {
     setIsDeleting.on();
@@ -229,48 +239,43 @@ export const SecretEditRow = ({
                 </IconButton>
               </Tooltip>
             </div>
-            <ProjectPermissionCan
-              I={ProjectPermissionActions.Read}
-              a={ProjectPermissionSub.Secrets}
-            >
-              {(isAllowed) => (
-                <div className="opacity-0 group-hover:opacity-100">
-                  <Modal>
-                    <ModalTrigger asChild>
-                      <div className="opacity-0 group-hover:opacity-100">
-                        <Tooltip
-                          content={
-                            hasSecretReference(defaultValue || "")
-                              ? "Secret Reference Tree"
-                              : "Secret does not contain references"
-                          }
-                        >
-                          <IconButton
-                            variant="plain"
-                            ariaLabel="reference-tree"
-                            className="h-full"
-                            isDisabled={!hasSecretReference(defaultValue || "") || !isAllowed}
-                          >
-                            <FontAwesomeIcon icon={faProjectDiagram} />
-                          </IconButton>
-                        </Tooltip>
-                      </div>
-                    </ModalTrigger>
-                    <ModalContent
-                      title="Secret Reference Details"
-                      subTitle="Visual breakdown of secrets referenced by this secret."
-                      onOpenAutoFocus={(e) => e.preventDefault()} // prevents secret input from displaying value on open
+
+            <div className="opacity-0 group-hover:opacity-100">
+              <Modal>
+                <ModalTrigger asChild>
+                  <div className="opacity-0 group-hover:opacity-100">
+                    <Tooltip
+                      content={
+                        hasSecretReference(defaultValue || "")
+                          ? "Secret Reference Tree"
+                          : "Secret does not contain references"
+                      }
                     >
-                      <SecretReferenceTree
-                        secretPath={secretPath}
-                        environment={environment}
-                        secretKey={secretName}
-                      />
-                    </ModalContent>
-                  </Modal>
-                </div>
-              )}
-            </ProjectPermissionCan>
+                      <IconButton
+                        variant="plain"
+                        ariaLabel="reference-tree"
+                        className="h-full"
+                        isDisabled={!hasSecretReference(defaultValue || "") || !canReadSecretValue}
+                      >
+                        <FontAwesomeIcon icon={faProjectDiagram} />
+                      </IconButton>
+                    </Tooltip>
+                  </div>
+                </ModalTrigger>
+                <ModalContent
+                  title="Secret Reference Details"
+                  subTitle="Visual breakdown of secrets referenced by this secret."
+                  onOpenAutoFocus={(e) => e.preventDefault()} // prevents secret input from displaying value on open
+                >
+                  <SecretReferenceTree
+                    secretPath={secretPath}
+                    environment={environment}
+                    secretKey={secretName}
+                  />
+                </ModalContent>
+              </Modal>
+            </div>
+
             <ProjectPermissionCan
               I={ProjectPermissionActions.Delete}
               a={subject(ProjectPermissionSub.Secrets, {

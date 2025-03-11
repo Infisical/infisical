@@ -24,12 +24,6 @@ export function throwIfMissingSecretReadValueOrDescribePermission(
 ) {
   try {
     if (subjectFields) {
-      ForbiddenError.from(permission).throwUnlessCan(action, subject(ProjectPermissionSub.Secrets, subjectFields));
-    } else {
-      ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.Secrets);
-    }
-  } catch {
-    if (subjectFields) {
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionSecretActions.DescribeAndReadValue,
         subject(ProjectPermissionSub.Secrets, subjectFields)
@@ -39,6 +33,12 @@ export function throwIfMissingSecretReadValueOrDescribePermission(
         ProjectPermissionSecretActions.DescribeAndReadValue,
         ProjectPermissionSub.Secrets
       );
+    }
+  } catch {
+    if (subjectFields) {
+      ForbiddenError.from(permission).throwUnlessCan(action, subject(ProjectPermissionSub.Secrets, subjectFields));
+    } else {
+      ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.Secrets);
     }
   }
 }

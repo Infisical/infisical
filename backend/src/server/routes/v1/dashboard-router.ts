@@ -836,6 +836,51 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
+    url: "/accessible-secrets",
+    config: {
+      rateLimit: secretsLimit
+    },
+    schema: {
+      querystring: z.object({
+        projectId: z.string().trim(),
+        environment: z.string().trim(),
+        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
+        filterByAction: z
+          .enum([ProjectPermissionSecretActions.DescribeSecret, ProjectPermissionSecretActions.ReadValue])
+          .default(ProjectPermissionSecretActions.ReadValue)
+      }),
+      response: {
+        200: z.object({
+          secrets: secretRawSchema
+            .extend({
+              secretPath: z.string().optional()
+            })
+            .array()
+            .optional()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { projectId, environment, secretPath, filterByAction } = req.query;
+
+      const { secrets } = await server.services.secret.getAccessibleSecrets({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        environment,
+        secretPath,
+        projectId,
+        filterByAction
+      });
+
+      return { secrets };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/secrets-by-keys",
     config: {
       rateLimit: secretsLimit

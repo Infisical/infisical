@@ -351,3 +351,10 @@ export type TGetSecretsRawByFolderMappingsDTO = {
   filters: TFindSecretsByFolderIdsFilter;
   filterByAction?: ProjectPermissionSecretActions.DescribeSecret | ProjectPermissionSecretActions.ReadValue;
 };
+
+export type TGetAccessibleSecretsDTO = {
+  environment: string;
+  projectId: string;
+  secretPath: string;
+  filterByAction: ProjectPermissionSecretActions.DescribeSecret | ProjectPermissionSecretActions.ReadValue;
+} & TProjectPermission;

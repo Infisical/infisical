@@ -1,3 +1,4 @@
+import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { TSecretFolder } from "@app/hooks/api/secretFolders/types";
@@ -100,4 +101,13 @@ export type TGetDashboardProjectSecretsByKeys = {
   secretPath: string;
   environment: string;
   keys: string[];
+};
+
+export type TGetAccessibleSecretsDTO = {
+  projectId: string;
+  secretPath: string;
+  environment: string;
+  filterByAction:
+    | ProjectPermissionSecretActions.DescribeSecret
+    | ProjectPermissionSecretActions.ReadValue;
 };

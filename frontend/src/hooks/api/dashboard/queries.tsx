@@ -11,6 +11,7 @@ import {
   DashboardSecretsOrderBy,
   TDashboardProjectSecretsQuickSearch,
   TDashboardProjectSecretsQuickSearchResponse,
+  TGetAccessibleSecretsDTO,
   TGetDashboardProjectSecretsByKeys,
   TGetDashboardProjectSecretsDetailsDTO,
   TGetDashboardProjectSecretsOverviewDTO,
@@ -19,6 +20,8 @@ import {
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
 import { groupBy, unique } from "@app/lib/fn/array";
+
+import { SecretV3Raw } from "../types";
 
 export const dashboardKeys = {
   all: () => ["dashboard"] as const,
@@ -58,7 +61,14 @@ export const dashboardKeys = {
       ...dashboardKeys.getDashboardSecrets({ projectId, secretPath }),
       "quick-search",
       params
-    ] as const
+    ] as const,
+  getAccessibleSecrets: ({
+    projectId,
+    secretPath,
+    environment,
+    filterByAction
+  }: TGetAccessibleSecretsDTO) =>
+    [...dashboardKeys.all(), { projectId, secretPath, environment, filterByAction }] as const
 };
 
 export const fetchProjectSecretsOverview = async ({
@@ -295,6 +305,22 @@ export const fetchProjectSecretsQuickSearch = async ({
   return data;
 };
 
+const fetchAccessibleSecrets = async ({
+  projectId,
+  secretPath,
+  environment,
+  filterByAction
+}: TGetAccessibleSecretsDTO) => {
+  const { data } = await apiRequest.get<{ secrets: SecretV3Raw[] }>(
+    "/api/v1/dashboard/accessible-secrets",
+    {
+      params: { projectId, secretPath, environment, filterByAction }
+    }
+  );
+
+  return data.secrets;
+};
+
 export const useGetProjectSecretsQuickSearch = (
   {
     projectId,
@@ -355,5 +381,34 @@ export const useGetProjectSecretsQuickSearch = (
       };
     }, []),
     placeholderData: (previousData) => previousData
+  });
+};
+
+export const useGetAccessibleSecrets = ({
+  projectId,
+  secretPath,
+  environment,
+  filterByAction,
+  options
+}: TGetAccessibleSecretsDTO & {
+  options?: Omit<
+    UseQueryOptions<
+      SecretV3Raw[],
+      unknown,
+      SecretV3Raw[],
+      ReturnType<typeof dashboardKeys.getAccessibleSecrets>
+    >,
+    "queryKey" | "queryFn"
+  >;
+}) => {
+  return useQuery({
+    ...options,
+    queryKey: dashboardKeys.getAccessibleSecrets({
+      projectId,
+      secretPath,
+      environment,
+      filterByAction
+    }),
+    queryFn: () => fetchAccessibleSecrets({ projectId, secretPath, environment, filterByAction })
   });
 };

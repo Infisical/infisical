@@ -60,6 +60,7 @@ import {
   TCreateSecretDTO,
   TDeleteManySecretDTO,
   TDeleteSecretDTO,
+  TGetAccessibleSecretsDTO,
   TGetASecretDTO,
   TGetSecretReferencesTreeDTO,
   TGetSecretsDTO,
@@ -200,7 +201,7 @@ export const secretV2BridgeServiceFactory = ({
 
     const referredSecretsGroupBySecretKey = groupBy(referredSecrets, (i) => i.key);
     references.forEach((el) => {
-      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
         environment: el.environment,
         secretPath: el.secretPath,
         secretName: el.secretKey,
@@ -1291,7 +1292,7 @@ export const secretV2BridgeServiceFactory = ({
         folderDAL,
         secretImportDAL,
         decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
-        expandSecretReferences: shouldExpandSecretReferences ? expandSecretReferences : undefined,
+        expandSecretReferences: shouldExpandSecretReferences && viewSecretValue ? expandSecretReferences : undefined,
         hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) => {
           return hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
             environment: expandEnvironment,
@@ -1347,7 +1348,7 @@ export const secretV2BridgeServiceFactory = ({
     let secretValue = secret.encryptedValue
       ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
       : "";
-    if (shouldExpandSecretReferences && secretValue) {
+    if (shouldExpandSecretReferences && secretValue && viewSecretValue) {
       // eslint-disable-next-line
       const expandedSecretValue = await expandSecretReferences({
         environment,
@@ -2613,6 +2614,86 @@ export const secretV2BridgeServiceFactory = ({
     return { tree: stackTrace, value: expandedValue };
   };
 
+  const getAccessibleSecrets = async ({
+    projectId,
+    secretPath,
+    environment,
+    filterByAction,
+    actorId,
+    actor,
+    actorAuthMethod,
+    actorOrgId
+  }: TGetAccessibleSecretsDTO) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+      environment,
+      secretPath
+    });
+
+    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+    if (!folder) return { secrets: [] };
+
+    const secrets = await secretDAL.findByFolderIds([folder.id]);
+
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+
+    const decryptedSecrets = secrets
+      .filter((el) => {
+        if (
+          !hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+            environment,
+            secretPath,
+            secretName: el.key,
+            secretTags: el.tags.map((i) => i.slug)
+          })
+        ) {
+          return false;
+        }
+
+        if (filterByAction === ProjectPermissionSecretActions.ReadValue) {
+          return hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+            environment,
+            secretPath,
+            secretName: el.key,
+            secretTags: el.tags.map((i) => i.slug)
+          });
+        }
+
+        return true;
+      })
+      .map((secret) => {
+        return reshapeBridgeSecret(
+          projectId,
+          environment,
+          secretPath,
+          {
+            ...secret,
+            value: secret.encryptedValue
+              ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
+              : "",
+            comment: secret.encryptedComment
+              ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
+              : ""
+          },
+          false
+        );
+      });
+
+    return {
+      secrets: decryptedSecrets
+    };
+  };
+
   return {
     createSecret,
     deleteSecret,
@@ -2630,6 +2711,7 @@ export const secretV2BridgeServiceFactory = ({
     getSecretsMultiEnv,
     getSecretReferenceTree,
     getSecretsByFolderMappings,
-    getSecretById
+    getSecretById,
+    getAccessibleSecrets
   };
 };
