@@ -1,0 +1,107 @@
+---
+title: "infisical gateway"
+description: "Run the Infisical gateway or manage its systemd service"
+---
+
+<Tabs>
+  <Tab title="Run gateway">
+    ```bash
+    infisical gateway --token=<token>
+    ```
+  </Tab>
+  <Tab title="Install service">
+    ```bash
+    sudo infisical gateway install --token=<token> --domain=<domain>
+    ```
+  </Tab>
+</Tabs>
+
+## Description
+
+Run the Infisical gateway in the foreground or manage its systemd service installation. The gateway allows secure communication between your self-hosted Infisical instance and client applications.
+
+## Subcommands & flags
+
+<Accordion title="infisical gateway" defaultOpen="true">
+  Run the Infisical gateway in the foreground. The gateway will connect to the relay service and maintain a persistent connection.
+
+  ```bash
+  infisical gateway --token=<token> --domain=<domain>
+  ```
+
+  ### Flags
+
+  <Accordion title="--token">
+    The machine identity access token to authenticate with Infisical.
+
+    ```bash
+    # Example
+    infisical gateway --token=<token>
+    ```
+
+    You may also expose the token to the CLI by setting the environment variable `INFISICAL_TOKEN` before executing the gateway command.
+  </Accordion>
+
+  <Accordion title="--domain">
+    Domain of your self-hosted Infisical instance.
+
+    ```bash
+    # Example
+    sudo infisical gateway install --domain=https://app.your-domain.com
+    ```
+  </Accordion>
+</Accordion>
+
+<Accordion title="infisical gateway install">
+  Install and enable the gateway as a systemd service. This command must be run with sudo on Linux.
+
+  ```bash
+  sudo infisical gateway install --token=<token> --domain=<domain>
+  ```
+
+  ### Requirements
+  - Must be run on Linux
+  - Must be run with root/sudo privileges
+  - Requires systemd
+
+  ### Flags
+
+  <Accordion title="--token">
+    The machine identity access token to authenticate with Infisical.
+
+    ```bash
+    # Example
+    sudo infisical gateway install --token=<token>
+    ```
+
+    You may also expose the token to the CLI by setting the environment variable `INFISICAL_TOKEN` before executing the install command.
+  </Accordion>
+
+  <Accordion title="--domain">
+    Domain of your self-hosted Infisical instance.
+
+    ```bash
+    # Example
+    sudo infisical gateway install --domain=https://app.your-domain.com
+    ```
+  </Accordion>
+
+  ### Service Details
+  The systemd service is installed with secure defaults:
+  - Service file: `/etc/systemd/system/infisical-gateway.service`
+  - Config file: `/etc/infisical/gateway.conf`
+  - Runs with restricted privileges:
+    - InaccessibleDirectories=/home
+    - PrivateTmp=yes
+    - Resource limits configured for stability
+  - Automatically restarts on failure
+  - Enabled to start on boot
+
+  After installation, manage the service with standard systemd commands:
+  ```bash
+  sudo systemctl start infisical-gateway    # Start the service
+  sudo systemctl stop infisical-gateway     # Stop the service
+  sudo systemctl status infisical-gateway   # Check service status
+  sudo systemctl disable infisical-gateway  # Disable auto-start on boot
+  ```
+</Accordion>

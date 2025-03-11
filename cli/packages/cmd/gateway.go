@@ -28,7 +28,7 @@ var gatewayCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		token, err := util.GetInfisicalToken(cmd)
 		if err != nil {
-			util.HandleError(err, "Unable to parse flag")
+			util.HandleError(err, "Unable to parse token flag")
 		}
 
 		if token == nil {
