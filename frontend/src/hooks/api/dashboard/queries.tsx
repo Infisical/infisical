@@ -68,7 +68,11 @@ export const dashboardKeys = {
     environment,
     filterByAction
   }: TGetAccessibleSecretsDTO) =>
-    [...dashboardKeys.all(), { projectId, secretPath, environment, filterByAction }] as const
+    [
+      ...dashboardKeys.all(),
+      "accessible-secrets",
+      { projectId, secretPath, environment, filterByAction }
+    ] as const
 };
 
 export const fetchProjectSecretsOverview = async ({

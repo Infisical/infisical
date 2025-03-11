@@ -61,6 +61,7 @@ import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
 import { CreateReminderForm } from "./CreateReminderForm";
 import { formSchema, SecretActionType, TFormSchema } from "./SecretListView.utils";
+import { camelCaseToSpaces } from "@app/lib/fn/string";
 
 type Props = {
   isOpen?: boolean;
@@ -729,8 +730,8 @@ export const SecretDetailSidebar = ({
                 <div className="thin-scrollbar flex h-48 flex-col space-y-2 overflow-y-auto overflow-x-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 dark:[color-scheme:dark]">
                   {secretVersion?.map(
                     ({ createdAt, secretValue, secretValueHidden, version, id, actor }) => (
-                      <div className="flex flex-row">
-                        <div key={id} className="flex w-full flex-col space-y-1">
+                      <div className="flex flex-row" key={id}>
+                        <div className="flex w-full flex-col space-y-1">
                           <div className="flex items-center">
                             <div className="w-10">
                               <div className="w-fit rounded-md border border-mineshaft-600 bg-mineshaft-700 px-1 text-sm text-mineshaft-300">
@@ -936,12 +937,9 @@ export const SecretDetailSidebar = ({
                             <div className="rounded-md bg-bunker-500">
                               <Tooltip
                                 content={user.allowedActions
-                                  .map(
-                                    (action) =>
-                                      action.charAt(0).toUpperCase() + action.slice(1).toLowerCase()
-                                  )
+                                  .map((action) => camelCaseToSpaces(action))
                                   .join(", ")}
-                                className="z-[100]"
+                                className="z-[100] capitalize"
                               >
                                 <Link
                                   to={

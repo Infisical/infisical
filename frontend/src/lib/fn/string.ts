@@ -7,3 +7,7 @@ export const formatReservedPaths = (secretPath: string) => {
   }
   return secretPath;
 };
+
+export const camelCaseToSpaces = (input: string) => {
+  return input.replace(/([a-z])([A-Z])/g, "$1 $2");
+};
