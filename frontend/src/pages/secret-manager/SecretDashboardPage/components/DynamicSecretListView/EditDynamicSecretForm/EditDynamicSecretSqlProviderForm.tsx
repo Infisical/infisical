@@ -23,6 +23,23 @@ import { useWorkspace } from "@app/context";
 import { gatewaysQueryKeys, useUpdateDynamicSecret } from "@app/hooks/api";
 import { SqlProviders, TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 
+const passwordRequirementsSchema = z.object({
+  length: z.number().min(1).max(250),
+  required: z.object({
+    lowercase: z.number().min(0),
+    uppercase: z.number().min(0),
+    digits: z.number().min(0),
+    symbols: z.number().min(0)
+  }).refine((data) => {
+    const total = Object.values(data).reduce((sum, count) => sum + count, 0);
+    return total <= 250; // Sanity check for individual validation
+  }, "Sum of required characters cannot exceed 250"),
+  allowedSymbols: z.string().optional()
+}).refine((data) => {
+  const total = Object.values(data.required).reduce((sum, count) => sum + count, 0);
+  return total <= data.length;
+}, "Sum of required characters cannot exceed the total length");
+
 const formSchema = z.object({
   inputs: z
     .object({
@@ -32,6 +49,7 @@ const formSchema = z.object({
       database: z.string().min(1),
       username: z.string().min(1),
       password: z.string().min(1),
+      passwordRequirements: passwordRequirementsSchema.optional(),
       creationStatement: z.string().min(1),
       revocationStatement: z.string().min(1),
       renewStatement: z.string().optional(),
@@ -82,6 +100,17 @@ export const EditDynamicSecretSqlProviderForm = ({
   secretPath,
   projectSlug
 }: Props) => {
+  const getDefaultPasswordRequirements = (provider: SqlProviders) => ({
+    length: provider === SqlProviders.Oracle ? 30 : 48,
+    required: {
+      lowercase: 1,
+      uppercase: 1,
+      digits: 1,
+      symbols: 0
+    },
+    allowedSymbols: '-_.~!*'
+  });
+
   const {
     control,
     watch,
@@ -94,10 +123,13 @@ export const EditDynamicSecretSqlProviderForm = ({
       maxTTL: dynamicSecret.maxTTL,
       newName: dynamicSecret.name,
       inputs: {
-        ...(dynamicSecret.inputs as TForm["inputs"])
+        ...(dynamicSecret.inputs as TForm["inputs"]),
+        passwordRequirements: (dynamicSecret.inputs as TForm["inputs"])?.passwordRequirements || 
+          getDefaultPasswordRequirements((dynamicSecret.inputs as TForm["inputs"])?.client || SqlProviders.Postgres)
       }
     }
   });
+
   const { currentWorkspace } = useWorkspace();
   const { data: projectGateways, isPending: isProjectGatewaysLoading } = useQuery(
     gatewaysQueryKeys.listProjectGateways({ projectId: currentWorkspace.id })
@@ -347,10 +379,13 @@ export const EditDynamicSecretSqlProviderForm = ({
                   </FormControl>
                 )}
               />
-              <Accordion type="multiple" className="w-full bg-mineshaft-700">
-                <AccordionItem value="modify-sql-statement">
-                  <AccordionTrigger>Modify SQL Statements</AccordionTrigger>
+              <Accordion type="multiple" className="mb-2 mt-4 w-full bg-mineshaft-700">
+                <AccordionItem value="advanced">
+                  <AccordionTrigger>Creation, Revocation & Renew Statements (optional)</AccordionTrigger>
                   <AccordionContent>
+                    <div className="mb-4 text-sm text-mineshaft-300">
+                      Customize SQL statements for managing database user lifecycle
+                    </div>
                     <Controller
                       control={control}
                       name="inputs.creationStatement"
@@ -415,6 +450,157 @@ export const EditDynamicSecretSqlProviderForm = ({
                         </FormControl>
                       )}
                     />
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+              <Accordion type="multiple" className="mb-2 mt-4 w-full bg-mineshaft-700">
+                <AccordionItem value="password-config">
+                  <AccordionTrigger>Password Configuration (optional)</AccordionTrigger>
+                  <AccordionContent>
+                    <div className="mb-4 text-sm text-mineshaft-300">
+                      Set constraints on the generated database password
+                    </div>
+                    <div className="space-y-4">
+                      <div>
+                        <Controller
+                          control={control}
+                          name="inputs.passwordRequirements.length"
+                          defaultValue={48}
+                          render={({ field, fieldState: { error } }) => (
+                            <FormControl
+                              label="Password Length"
+                              isError={Boolean(error)}
+                              errorText={error?.message}
+                            >
+                              <Input 
+                                type="number" 
+                                min={1} 
+                                max={250} 
+                                {...field}
+                                onChange={(e) => field.onChange(Number(e.target.value))}
+                              />
+                            </FormControl>
+                          )}
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium">Minimum Required Character Counts</h4>
+                        <div className="text-sm text-gray-500">
+                          {(() => {
+                            const total = Object.values(watch("inputs.passwordRequirements.required") || {}).reduce((sum, count) => sum + Number(count || 0), 0);
+                            const length = watch("inputs.passwordRequirements.length") || 0;
+                            const isError = total > length;
+                            return (
+                              <span className={isError ? "text-red-500" : ""}>
+                                Total required characters: {total} {isError ? `(exceeds length of ${length})` : ""}
+                              </span>
+                            );
+                          })()}
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <Controller
+                            control={control}
+                            name="inputs.passwordRequirements.required.lowercase"
+                            defaultValue={1}
+                            render={({ field, fieldState: { error } }) => (
+                              <FormControl
+                                label="Lowercase Count"
+                                isError={Boolean(error)}
+                                errorText={error?.message}
+                                helperText="Minimum number of lowercase letters"
+                              >
+                                <Input 
+                                  type="number" 
+                                  min={0} 
+                                  {...field}
+                                  onChange={(e) => field.onChange(Number(e.target.value))}
+                                />
+                              </FormControl>
+                            )}
+                          />
+                          <Controller
+                            control={control}
+                            name="inputs.passwordRequirements.required.uppercase"
+                            defaultValue={1}
+                            render={({ field, fieldState: { error } }) => (
+                              <FormControl
+                                label="Uppercase Count"
+                                isError={Boolean(error)}
+                                errorText={error?.message}
+                                helperText="Minimum number of uppercase letters"
+                              >
+                                <Input 
+                                  type="number" 
+                                  min={0} 
+                                  {...field}
+                                  onChange={(e) => field.onChange(Number(e.target.value))}
+                                />
+                              </FormControl>
+                            )}
+                          />
+                          <Controller
+                            control={control}
+                            name="inputs.passwordRequirements.required.digits"
+                            defaultValue={1}
+                            render={({ field, fieldState: { error } }) => (
+                              <FormControl
+                                label="Digit Count"
+                                isError={Boolean(error)}
+                                errorText={error?.message}
+                                helperText="Minimum number of digits"
+                              >
+                                <Input 
+                                  type="number" 
+                                  min={0} 
+                                  {...field}
+                                  onChange={(e) => field.onChange(Number(e.target.value))}
+                                />
+                              </FormControl>
+                            )}
+                          />
+                          <Controller
+                            control={control}
+                            name="inputs.passwordRequirements.required.symbols"
+                            defaultValue={0}
+                            render={({ field, fieldState: { error } }) => (
+                              <FormControl
+                                label="Symbol Count"
+                                isError={Boolean(error)}
+                                errorText={error?.message}
+                                helperText="Minimum number of symbols"
+                              >
+                                <Input 
+                                  type="number" 
+                                  min={0} 
+                                  {...field}
+                                  onChange={(e) => field.onChange(Number(e.target.value))}
+                                />
+                              </FormControl>
+                            )}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium">Allowed Symbols</h4>
+                        <Controller
+                          control={control}
+                          name="inputs.passwordRequirements.allowedSymbols"
+                          defaultValue="-_.~!*"
+                          render={({ field, fieldState: { error } }) => (
+                            <FormControl
+                              label="Symbols to use in password"
+                              isError={Boolean(error)}
+                              errorText={error?.message}
+                              helperText="Default: -_.~!*"
+                            >
+                              <Input {...field} placeholder="-_.~!*" />
+                            </FormControl>
+                          )}
+                        />
+                      </div>
+                    </div>
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
