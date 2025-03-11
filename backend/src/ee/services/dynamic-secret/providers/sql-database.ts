@@ -2,6 +2,7 @@ import handlebars from "handlebars";
 import knex from "knex";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
+import { randomInt } from 'crypto';
 
 import { withGatewayProxy } from "@app/lib/gateway";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -13,26 +14,19 @@ import { DynamicSecretSqlDBSchema, PasswordRequirements, SqlProviders, TDynamicP
 const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
 
 const DEFAULT_PASSWORD_REQUIREMENTS = {
-  minLength: 48,
-  maxLength: 48,
+  length: 48,
   required: {
     lowercase: 1,
     uppercase: 1,
     digits: 1,
     symbols: 0
   },
-  allowedCharacters: {
-    lowercase: 'abcdefghijklmnopqrstuvwxyz',
-    uppercase: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
-    digits: '0123456789',
-    symbols: '-_.~!*'
-  }
+  allowedSymbols: '-_.~!*'
 };
 
 const ORACLE_PASSWORD_REQUIREMENTS = {
   ...DEFAULT_PASSWORD_REQUIREMENTS,
-  minLength: 30,
-  maxLength: 30
+  length: 30
 };
 
 const generatePassword = (provider: SqlProviders, requirements?: PasswordRequirements) => {
@@ -40,52 +34,56 @@ const generatePassword = (provider: SqlProviders, requirements?: PasswordRequire
   const finalReqs = requirements || defaultReqs;
 
   try {
-    const { minLength, maxLength, required, allowedCharacters = {} } = finalReqs;
+    const { length, required, allowedSymbols } = finalReqs;
     
     const chars = {
-      lowercase: allowedCharacters.lowercase || 'abcdefghijklmnopqrstuvwxyz',
-      uppercase: allowedCharacters.uppercase || 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
-      digits: allowedCharacters.digits || '0123456789',
-      symbols: allowedCharacters.symbols || '-_.~!*'
+      lowercase: 'abcdefghijklmnopqrstuvwxyz',
+      uppercase: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+      digits: '0123456789',
+      symbols: allowedSymbols || '-_.~!*'
     };
 
     const parts: string[] = [];
     
     if (required.lowercase > 0) {
       parts.push(...Array(required.lowercase).fill(0).map(() => 
-        chars.lowercase[Math.floor(Math.random() * chars.lowercase.length)]
+        chars.lowercase[randomInt(chars.lowercase.length)]
       ));
     }
-    
+
     if (required.uppercase > 0) {
       parts.push(...Array(required.uppercase).fill(0).map(() => 
-        chars.uppercase[Math.floor(Math.random() * chars.uppercase.length)]
+        chars.uppercase[randomInt(chars.uppercase.length)]
       ));
     }
-    
+
     if (required.digits > 0) {
       parts.push(...Array(required.digits).fill(0).map(() => 
-        chars.digits[Math.floor(Math.random() * chars.digits.length)]
+        chars.digits[randomInt(chars.digits.length)]
       ));
     }
-    
+
     if (required.symbols > 0) {
       parts.push(...Array(required.symbols).fill(0).map(() => 
-        chars.symbols[Math.floor(Math.random() * chars.symbols.length)]
+        chars.symbols[randomInt(chars.symbols.length)]
       ));
     }
 
     const requiredTotal = Object.values(required).reduce<number>((a, b) => a + b, 0);
-    const remainingLength = Math.max(minLength - requiredTotal, 0);
+    const remainingLength = Math.max(length - requiredTotal, 0);
 
-    const allChars = Object.values(chars).join('');
+    const allowedChars = Object.entries(chars)
+      .filter(([key]) => required[key as keyof typeof required] > 0)
+      .map(([, value]) => value)
+      .join('');
+
     parts.push(...Array(remainingLength).fill(0).map(() => 
-      allChars[Math.floor(Math.random() * allChars.length)]
+      allowedChars[randomInt(allowedChars.length)]
     ));
 
     // shuffle the array to mix up the characters
     for (let i = parts.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = randomInt(i + 1);
       [parts[i], parts[j]] = [parts[j], parts[i]];
     }
 

@@ -24,23 +24,21 @@ import { gatewaysQueryKeys, useUpdateDynamicSecret } from "@app/hooks/api";
 import { SqlProviders, TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 
 const passwordRequirementsSchema = z.object({
-  minLength: z.number().min(1).max(100),
-  maxLength: z.number().min(1).max(100),
+  length: z.number().min(1).max(250),
   required: z.object({
     lowercase: z.number().min(0),
     uppercase: z.number().min(0),
     digits: z.number().min(0),
     symbols: z.number().min(0)
-  }),
-  allowedCharacters: z
-    .object({
-      lowercase: z.string().optional(),
-      uppercase: z.string().optional(),
-      digits: z.string().optional(),
-      symbols: z.string().optional()
-    })
-    .optional()
-});
+  }).refine((data) => {
+    const total = Object.values(data).reduce((sum, count) => sum + count, 0);
+    return total <= 250; // Sanity check for individual validation
+  }, "Sum of required characters cannot exceed 250"),
+  allowedSymbols: z.string().optional()
+}).refine((data) => {
+  const total = Object.values(data.required).reduce((sum, count) => sum + count, 0);
+  return total <= data.length;
+}, "Sum of required characters cannot exceed the total length");
 
 const formSchema = z.object({
   inputs: z
@@ -103,14 +101,14 @@ export const EditDynamicSecretSqlProviderForm = ({
   projectSlug
 }: Props) => {
   const getDefaultPasswordRequirements = (provider: SqlProviders) => ({
-    minLength: provider === SqlProviders.Oracle ? 30 : 48,
-    maxLength: provider === SqlProviders.Oracle ? 30 : 48,
+    length: provider === SqlProviders.Oracle ? 30 : 48,
     required: {
       lowercase: 1,
       uppercase: 1,
       digits: 1,
       symbols: 0
-    }
+    },
+    allowedSymbols: '-_.~!*'
   });
 
   const {
@@ -463,41 +461,21 @@ export const EditDynamicSecretSqlProviderForm = ({
                       Set constraints on the generated database password
                     </div>
                     <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
+                      <div>
                         <Controller
                           control={control}
-                          name="inputs.passwordRequirements.minLength"
+                          name="inputs.passwordRequirements.length"
                           defaultValue={48}
                           render={({ field, fieldState: { error } }) => (
                             <FormControl
-                              label="Minimum Length"
+                              label="Password Length"
                               isError={Boolean(error)}
                               errorText={error?.message}
                             >
                               <Input 
                                 type="number" 
                                 min={1} 
-                                max={100} 
-                                {...field}
-                                onChange={(e) => field.onChange(Number(e.target.value))}
-                              />
-                            </FormControl>
-                          )}
-                        />
-                        <Controller
-                          control={control}
-                          name="inputs.passwordRequirements.maxLength"
-                          defaultValue={48}
-                          render={({ field, fieldState: { error } }) => (
-                            <FormControl
-                              label="Maximum Length"
-                              isError={Boolean(error)}
-                              errorText={error?.message}
-                            >
-                              <Input 
-                                type="number" 
-                                min={1} 
-                                max={100} 
+                                max={250} 
                                 {...field}
                                 onChange={(e) => field.onChange(Number(e.target.value))}
                               />
@@ -507,7 +485,19 @@ export const EditDynamicSecretSqlProviderForm = ({
                       </div>
                       
                       <div className="space-y-2">
-                        <h4 className="text-sm font-medium">Required Characters</h4>
+                        <h4 className="text-sm font-medium">Minimum Required Character Counts</h4>
+                        <div className="text-sm text-gray-500">
+                          {(() => {
+                            const total = Object.values(watch("inputs.passwordRequirements.required") || {}).reduce((sum, count) => sum + Number(count || 0), 0);
+                            const length = watch("inputs.passwordRequirements.length") || 0;
+                            const isError = total > length;
+                            return (
+                              <span className={isError ? "text-red-500" : ""}>
+                                Total required characters: {total} {isError ? `(exceeds length of ${length})` : ""}
+                              </span>
+                            );
+                          })()}
+                        </div>
                         <div className="grid grid-cols-2 gap-4">
                           <Controller
                             control={control}
@@ -515,16 +505,17 @@ export const EditDynamicSecretSqlProviderForm = ({
                             defaultValue={1}
                             render={({ field, fieldState: { error } }) => (
                               <FormControl
-                                label="Lowercase"
+                                label="Lowercase Count"
                                 isError={Boolean(error)}
                                 errorText={error?.message}
+                                helperText="Minimum number of lowercase letters"
                               >
                                 <Input 
-                                type="number" 
-                                min={0} 
-                                {...field}
-                                onChange={(e) => field.onChange(Number(e.target.value))}
-                              />
+                                  type="number" 
+                                  min={0} 
+                                  {...field}
+                                  onChange={(e) => field.onChange(Number(e.target.value))}
+                                />
                               </FormControl>
                             )}
                           />
@@ -534,16 +525,17 @@ export const EditDynamicSecretSqlProviderForm = ({
                             defaultValue={1}
                             render={({ field, fieldState: { error } }) => (
                               <FormControl
-                                label="Uppercase"
+                                label="Uppercase Count"
                                 isError={Boolean(error)}
                                 errorText={error?.message}
+                                helperText="Minimum number of uppercase letters"
                               >
                                 <Input 
-                                type="number" 
-                                min={0} 
-                                {...field}
-                                onChange={(e) => field.onChange(Number(e.target.value))}
-                              />
+                                  type="number" 
+                                  min={0} 
+                                  {...field}
+                                  onChange={(e) => field.onChange(Number(e.target.value))}
+                                />
                               </FormControl>
                             )}
                           />
@@ -553,16 +545,17 @@ export const EditDynamicSecretSqlProviderForm = ({
                             defaultValue={1}
                             render={({ field, fieldState: { error } }) => (
                               <FormControl
-                                label="Digits"
+                                label="Digit Count"
                                 isError={Boolean(error)}
                                 errorText={error?.message}
+                                helperText="Minimum number of digits"
                               >
                                 <Input 
-                                type="number" 
-                                min={0} 
-                                {...field}
-                                onChange={(e) => field.onChange(Number(e.target.value))}
-                              />
+                                  type="number" 
+                                  min={0} 
+                                  {...field}
+                                  onChange={(e) => field.onChange(Number(e.target.value))}
+                                />
                               </FormControl>
                             )}
                           />
@@ -572,16 +565,17 @@ export const EditDynamicSecretSqlProviderForm = ({
                             defaultValue={0}
                             render={({ field, fieldState: { error } }) => (
                               <FormControl
-                                label="Symbols"
+                                label="Symbol Count"
                                 isError={Boolean(error)}
                                 errorText={error?.message}
+                                helperText="Minimum number of symbols"
                               >
                                 <Input 
-                                type="number" 
-                                min={0} 
-                                {...field}
-                                onChange={(e) => field.onChange(Number(e.target.value))}
-                              />
+                                  type="number" 
+                                  min={0} 
+                                  {...field}
+                                  onChange={(e) => field.onChange(Number(e.target.value))}
+                                />
                               </FormControl>
                             )}
                           />
@@ -589,65 +583,22 @@ export const EditDynamicSecretSqlProviderForm = ({
                       </div>
 
                       <div className="space-y-2">
-                        <h4 className="text-sm font-medium">Allowed Characters (Optional)</h4>
-                        <div className="grid grid-cols-2 gap-4">
-                          <Controller
-                            control={control}
-                            name="inputs.passwordRequirements.allowedCharacters.lowercase"
-                            render={({ field, fieldState: { error } }) => (
-                              <FormControl
-                                label="Lowercase Characters"
-                                isError={Boolean(error)}
-                                errorText={error?.message}
-                                helperText="Default: a-z"
-                              >
-                                <Input {...field} placeholder="abcdefghijklmnopqrstuvwxyz" />
-                              </FormControl>
-                            )}
-                          />
-                          <Controller
-                            control={control}
-                            name="inputs.passwordRequirements.allowedCharacters.uppercase"
-                            render={({ field, fieldState: { error } }) => (
-                              <FormControl
-                                label="Uppercase Characters"
-                                isError={Boolean(error)}
-                                errorText={error?.message}
-                                helperText="Default: A-Z"
-                              >
-                                <Input {...field} placeholder="ABCDEFGHIJKLMNOPQRSTUVWXYZ" />
-                              </FormControl>
-                            )}
-                          />
-                          <Controller
-                            control={control}
-                            name="inputs.passwordRequirements.allowedCharacters.digits"
-                            render={({ field, fieldState: { error } }) => (
-                              <FormControl
-                                label="Digit Characters"
-                                isError={Boolean(error)}
-                                errorText={error?.message}
-                                helperText="Default: 0-9"
-                              >
-                                <Input {...field} placeholder="0123456789" />
-                              </FormControl>
-                            )}
-                          />
-                          <Controller
-                            control={control}
-                            name="inputs.passwordRequirements.allowedCharacters.symbols"
-                            render={({ field, fieldState: { error } }) => (
-                              <FormControl
-                                label="Symbol Characters"
-                                isError={Boolean(error)}
-                                errorText={error?.message}
-                                helperText="Default: -_.~!*"
-                              >
-                                <Input {...field} placeholder="-_.~!*" />
-                              </FormControl>
-                            )}
-                          />
-                        </div>
+                        <h4 className="text-sm font-medium">Allowed Symbols</h4>
+                        <Controller
+                          control={control}
+                          name="inputs.passwordRequirements.allowedSymbols"
+                          defaultValue="-_.~!*"
+                          render={({ field, fieldState: { error } }) => (
+                            <FormControl
+                              label="Symbols to use in password"
+                              isError={Boolean(error)}
+                              errorText={error?.message}
+                              helperText="Default: -_.~!*"
+                            >
+                              <Input {...field} placeholder="-_.~!*" />
+                            </FormControl>
+                          )}
+                        />
                       </div>
                     </div>
                   </AccordionContent>
