@@ -2672,6 +2672,15 @@ export const secretV2BridgeServiceFactory = ({
         return true;
       })
       .map((secret) => {
+        const secretValueHidden =
+          filterByAction === ProjectPermissionSecretActions.DescribeSecret &&
+          !hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+            environment,
+            secretPath,
+            secretName: secret.key,
+            secretTags: secret.tags.map((i) => i.slug)
+          });
+
         return reshapeBridgeSecret(
           projectId,
           environment,
@@ -2685,7 +2694,7 @@ export const secretV2BridgeServiceFactory = ({
               ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
               : ""
           },
-          false
+          secretValueHidden
         );
       });
 

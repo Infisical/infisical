@@ -853,7 +853,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           secrets: secretRawSchema
             .extend({
-              secretPath: z.string().optional()
+              secretPath: z.string().optional(),
+              secretValueHidden: z.boolean()
             })
             .array()
             .optional()
