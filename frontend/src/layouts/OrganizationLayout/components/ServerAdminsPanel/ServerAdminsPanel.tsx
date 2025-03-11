@@ -19,17 +19,17 @@ import { useGetOrgUsers } from "@app/hooks/api";
 
 export const ServerAdminsPanel = () => {
   const [searchUserFilter, setSearchUserFilter] = useState("");
-  const [debounedSearchTerm] = useDebounce(searchUserFilter, 500);
+  const [debouncedSearchTerm] = useDebounce(searchUserFilter, 500);
   const { currentOrg } = useOrganization();
 
   const { data: orgUsers, isPending } = useGetOrgUsers(currentOrg?.id || "");
 
   const adminUsers = orgUsers?.filter((orgUser) => {
     const isSuperAdmin = orgUser.user.superAdmin;
-    const matchesSearch = debounedSearchTerm
-      ? orgUser.user.email?.toLowerCase().includes(debounedSearchTerm.toLowerCase()) ||
-        orgUser.user.firstName?.toLowerCase().includes(debounedSearchTerm.toLowerCase()) ||
-        orgUser.user.lastName?.toLowerCase().includes(debounedSearchTerm.toLowerCase())
+    const matchesSearch = debouncedSearchTerm
+      ? orgUser.user.email?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        orgUser.user.firstName?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        orgUser.user.lastName?.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
       : true;
     return isSuperAdmin && matchesSearch;
   });
