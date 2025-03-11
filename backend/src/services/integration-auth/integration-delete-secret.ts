@@ -68,7 +68,8 @@ const getIntegrationSecretsV2 = async (
     secretDAL: secretV2BridgeDAL,
     secretImportDAL,
     secretImports,
-    hasSecretAccess: () => true
+    hasSecretAccess: () => true,
+    viewSecretValue: true
   });
 
   for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {

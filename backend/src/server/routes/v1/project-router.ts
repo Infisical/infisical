@@ -307,7 +307,17 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .max(256, { message: "Description must be 256 or fewer characters" })
           .optional()
           .describe(PROJECTS.UPDATE.projectDescription),
-        autoCapitalization: z.boolean().optional().describe(PROJECTS.UPDATE.autoCapitalization)
+        autoCapitalization: z.boolean().optional().describe(PROJECTS.UPDATE.autoCapitalization),
+        slug: z
+          .string()
+          .trim()
+          .regex(
+            /^[a-z0-9]+(?:[_-][a-z0-9]+)*$/,
+            "Project slug can only contain lowercase letters and numbers, with optional single hyphens (-) or underscores (_) between words. Cannot start or end with a hyphen or underscore."
+          )
+          .max(64, { message: "Slug must be 64 characters or fewer" })
+          .optional()
+          .describe(PROJECTS.UPDATE.slug)
       }),
       response: {
         200: z.object({
@@ -325,7 +335,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         update: {
           name: req.body.name,
           description: req.body.description,
-          autoCapitalization: req.body.autoCapitalization
+          autoCapitalization: req.body.autoCapitalization,
+          slug: req.body.slug
         },
         actorAuthMethod: req.permission.authMethod,
         actorId: req.permission.id,

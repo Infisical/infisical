@@ -271,12 +271,13 @@ export const superAdminServiceFactory = ({
     return { token, user: userInfo, organization };
   };
 
-  const getUsers = ({ offset, limit, searchTerm }: TAdminGetUsersDTO) => {
+  const getUsers = ({ offset, limit, searchTerm, adminsOnly }: TAdminGetUsersDTO) => {
     return userDAL.getUsersByFilter({
       limit,
       offset,
       searchTerm,
-      sortBy: "username"
+      sortBy: "username",
+      adminsOnly
     });
   };
 

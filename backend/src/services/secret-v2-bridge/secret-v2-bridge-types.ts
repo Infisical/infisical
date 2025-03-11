@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 
 import { SecretType, TSecretsV2, TSecretsV2Insert, TSecretsV2Update } from "@app/db/schemas";
+import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
@@ -36,6 +37,8 @@ export type TGetSecretsDTO = {
   includeImports?: boolean;
   recursive?: boolean;
   tagSlugs?: string[];
+  viewSecretValue: boolean;
+  throwOnMissingReadValuePermission?: boolean;
   metadataFilter?: {
     key?: string;
     value?: string;
@@ -48,6 +51,11 @@ export type TGetSecretsDTO = {
   keys?: string[];
 } & TProjectPermission;
 
+export type TGetSecretsMissingReadValuePermissionDTO = Omit<
+  TGetSecretsDTO,
+  "viewSecretValue" | "recursive" | "expandSecretReferences"
+>;
+
 export type TGetASecretDTO = {
   secretName: string;
   path: string;
@@ -57,6 +65,7 @@ export type TGetASecretDTO = {
   includeImports?: boolean;
   version?: number;
   projectId: string;
+  viewSecretValue: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TCreateSecretDTO = TProjectPermission & {
@@ -164,9 +173,9 @@ export type TFnSecretBulkInsert = {
     }
   >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;
-  secretDAL: Pick<TSecretV2BridgeDALFactory, "insertMany" | "upsertSecretReferences">;
+  secretDAL: Pick<TSecretV2BridgeDALFactory, "insertMany" | "upsertSecretReferences" | "find">;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany">;
-  secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2">;
+  secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "find">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   actor?: {
     type: string;
@@ -192,9 +201,9 @@ export type TFnSecretBulkUpdate = {
     data: TRequireReferenceIfValue & { tags?: string[]; secretMetadata?: ResourceMetadataDTO };
   }[];
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
-  secretDAL: Pick<TSecretV2BridgeDALFactory, "bulkUpdate" | "upsertSecretReferences">;
+  secretDAL: Pick<TSecretV2BridgeDALFactory, "bulkUpdate" | "upsertSecretReferences" | "find">;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany">;
-  secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "deleteTagsToSecretV2">;
+  secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "deleteTagsToSecretV2" | "find">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   actor?: {
     type: string;
@@ -340,4 +349,12 @@ export type TGetSecretsRawByFolderMappingsDTO = {
   folderMappings: { folderId: string; path: string; environment: string }[];
   userId: string;
   filters: TFindSecretsByFolderIdsFilter;
+  filterByAction?: ProjectPermissionSecretActions.DescribeSecret | ProjectPermissionSecretActions.ReadValue;
 };
+
+export type TGetAccessibleSecretsDTO = {
+  environment: string;
+  projectId: string;
+  secretPath: string;
+  filterByAction: ProjectPermissionSecretActions.DescribeSecret | ProjectPermissionSecretActions.ReadValue;
+} & TProjectPermission;

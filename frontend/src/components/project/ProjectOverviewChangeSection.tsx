@@ -9,9 +9,7 @@ import { Button, FormControl, Input, TextArea } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useUpdateProject } from "@app/hooks/api";
 
-import { CopyButton } from "./CopyButton";
-
-const formSchema = z.object({
+const baseFormSchema = z.object({
   name: z.string().min(1, "Required").max(64, "Too long, maximum length is 64 characters"),
   description: z
     .string()
@@ -20,31 +18,55 @@ const formSchema = z.object({
     .optional()
 });
 
-type FormData = z.infer<typeof formSchema>;
+const formSchemaWithSlug = baseFormSchema.extend({
+  slug: z
+    .string()
+    .min(1, "Required")
+    .max(64, "Too long, maximum length is 64 characters")
+    .regex(
+      /^[a-z0-9]+(?:[_-][a-z0-9]+)*$/,
+      "Project slug can only contain lowercase letters and numbers, with optional single hyphens (-) or underscores (_) between words. Cannot start or end with a hyphen or underscore."
+    )
+});
 
-export const ProjectOverviewChangeSection = () => {
+type BaseFormData = z.infer<typeof baseFormSchema>;
+type FormDataWithSlug = z.infer<typeof formSchemaWithSlug>;
+
+type Props = {
+  showSlugField?: boolean;
+};
+
+export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) => {
   const { currentWorkspace } = useWorkspace();
   const { mutateAsync, isPending } = useUpdateProject();
+  const { handleSubmit, control, reset, watch } = useForm<BaseFormData | FormDataWithSlug>({
+    resolver: zodResolver(showSlugField ? formSchemaWithSlug : baseFormSchema)
+  });
 
-  const { handleSubmit, control, reset } = useForm<FormData>({ resolver: zodResolver(formSchema) });
+  const currentSlug = showSlugField ? watch("slug") : currentWorkspace?.slug;
 
   useEffect(() => {
     if (currentWorkspace) {
       reset({
         name: currentWorkspace.name,
-        description: currentWorkspace.description ?? ""
+        description: currentWorkspace.description ?? "",
+        ...(showSlugField && { slug: currentWorkspace.slug })
       });
     }
-  }, [currentWorkspace]);
+  }, [currentWorkspace, showSlugField]);
 
-  const onFormSubmit = async ({ name, description }: FormData) => {
+  const onFormSubmit = async (data: BaseFormData | FormDataWithSlug) => {
     try {
       if (!currentWorkspace?.id) return;
 
       await mutateAsync({
         projectID: currentWorkspace.id,
-        newProjectName: name,
-        newProjectDescription: description
+        newProjectName: data.name,
+        newProjectDescription: data.description,
+        ...(showSlugField &&
+          "slug" in data && {
+            newSlug: data.slug !== currentWorkspace.slug ? data.slug : undefined
+          })
       });
 
       createNotification({
@@ -65,20 +87,34 @@ export const ProjectOverviewChangeSection = () => {
       <div className="justify-betweens flex">
         <h2 className="mb-8 flex-1 text-xl font-semibold text-mineshaft-100">Project Overview</h2>
         <div className="space-x-2">
-          <CopyButton
-            value={currentWorkspace?.slug || ""}
-            hoverText="Click to project slug"
-            notificationText="Copied project slug to clipboard"
+          <Button
+            variant="outline_bg"
+            size="sm"
+            onClick={() => {
+              navigator.clipboard.writeText(currentSlug || "");
+              createNotification({
+                text: "Copied project slug to clipboard",
+                type: "success"
+              });
+            }}
+            title="Click to copy project slug"
           >
             Copy Project Slug
-          </CopyButton>
-          <CopyButton
-            value={currentWorkspace?.id || ""}
-            hoverText="Click to project ID"
-            notificationText="Copied project ID to clipboard"
+          </Button>
+          <Button
+            variant="outline_bg"
+            size="sm"
+            onClick={() => {
+              navigator.clipboard.writeText(currentWorkspace?.id || "");
+              createNotification({
+                text: "Copied project ID to clipboard",
+                type: "success"
+              });
+            }}
+            title="Click to copy project ID"
           >
             Copy Project ID
-          </CopyButton>
+          </Button>
         </div>
       </div>
       <div>
@@ -113,6 +149,38 @@ export const ProjectOverviewChangeSection = () => {
               </ProjectPermissionCan>
             </div>
           </div>
+          {showSlugField && (
+            <div className="flex w-full flex-row items-end gap-4">
+              <div className="w-full max-w-md">
+                <ProjectPermissionCan
+                  I={ProjectPermissionActions.Edit}
+                  a={ProjectPermissionSub.Project}
+                >
+                  {(isAllowed) => (
+                    <Controller
+                      defaultValue=""
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          isError={Boolean(error)}
+                          errorText={error?.message}
+                          label="Project slug"
+                        >
+                          <Input
+                            placeholder="Project slug"
+                            {...field}
+                            className="bg-mineshaft-800"
+                            isDisabled={!isAllowed}
+                          />
+                        </FormControl>
+                      )}
+                      control={control}
+                      name="slug"
+                    />
+                  )}
+                </ProjectPermissionCan>
+              </div>
+            </div>
+          )}
           <div className="flex w-full flex-row items-end gap-4">
             <div className="w-full max-w-md">
               <ProjectPermissionCan

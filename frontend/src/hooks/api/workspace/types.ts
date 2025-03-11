@@ -74,6 +74,7 @@ export type UpdateProjectDTO = {
   projectID: string;
   newProjectName: string;
   newProjectDescription?: string;
+  newSlug?: string;
 };
 
 export type UpdatePitVersionLimitDTO = { projectSlug: string; pitVersionLimit: number };

@@ -10,8 +10,13 @@ import {
 } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSecretActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { TProjectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-service";
 import { InfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-types";
 import { TSshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-dal";
@@ -563,11 +568,24 @@ export const projectServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
 
+    if (update.slug) {
+      const existingProject = await projectDAL.findOne({
+        slug: update.slug,
+        orgId: actorOrgId
+      });
+      if (existingProject && existingProject.id !== project.id) {
+        throw new BadRequestError({
+          message: `Failed to update project slug. The project "${existingProject.name}" with the slug "${existingProject.slug}" already exists in your organization. Please choose a unique slug for your project.`
+        });
+      }
+    }
+
     const updatedProject = await projectDAL.updateById(project.id, {
       name: update.name,
       description: update.description,
       autoCapitalization: update.autoCapitalization,
-      enforceCapitalization: update.autoCapitalization
+      enforceCapitalization: update.autoCapitalization,
+      slug: update.slug
     });
 
     return updatedProject;
@@ -747,7 +765,7 @@ export const projectServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets);
+    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret);
 
     const project = await projectDAL.findProjectById(projectId);
 

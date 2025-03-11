@@ -58,7 +58,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
+import { ProjectPermissionSecretActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
 import { TSecretSnapshotServiceFactory } from "../secret-snapshot/secret-snapshot-service";
 import { TSecretApprovalRequestDALFactory } from "./secret-approval-request-dal";
@@ -77,6 +77,7 @@ import {
   TSecretApprovalDetailsDTO,
   TStatusChangeDTO
 } from "./secret-approval-request-types";
+import { throwIfMissingSecretReadValueOrDescribePermission } from "../permission/permission-fns";
 
 type TSecretApprovalRequestServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -88,7 +89,12 @@ type TSecretApprovalRequestServiceFactoryDep = {
   secretDAL: TSecretDALFactory;
   secretTagDAL: Pick<
     TSecretTagDALFactory,
-    "findManyTagsById" | "saveTagsToSecret" | "deleteTagsManySecret" | "saveTagsToSecretV2" | "deleteTagsToSecretV2"
+    | "findManyTagsById"
+    | "saveTagsToSecret"
+    | "deleteTagsManySecret"
+    | "saveTagsToSecretV2"
+    | "deleteTagsToSecretV2"
+    | "find"
   >;
   secretBlindIndexDAL: Pick<TSecretBlindIndexDALFactory, "findOne">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
@@ -106,7 +112,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "encryptWithInputKey" | "decryptWithInputKey">;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
-    "insertMany" | "upsertSecretReferences" | "findBySecretKeys" | "bulkUpdate" | "deleteMany"
+    "insertMany" | "upsertSecretReferences" | "findBySecretKeys" | "bulkUpdate" | "deleteMany" | "find"
   >;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
@@ -912,10 +918,11 @@ export const secretApprovalRequestServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-    );
+
+    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+      environment,
+      secretPath
+    });
 
     await projectDAL.checkProjectUpgradeStatus(projectId);
 
@@ -1000,6 +1007,7 @@ export const secretApprovalRequestServiceFactory = ({
               : keyName2BlindIndex[secretName];
           // add tags
           if (tagIds?.length) commitTagIds[keyName2BlindIndex[secretName]] = tagIds;
+
           return {
             ...latestSecretVersions[secretId],
             ...el,
@@ -1363,9 +1371,9 @@ export const secretApprovalRequestServiceFactory = ({
     const tagsGroupById = groupBy(tags, (i) => i.id);
 
     commits.forEach((commit) => {
-      let action = ProjectPermissionActions.Create;
-      if (commit.op === SecretOperations.Update) action = ProjectPermissionActions.Edit;
-      if (commit.op === SecretOperations.Delete) action = ProjectPermissionActions.Delete;
+      let action = ProjectPermissionSecretActions.Create;
+      if (commit.op === SecretOperations.Update) action = ProjectPermissionSecretActions.Edit;
+      if (commit.op === SecretOperations.Delete) action = ProjectPermissionSecretActions.Delete;
 
       ForbiddenError.from(permission).throwUnlessCan(
         action,

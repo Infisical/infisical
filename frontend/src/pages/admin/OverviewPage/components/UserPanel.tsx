@@ -1,6 +1,14 @@
 import { useState } from "react";
-import { faMagnifyingGlass, faUsers, faEllipsis } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCheckCircle,
+  faEllipsis,
+  faFilter,
+  faMagnifyingGlass,
+  faUsers,
+  faUserShield
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
@@ -8,7 +16,13 @@ import {
   Badge,
   Button,
   DeleteActionModal,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
   EmptyState,
+  IconButton,
   Input,
   Table,
   TableContainer,
@@ -17,11 +31,7 @@ import {
   Td,
   Th,
   THead,
-  Tr,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
+  Tr
 } from "@app/components/v2";
 import { useSubscription, useUser } from "@app/context";
 import { useDebounce, usePopUp } from "@app/hooks";
@@ -48,6 +58,7 @@ const UserPanelTable = ({
   ) => void;
 }) => {
   const [searchUserFilter, setSearchUserFilter] = useState("");
+  const [adminsOnly, setAdminsOnly] = useState(false);
   const { user } = useUser();
   const userId = user?.id || "";
   const [debounedSearchTerm] = useDebounce(searchUserFilter, 500);
@@ -55,18 +66,55 @@ const UserPanelTable = ({
 
   const { data, isPending, isFetchingNextPage, hasNextPage, fetchNextPage } = useAdminGetUsers({
     limit: 20,
-    searchTerm: debounedSearchTerm
+    searchTerm: debounedSearchTerm,
+    adminsOnly
   });
 
   const isEmpty = !isPending && !data?.pages?.[0].length;
+  const isTableFiltered = Boolean(adminsOnly);
+
   return (
     <>
-      <Input
-        value={searchUserFilter}
-        onChange={(e) => setSearchUserFilter(e.target.value)}
-        leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search users..."
-      />
+      <div className="flex gap-2">
+        <Input
+          value={searchUserFilter}
+          onChange={(e) => setSearchUserFilter(e.target.value)}
+          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+          placeholder="Search users..."
+          className="flex-1"
+        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <IconButton
+              ariaLabel="Filter Users"
+              variant="plain"
+              size="sm"
+              className={twMerge(
+                "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
+                isTableFiltered && "border-primary/50 text-primary"
+              )}
+            >
+              <FontAwesomeIcon icon={faFilter} />
+            </IconButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="p-0">
+            <DropdownMenuLabel>Filter By</DropdownMenuLabel>
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.preventDefault();
+                setAdminsOnly(!adminsOnly);
+              }}
+              icon={adminsOnly && <FontAwesomeIcon icon={faCheckCircle} />}
+              iconPos="right"
+            >
+              <div className="flex items-center gap-2">
+                <FontAwesomeIcon icon={faUserShield} className="text-yellow-700" />
+                <span>Server Admins</span>
+              </div>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
       <div className="mt-4">
         <TableContainer>
           <Table>

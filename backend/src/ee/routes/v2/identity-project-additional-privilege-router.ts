@@ -3,6 +3,7 @@ import ms from "ms";
 import { z } from "zod";
 
 import { IdentityProjectAdditionalPrivilegeTemporaryMode } from "@app/ee/services/identity-project-additional-privilege-v2/identity-project-additional-privilege-v2-types";
+import { checkForInvalidPermissionCombination } from "@app/ee/services/permission/permission-fns";
 import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
 import { IDENTITY_ADDITIONAL_PRIVILEGE_V2 } from "@app/lib/api-docs";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -30,7 +31,9 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         identityId: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.CREATE.identityId),
         projectId: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.CREATE.projectId),
         slug: slugSchema({ min: 1, max: 60 }).optional().describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.CREATE.slug),
-        permissions: ProjectPermissionV2Schema.array().describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.CREATE.permission),
+        permissions: ProjectPermissionV2Schema.array()
+          .describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.CREATE.permission)
+          .refine(checkForInvalidPermissionCombination),
         type: z.discriminatedUnion("isTemporary", [
           z.object({
             isTemporary: z.literal(false)
@@ -94,7 +97,8 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         slug: slugSchema({ min: 1, max: 60 }).describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.UPDATE.slug),
         permissions: ProjectPermissionV2Schema.array()
           .optional()
-          .describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.UPDATE.privilegePermission),
+          .describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.UPDATE.privilegePermission)
+          .refine(checkForInvalidPermissionCombination),
         type: z.discriminatedUnion("isTemporary", [
           z.object({ isTemporary: z.literal(false).describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.UPDATE.isTemporary) }),
           z.object({
