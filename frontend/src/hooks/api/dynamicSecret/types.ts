@@ -50,6 +50,7 @@ export type TDynamicSecretProvider =
         database: string;
         username: string;
         password: string;
+        passwordRegex?: string;
         creationStatement: string;
         revocationStatement: string;
         renewStatement?: string;

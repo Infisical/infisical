@@ -23,6 +23,25 @@ import { useWorkspace } from "@app/context";
 import { gatewaysQueryKeys, useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders, SqlProviders } from "@app/hooks/api/dynamicSecret/types";
 
+const passwordRequirementsSchema = z.object({
+  minLength: z.number().min(1).max(100),
+  maxLength: z.number().min(1).max(100),
+  required: z.object({
+    lowercase: z.number().min(0),
+    uppercase: z.number().min(0),
+    digits: z.number().min(0),
+    symbols: z.number().min(0)
+  }),
+  allowedCharacters: z
+    .object({
+      lowercase: z.string().optional(),
+      uppercase: z.string().optional(),
+      digits: z.string().optional(),
+      symbols: z.string().optional()
+    })
+    .optional()
+});
+
 const formSchema = z.object({
   provider: z.object({
     client: z.nativeEnum(SqlProviders),
@@ -31,6 +50,7 @@ const formSchema = z.object({
     database: z.string().min(1),
     username: z.string().min(1),
     password: z.string().min(1),
+    passwordRequirements: passwordRequirementsSchema.optional(),
     creationStatement: z.string().min(1),
     revocationStatement: z.string().min(1),
     renewStatement: z.string().optional(),
@@ -137,7 +157,19 @@ export const SqlDatabaseInputForm = ({
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      provider: getSqlStatements(SqlProviders.Postgres)
+      provider: {
+        ...getSqlStatements(SqlProviders.Postgres),
+        passwordRequirements: {
+          minLength: 48,
+          maxLength: 48,
+          required: {
+            lowercase: 1,
+            uppercase: 1,
+            digits: 1,
+            symbols: 0
+          }
+        }
+      }
     }
   });
 
@@ -174,6 +206,11 @@ export const SqlDatabaseInputForm = ({
     setValue("provider.renewStatement", sqlStatment.renewStatement);
     setValue("provider.revocationStatement", sqlStatment.revocationStatement);
     setValue("provider.port", getDefaultPort(type));
+    
+    // Update password requirements based on provider
+    const minMaxLength = type === SqlProviders.Oracle ? 30 : 48;
+    setValue("provider.passwordRequirements.minLength", minMaxLength);
+    setValue("provider.passwordRequirements.maxLength", minMaxLength);
   };
 
   return (
@@ -197,6 +234,7 @@ export const SqlDatabaseInputForm = ({
                 )}
               />
             </div>
+
             <div className="w-32">
               <Controller
                 control={control}
@@ -386,10 +424,13 @@ export const SqlDatabaseInputForm = ({
                     </FormControl>
                   )}
                 />
-                <Accordion type="single" collapsible className="mb-2 w-full bg-mineshaft-700">
-                  <AccordionItem value="advance-statements">
-                    <AccordionTrigger>Modify SQL Statements</AccordionTrigger>
+                <Accordion type="multiple" className="mb-2 w-full bg-mineshaft-700">
+                  <AccordionItem value="advanced">
+                    <AccordionTrigger>Creation, Revocation & Renew Statements (optional)</AccordionTrigger>
                     <AccordionContent>
+                      <div className="mb-4 text-sm text-mineshaft-300">
+                        Customize SQL statements for managing database user lifecycle
+                      </div>
                       <Controller
                         control={control}
                         name="provider.creationStatement"
@@ -447,6 +488,204 @@ export const SqlDatabaseInputForm = ({
                           </FormControl>
                         )}
                       />
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+                <Accordion type="multiple" className="mb-2 mt-4 w-full bg-mineshaft-700">
+                  <AccordionItem value="password-config">
+                    <AccordionTrigger>Password Configuration (optional)</AccordionTrigger>
+                    <AccordionContent>
+                      <div className="mb-4 text-sm text-mineshaft-300">
+                        Set constraints on the generated database password
+                      </div>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <Controller
+                            control={control}
+                            name="provider.passwordRequirements.minLength"
+                            defaultValue={48}
+                            render={({ field, fieldState: { error } }) => (
+                              <FormControl
+                                label="Minimum Length"
+                                isError={Boolean(error)}
+                                errorText={error?.message}
+                              >
+                                <Input 
+                                  type="number" 
+                                  min={1} 
+                                  max={100} 
+                                  {...field}
+                                  onChange={(e) => field.onChange(Number(e.target.value))}
+                                />
+                              </FormControl>
+                            )}
+                          />
+                          <Controller
+                            control={control}
+                            name="provider.passwordRequirements.maxLength"
+                            defaultValue={48}
+                            render={({ field, fieldState: { error } }) => (
+                              <FormControl
+                                label="Maximum Length"
+                                isError={Boolean(error)}
+                                errorText={error?.message}
+                              >
+                                <Input 
+                                  type="number" 
+                                  min={1} 
+                                  max={100} 
+                                  {...field}
+                                  onChange={(e) => field.onChange(Number(e.target.value))}
+                                />
+                              </FormControl>
+                            )}
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-medium">Required Characters</h4>
+                          <div className="grid grid-cols-2 gap-4">
+                            <Controller
+                              control={control}
+                              name="provider.passwordRequirements.required.lowercase"
+                              defaultValue={1}
+                              render={({ field, fieldState: { error } }) => (
+                                <FormControl
+                                  label="Lowercase"
+                                  isError={Boolean(error)}
+                                  errorText={error?.message}
+                                >
+                                  <Input 
+                                    type="number" 
+                                    min={0} 
+                                    {...field}
+                                    onChange={(e) => field.onChange(Number(e.target.value))}
+                                  />
+                                </FormControl>
+                              )}
+                            />
+                            <Controller
+                              control={control}
+                              name="provider.passwordRequirements.required.uppercase"
+                              defaultValue={1}
+                              render={({ field, fieldState: { error } }) => (
+                                <FormControl
+                                  label="Uppercase"
+                                  isError={Boolean(error)}
+                                  errorText={error?.message}
+                                >
+                                  <Input 
+                                    type="number" 
+                                    min={0} 
+                                    {...field}
+                                    onChange={(e) => field.onChange(Number(e.target.value))}
+                                  />
+                                </FormControl>
+                              )}
+                            />
+                            <Controller
+                              control={control}
+                              name="provider.passwordRequirements.required.digits"
+                              defaultValue={1}
+                              render={({ field, fieldState: { error } }) => (
+                                <FormControl
+                                  label="Digits"
+                                  isError={Boolean(error)}
+                                  errorText={error?.message}
+                                >
+                                  <Input 
+                                    type="number" 
+                                    min={0} 
+                                    {...field}
+                                    onChange={(e) => field.onChange(Number(e.target.value))}
+                                  />
+                                </FormControl>
+                              )}
+                            />
+                            <Controller
+                              control={control}
+                              name="provider.passwordRequirements.required.symbols"
+                              defaultValue={0}
+                              render={({ field, fieldState: { error } }) => (
+                                <FormControl
+                                  label="Symbols"
+                                  isError={Boolean(error)}
+                                  errorText={error?.message}
+                                >
+                                  <Input 
+                                    type="number" 
+                                    min={0} 
+                                    {...field}
+                                    onChange={(e) => field.onChange(Number(e.target.value))}
+                                  />
+                                </FormControl>
+                              )}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-medium">Allowed Characters (Optional)</h4>
+                          <div className="grid grid-cols-2 gap-4">
+                            <Controller
+                              control={control}
+                              name="provider.passwordRequirements.allowedCharacters.lowercase"
+                              render={({ field, fieldState: { error } }) => (
+                                <FormControl
+                                  label="Lowercase Characters"
+                                  isError={Boolean(error)}
+                                  errorText={error?.message}
+                                  helperText="Default: a-z"
+                                >
+                                  <Input {...field} placeholder="abcdefghijklmnopqrstuvwxyz" />
+                                </FormControl>
+                              )}
+                            />
+                            <Controller
+                              control={control}
+                              name="provider.passwordRequirements.allowedCharacters.uppercase"
+                              render={({ field, fieldState: { error } }) => (
+                                <FormControl
+                                  label="Uppercase Characters"
+                                  isError={Boolean(error)}
+                                  errorText={error?.message}
+                                  helperText="Default: A-Z"
+                                >
+                                  <Input {...field} placeholder="ABCDEFGHIJKLMNOPQRSTUVWXYZ" />
+                                </FormControl>
+                              )}
+                            />
+                            <Controller
+                              control={control}
+                              name="provider.passwordRequirements.allowedCharacters.digits"
+                              render={({ field, fieldState: { error } }) => (
+                                <FormControl
+                                  label="Digit Characters"
+                                  isError={Boolean(error)}
+                                  errorText={error?.message}
+                                  helperText="Default: 0-9"
+                                >
+                                  <Input {...field} placeholder="0123456789" />
+                                </FormControl>
+                              )}
+                            />
+                            <Controller
+                              control={control}
+                              name="provider.passwordRequirements.allowedCharacters.symbols"
+                              render={({ field, fieldState: { error } }) => (
+                                <FormControl
+                                  label="Symbol Characters"
+                                  isError={Boolean(error)}
+                                  errorText={error?.message}
+                                  helperText="Default: -_.~!*"
+                                >
+                                  <Input {...field} placeholder="-_.~!*" />
+                                </FormControl>
+                              )}
+                            />
+                          </div>
+                        </div>
+                      </div>
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>

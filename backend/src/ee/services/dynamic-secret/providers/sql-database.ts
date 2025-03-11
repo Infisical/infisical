@@ -8,16 +8,92 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { TGatewayServiceFactory } from "../../gateway/gateway-service";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
-import { DynamicSecretSqlDBSchema, SqlProviders, TDynamicProviderFns } from "./models";
+import { DynamicSecretSqlDBSchema, PasswordRequirements, SqlProviders, TDynamicProviderFns } from "./models";
 
 const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
 
-const generatePassword = (provider: SqlProviders) => {
-  // oracle has limit of 48 password length
-  const size = provider === SqlProviders.Oracle ? 30 : 48;
+const DEFAULT_PASSWORD_REQUIREMENTS = {
+  minLength: 48,
+  maxLength: 48,
+  required: {
+    lowercase: 1,
+    uppercase: 1,
+    digits: 1,
+    symbols: 0
+  },
+  allowedCharacters: {
+    lowercase: 'abcdefghijklmnopqrstuvwxyz',
+    uppercase: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+    digits: '0123456789',
+    symbols: '-_.~!*'
+  }
+};
 
-  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*";
-  return customAlphabet(charset, 48)(size);
+const ORACLE_PASSWORD_REQUIREMENTS = {
+  ...DEFAULT_PASSWORD_REQUIREMENTS,
+  minLength: 30,
+  maxLength: 30
+};
+
+const generatePassword = (provider: SqlProviders, requirements?: PasswordRequirements) => {
+  const defaultReqs = provider === SqlProviders.Oracle ? ORACLE_PASSWORD_REQUIREMENTS : DEFAULT_PASSWORD_REQUIREMENTS;
+  const finalReqs = requirements || defaultReqs;
+
+  try {
+    const { minLength, maxLength, required, allowedCharacters = {} } = finalReqs;
+    
+    const chars = {
+      lowercase: allowedCharacters.lowercase || 'abcdefghijklmnopqrstuvwxyz',
+      uppercase: allowedCharacters.uppercase || 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+      digits: allowedCharacters.digits || '0123456789',
+      symbols: allowedCharacters.symbols || '-_.~!*'
+    };
+
+    const parts: string[] = [];
+    
+    if (required.lowercase > 0) {
+      parts.push(...Array(required.lowercase).fill(0).map(() => 
+        chars.lowercase[Math.floor(Math.random() * chars.lowercase.length)]
+      ));
+    }
+    
+    if (required.uppercase > 0) {
+      parts.push(...Array(required.uppercase).fill(0).map(() => 
+        chars.uppercase[Math.floor(Math.random() * chars.uppercase.length)]
+      ));
+    }
+    
+    if (required.digits > 0) {
+      parts.push(...Array(required.digits).fill(0).map(() => 
+        chars.digits[Math.floor(Math.random() * chars.digits.length)]
+      ));
+    }
+    
+    if (required.symbols > 0) {
+      parts.push(...Array(required.symbols).fill(0).map(() => 
+        chars.symbols[Math.floor(Math.random() * chars.symbols.length)]
+      ));
+    }
+
+    const requiredTotal = Object.values(required).reduce<number>((a, b) => a + b, 0);
+    const remainingLength = Math.max(minLength - requiredTotal, 0);
+
+    const allChars = Object.values(chars).join('');
+    parts.push(...Array(remainingLength).fill(0).map(() => 
+      allChars[Math.floor(Math.random() * allChars.length)]
+    ));
+
+    // shuffle the array to mix up the characters
+    for (let i = parts.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [parts[i], parts[j]] = [parts[j], parts[i]];
+    }
+
+    return parts.join('');
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    throw new Error(`Failed to generate password: ${message}`);
+  }
 };
 
 const generateUsername = (provider: SqlProviders) => {
@@ -115,7 +191,7 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
   const create = async (inputs: unknown, expireAt: number) => {
     const providerInputs = await validateProviderInputs(inputs);
     const username = generateUsername(providerInputs.client);
-    const password = generatePassword(providerInputs.client);
+    const password = generatePassword(providerInputs.client, providerInputs.passwordRequirements);
     const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
       const db = await $getClient({ ...providerInputs, port, host });
       try {
