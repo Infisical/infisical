@@ -15,6 +15,7 @@
           lazygit
 
           nodejs_20
+          nodePackages.prettier
           infisical
         ];
       };
