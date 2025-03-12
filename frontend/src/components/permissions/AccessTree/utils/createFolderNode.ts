@@ -15,7 +15,7 @@ import { TSecretFolderWithPath } from "@app/hooks/api/secretFolders/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
 import { PermissionAccess, PermissionNode } from "../types";
-import { TActionRuleMap } from ".";
+import { TActionRuleMap } from "./getActionRuleMap";
 
 const ACTION_MAP: Record<string, string[] | undefined> = {
   [ProjectPermissionSub.Secrets]: [
