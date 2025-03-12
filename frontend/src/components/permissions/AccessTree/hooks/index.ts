@@ -28,7 +28,7 @@ export const useAccessTree = (permissions: MongoAbility<ProjectPermissionSet, Mo
   );
 
   useEffect(() => {
-    if (!environmentsFolders || !permissions) return;
+    if (!environmentsFolders || !permissions || !environmentsFolders[environment]) return;
 
     const { folders, name } = environmentsFolders[environment];
 
