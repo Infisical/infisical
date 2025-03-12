@@ -8,6 +8,7 @@ import { AwsParameterStoreSyncDestinationSchema } from "./aws-parameter-store-sy
 import { AzureAppConfigurationSyncDestinationSchema } from "./azure-app-configuration-sync-destination-schema";
 import { AzureKeyVaultSyncDestinationSchema } from "./azure-key-vault-sync-destination-schema";
 import { GcpSyncDestinationSchema } from "./gcp-sync-destination-schema";
+import { HumanitecSyncDestinationSchema } from "./humanitec-sync-destination-schema";
 
 const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   AwsParameterStoreSyncDestinationSchema,
@@ -16,7 +17,8 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   GcpSyncDestinationSchema,
   AzureKeyVaultSyncDestinationSchema,
   AzureAppConfigurationSyncDestinationSchema,
-  DatabricksSyncDestinationSchema
+  DatabricksSyncDestinationSchema,
+  HumanitecSyncDestinationSchema
 ]);
 
 export const SecretSyncFormSchema = SecretSyncUnionSchema;

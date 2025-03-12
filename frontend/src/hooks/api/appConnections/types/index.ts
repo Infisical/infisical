@@ -3,6 +3,7 @@ import { TAppConnectionOption } from "@app/hooks/api/appConnections/types/app-op
 import { TAwsConnection } from "@app/hooks/api/appConnections/types/aws-connection";
 import { TDatabricksConnection } from "@app/hooks/api/appConnections/types/databricks-connection";
 import { TGitHubConnection } from "@app/hooks/api/appConnections/types/github-connection";
+import { THumanitecConnection } from "@app/hooks/api/appConnections/types/humanitec-connection";
 
 import { TAzureAppConfigurationConnection } from "./azure-app-configuration-connection";
 import { TAzureKeyVaultConnection } from "./azure-key-vault-connection";
@@ -13,6 +14,7 @@ export * from "./azure-app-configuration-connection";
 export * from "./azure-key-vault-connection";
 export * from "./gcp-connection";
 export * from "./github-connection";
+export * from "./humanitec-connection";
 
 export type TAppConnection =
   | TAwsConnection
@@ -20,7 +22,8 @@ export type TAppConnection =
   | TGcpConnection
   | TAzureKeyVaultConnection
   | TAzureAppConfigurationConnection
-  | TDatabricksConnection;
+  | TDatabricksConnection
+  | THumanitecConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -54,4 +57,5 @@ export type TAppConnectionMap = {
   [AppConnection.AzureKeyVault]: TAzureKeyVaultConnection;
   [AppConnection.AzureAppConfiguration]: TAzureAppConfigurationConnection;
   [AppConnection.Databricks]: TDatabricksConnection;
+  [AppConnection.Humanitec]: THumanitecConnection;
 };

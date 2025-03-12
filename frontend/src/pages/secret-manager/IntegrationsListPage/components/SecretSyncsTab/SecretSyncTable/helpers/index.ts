@@ -59,6 +59,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
     case SecretSync.Databricks:
       primaryText = destinationConfig.scope;
       break;
+    case SecretSync.Humanitec:
+      primaryText = destinationConfig.app;
+      secondaryText = `Org - ${destinationConfig.org}`;
+      break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
   }

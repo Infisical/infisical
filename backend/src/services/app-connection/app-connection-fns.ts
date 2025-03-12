@@ -35,6 +35,11 @@ import {
   getAzureKeyVaultConnectionListItem,
   validateAzureKeyVaultConnectionCredentials
 } from "./azure-key-vault";
+import {
+  getHumanitecConnectionListItem,
+  HumanitecConnectionMethod,
+  validateHumanitecConnectionCredentials
+} from "./humanitec";
 
 export const listAppConnectionOptions = () => {
   return [
@@ -43,7 +48,8 @@ export const listAppConnectionOptions = () => {
     getGcpConnectionListItem(),
     getAzureKeyVaultConnectionListItem(),
     getAzureAppConfigurationConnectionListItem(),
-    getDatabricksConnectionListItem()
+    getDatabricksConnectionListItem(),
+    getHumanitecConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -106,6 +112,8 @@ export const validateAppConnectionCredentials = async (
       return validateAzureKeyVaultConnectionCredentials(appConnection);
     case AppConnection.AzureAppConfiguration:
       return validateAzureAppConfigurationConnectionCredentials(appConnection);
+    case AppConnection.Humanitec:
+      return validateHumanitecConnectionCredentials(appConnection);
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection ${app}`);
@@ -128,6 +136,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "Service Account Impersonation";
     case DatabricksConnectionMethod.ServicePrincipal:
       return "Service Principal";
+    case HumanitecConnectionMethod.AccessKey:
+      return "Access Key";
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection Method: ${method}`);

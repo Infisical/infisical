@@ -1771,6 +1771,11 @@ export const SecretSyncs = {
     },
     DATABRICKS: {
       scope: "The Databricks secret scope that secrets should be synced to."
+    },
+    HUMANITEC: {
+      app: "The ID of the Humanitec app to sync secrets to.",
+      org: "The ID of the Humanitec org to sync secrets to.",
+      env: "The ID of the Humanitec environment to sync secrets to."
     }
   }
 };

@@ -224,6 +224,9 @@ const envSchema = z
     DATADOG_SERVICE: zpStr(z.string().optional().default("infisical-core")),
     DATADOG_HOSTNAME: zpStr(z.string().optional()),
 
+    // humanitec
+    INF_APP_CONNECTION_HUMANITEC_ACCESS_KEY: zpStr(z.string().optional()),
+
     /* CORS ----------------------------------------------------------------------------- */
 
     CORS_ALLOWED_ORIGINS: zpStr(

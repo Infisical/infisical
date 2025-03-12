@@ -34,6 +34,10 @@ export type TDatabricksConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Databricks;
 };
 
+export type THumanitecConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Humanitec;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -49,4 +53,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.AzureKeyVault]: TAzureKeyVaultConnectionOption;
   [AppConnection.AzureAppConfiguration]: TAzureAppConfigurationConnectionOption;
   [AppConnection.Databricks]: TDatabricksConnectionOption;
+  [AppConnection.Humanitec]: THumanitecConnectionOption;
 };
