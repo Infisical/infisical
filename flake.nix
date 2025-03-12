@@ -14,6 +14,7 @@
           git
           lazygit
 
+          go
           python312Full
           nodejs_20
           nodePackages.prettier
