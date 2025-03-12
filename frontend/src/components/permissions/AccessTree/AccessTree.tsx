@@ -29,8 +29,6 @@ import { useAccessTree } from "./hooks";
 import { FolderNode, RoleNode } from "./nodes";
 import { ViewMode } from "./types";
 
-import "@xyflow/react/dist/style.css";
-
 export type AccessTreeProps = {
   permissions: MongoAbility<ProjectPermissionSet, MongoQuery>;
 };
@@ -63,7 +61,7 @@ const AccessTreeContent = ({ permissions }: AccessTreeProps) => {
         duration: 1000,
         maxZoom: 1
       });
-    }, 5);
+    }, 1);
   }, [fitView, nodes, edges, getViewport()]);
 
   const handleToggleModalView = () =>

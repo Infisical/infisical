@@ -70,9 +70,9 @@ export const FolderNodeTooltipContent = ({ action, access, actionRuleMap, subjec
                   </span>
                   <span> when:</span>
                   {Object.entries(rule.conditions).map(([key, condition]) => (
-                    <ul key={key} className="list-[square] pl-4">
+                    <ul key={`${action}_${index + 1}_${key}`} className="list-[square] pl-4">
                       {Object.entries(condition as object).map(([operator, value]) => (
-                        <li>
+                        <li key={`${action}_${index + 1}_${key}_${operator}`}>
                           <span className="font-medium capitalize text-mineshaft-100">
                             {camelCaseToSpaces(key)}
                           </span>{" "}

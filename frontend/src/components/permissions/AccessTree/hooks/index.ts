@@ -22,7 +22,7 @@ export const useAccessTree = (permissions: MongoAbility<ProjectPermissionSet, Mo
   const [nodes, setNodes] = useNodesState<Node>([]);
   const [edges, setEdges] = useEdgesState<Edge>([]);
   const [subject, setSubject] = useState(ProjectPermissionSub.Secrets);
-  const [environment, setEnvironment] = useState(currentWorkspace.environments[0].slug);
+  const [environment, setEnvironment] = useState(currentWorkspace.environments[0]?.slug ?? "");
   const { data: environmentsFolders, isPending } = useListProjectEnvironmentsFolders(
     currentWorkspace.id
   );

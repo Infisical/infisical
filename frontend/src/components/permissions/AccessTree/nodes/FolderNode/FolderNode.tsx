@@ -48,6 +48,7 @@ export const FolderNode = ({
 
             return (
               <Tooltip
+                key={action}
                 className="hidden" // just using the tooltip to trigger node toolbar
                 content={
                   <FolderNodeTooltipContent

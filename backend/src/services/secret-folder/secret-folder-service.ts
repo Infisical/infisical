@@ -2,12 +2,13 @@ import { ForbiddenError, subject } from "@casl/ability";
 import path from "path";
 import { v4 as uuidv4, validate as uuidValidate } from "uuid";
 
-import { ActionProjectType, TSecretFolders, TSecretFoldersInsert } from "@app/db/schemas";
+import { ActionProjectType, TSecretFoldersInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
+import { buildFolderPath } from "@app/services/secret-folder/secret-folder-fns";
 
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -608,14 +609,7 @@ export const secretFolderServiceFactory = ({
 
         const foldersWithPath = relevantFolders.map((folder) => ({
           ...folder,
-          path: folder.parentId
-            ? (function buildPath(f: TSecretFolders): string {
-                if (!f.parentId) {
-                  return "";
-                }
-                return `${buildPath(foldersMap[f.parentId])}/${f.name}`;
-              })(folder)
-            : "/"
+          path: buildFolderPath(folder, foldersMap)
         }));
 
         return [env.slug, { ...env, folders: foldersWithPath }];

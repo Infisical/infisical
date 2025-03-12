@@ -150,7 +150,7 @@ export const createFolderNode = ({
     })
   );
 
-  let height = 84;
+  let height: number;
 
   switch (subject) {
     case ProjectPermissionSub.DynamicSecrets:
