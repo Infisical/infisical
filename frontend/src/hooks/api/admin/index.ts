@@ -1,10 +1,10 @@
 export {
   useAdminDeleteUser,
+  useAdminGrantServerAdminAccess,
   useCreateAdminUser,
   useUpdateAdminSlackConfig,
   useUpdateServerConfig,
-  useUpdateServerEncryptionStrategy,
-  useAdminGrantServerAdminAccess
+  useUpdateServerEncryptionStrategy
 } from "./mutation";
 export {
   useAdminGetUsers,

@@ -2,10 +2,12 @@ import { z } from "zod";
 
 import {
   IntegrationsSchema,
+  ProjectEnvironmentsSchema,
   ProjectMembershipsSchema,
   ProjectRolesSchema,
   ProjectSlackConfigsSchema,
   ProjectType,
+  SecretFoldersSchema,
   UserEncryptionKeysSchema,
   UsersSchema
 } from "@app/db/schemas";
@@ -673,6 +675,33 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       });
 
       return slackConfig;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:workspaceId/folders/project-environments",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      response: {
+        200: z.record(
+          ProjectEnvironmentsSchema.extend({ folders: SecretFoldersSchema.extend({ path: z.string() }).array() })
+        )
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const environmentsFolders = await server.services.folder.getProjectEnvironmentsFolders(
+        req.params.workspaceId,
+        req.permission
+      );
+
+      return environmentsFolders;
     }
   });
 };

@@ -62,7 +62,7 @@ export const PitDrawer = ({
                     <div>
                       {(() => {
                         const distance = formatDistance(new Date(createdAt), new Date());
-                        return distance.charAt(0).toUpperCase() + distance.slice(1) + " ago";
+                        return `${distance.charAt(0).toUpperCase() + distance.slice(1)} ago`;
                       })()}
                     </div>
                     <div>{getButtonLabel(i === 0 && index === 0, snapshotId === id)}</div>

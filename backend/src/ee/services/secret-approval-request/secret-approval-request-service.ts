@@ -57,6 +57,7 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
+import { throwIfMissingSecretReadValueOrDescribePermission } from "../permission/permission-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
@@ -77,7 +78,6 @@ import {
   TSecretApprovalDetailsDTO,
   TStatusChangeDTO
 } from "./secret-approval-request-types";
-import { throwIfMissingSecretReadValueOrDescribePermission } from "../permission/permission-fns";
 
 type TSecretApprovalRequestServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;

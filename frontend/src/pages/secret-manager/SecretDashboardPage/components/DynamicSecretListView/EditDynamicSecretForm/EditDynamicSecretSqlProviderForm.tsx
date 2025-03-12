@@ -23,22 +23,26 @@ import { useWorkspace } from "@app/context";
 import { gatewaysQueryKeys, useUpdateDynamicSecret } from "@app/hooks/api";
 import { SqlProviders, TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 
-const passwordRequirementsSchema = z.object({
-  length: z.number().min(1).max(250),
-  required: z.object({
-    lowercase: z.number().min(0),
-    uppercase: z.number().min(0),
-    digits: z.number().min(0),
-    symbols: z.number().min(0)
-  }).refine((data) => {
-    const total = Object.values(data).reduce((sum, count) => sum + count, 0);
-    return total <= 250; // Sanity check for individual validation
-  }, "Sum of required characters cannot exceed 250"),
-  allowedSymbols: z.string().optional()
-}).refine((data) => {
-  const total = Object.values(data.required).reduce((sum, count) => sum + count, 0);
-  return total <= data.length;
-}, "Sum of required characters cannot exceed the total length");
+const passwordRequirementsSchema = z
+  .object({
+    length: z.number().min(1).max(250),
+    required: z
+      .object({
+        lowercase: z.number().min(0),
+        uppercase: z.number().min(0),
+        digits: z.number().min(0),
+        symbols: z.number().min(0)
+      })
+      .refine((data) => {
+        const total = Object.values(data).reduce((sum, count) => sum + count, 0);
+        return total <= 250; // Sanity check for individual validation
+      }, "Sum of required characters cannot exceed 250"),
+    allowedSymbols: z.string().optional()
+  })
+  .refine((data) => {
+    const total = Object.values(data.required).reduce((sum, count) => sum + count, 0);
+    return total <= data.length;
+  }, "Sum of required characters cannot exceed the total length");
 
 const formSchema = z.object({
   inputs: z
@@ -108,7 +112,7 @@ export const EditDynamicSecretSqlProviderForm = ({
       digits: 1,
       symbols: 0
     },
-    allowedSymbols: '-_.~!*'
+    allowedSymbols: "-_.~!*"
   });
 
   const {
@@ -124,8 +128,11 @@ export const EditDynamicSecretSqlProviderForm = ({
       newName: dynamicSecret.name,
       inputs: {
         ...(dynamicSecret.inputs as TForm["inputs"]),
-        passwordRequirements: (dynamicSecret.inputs as TForm["inputs"])?.passwordRequirements || 
-          getDefaultPasswordRequirements((dynamicSecret.inputs as TForm["inputs"])?.client || SqlProviders.Postgres)
+        passwordRequirements:
+          (dynamicSecret.inputs as TForm["inputs"])?.passwordRequirements ||
+          getDefaultPasswordRequirements(
+            (dynamicSecret.inputs as TForm["inputs"])?.client || SqlProviders.Postgres
+          )
       }
     }
   });
@@ -381,7 +388,9 @@ export const EditDynamicSecretSqlProviderForm = ({
               />
               <Accordion type="multiple" className="mb-2 mt-4 w-full bg-mineshaft-700">
                 <AccordionItem value="advanced">
-                  <AccordionTrigger>Creation, Revocation & Renew Statements (optional)</AccordionTrigger>
+                  <AccordionTrigger>
+                    Creation, Revocation & Renew Statements (optional)
+                  </AccordionTrigger>
                   <AccordionContent>
                     <div className="mb-4 text-sm text-mineshaft-300">
                       Customize SQL statements for managing database user lifecycle
@@ -472,10 +481,10 @@ export const EditDynamicSecretSqlProviderForm = ({
                               isError={Boolean(error)}
                               errorText={error?.message}
                             >
-                              <Input 
-                                type="number" 
-                                min={1} 
-                                max={250} 
+                              <Input
+                                type="number"
+                                min={1}
+                                max={250}
                                 {...field}
                                 onChange={(e) => field.onChange(Number(e.target.value))}
                               />
@@ -483,17 +492,20 @@ export const EditDynamicSecretSqlProviderForm = ({
                           )}
                         />
                       </div>
-                      
+
                       <div className="space-y-2">
                         <h4 className="text-sm font-medium">Minimum Required Character Counts</h4>
                         <div className="text-sm text-gray-500">
                           {(() => {
-                            const total = Object.values(watch("inputs.passwordRequirements.required") || {}).reduce((sum, count) => sum + Number(count || 0), 0);
+                            const total = Object.values(
+                              watch("inputs.passwordRequirements.required") || {}
+                            ).reduce((sum, count) => sum + Number(count || 0), 0);
                             const length = watch("inputs.passwordRequirements.length") || 0;
                             const isError = total > length;
                             return (
                               <span className={isError ? "text-red-500" : ""}>
-                                Total required characters: {total} {isError ? `(exceeds length of ${length})` : ""}
+                                Total required characters: {total}{" "}
+                                {isError ? `(exceeds length of ${length})` : ""}
                               </span>
                             );
                           })()}
@@ -510,9 +522,9 @@ export const EditDynamicSecretSqlProviderForm = ({
                                 errorText={error?.message}
                                 helperText="Minimum number of lowercase letters"
                               >
-                                <Input 
-                                  type="number" 
-                                  min={0} 
+                                <Input
+                                  type="number"
+                                  min={0}
                                   {...field}
                                   onChange={(e) => field.onChange(Number(e.target.value))}
                                 />
@@ -530,9 +542,9 @@ export const EditDynamicSecretSqlProviderForm = ({
                                 errorText={error?.message}
                                 helperText="Minimum number of uppercase letters"
                               >
-                                <Input 
-                                  type="number" 
-                                  min={0} 
+                                <Input
+                                  type="number"
+                                  min={0}
                                   {...field}
                                   onChange={(e) => field.onChange(Number(e.target.value))}
                                 />
@@ -550,9 +562,9 @@ export const EditDynamicSecretSqlProviderForm = ({
                                 errorText={error?.message}
                                 helperText="Minimum number of digits"
                               >
-                                <Input 
-                                  type="number" 
-                                  min={0} 
+                                <Input
+                                  type="number"
+                                  min={0}
                                   {...field}
                                   onChange={(e) => field.onChange(Number(e.target.value))}
                                 />
@@ -570,9 +582,9 @@ export const EditDynamicSecretSqlProviderForm = ({
                                 errorText={error?.message}
                                 helperText="Minimum number of symbols"
                               >
-                                <Input 
-                                  type="number" 
-                                  min={0} 
+                                <Input
+                                  type="number"
+                                  min={0}
                                   {...field}
                                   onChange={(e) => field.onChange(Number(e.target.value))}
                                 />

@@ -1,17 +1,17 @@
 import { subject } from "@casl/ability";
-import { faClose, faFolder, faPencilSquare, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
+import { faClose, faFolder, faInfoCircle, faPencilSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, IconButton, Modal, ModalContent } from "@app/components/v2";
+import { Tooltip } from "@app/components/v2/Tooltip/Tooltip";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteFolder, useUpdateFolder } from "@app/hooks/api";
 import { TSecretFolder } from "@app/hooks/api/secretFolders/types";
-import { Tooltip } from "@app/components/v2/Tooltip/Tooltip";
 
 import { FolderForm } from "../ActionBar/FolderForm";
 
@@ -118,16 +118,15 @@ export const FolderListView = ({
             onClick={() => handleFolderClick(name)}
           >
             {name}
-            {
-              description &&
+            {description && (
               <Tooltip
                 position="right"
-                className="flex items-center space-x-4 max-w-lg py-4 whitespace-pre-wrap"
+                className="flex max-w-lg items-center space-x-4 whitespace-pre-wrap py-4"
                 content={description}
               >
-                <FontAwesomeIcon icon={faInfoCircle} className="text-mineshaft-400 ml-1" />
+                <FontAwesomeIcon icon={faInfoCircle} className="ml-1 text-mineshaft-400" />
               </Tooltip>
-            }
+            )}
           </div>
           <div className="flex items-center space-x-4 border-l border-mineshaft-600 px-3 py-3">
             <ProjectPermissionCan

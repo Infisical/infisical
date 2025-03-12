@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -13,7 +14,6 @@ import { Button, FormControl, Input } from "@app/components/v2";
 import { useUser } from "@app/context";
 import { useResetUserPasswordV2, useSendPasswordSetupEmail } from "@app/hooks/api/auth/queries";
 import { UserEncryptionVersion } from "@app/hooks/api/auth/types";
-import { useNavigate } from "@tanstack/react-router";
 
 type Errors = {
   tooShort?: string;

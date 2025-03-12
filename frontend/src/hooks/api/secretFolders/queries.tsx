@@ -16,6 +16,7 @@ import {
   TDeleteFolderDTO,
   TGetFoldersByEnvDTO,
   TGetProjectFoldersDTO,
+  TProjectEnvironmentsFolders,
   TSecretFolder,
   TUpdateFolderBatchDTO,
   TUpdateFolderDTO
@@ -23,7 +24,9 @@ import {
 
 export const folderQueryKeys = {
   getSecretFolders: ({ projectId, environment, path }: TGetProjectFoldersDTO) =>
-    ["secret-folders", { projectId, environment, path }] as const
+    ["secret-folders", { projectId, environment, path }] as const,
+  getProjectEnvironmentsFolders: (projectId: string) =>
+    ["secret-folders", "environment", projectId] as const
 };
 
 const fetchProjectFolders = async (workspaceId: string, environment: string, path = "/") => {
@@ -36,6 +39,29 @@ const fetchProjectFolders = async (workspaceId: string, environment: string, pat
   });
   return data.folders;
 };
+
+export const useListProjectEnvironmentsFolders = (
+  projectId: string,
+  options?: Omit<
+    UseQueryOptions<
+      TProjectEnvironmentsFolders,
+      unknown,
+      TProjectEnvironmentsFolders,
+      ReturnType<typeof folderQueryKeys.getProjectEnvironmentsFolders>
+    >,
+    "queryKey" | "queryFn"
+  >
+) =>
+  useQuery({
+    queryKey: folderQueryKeys.getProjectEnvironmentsFolders(projectId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TProjectEnvironmentsFolders>(
+        `/api/v1/workspace/${projectId}/folders/project-environments`
+      );
+      return data;
+    },
+    ...options
+  });
 
 export const useGetProjectFolders = ({
   projectId,
