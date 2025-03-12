@@ -6,6 +6,7 @@ import {
   SecretEncryptionAlgo,
   SecretKeyEncoding,
   SecretType,
+  TableName,
   TSecretApprovalRequestsSecretsInsert,
   TSecretApprovalRequestsSecretsV2Insert
 } from "@app/db/schemas";
@@ -1335,17 +1336,48 @@ export const secretApprovalRequestServiceFactory = ({
     // deleted secrets
     const deletedSecrets = data[SecretOperations.Delete];
     if (deletedSecrets && deletedSecrets.length) {
-      const secretsToDeleteInDB = await secretV2BridgeDAL.findBySecretKeys(
+      const secretsToDeleteInDB = await secretV2BridgeDAL.find({
         folderId,
-        deletedSecrets.map((el) => ({
-          key: el.secretKey,
-          type: SecretType.Shared
-        }))
-      );
+        $complex: {
+          operator: "and",
+          value: [
+            {
+              operator: "or",
+              value: deletedSecrets.map((el) => ({
+                operator: "and",
+                value: [
+                  {
+                    operator: "eq",
+                    field: `${TableName.SecretV2}.key` as "key",
+                    value: el.secretKey
+                  },
+                  {
+                    operator: "eq",
+                    field: "type",
+                    value: SecretType.Shared
+                  }
+                ]
+              }))
+            }
+          ]
+        }
+      });
       if (secretsToDeleteInDB.length !== deletedSecrets.length)
         throw new NotFoundError({
           message: `Secret does not exist: ${secretsToDeleteInDB.map((el) => el.key).join(",")}`
         });
+      secretsToDeleteInDB.forEach((el) => {
+        ForbiddenError.from(permission).throwUnlessCan(
+          ProjectPermissionSecretActions.Delete,
+          subject(ProjectPermissionSub.Secrets, {
+            environment,
+            secretPath,
+            secretName: el.key,
+            secretTags: el.tags?.map((i) => i.slug)
+          })
+        );
+      });
+
       const secretsGroupedByKey = groupBy(secretsToDeleteInDB, (i) => i.key);
       const deletedSecretIds = deletedSecrets.map((el) => secretsGroupedByKey[el.secretKey][0].id);
       const latestSecretVersions = await secretVersionV2BridgeDAL.findLatestVersionMany(folderId, deletedSecretIds);
@@ -1373,7 +1405,7 @@ export const secretApprovalRequestServiceFactory = ({
     commits.forEach((commit) => {
       let action = ProjectPermissionSecretActions.Create;
       if (commit.op === SecretOperations.Update) action = ProjectPermissionSecretActions.Edit;
-      if (commit.op === SecretOperations.Delete) action = ProjectPermissionSecretActions.Delete;
+      if (commit.op === SecretOperations.Delete) return; // we do the validation on top
 
       ForbiddenError.from(permission).throwUnlessCan(
         action,
