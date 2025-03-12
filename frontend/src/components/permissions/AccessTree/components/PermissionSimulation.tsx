@@ -126,7 +126,11 @@ export const PermissionSimulation = ({
             {subject === ProjectPermissionSub.Secrets && (
               <div>
                 <FormLabel label="Secret Name" />
-                <Input value={secretName} onChange={(e) => setSecretName(e.target.value)} />
+                <Input
+                  placeholder="*"
+                  value={secretName}
+                  onChange={(e) => setSecretName(e.target.value)}
+                />
               </div>
             )}
           </>

@@ -680,7 +680,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/:workspaceId/folders/environment-folder-tree",
+    url: "/:workspaceId/environment-folder-tree",
     config: {
       rateLimit: readLimit
     },

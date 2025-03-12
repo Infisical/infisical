@@ -56,7 +56,7 @@ export const useListProjectEnvironmentsFolders = (
     queryKey: folderQueryKeys.getProjectEnvironmentsFolders(projectId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TProjectEnvironmentsFolders>(
-        `/api/v1/workspace/${projectId}/folders/environment-folder-tree`
+        `/api/v1/workspace/${projectId}/environment-folder-tree`
       );
       return data;
     },

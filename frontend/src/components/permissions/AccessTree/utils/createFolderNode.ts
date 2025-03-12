@@ -103,7 +103,7 @@ export const createFolderNode = ({
         if (hasPermission) {
           // we want to show yellow/conditional access if user hasn't specified secret name to fully resolve access
           if (
-            (!secretName || secretName === "*") &&
+            !secretName &&
             actionRuleMap.some((el) => {
               // we only show conditional if secretName/secretTags are present - environment and path can be directly determined
               if (!el[action]?.conditions?.secretName && !el[action]?.conditions?.secretTags)

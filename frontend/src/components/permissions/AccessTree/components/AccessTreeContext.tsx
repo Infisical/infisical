@@ -24,7 +24,7 @@ interface AccessTreeProviderProps {
 }
 
 export const AccessTreeProvider: React.FC<AccessTreeProviderProps> = ({ children }) => {
-  const [secretName, setSecretName] = useState("*");
+  const [secretName, setSecretName] = useState("");
   const [viewMode, setViewMode] = useState(ViewMode.Docked);
 
   const value = useMemo(
