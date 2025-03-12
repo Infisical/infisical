@@ -45,9 +45,11 @@ export const GeneralPermissionConditions = ({ position = 0, isDisabled, type }: 
   return (
     <div className="mt-6 border-t border-t-mineshaft-600 bg-mineshaft-800 pt-2">
       <p className="mt-2 text-gray-300">Conditions</p>
-      <p className="mb-2 text-sm text-mineshaft-400">
-        When this policy should apply (always if no conditions are added). All conditions must
-        evaluate to true for the policy to take effect.
+      <p className="text-sm text-mineshaft-400">
+        Conditions determine when a policy will be applied (always if no conditions are present).
+      </p>
+      <p className="mb-3 text-sm leading-4 text-mineshaft-400">
+        All conditions must evaluate to true for the policy to take effect.
       </p>
       <div className="mt-2 flex flex-col space-y-2">
         {items.fields.map((el, index) => {
