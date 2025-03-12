@@ -50,7 +50,9 @@ export const PopoverContent = ({
           </IconButton>
         </PopoverPrimitive.Close>
       )}
-      <PopoverPrimitive.Arrow className={twMerge("fill-inherit", arrowClassName)} />
+      <div className="pointer-events-none">
+        <PopoverPrimitive.Arrow className={twMerge("fill-inherit", arrowClassName)} />
+      </div>
     </PopoverPrimitive.Content>
   </PopoverPrimitive.Portal>
 );
