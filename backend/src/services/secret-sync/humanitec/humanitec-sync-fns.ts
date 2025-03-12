@@ -109,7 +109,7 @@ const updateSecret = async (secretSync: THumanitecSyncWithCredentials, secretMap
       `${IntegrationUrls.HUMANITEC_API_URL}/orgs/${destinationConfig.org}/apps/${destinationConfig.app}/envs/${destinationConfig.env}/values/${key}`,
       {
         value: secretMap[key].value,
-        description: secretMap[key].comment
+        description: secretMap[key].comment || ""
       },
       {
         headers: {

@@ -1,6 +1,6 @@
 {
   "name": "Infisical",
-  "openapi": "https://app.infisical.com/api/docs/json",
+  "openapi": "https://3a13-190-31-36-142.ngrok-free.app/api/docs/json",
   "logo": {
     "dark": "/logo/dark.svg",
     "light": "/logo/light.svg",
@@ -406,7 +406,8 @@
             "integrations/app-connections/azure-key-vault",
             "integrations/app-connections/databricks",
             "integrations/app-connections/gcp",
-            "integrations/app-connections/github"
+            "integrations/app-connections/github",
+            "integrations/app-connections/humanitec"
           ]
         }
       ]
@@ -424,7 +425,8 @@
             "integrations/secret-syncs/azure-key-vault",
             "integrations/secret-syncs/databricks",
             "integrations/secret-syncs/gcp-secret-manager",
-            "integrations/secret-syncs/github"
+            "integrations/secret-syncs/github",
+            "integrations/secret-syncs/humanitec"
           ]
         }
       ]

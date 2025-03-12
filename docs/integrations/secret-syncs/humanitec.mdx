@@ -1,0 +1,64 @@
+---
+title: "Humanitec Sync"
+description: "Learn how to configure a Humanitec Sync for Infisical."
+---
+
+**Prerequisites:**
+
+        - Set up and add secrets to [Infisical Cloud](https://app.infisical.com)
+        - Create a [Humanitec Connection](/integrations/app-connections/humanitec) using the API token
+
+<Tabs>
+    <Tab title="Infisical UI">
+        1. Navigate to **Project** > **Integrations** and select the **Secret Syncs** tab. Click on the **Add Sync** button.
+        ![Secret Syncs Tab](/images/secret-syncs/general/secret-sync-tab.png)
+
+        2. Select the **Humanitec** option.
+        ![Select Humanitec](/images/secret-syncs/humanitec/select-humanitec-option.png)
+
+        3. Configure the **Source** from where secrets should be retrieved, then click **Next**.
+        ![Configure Source](/images/secret-syncs/humanitec/humanitec-source.png)
+
+            - **Environment**: The project environment to retrieve secrets from.
+            - **Secret Path**: The folder path to retrieve secrets from.
+
+        <Tip>
+            If you need to sync secrets from multiple folder locations, check out [secret imports](/documentation/platform/secret-reference#secret-imports).
+        </Tip>
+
+        4. Configure the **Destination** to where secrets should be deployed, then click **Next**.
+        ![Configure Destination](/images/secret-syncs/humanitec/humanitec-destination.png)
+
+            - **Humanitec Connection**: The Humanitec Connection to authenticate with.
+            - **Organization**: The Humanitec organization to sync secrets to.
+            - **App**: The Humanitec app from the selected organization to sync secrets to.
+            - **Environment**: The Humanitec environment from the selected app to sync secrets to.
+            <p class="height:1px"  />
+
+        5. Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.
+        ![Configure Options](/images/secret-syncs/humanitec/humanitec-options.png)
+
+            - **Initial Sync Behavior**: Determines how Infisical should resolve the initial sync.
+                - **Overwrite Destination Secrets**: Removes any secrets at the destination endpoint not present in Infisical.
+                <Note>
+                    Humanitec does not support importing secrets.
+                </Note>
+            - **Auto-Sync Enabled**: If enabled, secrets will automatically be synced from the source location when changes occur. Disable to enforce manual syncing only.
+
+        6. Configure the **Details** of your Humanitec Sync, then click **Next**.
+        ![Configure Details](/images/secret-syncs/humanitec/humanitec-details.png)
+
+            - **Name**: The name of your sync. Must be slug-friendly.
+            - **Description**: An optional description for your sync.
+
+        7. Review your Humanitec Sync configuration, then click **Create Sync**.
+        ![Confirm Configuration](/images/secret-syncs/humanitec/humanitec-review.png)
+
+        8. If enabled, your Humanitec Sync will begin syncing your secrets to the destination endpoint.
+        ![Sync Secrets](/images/secret-syncs/humanitec/humanitec-created.png)
+
+    </Tab>
+    <Tab title="API">
+        To create an **Humanitec Sync**, make an API request to the [Create Humanitec Sync](/api-reference/endpoints/secret-syncs/humanitec/create) API endpoint.
+    </Tab>
+</Tabs>
