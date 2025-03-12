@@ -60,12 +60,12 @@ const UserPanelTable = ({
   const [adminsOnly, setAdminsOnly] = useState(false);
   const { user } = useUser();
   const userId = user?.id || "";
-  const [debounedSearchTerm] = useDebounce(searchUserFilter, 500);
+  const [debouncedSearchTerm] = useDebounce(searchUserFilter, 500);
   const { subscription } = useSubscription();
 
   const { data, isPending, isFetchingNextPage, hasNextPage, fetchNextPage } = useAdminGetUsers({
     limit: 20,
-    searchTerm: debounedSearchTerm,
+    searchTerm: debouncedSearchTerm,
     adminsOnly
   });
 
