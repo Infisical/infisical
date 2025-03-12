@@ -13,13 +13,11 @@ import {
   TDatabricksConnectionConfig
 } from "./databricks-connection-types";
 
-export const getDatabricksConnectionListItem = () => {
-  return {
-    name: "Databricks" as const,
-    app: AppConnection.Databricks as const,
-    methods: Object.values(DatabricksConnectionMethod) as [DatabricksConnectionMethod.ServicePrincipal]
-  };
-};
+export const getDatabricksConnectionListItem = () => ({
+  name: "Databricks" as const,
+  app: AppConnection.Databricks as const,
+  methods: Object.values(DatabricksConnectionMethod) as [DatabricksConnectionMethod.ServicePrincipal]
+});
 
 const authorizeDatabricksConnection = async ({
   clientId,

@@ -20,9 +20,7 @@ const generatePassword = (size = 48) => {
   return customAlphabet(charset, 48)(size);
 };
 
-const generateUsername = () => {
-  return alphaNumericNanoId(32);
-};
+const generateUsername = () => alphaNumericNanoId(32);
 
 export const SapHanaProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {

@@ -23,9 +23,7 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { DynamicSecretAwsIamSchema, TDynamicProviderFns } from "./models";
 
-const generateUsername = () => {
-  return alphaNumericNanoId(32);
-};
+const generateUsername = () => alphaNumericNanoId(32);
 
 export const AwsIamProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
@@ -178,11 +176,9 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
     return { entityId: username };
   };
 
-  const renew = async (_inputs: unknown, entityId: string) => {
+  const renew = async (_inputs: unknown, entityId: string) =>
     // No renewal necessary
-    return { entityId };
-  };
-
+    ({ entityId });
   return {
     validateProviderInputs,
     validateConnection,

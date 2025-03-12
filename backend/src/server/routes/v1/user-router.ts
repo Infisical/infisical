@@ -108,9 +108,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      return server.services.user.getUserProjectFavorites(req.permission.id, req.query.orgId);
-    }
+    handler: async (req) => server.services.user.getUserProjectFavorites(req.permission.id, req.query.orgId)
   });
 
   server.route({
@@ -126,13 +124,8 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       })
     },
     onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      return server.services.user.updateUserProjectFavorites(
-        req.permission.id,
-        req.body.orgId,
-        req.body.projectFavorites
-      );
-    }
+    handler: async (req) =>
+      server.services.user.updateUserProjectFavorites(req.permission.id, req.body.orgId, req.body.projectFavorites)
   });
 
   server.route({
@@ -185,11 +178,10 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      return server.services.totp.getUserTotpConfig({
+    handler: async (req) =>
+      server.services.totp.getUserTotpConfig({
         userId: req.permission.id
-      });
-    }
+      })
   });
 
   server.route({
@@ -199,11 +191,10 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      return server.services.totp.deleteUserTotpConfig({
+    handler: async (req) =>
+      server.services.totp.deleteUserTotpConfig({
         userId: req.permission.id
-      });
-    }
+      })
   });
 
   server.route({
@@ -223,11 +214,10 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT], {
       requireOrg: false
     }),
-    handler: async (req) => {
-      return server.services.totp.registerUserTotp({
+    handler: async (req) =>
+      server.services.totp.registerUserTotp({
         userId: req.permission.id
-      });
-    }
+      })
   });
 
   server.route({
@@ -247,12 +237,11 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT], {
       requireOrg: false
     }),
-    handler: async (req) => {
-      return server.services.totp.verifyUserTotpConfig({
+    handler: async (req) =>
+      server.services.totp.verifyUserTotpConfig({
         userId: req.permission.id,
         totp: req.body.totp
-      });
-    }
+      })
   });
 
   server.route({
@@ -262,10 +251,9 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      return server.services.totp.createUserTotpRecoveryCodes({
+    handler: async (req) =>
+      server.services.totp.createUserTotpRecoveryCodes({
         userId: req.permission.id
-      });
-    }
+      })
   });
 };

@@ -112,21 +112,17 @@ export const AzureEntraIDProvider = (): TDynamicProviderFns & {
       throw new BadRequestError({ message: "Failed to fetch users" });
     }
 
-    const users = response.data.value.map((user) => {
-      return {
-        name: user.displayName,
-        id: user.id,
-        email: user.userPrincipalName
-      };
-    });
+    const users = response.data.value.map((user) => ({
+      name: user.displayName,
+      id: user.id,
+      email: user.userPrincipalName
+    }));
     return users;
   };
 
-  const renew = async (_inputs: unknown, entityId: string) => {
+  const renew = async (_inputs: unknown, entityId: string) =>
     // No renewal necessary
-    return { entityId };
-  };
-
+    ({ entityId });
   return {
     validateProviderInputs,
     validateConnection,

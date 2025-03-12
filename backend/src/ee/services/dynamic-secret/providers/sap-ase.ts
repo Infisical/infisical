@@ -14,9 +14,7 @@ const generatePassword = (size = 48) => {
   return customAlphabet(charset, 48)(size);
 };
 
-const generateUsername = () => {
-  return alphaNumericNanoId(25);
-};
+const generateUsername = () => alphaNumericNanoId(25);
 
 enum SapCommands {
   CreateLogin = "sp_addlogin",
@@ -130,11 +128,9 @@ export const SapAseProvider = (): TDynamicProviderFns => {
     return { entityId: username };
   };
 
-  const renew = async (_: unknown, username: string) => {
+  const renew = async (_: unknown, username: string) =>
     // No need for renewal
-    return { entityId: username };
-  };
-
+    ({ entityId: username });
   return {
     validateProviderInputs,
     validateConnection,

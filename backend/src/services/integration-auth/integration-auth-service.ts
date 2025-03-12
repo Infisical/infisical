@@ -1007,12 +1007,10 @@ export const integrationAuthServiceFactory = ({
       return alias.TargetKeyId;
     });
 
-    const keysWithAliases = keyAliases.map((alias) => {
-      return {
-        id: alias.TargetKeyId!,
-        alias: alias.AliasName!
-      };
-    });
+    const keysWithAliases = keyAliases.map((alias) => ({
+      id: alias.TargetKeyId!,
+      alias: alias.AliasName!
+    }));
 
     return keysWithAliases;
   };

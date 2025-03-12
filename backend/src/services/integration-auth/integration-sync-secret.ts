@@ -546,9 +546,9 @@ const syncSecretsAzureKeyVault = async ({
   // disabled keys to skip sending updates to
   const disabledAzureKeyVaultSecretKeys = getAzureKeyVaultSecrets
     .filter(({ attributes }) => !attributes.enabled)
-    .map((getAzureKeyVaultSecret) => {
-      return getAzureKeyVaultSecret.id.substring(getAzureKeyVaultSecret.id.lastIndexOf("/") + 1);
-    });
+    .map((getAzureKeyVaultSecret) =>
+      getAzureKeyVaultSecret.id.substring(getAzureKeyVaultSecret.id.lastIndexOf("/") + 1)
+    );
 
   let lastSlashIndex: number;
   const res = (
@@ -3865,8 +3865,8 @@ const syncSecretsCloudflareWorkers = async ({
   }
 
   await Promise.all(
-    deletedSecretKeys.map(async (secretKey) => {
-      return request.delete(
+    deletedSecretKeys.map(async (secretKey) =>
+      request.delete(
         `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accessId}/workers/scripts/${integration.app}/secrets/${secretKey}`,
         {
           headers: {
@@ -3874,8 +3874,8 @@ const syncSecretsCloudflareWorkers = async ({
             Accept: "application/json"
           }
         }
-      );
-    })
+      )
+    )
   );
 
   interface ConvertedSecret {
@@ -3898,8 +3898,8 @@ const syncSecretsCloudflareWorkers = async ({
   }));
 
   await Promise.all(
-    data.map(async (secret) => {
-      return request.put(
+    data.map(async (secret) =>
+      request.put(
         `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accessId}/workers/scripts/${integration.app}/secrets`,
         secret,
         {
@@ -3908,8 +3908,8 @@ const syncSecretsCloudflareWorkers = async ({
             Accept: "application/json"
           }
         }
-      );
-    })
+      )
+    )
   );
 };
 

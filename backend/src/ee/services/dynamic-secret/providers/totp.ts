@@ -12,9 +12,7 @@ export const TotpProvider = (): TDynamicProviderFns => {
     return providerInputs;
   };
 
-  const validateConnection = async () => {
-    return true;
-  };
+  const validateConnection = async () => true;
 
   const create = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
@@ -70,16 +68,12 @@ export const TotpProvider = (): TDynamicProviderFns => {
     };
   };
 
-  const revoke = async (_inputs: unknown, entityId: string) => {
-    return { entityId };
-  };
+  const revoke = async (_inputs: unknown, entityId: string) => ({ entityId });
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const renew = async (_inputs: unknown, entityId: string) => {
+  const renew = async (_inputs: unknown, entityId: string) =>
     // No renewal necessary
-    return { entityId };
-  };
-
+    ({ entityId });
   return {
     validateProviderInputs,
     validateConnection,

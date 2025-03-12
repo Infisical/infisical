@@ -27,9 +27,7 @@ export const projectBotServiceFactory = ({
 }: TProjectBotServiceFactoryDep) => {
   const getBotKeyFn = getBotKeyFnFactory(projectBotDAL, projectDAL);
 
-  const getBotKey = async (projectId: string, shouldGetBotKey?: boolean) => {
-    return getBotKeyFn(projectId, shouldGetBotKey);
-  };
+  const getBotKey = async (projectId: string, shouldGetBotKey?: boolean) => getBotKeyFn(projectId, shouldGetBotKey);
 
   const findBotByProjectId = async ({
     actorId,

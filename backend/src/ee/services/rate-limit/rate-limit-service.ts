@@ -18,9 +18,7 @@ let rateLimitMaxConfiguration: RateLimitConfiguration = {
 
 Object.freeze(rateLimitMaxConfiguration);
 
-export const getRateLimiterConfig = () => {
-  return rateLimitMaxConfiguration;
-};
+export const getRateLimiterConfig = () => rateLimitMaxConfiguration;
 
 type TRateLimitServiceFactoryDep = {
   rateLimitDAL: TRateLimitDALFactory;
@@ -51,9 +49,8 @@ export const rateLimitServiceFactory = ({ rateLimitDAL, licenseService }: TRateL
     }
   };
 
-  const updateRateLimit = async (updates: TRateLimitUpdateDTO): Promise<TRateLimit> => {
-    return rateLimitDAL.updateById(DEFAULT_RATE_LIMIT_CONFIG_ID, updates);
-  };
+  const updateRateLimit = async (updates: TRateLimitUpdateDTO): Promise<TRateLimit> =>
+    rateLimitDAL.updateById(DEFAULT_RATE_LIMIT_CONFIG_ID, updates);
 
   const syncRateLimitConfiguration = async () => {
     try {

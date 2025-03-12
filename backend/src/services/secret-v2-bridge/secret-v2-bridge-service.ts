@@ -2250,14 +2250,12 @@ export const secretV2BridgeServiceFactory = ({
         { tx }
       );
 
-      const decryptedDestinationSecrets = destinationSecretsFromDB.map((secret) => {
-        return {
-          ...secret,
-          value: secret.encryptedValue
-            ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
-            : undefined
-        };
-      });
+      const decryptedDestinationSecrets = destinationSecretsFromDB.map((secret) => ({
+        ...secret,
+        value: secret.encryptedValue
+          ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
+          : undefined
+      }));
 
       const destinationSecretsGroupedByKey = groupBy(decryptedDestinationSecrets, (i) => i.key);
 
@@ -2367,20 +2365,18 @@ export const secretV2BridgeServiceFactory = ({
               type: actor,
               actorId
             },
-            inputSecrets: locallyCreatedSecrets.map((doc) => {
-              return {
-                type: doc.type,
-                metadata: doc.metadata,
-                key: doc.key,
-                encryptedValue: doc.encryptedValue,
-                encryptedComment: doc.encryptedComment,
-                skipMultilineEncoding: doc.skipMultilineEncoding,
-                reminderNote: doc.reminderNote,
-                reminderRepeatDays: doc.reminderRepeatDays,
-                secretMetadata: doc.secretMetadata,
-                references: doc.value ? getAllSecretReferences(doc.value).nestedReferences : []
-              };
-            })
+            inputSecrets: locallyCreatedSecrets.map((doc) => ({
+              type: doc.type,
+              metadata: doc.metadata,
+              key: doc.key,
+              encryptedValue: doc.encryptedValue,
+              encryptedComment: doc.encryptedComment,
+              skipMultilineEncoding: doc.skipMultilineEncoding,
+              reminderNote: doc.reminderNote,
+              reminderRepeatDays: doc.reminderRepeatDays,
+              secretMetadata: doc.secretMetadata,
+              references: doc.value ? getAllSecretReferences(doc.value).nestedReferences : []
+            }))
           });
         }
         if (locallyUpdatedSecrets.length) {
@@ -2397,32 +2393,30 @@ export const secretV2BridgeServiceFactory = ({
               type: actor,
               actorId
             },
-            inputSecrets: locallyUpdatedSecrets.map((doc) => {
-              return {
-                filter: {
-                  folderId: destinationFolder.id,
-                  id: destinationSecretsGroupedByKey[doc.key][0].id
-                },
-                data: {
-                  metadata: doc.metadata,
-                  key: doc.key,
-                  encryptedComment: doc.encryptedComment,
-                  skipMultilineEncoding: doc.skipMultilineEncoding,
-                  reminderNote: doc.reminderNote,
-                  secretMetadata: doc.secretMetadata,
-                  reminderRepeatDays: doc.reminderRepeatDays,
-                  ...(doc.encryptedValue
-                    ? {
-                        encryptedValue: doc.encryptedValue,
-                        references: doc.value ? getAllSecretReferences(doc.value).nestedReferences : []
-                      }
-                    : {
-                        encryptedValue: undefined,
-                        references: undefined
-                      })
-                }
-              };
-            })
+            inputSecrets: locallyUpdatedSecrets.map((doc) => ({
+              filter: {
+                folderId: destinationFolder.id,
+                id: destinationSecretsGroupedByKey[doc.key][0].id
+              },
+              data: {
+                metadata: doc.metadata,
+                key: doc.key,
+                encryptedComment: doc.encryptedComment,
+                skipMultilineEncoding: doc.skipMultilineEncoding,
+                reminderNote: doc.reminderNote,
+                secretMetadata: doc.secretMetadata,
+                reminderRepeatDays: doc.reminderRepeatDays,
+                ...(doc.encryptedValue
+                  ? {
+                      encryptedValue: doc.encryptedValue,
+                      references: doc.value ? getAllSecretReferences(doc.value).nestedReferences : []
+                    }
+                  : {
+                      encryptedValue: undefined,
+                      references: undefined
+                    })
+              }
+            }))
           });
         }
 

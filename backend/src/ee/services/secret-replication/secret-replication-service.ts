@@ -440,18 +440,16 @@ export const secretReplicationServiceFactory = ({
                     secretTagDAL,
                     resourceMetadataDAL,
                     secretVersionTagDAL: secretVersionV2TagBridgeDAL,
-                    inputSecrets: locallyCreatedSecrets.map((doc) => {
-                      return {
-                        type: doc.type,
-                        metadata: doc.metadata,
-                        key: doc.key,
-                        encryptedValue: doc.encryptedValue,
-                        encryptedComment: doc.encryptedComment,
-                        skipMultilineEncoding: doc.skipMultilineEncoding,
-                        secretMetadata: doc.secretMetadata,
-                        references: doc.secretValue ? getAllSecretReferences(doc.secretValue).nestedReferences : []
-                      };
-                    })
+                    inputSecrets: locallyCreatedSecrets.map((doc) => ({
+                      type: doc.type,
+                      metadata: doc.metadata,
+                      key: doc.key,
+                      encryptedValue: doc.encryptedValue,
+                      encryptedComment: doc.encryptedComment,
+                      skipMultilineEncoding: doc.skipMultilineEncoding,
+                      secretMetadata: doc.secretMetadata,
+                      references: doc.secretValue ? getAllSecretReferences(doc.secretValue).nestedReferences : []
+                    }))
                   });
                 }
                 if (locallyUpdatedSecrets.length) {
@@ -464,24 +462,22 @@ export const secretReplicationServiceFactory = ({
                     resourceMetadataDAL,
                     secretTagDAL,
                     secretVersionTagDAL: secretVersionV2TagBridgeDAL,
-                    inputSecrets: locallyUpdatedSecrets.map((doc) => {
-                      return {
-                        filter: {
-                          folderId: destinationReplicationFolderId,
-                          id: destinationLocalSecretsGroupedByKey[doc.key][0].id
-                        },
-                        data: {
-                          type: doc.type,
-                          metadata: doc.metadata,
-                          key: doc.key,
-                          encryptedValue: doc.encryptedValue as Buffer,
-                          encryptedComment: doc.encryptedComment,
-                          skipMultilineEncoding: doc.skipMultilineEncoding,
-                          secretMetadata: doc.secretMetadata,
-                          references: doc.secretValue ? getAllSecretReferences(doc.secretValue).nestedReferences : []
-                        }
-                      };
-                    })
+                    inputSecrets: locallyUpdatedSecrets.map((doc) => ({
+                      filter: {
+                        folderId: destinationReplicationFolderId,
+                        id: destinationLocalSecretsGroupedByKey[doc.key][0].id
+                      },
+                      data: {
+                        type: doc.type,
+                        metadata: doc.metadata,
+                        key: doc.key,
+                        encryptedValue: doc.encryptedValue as Buffer,
+                        encryptedComment: doc.encryptedComment,
+                        skipMultilineEncoding: doc.skipMultilineEncoding,
+                        secretMetadata: doc.secretMetadata,
+                        references: doc.secretValue ? getAllSecretReferences(doc.secretValue).nestedReferences : []
+                      }
+                    }))
                   });
                 }
                 if (locallyDeletedSecrets.length) {
@@ -711,8 +707,41 @@ export const secretReplicationServiceFactory = ({
                   tx,
                   secretTagDAL,
                   secretVersionTagDAL,
-                  inputSecrets: locallyCreatedSecrets.map((doc) => {
-                    return {
+                  inputSecrets: locallyCreatedSecrets.map((doc) => ({
+                    keyEncoding: doc.keyEncoding,
+                    algorithm: doc.algorithm,
+                    type: doc.type,
+                    metadata: doc.metadata,
+                    secretKeyIV: doc.secretKeyIV,
+                    secretKeyTag: doc.secretKeyTag,
+                    secretKeyCiphertext: doc.secretKeyCiphertext,
+                    secretValueIV: doc.secretValueIV,
+                    secretValueTag: doc.secretValueTag,
+                    secretValueCiphertext: doc.secretValueCiphertext,
+                    secretBlindIndex: doc.secretBlindIndex,
+                    secretCommentIV: doc.secretCommentIV,
+                    secretCommentTag: doc.secretCommentTag,
+                    secretCommentCiphertext: doc.secretCommentCiphertext,
+                    skipMultilineEncoding: doc.skipMultilineEncoding,
+                    references: getAllSecretReferences(doc.secretValue).nestedReferences
+                  }))
+                });
+              }
+              if (locallyUpdatedSecrets.length) {
+                await fnSecretBulkUpdate({
+                  projectId,
+                  folderId: destinationReplicationFolderId,
+                  secretVersionDAL,
+                  secretDAL,
+                  tx,
+                  secretTagDAL,
+                  secretVersionTagDAL,
+                  inputSecrets: locallyUpdatedSecrets.map((doc) => ({
+                    filter: {
+                      folderId: destinationReplicationFolderId,
+                      id: destinationLocalSecretsGroupedByBlindIndex[doc.secretBlindIndex as string][0].id
+                    },
+                    data: {
                       keyEncoding: doc.keyEncoding,
                       algorithm: doc.algorithm,
                       type: doc.type,
@@ -729,45 +758,8 @@ export const secretReplicationServiceFactory = ({
                       secretCommentCiphertext: doc.secretCommentCiphertext,
                       skipMultilineEncoding: doc.skipMultilineEncoding,
                       references: getAllSecretReferences(doc.secretValue).nestedReferences
-                    };
-                  })
-                });
-              }
-              if (locallyUpdatedSecrets.length) {
-                await fnSecretBulkUpdate({
-                  projectId,
-                  folderId: destinationReplicationFolderId,
-                  secretVersionDAL,
-                  secretDAL,
-                  tx,
-                  secretTagDAL,
-                  secretVersionTagDAL,
-                  inputSecrets: locallyUpdatedSecrets.map((doc) => {
-                    return {
-                      filter: {
-                        folderId: destinationReplicationFolderId,
-                        id: destinationLocalSecretsGroupedByBlindIndex[doc.secretBlindIndex as string][0].id
-                      },
-                      data: {
-                        keyEncoding: doc.keyEncoding,
-                        algorithm: doc.algorithm,
-                        type: doc.type,
-                        metadata: doc.metadata,
-                        secretKeyIV: doc.secretKeyIV,
-                        secretKeyTag: doc.secretKeyTag,
-                        secretKeyCiphertext: doc.secretKeyCiphertext,
-                        secretValueIV: doc.secretValueIV,
-                        secretValueTag: doc.secretValueTag,
-                        secretValueCiphertext: doc.secretValueCiphertext,
-                        secretBlindIndex: doc.secretBlindIndex,
-                        secretCommentIV: doc.secretCommentIV,
-                        secretCommentTag: doc.secretCommentTag,
-                        secretCommentCiphertext: doc.secretCommentCiphertext,
-                        skipMultilineEncoding: doc.skipMultilineEncoding,
-                        references: getAllSecretReferences(doc.secretValue).nestedReferences
-                      }
-                    };
-                  })
+                    }
+                  }))
                 });
               }
               if (locallyDeletedSecrets.length) {

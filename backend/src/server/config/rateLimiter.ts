@@ -67,9 +67,7 @@ export const mfaRateLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
   hook: "preValidation",
   max: (req) => req.rateLimits.mfaRateLimit,
-  keyGenerator: (req) => {
-    return req.headers.authorization?.split(" ")[1] || req.realIp;
-  }
+  keyGenerator: (req) => req.headers.authorization?.split(" ")[1] || req.realIp
 };
 
 // Public endpoints to avoid brute force attacks

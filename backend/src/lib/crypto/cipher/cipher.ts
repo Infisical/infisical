@@ -2,13 +2,9 @@ import crypto from "crypto";
 
 import { SymmetricEncryption, TSymmetricEncryptionFns } from "./types";
 
-const getIvLength = () => {
-  return 12;
-};
+const getIvLength = () => 12;
 
-const getTagLength = () => {
-  return 16;
-};
+const getTagLength = () => 16;
 
 export const symmetricCipherService = (type: SymmetricEncryption): TSymmetricEncryptionFns => {
   const IV_LENGTH = getIvLength();

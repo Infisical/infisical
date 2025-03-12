@@ -793,20 +793,18 @@ export const createManySecretsRawFnFactory = ({
           message: `Secret already exist: ${secretsStoredInDB.map((el) => el.key).join(",")}`
         });
 
-      const inputSecrets = secrets.map((secret) => {
-        return {
-          type: secret.type,
-          userId: secret.type === SecretType.Personal ? userId : null,
-          key: secret.secretName,
-          encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(secret.secretValue) }).cipherTextBlob,
-          encryptedComent: secret.secretComment
-            ? secretManagerEncryptor({ plainText: Buffer.from(secret.secretComment) }).cipherTextBlob
-            : null,
-          skipMultilineEncoding: secret.skipMultilineEncoding,
-          tags: secret.tags,
-          references: getAllSecretReferences(secret.secretValue).nestedReferences
-        };
-      });
+      const inputSecrets = secrets.map((secret) => ({
+        type: secret.type,
+        userId: secret.type === SecretType.Personal ? userId : null,
+        key: secret.secretName,
+        encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(secret.secretValue) }).cipherTextBlob,
+        encryptedComent: secret.secretComment
+          ? secretManagerEncryptor({ plainText: Buffer.from(secret.secretComment) }).cipherTextBlob
+          : null,
+        skipMultilineEncoding: secret.skipMultilineEncoding,
+        tags: secret.tags,
+        references: getAllSecretReferences(secret.secretValue).nestedReferences
+      }));
 
       // get all tags
       const tagIds = inputSecrets.flatMap(({ tags = [] }) => tags);

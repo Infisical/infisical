@@ -155,14 +155,13 @@ export const buildUserProjectKey = (privateKey: string, publickey: string) => {
   return { nonce, ciphertext };
 };
 
-export const getUserProjectKey = async (privateKey: string, ciphertext: string, nonce: string, publicKey: string) => {
-  return decryptAsymmetric({
+export const getUserProjectKey = async (privateKey: string, ciphertext: string, nonce: string, publicKey: string) =>
+  decryptAsymmetric({
     ciphertext,
     nonce,
     publicKey,
     privateKey
   });
-};
 
 export const encryptSecret = (encKey: string, key: string, value?: string, comment?: string) => {
   // encrypt key

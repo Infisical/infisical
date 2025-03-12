@@ -21,18 +21,16 @@ export const ldapGroupMapDALFactory = (db: TDbClient) => {
           db.ref("slug").withSchema(TableName.Groups).as("groupSlug")
         );
 
-      return docs.map((doc) => {
-        return {
-          id: doc.id,
-          ldapConfigId: doc.ldapConfigId,
-          ldapGroupCN: doc.ldapGroupCN,
-          group: {
-            id: doc.groupId,
-            name: doc.groupName,
-            slug: doc.groupSlug
-          }
-        };
-      });
+      return docs.map((doc) => ({
+        id: doc.id,
+        ldapConfigId: doc.ldapConfigId,
+        ldapGroupCN: doc.ldapGroupCN,
+        group: {
+          id: doc.groupId,
+          name: doc.groupName,
+          slug: doc.groupSlug
+        }
+      }));
     } catch (error) {
       throw new DatabaseError({ error, name: "findGroupMaps" });
     }

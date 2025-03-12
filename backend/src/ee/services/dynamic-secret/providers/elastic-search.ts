@@ -12,9 +12,7 @@ const generatePassword = () => {
   return customAlphabet(charset, 64)();
 };
 
-const generateUsername = () => {
-  return alphaNumericNanoId(32);
-};
+const generateUsername = () => alphaNumericNanoId(32);
 
 export const ElasticSearchProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
@@ -95,11 +93,9 @@ export const ElasticSearchProvider = (): TDynamicProviderFns => {
     return { entityId };
   };
 
-  const renew = async (_inputs: unknown, entityId: string) => {
+  const renew = async (_inputs: unknown, entityId: string) =>
     // No renewal necessary
-    return { entityId };
-  };
-
+    ({ entityId });
   return {
     validateProviderInputs,
     validateConnection,

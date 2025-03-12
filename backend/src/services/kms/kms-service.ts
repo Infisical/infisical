@@ -238,9 +238,7 @@ export const kmsServiceFactory = ({
   const decryptWithRootKey = () => {
     const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
 
-    return (cipherTextBuffer: Buffer) => {
-      return cipher.decrypt(cipherTextBuffer, ROOT_ENCRYPTION_KEY);
-    };
+    return (cipherTextBuffer: Buffer) => cipher.decrypt(cipherTextBuffer, ROOT_ENCRYPTION_KEY);
   };
 
   const decryptWithKmsKey = async ({

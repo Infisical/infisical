@@ -249,9 +249,7 @@ export const addUsersToGroupByUserIds = async ({
   if (outerTx) {
     return processAddition(outerTx);
   }
-  return userDAL.transaction(async (tx) => {
-    return processAddition(tx);
-  });
+  return userDAL.transaction(async (tx) => processAddition(tx));
 };
 
 /**
@@ -383,9 +381,7 @@ export const removeUsersFromGroupByUserIds = async ({
   if (outerTx) {
     return processRemoval(outerTx);
   }
-  return userDAL.transaction(async (tx) => {
-    return processRemoval(tx);
-  });
+  return userDAL.transaction(async (tx) => processRemoval(tx));
 };
 
 /**

@@ -7,8 +7,8 @@ interface SlugSchemaInputs {
   field?: string;
 }
 
-export const slugSchema = ({ min = 1, max = 32, field = "Slug" }: SlugSchemaInputs = {}) => {
-  return z
+export const slugSchema = ({ min = 1, max = 32, field = "Slug" }: SlugSchemaInputs = {}) =>
+  z
     .string()
     .trim()
     .min(min, {
@@ -20,4 +20,3 @@ export const slugSchema = ({ min = 1, max = 32, field = "Slug" }: SlugSchemaInpu
     .refine((v) => slugify(v, { lowercase: true }) === v, {
       message: `${field} field can only contain lowercase letters, numbers, and hyphens`
     });
-};

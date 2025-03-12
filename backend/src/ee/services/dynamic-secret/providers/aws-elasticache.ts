@@ -211,11 +211,9 @@ export const AwsElastiCacheDatabaseProvider = (): TDynamicProviderFns => {
     return { entityId };
   };
 
-  const renew = async (_inputs: unknown, entityId: string) => {
+  const renew = async (_inputs: unknown, entityId: string) =>
     // No renewal necessary
-    return { entityId };
-  };
-
+    ({ entityId });
   return {
     validateProviderInputs,
     validateConnection,

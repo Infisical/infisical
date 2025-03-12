@@ -132,24 +132,20 @@ export const initLogger = () => {
 
   const wrapLogger = (originalLogger: Logger): CustomLogger => {
     // eslint-disable-next-line no-param-reassign, @typescript-eslint/no-explicit-any
-    originalLogger.info = (obj: unknown, msg?: string, ...args: any[]) => {
-      return originalLogger.child({ reqId: extractReqId() }).info(obj, msg, ...args);
-    };
+    originalLogger.info = (obj: unknown, msg?: string, ...args: any[]) =>
+      originalLogger.child({ reqId: extractReqId() }).info(obj, msg, ...args);
 
     // eslint-disable-next-line no-param-reassign, @typescript-eslint/no-explicit-any
-    originalLogger.error = (obj: unknown, msg?: string, ...args: any[]) => {
-      return originalLogger.child({ reqId: extractReqId() }).error(obj, msg, ...args);
-    };
+    originalLogger.error = (obj: unknown, msg?: string, ...args: any[]) =>
+      originalLogger.child({ reqId: extractReqId() }).error(obj, msg, ...args);
 
     // eslint-disable-next-line no-param-reassign, @typescript-eslint/no-explicit-any
-    originalLogger.warn = (obj: unknown, msg?: string, ...args: any[]) => {
-      return originalLogger.child({ reqId: extractReqId() }).warn(obj, msg, ...args);
-    };
+    originalLogger.warn = (obj: unknown, msg?: string, ...args: any[]) =>
+      originalLogger.child({ reqId: extractReqId() }).warn(obj, msg, ...args);
 
     // eslint-disable-next-line no-param-reassign, @typescript-eslint/no-explicit-any
-    originalLogger.debug = (obj: unknown, msg?: string, ...args: any[]) => {
-      return originalLogger.child({ reqId: extractReqId() }).debug(obj, msg, ...args);
-    };
+    originalLogger.debug = (obj: unknown, msg?: string, ...args: any[]) =>
+      originalLogger.child({ reqId: extractReqId() }).debug(obj, msg, ...args);
 
     return originalLogger;
   };

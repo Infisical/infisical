@@ -16,10 +16,7 @@ const generatePassword = (size = 48) => {
   return customAlphabet(charset, 48)(size);
 };
 
-const generateUsername = () => {
-  return `infisical_${alphaNumericNanoId(32)}`; // username must start with alpha character, hence prefix
-};
-
+const generateUsername = () => `infisical_${alphaNumericNanoId(32)}`; // username must start with alpha character, hence prefix
 const getDaysToExpiry = (expiryDate: Date) => {
   const start = new Date().getTime();
   const end = new Date(expiryDate).getTime();

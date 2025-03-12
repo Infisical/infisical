@@ -14,9 +14,7 @@ const generatePassword = () => {
   return customAlphabet(charset, 64)();
 };
 
-const generateUsername = () => {
-  return alphaNumericNanoId(32);
-};
+const generateUsername = () => alphaNumericNanoId(32);
 
 const executeTransactions = async (connection: Redis, commands: string[]): Promise<(string | null)[] | null> => {
   // Initiate a transaction

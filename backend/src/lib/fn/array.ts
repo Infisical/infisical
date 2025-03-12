@@ -61,15 +61,14 @@ export const objectify = <T, Key extends string | number | symbol, Value = T>(
   array: readonly T[],
   getKey: (item: T) => Key,
   getValue: (item: T) => Value = (item) => item as unknown as Value
-): Record<Key, Value> => {
-  return array.reduce(
+): Record<Key, Value> =>
+  array.reduce(
     (acc, item) => {
       acc[getKey(item)] = getValue(item);
       return acc;
     },
     {} as Record<Key, Value>
   );
-};
 
 /**
  * Chunks an array into smaller arrays of the given size.
