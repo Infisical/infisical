@@ -15,7 +15,8 @@ type Props = {
   showDescriptionOverwriteWarning?: boolean;
 };
 
-const descriptionOverwriteWarningMessage = "Warning: Any changes made here will overwrite any custom edits in individual environment folders."
+const descriptionOverwriteWarningMessage =
+  "Warning: Any changes made here will overwrite any custom edits in individual environment folders.";
 
 const formSchema = z.object({
   name: z
@@ -25,9 +26,7 @@ const formSchema = z.object({
       /^[a-zA-Z0-9-_]+$/,
       "Folder name can only contain letters, numbers, dashes, and underscores"
     ),
-  description: z
-  .string()
-  .optional()
+  description: z.string().optional()
 });
 type TFormData = z.infer<typeof formSchema>;
 
@@ -59,7 +58,7 @@ export const FolderForm = ({
     if (textarea) {
       const lines = textarea.value.split("\n");
       const maxDescriptionLines = 10;
-  
+
       if (lines.length > maxDescriptionLines) {
         textarea.value = lines.slice(0, maxDescriptionLines).join("\n");
       }
@@ -90,30 +89,32 @@ export const FolderForm = ({
         )}
       />
       <Controller
-          control={control}
-          name="description"
-          defaultValue=""
-          render={({ field, fieldState: { error } }) => (
-            <FormControl
-              label="Folder Description"
-              isError={Boolean(error)}
-              tooltipText={showDescriptionOverwriteWarning ? descriptionOverwriteWarningMessage : undefined}
-              isOptional
-              errorText={error?.message}
-              className="flex-1"
-            >
-              <TextArea
-                placeholder="Folder description"
-                {...field}
-                rows={3}
-                ref={descriptionRef}
-                onInput={handleInput}
-                className="thin-scrollbar w-full !resize-none bg-mineshaft-900"
-                maxLength={255}
-              />
-            </FormControl>
-          )}
-        />
+        control={control}
+        name="description"
+        defaultValue=""
+        render={({ field, fieldState: { error } }) => (
+          <FormControl
+            label="Folder Description"
+            isError={Boolean(error)}
+            tooltipText={
+              showDescriptionOverwriteWarning ? descriptionOverwriteWarningMessage : undefined
+            }
+            isOptional
+            errorText={error?.message}
+            className="flex-1"
+          >
+            <TextArea
+              placeholder="Folder description"
+              {...field}
+              rows={3}
+              ref={descriptionRef}
+              onInput={handleInput}
+              className="thin-scrollbar w-full !resize-none bg-mineshaft-900"
+              maxLength={255}
+            />
+          </FormControl>
+        )}
+      />
       <div className="mt-8 flex items-center">
         <Button className="mr-4" type="submit" isDisabled={isSubmitting} isLoading={isSubmitting}>
           {isEdit ? "Save" : "Create"}

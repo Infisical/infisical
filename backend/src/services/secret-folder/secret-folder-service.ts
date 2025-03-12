@@ -8,6 +8,7 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
+import { buildFolderPath } from "@app/services/secret-folder/secret-folder-fns";
 
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -27,7 +28,7 @@ type TSecretFolderServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   folderDAL: TSecretFolderDALFactory;
-  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs">;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs" | "find">;
   folderVersionDAL: TSecretFolderVersionDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
 };
@@ -580,6 +581,44 @@ export const secretFolderServiceFactory = ({
     return folders;
   };
 
+  const getProjectEnvironmentsFolders = async (projectId: string, actor: OrgServiceActor) => {
+    // folder list is allowed to be read by anyone
+    // permission is to check if user has access
+    await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    const environments = await projectEnvDAL.find({ projectId });
+
+    const folders = await folderDAL.find({
+      $in: {
+        envId: environments.map((env) => env.id)
+      },
+      isReserved: false
+    });
+
+    const environmentFolders = Object.fromEntries(
+      environments.map((env) => {
+        const relevantFolders = folders.filter((folder) => folder.envId === env.id);
+        const foldersMap = Object.fromEntries(relevantFolders.map((folder) => [folder.id, folder]));
+
+        const foldersWithPath = relevantFolders.map((folder) => ({
+          ...folder,
+          path: buildFolderPath(folder, foldersMap)
+        }));
+
+        return [env.slug, { ...env, folders: foldersWithPath }];
+      })
+    );
+
+    return environmentFolders;
+  };
+
   return {
     createFolder,
     updateFolder,
@@ -589,6 +628,7 @@ export const secretFolderServiceFactory = ({
     getFolderById,
     getProjectFolderCount,
     getFoldersMultiEnv,
-    getFoldersDeepByEnvs
+    getFoldersDeepByEnvs,
+    getProjectEnvironmentsFolders
   };
 };

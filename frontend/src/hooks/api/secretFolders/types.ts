@@ -1,3 +1,5 @@
+import { WorkspaceEnv } from "@app/hooks/api/workspace/types";
+
 export enum ReservedFolders {
   SecretReplication = "__reserve_replication_"
 }
@@ -6,6 +8,13 @@ export type TSecretFolder = {
   id: string;
   name: string;
   description?: string;
+  parentId?: string | null;
+};
+
+export type TSecretFolderWithPath = TSecretFolder & { path: string };
+
+export type TProjectEnvironmentsFolders = {
+  [key: string]: WorkspaceEnv & { folders: TSecretFolderWithPath[] };
 };
 
 export type TGetProjectFoldersDTO = {
