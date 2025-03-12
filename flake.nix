@@ -20,6 +20,11 @@
           nodePackages.prettier
           infisical
         ];
+
+        env = {
+          GOROOT = "${pkgs.go}/share/go";
+          GOPATH = "$(pwd)/.go";
+        };
       };
   };
 }
