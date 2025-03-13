@@ -1,3 +1,5 @@
+.direnv/
+
 # backend
 node_modules
 .env
@@ -25,8 +27,6 @@ node_modules
 /node_modules
 /.pnp
 .pnp.js
-
-.env
 
 # testing
 coverage
@@ -63,10 +63,12 @@ yarn-error.log*
 
 # Editor specific
 .vscode/*
-.idea/*
+**/.idea/*
 
 frontend-build
 
+# cli
+.go/
 *.tgz
 cli/infisical-merge
 cli/test/infisical-merge

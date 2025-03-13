@@ -14,11 +14,21 @@
           git
           lazygit
 
+          go
           python312Full
           nodejs_20
           nodePackages.prettier
           infisical
         ];
+
+        env = {
+          GOROOT = "${pkgs.go}/share/go";
+        };
+
+        shellHook = ''
+          export GOPATH="$(pwd)/.go"
+          mkdir -p "$GOPATH"
+        '';
       };
   };
 }

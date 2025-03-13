@@ -15,6 +15,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Infisical/infisical-merge/packages/api"
+	"github.com/go-resty/resty/v2"
+
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/util"
 	"github.com/fatih/color"
@@ -59,11 +62,11 @@ var runCmd = &cobra.Command{
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		environmentName, _ := cmd.Flags().GetString("env")
+		environmentSlug, _ := cmd.Flags().GetString("env")
 		if !cmd.Flags().Changed("env") {
 			environmentFromWorkspace := util.GetEnvFromWorkspaceFile()
 			if environmentFromWorkspace != "" {
-				environmentName = environmentFromWorkspace
+				environmentSlug = environmentFromWorkspace
 			}
 		}
 
@@ -136,8 +139,20 @@ var runCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
+		log.Debug().Msgf("Confirming selected environment is valid: %s", environmentSlug)
+
+		hasEnvironment, err := confirmProjectHasEnvironment(environmentSlug, projectId, token)
+		if err != nil {
+			util.HandleError(err, "Could not confirm project has environment")
+		}
+		if !hasEnvironment {
+			util.HandleError(fmt.Errorf("project does not have environment '%s'", environmentSlug))
+		}
+
+		log.Debug().Msgf("Project '%s' has environment '%s'", projectId, environmentSlug)
+
 		request := models.GetAllSecretsParameters{
-			Environment:            environmentName,
+			Environment:            environmentSlug,
 			WorkspaceId:            projectId,
 			TagSlugs:               tagSlugs,
 			SecretsPath:            secretsPath,
@@ -308,7 +323,6 @@ func waitForExitCommand(cmd *exec.Cmd) (int, error) {
 }
 
 func executeCommandWithWatchMode(commandFlag string, args []string, watchModeInterval int, request models.GetAllSecretsParameters, projectConfigDir string, secretOverriding bool, token *models.TokenDetails) {
-
 	var cmd *exec.Cmd
 	var err error
 	var lastSecretsFetch time.Time
@@ -439,8 +453,53 @@ func executeCommandWithWatchMode(commandFlag string, args []string, watchModeInt
 	}
 }
 
-func fetchAndFormatSecretsForShell(request models.GetAllSecretsParameters, projectConfigDir string, secretOverriding bool, token *models.TokenDetails) (models.InjectableEnvironmentResult, error) {
+func confirmProjectHasEnvironment(environmentSlug, projectId string, token *models.TokenDetails) (bool, error) {
+	var accessToken string
 
+	if token != nil && (token.Type == util.SERVICE_TOKEN_IDENTIFIER || token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER) {
+		accessToken = token.Token
+	} else {
+		util.RequireLogin()
+		util.RequireLocalWorkspaceFile()
+
+		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
+		if err != nil {
+			util.HandleError(err, "Unable to authenticate")
+		}
+
+		if loggedInUserDetails.LoginExpired {
+			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+		}
+		accessToken = loggedInUserDetails.UserCredentials.JTWToken
+	}
+
+	if projectId == "" {
+		workspaceFile, err := util.GetWorkSpaceFromFile()
+		if err != nil {
+			util.HandleError(err, "Unable to get local project details")
+		}
+
+		projectId = workspaceFile.WorkspaceId
+	}
+
+	httpClient := resty.New()
+	httpClient.SetAuthToken(accessToken).
+		SetHeader("Accept", "application/json")
+
+	project, err := api.CallGetProjectById(httpClient, projectId)
+	if err != nil {
+		return false, err
+	}
+
+	for _, env := range project.Environments {
+		if env.Slug == environmentSlug {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func fetchAndFormatSecretsForShell(request models.GetAllSecretsParameters, projectConfigDir string, secretOverriding bool, token *models.TokenDetails) (models.InjectableEnvironmentResult, error) {
 	if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
 		request.InfisicalToken = token.Token
 	} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
