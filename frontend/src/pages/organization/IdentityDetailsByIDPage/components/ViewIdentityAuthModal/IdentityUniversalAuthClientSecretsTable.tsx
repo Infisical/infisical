@@ -20,7 +20,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useRevokeIdentityUniversalAuthClientSecret } from "@app/hooks/api";
 import { ClientSecretData } from "@app/hooks/api/identities/types";
@@ -68,7 +68,7 @@ export const IdentityUniversalAuthClientSecretsTable = ({ clientSecrets, identit
     <div className="col-span-2">
       <div className="flex items-end justify-between border-b border-mineshaft-500 pb-2">
         <span className="text-bunker-300">Client Secrets</span>
-        <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Identity}>
+        <OrgPermissionCan I={OrgPermissionIdentityActions.Edit} a={OrgPermissionSubjects.Identity}>
           {(isAllowed) => (
             <Button
               isDisabled={!isAllowed}
@@ -129,7 +129,7 @@ export const IdentityUniversalAuthClientSecretsTable = ({ clientSecrets, identit
                       </Td>
                       <Td>
                         <OrgPermissionCan
-                          I={OrgPermissionActions.Edit}
+                          I={OrgPermissionIdentityActions.Edit}
                           a={OrgPermissionSubjects.Identity}
                         >
                           {(isAllowed) => (

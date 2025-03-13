@@ -6,9 +6,12 @@ import { JwksClient } from "jwks-rsa";
 
 import { IdentityAuthMethod, TIdentityOidcAuthsUpdate } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  constructPermissionErrorMessage,
+  validatePrivilegeChangeOperation
+} from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
@@ -220,7 +223,7 @@ export const identityOidcAuthServiceFactory = ({
       actorOrgId
     );
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
@@ -310,7 +313,7 @@ export const identityOidcAuthServiceFactory = ({
       actorOrgId
     );
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
@@ -382,7 +385,7 @@ export const identityOidcAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
     const identityOidcAuth = await identityOidcAuthDAL.findOne({ identityId });
 
@@ -410,7 +413,7 @@ export const identityOidcAuthServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission, membership } = await permissionService.getOrgPermission(
       actor,
       actorId,
       identityMembershipOrg.orgId,
@@ -418,7 +421,7 @@ export const identityOidcAuthServiceFactory = ({
       actorOrgId
     );
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
     const { permission: rolePermission } = await permissionService.getOrgPermission(
       ActorType.IDENTITY,
@@ -428,11 +431,23 @@ export const identityOidcAuthServiceFactory = ({
       actorOrgId
     );
 
-    const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
+      OrgPermissionIdentityActions.RevokeAuth,
+      OrgPermissionSubjects.Identity,
+      permission,
+      rolePermission
+    );
+
     if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",
-        message: "Failed to revoke oidc auth of identity with more privileged role",
+        message: constructPermissionErrorMessage(
+          "Failed to revoke oidc auth of identity with more privileged role",
+          membership.shouldUseNewPrivilegeSystem,
+          OrgPermissionIdentityActions.RevokeAuth,
+          OrgPermissionSubjects.Identity
+        ),
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 

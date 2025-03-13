@@ -3,9 +3,12 @@ import jwt from "jsonwebtoken";
 
 import { IdentityAuthMethod, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  constructPermissionErrorMessage,
+  validatePrivilegeChangeOperation
+} from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
@@ -81,7 +84,7 @@ export const identityTokenAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
@@ -154,7 +157,7 @@ export const identityTokenAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
@@ -208,7 +211,7 @@ export const identityTokenAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
     return { ...identityTokenAuth, orgId: identityMembershipOrg.orgId };
   };
@@ -235,9 +238,9 @@ export const identityTokenAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission } = await permissionService.getOrgPermission(
+    const { permission: rolePermission, membership } = await permissionService.getOrgPermission(
       ActorType.IDENTITY,
       identityMembershipOrg.identityId,
       identityMembershipOrg.orgId,
@@ -245,11 +248,22 @@ export const identityTokenAuthServiceFactory = ({
       actorOrgId
     );
 
-    const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
+      OrgPermissionIdentityActions.RevokeAuth,
+      OrgPermissionSubjects.Identity,
+      permission,
+      rolePermission
+    );
     if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",
-        message: "Failed to revoke token auth of identity with more privileged role",
+        message: constructPermissionErrorMessage(
+          "Failed to revoke token auth of identity with more privileged role",
+          membership.shouldUseNewPrivilegeSystem,
+          OrgPermissionIdentityActions.RevokeAuth,
+          OrgPermissionSubjects.Identity
+        ),
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
@@ -288,20 +302,32 @@ export const identityTokenAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission } = await permissionService.getOrgPermission(
+    const { permission: rolePermission, membership } = await permissionService.getOrgPermission(
       ActorType.IDENTITY,
       identityMembershipOrg.identityId,
       identityMembershipOrg.orgId,
       actorAuthMethod,
       actorOrgId
     );
-    const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
+      OrgPermissionIdentityActions.CreateToken,
+      OrgPermissionSubjects.Identity,
+      permission,
+      rolePermission
+    );
     if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",
-        message: "Failed to create token for identity with more privileged role",
+        message: constructPermissionErrorMessage(
+          "Failed to create token for identity with more privileged role",
+          membership.shouldUseNewPrivilegeSystem,
+          OrgPermissionIdentityActions.CreateToken,
+          OrgPermissionSubjects.Identity
+        ),
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
@@ -367,7 +393,7 @@ export const identityTokenAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
     const tokens = await identityAccessTokenDAL.find(
       {
@@ -410,20 +436,31 @@ export const identityTokenAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission } = await permissionService.getOrgPermission(
+    const { permission: rolePermission, membership } = await permissionService.getOrgPermission(
       ActorType.IDENTITY,
       identityMembershipOrg.identityId,
       identityMembershipOrg.orgId,
       actorAuthMethod,
       actorOrgId
     );
-    const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
+      OrgPermissionIdentityActions.CreateToken,
+      OrgPermissionSubjects.Identity,
+      permission,
+      rolePermission
+    );
     if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",
-        message: "Failed to update token for identity with more privileged role",
+        message: constructPermissionErrorMessage(
+          "Failed to update token for identity with more privileged role",
+          membership.shouldUseNewPrivilegeSystem,
+          OrgPermissionIdentityActions.CreateToken,
+          OrgPermissionSubjects.Identity
+        ),
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
@@ -473,7 +510,7 @@ export const identityTokenAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
     const [revokedToken] = await identityAccessTokenDAL.update(
       {

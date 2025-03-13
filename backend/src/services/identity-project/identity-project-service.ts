@@ -2,13 +2,15 @@ import { ForbiddenError, subject } from "@casl/ability";
 import ms from "ms";
 
 import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
+import {
+  constructPermissionErrorMessage,
+  validatePrivilegeChangeOperation
+} from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { validatePermissionBoundary } from "@app/lib/casl/boundary";
+import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 
-import { ActorType } from "../auth/auth-type";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { ProjectUserMembershipTemporaryMode } from "../project-membership/project-membership-types";
@@ -54,7 +56,7 @@ export const identityProjectServiceFactory = ({
     projectId,
     roles
   }: TCreateProjectIdentityDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, membership } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -63,7 +65,7 @@ export const identityProjectServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
+      ProjectPermissionIdentityActions.Create,
       subject(ProjectPermissionSub.Identity, {
         identityId
       })
@@ -91,11 +93,22 @@ export const identityProjectServiceFactory = ({
         projectId
       );
 
-      const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        membership.shouldUseNewPrivilegeSystem,
+        ProjectPermissionIdentityActions.ManagePrivileges,
+        ProjectPermissionSub.Identity,
+        permission,
+        rolePermission
+      );
       if (!permissionBoundary.isValid)
         throw new ForbiddenRequestError({
           name: "PermissionBoundaryError",
-          message: "Failed to assign to a more privileged role",
+          message: constructPermissionErrorMessage(
+            "Failed to assign to a more privileged role",
+            membership.shouldUseNewPrivilegeSystem,
+            ProjectPermissionIdentityActions.ManagePrivileges,
+            ProjectPermissionSub.Identity
+          ),
           details: { missingPermissions: permissionBoundary.missingPermissions }
         });
     }
@@ -162,7 +175,7 @@ export const identityProjectServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TUpdateProjectIdentityDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, membership } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -171,7 +184,7 @@ export const identityProjectServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Edit,
+      ProjectPermissionIdentityActions.Edit,
       subject(ProjectPermissionSub.Identity, { identityId })
     );
 
@@ -187,11 +200,23 @@ export const identityProjectServiceFactory = ({
         projectId
       );
 
-      const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        membership.shouldUseNewPrivilegeSystem,
+        ProjectPermissionIdentityActions.ManagePrivileges,
+        ProjectPermissionSub.Identity,
+        permission,
+        rolePermission
+      );
+
       if (!permissionBoundary.isValid)
         throw new ForbiddenRequestError({
           name: "PermissionBoundaryError",
-          message: "Failed to change to a more privileged role",
+          message: constructPermissionErrorMessage(
+            "Failed to change to a more privileged role",
+            membership.shouldUseNewPrivilegeSystem,
+            ProjectPermissionIdentityActions.ManagePrivileges,
+            ProjectPermissionSub.Identity
+          ),
           details: { missingPermissions: permissionBoundary.missingPermissions }
         });
     }
@@ -271,25 +296,9 @@ export const identityProjectServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Delete,
+      ProjectPermissionIdentityActions.Delete,
       subject(ProjectPermissionSub.Identity, { identityId })
     );
-
-    const { permission: identityRolePermission } = await permissionService.getProjectPermission({
-      actor: ActorType.IDENTITY,
-      actorId: identityId,
-      projectId: identityProjectMembership.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    const permissionBoundary = validatePermissionBoundary(permission, identityRolePermission);
-    if (!permissionBoundary.isValid)
-      throw new ForbiddenRequestError({
-        name: "PermissionBoundaryError",
-        message: "Failed to remove more privileged identity",
-        details: { missingPermissions: permissionBoundary.missingPermissions }
-      });
 
     const [deletedIdentity] = await identityProjectDAL.delete({ identityId, projectId });
     return deletedIdentity;
@@ -315,7 +324,10 @@ export const identityProjectServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionIdentityActions.Read,
+      ProjectPermissionSub.Identity
+    );
 
     const identityMemberships = await identityProjectDAL.findByProjectId(projectId, {
       limit,
@@ -348,7 +360,7 @@ export const identityProjectServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
+      ProjectPermissionIdentityActions.Read,
       subject(ProjectPermissionSub.Identity, { identityId })
     );
 

@@ -5,6 +5,8 @@ import { OrgPermissionSubjects } from "@app/context";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionAppConnectionActions,
+  OrgPermissionGroupActions,
+  OrgPermissionIdentityActions,
   OrgPermissionKmipActions
 } from "@app/context/OrgPermissionContext/types";
 import { TPermission } from "@app/hooks/api/roles/types";
@@ -32,6 +34,32 @@ const kmipPermissionSchema = z
   .object({
     [OrgPermissionKmipActions.Proxy]: z.boolean().optional(),
     [OrgPermissionKmipActions.Setup]: z.boolean().optional()
+  })
+  .optional();
+
+const identityPermissionSchema = z
+  .object({
+    [OrgPermissionIdentityActions.Read]: z.boolean().optional(),
+    [OrgPermissionIdentityActions.Edit]: z.boolean().optional(),
+    [OrgPermissionIdentityActions.Delete]: z.boolean().optional(),
+    [OrgPermissionIdentityActions.Create]: z.boolean().optional(),
+    [OrgPermissionIdentityActions.ManagePrivileges]: z.boolean().optional(),
+    [OrgPermissionIdentityActions.RevokeAuth]: z.boolean().optional(),
+    [OrgPermissionIdentityActions.CreateToken]: z.boolean().optional(),
+    [OrgPermissionIdentityActions.GetToken]: z.boolean().optional(),
+    [OrgPermissionIdentityActions.DeleteToken]: z.boolean().optional()
+  })
+  .optional();
+
+const groupPermissionSchema = z
+  .object({
+    [OrgPermissionGroupActions.Read]: z.boolean().optional(),
+    [OrgPermissionGroupActions.Create]: z.boolean().optional(),
+    [OrgPermissionGroupActions.Edit]: z.boolean().optional(),
+    [OrgPermissionGroupActions.Delete]: z.boolean().optional(),
+    [OrgPermissionGroupActions.ManagePrivileges]: z.boolean().optional(),
+    [OrgPermissionGroupActions.AddMembers]: z.boolean().optional(),
+    [OrgPermissionGroupActions.RemoveMembers]: z.boolean().optional()
   })
   .optional();
 
@@ -67,7 +95,7 @@ export const formSchema = z.object({
 
       "audit-logs": generalPermissionSchema,
       member: generalPermissionSchema,
-      groups: generalPermissionSchema,
+      groups: groupPermissionSchema,
       role: generalPermissionSchema,
       settings: generalPermissionSchema,
       "service-account": generalPermissionSchema,
@@ -77,7 +105,7 @@ export const formSchema = z.object({
       scim: generalPermissionSchema,
       ldap: generalPermissionSchema,
       billing: generalPermissionSchema,
-      identity: generalPermissionSchema,
+      identity: identityPermissionSchema,
       "organization-admin-console": adminConsolePermissionSchmea,
       [OrgPermissionSubjects.Kms]: generalPermissionSchema,
       [OrgPermissionSubjects.ProjectTemplates]: generalPermissionSchema,
