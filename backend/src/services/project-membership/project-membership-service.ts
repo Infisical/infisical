@@ -4,7 +4,10 @@ import ms from "ms";
 
 import { ActionProjectType, ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { validatePrivilegeChangeOperation } from "@app/ee/services/permission/permission-fns";
+import {
+  constructPermissionErrorMessage,
+  validatePrivilegeChangeOperation
+} from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
@@ -284,7 +287,12 @@ export const projectMembershipServiceFactory = ({
       if (!permissionBoundary.isValid)
         throw new ForbiddenRequestError({
           name: "PermissionBoundaryError",
-          message: `Failed to change to a more privileged role ${requestedRoleChange}`,
+          message: constructPermissionErrorMessage(
+            `Failed to change to a more privileged role ${requestedRoleChange}`,
+            membership.shouldUseNewPrivilegeSystem,
+            ProjectPermissionMemberActions.ManagePrivileges,
+            ProjectPermissionSub.Member
+          ),
           details: { missingPermissions: permissionBoundary.missingPermissions }
         });
     }

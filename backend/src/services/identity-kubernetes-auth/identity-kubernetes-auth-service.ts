@@ -6,7 +6,10 @@ import jwt from "jsonwebtoken";
 import { IdentityAuthMethod, TIdentityKubernetesAuthsUpdate } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
-import { validatePrivilegeChangeOperation } from "@app/ee/services/permission/permission-fns";
+import {
+  constructPermissionErrorMessage,
+  validatePrivilegeChangeOperation
+} from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
@@ -497,7 +500,12 @@ export const identityKubernetesAuthServiceFactory = ({
     if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",
-        message: "Failed to revoke kubernetes auth of identity with more privileged role",
+        message: constructPermissionErrorMessage(
+          "Failed to revoke kubernetes auth of identity with more privileged role",
+          membership.shouldUseNewPrivilegeSystem,
+          OrgPermissionIdentityActions.RevokeAuth,
+          OrgPermissionSubjects.Identity
+        ),
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 

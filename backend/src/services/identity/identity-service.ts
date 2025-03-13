@@ -3,7 +3,10 @@ import { ForbiddenError } from "@casl/ability";
 import { OrgMembershipRole, TableName, TOrgRoles } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
-import { validatePrivilegeChangeOperation } from "@app/ee/services/permission/permission-fns";
+import {
+  constructPermissionErrorMessage,
+  validatePrivilegeChangeOperation
+} from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
@@ -73,7 +76,12 @@ export const identityServiceFactory = ({
     if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",
-        message: "Failed to create a more privileged identity",
+        message: constructPermissionErrorMessage(
+          "Failed to create a more privileged identity",
+          membership.shouldUseNewPrivilegeSystem,
+          OrgPermissionIdentityActions.ManagePrivileges,
+          OrgPermissionSubjects.Identity
+        ),
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
@@ -155,7 +163,12 @@ export const identityServiceFactory = ({
       if (!appliedRolePermissionBoundary.isValid)
         throw new ForbiddenRequestError({
           name: "PermissionBoundaryError",
-          message: "Failed to create a more privileged identity",
+          message: constructPermissionErrorMessage(
+            "Failed to update identity",
+            membership.shouldUseNewPrivilegeSystem,
+            OrgPermissionIdentityActions.ManagePrivileges,
+            OrgPermissionSubjects.Identity
+          ),
           details: { missingPermissions: appliedRolePermissionBoundary.missingPermissions }
         });
       if (isCustomRole) customRole = customOrgRole;

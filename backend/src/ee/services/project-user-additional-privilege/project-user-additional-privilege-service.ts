@@ -8,7 +8,7 @@ import { UnpackedPermissionSchema } from "@app/server/routes/sanitizedSchema/per
 import { ActorType } from "@app/services/auth/auth-type";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 
-import { validatePrivilegeChangeOperation } from "../permission/permission-fns";
+import { constructPermissionErrorMessage, validatePrivilegeChangeOperation } from "../permission/permission-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import {
   ProjectPermissionMemberActions,
@@ -90,7 +90,12 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",
-        message: "Failed to update more privileged user",
+        message: constructPermissionErrorMessage(
+          "Failed to update more privileged user",
+          membership.shouldUseNewPrivilegeSystem,
+          ProjectPermissionMemberActions.ManagePrivileges,
+          ProjectPermissionSub.Member
+        ),
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
@@ -187,7 +192,12 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",
-        message: "Failed to update more privileged user",
+        message: constructPermissionErrorMessage(
+          "Failed to update more privileged user",
+          membership.shouldUseNewPrivilegeSystem,
+          ProjectPermissionMemberActions.ManagePrivileges,
+          ProjectPermissionSub.Member
+        ),
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 

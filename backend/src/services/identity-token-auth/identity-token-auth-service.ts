@@ -4,7 +4,10 @@ import jwt from "jsonwebtoken";
 import { IdentityAuthMethod, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
-import { validatePrivilegeChangeOperation } from "@app/ee/services/permission/permission-fns";
+import {
+  constructPermissionErrorMessage,
+  validatePrivilegeChangeOperation
+} from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -255,7 +258,12 @@ export const identityTokenAuthServiceFactory = ({
     if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",
-        message: "Failed to revoke token auth of identity with more privileged role",
+        message: constructPermissionErrorMessage(
+          "Failed to revoke token auth of identity with more privileged role",
+          membership.shouldUseNewPrivilegeSystem,
+          OrgPermissionIdentityActions.RevokeAuth,
+          OrgPermissionSubjects.Identity
+        ),
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
@@ -314,7 +322,12 @@ export const identityTokenAuthServiceFactory = ({
     if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",
-        message: "Failed to create token for identity with more privileged role",
+        message: constructPermissionErrorMessage(
+          "Failed to create token for identity with more privileged role",
+          membership.shouldUseNewPrivilegeSystem,
+          OrgPermissionIdentityActions.CreateToken,
+          OrgPermissionSubjects.Identity
+        ),
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
@@ -442,7 +455,12 @@ export const identityTokenAuthServiceFactory = ({
     if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",
-        message: "Failed to update token for identity with more privileged role",
+        message: constructPermissionErrorMessage(
+          "Failed to update token for identity with more privileged role",
+          membership.shouldUseNewPrivilegeSystem,
+          OrgPermissionIdentityActions.CreateToken,
+          OrgPermissionSubjects.Identity
+        ),
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 

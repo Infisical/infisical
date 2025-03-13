@@ -2,7 +2,10 @@ import { ForbiddenError, subject } from "@casl/ability";
 import ms from "ms";
 
 import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
-import { validatePrivilegeChangeOperation } from "@app/ee/services/permission/permission-fns";
+import {
+  constructPermissionErrorMessage,
+  validatePrivilegeChangeOperation
+} from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -100,7 +103,12 @@ export const identityProjectServiceFactory = ({
       if (!permissionBoundary.isValid)
         throw new ForbiddenRequestError({
           name: "PermissionBoundaryError",
-          message: "Failed to assign to a more privileged role",
+          message: constructPermissionErrorMessage(
+            "Failed to assign to a more privileged role",
+            membership.shouldUseNewPrivilegeSystem,
+            ProjectPermissionIdentityActions.ManagePrivileges,
+            ProjectPermissionSub.Identity
+          ),
           details: { missingPermissions: permissionBoundary.missingPermissions }
         });
     }
@@ -203,7 +211,12 @@ export const identityProjectServiceFactory = ({
       if (!permissionBoundary.isValid)
         throw new ForbiddenRequestError({
           name: "PermissionBoundaryError",
-          message: "Failed to change to a more privileged role",
+          message: constructPermissionErrorMessage(
+            "Failed to change to a more privileged role",
+            membership.shouldUseNewPrivilegeSystem,
+            ProjectPermissionIdentityActions.ManagePrivileges,
+            ProjectPermissionSub.Identity
+          ),
           details: { missingPermissions: permissionBoundary.missingPermissions }
         });
     }

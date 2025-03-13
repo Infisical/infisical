@@ -9,7 +9,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { validatePrivilegeChangeOperation } from "../permission/permission-fns";
+import { constructPermissionErrorMessage, validatePrivilegeChangeOperation } from "../permission/permission-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TIdentityProjectAdditionalPrivilegeV2DALFactory } from "./identity-project-additional-privilege-v2-dal";
@@ -89,7 +89,12 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
     if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",
-        message: "Failed to update more privileged identity",
+        message: constructPermissionErrorMessage(
+          "Failed to update more privileged identity",
+          membership.shouldUseNewPrivilegeSystem,
+          ProjectPermissionIdentityActions.ManagePrivileges,
+          ProjectPermissionSub.Identity
+        ),
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
@@ -181,7 +186,12 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
     if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",
-        message: "Failed to update more privileged identity",
+        message: constructPermissionErrorMessage(
+          "Failed to update more privileged identity",
+          membership.shouldUseNewPrivilegeSystem,
+          ProjectPermissionIdentityActions.ManagePrivileges,
+          ProjectPermissionSub.Identity
+        ),
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
@@ -269,7 +279,12 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
     if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",
-        message: "Failed to update more privileged identity",
+        message: constructPermissionErrorMessage(
+          "Failed to update more privileged identity",
+          membership.shouldUseNewPrivilegeSystem,
+          ProjectPermissionIdentityActions.ManagePrivileges,
+          ProjectPermissionSub.Identity
+        ),
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 

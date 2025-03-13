@@ -14,7 +14,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionGroupActions, OrgPermissionSubjects } from "../permission/org-permission";
-import { validatePrivilegeChangeOperation } from "../permission/permission-fns";
+import { constructPermissionErrorMessage, validatePrivilegeChangeOperation } from "../permission/permission-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { TGroupDALFactory } from "./group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "./group-fns";
@@ -95,10 +95,16 @@ export const groupServiceFactory = ({
       permission,
       rolePermission
     );
+
     if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",
-        message: "Failed to create a more privileged group",
+        message: constructPermissionErrorMessage(
+          "Failed to create a more privileged group",
+          membership.shouldUseNewPrivilegeSystem,
+          OrgPermissionGroupActions.ManagePrivileges,
+          OrgPermissionSubjects.Groups
+        ),
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
@@ -178,7 +184,12 @@ export const groupServiceFactory = ({
       if (!permissionBoundary.isValid)
         throw new ForbiddenRequestError({
           name: "PermissionBoundaryError",
-          message: "Failed to update a more privileged group",
+          message: constructPermissionErrorMessage(
+            "Failed to update a more privileged group",
+            membership.shouldUseNewPrivilegeSystem,
+            OrgPermissionGroupActions.ManagePrivileges,
+            OrgPermissionSubjects.Groups
+          ),
           details: { missingPermissions: permissionBoundary.missingPermissions }
         });
       if (isCustomRole) customRole = customOrgRole;
@@ -362,7 +373,12 @@ export const groupServiceFactory = ({
     if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",
-        message: "Failed to add user to more privileged group",
+        message: constructPermissionErrorMessage(
+          "Failed to add user to more privileged group",
+          membership.shouldUseNewPrivilegeSystem,
+          OrgPermissionGroupActions.AddMembers,
+          OrgPermissionSubjects.Groups
+        ),
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
@@ -439,7 +455,12 @@ export const groupServiceFactory = ({
     if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",
-        message: "Failed to delete user from more privileged group",
+        message: constructPermissionErrorMessage(
+          "Failed to delete user from more privileged group",
+          membership.shouldUseNewPrivilegeSystem,
+          OrgPermissionGroupActions.RemoveMembers,
+          OrgPermissionSubjects.Groups
+        ),
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 

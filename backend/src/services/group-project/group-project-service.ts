@@ -2,7 +2,10 @@ import { ForbiddenError } from "@casl/ability";
 import ms from "ms";
 
 import { ActionProjectType, ProjectMembershipRole, SecretKeyEncoding, TGroups } from "@app/db/schemas";
-import { validatePrivilegeChangeOperation } from "@app/ee/services/permission/permission-fns";
+import {
+  constructPermissionErrorMessage,
+  validatePrivilegeChangeOperation
+} from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionGroupActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { decryptAsymmetric, encryptAsymmetric } from "@app/lib/crypto";
@@ -112,7 +115,12 @@ export const groupProjectServiceFactory = ({
       if (!permissionBoundary.isValid)
         throw new ForbiddenRequestError({
           name: "PermissionBoundaryError",
-          message: "Failed to assign group to a more privileged role",
+          message: constructPermissionErrorMessage(
+            "Failed to assign group to a more privileged role",
+            membership.shouldUseNewPrivilegeSystem,
+            ProjectPermissionGroupActions.ManagePrivileges,
+            ProjectPermissionSub.Groups
+          ),
           details: { missingPermissions: permissionBoundary.missingPermissions }
         });
     }
@@ -285,7 +293,12 @@ export const groupProjectServiceFactory = ({
       if (!permissionBoundary.isValid)
         throw new ForbiddenRequestError({
           name: "PermissionBoundaryError",
-          message: "Failed to assign group to a more privileged role",
+          message: constructPermissionErrorMessage(
+            "Failed to assign group to a more privileged role",
+            membership.shouldUseNewPrivilegeSystem,
+            ProjectPermissionGroupActions.ManagePrivileges,
+            ProjectPermissionSub.Groups
+          ),
           details: { missingPermissions: permissionBoundary.missingPermissions }
         });
     }

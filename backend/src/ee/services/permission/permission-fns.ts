@@ -181,4 +181,19 @@ const validatePrivilegeChangeOperation = (
   return validatePermissionBoundary(actorPermission, managedPermission);
 };
 
-export { escapeHandlebarsMissingMetadata, isAuthMethodSaml, validateOrgSSO, validatePrivilegeChangeOperation };
+const constructPermissionErrorMessage = (
+  baseMessage: string,
+  shouldUseNewPrivilegeSystem: boolean,
+  opAction: OrgPermissionSet[0] | ProjectPermissionSet[0],
+  opSubject: OrgPermissionSet[1] | ProjectPermissionSet[1]
+) => {
+  return `${baseMessage}${shouldUseNewPrivilegeSystem ? `. Missing permission ${opAction} on ${opSubject}` : ""}`;
+};
+
+export {
+  escapeHandlebarsMissingMetadata,
+  isAuthMethodSaml,
+  validateOrgSSO,
+  validatePrivilegeChangeOperation,
+  constructPermissionErrorMessage
+};

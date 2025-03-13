@@ -24,7 +24,10 @@ import {
   OrgPermissionGroupActions,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
-import { validatePrivilegeChangeOperation } from "@app/ee/services/permission/permission-fns";
+import {
+  constructPermissionErrorMessage,
+  validatePrivilegeChangeOperation
+} from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
@@ -930,7 +933,12 @@ export const orgServiceFactory = ({
           if (!permissionBoundary.isValid)
             throw new ForbiddenRequestError({
               name: "PermissionBoundaryError",
-              message: "Failed to invite user to a more privileged role in the project",
+              message: constructPermissionErrorMessage(
+                "Failed to invite user to a more privileged role in the project",
+                membership.shouldUseNewPrivilegeSystem,
+                ProjectPermissionMemberActions.ManagePrivileges,
+                ProjectPermissionSub.Member
+              ),
               details: { missingPermissions: permissionBoundary.missingPermissions }
             });
         }
