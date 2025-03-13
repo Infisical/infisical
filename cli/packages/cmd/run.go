@@ -6,8 +6,6 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"github.com/Infisical/infisical-merge/packages/api"
-	"github.com/go-resty/resty/v2"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -16,6 +14,9 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/Infisical/infisical-merge/packages/api"
+	"github.com/go-resty/resty/v2"
 
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/util"
@@ -140,8 +141,7 @@ var runCmd = &cobra.Command{
 
 		log.Debug().Msgf("Confirming selected environment is valid: %s", environmentSlug)
 
-		var hasEnvironment bool
-		hasEnvironment, err = confirmProjectHasEnvironment(environmentSlug, projectId, token)
+		hasEnvironment, err := confirmProjectHasEnvironment(environmentSlug, projectId, token)
 		if err != nil {
 			util.HandleError(err, "Could not confirm project has environment")
 		}
