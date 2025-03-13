@@ -7,7 +7,7 @@ import { IdentityAuthMethod, TIdentityJwtAuthsUpdate } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { isAtLeastAsPrivileged } from "@app/lib/casl";
+import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
@@ -78,14 +78,22 @@ export const identityJwtAuthServiceFactory = ({
     let tokenData: Record<string, string | boolean | number> = {};
 
     if (identityJwtAuth.configurationType === JwtConfigurationType.JWKS) {
-      const decryptedJwksCaCert = orgDataKeyDecryptor({
-        cipherTextBlob: identityJwtAuth.encryptedJwksCaCert
-      }).toString();
-      const requestAgent = new https.Agent({ ca: decryptedJwksCaCert, rejectUnauthorized: !!decryptedJwksCaCert });
-      const client = new JwksClient({
-        jwksUri: identityJwtAuth.jwksUrl,
-        requestAgent
-      });
+      let client: JwksClient;
+      if (identityJwtAuth.jwksUrl.includes("https:")) {
+        const decryptedJwksCaCert = orgDataKeyDecryptor({
+          cipherTextBlob: identityJwtAuth.encryptedJwksCaCert
+        }).toString();
+
+        const requestAgent = new https.Agent({ ca: decryptedJwksCaCert, rejectUnauthorized: !!decryptedJwksCaCert });
+        client = new JwksClient({
+          jwksUri: identityJwtAuth.jwksUrl,
+          requestAgent
+        });
+      } else {
+        client = new JwksClient({
+          jwksUri: identityJwtAuth.jwksUrl
+        });
+      }
 
       const { kid } = decodedToken.header;
       const jwtSigningKey = await client.getSigningKey(kid);
@@ -508,11 +516,13 @@ export const identityJwtAuthServiceFactory = ({
       actorOrgId
     );
 
-    if (!isAtLeastAsPrivileged(permission, rolePermission)) {
+    const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+    if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
-        message: "Failed to revoke JWT auth of identity with more privileged role"
+        name: "PermissionBoundaryError",
+        message: "Failed to revoke jwt auth of identity with more privileged role",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
-    }
 
     const revokedIdentityJwtAuth = await identityJwtAuthDAL.transaction(async (tx) => {
       const deletedJwtAuth = await identityJwtAuthDAL.delete({ identityId }, tx);

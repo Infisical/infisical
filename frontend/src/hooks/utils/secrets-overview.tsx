@@ -10,13 +10,16 @@ type FolderNameAndDescription = {
 export const useFolderOverview = (folders: DashboardProjectSecretsOverview["folders"]) => {
   const folderNamesAndDescriptions = useMemo(() => {
     const namesAndDescriptions = new Map<string, FolderNameAndDescription>();
-  
+
     folders?.forEach((folder) => {
       if (!namesAndDescriptions.has(folder.name)) {
-        namesAndDescriptions.set(folder.name, { name: folder.name, description: folder.description });
+        namesAndDescriptions.set(folder.name, {
+          name: folder.name,
+          description: folder.description
+        });
       }
     });
-  
+
     return Array.from(namesAndDescriptions.values());
   }, [folders]);
 

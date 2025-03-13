@@ -47,6 +47,7 @@ export const secretTagDALFactory = (db: TDbClient) => {
       throw new DatabaseError({ error, name: "Find all by ids" });
     }
   };
+
   return {
     ...secretTagOrm,
     saveTagsToSecret: secretJnTagOrm.insertMany,

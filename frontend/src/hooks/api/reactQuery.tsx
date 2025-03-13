@@ -10,17 +10,13 @@ import {
   formatedConditionsOperatorNames,
   PermissionConditionOperators
 } from "@app/context/ProjectPermissionContext/types";
+import { camelCaseToSpaces } from "@app/lib/fn/string";
 
 import { ApiErrorTypes, TApiErrors } from "./types";
-
 // this is saved in react-query cache
 export const SIGNUP_TEMP_TOKEN_CACHE_KEY = ["infisical__signup-temp-token"];
 export const MFA_TEMP_TOKEN_CACHE_KEY = ["infisical__mfa-temp-token"];
 export const AUTH_TOKEN_CACHE_KEY = ["infisical__auth-token"];
-
-const camelCaseToSpaces = (input: string) => {
-  return input.replace(/([a-z])([A-Z])/g, "$1 $2");
-};
 
 export const onRequestError = (error: unknown) => {
   if (axios.isAxiosError(error)) {

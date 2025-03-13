@@ -1,39 +1,34 @@
 package cmd
 
 import (
-	// "fmt"
-
-	// "github.com/Infisical/infisical-merge/packages/api"
-	// "github.com/Infisical/infisical-merge/packages/models"
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"os/signal"
+	"runtime"
 	"syscall"
 	"time"
 
 	"github.com/Infisical/infisical-merge/packages/gateway"
 	"github.com/Infisical/infisical-merge/packages/util"
-	"github.com/rs/zerolog/log"
-
-	// "github.com/Infisical/infisical-merge/packages/visualize"
-	// "github.com/rs/zerolog/log"
-
-	// "github.com/go-resty/resty/v2"
 	"github.com/posthog/posthog-go"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
 var gatewayCmd = &cobra.Command{
-	Example:               `infisical gateway`,
-	Short:                 "Used to infisical gateway",
 	Use:                   "gateway",
+	Short:                 "Run the Infisical gateway or manage its systemd service",
+	Long:                  "Run the Infisical gateway in the foreground or manage its systemd service installation. Use 'gateway install' to set up the systemd service.",
+	Example:               `infisical gateway --token=<token>
+  sudo infisical gateway install --token=<token> --domain=<domain>`,
 	DisableFlagsInUseLine: true,
 	Args:                  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		token, err := util.GetInfisicalToken(cmd)
 		if err != nil {
-			util.HandleError(err, "Unable to parse flag")
+			util.HandleError(err, "Unable to parse token flag")
 		}
 
 		if token == nil {
@@ -109,6 +104,50 @@ var gatewayCmd = &cobra.Command{
 	},
 }
 
+var gatewayInstallCmd = &cobra.Command{
+	Use:                   "install",
+	Short:                 "Install and enable systemd service for the gateway (requires sudo)",
+	Long:                  "Install and enable systemd service for the gateway. Must be run with sudo on Linux.",
+	Example:               "sudo infisical gateway install --token=<token> --domain=<domain>",
+	DisableFlagsInUseLine: true,
+	Args:                  cobra.NoArgs,
+	Run: func(cmd *cobra.Command, args []string) {
+		if runtime.GOOS != "linux" {
+			util.HandleError(fmt.Errorf("systemd service installation is only supported on Linux"))
+		}
+
+		if os.Geteuid() != 0 {
+			util.HandleError(fmt.Errorf("systemd service installation requires root/sudo privileges"))
+		}
+
+		token, err := util.GetInfisicalToken(cmd)
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
+		if token == nil {
+			util.HandleError(fmt.Errorf("Token not found"))
+		}
+
+		domain, err := cmd.Flags().GetString("domain")
+		if err != nil {
+			util.HandleError(err, "Unable to parse domain flag")
+		}
+
+		if err := gateway.InstallGatewaySystemdService(token.Token, domain); err != nil {
+			util.HandleError(err, "Failed to install systemd service")
+		}
+
+		enableCmd := exec.Command("systemctl", "enable", "infisical-gateway")
+		if err := enableCmd.Run(); err != nil {
+			util.HandleError(err, "Failed to enable systemd service")
+		}
+
+		log.Info().Msg("Successfully installed and enabled infisical-gateway service")
+		log.Info().Msg("To start the service, run: sudo systemctl start infisical-gateway")
+	},
+}
+
 var gatewayRelayCmd = &cobra.Command{
 	Example:               `infisical gateway relay`,
 	Short:                 "Used to run infisical gateway relay",
@@ -138,9 +177,12 @@ var gatewayRelayCmd = &cobra.Command{
 
 func init() {
 	gatewayCmd.Flags().String("token", "", "Connect with Infisical using machine identity access token")
+	gatewayInstallCmd.Flags().String("token", "", "Connect with Infisical using machine identity access token")
+	gatewayInstallCmd.Flags().String("domain", "", "Domain of your self-hosted Infisical instance")
 
 	gatewayRelayCmd.Flags().String("config", "", "Relay config yaml file path")
 
+	gatewayCmd.AddCommand(gatewayInstallCmd)
 	gatewayCmd.AddCommand(gatewayRelayCmd)
 	rootCmd.AddCommand(gatewayCmd)
 }

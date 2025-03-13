@@ -31,9 +31,9 @@ export type TImportDataIntoInfisicalDTO = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findLastEnvPosition" | "create" | "findOne">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 
-  secretDAL: Pick<TSecretV2BridgeDALFactory, "insertMany" | "upsertSecretReferences" | "findBySecretKeys">;
+  secretDAL: Pick<TSecretV2BridgeDALFactory, "insertMany" | "upsertSecretReferences" | "findBySecretKeys" | "find">;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "create">;
-  secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "create">;
+  secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "create" | "find">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany" | "create">;
 
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;
@@ -772,6 +772,10 @@ export const importDataIntoInfisicalFn = async ({
             secretVersionDAL,
             secretTagDAL,
             secretVersionTagDAL,
+            actor: {
+              type: actor,
+              actorId
+            },
             tx
           });
         }

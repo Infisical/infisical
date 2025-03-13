@@ -2,6 +2,7 @@ import { packRules } from "@casl/ability/extra";
 import { z } from "zod";
 
 import { ProjectMembershipRole, ProjectRolesSchema } from "@app/db/schemas";
+import { checkForInvalidPermissionCombination } from "@app/ee/services/permission/permission-fns";
 import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
 import { PROJECT_ROLE } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -37,7 +38,9 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
           .describe(PROJECT_ROLE.CREATE.slug),
         name: z.string().min(1).trim().describe(PROJECT_ROLE.CREATE.name),
         description: z.string().trim().nullish().describe(PROJECT_ROLE.CREATE.description),
-        permissions: ProjectPermissionV2Schema.array().describe(PROJECT_ROLE.CREATE.permissions)
+        permissions: ProjectPermissionV2Schema.array()
+          .describe(PROJECT_ROLE.CREATE.permissions)
+          .refine(checkForInvalidPermissionCombination)
       }),
       response: {
         200: z.object({
@@ -92,7 +95,10 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
           .describe(PROJECT_ROLE.UPDATE.slug),
         name: z.string().trim().optional().describe(PROJECT_ROLE.UPDATE.name),
         description: z.string().trim().nullish().describe(PROJECT_ROLE.UPDATE.description),
-        permissions: ProjectPermissionV2Schema.array().describe(PROJECT_ROLE.UPDATE.permissions).optional()
+        permissions: ProjectPermissionV2Schema.array()
+          .describe(PROJECT_ROLE.UPDATE.permissions)
+          .optional()
+          .superRefine(checkForInvalidPermissionCombination)
       }),
       response: {
         200: z.object({

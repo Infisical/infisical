@@ -1,5 +1,9 @@
+import { ReactNode } from "react";
+import { faWarning } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { z } from "zod";
 
+import { Tooltip } from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionCmekActions,
@@ -9,6 +13,7 @@ import {
   PermissionConditionOperators,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionKmipActions,
+  ProjectPermissionSecretActions,
   ProjectPermissionSecretSyncActions,
   TPermissionCondition,
   TPermissionConditionOperators
@@ -20,6 +25,15 @@ const GeneralPolicyActionSchema = z.object({
   edit: z.boolean().optional(),
   delete: z.boolean().optional(),
   create: z.boolean().optional()
+});
+
+const SecretPolicyActionSchema = z.object({
+  [ProjectPermissionSecretActions.DescribeAndReadValue]: z.boolean().optional(), // existing read, gives both describe and read value
+  [ProjectPermissionSecretActions.DescribeSecret]: z.boolean().optional(),
+  [ProjectPermissionSecretActions.ReadValue]: z.boolean().optional(),
+  [ProjectPermissionSecretActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionSecretActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionSecretActions.Create]: z.boolean().optional()
 });
 
 const CmekPolicyActionSchema = z.object({
@@ -114,7 +128,7 @@ export const projectRoleFormSchema = z.object({
     .refine((val) => val !== "custom", { message: "Cannot use custom as its a keyword" }),
   permissions: z
     .object({
-      [ProjectPermissionSub.Secrets]: GeneralPolicyActionSchema.extend({
+      [ProjectPermissionSub.Secrets]: SecretPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
         conditions: ConditionSchema
       })
@@ -283,6 +297,33 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           });
           return;
         }
+
+        if (subject === ProjectPermissionSub.Secrets) {
+          const canDescribeAndReadValue = action.includes(
+            ProjectPermissionSecretActions.DescribeAndReadValue
+          );
+          const canDescribe = action.includes(ProjectPermissionSecretActions.DescribeSecret);
+          const canReadValue = action.includes(ProjectPermissionSecretActions.ReadValue);
+
+          const canEdit = action.includes(ProjectPermissionSecretActions.Edit);
+          const canDelete = action.includes(ProjectPermissionSecretActions.Delete);
+          const canCreate = action.includes(ProjectPermissionSecretActions.Create);
+
+          // from above statement we are sure it won't be undefined
+          formVal[subject]!.push({
+            describeSecret: canDescribe,
+            read: canDescribeAndReadValue,
+            readValue: canReadValue,
+            create: canCreate,
+            edit: canEdit,
+            delete: canDelete,
+            conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+            inverted
+          });
+
+          return;
+        }
+
         // for other subjects
         const canRead = action.includes(ProjectPermissionActions.Read);
         const canEdit = action.includes(ProjectPermissionActions.Edit);
@@ -470,7 +511,7 @@ export type TProjectPermissionObject = {
   [K in ProjectPermissionSub]: {
     title: string;
     actions: {
-      label: string;
+      label: string | ReactNode;
       value: keyof Omit<
         NonNullable<NonNullable<TFormSchema["permissions"]>[K]>[number],
         "conditions" | "inverted"
@@ -483,10 +524,35 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   [ProjectPermissionSub.Secrets]: {
     title: "Secrets",
     actions: [
-      { label: "Read", value: "read" },
-      { label: "Create", value: "create" },
-      { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" }
+      {
+        label: (
+          <div className="flex items-center gap-1.5">
+            <p className="opacity-60">
+              Read <span className="text-xs opacity-80">(legacy)</span>
+            </p>
+            <Tooltip
+              className="overflow-hidden whitespace-normal"
+              content={
+                <div>
+                  This is a legacy action and will be removed in the future.
+                  <br />
+                  <br /> You should instead use the{" "}
+                  <strong className="font-semibold">Describe Secret</strong> and{" "}
+                  <strong className="font-semibold">Read Value</strong> actions.
+                </div>
+              }
+            >
+              <FontAwesomeIcon icon={faWarning} className="mt-1 text-yellow-500" size="sm" />
+            </Tooltip>
+          </div>
+        ),
+        value: ProjectPermissionSecretActions.DescribeAndReadValue
+      },
+      { label: "Describe Secret", value: ProjectPermissionSecretActions.DescribeSecret },
+      { label: "Read Value", value: ProjectPermissionSecretActions.ReadValue },
+      { label: "Modify", value: ProjectPermissionSecretActions.Edit },
+      { label: "Remove", value: ProjectPermissionSecretActions.Delete },
+      { label: "Create", value: ProjectPermissionSecretActions.Create }
     ]
   },
   [ProjectPermissionSub.SecretFolders]: {

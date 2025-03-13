@@ -25,7 +25,10 @@ export const SecretVersionsV2Schema = z.object({
   folderId: z.string().uuid(),
   userId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  userActorId: z.string().uuid().nullable().optional(),
+  identityActorId: z.string().uuid().nullable().optional(),
+  actorType: z.string().nullable().optional()
 });
 
 export type TSecretVersionsV2 = z.infer<typeof SecretVersionsV2Schema>;

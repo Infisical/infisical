@@ -44,9 +44,11 @@ export type {
 
 export enum ApiErrorTypes {
   ValidationError = "ValidationFailure",
+  PermissionBoundaryError = "PermissionBoundaryError",
   BadRequestError = "BadRequest",
   UnauthorizedError = "UnauthorizedError",
-  ForbiddenError = "PermissionDenied"
+  ForbiddenError = "PermissionDenied",
+  CustomForbiddenError = "ForbiddenError"
 }
 
 export type TApiErrors =
@@ -71,7 +73,26 @@ export type TApiErrors =
     }
   | {
       reqId: string;
+      error: ApiErrorTypes.CustomForbiddenError;
+      message: string;
+      statusCode: 403;
+    }
+  | {
+      reqId: string;
       statusCode: 400;
       message: string;
       error: ApiErrorTypes.BadRequestError;
+    }
+  | {
+      reqId: string;
+      statusCode: 403;
+      message: string;
+      error: ApiErrorTypes.PermissionBoundaryError;
+      details: {
+        missingPermissions: {
+          action: string;
+          subject: string;
+          conditions: Record<string, Record<string, string>>;
+        }[];
+      };
     };

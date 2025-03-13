@@ -20,8 +20,9 @@ import {
 } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useDebounce } from "@app/hooks";
-import { useGetProjectSecrets } from "@app/hooks/api";
+import { useGetAccessibleSecrets } from "@app/hooks/api/dashboard";
 
 const formSchema = z.object({
   environment: z.object({ name: z.string(), slug: z.string() }),
@@ -32,7 +33,7 @@ const formSchema = z.object({
       typeof val === "string" && val.at(-1) === "/" && val.length > 1 ? val.slice(0, -1) : val
     ),
   secrets: z
-    .object({ key: z.string(), value: z.string().optional() })
+    .object({ secretKey: z.string(), secretValue: z.string().optional() })
     .array()
     .min(1, "Select one or more secrets to copy")
 });
@@ -78,34 +79,38 @@ export const CopySecretsFromBoard = ({
   const selectedEnvSlug = watch("environment");
   const [debouncedEnvCopySecretPath] = useDebounce(envCopySecPath);
 
-  const { data: secrets, isPending: isSecretsLoading } = useGetProjectSecrets({
-    workspaceId,
-    environment: selectedEnvSlug.slug,
-    secretPath: debouncedEnvCopySecretPath,
-    options: {
-      enabled:
-        Boolean(workspaceId) &&
-        Boolean(selectedEnvSlug) &&
-        Boolean(debouncedEnvCopySecretPath) &&
-        isOpen
-    }
-  });
+  const { data: accessibleSecrets, isPending: isAccessibleSecretsLoading } =
+    useGetAccessibleSecrets({
+      projectId: workspaceId,
+      secretPath: debouncedEnvCopySecretPath,
+      environment: selectedEnvSlug.slug,
+      filterByAction: shouldIncludeValues
+        ? ProjectPermissionSecretActions.ReadValue
+        : ProjectPermissionSecretActions.DescribeSecret,
+      options: {
+        enabled:
+          Boolean(workspaceId) &&
+          Boolean(selectedEnvSlug) &&
+          Boolean(debouncedEnvCopySecretPath) &&
+          isOpen
+      }
+    });
 
   useEffect(() => {
     setValue("secrets", []);
   }, [debouncedEnvCopySecretPath, selectedEnvSlug]);
 
   const handleSecSelectAll = () => {
-    if (secrets) {
-      setValue("secrets", secrets, { shouldDirty: true });
+    if (accessibleSecrets) {
+      setValue("secrets", accessibleSecrets, { shouldDirty: true });
     }
   };
 
   const handleFormSubmit = async (data: TFormSchema) => {
     const secretsToBePulled: Record<string, { value: string; comments: string[] }> = {};
-    data.secrets.forEach(({ key, value }) => {
-      secretsToBePulled[key] = {
-        value: (shouldIncludeValues && value) || "",
+    data.secrets.forEach(({ secretKey, secretValue }) => {
+      secretsToBePulled[secretKey] = {
+        value: (shouldIncludeValues && secretValue) || "",
         comments: [""]
       };
     });
@@ -202,19 +207,19 @@ export const CopySecretsFromBoard = ({
                     <FilterableSelect
                       placeholder={
                         // eslint-disable-next-line no-nested-ternary
-                        isSecretsLoading
+                        isAccessibleSecretsLoading
                           ? "Loading secrets..."
-                          : secrets?.length
+                          : accessibleSecrets?.length
                             ? "Select secrets..."
                             : "No secrets found..."
                       }
-                      isLoading={isSecretsLoading}
-                      options={secrets}
+                      isLoading={isAccessibleSecretsLoading}
+                      options={accessibleSecrets}
                       value={value}
                       onChange={onChange}
                       isMulti
-                      getOptionValue={(option) => option.key}
-                      getOptionLabel={(option) => option.key}
+                      getOptionValue={(option) => option.secretKey}
+                      getOptionLabel={(option) => option.secretKey}
                     />
                   </FormControl>
                 )}
@@ -235,7 +240,10 @@ export const CopySecretsFromBoard = ({
               <Switch
                 id="populate-include-value"
                 isChecked={shouldIncludeValues}
-                onCheckedChange={(isChecked) => setShouldIncludeValues(isChecked as boolean)}
+                onCheckedChange={(isChecked) => {
+                  setValue("secrets", []);
+                  setShouldIncludeValues(isChecked as boolean);
+                }}
               >
                 Include secret values
               </Switch>

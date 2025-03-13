@@ -22,12 +22,15 @@ import {
   LoginLDAPRes,
   MfaMethod,
   ResetPasswordDTO,
+  ResetPasswordV2DTO,
+  ResetUserPasswordV2DTO,
   SendMfaTokenDTO,
   SetupPasswordDTO,
   SRP1DTO,
   SRPR1Res,
   TOauthTokenExchangeDTO,
   UserAgentType,
+  UserEncryptionVersion,
   VerifyMfaTokenDTO,
   VerifyMfaTokenRes,
   VerifySignupInviteDTO
@@ -247,7 +250,10 @@ export const useSendPasswordResetEmail = () => {
 export const useVerifyPasswordResetCode = () => {
   return useMutation({
     mutationFn: async ({ email, code }: { email: string; code: string }) => {
-      const { data } = await apiRequest.post("/api/v1/password/email/password-reset-verify", {
+      const { data } = await apiRequest.post<{
+        token: string;
+        userEncryptionVersion: UserEncryptionVersion;
+      }>("/api/v1/password/email/password-reset-verify", {
         email,
         code
       });
@@ -298,6 +304,26 @@ export const useResetPassword = () => {
       );
 
       return data;
+    }
+  });
+};
+
+export const useResetPasswordV2 = () => {
+  return useMutation({
+    mutationFn: async (details: ResetPasswordV2DTO) => {
+      await apiRequest.post("/api/v2/password/password-reset", details, {
+        headers: {
+          Authorization: `Bearer ${details.verificationToken}`
+        }
+      });
+    }
+  });
+};
+
+export const useResetUserPasswordV2 = () => {
+  return useMutation({
+    mutationFn: async (details: ResetUserPasswordV2DTO) => {
+      await apiRequest.post("/api/v2/password/user/password-reset", details);
     }
   });
 };

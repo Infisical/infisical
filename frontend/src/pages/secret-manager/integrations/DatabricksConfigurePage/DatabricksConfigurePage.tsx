@@ -206,8 +206,13 @@ export const DatabricksConfigurePage = () => {
           <span className="text-md ml-3 text-mineshaft-100">Pro Tip</span>
         </div>
         <span className="mt-4 text-sm text-mineshaft-300">
-          After creating an integration, your secrets will start syncing immediately. This might
-          cause an unexpected override of current secrets in Databricks with secrets from Infisical.
+          When integrating with Databricks, Infisical is intended to be the source of truth for the
+          secrets in the configured Databricks scope.
+        </span>
+        <span className="mt-4 text-sm text-mineshaft-300">
+          Any secrets not present in Infisical will be removed from the specified scope. To prevent
+          removal of secrets not managed by Infisical, Infisical recommends creating a designated
+          secret scope for your integration.
         </span>
       </div>
     </div>

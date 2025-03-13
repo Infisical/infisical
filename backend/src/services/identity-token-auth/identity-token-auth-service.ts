@@ -5,7 +5,7 @@ import { IdentityAuthMethod, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { isAtLeastAsPrivileged } from "@app/lib/casl";
+import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
@@ -245,11 +245,13 @@ export const identityTokenAuthServiceFactory = ({
       actorOrgId
     );
 
-    if (!isAtLeastAsPrivileged(permission, rolePermission)) {
+    const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+    if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
-        message: "Failed to revoke Token Auth of identity with more privileged role"
+        name: "PermissionBoundaryError",
+        message: "Failed to revoke token auth of identity with more privileged role",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
-    }
 
     const revokedIdentityTokenAuth = await identityTokenAuthDAL.transaction(async (tx) => {
       const deletedTokenAuth = await identityTokenAuthDAL.delete({ identityId }, tx);
@@ -295,10 +297,12 @@ export const identityTokenAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    const hasPriviledge = isAtLeastAsPrivileged(permission, rolePermission);
-    if (!hasPriviledge)
+    const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+    if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
-        message: "Failed to create token for identity with more privileged role"
+        name: "PermissionBoundaryError",
+        message: "Failed to create token for identity with more privileged role",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
     const identityTokenAuth = await identityTokenAuthDAL.findOne({ identityId });
@@ -415,10 +419,12 @@ export const identityTokenAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    const hasPriviledge = isAtLeastAsPrivileged(permission, rolePermission);
-    if (!hasPriviledge)
+    const permissionBoundary = validatePermissionBoundary(permission, rolePermission);
+    if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
-        message: "Failed to update token for identity with more privileged role"
+        name: "PermissionBoundaryError",
+        message: "Failed to update token for identity with more privileged role",
+        details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
     const [token] = await identityAccessTokenDAL.update(

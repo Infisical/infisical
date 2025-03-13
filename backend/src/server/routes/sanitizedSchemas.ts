@@ -7,6 +7,7 @@ import {
   ProjectRolesSchema,
   ProjectsSchema,
   SecretApprovalPoliciesSchema,
+  SecretTagsSchema,
   UsersSchema
 } from "@app/db/schemas";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -111,7 +112,16 @@ export const secretRawSchema = z.object({
   secretReminderRepeatDays: z.number().nullable().optional(),
   skipMultilineEncoding: z.boolean().default(false).nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  actor: z
+    .object({
+      actorId: z.string().nullable().optional(),
+      actorType: z.string().nullable().optional(),
+      name: z.string().nullable().optional(),
+      membershipId: z.string().nullable().optional()
+    })
+    .optional()
+    .nullable()
 });
 
 export const ProjectPermissionSchema = z.object({
@@ -231,4 +241,12 @@ export const SanitizedProjectSchema = ProjectsSchema.pick({
   pitVersionLimit: true,
   kmsCertificateKeyId: true,
   auditLogsRetentionDays: true
+});
+
+export const SanitizedTagSchema = SecretTagsSchema.pick({
+  id: true,
+  slug: true,
+  color: true
+}).extend({
+  name: z.string()
 });

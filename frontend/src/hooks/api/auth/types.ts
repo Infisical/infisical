@@ -3,6 +3,11 @@ export type GetAuthTokenAPI = {
   organizationId?: string;
 };
 
+export enum UserEncryptionVersion {
+  V1 = 1,
+  V2 = 2
+}
+
 export type SendMfaTokenDTO = {
   email: string;
 };
@@ -134,6 +139,16 @@ export type ResetPasswordDTO = {
   verifier: string;
   verificationToken: string;
   password: string;
+};
+
+export type ResetPasswordV2DTO = {
+  newPassword: string;
+  verificationToken: string;
+};
+
+export type ResetUserPasswordV2DTO = {
+  oldPassword: string;
+  newPassword: string;
 };
 
 export type SetupPasswordDTO = {

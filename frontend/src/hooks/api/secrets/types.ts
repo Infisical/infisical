@@ -19,6 +19,7 @@ export type EncryptedSecret = {
   secretValueCiphertext: string;
   secretValueIV: string;
   secretValueTag: string;
+  secretValueHidden: boolean;
   __v: number;
   createdAt: string;
   updatedAt: string;
@@ -37,6 +38,7 @@ export type SecretV3RawSanitized = {
   version: number;
   key: string;
   value?: string;
+  secretValueHidden: boolean;
   comment?: string;
   reminderRepeatDays?: number | null;
   reminderNote?: string | null;
@@ -61,6 +63,7 @@ export type SecretV3Raw = {
   environment: string;
   version: number;
   type: string;
+  secretValueHidden: boolean;
   secretKey: string;
   secretPath: string;
   secretValue?: string;
@@ -95,12 +98,19 @@ export type SecretVersions = {
   envId: string;
   secretKey: string;
   secretValue?: string;
+  secretValueHidden: boolean;
   secretComment?: string;
   tags: WsTag[];
   __v: number;
   skipMultilineEncoding?: boolean;
   createdAt: string;
   updatedAt: string;
+  actor?: {
+    actorId?: string | null;
+    actorType?: string | null;
+    name?: string | null;
+    membershipId?: string | null;
+  } | null;
 };
 
 // dto
@@ -109,6 +119,7 @@ export type TGetProjectSecretsKey = {
   environment: string;
   secretPath?: string;
   includeImports?: boolean;
+  viewSecretValue?: boolean;
   expandSecretReferences?: boolean;
 };
 

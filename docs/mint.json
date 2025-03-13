@@ -203,7 +203,7 @@
         },
         {
           "group": "Gateway",
-          "pages": ["documentation/platform/gateways/overview"]
+          "pages": ["documentation/platform/gateways/overview", "documentation/platform/gateways/gateway-security"]
         },
         "documentation/platform/project-templates",
         {
@@ -220,7 +220,8 @@
             "documentation/platform/admin-panel/org-admin-console"
           ]
         },
-        "documentation/platform/secret-sharing"
+        "documentation/platform/secret-sharing",
+        "documentation/platform/secret-scanning"
       ]
     },
     {
@@ -339,6 +340,7 @@
             "cli/commands/secrets",
             "cli/commands/dynamic-secrets",
             "cli/commands/ssh",
+            "cli/commands/gateway",
             "cli/commands/export",
             "cli/commands/token",
             "cli/commands/service-token",
@@ -644,8 +646,7 @@
             "api-reference/endpoints/oidc-auth/attach",
             "api-reference/endpoints/oidc-auth/retrieve",
             "api-reference/endpoints/oidc-auth/update",
-            "api-reference/endpoints/oidc-auth/revoke",
-            "integrations/frameworks/terraform-cloud"
+            "api-reference/endpoints/oidc-auth/revoke"
           ]
         },
         {
