@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import { FilterableSelect, FormControl, Select, SelectItem, Tooltip } from "@app/components/v2";
+import { HUMANITEC_SYNC_SCOPES } from "@app/helpers/secretSyncs";
 import {
   THumanitecConnectionApp,
   THumanitecConnectionEnvironment,
@@ -41,6 +42,7 @@ export const HumanitecSyncFields = () => {
         onChange={() => {
           setValue("destinationConfig.org", "");
           setValue("destinationConfig.app", "");
+          setValue("destinationConfig.env", "");
         }}
       />
       <Controller
@@ -48,11 +50,38 @@ export const HumanitecSyncFields = () => {
         control={control}
         defaultValue={HumanitecSyncScope.Application}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl errorText={error?.message} isError={Boolean(error?.message)} label="Scope">
+          <FormControl
+            errorText={error?.message}
+            isError={Boolean(error?.message)}
+            label="Scope"
+            tooltipClassName="max-w-lg py-3"
+            tooltipText={
+              <div className="flex flex-col gap-3">
+                <p>
+                  Specify how Infisical should manage secrets from Humanitec. The following options
+                  are available:
+                </p>
+                <ul className="flex list-disc flex-col gap-3 pl-4">
+                  {Object.values(HUMANITEC_SYNC_SCOPES).map(({ name, description }) => {
+                    return (
+                      <li key={name}>
+                        <p className="text-mineshaft-300">
+                          <span className="font-medium text-bunker-200">{name}</span>: {description}
+                        </p>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            }
+          >
             <Select
               value={value}
               onValueChange={(val) => {
                 onChange(val);
+                setValue("destinationConfig.env", "");
+                setValue("destinationConfig.app", "");
+                setValue("destinationConfig.org", "");
               }}
               className="w-full border border-mineshaft-500 capitalize"
               position="popper"
@@ -81,9 +110,11 @@ export const HumanitecSyncFields = () => {
               isLoading={isOrganizationsPending && Boolean(connectionId)}
               isDisabled={!connectionId}
               value={organizations ? (organizations.find((org) => org.id === value) ?? []) : []}
-              onChange={(option) =>
-                onChange((option as SingleValue<THumanitecConnectionOrganization>)?.id ?? null)
-              }
+              onChange={(option) => {
+                onChange((option as SingleValue<THumanitecConnectionOrganization>)?.id ?? null);
+                setValue("destinationConfig.app", "");
+                setValue("destinationConfig.env", "");
+              }}
               options={organizations}
               placeholder="Select an organization..."
               getOptionLabel={(option) => option.name}

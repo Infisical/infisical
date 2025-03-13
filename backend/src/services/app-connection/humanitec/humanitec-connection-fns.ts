@@ -84,21 +84,17 @@ export const listOrganizations = async (appConnection: THumanitecConnection): Pr
         }
       );
 
-      if (!appsResponse.data) {
-        throw new InternalServerError({
-          message: "Failed to get apps for organization: Response was empty"
+      if (appsResponse.data) {
+        const apps = appsResponse.data;
+        orgsWithApps.push({
+          ...org,
+          apps: apps.map((app) => ({
+            name: app.name,
+            id: app.id,
+            envs: app.envs
+          }))
         });
       }
-
-      const apps = appsResponse.data;
-      orgsWithApps.push({
-        ...org,
-        apps: apps.map((app) => ({
-          name: app.name,
-          id: app.id,
-          envs: app.envs
-        }))
-      });
     } catch (error) {
       logger.error(error, `Failed to get apps for organization ${org.name}`);
     }

@@ -4,6 +4,7 @@ import {
   SecretSyncImportBehavior,
   SecretSyncInitialSyncBehavior
 } from "@app/hooks/api/secretSyncs";
+import { HumanitecSyncScope } from "@app/hooks/api/secretSyncs/types/humanitec-sync";
 
 export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }> = {
   [SecretSync.AWSParameterStore]: { name: "AWS Parameter Store", image: "Amazon Web Services.png" },
@@ -66,4 +67,20 @@ export const SECRET_SYNC_IMPORT_BEHAVIOR_MAP: Record<
     name: `Prioritize ${destinationName} Values`,
     description: `Infisical will import any secrets present in the ${destinationName} destination, prioritizing values from ${destinationName} over Infisical when keys conflict.`
   })
+};
+
+export const HUMANITEC_SYNC_SCOPES: Record<
+  HumanitecSyncScope,
+  { name: string; description: string }
+> = {
+  [HumanitecSyncScope.Application]: {
+    name: "Application",
+    description:
+      "Infisical will import any secrets present in the selected Humanitec application. This includes all secrets that are not limited to a specific environment."
+  },
+  [HumanitecSyncScope.Environment]: {
+    name: "Environment",
+    description:
+      "Infisical will import any secrets present in the selected Humanitec environment. This includes all secrets that are limited to the selected environment."
+  }
 };

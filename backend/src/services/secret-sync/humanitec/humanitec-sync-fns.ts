@@ -15,26 +15,20 @@ const getHumanitecSecrets = async (secretSync: THumanitecSyncWithCredentials) =>
     }
   } = secretSync;
 
-  try {
-    let url = `${IntegrationUrls.HUMANITEC_API_URL}/orgs/${destinationConfig.org}/apps/${destinationConfig.app}`;
-    if (destinationConfig.scope === HumanitecSyncScope.Environment) {
-      url += `/envs/${destinationConfig.env}`;
-    }
-    url += "/values";
-
-    const { data } = await request.get<HumanitecSecret[]>(url, {
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-        "Accept-Encoding": "application/json"
-      }
-    });
-
-    return data;
-  } catch (error) {
-    throw new SecretSyncError({
-      error
-    });
+  let url = `${IntegrationUrls.HUMANITEC_API_URL}/orgs/${destinationConfig.org}/apps/${destinationConfig.app}`;
+  if (destinationConfig.scope === HumanitecSyncScope.Environment) {
+    url += `/envs/${destinationConfig.env}`;
   }
+  url += "/values";
+
+  const { data } = await request.get<HumanitecSecret[]>(url, {
+    headers: {
+      Authorization: `Bearer ${apiToken}`,
+      "Accept-Encoding": "application/json"
+    }
+  });
+
+  return data;
 };
 
 const deleteSecret = async (secretSync: THumanitecSyncWithCredentials, encryptedSecret: HumanitecSecret) => {
