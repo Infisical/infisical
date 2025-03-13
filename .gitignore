@@ -63,10 +63,12 @@ yarn-error.log*
 
 # Editor specific
 .vscode/*
-.idea/*
+**/.idea/*
 
 frontend-build
 
+# cli
+.go/
 *.tgz
 cli/infisical-merge
 cli/test/infisical-merge
