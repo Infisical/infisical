@@ -74,7 +74,8 @@ const createSecret = async (secretSync: THumanitecSyncWithCredentials, secretMap
       {
         key,
         value: "",
-        description: secretMap[key].comment || ""
+        description: secretMap[key].comment || "",
+        is_secret: true
       },
       {
         headers: {
@@ -106,7 +107,11 @@ const createSecret = async (secretSync: THumanitecSyncWithCredentials, secretMap
   }
 };
 
-const updateSecret = async (secretSync: THumanitecSyncWithCredentials, secretMap: TSecretMap, key: string) => {
+const updateSecret = async (
+  secretSync: THumanitecSyncWithCredentials,
+  secretMap: TSecretMap,
+  encryptedSecret: HumanitecSecret
+) => {
   try {
     const {
       destinationConfig,
@@ -116,10 +121,26 @@ const updateSecret = async (secretSync: THumanitecSyncWithCredentials, secretMap
     } = secretSync;
     if (destinationConfig.scope === HumanitecSyncScope.Application) {
       await request.patch(
-        `${IntegrationUrls.HUMANITEC_API_URL}/orgs/${destinationConfig.org}/apps/${destinationConfig.app}/values/${key}`,
+        `${IntegrationUrls.HUMANITEC_API_URL}/orgs/${destinationConfig.org}/apps/${destinationConfig.app}/values/${encryptedSecret.key}`,
         {
-          value: secretMap[key].value,
-          description: secretMap[key].comment || ""
+          value: secretMap[encryptedSecret.key].value,
+          description: secretMap[encryptedSecret.key].comment || ""
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${apiToken}`,
+            "Accept-Encoding": "application/json"
+          }
+        }
+      );
+    } else if (encryptedSecret.source === "app") {
+      await request.post(
+        `${IntegrationUrls.HUMANITEC_API_URL}/orgs/${destinationConfig.org}/apps/${destinationConfig.app}/envs/${destinationConfig.env}/values`,
+        {
+          value: secretMap[encryptedSecret.key].value,
+          description: secretMap[encryptedSecret.key].comment || "",
+          key: encryptedSecret.key,
+          is_secret: true
         },
         {
           headers: {
@@ -130,10 +151,10 @@ const updateSecret = async (secretSync: THumanitecSyncWithCredentials, secretMap
       );
     } else {
       await request.patch(
-        `${IntegrationUrls.HUMANITEC_API_URL}/orgs/${destinationConfig.org}/apps/${destinationConfig.app}/envs/${destinationConfig.env}/values/${key}`,
+        `${IntegrationUrls.HUMANITEC_API_URL}/orgs/${destinationConfig.org}/apps/${destinationConfig.app}/envs/${destinationConfig.env}/values/${encryptedSecret.key}`,
         {
-          value: secretMap[key].value,
-          description: secretMap[key].comment || ""
+          value: secretMap[encryptedSecret.key].value,
+          description: secretMap[encryptedSecret.key].comment || ""
         },
         {
           headers: {
@@ -146,7 +167,7 @@ const updateSecret = async (secretSync: THumanitecSyncWithCredentials, secretMap
   } catch (error) {
     throw new SecretSyncError({
       error,
-      secretKey: key
+      secretKey: encryptedSecret.key
     });
   }
 };
@@ -154,12 +175,15 @@ const updateSecret = async (secretSync: THumanitecSyncWithCredentials, secretMap
 export const HumanitecSyncFns = {
   syncSecrets: async (secretSync: THumanitecSyncWithCredentials, secretMap: TSecretMap) => {
     const humanitecSecrets = await getHumanitecSecrets(secretSync);
-    const humanitecSecretsKeys = new Set(humanitecSecrets.map((s) => s.key));
+    const humanitecSecretsKeys = new Map(humanitecSecrets.map((s) => [s.key, s]));
+
     for await (const key of Object.keys(secretMap)) {
-      if (!humanitecSecretsKeys.has(key)) {
+      const existingSecret = humanitecSecretsKeys.get(key);
+
+      if (!existingSecret) {
         await createSecret(secretSync, secretMap, key);
       } else {
-        await updateSecret(secretSync, secretMap, key);
+        await updateSecret(secretSync, secretMap, existingSecret);
       }
     }
 
