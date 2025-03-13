@@ -138,7 +138,7 @@ var runCmd = &cobra.Command{
 
 		log.Debug().Msgf("Confirming selected environment is valid: %s", environmentName)
 
-		hasEnvironment, err := confirmProjectHasEnvironment(projectId, environmentName, token.Token)
+		hasEnvironment, err := confirmProjectHasEnvironment(projectId, environmentName, token)
 		if err != nil {
 			util.HandleError(err, "Could not confirm project has environment")
 		}
@@ -449,13 +449,32 @@ func executeCommandWithWatchMode(commandFlag string, args []string, watchModeInt
 	}
 }
 
-func confirmProjectHasEnvironment(environmentName, workspaceId, accessToken string) (bool, error) {
-	res, err := util.GetProjectDetails(accessToken, workspaceId)
+func confirmProjectHasEnvironment(environmentName, workspaceId string, token *models.TokenDetails) (bool, error) {
+	var accessToken string
+
+	if token != nil && (token.Type == util.SERVICE_TOKEN_IDENTIFIER || token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER) {
+		accessToken = token.Token
+	} else {
+		util.RequireLogin()
+		util.RequireLocalWorkspaceFile()
+
+		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails(true)
+		if err != nil {
+			util.HandleError(err, "Unable to authenticate")
+		}
+
+		if loggedInUserDetails.LoginExpired {
+			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+		}
+		accessToken = loggedInUserDetails.UserCredentials.JTWToken
+	}
+
+	project, err := util.GetProjectDetails(accessToken, workspaceId)
 	if err != nil {
 		return false, err
 	}
 
-	for _, env := range res.Environments {
+	for _, env := range project.Environments {
 		if env.Name == environmentName {
 			return true, nil
 		}
