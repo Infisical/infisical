@@ -30,9 +30,9 @@ const rootSchema = genericAppConnectionFieldsSchema.extend({
 
 const formSchema = z.discriminatedUnion("method", [
   rootSchema.extend({
-    method: z.literal(HumanitecConnectionMethod.AccessKey),
+    method: z.literal(HumanitecConnectionMethod.API_TOKEN),
     credentials: z.object({
-      accessKeyId: z.string().trim().min(1, "Service API Token required")
+      apiToken: z.string().trim().min(1, "Service API Token required")
     })
   })
 ]);
@@ -46,7 +46,7 @@ export const HumanitecConnectionForm = ({ appConnection, onSubmit }: Props) => {
     resolver: zodResolver(formSchema),
     defaultValues: appConnection ?? {
       app: AppConnection.Humanitec,
-      method: HumanitecConnectionMethod.AccessKey
+      method: HumanitecConnectionMethod.API_TOKEN
     }
   });
 
@@ -66,7 +66,7 @@ export const HumanitecConnectionForm = ({ appConnection, onSubmit }: Props) => {
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <FormControl
               tooltipText={`The method you would like to use to connect with ${
-                APP_CONNECTION_MAP[AppConnection.AWS].name
+                APP_CONNECTION_MAP[AppConnection.Humanitec].name
               }. This field cannot be changed after creation.`}
               errorText={error?.message}
               isError={Boolean(error?.message)}
@@ -92,7 +92,7 @@ export const HumanitecConnectionForm = ({ appConnection, onSubmit }: Props) => {
           )}
         />
         <Controller
-          name="credentials.accessKeyId"
+          name="credentials.apiToken"
           control={control}
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (

@@ -136,8 +136,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "Service Account Impersonation";
     case DatabricksConnectionMethod.ServicePrincipal:
       return "Service Principal";
-    case HumanitecConnectionMethod.AccessKey:
-      return "Access Key";
+    case HumanitecConnectionMethod.API_TOKEN:
+      return "API Token";
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection Method: ${method}`);

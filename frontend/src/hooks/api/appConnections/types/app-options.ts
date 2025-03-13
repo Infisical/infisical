@@ -44,7 +44,8 @@ export type TAppConnectionOption =
   | TGcpConnectionOption
   | TAzureAppConfigurationConnectionOption
   | TAzureKeyVaultConnectionOption
-  | TDatabricksConnectionOption;
+  | TDatabricksConnectionOption
+  | THumanitecConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;

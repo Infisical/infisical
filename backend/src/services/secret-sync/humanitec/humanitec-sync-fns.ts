@@ -4,47 +4,60 @@ import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
+import { HumanitecSyncScope } from "./humanitec-sync-enums";
 import { HumanitecSecret, THumanitecSyncWithCredentials } from "./humanitec-sync-types";
 
 const getHumanitecSecrets = async (secretSync: THumanitecSyncWithCredentials) => {
   const {
     destinationConfig,
     connection: {
-      credentials: { accessKeyId }
+      credentials: { apiToken }
     }
   } = secretSync;
 
-  const { data } = await request.get<HumanitecSecret[]>(
-    `${IntegrationUrls.HUMANITEC_API_URL}/orgs/${destinationConfig.org}/apps/${destinationConfig.app}/envs/${destinationConfig.env}/values`,
-    {
+  try {
+    let url = `${IntegrationUrls.HUMANITEC_API_URL}/orgs/${destinationConfig.org}/apps/${destinationConfig.app}`;
+    if (destinationConfig.scope === HumanitecSyncScope.Environment) {
+      url += `/envs/${destinationConfig.env}`;
+    }
+    url += "/values";
+
+    const { data } = await request.get<HumanitecSecret[]>(url, {
       headers: {
-        Authorization: `Bearer ${accessKeyId}`,
+        Authorization: `Bearer ${apiToken}`,
         "Accept-Encoding": "application/json"
       }
-    }
-  );
+    });
 
-  return data;
+    return data;
+  } catch (error) {
+    throw new SecretSyncError({
+      error
+    });
+  }
 };
 
 const deleteSecret = async (secretSync: THumanitecSyncWithCredentials, encryptedSecret: HumanitecSecret) => {
   const {
     destinationConfig,
     connection: {
-      credentials: { accessKeyId }
+      credentials: { apiToken }
     }
   } = secretSync;
 
   try {
-    await request.delete(
-      `${IntegrationUrls.HUMANITEC_API_URL}/orgs/${destinationConfig.org}/apps/${destinationConfig.app}/envs/${destinationConfig.env}/values/${encryptedSecret.key}`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessKeyId}`,
-          "Accept-Encoding": "application/json"
-        }
+    let url = `${IntegrationUrls.HUMANITEC_API_URL}/orgs/${destinationConfig.org}/apps/${destinationConfig.app}`;
+    if (destinationConfig.scope === HumanitecSyncScope.Environment) {
+      url += `/envs/${destinationConfig.env}`;
+    }
+    url += `/values/${encryptedSecret.key}`;
+
+    await request.delete(url, {
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        "Accept-Encoding": "application/json"
       }
-    );
+    });
   } catch (error) {
     throw new SecretSyncError({
       error,
@@ -58,7 +71,7 @@ const createSecret = async (secretSync: THumanitecSyncWithCredentials, secretMap
     const {
       destinationConfig,
       connection: {
-        credentials: { accessKeyId }
+        credentials: { apiToken }
       }
     } = secretSync;
 
@@ -71,24 +84,26 @@ const createSecret = async (secretSync: THumanitecSyncWithCredentials, secretMap
       },
       {
         headers: {
-          Authorization: `Bearer ${accessKeyId}`,
+          Authorization: `Bearer ${apiToken}`,
           "Accept-Encoding": "application/json"
         }
       }
     );
-    await request.patch(
-      `${IntegrationUrls.HUMANITEC_API_URL}/orgs/${destinationConfig.org}/apps/${destinationConfig.app}/envs/${destinationConfig.env}/values/${key}`,
-      {
-        value: secretMap[key].value,
-        description: secretMap[key].comment || ""
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${accessKeyId}`,
-          "Accept-Encoding": "application/json"
+    if (destinationConfig.scope === HumanitecSyncScope.Environment) {
+      await request.patch(
+        `${IntegrationUrls.HUMANITEC_API_URL}/orgs/${destinationConfig.org}/apps/${destinationConfig.app}/envs/${destinationConfig.env}/values/${key}`,
+        {
+          value: secretMap[key].value,
+          description: secretMap[key].comment || ""
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${apiToken}`,
+            "Accept-Encoding": "application/json"
+          }
         }
-      }
-    );
+      );
+    }
   } catch (error) {
     throw new SecretSyncError({
       error,
@@ -102,22 +117,38 @@ const updateSecret = async (secretSync: THumanitecSyncWithCredentials, secretMap
     const {
       destinationConfig,
       connection: {
-        credentials: { accessKeyId }
+        credentials: { apiToken }
       }
     } = secretSync;
-    await request.patch(
-      `${IntegrationUrls.HUMANITEC_API_URL}/orgs/${destinationConfig.org}/apps/${destinationConfig.app}/envs/${destinationConfig.env}/values/${key}`,
-      {
-        value: secretMap[key].value,
-        description: secretMap[key].comment || ""
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${accessKeyId}`,
-          "Accept-Encoding": "application/json"
+    if (destinationConfig.scope === HumanitecSyncScope.Application) {
+      await request.patch(
+        `${IntegrationUrls.HUMANITEC_API_URL}/orgs/${destinationConfig.org}/apps/${destinationConfig.app}/values/${key}`,
+        {
+          value: secretMap[key].value,
+          description: secretMap[key].comment || ""
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${apiToken}`,
+            "Accept-Encoding": "application/json"
+          }
         }
-      }
-    );
+      );
+    } else {
+      await request.patch(
+        `${IntegrationUrls.HUMANITEC_API_URL}/orgs/${destinationConfig.org}/apps/${destinationConfig.app}/envs/${destinationConfig.env}/values/${key}`,
+        {
+          value: secretMap[key].value,
+          description: secretMap[key].comment || ""
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${apiToken}`,
+            "Accept-Encoding": "application/json"
+          }
+        }
+      );
+    }
   } catch (error) {
     throw new SecretSyncError({
       error,

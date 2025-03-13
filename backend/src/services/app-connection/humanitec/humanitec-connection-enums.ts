@@ -1,3 +1,3 @@
 export enum HumanitecConnectionMethod {
-  AccessKey = "access-key"
+  API_TOKEN = "api-token"
 }

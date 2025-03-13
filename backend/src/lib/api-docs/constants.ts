@@ -1775,7 +1775,8 @@ export const SecretSyncs = {
     HUMANITEC: {
       app: "The ID of the Humanitec app to sync secrets to.",
       org: "The ID of the Humanitec org to sync secrets to.",
-      env: "The ID of the Humanitec environment to sync secrets to."
+      env: "The ID of the Humanitec environment to sync secrets to.",
+      scope: "The Humanitec scope that secrets should be synced to."
     }
   }
 };

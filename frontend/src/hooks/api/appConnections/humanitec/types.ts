@@ -12,4 +12,17 @@ export type THumanitecApp = {
 
 export type THumanitecConnectionApp = {
   id: string;
+  name: string;
+  envs: THumanitecConnectionEnvironment[];
+};
+
+export type THumanitecConnectionEnvironment = {
+  id: string;
+  name: string;
+};
+
+export type THumanitecConnectionOrganization = {
+  id: string;
+  name: string;
+  apps: THumanitecConnectionApp[];
 };

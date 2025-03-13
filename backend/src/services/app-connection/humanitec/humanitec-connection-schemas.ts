@@ -11,19 +11,19 @@ import {
 import { HumanitecConnectionMethod } from "./humanitec-connection-enums";
 
 export const HumanitecConnectionAccessTokenCredentialsSchema = z.object({
-  accessKeyId: z.string().trim().min(1, "Access Key ID required")
+  apiToken: z.string().trim().min(1, "API Token required")
 });
 
 const BaseHumanitecConnectionSchema = BaseAppConnectionSchema.extend({ app: z.literal(AppConnection.Humanitec) });
 
 export const HumanitecConnectionSchema = BaseHumanitecConnectionSchema.extend({
-  method: z.literal(HumanitecConnectionMethod.AccessKey),
+  method: z.literal(HumanitecConnectionMethod.API_TOKEN),
   credentials: HumanitecConnectionAccessTokenCredentialsSchema
 });
 
 export const SanitizedHumanitecConnectionSchema = z.discriminatedUnion("method", [
   BaseHumanitecConnectionSchema.extend({
-    method: z.literal(HumanitecConnectionMethod.AccessKey),
+    method: z.literal(HumanitecConnectionMethod.API_TOKEN),
     credentials: HumanitecConnectionAccessTokenCredentialsSchema.pick({})
   })
 ]);
@@ -31,7 +31,7 @@ export const SanitizedHumanitecConnectionSchema = z.discriminatedUnion("method",
 export const ValidateHumanitecConnectionCredentialsSchema = z.discriminatedUnion("method", [
   z.object({
     method: z
-      .literal(HumanitecConnectionMethod.AccessKey)
+      .literal(HumanitecConnectionMethod.API_TOKEN)
       .describe(AppConnections?.CREATE(AppConnection.Humanitec).method),
     credentials: HumanitecConnectionAccessTokenCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.Humanitec).credentials

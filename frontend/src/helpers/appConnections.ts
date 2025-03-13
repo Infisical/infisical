@@ -45,8 +45,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "Service Account Impersonation", icon: faUser };
     case DatabricksConnectionMethod.ServicePrincipal:
       return { name: "Service Principal", icon: faUser };
-    case HumanitecConnectionMethod.AccessKey:
-      return { name: "Access Key", icon: faKey };
+    case HumanitecConnectionMethod.API_TOKEN:
+      return { name: "API Token", icon: faKey };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }

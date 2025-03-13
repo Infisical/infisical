@@ -2,6 +2,7 @@ import { AxiosError, AxiosResponse } from "axios";
 
 import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
@@ -18,7 +19,7 @@ export const getHumanitecConnectionListItem = () => {
   return {
     name: "Humanitec" as const,
     app: AppConnection.Humanitec as const,
-    methods: Object.values(HumanitecConnectionMethod) as [HumanitecConnectionMethod.AccessKey]
+    methods: Object.values(HumanitecConnectionMethod) as [HumanitecConnectionMethod.API_TOKEN]
   };
 };
 
@@ -30,13 +31,13 @@ export const validateHumanitecConnectionCredentials = async (config: THumanitecC
   try {
     response = await request.get<HumanitecOrg[]>(`${IntegrationUrls.HUMANITEC_API_URL}/orgs`, {
       headers: {
-        Authorization: `Bearer ${inputCredentials.accessKeyId}`
+        Authorization: `Bearer ${inputCredentials.apiToken}`
       }
     });
   } catch (error: unknown) {
     if (error instanceof AxiosError) {
       throw new BadRequestError({
-        message: `Failed to validate credentials: ${error.response?.data || "Unknown error"}`
+        message: `Failed to validate credentials: ${error.message || "Unknown error"}`
       });
     }
     throw new BadRequestError({
@@ -55,11 +56,11 @@ export const validateHumanitecConnectionCredentials = async (config: THumanitecC
 
 export const listOrganizations = async (appConnection: THumanitecConnection): Promise<HumanitecOrgWithApps[]> => {
   const {
-    credentials: { accessKeyId }
+    credentials: { apiToken }
   } = appConnection;
   const response = await request.get<HumanitecOrg[]>(`${IntegrationUrls.HUMANITEC_API_URL}/orgs`, {
     headers: {
-      Authorization: `Bearer ${accessKeyId}`
+      Authorization: `Bearer ${apiToken}`
     }
   });
 
@@ -68,34 +69,39 @@ export const listOrganizations = async (appConnection: THumanitecConnection): Pr
       message: "Failed to get organizations: Response was empty"
     });
   }
-
   const orgs = response.data;
-  const appPromises = orgs.map(async (org) => {
-    return request.get<HumanitecApp[]>(`${IntegrationUrls.HUMANITEC_API_URL}/orgs/${org.id}/apps`, {
-      headers: {
-        Authorization: `Bearer ${accessKeyId}`
+  const orgsWithApps: HumanitecOrgWithApps[] = [];
+
+  for (const org of orgs) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const appsResponse = await request.get<HumanitecApp[]>(
+        `${IntegrationUrls.HUMANITEC_API_URL}/orgs/${org.id}/apps`,
+        {
+          headers: {
+            Authorization: `Bearer ${apiToken}`
+          }
+        }
+      );
+
+      if (!appsResponse.data) {
+        throw new InternalServerError({
+          message: "Failed to get apps for organization: Response was empty"
+        });
       }
-    });
-  });
 
-  const appsResponses = await Promise.all(appPromises);
-
-  const orgsWithApps: HumanitecOrgWithApps[] = orgs.map((org, index) => {
-    if (!appsResponses[index].data) {
-      throw new InternalServerError({
-        message: "Failed to get apps for organization: Response was empty"
+      const apps = appsResponse.data;
+      orgsWithApps.push({
+        ...org,
+        apps: apps.map((app) => ({
+          name: app.name,
+          id: app.id,
+          envs: app.envs
+        }))
       });
+    } catch (error) {
+      logger.error(error, `Failed to get apps for organization ${org.name}`);
     }
-
-    const apps = appsResponses[index].data;
-    return {
-      ...org,
-      apps: apps.map((app) => ({
-        name: app.name,
-        id: app.id,
-        envs: app.envs
-      }))
-    };
-  });
+  }
   return orgsWithApps;
 };
