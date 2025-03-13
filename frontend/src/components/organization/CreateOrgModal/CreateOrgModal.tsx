@@ -8,10 +8,11 @@ import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
 import { useCreateOrg, useSelectOrganization } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/workspace/types";
+import { GenericResourceNameSchema } from "@app/lib/schemas";
 
 const schema = z
   .object({
-    name: z.string().nonempty({ message: "Name is required" })
+    name: GenericResourceNameSchema.nonempty({ message: "Name is required" })
   })
   .required();
 
@@ -78,7 +79,7 @@ export const CreateOrgModal: FC<CreateOrgModalProps> = ({ isOpen, onClose }) => 
   };
 
   return (
-    <Modal isOpen={isOpen}>
+    <Modal modal={false} isOpen={isOpen}>
       <ModalContent
         title="Create Organization"
         subTitle="Looks like you're not part of any organizations. Create one to start using Infisical"
