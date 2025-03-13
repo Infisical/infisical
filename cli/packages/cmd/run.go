@@ -470,6 +470,15 @@ func confirmProjectHasEnvironment(environmentName, projectId string, token *mode
 		accessToken = loggedInUserDetails.UserCredentials.JTWToken
 	}
 
+	if projectId == "" {
+		workspaceFile, err := util.GetWorkSpaceFromFile()
+		if err != nil {
+			util.HandleError(err, "Unable to get local project details")
+		}
+
+		projectId = workspaceFile.WorkspaceId
+	}
+
 	project, err := util.GetProjectDetails(accessToken, projectId)
 	if err != nil {
 		return false, err
