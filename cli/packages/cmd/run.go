@@ -438,8 +438,21 @@ func executeCommandWithWatchMode(commandFlag string, args []string, watchModeInt
 	}
 }
 
-func fetchAndFormatSecretsForShell(request models.GetAllSecretsParameters, projectConfigDir string, secretOverriding bool, token *models.TokenDetails) (models.InjectableEnvironmentResult, error) {
+func confirmProjectHasEnvironment(environmentName, workspaceId, accessToken string) (bool, error) {
+	res, err := util.GetProjectDetails(accessToken, workspaceId)
+	if err != nil {
+		return false, err
+	}
 
+	for _, env := range res.Environments {
+		if env.Name == environmentName {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func fetchAndFormatSecretsForShell(request models.GetAllSecretsParameters, projectConfigDir string, secretOverriding bool, token *models.TokenDetails) (models.InjectableEnvironmentResult, error) {
 	if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
 		request.InfisicalToken = token.Token
 	} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
