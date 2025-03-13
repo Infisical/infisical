@@ -450,7 +450,7 @@ func executeCommandWithWatchMode(commandFlag string, args []string, watchModeInt
 	}
 }
 
-func confirmProjectHasEnvironment(environmentName, workspaceId string, token *models.TokenDetails) (bool, error) {
+func confirmProjectHasEnvironment(environmentName, projectId string, token *models.TokenDetails) (bool, error) {
 	var accessToken string
 
 	if token != nil && (token.Type == util.SERVICE_TOKEN_IDENTIFIER || token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER) {
@@ -470,7 +470,7 @@ func confirmProjectHasEnvironment(environmentName, workspaceId string, token *mo
 		accessToken = loggedInUserDetails.UserCredentials.JTWToken
 	}
 
-	project, err := util.GetProjectDetails(accessToken, workspaceId)
+	project, err := util.GetProjectDetails(accessToken, projectId)
 	if err != nil {
 		return false, err
 	}
