@@ -6,6 +6,8 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"github.com/Infisical/infisical-merge/packages/api"
+	"github.com/go-resty/resty/v2"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -480,7 +482,11 @@ func confirmProjectHasEnvironment(environmentSlug, projectId string, token *mode
 		projectId = workspaceFile.WorkspaceId
 	}
 
-	project, err := util.GetProjectDetails(accessToken, projectId)
+	httpClient := resty.New()
+	httpClient.SetAuthToken(accessToken).
+		SetHeader("Accept", "application/json")
+
+	project, err := api.CallGetProjectById(httpClient, projectId)
 	if err != nil {
 		return false, err
 	}
