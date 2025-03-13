@@ -59,11 +59,11 @@ var runCmd = &cobra.Command{
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		environmentName, _ := cmd.Flags().GetString("env")
+		environmentSlug, _ := cmd.Flags().GetString("env")
 		if !cmd.Flags().Changed("env") {
 			environmentFromWorkspace := util.GetEnvFromWorkspaceFile()
 			if environmentFromWorkspace != "" {
-				environmentName = environmentFromWorkspace
+				environmentSlug = environmentFromWorkspace
 			}
 		}
 
@@ -136,21 +136,21 @@ var runCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		log.Debug().Msgf("Confirming selected environment is valid: %s", environmentName)
+		log.Debug().Msgf("Confirming selected environment is valid: %s", environmentSlug)
 
 		var hasEnvironment bool
-		hasEnvironment, err = confirmProjectHasEnvironment(environmentName, projectId, token)
+		hasEnvironment, err = confirmProjectHasEnvironment(environmentSlug, projectId, token)
 		if err != nil {
 			util.HandleError(err, "Could not confirm project has environment")
 		}
 		if !hasEnvironment {
-			util.HandleError(fmt.Errorf("project does not have environment '%s'", environmentName))
+			util.HandleError(fmt.Errorf("project does not have environment '%s'", environmentSlug))
 		}
 
-		log.Debug().Msgf("Project '%s' has environment '%s'", projectId, environmentName)
+		log.Debug().Msgf("Project '%s' has environment '%s'", projectId, environmentSlug)
 
 		request := models.GetAllSecretsParameters{
-			Environment:            environmentName,
+			Environment:            environmentSlug,
 			WorkspaceId:            projectId,
 			TagSlugs:               tagSlugs,
 			SecretsPath:            secretsPath,
@@ -450,7 +450,7 @@ func executeCommandWithWatchMode(commandFlag string, args []string, watchModeInt
 	}
 }
 
-func confirmProjectHasEnvironment(environmentName, projectId string, token *models.TokenDetails) (bool, error) {
+func confirmProjectHasEnvironment(environmentSlug, projectId string, token *models.TokenDetails) (bool, error) {
 	var accessToken string
 
 	if token != nil && (token.Type == util.SERVICE_TOKEN_IDENTIFIER || token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER) {
@@ -485,7 +485,7 @@ func confirmProjectHasEnvironment(environmentName, projectId string, token *mode
 	}
 
 	for _, env := range project.Environments {
-		if env.Name == environmentName {
+		if env.Slug == environmentSlug {
 			return true, nil
 		}
 	}
