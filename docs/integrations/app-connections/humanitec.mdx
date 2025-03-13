@@ -8,19 +8,46 @@ Infisical supports connecting to Humanitec using a service user.
 ## Setup Humanitec Connection in Infisical
 
 <Steps>
-    <Step title="Create a Service User on Humanitec">
-        Navigate to the Humanitec Service Users tab and create a new service user.
-        This user will be used to connect to Humanitec from Infisical.
-        ![Humanitec Service User](/images/app-connections/humanitec/create-service-user.png)
+    <Step title="Move to Service Users on Humanitec">
+        Navigate to the Humanitec Service Users tab.
+        ![Humanitec Service Users Tab](/images/app-connections/humanitec/humanitec-service-users.png)
+    </Step>
+    <Step title="Create a Service User">
+        Create a new service user. Take into account that the role set here will affect the permissions of the API Token so be sure to set it so the Service User has access permissions to the App you want to integrate to Infisical.
+        ![Humanitec Create New Service User](/images/app-connections/humanitec/humanitec-create-new-user.png)
+    </Step>
+    <Step title="Add API Token for the Service User">
+        Add a new API token for the service user.
+        ![Humanitec Add API Token](/images/app-connections/humanitec/humanitec-add-api-token.png)
+    </Step>
+    <Step title="Create the API Token for the Service User">
+        Create the API token for the service user. Depending on the expiry date set, the token will expire and this integration will stop working.
+        This token's permission will be limited to the **Service User** role.
+        ![Humanitec Create API Token](/images/app-connections/humanitec/humanitec-create-api-token.png)
+    </Step>
+    <Step title="Copy the API Token">
+        A modal with the API token will be displayed. Copy the token and save it in a secure location.
+        ![Humanitec Copy API Token](/images/app-connections/humanitec/humanitec-copy-api-token.png)
+    </Step>
+    <Step title="Service User has been successfully created">
+        After following the previous steps the Service User has been successfully created. And now should be visible on the Service Users tab.
+        ![Humanitec Service User Created](/images/app-connections/humanitec/humanitec-service-account-filled.png)
     </Step>
     <Step title="Add Service User to Application">
-        Add the Service User to the Application you want to sync with Infisical.
-        Assign at least the **Developer** role to the Service User.
-        ![Humanitec Service User Role](/images/app-connections/humanitec/add-service-user-to-application.png)
+        Move to Appplication Tab and add the Service User to the Application you want to sync with Infisical.
+        Clicking on the App Title will open the App details page.
+        ![Humanitec Applications Tab](/images/app-connections/humanitec/humanitec-applications-tab.png)
     </Step>
-    <Step title="Generate API token for Service User">
-        Generate an API token for the Service User on the Service Users tab.
-        This token will be used to connect to Humanitec from Infisical.
+    <Step title="Add new member to this Application">
+        Move to the People tab and add a new member to this Application. The recently created User Service should be visible on the dropdown shown.
+        Make sure to assign at least Developer role as Write permissions are required.
+        ![Humanitec Add User to Application](/images/app-connections/humanitec/humanitec-add-user.png)
+        ![Humanitec Add User Options](/images/app-connections/humanitec/humanitec-add-user-options.png)
+        ![Humanitec Add User Role](/images/app-connections/humanitec/humanitec-add-user-role.png)
+    </Step>
+    <Step title="Connection Created">
+        Your **Humanitec Connection** is now available for use.
+        ![Humanitec Connection Created](/images/app-connections/humanitec/humanitec-user-added.png)
     </Step>
     <Step title="Navigate to App Connections">
         Navigate to the **App Connections** tab on the **Organization Settings** page.
@@ -28,15 +55,14 @@ Infisical supports connecting to Humanitec using a service user.
     </Step>
     <Step title="Add Connection">
         Select the **Humanitec Connection** option from the connection options modal.
-        ![Select Humanitec Connection](/images/app-connections/humanitec/select-humanitec-connection.png)
+        ![Select Humanitec Connection](/images/app-connections/humanitec/humanitec-app-connection-option.png)
     </Step>
-    <Step title="Add API token to Infisical">
-        Add the API token to Infisical as a secret key.
-        This will allow Infisical to connect to Humanitec using the service user.
-        ![Infisical Secret Key](/images/app-connections/humanitec/add-humanitec-connection.png)
+    <Step title="Fill the Humanitec Connection Modal">
+        Fill the Humanitec Connection modal, here you will need to provide the User Service API Token generated in the previous step.
+        ![Humanitec Connection Modal](/images/app-connections/humanitec/humanitec-app-connection-modal.png)
     </Step>
     <Step title="Connection Created">
         Your **Humanitec Connection** is now available for use.
-        ![Humanitec Connection](/images/app-connections/humanitec/humanitec-connection.png)
+        ![Humanitec Connection Created](/images/app-connections/humanitec/humanitec-app-connection-created.png)
     </Step>
 </Steps>

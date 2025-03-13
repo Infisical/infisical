@@ -1002,6 +1002,19 @@
                 "api-reference/endpoints/secret-syncs/github/sync-secrets",
                 "api-reference/endpoints/secret-syncs/github/remove-secrets"
               ]
+            },
+            {
+              "group": "Humanitec",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/humanitec/list",
+                "api-reference/endpoints/secret-syncs/humanitec/get-by-id",
+                "api-reference/endpoints/secret-syncs/humanitec/get-by-name",
+                "api-reference/endpoints/secret-syncs/humanitec/create",
+                "api-reference/endpoints/secret-syncs/humanitec/update",
+                "api-reference/endpoints/secret-syncs/humanitec/delete",
+                "api-reference/endpoints/secret-syncs/humanitec/sync-secrets",
+                "api-reference/endpoints/secret-syncs/humanitec/remove-secrets"
+              ]
             }
           ]
         },
