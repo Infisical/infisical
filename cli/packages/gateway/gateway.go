@@ -79,13 +79,9 @@ func (g *Gateway) ConnectWithRelay() error {
 
 	// Dial TURN Server
 	if relayPort == "5349" {
-		caCertPool := x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM([]byte(g.config.CertificateChain))
-
 		log.Info().Msgf("Provided relay port %s. Using TLS", relayPort)
 		conn, err := dtls.Dial("udp", turnAddr, &dtls.Config{
 			ServerName: relayAddress,
-			RootCAs:    caCertPool,
 		})
 		if err != nil {
 			return fmt.Errorf("Failed to connect with relay server: %w", err)
@@ -193,7 +189,7 @@ func (g *Gateway) Listen(ctx context.Context) error {
 
 	log.Printf("Listener started on %s", quicListener.Addr())
 
-	g.registerRelayIsActive(ctx, quicListener.Addr().String(), errCh)
+	g.registerRelayIsActive(ctx, errCh)
 
 	log.Info().Msg("Gateway started successfully")
 
@@ -330,7 +326,7 @@ func (g *Gateway) createPermissionForStaticIps(staticIps string) error {
 	return nil
 }
 
-func (g *Gateway) registerRelayIsActive(ctx context.Context, addr string, errCh chan error) error {
+func (g *Gateway) registerRelayIsActive(ctx context.Context, errCh chan error) error {
 	ticker := time.NewTicker(15 * time.Second)
 	maxFailures := 3
 	failures := 0
@@ -345,13 +341,7 @@ func (g *Gateway) registerRelayIsActive(ctx context.Context, addr string, errCh 
 				return
 			case <-ticker.C:
 				log.Debug().Msg("Performing relay connection health check")
-				ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
-				defer cancel()
-				// Try to establish a QUIC connection
-				conn, err := quic.DialAddr(ctxTimeout, addr, &tls.Config{
-					InsecureSkipVerify: false, // Skip certificate verification
-					NextProtos:         []string{"infisical-gateway"},
-				}, nil)
+				err := g.createPermissionForStaticIps(g.config.InfisicalStaticIp)
 				if err != nil && !strings.Contains(err.Error(), "tls:") {
 					failures++
 					log.Warn().Err(err).Int("failures", failures).Msg("Failed to refresh TURN permissions")
@@ -360,9 +350,6 @@ func (g *Gateway) registerRelayIsActive(ctx context.Context, addr string, errCh 
 						return
 					}
 					continue
-				}
-				if conn != nil {
-					defer conn.CloseWithError(0, "All good")
 				}
 			}
 		}

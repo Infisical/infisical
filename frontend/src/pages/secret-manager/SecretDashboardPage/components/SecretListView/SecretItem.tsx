@@ -1,3 +1,4 @@
+/* eslint-disable no-nested-ternary */
 /* eslint-disable simple-import-sort/imports */
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -44,6 +45,9 @@ import {
   SecretReferenceTree
 } from "@app/components/secrets/SecretReferenceDetails";
 
+import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
+import { Blur } from "@app/components/v2/Blur";
+import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import {
   FontAwesomeSpriteName,
   formSchema,
@@ -99,8 +103,14 @@ export const SecretItem = memo(
       trigger,
       formState: { isDirty, isSubmitting, errors }
     } = useForm<TFormSchema>({
-      defaultValues: secret,
-      values: secret,
+      defaultValues: {
+        ...secret,
+        value: secret.secretValueHidden ? "" : secret.value
+      },
+      values: {
+        ...secret,
+        value: secret.secretValueHidden ? "" : secret.value
+      },
       resolver: zodResolver(formSchema)
     });
 
@@ -122,17 +132,18 @@ export const SecretItem = memo(
     });
 
     const isReadOnly =
-      permission.can(
-        ProjectPermissionActions.Read,
-        subject(ProjectPermissionSub.Secrets, {
+      hasSecretReadValueOrDescribePermission(
+        permission,
+        ProjectPermissionSecretActions.DescribeSecret,
+        {
           environment,
           secretPath,
           secretName,
           secretTags: selectedTagSlugs
-        })
+        }
       ) &&
       permission.cannot(
-        ProjectPermissionActions.Edit,
+        ProjectPermissionSecretActions.Edit,
         subject(ProjectPermissionSub.Secrets, {
           environment,
           secretPath,
@@ -140,6 +151,8 @@ export const SecretItem = memo(
           secretTags: selectedTagSlugs
         })
       );
+
+    const { secretValueHidden } = secret;
 
     const [isSecValueCopied, setIsSecValueCopied] = useToggle(false);
     useEffect(() => {
@@ -268,10 +281,12 @@ export const SecretItem = memo(
                       isVisible={isVisible}
                       isReadOnly={isReadOnly}
                       {...field}
-                      containerClassName="py-1.5 rounded-md transition-all group-hover:mr-2"
+                      containerClassName="py-1.5 rounded-md transition-all"
                     />
                   )}
                 />
+              ) : secretValueHidden ? (
+                <Blur tooltipText="You do not have permission to read the value of this secret." />
               ) : (
                 <Controller
                   name="value"
@@ -285,18 +300,20 @@ export const SecretItem = memo(
                       environment={environment}
                       secretPath={secretPath}
                       {...field}
-                      containerClassName="py-1.5 rounded-md transition-all group-hover:mr-2"
+                      defaultValue={secretValueHidden ? "" : undefined}
+                      containerClassName="py-1.5 rounded-md transition-all"
                     />
                   )}
                 />
               )}
-              <div key="actions" className="flex h-8 flex-shrink-0 self-start transition-all">
+              <div key="actions" className="flex h-full flex-shrink-0 self-start transition-all group-hover:gap-x-2">
                 <Tooltip content="Copy secret">
                   <IconButton
+                    isDisabled={secret.secretValueHidden}
                     ariaLabel="copy-value"
                     variant="plain"
                     size="sm"
-                    className="w-0 overflow-hidden p-0 group-hover:mr-2 group-hover:w-5"
+                    className="w-0 overflow-hidden p-0 group-hover:w-5"
                     onClick={copyTokenToClipboard}
                   >
                     <FontAwesomeSymbol
@@ -322,7 +339,7 @@ export const SecretItem = memo(
                     <Modal>
                       <ModalTrigger asChild>
                         <IconButton
-                          className="w-0 overflow-hidden p-0 group-hover:mr-2 group-hover:w-5 data-[state=open]:w-6"
+                          className="w-0 overflow-hidden p-0 group-hover:w-5"
                           variant="plain"
                           size="md"
                           ariaLabel="reference-tree"
@@ -373,7 +390,7 @@ export const SecretItem = memo(
                           variant="plain"
                           size="sm"
                           className={twMerge(
-                            "w-0 overflow-hidden p-0 group-hover:mr-2 group-hover:w-5 data-[state=open]:w-5",
+                            "w-0 overflow-hidden p-0 group-hover:w-5 data-[state=open]:w-5",
                             hasTagsApplied && "w-5 text-primary"
                           )}
                           isDisabled={!isAllowed}
@@ -456,7 +473,7 @@ export const SecretItem = memo(
                       size="sm"
                       onClick={handleOverrideClick}
                       className={twMerge(
-                        "w-0 overflow-hidden p-0 group-hover:mr-2 group-hover:w-5",
+                        "w-0 overflow-hidden p-0 group-hover:w-5",
                         isOverriden && "w-5 text-primary"
                       )}
                     >
@@ -481,7 +498,7 @@ export const SecretItem = memo(
                       <PopoverTrigger asChild disabled={!isAllowed}>
                         <IconButton
                           className={twMerge(
-                            "w-0 overflow-hidden p-0 group-hover:mr-2 group-hover:w-5 data-[state=open]:w-6",
+                            "w-0 overflow-hidden p-0 group-hover:w-5",
                             hasComment && "w-5 text-primary"
                           )}
                           variant="plain"
@@ -500,7 +517,8 @@ export const SecretItem = memo(
                     )}
                   </ProjectPermissionCan>
                   <IconButton
-                    className="w-0 overflow-hidden p-0 group-hover:mr-2 group-hover:w-5 data-[state=open]:w-6"
+                    isDisabled={secret.secretValueHidden}
+                    className="w-0 overflow-hidden p-0 group-hover:w-5"
                     variant="plain"
                     size="md"
                     ariaLabel="share-secret"

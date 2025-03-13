@@ -25,6 +25,7 @@ import {
   useProjectPermission,
   useWorkspace
 } from "@app/context";
+import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import {
   useGetImportedSecretsSingleEnv,
@@ -37,6 +38,7 @@ import { useGetProjectSecretsDetails } from "@app/hooks/api/dashboard";
 import { DashboardSecretsOrderBy } from "@app/hooks/api/dashboard/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectType } from "@app/hooks/api/workspace/types";
+import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
 import { SecretTableResourceCount } from "../OverviewPage/components/SecretTableResourceCount";
 import { SecretV2MigrationSection } from "../OverviewPage/components/SecretV2MigrationSection";
@@ -102,14 +104,27 @@ const Page = () => {
   const workspaceId = currentWorkspace?.id || "";
   const projectSlug = currentWorkspace?.slug || "";
   const secretPath = (routerQueryParams.secretPath as string) || "/";
-  const canReadSecret = permission.can(
-    ProjectPermissionActions.Read,
-    subject(ProjectPermissionSub.Secrets, {
+
+  const canReadSecret = hasSecretReadValueOrDescribePermission(
+    permission,
+    ProjectPermissionSecretActions.DescribeSecret,
+    {
       environment,
       secretPath,
       secretName: "*",
       secretTags: ["*"]
-    })
+    }
+  );
+
+  const canReadSecretValue = hasSecretReadValueOrDescribePermission(
+    permission,
+    ProjectPermissionSecretActions.ReadValue,
+    {
+      environment,
+      secretPath,
+      secretName: "*",
+      secretTags: ["*"]
+    }
   );
 
   const canReadSecretImports = permission.can(
@@ -176,6 +191,7 @@ const Page = () => {
     orderDirection,
     includeImports: canReadSecretImports && filter.include.import,
     includeFolders: filter.include.folder,
+    viewSecretValue: canReadSecretValue,
     includeDynamicSecrets: canReadDynamicSecret && filter.include.dynamic,
     includeSecrets: canReadSecret && filter.include.secret,
     tags: filter.tags

@@ -34,6 +34,8 @@ description: "Learn how to configure a Databricks Sync for Infisical."
 
             <Note>
                 You must create a secret scope in your Databricks workspace prior to configuration. Ensure your service principal has [Write permissions](https://docs.databricks.com/en/security/auth/access-control/index.html#secret-acls) for the specified secret scope.
+
+                Infisical recommends creating a designated Databricks secret scope for your sync to prevent removal of secrets not managed by Infisical.
             </Note>
 
         5. Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.

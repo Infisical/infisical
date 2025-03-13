@@ -1,16 +1,11 @@
 import { useCallback } from "react";
-import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
+import { MongoAbility, RawRuleOf } from "@casl/ability";
 import { unpackRules } from "@casl/ability/extra";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 
-import {
-  conditionsMatcher,
-  fetchUserProjectPermissions,
-  roleQueryKeys
-} from "@app/hooks/api/roles/queries";
-import { groupBy } from "@app/lib/fn/array";
-import { omit } from "@app/lib/fn/object";
+import { evaluatePermissionsAbility } from "@app/helpers/permissions";
+import { fetchUserProjectPermissions, roleQueryKeys } from "@app/hooks/api/roles/queries";
 
 import { ProjectPermissionSet } from "./types";
 
@@ -31,33 +26,7 @@ export const useProjectPermission = () => {
     staleTime: Infinity,
     select: (data) => {
       const rule = unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(data.permissions);
-      const negatedRules = groupBy(
-        rule.filter((i) => i.inverted && i.conditions),
-        (i) => `${i.subject}-${JSON.stringify(i.conditions)}`
-      );
-      const ability = createMongoAbility<ProjectPermissionSet>(rule, {
-        // this allows in frontend to skip some rules using *
-        conditionsMatcher: (rules) => {
-          return (entity) => {
-            // skip validation if its negated rules
-            const isNegatedRule =
-              // eslint-disable-next-line no-underscore-dangle
-              negatedRules?.[`${entity.__caslSubjectType__}-${JSON.stringify(rules)}`];
-            if (isNegatedRule) {
-              const baseMatcher = conditionsMatcher(rules);
-              return baseMatcher(entity);
-            }
-
-            const rulesStrippedOfWildcard = omit(
-              rules,
-              Object.keys(entity).filter((el) => entity[el]?.includes("*"))
-            );
-            const baseMatcher = conditionsMatcher(rulesStrippedOfWildcard);
-            return baseMatcher(entity);
-          };
-        }
-      });
-
+      const ability = evaluatePermissionsAbility(rule);
       return {
         permission: ability,
         membership: {

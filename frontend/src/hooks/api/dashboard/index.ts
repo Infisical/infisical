@@ -1,4 +1,5 @@
 export {
+  useGetAccessibleSecrets,
   useGetProjectSecretsDetails,
   useGetProjectSecretsOverview,
   useGetProjectSecretsQuickSearch

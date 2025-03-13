@@ -4,19 +4,24 @@ import { apiRequest } from "@app/config/request";
 
 import { User } from "../types";
 import {
+  AdminGetIdentitiesFilters,
   AdminGetUsersFilters,
   AdminSlackConfig,
   TGetServerRootKmsEncryptionDetails,
   TServerConfig
 } from "./types";
+import { Identity } from "@app/hooks/api/identities/types";
 
 export const adminStandaloneKeys = {
-  getUsers: "get-users"
+  getUsers: "get-users",
+  getIdentities: "get-identities"
 };
 
 export const adminQueryKeys = {
   serverConfig: () => ["server-config"] as const,
   getUsers: (filters: AdminGetUsersFilters) => [adminStandaloneKeys.getUsers, { filters }] as const,
+  getIdentities: (filters: AdminGetIdentitiesFilters) =>
+    [adminStandaloneKeys.getIdentities, { filters }] as const,
   getAdminSlackConfig: () => ["admin-slack-config"] as const,
   getServerEncryptionStrategies: () => ["server-encryption-strategies"] as const
 };
@@ -62,6 +67,28 @@ export const useAdminGetUsers = (filters: AdminGetUsersFilters) => {
       );
 
       return data.users;
+    },
+    getNextPageParam: (lastPage, pages) =>
+      lastPage.length !== 0 ? pages.length * filters.limit : undefined
+  });
+};
+
+export const useAdminGetIdentities = (filters: AdminGetIdentitiesFilters) => {
+  return useInfiniteQuery({
+    initialPageParam: 0,
+    queryKey: adminQueryKeys.getIdentities(filters),
+    queryFn: async ({ pageParam }) => {
+      const { data } = await apiRequest.get<{ identities: Identity[] }>(
+        "/api/v1/admin/identity-management/identities",
+        {
+          params: {
+            ...filters,
+            offset: pageParam
+          }
+        }
+      );
+
+      return data.identities;
     },
     getNextPageParam: (lastPage, pages) =>
       lastPage.length !== 0 ? pages.length * filters.limit : undefined
