@@ -12,7 +12,7 @@ import {
 import { ORGANIZATIONS } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { OrganizationNameSchema } from "@app/server/lib/schemas";
+import { GenericResourceNameSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
@@ -331,7 +331,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        name: OrganizationNameSchema
+        name: GenericResourceNameSchema
       }),
       response: {
         200: z.object({

@@ -22,7 +22,7 @@ export const slugSchema = ({ min = 1, max = 32, field = "Slug" }: SlugSchemaInpu
     });
 };
 
-export const OrganizationNameSchema = z
+export const GenericResourceNameSchema = z
   .string()
   .trim()
   .min(1, { message: "Name must be at least 1 character" })

@@ -14,9 +14,10 @@ import {
 } from "@app/context";
 import { isCustomOrgRole } from "@app/helpers/roles";
 import { useGetOrgRoles, useUpdateOrg } from "@app/hooks/api";
+import { GenericResourceNameSchema } from "@app/lib/schemas";
 
 const formSchema = z.object({
-  name: z.string().max(64, "Too long, maximum length is 64 characters"),
+  name: GenericResourceNameSchema,
   slug: z
     .string()
     .regex(/^[a-zA-Z0-9-]+$/, "Name must only contain alphanumeric characters or hyphens"),
