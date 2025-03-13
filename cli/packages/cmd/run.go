@@ -172,7 +172,6 @@ var runCmd = &cobra.Command{
 				}
 			}
 		}
-
 	},
 }
 
