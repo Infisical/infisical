@@ -319,7 +319,6 @@ func waitForExitCommand(cmd *exec.Cmd) (int, error) {
 }
 
 func executeCommandWithWatchMode(commandFlag string, args []string, watchModeInterval int, request models.GetAllSecretsParameters, projectConfigDir string, secretOverriding bool, token *models.TokenDetails) {
-
 	var cmd *exec.Cmd
 	var err error
 	var lastSecretsFetch time.Time
