@@ -76,7 +76,6 @@ func TestUniversalAuth_SecretsGetWrongEnvironment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("snapshot failed: %v", err)
 	}
-
 }
 
 func TestUserAuth_SecretsGetAll(t *testing.T) {
