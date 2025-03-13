@@ -67,7 +67,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     if (!identityProjectMembership)
       throw new NotFoundError({ message: `Failed to find identity with id ${identityId}` });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, membership } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: identityProjectMembership.projectId,
@@ -94,6 +94,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     // @ts-expect-error this is expected error because of one being really accurate rule definition other being a bit more broader. Both are valid casl rules
     targetIdentityPermission.update(targetIdentityPermission.rules.concat(customPermission));
     const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
       ProjectPermissionIdentityActions.ManagePrivileges,
       ProjectPermissionSub.Identity,
       permission,
@@ -160,7 +161,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     if (!identityProjectMembership)
       throw new NotFoundError({ message: `Failed to find identity with id ${identityId}` });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, membership } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: identityProjectMembership.projectId,
@@ -187,6 +188,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     // @ts-expect-error this is expected error because of one being really accurate rule definition other being a bit more broader. Both are valid casl rules
     targetIdentityPermission.update(targetIdentityPermission.rules.concat(data.permissions || []));
     const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
       ProjectPermissionIdentityActions.ManagePrivileges,
       ProjectPermissionSub.Identity,
       permission,
@@ -270,7 +272,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     if (!identityProjectMembership)
       throw new NotFoundError({ message: `Failed to find identity with id ${identityId}` });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, membership } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: identityProjectMembership.projectId,
@@ -292,6 +294,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
     const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
       ProjectPermissionIdentityActions.ManagePrivileges,
       ProjectPermissionSub.Identity,
       permission,

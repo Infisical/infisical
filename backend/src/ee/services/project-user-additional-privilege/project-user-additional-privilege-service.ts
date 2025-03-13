@@ -68,7 +68,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member);
-    const { permission: targetUserPermission } = await permissionService.getProjectPermission({
+    const { permission: targetUserPermission, membership } = await permissionService.getProjectPermission({
       actor: ActorType.USER,
       actorId: projectMembership.userId,
       projectId: projectMembership.projectId,
@@ -81,6 +81,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     // @ts-expect-error this is expected error because of one being really accurate rule definition other being a bit more broader. Both are valid casl rules
     targetUserPermission.update(targetUserPermission.rules.concat(customPermission));
     const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
       ProjectPermissionMemberActions.ManagePrivileges,
       ProjectPermissionSub.Member,
       permission,
@@ -155,7 +156,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
         message: `Project membership for user with ID '${userPrivilege.userId}' not found in project with ID '${userPrivilege.projectId}'`
       });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, membership } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: projectMembership.projectId,
@@ -177,6 +178,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     // @ts-expect-error this is expected error because of one being really accurate rule definition other being a bit more broader. Both are valid casl rules
     targetUserPermission.update(targetUserPermission.rules.concat(dto.permissions || []));
     const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
       ProjectPermissionMemberActions.ManagePrivileges,
       ProjectPermissionSub.Member,
       permission,

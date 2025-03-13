@@ -53,7 +53,7 @@ export const identityProjectServiceFactory = ({
     projectId,
     roles
   }: TCreateProjectIdentityDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, membership } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -91,6 +91,7 @@ export const identityProjectServiceFactory = ({
       );
 
       const permissionBoundary = validatePrivilegeChangeOperation(
+        membership.shouldUseNewPrivilegeSystem,
         ProjectPermissionIdentityActions.ManagePrivileges,
         ProjectPermissionSub.Identity,
         permission,
@@ -166,7 +167,7 @@ export const identityProjectServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TUpdateProjectIdentityDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, membership } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -192,11 +193,13 @@ export const identityProjectServiceFactory = ({
       );
 
       const permissionBoundary = validatePrivilegeChangeOperation(
+        membership.shouldUseNewPrivilegeSystem,
         ProjectPermissionIdentityActions.ManagePrivileges,
         ProjectPermissionSub.Identity,
         permission,
         rolePermission
       );
+
       if (!permissionBoundary.isValid)
         throw new ForbiddenRequestError({
           name: "PermissionBoundaryError",

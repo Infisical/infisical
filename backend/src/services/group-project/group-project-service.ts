@@ -70,7 +70,7 @@ export const groupProjectServiceFactory = ({
     if (!project) throw new NotFoundError({ message: `Failed to find project with ID ${projectId}` });
     if (project.version < 2) throw new BadRequestError({ message: `Failed to add group to E2EE project` });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, membership } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -103,6 +103,7 @@ export const groupProjectServiceFactory = ({
       );
 
       const permissionBoundary = validatePrivilegeChangeOperation(
+        membership.shouldUseNewPrivilegeSystem,
         ProjectPermissionGroupActions.ManagePrivileges,
         ProjectPermissionSub.Groups,
         permission,
@@ -253,7 +254,7 @@ export const groupProjectServiceFactory = ({
 
     if (!project) throw new NotFoundError({ message: `Failed to find project with ID ${projectId}` });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, membership } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -275,6 +276,7 @@ export const groupProjectServiceFactory = ({
         project.id
       );
       const permissionBoundary = validatePrivilegeChangeOperation(
+        membership.shouldUseNewPrivilegeSystem,
         ProjectPermissionGroupActions.ManagePrivileges,
         ProjectPermissionSub.Groups,
         permission,

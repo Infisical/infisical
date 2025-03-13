@@ -237,7 +237,7 @@ export const identityTokenAuthServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission } = await permissionService.getOrgPermission(
+    const { permission: rolePermission, membership } = await permissionService.getOrgPermission(
       ActorType.IDENTITY,
       identityMembershipOrg.identityId,
       identityMembershipOrg.orgId,
@@ -246,6 +246,7 @@ export const identityTokenAuthServiceFactory = ({
     );
 
     const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
       OrgPermissionIdentityActions.RevokeAuth,
       OrgPermissionSubjects.Identity,
       permission,
@@ -295,7 +296,7 @@ export const identityTokenAuthServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission } = await permissionService.getOrgPermission(
+    const { permission: rolePermission, membership } = await permissionService.getOrgPermission(
       ActorType.IDENTITY,
       identityMembershipOrg.identityId,
       identityMembershipOrg.orgId,
@@ -304,6 +305,7 @@ export const identityTokenAuthServiceFactory = ({
     );
 
     const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
       OrgPermissionIdentityActions.CreateToken,
       OrgPermissionSubjects.Identity,
       permission,
@@ -423,7 +425,7 @@ export const identityTokenAuthServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission } = await permissionService.getOrgPermission(
+    const { permission: rolePermission, membership } = await permissionService.getOrgPermission(
       ActorType.IDENTITY,
       identityMembershipOrg.identityId,
       identityMembershipOrg.orgId,
@@ -431,6 +433,7 @@ export const identityTokenAuthServiceFactory = ({
       actorOrgId
     );
     const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
       OrgPermissionIdentityActions.CreateToken,
       OrgPermissionSubjects.Identity,
       permission,

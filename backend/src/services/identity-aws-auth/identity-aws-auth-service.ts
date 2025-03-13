@@ -322,7 +322,7 @@ export const identityAwsAuthServiceFactory = ({
         message: "The identity does not have aws auth"
       });
     }
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission, membership } = await permissionService.getOrgPermission(
       actor,
       actorId,
       identityMembershipOrg.orgId,
@@ -340,11 +340,13 @@ export const identityAwsAuthServiceFactory = ({
     );
 
     const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
       OrgPermissionIdentityActions.RevokeAuth,
       OrgPermissionSubjects.Identity,
       permission,
       rolePermission
     );
+
     if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",

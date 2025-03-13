@@ -342,7 +342,7 @@ export const identityGcpAuthServiceFactory = ({
         message: "The identity does not have gcp auth"
       });
     }
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission, membership } = await permissionService.getOrgPermission(
       actor,
       actorId,
       identityMembershipOrg.orgId,
@@ -359,6 +359,7 @@ export const identityGcpAuthServiceFactory = ({
       actorOrgId
     );
     const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
       OrgPermissionIdentityActions.RevokeAuth,
       OrgPermissionSubjects.Identity,
       permission,

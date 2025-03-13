@@ -296,7 +296,7 @@ export const identityAzureAuthServiceFactory = ({
         message: "The identity does not have azure auth"
       });
     }
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission, membership } = await permissionService.getOrgPermission(
       actor,
       actorId,
       identityMembershipOrg.orgId,
@@ -313,6 +313,7 @@ export const identityAzureAuthServiceFactory = ({
       actorOrgId
     );
     const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
       OrgPermissionIdentityActions.RevokeAuth,
       OrgPermissionSubjects.Identity,
       permission,

@@ -291,7 +291,7 @@ export const orgServiceFactory = ({
   }: TUpgradePrivilegeSystemDTO) => {
     const { membership } = await permissionService.getUserOrgPermission(actorId, orgId, actorAuthMethod, actorOrgId);
 
-    if (membership.role != OrgMembershipRole.Admin) {
+    if (membership.role !== OrgMembershipRole.Admin) {
       throw new ForbiddenRequestError({
         message: "Insufficient privileges - only the organization admin can upgrade the privilege system."
       });
@@ -881,7 +881,7 @@ export const orgServiceFactory = ({
       // if there exist no project membership we set is as given by the request
       for await (const project of projectsToInvite) {
         const projectId = project.id;
-        const { permission: projectPermission } = await permissionService.getProjectPermission({
+        const { permission: projectPermission, membership } = await permissionService.getProjectPermission({
           actor,
           actorId,
           projectId,
@@ -920,6 +920,7 @@ export const orgServiceFactory = ({
           );
 
           const permissionBoundary = validatePrivilegeChangeOperation(
+            membership.shouldUseNewPrivilegeSystem,
             ProjectPermissionMemberActions.ManagePrivileges,
             ProjectPermissionSub.Member,
             projectPermission,

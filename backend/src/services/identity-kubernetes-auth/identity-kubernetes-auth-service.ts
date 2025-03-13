@@ -471,7 +471,7 @@ export const identityKubernetesAuthServiceFactory = ({
         message: "The identity does not have kubernetes auth"
       });
     }
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission, membership } = await permissionService.getOrgPermission(
       actor,
       actorId,
       identityMembershipOrg.orgId,
@@ -488,6 +488,7 @@ export const identityKubernetesAuthServiceFactory = ({
       actorOrgId
     );
     const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
       OrgPermissionIdentityActions.RevokeAuth,
       OrgPermissionSubjects.Identity,
       permission,

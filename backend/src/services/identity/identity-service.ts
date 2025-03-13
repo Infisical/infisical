@@ -49,7 +49,13 @@ export const identityServiceFactory = ({
     actorOrgId,
     metadata
   }: TCreateIdentityDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    const { permission, membership } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
 
     const { permission: rolePermission, role: customRole } = await permissionService.getOrgPermissionByRole(
@@ -58,6 +64,7 @@ export const identityServiceFactory = ({
     );
     const isCustomRole = Boolean(customRole);
     const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
       OrgPermissionIdentityActions.ManagePrivileges,
       OrgPermissionSubjects.Identity,
       permission,
@@ -121,7 +128,7 @@ export const identityServiceFactory = ({
     const identityOrgMembership = await identityOrgMembershipDAL.findOne({ identityId: id });
     if (!identityOrgMembership) throw new NotFoundError({ message: `Failed to find identity with id ${id}` });
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission, membership } = await permissionService.getOrgPermission(
       actor,
       actorId,
       identityOrgMembership.orgId,
@@ -139,6 +146,7 @@ export const identityServiceFactory = ({
 
       const isCustomRole = Boolean(customOrgRole);
       const appliedRolePermissionBoundary = validatePrivilegeChangeOperation(
+        membership.shouldUseNewPrivilegeSystem,
         OrgPermissionIdentityActions.ManagePrivileges,
         OrgPermissionSubjects.Identity,
         permission,

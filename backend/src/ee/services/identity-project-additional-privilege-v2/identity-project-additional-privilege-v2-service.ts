@@ -67,7 +67,7 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       ProjectPermissionIdentityActions.Edit,
       subject(ProjectPermissionSub.Identity, { identityId })
     );
-    const { permission: targetIdentityPermission } = await permissionService.getProjectPermission({
+    const { permission: targetIdentityPermission, membership } = await permissionService.getProjectPermission({
       actor: ActorType.IDENTITY,
       actorId: identityId,
       projectId: identityProjectMembership.projectId,
@@ -80,6 +80,7 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
     // @ts-expect-error this is expected error because of one being really accurate rule definition other being a bit more broader. Both are valid casl rules
     targetIdentityPermission.update(targetIdentityPermission.rules.concat(customPermission));
     const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
       ProjectPermissionIdentityActions.ManagePrivileges,
       ProjectPermissionSub.Identity,
       permission,
@@ -158,7 +159,7 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       ProjectPermissionIdentityActions.Edit,
       subject(ProjectPermissionSub.Identity, { identityId: identityProjectMembership.identityId })
     );
-    const { permission: targetIdentityPermission } = await permissionService.getProjectPermission({
+    const { permission: targetIdentityPermission, membership } = await permissionService.getProjectPermission({
       actor: ActorType.IDENTITY,
       actorId: identityProjectMembership.identityId,
       projectId: identityProjectMembership.projectId,
@@ -171,6 +172,7 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
     // @ts-expect-error this is expected error because of one being really accurate rule definition other being a bit more broader. Both are valid casl rules
     targetIdentityPermission.update(targetIdentityPermission.rules.concat(data.permissions || []));
     const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
       ProjectPermissionIdentityActions.ManagePrivileges,
       ProjectPermissionSub.Identity,
       permission,
@@ -237,7 +239,7 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
         message: `Failed to find identity with membership ${identityPrivilege.projectMembershipId}`
       });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, membership } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: identityProjectMembership.projectId,
@@ -258,6 +260,7 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
     const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
       ProjectPermissionIdentityActions.ManagePrivileges,
       ProjectPermissionSub.Identity,
       permission,

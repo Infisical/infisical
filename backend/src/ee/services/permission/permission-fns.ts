@@ -152,16 +152,28 @@ const escapeHandlebarsMissingMetadata = (obj: Record<string, string>) => {
 // the new privilege management system is based on the actor having the appropriate permission to perform the privilege change,
 // regardless of the actor's privilege level.
 const validatePrivilegeChangeOperation = (
+  shouldUseNewPrivilegeSystem: boolean,
   opAction: OrgPermissionSet[0] | ProjectPermissionSet[0],
   opSubject: OrgPermissionSet[1] | ProjectPermissionSet[1],
   actorPermission: MongoAbility,
   managedPermission: MongoAbility
 ) => {
-  // first we ensure if the actor has the permission to manage the privilege
-  if (actorPermission.can(opAction, opSubject)) {
+  if (shouldUseNewPrivilegeSystem) {
+    if (actorPermission.can(opAction, opSubject)) {
+      return {
+        isValid: true,
+        missingPermissions: []
+      };
+    }
+
     return {
-      isValid: true,
-      missingPermissions: []
+      isValid: false,
+      missingPermissions: [
+        {
+          action: opAction,
+          subject: opSubject
+        }
+      ]
     };
   }
 

@@ -390,14 +390,18 @@ export const permissionServiceFactory = ({
     const scopes = ServiceTokenScopes.parse(serviceToken.scopes || []);
     return {
       permission: buildServiceTokenProjectPermission(scopes, serviceToken.permissions),
-      membership: undefined
+      membership: {
+        shouldUseNewPrivilegeSystem: true
+      }
     };
   };
 
   type TProjectPermissionRT<T extends ActorType> = T extends ActorType.SERVICE
     ? {
         permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
-        membership: undefined;
+        membership: {
+          shouldUseNewPrivilegeSystem: boolean;
+        };
         hasRole: (arg: string) => boolean;
       } // service token doesn't have both membership and roles
     : {
@@ -406,6 +410,7 @@ export const permissionServiceFactory = ({
           orgAuthEnforced: boolean | null | undefined;
           orgId: string;
           roles: Array<{ role: string }>;
+          shouldUseNewPrivilegeSystem: boolean;
         };
         hasRole: (role: string) => boolean;
       };

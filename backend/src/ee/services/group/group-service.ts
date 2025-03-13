@@ -67,7 +67,7 @@ export const groupServiceFactory = ({
   const createGroup = async ({ name, slug, role, actor, actorId, actorAuthMethod, actorOrgId }: TCreateGroupDTO) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission, membership } = await permissionService.getOrgPermission(
       actor,
       actorId,
       actorOrgId,
@@ -89,6 +89,7 @@ export const groupServiceFactory = ({
     const isCustomRole = Boolean(customRole);
 
     const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
       OrgPermissionGroupActions.ManagePrivileges,
       OrgPermissionSubjects.Groups,
       permission,
@@ -138,13 +139,14 @@ export const groupServiceFactory = ({
   }: TUpdateGroupDTO) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission, membership } = await permissionService.getOrgPermission(
       actor,
       actorId,
       actorOrgId,
       actorAuthMethod,
       actorOrgId
     );
+
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
 
     const plan = await licenseService.getPlan(actorOrgId);
@@ -167,6 +169,7 @@ export const groupServiceFactory = ({
 
       const isCustomRole = Boolean(customOrgRole);
       const permissionBoundary = validatePrivilegeChangeOperation(
+        membership.shouldUseNewPrivilegeSystem,
         OrgPermissionGroupActions.ManagePrivileges,
         OrgPermissionSubjects.Groups,
         permission,
@@ -313,7 +316,7 @@ export const groupServiceFactory = ({
   const addUserToGroup = async ({ id, username, actor, actorId, actorAuthMethod, actorOrgId }: TAddUserToGroupDTO) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission, membership } = await permissionService.getOrgPermission(
       actor,
       actorId,
       actorOrgId,
@@ -349,11 +352,13 @@ export const groupServiceFactory = ({
 
     // check if user has broader or equal to privileges than group
     const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
       OrgPermissionGroupActions.AddMembers,
       OrgPermissionSubjects.Groups,
       permission,
       groupRolePermission
     );
+
     if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",
@@ -389,7 +394,7 @@ export const groupServiceFactory = ({
   }: TRemoveUserFromGroupDTO) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission, membership } = await permissionService.getOrgPermission(
       actor,
       actorId,
       actorOrgId,
@@ -425,6 +430,7 @@ export const groupServiceFactory = ({
 
     // check if user has broader or equal to privileges than group
     const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
       OrgPermissionGroupActions.RemoveMembers,
       OrgPermissionSubjects.Groups,
       permission,

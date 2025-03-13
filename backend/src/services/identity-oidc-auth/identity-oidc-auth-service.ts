@@ -410,7 +410,7 @@ export const identityOidcAuthServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission, membership } = await permissionService.getOrgPermission(
       actor,
       actorId,
       identityMembershipOrg.orgId,
@@ -429,11 +429,13 @@ export const identityOidcAuthServiceFactory = ({
     );
 
     const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
       OrgPermissionIdentityActions.RevokeAuth,
       OrgPermissionSubjects.Identity,
       permission,
       rolePermission
     );
+
     if (!permissionBoundary.isValid)
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",

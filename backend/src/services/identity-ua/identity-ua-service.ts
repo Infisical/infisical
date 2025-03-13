@@ -360,7 +360,7 @@ export const identityUaServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission } = await permissionService.getOrgPermission(
+    const { permission: rolePermission, membership } = await permissionService.getOrgPermission(
       ActorType.IDENTITY,
       identityMembershipOrg.identityId,
       identityMembershipOrg.orgId,
@@ -368,6 +368,7 @@ export const identityUaServiceFactory = ({
       actorOrgId
     );
     const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
       OrgPermissionIdentityActions.RevokeAuth,
       OrgPermissionSubjects.Identity,
       permission,
@@ -406,7 +407,7 @@ export const identityUaServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission, membership } = await permissionService.getOrgPermission(
       actor,
       actorId,
       identityMembershipOrg.orgId,
@@ -423,6 +424,7 @@ export const identityUaServiceFactory = ({
       actorOrgId
     );
     const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
       OrgPermissionIdentityActions.CreateToken,
       OrgPermissionSubjects.Identity,
       permission,
@@ -473,7 +475,7 @@ export const identityUaServiceFactory = ({
         message: "The identity does not have universal auth"
       });
     }
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission, membership } = await permissionService.getOrgPermission(
       actor,
       actorId,
       identityMembershipOrg.orgId,
@@ -491,6 +493,7 @@ export const identityUaServiceFactory = ({
     );
 
     const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
       OrgPermissionIdentityActions.GetToken,
       OrgPermissionSubjects.Identity,
       permission,
@@ -531,7 +534,7 @@ export const identityUaServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission, membership } = await permissionService.getOrgPermission(
       actor,
       actorId,
       identityMembershipOrg.orgId,
@@ -548,6 +551,7 @@ export const identityUaServiceFactory = ({
       actorOrgId
     );
     const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
       OrgPermissionIdentityActions.GetToken,
       OrgPermissionSubjects.Identity,
       permission,
@@ -581,7 +585,7 @@ export const identityUaServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission, membership } = await permissionService.getOrgPermission(
       actor,
       actorId,
       identityMembershipOrg.orgId,
@@ -599,6 +603,7 @@ export const identityUaServiceFactory = ({
     );
 
     const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
       OrgPermissionIdentityActions.DeleteToken,
       OrgPermissionSubjects.Identity,
       permission,

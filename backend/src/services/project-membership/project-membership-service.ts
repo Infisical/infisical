@@ -253,7 +253,7 @@ export const projectMembershipServiceFactory = ({
     membershipId,
     roles
   }: TUpdateProjectMembershipDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, membership } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -275,6 +275,7 @@ export const projectMembershipServiceFactory = ({
       );
 
       const permissionBoundary = validatePrivilegeChangeOperation(
+        membership.shouldUseNewPrivilegeSystem,
         ProjectPermissionMemberActions.ManagePrivileges,
         ProjectPermissionSub.Member,
         permission,
