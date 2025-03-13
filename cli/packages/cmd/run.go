@@ -136,6 +136,18 @@ var runCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
+		log.Debug().Msgf("Confirming selected environment is valid: %s", environmentName)
+
+		hasEnvironment, err := confirmProjectHasEnvironment(projectId, environmentName, token.Token)
+		if err != nil {
+			util.HandleError(err, "Could not confirm project has environment")
+		}
+		if !hasEnvironment {
+			util.HandleError(fmt.Errorf("project '%s' does not have environment '%s'", projectId, environmentName))
+		}
+
+		log.Debug().Msgf("Project '%s' has environment '%s'", projectId, environmentName)
+
 		request := models.GetAllSecretsParameters{
 			Environment:            environmentName,
 			WorkspaceId:            projectId,
