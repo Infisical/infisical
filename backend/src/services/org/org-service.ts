@@ -77,6 +77,7 @@ import {
   TResendOrgMemberInvitationDTO,
   TUpdateOrgDTO,
   TUpdateOrgMembershipDTO,
+  TUpgradePrivilegeSystemDTO,
   TVerifyUserToOrgDTO
 } from "./org-types";
 
@@ -280,6 +281,45 @@ export const orgServiceFactory = ({
       user,
       keys: encKeys
     };
+  };
+
+  const upgradePrivilegeSystem = async ({
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    orgId
+  }: TUpgradePrivilegeSystemDTO) => {
+    const { membership } = await permissionService.getUserOrgPermission(actorId, orgId, actorAuthMethod, actorOrgId);
+
+    if (membership.role != OrgMembershipRole.Admin) {
+      throw new ForbiddenRequestError({
+        message: "Insufficient privileges - only the organization admin can upgrade the privilege system."
+      });
+    }
+
+    return orgDAL.transaction(async (tx) => {
+      const org = await orgDAL.findById(actorOrgId, tx);
+      if (org.shouldUseNewPrivilegeSystem) {
+        throw new BadRequestError({
+          message: "Privilege system already upgraded"
+        });
+      }
+
+      const user = await userDAL.findById(actorId, tx);
+      if (!user) {
+        throw new NotFoundError({ message: `User with ID '${actorId}' not found` });
+      }
+
+      return orgDAL.updateById(
+        actorOrgId,
+        {
+          shouldUseNewPrivilegeSystem: true,
+          privilegeUpgradeInitiatedAt: new Date(),
+          privilegeUpgradeInitiatedByUsername: user.username
+        },
+        tx
+      );
+    });
   };
 
   /*
@@ -1310,6 +1350,7 @@ export const orgServiceFactory = ({
     getOrgGroups,
     listProjectMembershipsByOrgMembershipId,
     findOrgBySlug,
-    resendOrgMemberInvitation
+    resendOrgMemberInvitation,
+    upgradePrivilegeSystem
   };
 };

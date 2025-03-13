@@ -12,5 +12,8 @@ export const sanitizedOrganizationSchema = OrganizationsSchema.pick({
   kmsDefaultKeyId: true,
   defaultMembershipRole: true,
   enforceMfa: true,
-  selectedMfaMethod: true
+  selectedMfaMethod: true,
+  shouldUseNewPrivilegeSystem: true,
+  privilegeUpgradeInitiatedByUsername: true,
+  privilegeUpgradeInitiatedAt: true
 });

@@ -4,7 +4,6 @@ import {
   AuditLogsSchema,
   GroupsSchema,
   IncidentContactsSchema,
-  OrganizationsSchema,
   OrgMembershipsSchema,
   OrgRolesSchema,
   UsersSchema
@@ -57,7 +56,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          organization: OrganizationsSchema
+          organization: sanitizedOrganizationSchema
         })
       }
     },
@@ -262,7 +261,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           message: z.string(),
-          organization: OrganizationsSchema
+          organization: sanitizedOrganizationSchema
         })
       }
     },

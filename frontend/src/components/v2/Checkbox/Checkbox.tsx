@@ -17,6 +17,8 @@ export type CheckboxProps = Omit<
   isError?: boolean;
   isIndeterminate?: boolean;
   containerClassName?: string;
+  indicatorClassName?: string;
+  allowMultilineLabel?: boolean;
 };
 
 export const Checkbox = ({
@@ -30,6 +32,8 @@ export const Checkbox = ({
   isError,
   isIndeterminate,
   containerClassName,
+  indicatorClassName,
+  allowMultilineLabel,
   ...props
 }: CheckboxProps): JSX.Element => {
   return (
@@ -48,7 +52,9 @@ export const Checkbox = ({
         {...props}
         id={id}
       >
-        <CheckboxPrimitive.Indicator className={`${checkIndicatorBg || "text-bunker-800"}`}>
+        <CheckboxPrimitive.Indicator
+          className={twMerge(`${checkIndicatorBg || "text-bunker-800"}`, indicatorClassName)}
+        >
           {isIndeterminate ? (
             <FontAwesomeIcon icon={faMinus} size="sm" />
           ) : (
@@ -57,7 +63,11 @@ export const Checkbox = ({
         </CheckboxPrimitive.Indicator>
       </CheckboxPrimitive.Root>
       <label
-        className={twMerge("truncate whitespace-nowrap text-sm", isError && "text-red-400")}
+        className={twMerge(
+          "text-sm",
+          !allowMultilineLabel && "truncate whitespace-nowrap",
+          isError && "text-red-400"
+        )}
         htmlFor={id}
       >
         {children}
