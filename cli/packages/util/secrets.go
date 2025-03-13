@@ -101,7 +101,7 @@ func GetPlainTextSecretsV3(accessToken string, workspaceId string, environmentNa
 		return models.PlaintextSecretResult{}, err
 	}
 
-	var plainTextSecrets []models.SingleEnvironmentVariable
+	plainTextSecrets := []models.SingleEnvironmentVariable{}
 
 	for _, secret := range rawSecrets.Secrets {
 		plainTextSecrets = append(plainTextSecrets, models.SingleEnvironmentVariable{Key: secret.SecretKey, Value: secret.SecretValue, Type: secret.Type, WorkspaceId: secret.Workspace, SecretPath: secret.SecretPath})
@@ -291,7 +291,7 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 			if err != nil {
 				return nil, err
 			}
-			_ = WriteBackupSecrets(infisicalDotJson.WorkspaceId, params.Environment, params.SecretsPath, backupEncryptionKey, res.Secrets)
+			WriteBackupSecrets(infisicalDotJson.WorkspaceId, params.Environment, params.SecretsPath, backupEncryptionKey, res.Secrets)
 		}
 
 		secretsToReturn = res.Secrets
@@ -308,22 +308,23 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 				}
 			}
 		}
-	} else if params.InfisicalToken != "" {
-		log.Debug().Msg("Trying to fetch secrets using service token")
-		secretsToReturn, errorToReturn = GetPlainTextSecretsViaServiceToken(params.InfisicalToken, params.Environment, params.SecretsPath, params.IncludeImport, params.Recursive, params.TagSlugs, params.ExpandSecretReferences)
-	} else if params.UniversalAuthAccessToken != "" {
-		if params.WorkspaceId == "" {
-			PrintErrorMessageAndExit("Project ID is required when using machine identity")
-		}
 
-		log.Debug().Msg("Trying to fetch secrets using universal auth")
-		res, err := GetPlainTextSecretsV3(params.UniversalAuthAccessToken, params.WorkspaceId, params.Environment, params.SecretsPath, params.IncludeImport, params.Recursive, params.TagSlugs, params.ExpandSecretReferences)
-		if err != nil {
-			return nil, err
-		}
+	} else {
+		if params.InfisicalToken != "" {
+			log.Debug().Msg("Trying to fetch secrets using service token")
+			secretsToReturn, errorToReturn = GetPlainTextSecretsViaServiceToken(params.InfisicalToken, params.Environment, params.SecretsPath, params.IncludeImport, params.Recursive, params.TagSlugs, params.ExpandSecretReferences)
+		} else if params.UniversalAuthAccessToken != "" {
 
-		errorToReturn = err
-		secretsToReturn = res.Secrets
+			if params.WorkspaceId == "" {
+				PrintErrorMessageAndExit("Project ID is required when using machine identity")
+			}
+
+			log.Debug().Msg("Trying to fetch secrets using universal auth")
+			res, err := GetPlainTextSecretsV3(params.UniversalAuthAccessToken, params.WorkspaceId, params.Environment, params.SecretsPath, params.IncludeImport, params.Recursive, params.TagSlugs, params.ExpandSecretReferences)
+
+			errorToReturn = err
+			secretsToReturn = res.Secrets
+		}
 	}
 
 	return secretsToReturn, errorToReturn
