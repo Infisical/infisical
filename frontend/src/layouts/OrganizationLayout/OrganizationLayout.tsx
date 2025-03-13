@@ -8,12 +8,8 @@ import { twMerge } from "tailwind-merge";
 import { CreateOrgModal } from "@app/components/organization/CreateOrgModal";
 import { Banner } from "@app/components/page-frames/Banner";
 import { BreadcrumbContainer, TBreadcrumbFormat } from "@app/components/v2";
-import {
-  OrgPermissionActions,
-  OrgPermissionSubjects,
-  useOrgPermission,
-  useServerConfig
-} from "@app/context";
+import { OrgPermissionSubjects, useOrgPermission, useServerConfig } from "@app/context";
+import { OrgPermissionSecretShareAction } from "@app/context/OrgPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 
 import { InsecureConnectionBanner } from "./components/InsecureConnectionBanner";
@@ -28,8 +24,8 @@ export const OrganizationLayout = () => {
   const { permission } = useOrgPermission();
 
   const shouldShowProductsSidebar = permission.can(
-    OrgPermissionActions.Edit,
-    OrgPermissionSubjects.Settings
+    OrgPermissionSecretShareAction.ManageSettings,
+    OrgPermissionSubjects.SecretShare
   );
 
   const isOrganizationSpecificPage = location.pathname.startsWith("/organization");

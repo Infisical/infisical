@@ -5,7 +5,8 @@ import { OrgPermissionSubjects } from "@app/context";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionAppConnectionActions,
-  OrgPermissionKmipActions
+  OrgPermissionKmipActions,
+  OrgPermissionSecretShareAction
 } from "@app/context/OrgPermissionContext/types";
 import { TPermission } from "@app/hooks/api/roles/types";
 
@@ -50,6 +51,12 @@ const adminConsolePermissionSchmea = z
   })
   .optional();
 
+const secretSharingPermissionSchema = z
+  .object({
+    [OrgPermissionSecretShareAction.ManageSettings]: z.boolean().optional()
+  })
+  .optional();
+
 export const formSchema = z.object({
   name: z.string().trim(),
   description: z.string().trim().optional(),
@@ -83,7 +90,8 @@ export const formSchema = z.object({
       [OrgPermissionSubjects.ProjectTemplates]: generalPermissionSchema,
       "app-connections": appConnectionsPermissionSchema,
       kmip: kmipPermissionSchema,
-      gateway: orgGatewayPermissionSchema
+      gateway: orgGatewayPermissionSchema,
+      "secret-share": secretSharingPermissionSchema
     })
     .optional()
 });

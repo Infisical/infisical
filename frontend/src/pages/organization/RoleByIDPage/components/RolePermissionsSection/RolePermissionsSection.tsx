@@ -16,6 +16,7 @@ import {
 import { OrgPermissionAdminConsoleRow } from "./OrgPermissionAdminConsoleRow";
 import { OrgGatewayPermissionRow } from "./OrgPermissionGatewayRow";
 import { OrgPermissionKmipRow } from "./OrgPermissionKmipRow";
+import { OrgPermissionSecretShareRow } from "./OrgPermissionSecretShareRow";
 import { OrgRoleWorkspaceRow } from "./OrgRoleWorkspaceRow";
 import { RolePermissionRow } from "./RolePermissionRow";
 
@@ -100,6 +101,8 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
 
   const onSubmit = async (el: TFormSchema) => {
     try {
+      console.log(el.permissions);
+      console.log(formRolePermission2API(el.permissions));
       await updateRole({
         orgId,
         id: roleId,
@@ -173,6 +176,11 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
                 isEditable={isCustomRole}
               />
               <OrgGatewayPermissionRow
+                control={control}
+                setValue={setValue}
+                isEditable={isCustomRole}
+              />
+              <OrgPermissionSecretShareRow
                 control={control}
                 setValue={setValue}
                 isEditable={isCustomRole}

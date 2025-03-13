@@ -32,6 +32,10 @@ export enum OrgPermissionAdminConsoleAction {
   AccessAllProjects = "access-all-projects"
 }
 
+export enum OrgPermissionSecretShareAction {
+  ManageSettings = "manage-settings"
+}
+
 export enum OrgPermissionGatewayActions {
   // is there a better word for this. This mean can an identity be a gateway
   CreateGateways = "create-gateways",
@@ -59,7 +63,8 @@ export enum OrgPermissionSubjects {
   ProjectTemplates = "project-templates",
   AppConnections = "app-connections",
   Kmip = "kmip",
-  Gateway = "gateway"
+  Gateway = "gateway",
+  SecretShare = "secret-share"
 }
 
 export type AppConnectionSubjectFields = {
@@ -91,7 +96,8 @@ export type OrgPermissionSet =
       )
     ]
   | [OrgPermissionAdminConsoleAction, OrgPermissionSubjects.AdminConsole]
-  | [OrgPermissionKmipActions, OrgPermissionSubjects.Kmip];
+  | [OrgPermissionKmipActions, OrgPermissionSubjects.Kmip]
+  | [OrgPermissionSecretShareAction, OrgPermissionSubjects.SecretShare];
 
 const AppConnectionConditionSchema = z
   .object({
@@ -182,6 +188,12 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
   z.object({
     subject: z.literal(OrgPermissionSubjects.AdminConsole).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionAdminConsoleAction).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.SecretShare).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionSecretShareAction).describe(
       "Describe what action an entity can take."
     )
   }),
@@ -291,6 +303,8 @@ const buildAdminPermission = () => {
 
   // the proxy assignment is temporary in order to prevent "more privilege" error during role assignment to MI
   can(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
+
+  can(OrgPermissionSecretShareAction.ManageSettings, OrgPermissionSubjects.SecretShare);
 
   return rules;
 };
