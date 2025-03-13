@@ -107,3 +107,25 @@ type ManagedKubeSecretConfig struct {
 	// +kubebuilder:validation:Optional
 	Template *InfisicalSecretTemplate `json:"template,omitempty"`
 }
+
+type ManagedKubeConfigMapConfig struct {
+	// The name of the Kubernetes ConfigMap
+	// +kubebuilder:validation:Required
+	ConfigMapName string `json:"configMapName"`
+
+	// The Kubernetes ConfigMap creation policy.
+	// Enum with values: 'Owner', 'Orphan'.
+	// Owner creates the config map and sets .metadata.ownerReferences of the InfisicalSecret CRD that created it.
+	// Orphan will not set the config map owner. This will result in the config map being orphaned and not deleted when the resource is deleted.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default:=Orphan
+	CreationPolicy string `json:"creationPolicy"`
+
+	// The namespace where the Kubernetes ConfigMap is located
+	// +kubebuilder:validation:Required
+	ConfigMapNamespace string `json:"configMapNamespace"`
+
+	// The template to transform the secret data
+	// +kubebuilder:validation:Optional
+	Template *InfisicalSecretTemplate `json:"template,omitempty"`
+}

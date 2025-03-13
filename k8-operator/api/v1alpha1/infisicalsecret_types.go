@@ -138,7 +138,8 @@ type InfisicalSecretSpec struct {
 	ManagedSecretReference ManagedKubeSecretConfig `json:"managedSecretReference"`
 
 	// +kubebuilder:validation:Optional
-	ManagedKubeSecretReferences []ManagedKubeSecretConfig `json:"managedKubeSecretReferences"`
+	ManagedKubeSecretReferences    []ManagedKubeSecretConfig    `json:"managedKubeSecretReferences"`
+	ManagedKubeConfigMapReferences []ManagedKubeConfigMapConfig `json:"managedKubeConfigMapReferences"`
 
 	// +kubebuilder:default:=60
 	ResyncInterval int `json:"resyncInterval"`

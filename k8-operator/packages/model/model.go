@@ -11,11 +11,6 @@ type MachineIdentityDetails struct {
 	ClientSecret string
 }
 
-type RequestUpdateUpdateDetails struct {
-	Modified bool
-	ETag     string
-}
-
 type SingleEnvironmentVariable struct {
 	Key        string `json:"key"`
 	Value      string `json:"value"`

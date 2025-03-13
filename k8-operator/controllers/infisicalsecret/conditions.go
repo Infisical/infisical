@@ -11,7 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (r *InfisicalSecretReconciler) SetReadyToSyncSecretsConditions(ctx context.Context, infisicalSecret *v1alpha1.InfisicalSecret, secretsCount int, errorToConditionOn error) error {
+func (r *InfisicalSecretReconciler) SetReadyToSyncSecretsConditions(ctx context.Context, infisicalSecret *v1alpha1.InfisicalSecret, secretsCount int, errorToConditionOn error) {
 	if infisicalSecret.Status.Conditions == nil {
 		infisicalSecret.Status.Conditions = []metav1.Condition{}
 	}
@@ -38,8 +38,6 @@ func (r *InfisicalSecretReconciler) SetReadyToSyncSecretsConditions(ctx context.
 			Message: fmt.Sprintf("Infisical controller has started syncing your secrets. Last reconcile synced %d secrets", secretsCount),
 		})
 	}
-
-	return r.Client.Status().Update(ctx, infisicalSecret)
 }
 
 func (r *InfisicalSecretReconciler) SetInfisicalTokenLoadCondition(ctx context.Context, logger logr.Logger, infisicalSecret *v1alpha1.InfisicalSecret, authStrategy util.AuthStrategyType, errorToConditionOn error) {
@@ -62,11 +60,6 @@ func (r *InfisicalSecretReconciler) SetInfisicalTokenLoadCondition(ctx context.C
 			Message: fmt.Sprintf("Failed to load Infisical Token from the provided Kubernetes secret because: %v", errorToConditionOn),
 		})
 	}
-
-	err := r.Client.Status().Update(ctx, infisicalSecret)
-	if err != nil {
-		logger.Error(err, "Could not set condition for LoadedInfisicalToken")
-	}
 }
 
 func (r *InfisicalSecretReconciler) SetInfisicalAutoRedeploymentReady(ctx context.Context, logger logr.Logger, infisicalSecret *v1alpha1.InfisicalSecret, numDeployments int, errorToConditionOn error) {
@@ -88,10 +81,5 @@ func (r *InfisicalSecretReconciler) SetInfisicalAutoRedeploymentReady(ctx contex
 			Reason:  "Error",
 			Message: fmt.Sprintf("Failed reconcile deployments because: %v", errorToConditionOn),
 		})
-	}
-
-	err := r.Client.Status().Update(ctx, infisicalSecret)
-	if err != nil {
-		logger.Error(err, "Could not set condition for AutoRedeployReady")
 	}
 }
