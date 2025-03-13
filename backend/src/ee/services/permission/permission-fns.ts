@@ -193,9 +193,9 @@ const constructPermissionErrorMessage = (
 };
 
 export {
+  constructPermissionErrorMessage,
   escapeHandlebarsMissingMetadata,
   isAuthMethodSaml,
   validateOrgSSO,
-  validatePrivilegeChangeOperation,
-  constructPermissionErrorMessage
+  validatePrivilegeChangeOperation
 };

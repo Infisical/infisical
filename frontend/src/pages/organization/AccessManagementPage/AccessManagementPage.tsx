@@ -1,5 +1,8 @@
+import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { Button, PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
@@ -14,11 +17,8 @@ import {
 } from "@app/context";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
-import { OrgGroupsTab, OrgIdentityTab, OrgMembersTab, OrgRoleTabSection } from "./components";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { UpgradePrivilegeSystemModal } from "./components/UpgradePrivilegeSystemModal/UpgradePrivilegeSystemModal";
-import { useState } from "react";
+import { OrgGroupsTab, OrgIdentityTab, OrgMembersTab, OrgRoleTabSection } from "./components";
 
 export const AccessManagementPage = () => {
   const { t } = useTranslation();
@@ -89,10 +89,10 @@ export const AccessManagementPage = () => {
               Your organization is using legacy privilege management
             </div>
             <p className="mb-2 mt-1 text-sm text-bunker-300">
-              We've developed an improved privilege management system to better serve your security
-              needs. Upgrade to our new permission-based approach that allows you to explicitly
-              designate who can modify specific access levels, rather than relying on traditional
-              hierarchy comparisons.
+              We&apos;ve developed an improved privilege management system to better serve your
+              security needs. Upgrade to our new permission-based approach that allows you to
+              explicitly designate who can modify specific access levels, rather than relying on
+              traditional hierarchy comparisons.
             </p>
             <Button
               colorSchema="primary"
