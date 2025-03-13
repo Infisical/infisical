@@ -23,8 +23,12 @@
 
         env = {
           GOROOT = "${pkgs.go}/share/go";
-          GOPATH = "$(pwd)/.go";
         };
+
+        shellHook = ''
+          export GOPATH="$(pwd)/.go"
+          mkdir -p "$GOPATH"
+        '';
       };
   };
 }
