@@ -58,10 +58,10 @@ import { useGetSecretAccessList } from "@app/hooks/api/secrets/queries";
 import { SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
+import { camelCaseToSpaces } from "@app/lib/fn/string";
 
 import { CreateReminderForm } from "./CreateReminderForm";
 import { formSchema, SecretActionType, TFormSchema } from "./SecretListView.utils";
-import { camelCaseToSpaces } from "@app/lib/fn/string";
 
 type Props = {
   isOpen?: boolean;

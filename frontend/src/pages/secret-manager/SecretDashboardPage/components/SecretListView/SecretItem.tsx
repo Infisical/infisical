@@ -281,7 +281,7 @@ export const SecretItem = memo(
                       isVisible={isVisible}
                       isReadOnly={isReadOnly}
                       {...field}
-                      containerClassName="py-1.5 rounded-md transition-all group-hover:mr-2"
+                      containerClassName="py-1.5 rounded-md transition-all"
                     />
                   )}
                 />
@@ -301,19 +301,19 @@ export const SecretItem = memo(
                       secretPath={secretPath}
                       {...field}
                       defaultValue={secretValueHidden ? "" : undefined}
-                      containerClassName="py-1.5 rounded-md transition-all group-hover:mr-2"
+                      containerClassName="py-1.5 rounded-md transition-all"
                     />
                   )}
                 />
               )}
-              <div key="actions" className="flex h-8 flex-shrink-0 self-start transition-all">
+              <div key="actions" className="flex h-full flex-shrink-0 self-start transition-all group-hover:gap-x-2">
                 <Tooltip content="Copy secret">
                   <IconButton
                     isDisabled={secret.secretValueHidden}
                     ariaLabel="copy-value"
                     variant="plain"
                     size="sm"
-                    className="w-0 overflow-hidden p-0 group-hover:mr-2 group-hover:w-5"
+                    className="w-0 overflow-hidden p-0 group-hover:w-5"
                     onClick={copyTokenToClipboard}
                   >
                     <FontAwesomeSymbol
@@ -339,7 +339,7 @@ export const SecretItem = memo(
                     <Modal>
                       <ModalTrigger asChild>
                         <IconButton
-                          className="w-0 overflow-hidden p-0 group-hover:mr-2 group-hover:w-5 data-[state=open]:w-6"
+                          className="w-0 overflow-hidden p-0 group-hover:w-5"
                           variant="plain"
                           size="md"
                           ariaLabel="reference-tree"
@@ -390,7 +390,7 @@ export const SecretItem = memo(
                           variant="plain"
                           size="sm"
                           className={twMerge(
-                            "w-0 overflow-hidden p-0 group-hover:mr-2 group-hover:w-5 data-[state=open]:w-5",
+                            "w-0 overflow-hidden p-0 group-hover:w-5 data-[state=open]:w-5",
                             hasTagsApplied && "w-5 text-primary"
                           )}
                           isDisabled={!isAllowed}
@@ -473,7 +473,7 @@ export const SecretItem = memo(
                       size="sm"
                       onClick={handleOverrideClick}
                       className={twMerge(
-                        "w-0 overflow-hidden p-0 group-hover:mr-2 group-hover:w-5",
+                        "w-0 overflow-hidden p-0 group-hover:w-5",
                         isOverriden && "w-5 text-primary"
                       )}
                     >
@@ -498,7 +498,7 @@ export const SecretItem = memo(
                       <PopoverTrigger asChild disabled={!isAllowed}>
                         <IconButton
                           className={twMerge(
-                            "w-0 overflow-hidden p-0 group-hover:mr-2 group-hover:w-5 data-[state=open]:w-6",
+                            "w-0 overflow-hidden p-0 group-hover:w-5",
                             hasComment && "w-5 text-primary"
                           )}
                           variant="plain"
@@ -518,7 +518,7 @@ export const SecretItem = memo(
                   </ProjectPermissionCan>
                   <IconButton
                     isDisabled={secret.secretValueHidden}
-                    className="w-0 overflow-hidden p-0 group-hover:mr-2 group-hover:w-5 data-[state=open]:w-6"
+                    className="w-0 overflow-hidden p-0 group-hover:w-5"
                     variant="plain"
                     size="md"
                     ariaLabel="share-secret"

@@ -28,7 +28,14 @@ type Props = {
 
 const AUDIT_LOG_LIMIT = 15;
 
-const TABLE_HEADERS = ["Timestamp (MM/DD/YYYY)", "Event", "Project", "Actor", "Source", "Metadata"] as const;
+const TABLE_HEADERS = [
+  "Timestamp (MM/DD/YYYY)",
+  "Event",
+  "Project",
+  "Actor",
+  "Source",
+  "Metadata"
+] as const;
 export type TAuditLogTableHeader = (typeof TABLE_HEADERS)[number];
 
 export const LogsTable = ({
