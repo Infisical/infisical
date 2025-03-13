@@ -24,7 +24,7 @@ const getHumanitecSecrets = async (secretSync: THumanitecSyncWithCredentials) =>
   const { data } = await request.get<HumanitecSecret[]>(url, {
     headers: {
       Authorization: `Bearer ${apiToken}`,
-      "Accept-Encoding": "application/json"
+      Accept: "application/json"
     }
   });
 
@@ -49,7 +49,7 @@ const deleteSecret = async (secretSync: THumanitecSyncWithCredentials, encrypted
     await request.delete(url, {
       headers: {
         Authorization: `Bearer ${apiToken}`,
-        "Accept-Encoding": "application/json"
+        Accept: "application/json"
       }
     });
   } catch (error) {
@@ -80,7 +80,7 @@ const createSecret = async (secretSync: THumanitecSyncWithCredentials, secretMap
       {
         headers: {
           Authorization: `Bearer ${apiToken}`,
-          "Accept-Encoding": "application/json"
+          Accept: "application/json"
         }
       }
     );
@@ -94,7 +94,7 @@ const createSecret = async (secretSync: THumanitecSyncWithCredentials, secretMap
         {
           headers: {
             Authorization: `Bearer ${apiToken}`,
-            "Accept-Encoding": "application/json"
+            Accept: "application/json"
           }
         }
       );
@@ -129,7 +129,7 @@ const updateSecret = async (
         {
           headers: {
             Authorization: `Bearer ${apiToken}`,
-            "Accept-Encoding": "application/json"
+            Accept: "application/json"
           }
         }
       );
@@ -145,7 +145,7 @@ const updateSecret = async (
         {
           headers: {
             Authorization: `Bearer ${apiToken}`,
-            "Accept-Encoding": "application/json"
+            Accept: "application/json"
           }
         }
       );
@@ -159,7 +159,7 @@ const updateSecret = async (
         {
           headers: {
             Authorization: `Bearer ${apiToken}`,
-            "Accept-Encoding": "application/json"
+            Accept: "application/json"
           }
         }
       );
