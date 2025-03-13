@@ -32,9 +32,20 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
   const {
     handleSubmit,
     control,
+    watch,
     formState: { isSubmitting }
   } = useForm({ resolver: zodResolver(formSchema) });
   const { mutateAsync: upgradePrivilegeSystem } = useUpgradePrivilegeSystem();
+
+  const isProjectPrivilegesUpdated = watch("isProjectPrivilegesUpdated");
+  const isOrgPrivilegesUpdated = watch("isOrgPrivilegesUpdated");
+  const isInfrastructureUpdated = watch("isInfrastructureUpdated");
+  const acknowledgesPermanentChange = watch("acknowledgesPermanentChange");
+  const isAllChecksCompleted =
+    isProjectPrivilegesUpdated &&
+    isOrgPrivilegesUpdated &&
+    isInfrastructureUpdated &&
+    acknowledgesPermanentChange;
 
   const handlePrivilegeSystemUpgrade = async () => {
     try {
@@ -231,7 +242,7 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
             </div>
             <Button
               type="submit"
-              isDisabled={!isAdmin}
+              isDisabled={!isAdmin || !isAllChecksCompleted}
               isLoading={isSubmitting}
               className="mt-5 w-full"
             >
