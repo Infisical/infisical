@@ -64,7 +64,7 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
             Introducing Permission-Based Privilege Management
           </h4>
           <p className="mb-4 leading-7 text-mineshaft-100">
-            We've developed an improved privilege management system that enhances how access
+            We&apos;ve developed an improved privilege management system that enhances how access
             controls work in your organization.
           </p>
 
@@ -75,19 +75,22 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
                 <p className="font-medium">How it works:</p>
               </div>
               <div className="mb-3 ml-7">
-                <p className="mb-1">
+                <p className="mb-3">
                   <strong>Legacy system:</strong> Users with higher privilege levels could modify
-                  access for anyone below them.
+                  access for anyone below them. This limits accountability and makes it impossible
+                  to allow specialized roles (like team leads) to manage their team&apos;s access
+                  without granting them broader administrative powers.
                 </p>
                 <p>
                   <strong>New system:</strong> Users need explicit permission to modify specific
-                  access levels, providing targeted control. After upgrading, you'll need to grant
-                  the new 'Manage Privileges' permission at organization or project level.
+                  access levels, providing targeted control. After upgrading, you&apos;ll need to
+                  grant the new &apos;Manage Privileges&apos; permission at organization or project
+                  level.
                 </p>
               </div>
             </div>
 
-            <div>
+            <div className="mt-3">
               <div className="mb-2 flex items-start gap-2">
                 <FontAwesomeIcon icon={faCheck} className="mt-1 text-primary" />
                 <p className="font-medium">Benefits:</p>
@@ -128,8 +131,8 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
               </div>
               <p className="mb-3 ml-7 text-mineshaft-100">
                 Once upgraded, your organization <span className="font-bold">cannot</span> revert to
-                the legacy privilege system. Please ensure you've completed all preparations before
-                proceeding.
+                the legacy privilege system. Please ensure you&apos;ve completed all preparations
+                before proceeding.
               </p>
             </div>
 

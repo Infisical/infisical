@@ -1076,9 +1076,9 @@ export const orgServiceFactory = ({
         const sanitizedProjectMembershipRoles: TProjectUserMembershipRolesInsert[] = [];
         invitedProjectRoles.forEach((projectRole) => {
           const isCustomRole = Boolean(customRolesGroupBySlug?.[projectRole]?.[0]);
-          projectMemberships.forEach((membership) => {
+          projectMemberships.forEach((membershipEntry) => {
             sanitizedProjectMembershipRoles.push({
-              projectMembershipId: membership.id,
+              projectMembershipId: membershipEntry.id,
               role: isCustomRole ? ProjectMembershipRole.Custom : projectRole,
               customRoleId: customRolesGroupBySlug[projectRole] ? customRolesGroupBySlug[projectRole][0].id : null
             });

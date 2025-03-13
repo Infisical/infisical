@@ -187,7 +187,9 @@ const constructPermissionErrorMessage = (
   opAction: OrgPermissionSet[0] | ProjectPermissionSet[0],
   opSubject: OrgPermissionSet[1] | ProjectPermissionSet[1]
 ) => {
-  return `${baseMessage}${shouldUseNewPrivilegeSystem ? `. Missing permission ${opAction} on ${opSubject}` : ""}`;
+  return `${baseMessage}${
+    shouldUseNewPrivilegeSystem ? `. Missing permission ${opAction as string} on ${opSubject as string}` : ""
+  }`;
 };
 
 export {
