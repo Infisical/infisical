@@ -909,11 +909,7 @@ export const secretV2BridgeServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
-      environment,
-      secretPath: path,
-      secretTags: params.tagSlugs
-    });
+    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret);
 
     let paths: { folderId: string; path: string }[] = [];
 
@@ -2567,6 +2563,8 @@ export const secretV2BridgeServiceFactory = ({
       type: SecretType.Shared
     });
 
+    if (!secret) throw new NotFoundError({ message: `Secret with name '${secretName}' not found` });
+
     throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
       environment,
       secretPath,
@@ -2574,7 +2572,7 @@ export const secretV2BridgeServiceFactory = ({
       secretTags: (secret?.tags || []).map((el) => el.slug)
     });
 
-    const decryptedSecretValue = secret.encryptedValue
+    const decryptedSecretValue = secret?.encryptedValue
       ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
       : "";
 

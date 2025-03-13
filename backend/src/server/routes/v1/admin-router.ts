@@ -1,7 +1,7 @@
 import DOMPurify from "isomorphic-dompurify";
 import { z } from "zod";
 
-import { OrganizationsSchema, SuperAdminSchema, UsersSchema } from "@app/db/schemas";
+import { IdentitiesSchema, OrganizationsSchema, SuperAdminSchema, UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -150,6 +150,43 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
 
       return {
         users
+      };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/identity-management/identities",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      querystring: z.object({
+        searchTerm: z.string().default(""),
+        offset: z.coerce.number().default(0),
+        limit: z.coerce.number().max(100).default(20)
+      }),
+      response: {
+        200: z.object({
+          identities: IdentitiesSchema.pick({
+            name: true,
+            id: true
+          }).array()
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      const identities = await server.services.superAdmin.getIdentities({
+        ...req.query
+      });
+
+      return {
+        identities
       };
     }
   });

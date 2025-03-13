@@ -1,5 +1,16 @@
 import { z } from "zod";
 
+export type PasswordRequirements = {
+  length: number;
+  required: {
+    lowercase: number;
+    uppercase: number;
+    digits: number;
+    symbols: number;
+  };
+  allowedSymbols?: string;
+};
+
 export enum SqlProviders {
   Postgres = "postgres",
   MySQL = "mysql2",
@@ -100,6 +111,28 @@ export const DynamicSecretSqlDBSchema = z.object({
   database: z.string().trim(),
   username: z.string().trim(),
   password: z.string().trim(),
+  passwordRequirements: z
+    .object({
+      length: z.number().min(1).max(250),
+      required: z
+        .object({
+          lowercase: z.number().min(0),
+          uppercase: z.number().min(0),
+          digits: z.number().min(0),
+          symbols: z.number().min(0)
+        })
+        .refine((data) => {
+          const total = Object.values(data).reduce((sum, count) => sum + count, 0);
+          return total <= 250;
+        }, "Sum of required characters cannot exceed 250"),
+      allowedSymbols: z.string().optional()
+    })
+    .refine((data) => {
+      const total = Object.values(data.required).reduce((sum, count) => sum + count, 0);
+      return total <= data.length;
+    }, "Sum of required characters cannot exceed the total length")
+    .optional()
+    .describe("Password generation requirements"),
   creationStatement: z.string().trim(),
   revocationStatement: z.string().trim(),
   renewStatement: z.string().trim().optional(),

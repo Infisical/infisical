@@ -42,7 +42,6 @@ import {
 } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-const deleteUserUpgradePlanMessage = "Deleting users via Admin UI";
 const addServerAdminUpgradePlanMessage = "Granting another user Server Admin permissions";
 
 const UserPanelTable = ({
@@ -61,12 +60,12 @@ const UserPanelTable = ({
   const [adminsOnly, setAdminsOnly] = useState(false);
   const { user } = useUser();
   const userId = user?.id || "";
-  const [debounedSearchTerm] = useDebounce(searchUserFilter, 500);
+  const [debouncedSearchTerm] = useDebounce(searchUserFilter, 500);
   const { subscription } = useSubscription();
 
   const { data, isPending, isFetchingNextPage, hasNextPage, fetchNextPage } = useAdminGetUsers({
     limit: 20,
-    searchTerm: debounedSearchTerm,
+    searchTerm: debouncedSearchTerm,
     adminsOnly
   });
 
@@ -156,14 +155,6 @@ const UserPanelTable = ({
                                   <DropdownMenuItem
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      if (!subscription?.instanceUserManagement) {
-                                        handlePopUpOpen("upgradePlan", {
-                                          username,
-                                          id,
-                                          message: deleteUserUpgradePlanMessage
-                                        });
-                                        return;
-                                      }
                                       handlePopUpOpen("removeUser", { username, id });
                                     }}
                                   >

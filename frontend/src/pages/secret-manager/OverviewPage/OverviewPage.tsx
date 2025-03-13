@@ -228,7 +228,8 @@ export const OverviewPage = () => {
     setPage
   });
 
-  const { folderNamesAndDescriptions, getFolderByNameAndEnv, isFolderPresentInEnv } = useFolderOverview(folders);
+  const { folderNamesAndDescriptions, getFolderByNameAndEnv, isFolderPresentInEnv } =
+    useFolderOverview(folders);
 
   const { dynamicSecretNames, isDynamicSecretPresentInEnv } =
     useDynamicSecretOverview(dynamicSecrets);
@@ -251,7 +252,7 @@ export const OverviewPage = () => {
     "updateFolder"
   ] as const);
 
-  const handleFolderCreate = async (folderName: string, description: string | null) => {    
+  const handleFolderCreate = async (folderName: string, description: string | null) => {
     const promises = userAvailableEnvs.map((env) => {
       const environment = env.slug;
       return createFolder({
@@ -1029,7 +1030,7 @@ export const OverviewPage = () => {
                 )}
                 {!isOverviewLoading && visibleEnvs.length > 0 && (
                   <>
-                    {folderNamesAndDescriptions.map(({name: folderName, description}, index) => (
+                    {folderNamesAndDescriptions.map(({ name: folderName, description }, index) => (
                       <SecretOverviewFolderRow
                         folderName={folderName}
                         isFolderPresentInEnv={isFolderPresentInEnv}
@@ -1161,7 +1162,9 @@ export const OverviewPage = () => {
           <FolderForm
             isEdit
             defaultFolderName={(popUp.updateFolder?.data as Pick<TSecretFolder, "name">)?.name}
-            defaultDescription={(popUp.updateFolder?.data as Pick<TSecretFolder, "description">)?.description}
+            defaultDescription={
+              (popUp.updateFolder?.data as Pick<TSecretFolder, "description">)?.description
+            }
             onUpdateFolder={handleFolderUpdate}
             showDescriptionOverwriteWarning
           />

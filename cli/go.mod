@@ -20,6 +20,7 @@ require (
 	github.com/muesli/reflow v0.3.0
 	github.com/muesli/roff v0.1.0
 	github.com/petar-dambovaliev/aho-corasick v0.0.0-20211021192214-5ab2d9280aa9
+	github.com/pion/dtls/v3 v3.0.4
 	github.com/pion/logging v0.2.3
 	github.com/pion/turn/v4 v4.0.0
 	github.com/posthog/posthog-go v0.0.0-20221221115252-24dfed35d71a
@@ -90,7 +91,6 @@ require (
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/onsi/ginkgo/v2 v2.22.2 // indirect
 	github.com/pelletier/go-toml v1.9.3 // indirect
-	github.com/pion/dtls/v3 v3.0.4 // indirect
 	github.com/pion/randutil v0.1.0 // indirect
 	github.com/pion/stun/v3 v3.0.0 // indirect
 	github.com/pion/transport/v3 v3.0.7 // indirect

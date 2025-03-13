@@ -78,14 +78,22 @@ export const identityJwtAuthServiceFactory = ({
     let tokenData: Record<string, string | boolean | number> = {};
 
     if (identityJwtAuth.configurationType === JwtConfigurationType.JWKS) {
-      const decryptedJwksCaCert = orgDataKeyDecryptor({
-        cipherTextBlob: identityJwtAuth.encryptedJwksCaCert
-      }).toString();
-      const requestAgent = new https.Agent({ ca: decryptedJwksCaCert, rejectUnauthorized: !!decryptedJwksCaCert });
-      const client = new JwksClient({
-        jwksUri: identityJwtAuth.jwksUrl,
-        requestAgent
-      });
+      let client: JwksClient;
+      if (identityJwtAuth.jwksUrl.includes("https:")) {
+        const decryptedJwksCaCert = orgDataKeyDecryptor({
+          cipherTextBlob: identityJwtAuth.encryptedJwksCaCert
+        }).toString();
+
+        const requestAgent = new https.Agent({ ca: decryptedJwksCaCert, rejectUnauthorized: !!decryptedJwksCaCert });
+        client = new JwksClient({
+          jwksUri: identityJwtAuth.jwksUrl,
+          requestAgent
+        });
+      } else {
+        client = new JwksClient({
+          jwksUri: identityJwtAuth.jwksUrl
+        });
+      }
 
       const { kid } = decodedToken.header;
       const jwtSigningKey = await client.getSigningKey(kid);

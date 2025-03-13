@@ -34,6 +34,7 @@ import { EncryptionPanel } from "./components/EncryptionPanel";
 import { IntegrationPanel } from "./components/IntegrationPanel";
 import { RateLimitPanel } from "./components/RateLimitPanel";
 import { UserPanel } from "./components/UserPanel";
+import { IdentityPanel } from "@app/pages/admin/OverviewPage/components/IdentityPanel";
 
 enum TabSections {
   Settings = "settings",
@@ -42,6 +43,7 @@ enum TabSections {
   RateLimit = "rate-limit",
   Integrations = "integrations",
   Users = "users",
+  Identities = "identities",
   Kmip = "kmip"
 }
 
@@ -164,6 +166,7 @@ export const OverviewPage = () => {
                     <Tab value={TabSections.RateLimit}>Rate Limit</Tab>
                     <Tab value={TabSections.Integrations}>Integrations</Tab>
                     <Tab value={TabSections.Users}>Users</Tab>
+                    <Tab value={TabSections.Identities}>Identities</Tab>
                   </div>
                 </TabList>
                 <TabPanel value={TabSections.Settings}>
@@ -408,6 +411,9 @@ export const OverviewPage = () => {
                 </TabPanel>
                 <TabPanel value={TabSections.Users}>
                   <UserPanel />
+                </TabPanel>
+                <TabPanel value={TabSections.Identities}>
+                  <IdentityPanel />
                 </TabPanel>
               </Tabs>
             </div>

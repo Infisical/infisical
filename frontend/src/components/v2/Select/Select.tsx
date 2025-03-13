@@ -59,7 +59,9 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
           >
             <div className="flex items-center space-x-2 overflow-hidden text-ellipsis whitespace-nowrap">
               {props.icon && <FontAwesomeIcon icon={props.icon} />}
-              <SelectPrimitive.Value placeholder={placeholder} />
+              <div className="flex-1 truncate">
+                <SelectPrimitive.Value placeholder={placeholder} />
+              </div>
             </div>
 
             <SelectPrimitive.Icon className="ml-3">
@@ -122,7 +124,7 @@ export const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
       <SelectPrimitive.Item
         {...props}
         className={twMerge(
-          "relative mb-0.5 flex cursor-pointer select-none items-center overflow-hidden text-ellipsis whitespace-nowrap rounded-md py-2 pl-10 pr-4 text-sm outline-none transition-all hover:bg-mineshaft-500 data-[highlighted]:bg-mineshaft-700/80",
+          "relative mb-0.5 cursor-pointer select-none items-center overflow-hidden truncate rounded-md py-2 pl-10 pr-4 text-sm outline-none transition-all hover:bg-mineshaft-500 data-[highlighted]:bg-mineshaft-700/80",
           isSelected && "bg-primary",
           isDisabled && "cursor-not-allowed text-gray-600 opacity-80 hover:!bg-transparent",
           className
