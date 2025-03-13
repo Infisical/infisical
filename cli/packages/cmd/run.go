@@ -144,7 +144,7 @@ var runCmd = &cobra.Command{
 			util.HandleError(err, "Could not confirm project has environment")
 		}
 		if !hasEnvironment {
-			util.HandleError(fmt.Errorf("project '%s' does not have environment '%s'", projectId, environmentName))
+			util.HandleError(fmt.Errorf("project does not have environment '%s'", environmentName))
 		}
 
 		log.Debug().Msgf("Project '%s' has environment '%s'", projectId, environmentName)
