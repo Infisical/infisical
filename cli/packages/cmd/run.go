@@ -138,7 +138,8 @@ var runCmd = &cobra.Command{
 
 		log.Debug().Msgf("Confirming selected environment is valid: %s", environmentName)
 
-		hasEnvironment, err := confirmProjectHasEnvironment(projectId, environmentName, token)
+		var hasEnvironment bool
+		hasEnvironment, err = confirmProjectHasEnvironment(environmentName, projectId, token)
 		if err != nil {
 			util.HandleError(err, "Could not confirm project has environment")
 		}
