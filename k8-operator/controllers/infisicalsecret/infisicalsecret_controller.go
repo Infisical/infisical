@@ -153,7 +153,7 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	secretsCount, err := r.ReconcileInfisicalSecret(ctx, logger, &infisicalSecretCRD, managedKubeSecretReferences, managedKubeConfigMapReferences)
-	r.SetReadyToSyncSecretsConditions(ctx, &infisicalSecretCRD, secretsCount, err)
+	r.SetReadyToSyncSecretsConditions(ctx, logger, &infisicalSecretCRD, secretsCount, err)
 
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("unable to reconcile InfisicalSecret. Will requeue after [requeueTime=%v]", requeueTime))
@@ -164,11 +164,6 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	numDeployments, err := controllerhelpers.ReconcileDeploymentsWithMultipleManagedSecrets(ctx, r.Client, logger, managedKubeSecretReferences)
 	r.SetInfisicalAutoRedeploymentReady(ctx, logger, &infisicalSecretCRD, numDeployments, err)
-
-	err = r.Client.Status().Update(ctx, &infisicalSecretCRD)
-	if err != nil {
-		logger.Error(err, "Could not set condition for AutoRedeployReady")
-	}
 
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("unable to reconcile auto redeployment. Will requeue after [requeueTime=%v]", requeueTime))
