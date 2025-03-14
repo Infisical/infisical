@@ -43,8 +43,9 @@ description: "Learn how to configure an AWS Parameter Store Sync for Infisical."
             - **KMS Key**: The AWS KMS key ID or alias to encrypt parameters with.
             - **Tags**: Optional resource tags to add to parameters synced by Infisical.
             - **Sync Secret Metadata as Resource Tags**: If enabled, metadata attached to secrets will be added as resource tags to parameters synced by Infisical.
-        <Note>Manually configured tags from the **Tags** field will take precedence over secret metadata when tag keys conflict.</Note>
+            <Note>Manually configured tags from the **Tags** field will take precedence over secret metadata when tag keys conflict.</Note>
             - **Auto-Sync Enabled**: If enabled, secrets will automatically be synced from the source location when changes occur. Disable to enforce manual syncing only.
+            - **Disable Secret Deletion**: If enabled, Infisical will not remove secrets from the sync destination. Enable this option if you intend to manage some secrets manually outside of Infisical.
 
         6. Configure the **Details** of your Parameter Store Sync, then click **Next**.
         ![Configure Details](/images/secret-syncs/aws-parameter-store/aws-parameter-store-details.png)

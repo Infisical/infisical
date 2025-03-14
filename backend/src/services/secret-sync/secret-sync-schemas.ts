@@ -23,7 +23,8 @@ const BaseSyncOptionsSchema = <T extends AnyZodObject | undefined = undefined>({
     initialSyncBehavior: (canImportSecrets
       ? z.nativeEnum(SecretSyncInitialSyncBehavior)
       : z.literal(SecretSyncInitialSyncBehavior.OverwriteDestination)
-    ).describe(SecretSyncs.SYNC_OPTIONS(destination).initialSyncBehavior)
+    ).describe(SecretSyncs.SYNC_OPTIONS(destination).initialSyncBehavior),
+    disableSecretDeletion: z.boolean().optional().describe(SecretSyncs.SYNC_OPTIONS(destination).disableSecretDeletion)
   });
 
   const schema = merge ? baseSchema.merge(merge) : baseSchema;
