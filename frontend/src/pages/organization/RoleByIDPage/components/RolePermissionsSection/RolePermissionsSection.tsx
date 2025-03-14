@@ -101,8 +101,6 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
 
   const onSubmit = async (el: TFormSchema) => {
     try {
-      console.log(el.permissions);
-      console.log(formRolePermission2API(el.permissions));
       await updateRole({
         orgId,
         id: roleId,

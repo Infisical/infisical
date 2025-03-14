@@ -23,7 +23,7 @@ export const OrganizationsSchema = z.object({
   defaultMembershipRole: z.string().default("member"),
   enforceMfa: z.boolean().default(false),
   selectedMfaMethod: z.string().nullable().optional(),
-  secretShareSendToAnyone: z.boolean().default(true).nullable().optional()
+  allowSecretSharingOutsideOrganization: z.boolean().default(true).nullable().optional()
 });
 
 export type TOrganizations = z.infer<typeof OrganizationsSchema>;

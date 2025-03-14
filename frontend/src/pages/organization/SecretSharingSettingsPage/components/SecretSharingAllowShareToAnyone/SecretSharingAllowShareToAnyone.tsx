@@ -14,7 +14,7 @@ export const SecretSharingAllowShareToAnyone = () => {
 
       await mutateAsync({
         orgId: currentOrg.id,
-        secretShareSendToAnyone: value
+        allowSecretSharingOutsideOrganization: value
       });
 
       createNotification({
@@ -42,7 +42,7 @@ export const SecretSharingAllowShareToAnyone = () => {
               <Switch
                 id="enable-secret-sharing-outside-org"
                 onCheckedChange={(value) => handleSecretSharingToggle(value)}
-                isChecked={currentOrg?.secretShareSendToAnyone ?? false}
+                isChecked={currentOrg?.allowSecretSharingOutsideOrganization ?? false}
                 isDisabled={!isAllowed}
               />
             )}

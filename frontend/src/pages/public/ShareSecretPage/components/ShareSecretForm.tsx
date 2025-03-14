@@ -232,7 +232,7 @@ export const ShareSecretForm = ({ isPublic, value }: Props) => {
                 onValueChange={(e) => onChange(e)}
                 className="w-full"
               >
-                {currentOrg?.secretShareSendToAnyone && (
+                {currentOrg?.allowSecretSharingOutsideOrganization && (
                   <SelectItem value={SecretSharingAccessType.Anyone}>Anyone</SelectItem>
                 )}
                 <SelectItem value={SecretSharingAccessType.Organization}>

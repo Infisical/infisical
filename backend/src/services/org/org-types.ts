@@ -72,7 +72,7 @@ export type TUpdateOrgDTO = {
     defaultMembershipRoleSlug: string;
     enforceMfa: boolean;
     selectedMfaMethod: MfaMethod;
-    secretShareSendToAnyone: boolean;
+    allowSecretSharingOutsideOrganization: boolean;
   }>;
 } & TOrgPermission;
 

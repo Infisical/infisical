@@ -19,7 +19,11 @@ import {
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  OrgPermissionActions,
+  OrgPermissionSecretShareAction,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
@@ -294,13 +298,19 @@ export const orgServiceFactory = ({
       defaultMembershipRoleSlug,
       enforceMfa,
       selectedMfaMethod,
-      secretShareSendToAnyone
+      allowSecretSharingOutsideOrganization
     }
   }: TUpdateOrgDTO) => {
     const appCfg = getConfig();
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
 
+    if (allowSecretSharingOutsideOrganization !== undefined) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionSecretShareAction.ManageSettings,
+        OrgPermissionSubjects.SecretShare
+      );
+    }
     const plan = await licenseService.getPlan(orgId);
     const currentOrg = await orgDAL.findOrgById(actorOrgId);
 
@@ -368,7 +378,7 @@ export const orgServiceFactory = ({
       defaultMembershipRole,
       enforceMfa,
       selectedMfaMethod,
-      secretShareSendToAnyone
+      allowSecretSharingOutsideOrganization
     });
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
     return org;

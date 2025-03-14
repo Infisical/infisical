@@ -258,7 +258,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         defaultMembershipRoleSlug: slugSchema({ max: 64, field: "Default Membership Role" }).optional(),
         enforceMfa: z.boolean().optional(),
         selectedMfaMethod: z.nativeEnum(MfaMethod).optional(),
-        secretShareSendToAnyone: z.boolean().optional()
+        allowSecretSharingOutsideOrganization: z.boolean().optional()
       }),
       response: {
         200: z.object({
