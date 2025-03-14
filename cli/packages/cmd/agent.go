@@ -38,11 +38,16 @@ const DEFAULT_INFISICAL_CLOUD_URL = "https://app.infisical.com"
 // duration to reduce from expiry of dynamic leases so that it gets triggered before expiry
 const DYNAMIC_SECRET_PRUNE_EXPIRE_BUFFER = -15
 
+type HttpConfig struct {
+	Headers map[string]string `yaml:"headers"`
+}
+
 type Config struct {
 	Infisical InfisicalConfig `yaml:"infisical"`
 	Auth      AuthConfig      `yaml:"auth"`
 	Sinks     []Sink          `yaml:"sinks"`
 	Templates []Template      `yaml:"templates"`
+	Http      HttpConfig      `yaml:"http"`
 }
 
 type InfisicalConfig struct {
@@ -284,6 +289,7 @@ func ParseAgentConfig(configFile []byte) (*Config, error) {
 		} `yaml:"auth"`
 		Sinks     []Sink     `yaml:"sinks"`
 		Templates []Template `yaml:"templates"`
+		Http      HttpConfig `yaml:"http"`
 	}
 
 	if err := yaml.Unmarshal(configFile, &rawConfig); err != nil {
@@ -307,6 +313,7 @@ func ParseAgentConfig(configFile []byte) (*Config, error) {
 		},
 		Sinks:     rawConfig.Sinks,
 		Templates: rawConfig.Templates,
+		Http:      rawConfig.Http,
 	}
 
 	return config, nil
@@ -498,6 +505,7 @@ type AgentManager struct {
 	removeUniversalAuthClientSecretOnRead bool
 	cachedUniversalAuthClientSecret       string
 	exitAfterAuth                         bool
+	httpClient                           *resty.Client
 
 	infisicalClient infisicalSdk.InfisicalClientInterface
 }
@@ -511,13 +519,30 @@ type NewAgentMangerOptions struct {
 
 	NewAccessTokenNotificationChan chan bool
 	ExitAfterAuth                  bool
+	Config                         *Config
 }
 
 func NewAgentManager(options NewAgentMangerOptions) *AgentManager {
 
+	// creating the base client
+	client := resty.New()
+
+	// added null checck for config and if the custom headers are configured then add them to the client
+	if options.Config != nil && len(options.Config.Http.Headers) > 0 {
+        for key, value := range options.Config.Http.Headers {
+            client.SetHeader(key, value)
+        }
+        log.Info().Msgf("Added %d custom headers to request client", len(options.Config.Http.Headers))
+    }
+
+	client.SetRetryCount(10000).
+        SetRetryMaxWaitTime(20 * time.Second).
+        SetRetryWaitTime(5 * time.Second)
+
 	return &AgentManager{
 		filePaths: options.FileDeposits,
 		templates: options.Templates,
+		httpClient: client,
 
 		authConfigBytes: options.AuthConfigBytes,
 		authStrategy:    options.AuthStrategy,
@@ -716,13 +741,8 @@ func (tm *AgentManager) FetchNewAccessToken() error {
 
 // Refreshes the existing access token
 func (tm *AgentManager) RefreshAccessToken() error {
-	httpClient := resty.New()
-	httpClient.SetRetryCount(10000).
-		SetRetryMaxWaitTime(20 * time.Second).
-		SetRetryWaitTime(5 * time.Second)
-
 	accessToken := tm.GetToken()
-	response, err := api.CallMachineIdentityRefreshAccessToken(httpClient, api.UniversalAuthRefreshRequest{AccessToken: accessToken})
+	response, err := api.CallMachineIdentityRefreshAccessToken(tm.httpClient, api.UniversalAuthRefreshRequest{AccessToken: accessToken})
 	if err != nil {
 		return err
 	}
@@ -994,6 +1014,7 @@ var agentCmd = &cobra.Command{
 			NewAccessTokenNotificationChan: tokenRefreshNotifier,
 			ExitAfterAuth:                  agentConfig.Infisical.ExitAfterAuth,
 			AuthStrategy:                   authStrategy,
+			Config:                         agentConfig,
 		})
 
 		tm.dynamicSecretLeases = NewDynamicSecretLeaseManager(sigChan)
