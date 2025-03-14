@@ -122,7 +122,7 @@ sp_droplogin '{{username}}';`
       }
     });
     await Promise.all(promises);
-    if (hasErrors) {
+    if (!hasErrors) {
       onCompleted();
     }
   };

@@ -121,7 +121,7 @@ export const RedisInputForm = ({
       }
     });
     await Promise.all(promises);
-    if (hasErrors) {
+    if (!hasErrors) {
       onCompleted();
     }
   };

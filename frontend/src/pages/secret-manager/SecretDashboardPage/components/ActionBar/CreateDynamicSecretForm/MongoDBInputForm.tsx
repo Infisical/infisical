@@ -135,7 +135,7 @@ export const MongoDBDatabaseInputForm = ({
       }
     });
     await Promise.all(promises);
-    if (hasErrors) {
+    if (!hasErrors) {
       onCompleted();
     }
   };

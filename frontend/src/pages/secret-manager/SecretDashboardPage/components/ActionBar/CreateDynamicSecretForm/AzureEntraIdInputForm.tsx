@@ -149,7 +149,7 @@ export const AzureEntraIdInputForm = ({
       }
     });
     await Promise.all(promises);
-    if (hasErrors) {
+    if (!hasErrors) {
       onCompleted();
     }
   };

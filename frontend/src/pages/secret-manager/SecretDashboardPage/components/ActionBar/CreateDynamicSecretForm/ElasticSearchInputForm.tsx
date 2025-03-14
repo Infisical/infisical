@@ -147,7 +147,7 @@ export const ElasticSearchInputForm = ({
       }
     });
     await Promise.all(promises);
-    if (hasErrors) {
+    if (!hasErrors) {
       onCompleted();
     }
   };

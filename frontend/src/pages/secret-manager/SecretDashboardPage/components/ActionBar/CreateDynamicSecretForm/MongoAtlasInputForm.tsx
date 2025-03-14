@@ -158,7 +158,7 @@ export const MongoAtlasInputForm = ({
       }
     });
     await Promise.all(promises);
-    if (hasErrors) {
+    if (!hasErrors) {
       onCompleted();
     }
   };
