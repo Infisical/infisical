@@ -82,7 +82,7 @@ const formSchema = z.object({
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
     }),
   name: z.string().refine((val) => val.toLowerCase() === val, "Must be lowercase"),
-  environments: z.object({ name: z.string(), slug: z.string() }).array()
+  environment: z.object({ name: z.string(), slug: z.string() })
 });
 type TForm = z.infer<typeof formSchema>;
 
@@ -176,7 +176,7 @@ export const SqlDatabaseInputForm = ({
           allowedSymbols: "-_.~!*"
         }
       },
-      environments: environments.length === 1 ? environments : []
+      environment: environments.length === 1 ? environments[0] : undefined
     }
   });
 
@@ -190,33 +190,27 @@ export const SqlDatabaseInputForm = ({
     maxTTL,
     provider,
     defaultTTL,
-    environments: selectedEnvs
+    environment
   }: TForm) => {
     // wait till previous request is finished
     if (createDynamicSecret.isPending) return;
-    let hasErrors = false;
-    const promises = selectedEnvs.map(async (env) => {
-      try {
-        await createDynamicSecret.mutateAsync({
-          provider: { type: DynamicSecretProviders.SqlDatabase, inputs: provider },
-          maxTTL,
-          name,
-          path: secretPath,
-          defaultTTL,
-          projectSlug,
-          environmentSlug: env.slug
-        });
-      } catch {
-        createNotification({
-          type: "error",
-          text: `Failed to create dynamic secret for environment ${env.name}`
-        });
-        hasErrors = true;
-      }
-    });
-    await Promise.all(promises);
-    if (!hasErrors) {
+
+    try {
+      await createDynamicSecret.mutateAsync({
+        provider: { type: DynamicSecretProviders.SqlDatabase, inputs: provider },
+        maxTTL,
+        name,
+        path: secretPath,
+        defaultTTL,
+        projectSlug,
+        environmentSlug: environment.slug
+      });
       onCompleted();
+    } catch {
+      createNotification({
+        type: "error",
+        text: "Failed to create dynamic secret"
+      });
     }
   };
 
@@ -669,19 +663,18 @@ export const SqlDatabaseInputForm = ({
                 {environments.length > 1 && (
                   <Controller
                     control={control}
-                    name="environments"
+                    name="environment"
                     render={({ field: { value, onChange }, fieldState: { error } }) => (
                       <FormControl
-                        label="Environments"
+                        label="Environment"
                         isError={Boolean(error)}
                         errorText={error?.message}
                       >
                         <FilterableSelect
-                          isMulti
                           options={environments}
                           value={value}
                           onChange={onChange}
-                          placeholder="Select environments to create secret in..."
+                          placeholder="Select the environment to create secret in..."
                           getOptionLabel={(option) => option.name}
                           getOptionValue={(option) => option.slug}
                           menuPlacement="top"

@@ -62,7 +62,7 @@ const formSchema = z.object({
     .string()
     .min(1)
     .refine((val) => val.toLowerCase() === val, "Must be lowercase"),
-  environments: z.object({ name: z.string(), slug: z.string() }).array()
+  environment: z.object({ name: z.string(), slug: z.string() })
 });
 type TForm = z.infer<typeof formSchema>;
 
@@ -89,7 +89,7 @@ export const AzureEntraIdInputForm = ({
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      environments: environments.length === 1 ? environments : []
+      environment: environments.length === 1 ? environments[0] : undefined
     }
   });
   const tenantId = watch("provider.tenantId");
@@ -113,44 +113,37 @@ export const AzureEntraIdInputForm = ({
     provider,
     maxTTL,
     defaultTTL,
-    environments: selectedEnvs
+    environment
   }: TForm) => {
     // wait till previous request is finished
     if (createDynamicSecret.isPending) return;
-    let hasErrors = false;
-    const promises = selectedEnvs.map(async (env) => {
-      try {
-        selectedUsers.map(async (user: { id: string; name: string; email: string }) => {
-          await createDynamicSecret.mutateAsync({
-            provider: {
-              type: DynamicSecretProviders.AzureEntraId,
-              inputs: {
-                userId: user.id,
-                tenantId: provider.tenantId,
-                email: user.email,
-                applicationId: provider.applicationId,
-                clientSecret: provider.clientSecret
-              }
-            },
-            maxTTL,
-            name: `${name}-${user.name}`,
-            path: secretPath,
-            defaultTTL,
-            projectSlug,
-            environmentSlug: env.slug
-          });
+    try {
+      selectedUsers.map(async (user: { id: string; name: string; email: string }) => {
+        await createDynamicSecret.mutateAsync({
+          provider: {
+            type: DynamicSecretProviders.AzureEntraId,
+            inputs: {
+              userId: user.id,
+              tenantId: provider.tenantId,
+              email: user.email,
+              applicationId: provider.applicationId,
+              clientSecret: provider.clientSecret
+            }
+          },
+          maxTTL,
+          name: `${name}-${user.name}`,
+          path: secretPath,
+          defaultTTL,
+          projectSlug,
+          environmentSlug: environment.slug
         });
-      } catch {
-        createNotification({
-          type: "error",
-          text: `Failed to create dynamic secret in environment ${env.name}`
-        });
-        hasErrors = true;
-      }
-    });
-    await Promise.all(promises);
-    if (!hasErrors) {
+      });
       onCompleted();
+    } catch {
+      createNotification({
+        type: "error",
+        text: "Failed to create dynamic secret"
+      });
     }
   };
 
@@ -389,19 +382,18 @@ export const AzureEntraIdInputForm = ({
           {environments.length > 1 && (
             <Controller
               control={control}
-              name="environments"
+              name="environment"
               render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <FormControl
-                  label="Environments"
+                  label="Environment"
                   isError={Boolean(error)}
                   errorText={error?.message}
                 >
                   <FilterableSelect
-                    isMulti
                     options={environments}
                     value={value}
                     onChange={onChange}
-                    placeholder="Select environments to create secret in..."
+                    placeholder="Select the environment to create secret in..."
                     getOptionLabel={(option) => option.name}
                     getOptionValue={(option) => option.slug}
                     menuPlacement="top"

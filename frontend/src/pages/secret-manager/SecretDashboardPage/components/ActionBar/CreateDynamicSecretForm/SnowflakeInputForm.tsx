@@ -57,7 +57,7 @@ const formSchema = z.object({
     .trim()
     .min(1)
     .refine((val) => val.toLowerCase() === val, "Must be lowercase"),
-  environments: z.object({ name: z.string(), slug: z.string() }).array()
+  environment: z.object({ name: z.string(), slug: z.string() })
 });
 type TForm = z.infer<typeof formSchema>;
 
@@ -89,7 +89,7 @@ export const SnowflakeInputForm = ({
         revocationStatement: "DROP USER {{username}};",
         renewStatement: "ALTER USER {{username}} SET DAYS_TO_EXPIRY = {{expiration}};"
       },
-      environments: environments.length === 1 ? environments : []
+      environment: environments.length === 1 ? environments[0] : undefined
     }
   });
 
@@ -100,33 +100,26 @@ export const SnowflakeInputForm = ({
     maxTTL,
     provider,
     defaultTTL,
-    environments: selectedEnvs
+    environment
   }: TForm) => {
     // wait till previous request is finished
     if (createDynamicSecret.isPending) return;
-    let hasErrors = false;
-    const promises = selectedEnvs.map(async (env) => {
-      try {
-        await createDynamicSecret.mutateAsync({
-          provider: { type: DynamicSecretProviders.Snowflake, inputs: provider },
-          maxTTL,
-          name,
-          path: secretPath,
-          defaultTTL,
-          projectSlug,
-          environmentSlug: env.slug
-        });
-      } catch (err) {
-        createNotification({
-          type: "error",
-          text: err instanceof Error ? err.message : "Failed to create dynamic secret"
-        });
-        hasErrors = true;
-      }
-    });
-    await Promise.all(promises);
-    if (!hasErrors) {
+    try {
+      await createDynamicSecret.mutateAsync({
+        provider: { type: DynamicSecretProviders.Snowflake, inputs: provider },
+        maxTTL,
+        name,
+        path: secretPath,
+        defaultTTL,
+        projectSlug,
+        environmentSlug: environment.slug
+      });
       onCompleted();
+    } catch (err) {
+      createNotification({
+        type: "error",
+        text: err instanceof Error ? err.message : "Failed to create dynamic secret"
+      });
     }
   };
 
@@ -334,19 +327,18 @@ export const SnowflakeInputForm = ({
               {environments.length > 1 && (
                 <Controller
                   control={control}
-                  name="environments"
+                  name="environment"
                   render={({ field: { value, onChange }, fieldState: { error } }) => (
                     <FormControl
-                      label="Environments"
+                      label="Environment"
                       isError={Boolean(error)}
                       errorText={error?.message}
                     >
                       <FilterableSelect
-                        isMulti
                         options={environments}
                         value={value}
                         onChange={onChange}
-                        placeholder="Select environments to create secret in..."
+                        placeholder="Select the environment to create secret in..."
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.slug}
                         menuPlacement="top"

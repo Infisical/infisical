@@ -61,7 +61,7 @@ const formSchema = z.object({
     .trim()
     .min(1)
     .refine((val) => val.toLowerCase() === val, "Must be lowercase"),
-  environments: z.object({ name: z.string(), slug: z.string() }).array()
+  environment: z.object({ name: z.string(), slug: z.string() })
 });
 
 type TForm = z.infer<typeof formSchema>;
@@ -92,7 +92,7 @@ export const TotpInputForm = ({
       provider: {
         configType: ConfigType.URL
       },
-      environments: environments.length === 1 ? environments : []
+      environment: environments.length === 1 ? environments[0] : environments[0]
     }
   });
 
@@ -100,36 +100,25 @@ export const TotpInputForm = ({
 
   const createDynamicSecret = useCreateDynamicSecret();
 
-  const handleCreateDynamicSecret = async ({
-    name,
-    provider,
-    environments: selectedEnvs
-  }: TForm) => {
+  const handleCreateDynamicSecret = async ({ name, provider, environment }: TForm) => {
     // wait till previous request is finished
     if (createDynamicSecret.isPending) return;
-    let hasErrors = false;
-    const promises = selectedEnvs.map(async (env) => {
-      try {
-        await createDynamicSecret.mutateAsync({
-          provider: { type: DynamicSecretProviders.Totp, inputs: provider },
-          maxTTL: "24h",
-          name,
-          path: secretPath,
-          defaultTTL: "1m",
-          projectSlug,
-          environmentSlug: env.slug
-        });
-      } catch (err) {
-        createNotification({
-          type: "error",
-          text: err instanceof Error ? err.message : "Failed to create dynamic secret"
-        });
-        hasErrors = true;
-      }
-    });
-    await Promise.all(promises);
-    if (!hasErrors) {
+    try {
+      await createDynamicSecret.mutateAsync({
+        provider: { type: DynamicSecretProviders.Totp, inputs: provider },
+        maxTTL: "24h",
+        name,
+        path: secretPath,
+        defaultTTL: "1m",
+        projectSlug,
+        environmentSlug: environment.slug
+      });
       onCompleted();
+    } catch (err) {
+      createNotification({
+        type: "error",
+        text: err instanceof Error ? err.message : "Failed to create dynamic secret"
+      });
     }
   };
 
@@ -319,19 +308,18 @@ export const TotpInputForm = ({
               {environments.length > 1 && (
                 <Controller
                   control={control}
-                  name="environments"
+                  name="environment"
                   render={({ field: { value, onChange }, fieldState: { error } }) => (
                     <FormControl
-                      label="Environments"
+                      label="Environment"
                       isError={Boolean(error)}
                       errorText={error?.message}
                     >
                       <FilterableSelect
-                        isMulti
                         options={environments}
                         value={value}
                         onChange={onChange}
-                        placeholder="Select environments to create secret in..."
+                        placeholder="Select the environment to create secret in..."
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.slug}
                         menuPlacement="top"
