@@ -7,6 +7,7 @@ export type TAttachOidcAuthDTO = {
   boundIssuer: string;
   boundAudiences: string;
   boundClaims: Record<string, string>;
+  claimMetadataMapping: Record<string, string>;
   boundSubject: string;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
@@ -21,6 +22,7 @@ export type TUpdateOidcAuthDTO = {
   boundIssuer?: string;
   boundAudiences?: string;
   boundClaims?: Record<string, string>;
+  claimMetadataMapping?: Record<string, string>;
   boundSubject?: string;
   accessTokenTTL?: number;
   accessTokenMaxTTL?: number;

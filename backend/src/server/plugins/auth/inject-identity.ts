@@ -1,3 +1,4 @@
+import { requestContext } from "@fastify/request-context";
 import { FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
 import jwt, { JwtPayload } from "jsonwebtoken";
@@ -137,6 +138,10 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
           identityName: identity.name,
           authMethod: null
         };
+        requestContext.set("identityAuthInfo", {
+          identityId: identity.identityId,
+          oidc: token?.identityAuth?.oidc
+        });
         break;
       }
       case AuthMode.SERVICE_TOKEN: {

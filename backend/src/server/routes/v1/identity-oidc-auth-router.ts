@@ -23,6 +23,7 @@ const IdentityOidcAuthResponseSchema = IdentityOidcAuthsSchema.pick({
   boundIssuer: true,
   boundAudiences: true,
   boundClaims: true,
+  claimMetadataMapping: true,
   boundSubject: true,
   createdAt: true,
   updatedAt: true
@@ -104,6 +105,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
           boundIssuer: z.string().min(1).describe(OIDC_AUTH.ATTACH.boundIssuer),
           boundAudiences: validateOidcAuthAudiencesField.describe(OIDC_AUTH.ATTACH.boundAudiences),
           boundClaims: validateOidcBoundClaimsField.describe(OIDC_AUTH.ATTACH.boundClaims),
+          claimMetadataMapping: validateOidcBoundClaimsField.describe(OIDC_AUTH.ATTACH.claimMetadataMapping),
           boundSubject: z.string().optional().default("").describe(OIDC_AUTH.ATTACH.boundSubject),
           accessTokenTrustedIps: z
             .object({
@@ -161,6 +163,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
             boundIssuer: identityOidcAuth.boundIssuer,
             boundAudiences: identityOidcAuth.boundAudiences,
             boundClaims: identityOidcAuth.boundClaims as Record<string, string>,
+            claimMetadataMapping: identityOidcAuth.claimMetadataMapping as Record<string, string>,
             boundSubject: identityOidcAuth.boundSubject as string,
             accessTokenTTL: identityOidcAuth.accessTokenTTL,
             accessTokenMaxTTL: identityOidcAuth.accessTokenMaxTTL,
@@ -200,6 +203,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
           boundIssuer: z.string().min(1).describe(OIDC_AUTH.UPDATE.boundIssuer),
           boundAudiences: validateOidcAuthAudiencesField.describe(OIDC_AUTH.UPDATE.boundAudiences),
           boundClaims: validateOidcBoundClaimsField.describe(OIDC_AUTH.UPDATE.boundClaims),
+          claimMetadataMapping: validateOidcBoundClaimsField.describe(OIDC_AUTH.UPDATE.claimMetadataMapping),
           boundSubject: z.string().optional().default("").describe(OIDC_AUTH.UPDATE.boundSubject),
           accessTokenTrustedIps: z
             .object({
@@ -258,6 +262,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
             boundIssuer: identityOidcAuth.boundIssuer,
             boundAudiences: identityOidcAuth.boundAudiences,
             boundClaims: identityOidcAuth.boundClaims as Record<string, string>,
+            claimMetadataMapping: identityOidcAuth.claimMetadataMapping as Record<string, string>,
             boundSubject: identityOidcAuth.boundSubject as string,
             accessTokenTTL: identityOidcAuth.accessTokenTTL,
             accessTokenMaxTTL: identityOidcAuth.accessTokenMaxTTL,
