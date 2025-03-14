@@ -137,7 +137,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
                       <>
                         <p>
                           When enabled, Infisical will <span className="font-semibold">not</span>{" "}
-                          remove secrets from the sync destination.
+                          remove secrets from the destination during a sync.
                         </p>
                         <p className="mt-4">
                           Enable this option if you intend to manage some secrets manually outside
