@@ -12,7 +12,7 @@ import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input } from "@app/components/v2";
+import { Button, FilterableSelect, FormControl, Input } from "@app/components/v2";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +23,7 @@ import { Tooltip } from "@app/components/v2/Tooltip";
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { useGetDynamicSecretProviderData } from "@app/hooks/api/dynamicSecret/queries";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
+import { WorkspaceEnv } from "@app/hooks/api/types";
 
 const formSchema = z.object({
   selectedUsers: z.array(
@@ -60,7 +61,8 @@ const formSchema = z.object({
   name: z
     .string()
     .min(1)
-    .refine((val) => val.toLowerCase() === val, "Must be lowercase")
+    .refine((val) => val.toLowerCase() === val, "Must be lowercase"),
+  environments: z.object({ name: z.string(), slug: z.string() }).array()
 });
 type TForm = z.infer<typeof formSchema>;
 
@@ -69,13 +71,13 @@ type Props = {
   onCancel: () => void;
   secretPath: string;
   projectSlug: string;
-  environment: string;
+  environments: WorkspaceEnv[];
 };
 
 export const AzureEntraIdInputForm = ({
   onCompleted,
   onCancel,
-  environment,
+  environments,
   secretPath,
   projectSlug
 }: Props) => {
@@ -85,7 +87,10 @@ export const AzureEntraIdInputForm = ({
     watch,
     handleSubmit
   } = useForm<TForm>({
-    resolver: zodResolver(formSchema)
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      environments: environments.length === 1 ? environments : []
+    }
   });
   const tenantId = watch("provider.tenantId");
   const applicationId = watch("provider.applicationId");
@@ -107,38 +112,42 @@ export const AzureEntraIdInputForm = ({
     selectedUsers,
     provider,
     maxTTL,
-    defaultTTL
+    defaultTTL,
+    environments: selectedEnvs
   }: TForm) => {
     // wait till previous request is finished
-    if (createDynamicSecret.isPending) return;
-    try {
-      selectedUsers.map(async (user: { id: string; name: string; email: string }) => {
-        await createDynamicSecret.mutateAsync({
-          provider: {
-            type: DynamicSecretProviders.AzureEntraId,
-            inputs: {
-              userId: user.id,
-              tenantId: provider.tenantId,
-              email: user.email,
-              applicationId: provider.applicationId,
-              clientSecret: provider.clientSecret
-            }
-          },
-          maxTTL,
-          name: `${name}-${user.name}`,
-          path: secretPath,
-          defaultTTL,
-          projectSlug,
-          environmentSlug: environment
+    const promises = selectedEnvs.map(async (environment) => {
+      if (createDynamicSecret.isPending) return;
+      try {
+        selectedUsers.map(async (user: { id: string; name: string; email: string }) => {
+          await createDynamicSecret.mutateAsync({
+            provider: {
+              type: DynamicSecretProviders.AzureEntraId,
+              inputs: {
+                userId: user.id,
+                tenantId: provider.tenantId,
+                email: user.email,
+                applicationId: provider.applicationId,
+                clientSecret: provider.clientSecret
+              }
+            },
+            maxTTL,
+            name: `${name}-${user.name}`,
+            path: secretPath,
+            defaultTTL,
+            projectSlug,
+            environmentSlug: environment.slug
+          });
         });
-      });
-      onCompleted();
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Failed to create dynamic secret"
-      });
-    }
+        onCompleted();
+      } catch {
+        createNotification({
+          type: "error",
+          text: "Failed to create dynamic secret"
+        });
+      }
+    });
+    await Promise.all(promises);
   };
 
   return (
@@ -373,6 +382,30 @@ export const AzureEntraIdInputForm = ({
               </div>
             </div>
           </div>
+          {environments.length > 1 && (
+            <Controller
+              control={control}
+              name="environments"
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl
+                  label="Environments"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <FilterableSelect
+                    isMulti
+                    options={environments}
+                    value={value}
+                    onChange={onChange}
+                    placeholder="Select environments to create secret in..."
+                    getOptionLabel={(option) => option.name}
+                    getOptionValue={(option) => option.slug}
+                    menuPlacement="top"
+                  />
+                </FormControl>
+              )}
+            />
+          )}
         </div>
         <div className="mt-4 flex items-center space-x-4">
           <Button type="submit" isLoading={isSubmitting} isDisabled={isLoading || isError}>

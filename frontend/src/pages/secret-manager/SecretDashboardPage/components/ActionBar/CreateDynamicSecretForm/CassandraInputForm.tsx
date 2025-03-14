@@ -11,6 +11,7 @@ import {
   AccordionItem,
   AccordionTrigger,
   Button,
+  FilterableSelect,
   FormControl,
   Input,
   SecretInput,
@@ -18,6 +19,7 @@ import {
 } from "@app/components/v2";
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
+import { WorkspaceEnv } from "@app/hooks/api/types";
 
 const formSchema = z.object({
   provider: z.object({
@@ -52,7 +54,8 @@ const formSchema = z.object({
       if (valMs > 24 * 60 * 60 * 1000)
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
     }),
-  name: z.string().refine((val) => val.toLowerCase() === val, "Must be lowercase")
+  name: z.string().refine((val) => val.toLowerCase() === val, "Must be lowercase"),
+  environments: z.object({ name: z.string(), slug: z.string() }).array()
 });
 type TForm = z.infer<typeof formSchema>;
 
@@ -61,7 +64,7 @@ type Props = {
   onCancel: () => void;
   secretPath: string;
   projectSlug: string;
-  environment: string;
+  environments: WorkspaceEnv[];
 };
 
 const getSqlStatements = () => {
@@ -76,7 +79,7 @@ const getSqlStatements = () => {
 export const CassandraInputForm = ({
   onCompleted,
   onCancel,
-  environment,
+  environments,
   secretPath,
   projectSlug
 }: Props) => {
@@ -87,32 +90,42 @@ export const CassandraInputForm = ({
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      provider: getSqlStatements()
+      provider: getSqlStatements(),
+      environments: environments.length === 1 ? environments : []
     }
   });
 
   const createDynamicSecret = useCreateDynamicSecret();
 
-  const handleCreateDynamicSecret = async ({ name, maxTTL, provider, defaultTTL }: TForm) => {
+  const handleCreateDynamicSecret = async ({
+    name,
+    maxTTL,
+    provider,
+    defaultTTL,
+    environments: selectedEnvs
+  }: TForm) => {
     // wait till previous request is finished
     if (createDynamicSecret.isPending) return;
-    try {
-      await createDynamicSecret.mutateAsync({
-        provider: { type: DynamicSecretProviders.Cassandra, inputs: provider },
-        maxTTL,
-        name,
-        path: secretPath,
-        defaultTTL,
-        projectSlug,
-        environmentSlug: environment
-      });
-      onCompleted();
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Failed to create dynamic secret"
-      });
-    }
+    const promises = selectedEnvs.map(async (environment) => {
+      try {
+        await createDynamicSecret.mutateAsync({
+          provider: { type: DynamicSecretProviders.Cassandra, inputs: provider },
+          maxTTL,
+          name,
+          path: secretPath,
+          defaultTTL,
+          projectSlug,
+          environmentSlug: environment.slug
+        });
+        onCompleted();
+      } catch {
+        createNotification({
+          type: "error",
+          text: "Failed to create dynamic secret"
+        });
+      }
+    });
+    await Promise.all(promises);
   };
 
   return (
@@ -345,6 +358,30 @@ export const CassandraInputForm = ({
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
+                {environments.length > 1 && (
+                  <Controller
+                    control={control}
+                    name="environments"
+                    render={({ field: { value, onChange }, fieldState: { error } }) => (
+                      <FormControl
+                        label="Environments"
+                        isError={Boolean(error)}
+                        errorText={error?.message}
+                      >
+                        <FilterableSelect
+                          isMulti
+                          options={environments}
+                          value={value}
+                          onChange={onChange}
+                          placeholder="Select environments to create secret in..."
+                          getOptionLabel={(option) => option.name}
+                          getOptionValue={(option) => option.slug}
+                          menuPlacement="top"
+                        />
+                      </FormControl>
+                    )}
+                  />
+                )}
               </div>
             </div>
           </div>

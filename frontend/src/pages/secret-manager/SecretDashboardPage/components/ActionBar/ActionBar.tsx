@@ -655,7 +655,7 @@ export const ActionBar = ({
         isOpen={popUp.addDynamicSecret.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("addDynamicSecret", isOpen)}
         projectSlug={projectSlug}
-        environment={environment}
+        environments={[{ slug: environment, name: "not-used", id: "not-used" }]}
         secretPath={secretPath}
       />
       <Modal

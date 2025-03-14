@@ -17,6 +17,7 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import { Modal, ModalContent } from "@app/components/v2";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
+import { WorkspaceEnv } from "@app/hooks/api/types";
 
 import { AwsElastiCacheInputForm } from "./AwsElastiCacheInputForm";
 import { AwsIamInputForm } from "./AwsIamInputForm";
@@ -38,7 +39,7 @@ type Props = {
   isOpen?: boolean;
   onToggle: (isOpen: boolean) => void;
   projectSlug: string;
-  environment: string;
+  environments: WorkspaceEnv[];
   secretPath: string;
 };
 
@@ -129,7 +130,7 @@ export const CreateDynamicSecretForm = ({
   isOpen,
   onToggle,
   projectSlug,
-  environment,
+  environments,
   secretPath
 }: Props) => {
   const [wizardStep, setWizardStep] = useState(WizardSteps.SelectProvider);
@@ -197,7 +198,7 @@ export const CreateDynamicSecretForm = ({
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}
                   secretPath={secretPath}
-                  environment={environment}
+                  environments={environments}
                 />
               </motion.div>
             )}
@@ -215,7 +216,7 @@ export const CreateDynamicSecretForm = ({
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}
                   secretPath={secretPath}
-                  environment={environment}
+                  environments={environments}
                 />
               </motion.div>
             )}
@@ -233,7 +234,7 @@ export const CreateDynamicSecretForm = ({
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}
                   secretPath={secretPath}
-                  environment={environment}
+                  environments={environments}
                 />
               </motion.div>
             )}
@@ -251,7 +252,7 @@ export const CreateDynamicSecretForm = ({
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}
                   secretPath={secretPath}
-                  environment={environment}
+                  environments={environments}
                 />
               </motion.div>
             )}
@@ -269,7 +270,7 @@ export const CreateDynamicSecretForm = ({
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}
                   secretPath={secretPath}
-                  environment={environment}
+                  environments={environments}
                 />
               </motion.div>
             )}
@@ -287,7 +288,7 @@ export const CreateDynamicSecretForm = ({
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}
                   secretPath={secretPath}
-                  environment={environment}
+                  environments={environments}
                 />
               </motion.div>
             )}
@@ -305,7 +306,7 @@ export const CreateDynamicSecretForm = ({
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}
                   secretPath={secretPath}
-                  environment={environment}
+                  environments={environments}
                 />
               </motion.div>
             )}
@@ -323,7 +324,7 @@ export const CreateDynamicSecretForm = ({
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}
                   secretPath={secretPath}
-                  environment={environment}
+                  environments={environments}
                 />
               </motion.div>
             )}
@@ -341,7 +342,7 @@ export const CreateDynamicSecretForm = ({
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}
                   secretPath={secretPath}
-                  environment={environment}
+                  environments={environments}
                 />
               </motion.div>
             )}
@@ -359,7 +360,7 @@ export const CreateDynamicSecretForm = ({
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}
                   secretPath={secretPath}
-                  environment={environment}
+                  environments={environments}
                 />
               </motion.div>
             )}
@@ -377,7 +378,7 @@ export const CreateDynamicSecretForm = ({
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}
                   secretPath={secretPath}
-                  environment={environment}
+                  environments={environments}
                 />
               </motion.div>
             )}
@@ -395,7 +396,7 @@ export const CreateDynamicSecretForm = ({
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}
                   secretPath={secretPath}
-                  environment={environment}
+                  environments={environments}
                 />
               </motion.div>
             )}
@@ -413,7 +414,7 @@ export const CreateDynamicSecretForm = ({
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}
                   secretPath={secretPath}
-                  environment={environment}
+                  environments={environments}
                 />
               </motion.div>
             )}
@@ -432,7 +433,7 @@ export const CreateDynamicSecretForm = ({
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}
                   secretPath={secretPath}
-                  environment={environment}
+                  environments={environments}
                 />
               </motion.div>
             )}
@@ -450,7 +451,7 @@ export const CreateDynamicSecretForm = ({
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}
                   secretPath={secretPath}
-                  environment={environment}
+                  environments={environments}
                 />
               </motion.div>
             )}

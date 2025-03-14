@@ -19,6 +19,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useRouter, useSearch } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -49,8 +50,10 @@ import {
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
+  ProjectPermissionDynamicSecretActions,
   ProjectPermissionSub,
   useProjectPermission,
+  useSubscription,
   useWorkspace
 } from "@app/context";
 import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
@@ -71,6 +74,7 @@ import { SecretType, SecretV3RawSanitized, TSecretFolder } from "@app/hooks/api/
 import { ProjectType, ProjectVersion } from "@app/hooks/api/workspace/types";
 import { useDynamicSecretOverview, useFolderOverview, useSecretOverview } from "@app/hooks/utils";
 
+import { CreateDynamicSecretForm } from "../SecretDashboardPage/components/ActionBar/CreateDynamicSecretForm";
 import { FolderForm } from "../SecretDashboardPage/components/ActionBar/FolderForm";
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { FolderBreadCrumbs } from "./components/FolderBreadCrumbs";
@@ -131,6 +135,7 @@ export const OverviewPage = () => {
   const [searchFilter, setSearchFilter] = useState("");
   const [debouncedSearchFilter, setDebouncedSearchFilter] = useDebounce(searchFilter);
   const secretPath = (routerSearch?.secretPath as string) || "/";
+  const { subscription } = useSubscription();
 
   const [filter, setFilter] = useState<Filter>(DEFAULT_FILTER_STATE);
   const [filterHistory, setFilterHistory] = useState<
@@ -178,6 +183,17 @@ export const OverviewPage = () => {
   }, []);
 
   const userAvailableEnvs = currentWorkspace?.environments || [];
+  const userAvailableDynamicSecretEnvs = userAvailableEnvs.filter((env) =>
+    permission.can(
+      ProjectPermissionDynamicSecretActions.CreateRootCredential,
+      subject(ProjectPermissionSub.DynamicSecrets, {
+        environment: env.id,
+        secretPath,
+        secretName: "*",
+        secretTags: ["*"]
+      })
+    )
+  );
 
   const [visibleEnvs, setVisibleEnvs] = useState(userAvailableEnvs);
 
@@ -249,7 +265,9 @@ export const OverviewPage = () => {
     "addSecretsInAllEnvs",
     "addFolder",
     "misc",
-    "updateFolder"
+    "updateFolder",
+    "addDynamicSecret",
+    "upgradePlan"
   ] as const);
 
   const handleFolderCreate = async (folderName: string, description: string | null) => {
@@ -845,6 +863,22 @@ export const OverviewPage = () => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <div className="flex flex-col space-y-1 p-1.5">
+                      <Button
+                        leftIcon={<FontAwesomeIcon icon={faFingerprint} className="pr-2" />}
+                        onClick={() => {
+                          if (subscription && subscription.dynamicSecret) {
+                            handlePopUpOpen("addDynamicSecret");
+                            return;
+                          }
+                          handlePopUpOpen("upgradePlan");
+                        }}
+                        isDisabled={userAvailableDynamicSecretEnvs.length === 0}
+                        variant="outline_bg"
+                        className="h-10 text-left"
+                        isFullWidth
+                      >
+                        Add Dynamic Secret
+                      </Button>
                       <ProjectPermissionCan
                         I={ProjectPermissionActions.Create}
                         a={ProjectPermissionSub.SecretFolders}
@@ -1170,6 +1204,24 @@ export const OverviewPage = () => {
           />
         </ModalContent>
       </Modal>
+      <CreateDynamicSecretForm
+        isOpen={popUp.addDynamicSecret.isOpen}
+        onToggle={(isOpen) => handlePopUpToggle("addDynamicSecret", isOpen)}
+        projectSlug={projectSlug}
+        environments={userAvailableDynamicSecretEnvs}
+        secretPath={secretPath}
+      />
+      {subscription && (
+        <UpgradePlanModal
+          isOpen={popUp.upgradePlan.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+          text={
+            subscription.slug === null
+              ? "You can perform this action under an Enterprise license"
+              : "You can perform this action if you switch to Infisical's Team plan"
+          }
+        />
+      )}
     </div>
   );
 };

@@ -5,9 +5,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, Select, SelectItem } from "@app/components/v2";
+import {
+  Button,
+  FilterableSelect,
+  FormControl,
+  Input,
+  Select,
+  SelectItem
+} from "@app/components/v2";
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
+import { WorkspaceEnv } from "@app/hooks/api/types";
 
 enum ConfigType {
   URL = "url",
@@ -52,7 +60,8 @@ const formSchema = z.object({
     .string()
     .trim()
     .min(1)
-    .refine((val) => val.toLowerCase() === val, "Must be lowercase")
+    .refine((val) => val.toLowerCase() === val, "Must be lowercase"),
+  environments: z.object({ name: z.string(), slug: z.string() }).array()
 });
 
 type TForm = z.infer<typeof formSchema>;
@@ -62,13 +71,13 @@ type Props = {
   onCancel: () => void;
   secretPath: string;
   projectSlug: string;
-  environment: string;
+  environments: WorkspaceEnv[];
 };
 
 export const TotpInputForm = ({
   onCompleted,
   onCancel,
-  environment,
+  environments,
   secretPath,
   projectSlug
 }: Props) => {
@@ -82,7 +91,8 @@ export const TotpInputForm = ({
     defaultValues: {
       provider: {
         configType: ConfigType.URL
-      }
+      },
+      environments: environments.length === 1 ? environments : []
     }
   });
 
@@ -90,26 +100,33 @@ export const TotpInputForm = ({
 
   const createDynamicSecret = useCreateDynamicSecret();
 
-  const handleCreateDynamicSecret = async ({ name, provider }: TForm) => {
+  const handleCreateDynamicSecret = async ({
+    name,
+    provider,
+    environments: selectedEnvs
+  }: TForm) => {
     // wait till previous request is finished
     if (createDynamicSecret.isPending) return;
-    try {
-      await createDynamicSecret.mutateAsync({
-        provider: { type: DynamicSecretProviders.Totp, inputs: provider },
-        maxTTL: "24h",
-        name,
-        path: secretPath,
-        defaultTTL: "1m",
-        projectSlug,
-        environmentSlug: environment
-      });
-      onCompleted();
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text: err instanceof Error ? err.message : "Failed to create dynamic secret"
-      });
-    }
+    const promises = selectedEnvs.map(async (environment) => {
+      try {
+        await createDynamicSecret.mutateAsync({
+          provider: { type: DynamicSecretProviders.Totp, inputs: provider },
+          maxTTL: "24h",
+          name,
+          path: secretPath,
+          defaultTTL: "1m",
+          projectSlug,
+          environmentSlug: environment.slug
+        });
+        onCompleted();
+      } catch (err) {
+        createNotification({
+          type: "error",
+          text: err instanceof Error ? err.message : "Failed to create dynamic secret"
+        });
+      }
+    });
+    await Promise.all(promises);
   };
 
   return (
@@ -294,6 +311,30 @@ export const TotpInputForm = ({
                     your TOTP provider specifies otherwise.
                   </p>
                 </>
+              )}
+              {environments.length > 1 && (
+                <Controller
+                  control={control}
+                  name="environments"
+                  render={({ field: { value, onChange }, fieldState: { error } }) => (
+                    <FormControl
+                      label="Environments"
+                      isError={Boolean(error)}
+                      errorText={error?.message}
+                    >
+                      <FilterableSelect
+                        isMulti
+                        options={environments}
+                        value={value}
+                        onChange={onChange}
+                        placeholder="Select environments to create secret in..."
+                        getOptionLabel={(option) => option.name}
+                        getOptionValue={(option) => option.slug}
+                        menuPlacement="top"
+                      />
+                    </FormControl>
+                  )}
+                />
               )}
             </div>
           </div>

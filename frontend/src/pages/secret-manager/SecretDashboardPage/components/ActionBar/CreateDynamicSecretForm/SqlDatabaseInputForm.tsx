@@ -12,6 +12,7 @@ import {
   AccordionItem,
   AccordionTrigger,
   Button,
+  FilterableSelect,
   FormControl,
   Input,
   SecretInput,
@@ -22,6 +23,7 @@ import {
 import { useWorkspace } from "@app/context";
 import { gatewaysQueryKeys, useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders, SqlProviders } from "@app/hooks/api/dynamicSecret/types";
+import { WorkspaceEnv } from "@app/hooks/api/types";
 
 const passwordRequirementsSchema = z
   .object({
@@ -79,7 +81,8 @@ const formSchema = z.object({
       if (valMs > 24 * 60 * 60 * 1000)
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
     }),
-  name: z.string().refine((val) => val.toLowerCase() === val, "Must be lowercase")
+  name: z.string().refine((val) => val.toLowerCase() === val, "Must be lowercase"),
+  environments: z.object({ name: z.string(), slug: z.string() }).array()
 });
 type TForm = z.infer<typeof formSchema>;
 
@@ -88,7 +91,7 @@ type Props = {
   onCancel: () => void;
   secretPath: string;
   projectSlug: string;
-  environment: string;
+  environments: WorkspaceEnv[];
 };
 
 const getSqlStatements = (provider: SqlProviders) => {
@@ -145,7 +148,7 @@ const getDefaultPort = (provider: SqlProviders) => {
 export const SqlDatabaseInputForm = ({
   onCompleted,
   onCancel,
-  environment,
+  environments,
   secretPath,
   projectSlug
 }: Props) => {
@@ -172,7 +175,8 @@ export const SqlDatabaseInputForm = ({
           },
           allowedSymbols: "-_.~!*"
         }
-      }
+      },
+      environments: environments.length === 1 ? environments : []
     }
   });
 
@@ -181,26 +185,35 @@ export const SqlDatabaseInputForm = ({
     gatewaysQueryKeys.listProjectGateways({ projectId: currentWorkspace.id })
   );
 
-  const handleCreateDynamicSecret = async ({ name, maxTTL, provider, defaultTTL }: TForm) => {
+  const handleCreateDynamicSecret = async ({
+    name,
+    maxTTL,
+    provider,
+    defaultTTL,
+    environments: selectedEnvs
+  }: TForm) => {
     // wait till previous request is finished
     if (createDynamicSecret.isPending) return;
-    try {
-      await createDynamicSecret.mutateAsync({
-        provider: { type: DynamicSecretProviders.SqlDatabase, inputs: provider },
-        maxTTL,
-        name,
-        path: secretPath,
-        defaultTTL,
-        projectSlug,
-        environmentSlug: environment
-      });
-      onCompleted();
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Failed to create dynamic secret"
-      });
-    }
+    const promises = selectedEnvs.map(async (env) => {
+      try {
+        await createDynamicSecret.mutateAsync({
+          provider: { type: DynamicSecretProviders.SqlDatabase, inputs: provider },
+          maxTTL,
+          name,
+          path: secretPath,
+          defaultTTL,
+          projectSlug,
+          environmentSlug: env.slug
+        });
+        onCompleted();
+      } catch {
+        createNotification({
+          type: "error",
+          text: "Failed to create dynamic secret"
+        });
+      }
+    });
+    await Promise.all(promises);
   };
 
   const handleDatabaseChange = (type: SqlProviders) => {
@@ -649,6 +662,30 @@ export const SqlDatabaseInputForm = ({
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
+                {environments.length > 1 && (
+                  <Controller
+                    control={control}
+                    name="environments"
+                    render={({ field: { value, onChange }, fieldState: { error } }) => (
+                      <FormControl
+                        label="Environments"
+                        isError={Boolean(error)}
+                        errorText={error?.message}
+                      >
+                        <FilterableSelect
+                          isMulti
+                          options={environments}
+                          value={value}
+                          onChange={onChange}
+                          placeholder="Select environments to create secret in..."
+                          getOptionLabel={(option) => option.name}
+                          getOptionValue={(option) => option.slug}
+                          menuPlacement="top"
+                        />
+                      </FormControl>
+                    )}
+                  />
+                )}
               </div>
             </div>
           </div>
