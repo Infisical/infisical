@@ -75,8 +75,11 @@ const getGcpSecrets = async (accessToken: string, secretSync: TGcpSyncWithCreden
       if (
         error instanceof AxiosError &&
         (error.response?.status === 404 ||
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          (error.response?.status === 400 && error.response.data.error.status === "FAILED_PRECONDITION"))
+          (error.response?.status === 400 &&
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            error.response.data.error.status === "FAILED_PRECONDITION" &&
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-call
+            error.response.data.error.message.match(/(?:disabled|destroyed)/i)))
       ) {
         res[key] = "";
       } else {
