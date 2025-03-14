@@ -4,18 +4,17 @@ import { createFileRoute, linkOptions, stripSearchParams } from "@tanstack/react
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
-import { SecretSharingPage } from "./SecretSharingPage";
+import { SecretSharingSettingsPage } from "./SecretSharingSettingsPage";
 
-const SecretSharingQueryParams = z.object({
-  selectedTab: z.string().catch("").default("share-secret")
+const SettingsPageQueryParams = z.object({
+  selectedTab: z.string().catch("")
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/"
+  "/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/settings"
 )({
-  component: SecretSharingPage,
-
-  validateSearch: zodValidator(SecretSharingQueryParams),
+  component: SecretSharingSettingsPage,
+  validateSearch: zodValidator(SettingsPageQueryParams),
   search: {
     middlewares: [stripSearchParams({ selectedTab: "" })]
   },
@@ -27,7 +26,11 @@ export const Route = createFileRoute(
         link: linkOptions({ to: "/" })
       },
       {
-        label: "Secret Sharing"
+        label: "Secret Sharing",
+        link: linkOptions({ to: "/organization/secret-sharing" })
+      },
+      {
+        label: "Settings"
       }
     ]
   })

@@ -34,11 +34,16 @@ export enum OrgPermissionSubjects {
   ProjectTemplates = "project-templates",
   AppConnections = "app-connections",
   Kmip = "kmip",
-  Gateway = "gateway"
+  Gateway = "gateway",
+  SecretShare = "secret-share"
 }
 
 export enum OrgPermissionAdminConsoleAction {
   AccessAllProjects = "access-all-projects"
+}
+
+export enum OrgPermissionSecretShareAction {
+  ManageSettings = "manage-settings"
 }
 
 export enum OrgPermissionAppConnectionActions {
@@ -78,7 +83,8 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.ProjectTemplates]
   | [OrgPermissionAppConnectionActions, OrgPermissionSubjects.AppConnections]
   | [OrgPermissionKmipActions, OrgPermissionSubjects.Kmip]
-  | [OrgGatewayPermissionActions, OrgPermissionSubjects.Gateway];
+  | [OrgGatewayPermissionActions, OrgPermissionSubjects.Gateway]
+  | [OrgPermissionSecretShareAction, OrgPermissionSubjects.SecretShare];
 // TODO(scott): add back once org UI refactored
 // | [
 //     OrgPermissionAppConnectionActions,
