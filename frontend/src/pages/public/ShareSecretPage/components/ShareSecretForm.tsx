@@ -7,7 +7,6 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, IconButton, Input, Select, SelectItem } from "@app/components/v2";
-import { useOrganization } from "@app/context";
 import { useTimedReset } from "@app/hooks";
 import { useCreatePublicSharedSecret, useCreateSharedSecret } from "@app/hooks/api";
 import { SecretSharingAccessType } from "@app/hooks/api/secretSharing";
@@ -42,11 +41,15 @@ export type FormData = z.infer<typeof schema>;
 type Props = {
   isPublic: boolean; // whether or not this is a public (non-authenticated) secret sharing form
   value?: string;
+  allowSecretSharingOutsideOrganization?: boolean;
 };
 
-export const ShareSecretForm = ({ isPublic, value }: Props) => {
+export const ShareSecretForm = ({
+  isPublic,
+  value,
+  allowSecretSharingOutsideOrganization = true
+}: Props) => {
   const [secretLink, setSecretLink] = useState("");
-  const { currentOrg } = useOrganization();
   const [, isCopyingSecret, setCopyTextSecret] = useTimedReset<string>({
     initialState: "Copy to clipboard"
   });
@@ -232,7 +235,7 @@ export const ShareSecretForm = ({ isPublic, value }: Props) => {
                 onValueChange={(e) => onChange(e)}
                 className="w-full"
               >
-                {currentOrg?.allowSecretSharingOutsideOrganization && (
+                {allowSecretSharingOutsideOrganization && (
                   <SelectItem value={SecretSharingAccessType.Anyone}>Anyone</SelectItem>
                 )}
                 <SelectItem value={SecretSharingAccessType.Organization}>
