@@ -106,6 +106,7 @@ export const AwsElastiCacheInputForm = ({
   }: TForm) => {
     // wait till previous request is finished
     if (createDynamicSecret.isPending) return;
+    let hasErrors = false;
     const promises = selectedEnvs.map(async (env) => {
       try {
         await createDynamicSecret.mutateAsync({
@@ -117,15 +118,18 @@ export const AwsElastiCacheInputForm = ({
           projectSlug,
           environmentSlug: env.slug
         });
-        onCompleted();
       } catch {
+        hasErrors = true;
         createNotification({
           type: "error",
-          text: "Failed to create dynamic secret"
+          text: `Failed to create dynamic secret in environment ${env.name}`
         });
       }
     });
     await Promise.all(promises);
+    if (hasErrors) {
+      onCompleted();
+    }
   };
 
   return (

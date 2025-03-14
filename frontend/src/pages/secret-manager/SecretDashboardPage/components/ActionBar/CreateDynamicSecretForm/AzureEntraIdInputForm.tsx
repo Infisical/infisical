@@ -116,8 +116,9 @@ export const AzureEntraIdInputForm = ({
     environments: selectedEnvs
   }: TForm) => {
     // wait till previous request is finished
-    const promises = selectedEnvs.map(async (environment) => {
-      if (createDynamicSecret.isPending) return;
+    if (createDynamicSecret.isPending) return;
+    let hasErrors = false;
+    const promises = selectedEnvs.map(async (env) => {
       try {
         selectedUsers.map(async (user: { id: string; name: string; email: string }) => {
           await createDynamicSecret.mutateAsync({
@@ -136,18 +137,21 @@ export const AzureEntraIdInputForm = ({
             path: secretPath,
             defaultTTL,
             projectSlug,
-            environmentSlug: environment.slug
+            environmentSlug: env.slug
           });
         });
-        onCompleted();
       } catch {
         createNotification({
           type: "error",
-          text: "Failed to create dynamic secret"
+          text: `Failed to create dynamic secret in environment ${env.name}`
         });
+        hasErrors = true;
       }
     });
     await Promise.all(promises);
+    if (hasErrors) {
+      onCompleted();
+    }
   };
 
   return (

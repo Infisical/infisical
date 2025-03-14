@@ -194,6 +194,7 @@ export const SqlDatabaseInputForm = ({
   }: TForm) => {
     // wait till previous request is finished
     if (createDynamicSecret.isPending) return;
+    let hasErrors = false;
     const promises = selectedEnvs.map(async (env) => {
       try {
         await createDynamicSecret.mutateAsync({
@@ -205,15 +206,18 @@ export const SqlDatabaseInputForm = ({
           projectSlug,
           environmentSlug: env.slug
         });
-        onCompleted();
       } catch {
         createNotification({
           type: "error",
-          text: "Failed to create dynamic secret"
+          text: `Failed to create dynamic secret for environment ${env.name}`
         });
+        hasErrors = true;
       }
     });
     await Promise.all(promises);
+    if (hasErrors) {
+      onCompleted();
+    }
   };
 
   const handleDatabaseChange = (type: SqlProviders) => {

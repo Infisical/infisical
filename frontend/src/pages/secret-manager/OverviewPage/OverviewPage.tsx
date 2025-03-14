@@ -866,7 +866,7 @@ export const OverviewPage = () => {
                       <Button
                         leftIcon={<FontAwesomeIcon icon={faFingerprint} className="pr-2" />}
                         onClick={() => {
-                          if (subscription && subscription.dynamicSecret) {
+                          if (subscription?.dynamicSecret) {
                             handlePopUpOpen("addDynamicSecret");
                             return;
                           }

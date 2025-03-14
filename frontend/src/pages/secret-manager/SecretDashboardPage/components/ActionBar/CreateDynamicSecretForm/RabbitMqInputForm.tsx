@@ -115,7 +115,8 @@ export const RabbitMqInputForm = ({
   }: TForm) => {
     // wait till previous request is finished
     if (createDynamicSecret.isPending) return;
-    const promises = selectedEnvs.map(async (environment) => {
+    let hasErrors = false;
+    const promises = selectedEnvs.map(async (env) => {
       try {
         await createDynamicSecret.mutateAsync({
           provider: { type: DynamicSecretProviders.RabbitMq, inputs: provider },
@@ -124,17 +125,20 @@ export const RabbitMqInputForm = ({
           path: secretPath,
           defaultTTL,
           projectSlug,
-          environmentSlug: environment.slug
+          environmentSlug: env.slug
         });
-        onCompleted();
       } catch {
         createNotification({
           type: "error",
-          text: "Failed to create dynamic secret"
+          text: `Failed to create dynamic secret in environment ${env.name}`
         });
+        hasErrors = true;
       }
     });
     await Promise.all(promises);
+    if (hasErrors) {
+      onCompleted();
+    }
   };
 
   const selectedTags = watch("provider.tags");
