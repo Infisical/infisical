@@ -1726,7 +1726,7 @@ export const SecretSyncs = {
     const destinationName = SECRET_SYNC_NAME_MAP[destination];
     return {
       initialSyncBehavior: `Specify how Infisical should resolve the initial sync to the ${destinationName} destination.`,
-      disableSecretDeletion: `Enable this flag to prevent removal of secrets when syncing from the ${destinationName} destination.`
+      disableSecretDeletion: `Enable this flag to prevent removal of secrets from the ${destinationName} destination when syncing.`
     };
   },
   ADDITIONAL_SYNC_OPTIONS: {
