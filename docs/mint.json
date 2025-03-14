@@ -908,8 +908,6 @@
                 "api-reference/endpoints/app-connections/humanitec/available",
                 "api-reference/endpoints/app-connections/humanitec/get-by-id",
                 "api-reference/endpoints/app-connections/humanitec/get-by-name",
-                "api-reference/endpoints/app-connections/humanitec/create",
-                "api-reference/endpoints/app-connections/humanitec/update",
                 "api-reference/endpoints/app-connections/humanitec/delete"
               ]
             }

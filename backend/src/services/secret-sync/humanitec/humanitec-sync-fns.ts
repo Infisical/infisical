@@ -1,4 +1,5 @@
 import { request } from "@app/lib/config/request";
+import { logger } from "@app/lib/logger";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
@@ -39,6 +40,13 @@ const deleteSecret = async (secretSync: THumanitecSyncWithCredentials, encrypted
     }
   } = secretSync;
 
+  if (destinationConfig.scope === HumanitecSyncScope.Environment && encryptedSecret.source === "app") {
+    logger.info(
+      `Humanitec secret ${encryptedSecret.key} on app ${destinationConfig.app} has no environment override, not deleted as it is an app-level secret`
+    );
+    return;
+  }
+
   try {
     let url = `${IntegrationUrls.HUMANITEC_API_URL}/orgs/${destinationConfig.org}/apps/${destinationConfig.app}`;
     if (destinationConfig.scope === HumanitecSyncScope.Environment) {
@@ -69,11 +77,12 @@ const createSecret = async (secretSync: THumanitecSyncWithCredentials, secretMap
       }
     } = secretSync;
 
+    const appLevelSecret = destinationConfig.scope === HumanitecSyncScope.Application ? secretMap[key].value : "";
     await request.post(
       `${IntegrationUrls.HUMANITEC_API_URL}/orgs/${destinationConfig.org}/apps/${destinationConfig.app}/values`,
       {
         key,
-        value: "",
+        value: appLevelSecret,
         description: secretMap[key].comment || "",
         is_secret: true
       },

@@ -76,11 +76,11 @@ export const HUMANITEC_SYNC_SCOPES: Record<
   [HumanitecSyncScope.Application]: {
     name: "Application",
     description:
-      "Infisical will import any secrets present in the selected Humanitec application. This includes all secrets that are not limited to a specific environment."
+      "Infisical will sync secrets as application level shared values to the specified Humanitec application."
   },
   [HumanitecSyncScope.Environment]: {
     name: "Environment",
     description:
-      "Infisical will import any secrets present in the selected Humanitec environment. This includes all secrets that are limited to the selected environment."
+      "Infisical will sync secrets as environment level shared values to the specified Humanitec application environment."
   }
 };

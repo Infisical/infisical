@@ -46,58 +46,6 @@ export const HumanitecSyncFields = () => {
         }}
       />
       <Controller
-        name="destinationConfig.scope"
-        control={control}
-        defaultValue={HumanitecSyncScope.Application}
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            errorText={error?.message}
-            isError={Boolean(error?.message)}
-            label="Scope"
-            tooltipClassName="max-w-lg py-3"
-            tooltipText={
-              <div className="flex flex-col gap-3">
-                <p>
-                  Specify how Infisical should manage secrets from Humanitec. The following options
-                  are available:
-                </p>
-                <ul className="flex list-disc flex-col gap-3 pl-4">
-                  {Object.values(HUMANITEC_SYNC_SCOPES).map(({ name, description }) => {
-                    return (
-                      <li key={name}>
-                        <p className="text-mineshaft-300">
-                          <span className="font-medium text-bunker-200">{name}</span>: {description}
-                        </p>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            }
-          >
-            <Select
-              value={value}
-              onValueChange={(val) => {
-                onChange(val);
-                setValue("destinationConfig.env", "");
-                setValue("destinationConfig.app", "");
-                setValue("destinationConfig.org", "");
-              }}
-              className="w-full border border-mineshaft-500 capitalize"
-              position="popper"
-              placeholder="Select a scope..."
-              dropdownContainerClassName="max-w-none"
-            >
-              {Object.values(HumanitecSyncScope).map((scope) => (
-                <SelectItem className="capitalize" value={scope} key={scope}>
-                  {scope.replace("-", " ")}
-                </SelectItem>
-              ))}
-            </Select>
-          </FormControl>
-        )}
-      />
-      <Controller
         name="destinationConfig.org"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
@@ -163,6 +111,56 @@ export const HumanitecSyncFields = () => {
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id.toString()}
             />
+          </FormControl>
+        )}
+      />
+      <Controller
+        name="destinationConfig.scope"
+        control={control}
+        defaultValue={HumanitecSyncScope.Application}
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
+          <FormControl
+            errorText={error?.message}
+            isError={Boolean(error?.message)}
+            label="Scope"
+            tooltipClassName="max-w-lg py-3"
+            tooltipText={
+              <div className="flex flex-col gap-3">
+                <p>
+                  Specify how Infisical should manage secrets from Humanitec. The following options
+                  are available:
+                </p>
+                <ul className="flex list-disc flex-col gap-3 pl-4">
+                  {Object.values(HUMANITEC_SYNC_SCOPES).map(({ name, description }) => {
+                    return (
+                      <li key={name}>
+                        <p className="text-mineshaft-300">
+                          <span className="font-medium text-bunker-200">{name}</span>: {description}
+                        </p>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            }
+          >
+            <Select
+              value={value}
+              onValueChange={(val) => {
+                onChange(val);
+                setValue("destinationConfig.env", "");
+              }}
+              className="w-full border border-mineshaft-500 capitalize"
+              position="popper"
+              placeholder="Select a scope..."
+              dropdownContainerClassName="max-w-none"
+            >
+              {Object.values(HumanitecSyncScope).map((scope) => (
+                <SelectItem className="capitalize" value={scope} key={scope}>
+                  {scope.replace("-", " ")}
+                </SelectItem>
+              ))}
+            </Select>
           </FormControl>
         )}
       />

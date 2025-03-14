@@ -2,7 +2,6 @@ import { AxiosError, AxiosResponse } from "axios";
 
 import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
@@ -73,30 +72,23 @@ export const listOrganizations = async (appConnection: THumanitecConnection): Pr
   const orgsWithApps: HumanitecOrgWithApps[] = [];
 
   for (const org of orgs) {
-    try {
-      // eslint-disable-next-line no-await-in-loop
-      const appsResponse = await request.get<HumanitecApp[]>(
-        `${IntegrationUrls.HUMANITEC_API_URL}/orgs/${org.id}/apps`,
-        {
-          headers: {
-            Authorization: `Bearer ${apiToken}`
-          }
-        }
-      );
-
-      if (appsResponse.data) {
-        const apps = appsResponse.data;
-        orgsWithApps.push({
-          ...org,
-          apps: apps.map((app) => ({
-            name: app.name,
-            id: app.id,
-            envs: app.envs
-          }))
-        });
+    // eslint-disable-next-line no-await-in-loop
+    const appsResponse = await request.get<HumanitecApp[]>(`${IntegrationUrls.HUMANITEC_API_URL}/orgs/${org.id}/apps`, {
+      headers: {
+        Authorization: `Bearer ${apiToken}`
       }
-    } catch (error) {
-      logger.error(error, `Failed to get apps for organization ${org.name}`);
+    });
+
+    if (appsResponse.data) {
+      const apps = appsResponse.data;
+      orgsWithApps.push({
+        ...org,
+        apps: apps.map((app) => ({
+          name: app.name,
+          id: app.id,
+          envs: app.envs
+        }))
+      });
     }
   }
   return orgsWithApps;
