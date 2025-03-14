@@ -26,6 +26,13 @@ const (
 	PUSH_SECRET_DELETE_POLICY_ENABLED  PushSecretDeletionPolicy = "Delete"
 )
 
+type ManagedKubeResourceType string
+
+const (
+	MANAGED_KUBE_RESOURCE_TYPE_SECRET     ManagedKubeResourceType = "Secret"
+	MANAGED_KUBE_RESOURCE_TYPE_CONFIG_MAP ManagedKubeResourceType = "ConfigMap"
+)
+
 type DynamicSecretLeaseRevocationPolicy string
 
 const (

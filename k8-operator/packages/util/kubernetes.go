@@ -25,6 +25,16 @@ func GetKubeSecretByNamespacedName(ctx context.Context, reconcilerClient client.
 	return kubeSecret, err
 }
 
+func GetKubeConfigMapByNamespacedName(ctx context.Context, reconcilerClient client.Client, namespacedName types.NamespacedName) (*corev1.ConfigMap, error) {
+	kubeConfigMap := &corev1.ConfigMap{}
+	err := reconcilerClient.Get(ctx, namespacedName, kubeConfigMap)
+	if err != nil {
+		kubeConfigMap = nil
+	}
+
+	return kubeConfigMap, err
+}
+
 func GetInfisicalUniversalAuthFromKubeSecret(ctx context.Context, reconcilerClient client.Client, universalAuthRef v1alpha1.KubeSecretReference) (machineIdentityDetails model.MachineIdentityDetails, err error) {
 
 	universalAuthCredsFromKubeSecret, err := GetKubeSecretByNamespacedName(ctx, reconcilerClient, types.NamespacedName{
