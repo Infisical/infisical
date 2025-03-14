@@ -88,9 +88,10 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
               <div className="mb-3 ml-7">
                 <p className="mb-3">
                   <strong>Legacy system:</strong> Users with higher privilege levels could modify
-                  access for anyone below them. This limits accountability and makes it impossible
-                  to allow specialized roles (like team leads) to manage their team&apos;s access
-                  without granting them broader administrative powers.
+                  access for anyone below them. This rigid hierarchy makes it difficult to implement
+                  precise access control policies, forcing you to either over-grant permissions or
+                  create complex workarounds when specialized roles (like team leads) need to manage
+                  their team&apos;s access without receiving broader administrative powers.
                 </p>
                 <p>
                   <strong>New system:</strong> Users need explicit permission to modify specific
