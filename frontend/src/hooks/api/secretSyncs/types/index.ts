@@ -8,6 +8,7 @@ import { TAwsSecretsManagerSync } from "./aws-secrets-manager-sync";
 import { TAzureAppConfigurationSync } from "./azure-app-configuration-sync";
 import { TAzureKeyVaultSync } from "./azure-key-vault-sync";
 import { TGcpSync } from "./gcp-sync";
+import { THumanitecSync } from "./humanitec-sync";
 
 export type TSecretSyncOption = {
   name: string;
@@ -22,7 +23,8 @@ export type TSecretSync =
   | TGcpSync
   | TAzureKeyVaultSync
   | TAzureAppConfigurationSync
-  | TDatabricksSync;
+  | TDatabricksSync
+  | THumanitecSync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 

@@ -38,6 +38,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
     case SecretSync.AzureKeyVault:
     case SecretSync.AzureAppConfiguration:
     case SecretSync.Databricks:
+    case SecretSync.Humanitec:
       AdditionalSyncOptionsFieldsComponent = null;
       break;
     default:

@@ -35,6 +35,8 @@ import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
 import { gcpConnectionService } from "./gcp/gcp-connection-service";
 import { ValidateGitHubConnectionCredentialsSchema } from "./github";
 import { githubConnectionService } from "./github/github-connection-service";
+import { ValidateHumanitecConnectionCredentialsSchema } from "./humanitec";
+import { humanitecConnectionService } from "./humanitec/humanitec-connection-service";
 
 export type TAppConnectionServiceFactoryDep = {
   appConnectionDAL: TAppConnectionDALFactory;
@@ -50,7 +52,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.GCP]: ValidateGcpConnectionCredentialsSchema,
   [AppConnection.AzureKeyVault]: ValidateAzureKeyVaultConnectionCredentialsSchema,
   [AppConnection.AzureAppConfiguration]: ValidateAzureAppConfigurationConnectionCredentialsSchema,
-  [AppConnection.Databricks]: ValidateDatabricksConnectionCredentialsSchema
+  [AppConnection.Databricks]: ValidateDatabricksConnectionCredentialsSchema,
+  [AppConnection.Humanitec]: ValidateHumanitecConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -371,6 +374,7 @@ export const appConnectionServiceFactory = ({
     github: githubConnectionService(connectAppConnectionById),
     gcp: gcpConnectionService(connectAppConnectionById),
     databricks: databricksConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
-    aws: awsConnectionService(connectAppConnectionById)
+    aws: awsConnectionService(connectAppConnectionById),
+    humanitec: humanitecConnectionService(connectAppConnectionById)
   };
 };

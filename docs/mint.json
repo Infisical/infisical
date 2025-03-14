@@ -408,7 +408,8 @@
             "integrations/app-connections/azure-key-vault",
             "integrations/app-connections/databricks",
             "integrations/app-connections/gcp",
-            "integrations/app-connections/github"
+            "integrations/app-connections/github",
+            "integrations/app-connections/humanitec"
           ]
         }
       ]
@@ -426,7 +427,8 @@
             "integrations/secret-syncs/azure-key-vault",
             "integrations/secret-syncs/databricks",
             "integrations/secret-syncs/gcp-secret-manager",
-            "integrations/secret-syncs/github"
+            "integrations/secret-syncs/github",
+            "integrations/secret-syncs/humanitec"
           ]
         }
       ]
@@ -898,6 +900,18 @@
                 "api-reference/endpoints/app-connections/github/update",
                 "api-reference/endpoints/app-connections/github/delete"
               ]
+            },
+            {
+              "group": "Humanitec",
+              "pages": [
+                "api-reference/endpoints/app-connections/humanitec/list",
+                "api-reference/endpoints/app-connections/humanitec/available",
+                "api-reference/endpoints/app-connections/humanitec/get-by-id",
+                "api-reference/endpoints/app-connections/humanitec/get-by-name",
+                "api-reference/endpoints/app-connections/humanitec/create",
+                "api-reference/endpoints/app-connections/humanitec/update",
+                "api-reference/endpoints/app-connections/humanitec/delete"
+              ]
             }
           ]
         },
@@ -1000,6 +1014,19 @@
                 "api-reference/endpoints/secret-syncs/github/delete",
                 "api-reference/endpoints/secret-syncs/github/sync-secrets",
                 "api-reference/endpoints/secret-syncs/github/remove-secrets"
+              ]
+            },
+            {
+              "group": "Humanitec",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/humanitec/list",
+                "api-reference/endpoints/secret-syncs/humanitec/get-by-id",
+                "api-reference/endpoints/secret-syncs/humanitec/get-by-name",
+                "api-reference/endpoints/secret-syncs/humanitec/create",
+                "api-reference/endpoints/secret-syncs/humanitec/update",
+                "api-reference/endpoints/secret-syncs/humanitec/delete",
+                "api-reference/endpoints/secret-syncs/humanitec/sync-secrets",
+                "api-reference/endpoints/secret-syncs/humanitec/remove-secrets"
               ]
             }
           ]

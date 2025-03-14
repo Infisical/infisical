@@ -43,6 +43,12 @@ import {
   TAzureKeyVaultSyncWithCredentials
 } from "./azure-key-vault";
 import { TGcpSync, TGcpSyncInput, TGcpSyncListItem, TGcpSyncWithCredentials } from "./gcp";
+import {
+  THumanitecSync,
+  THumanitecSyncInput,
+  THumanitecSyncListItem,
+  THumanitecSyncWithCredentials
+} from "./humanitec";
 
 export type TSecretSync =
   | TAwsParameterStoreSync
@@ -51,7 +57,8 @@ export type TSecretSync =
   | TGcpSync
   | TAzureKeyVaultSync
   | TAzureAppConfigurationSync
-  | TDatabricksSync;
+  | TDatabricksSync
+  | THumanitecSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -60,7 +67,8 @@ export type TSecretSyncWithCredentials =
   | TGcpSyncWithCredentials
   | TAzureKeyVaultSyncWithCredentials
   | TAzureAppConfigurationSyncWithCredentials
-  | TDatabricksSyncWithCredentials;
+  | TDatabricksSyncWithCredentials
+  | THumanitecSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -69,7 +77,8 @@ export type TSecretSyncInput =
   | TGcpSyncInput
   | TAzureKeyVaultSyncInput
   | TAzureAppConfigurationSyncInput
-  | TDatabricksSyncInput;
+  | TDatabricksSyncInput
+  | THumanitecSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -78,7 +87,8 @@ export type TSecretSyncListItem =
   | TGcpSyncListItem
   | TAzureKeyVaultSyncListItem
   | TAzureAppConfigurationSyncListItem
-  | TDatabricksSyncListItem;
+  | TDatabricksSyncListItem
+  | THumanitecSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;
