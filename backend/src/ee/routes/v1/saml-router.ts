@@ -22,10 +22,10 @@ import { SanitizedSamlConfigSchema } from "@app/server/routes/sanitizedSchema/di
 import { AuthMode } from "@app/services/auth/auth-type";
 
 type TSAMLConfig = {
-  callbackUrl: string; 
+  callbackUrl: string;
   entryPoint: string;
   issuer: string;
-  cert: string;
+  idpCert: string;
   audience: string;
   wantAuthnResponseSigned?: boolean;
   wantAssertionsSigned?: boolean;
@@ -72,7 +72,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
               callbackUrl: `${appCfg.SITE_URL}/api/v1/sso/saml2/${ssoConfig.id}`,
               entryPoint: ssoConfig.entryPoint,
               issuer: ssoConfig.issuer,
-              cert: ssoConfig.cert,
+              idpCert: ssoConfig.cert,
               audience: appCfg.SITE_URL || ""
             };
             if (ssoConfig.authProvider === SamlProviders.JUMPCLOUD_SAML) {
