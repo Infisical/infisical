@@ -3,6 +3,7 @@ import { SecretSyncInitialSyncBehavior, SecretSyncStatus } from "@app/hooks/api/
 
 export type RootSyncOptions = {
   initialSyncBehavior: SecretSyncInitialSyncBehavior;
+  disableSecretDeletion?: boolean;
   // prependPrefix?: string;
   // appendSuffix?: string;
 };

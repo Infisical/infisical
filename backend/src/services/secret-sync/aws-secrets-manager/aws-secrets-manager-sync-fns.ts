@@ -396,6 +396,8 @@ export const AwsSecretsManagerSyncFns = {
         }
       }
 
+      if (syncOptions.disableSecretDeletion) return;
+
       for await (const secretKey of Object.keys(awsSecretsRecord)) {
         if (!(secretKey in secretMap) || !secretMap[secretKey].value) {
           try {

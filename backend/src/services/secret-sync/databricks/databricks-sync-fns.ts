@@ -112,6 +112,8 @@ export const databricksSyncFactory = ({ kmsService, appConnectionDAL }: TDatabri
       accessToken
     });
 
+    if (secretSync.syncOptions.disableSecretDeletion) return;
+
     for await (const secret of databricksSecretKeys) {
       if (!(secret.key in secretMap)) {
         await deleteDatabricksSecrets({

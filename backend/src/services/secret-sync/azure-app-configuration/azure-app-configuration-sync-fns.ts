@@ -136,6 +136,8 @@ export const azureAppConfigurationSyncFactory = ({
       }
     }
 
+    if (secretSync.syncOptions.disableSecretDeletion) return;
+
     for await (const key of Object.keys(azureAppConfigSecrets)) {
       const azureSecret = azureAppConfigSecrets[key];
       if (

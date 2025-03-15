@@ -196,6 +196,8 @@ export const HumanitecSyncFns = {
       }
     }
 
+    if (secretSync.syncOptions.disableSecretDeletion) return;
+
     for await (const humanitecSecret of humanitecSecrets) {
       if (!secretMap[humanitecSecret.key]) {
         await deleteSecret(secretSync, humanitecSecret);

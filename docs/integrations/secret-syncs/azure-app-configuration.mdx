@@ -6,7 +6,7 @@ description: "Learn how to configure an Azure App Configuration Sync for Infisic
 **Prerequisites:**
 
         - Set up and add secrets to [Infisical Cloud](https://app.infisical.com)
-        - Create a [Azure Connection](/integrations/app-connections/azure), configured for Azure App Configuration.
+        - Create an [Azure App Configuration Connection](/integrations/app-connections/azure-app-configuration)
 
 <Note>
   The Azure App Configuration Secret Sync requires the following permissions to be set on the user / service principal
@@ -50,6 +50,7 @@ description: "Learn how to configure an Azure App Configuration Sync for Infisic
                 - **Import Secrets (Prioritize Azure App Configuration)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Secrets Manager over Infisical when keys conflict.
 
             - **Auto-Sync Enabled**: If enabled, secrets will automatically be synced from the source location when changes occur. Disable to enforce manual syncing only.
+            - **Disable Secret Deletion**: If enabled, Infisical will not remove secrets from the sync destination. Enable this option if you intend to manage some secrets manually outside of Infisical.
 
         6. Configure the **Details** of your Azure App Configuration Sync, then click **Next**.
         ![Configure Details](/images/secret-syncs/azure-app-configuration/app-config-details.png)

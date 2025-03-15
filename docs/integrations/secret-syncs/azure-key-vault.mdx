@@ -6,7 +6,7 @@ description: "Learn how to configure a Azure Key Vault Sync for Infisical."
 **Prerequisites:**
 
         - Set up and add secrets to [Infisical Cloud](https://app.infisical.com)
-        - Create a [Azure Connection](/integrations/app-connections/azure), configured for Azure Key Vault.
+        - Create an [Azure Key Vault Connection](/integrations/app-connections/azure-key-vault)
 
 <Note>
   The Azure Key Vault Secret Sync requires the following secrets permissions to be set on the user / service principal
@@ -52,6 +52,7 @@ description: "Learn how to configure a Azure Key Vault Sync for Infisical."
                 - **Import Secrets (Prioritize Infisical)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Infisical over Secrets Manager when keys conflict.
                 - **Import Secrets (Prioritize Azure Key Vault)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Secrets Manager over Infisical when keys conflict.
             - **Auto-Sync Enabled**: If enabled, secrets will automatically be synced from the source location when changes occur. Disable to enforce manual syncing only.
+            - **Disable Secret Deletion**: If enabled, Infisical will not remove secrets from the sync destination. Enable this option if you intend to manage some secrets manually outside of Infisical.
 
         6. Configure the **Details** of your Azure Key Vault Sync, then click **Next**.
         ![Configure Details](/images/secret-syncs/azure-key-vault/vault-details.png)

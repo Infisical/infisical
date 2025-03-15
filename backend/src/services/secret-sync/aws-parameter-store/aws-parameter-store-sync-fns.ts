@@ -382,6 +382,8 @@ export const AwsParameterStoreSyncFns = {
       }
     }
 
+    if (syncOptions.disableSecretDeletion) return;
+
     const parametersToDelete: AWS.SSM.Parameter[] = [];
 
     for (const entry of Object.entries(awsParameterStoreSecretsRecord)) {

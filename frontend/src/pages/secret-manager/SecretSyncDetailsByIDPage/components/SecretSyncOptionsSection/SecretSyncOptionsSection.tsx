@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { SecretSyncLabel } from "@app/components/secret-syncs";
-import { IconButton } from "@app/components/v2";
+import { Badge, IconButton } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP } from "@app/helpers/secretSyncs";
@@ -24,7 +24,8 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
     syncOptions: {
       // appendSuffix,
       // prependPrefix,
-      initialSyncBehavior
+      initialSyncBehavior,
+      disableSecretDeletion
     }
   } = secretSync;
 
@@ -58,24 +59,22 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
       <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
         <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
           <h3 className="font-semibold text-mineshaft-100">Sync Options</h3>
-          {AdditionalSyncOptionsComponent && (
-            <ProjectPermissionCan
-              I={ProjectPermissionSecretSyncActions.Edit}
-              a={ProjectPermissionSub.SecretSyncs}
-            >
-              {(isAllowed) => (
-                <IconButton
-                  variant="plain"
-                  colorSchema="secondary"
-                  isDisabled={!isAllowed}
-                  ariaLabel="Edit sync options"
-                  onClick={onEditOptions}
-                >
-                  <FontAwesomeIcon icon={faEdit} />
-                </IconButton>
-              )}
-            </ProjectPermissionCan>
-          )}
+          <ProjectPermissionCan
+            I={ProjectPermissionSecretSyncActions.Edit}
+            a={ProjectPermissionSub.SecretSyncs}
+          >
+            {(isAllowed) => (
+              <IconButton
+                variant="plain"
+                colorSchema="secondary"
+                isDisabled={!isAllowed}
+                ariaLabel="Edit sync options"
+                onClick={onEditOptions}
+              >
+                <FontAwesomeIcon icon={faEdit} />
+              </IconButton>
+            )}
+          </ProjectPermissionCan>
         </div>
         <div>
           <div className="space-y-3">
@@ -85,6 +84,11 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
             {/* <SecretSyncLabel label="Prefix">{prependPrefix}</SecretSyncLabel>
             <SecretSyncLabel label="Suffix">{appendSuffix}</SecretSyncLabel> */}
             {AdditionalSyncOptionsComponent}
+            {disableSecretDeletion && (
+              <SecretSyncLabel label="Disable Secret Deletion">
+                <Badge variant="success">Enabled</Badge>
+              </SecretSyncLabel>
+            )}
           </div>
         </div>
       </div>
