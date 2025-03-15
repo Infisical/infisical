@@ -1,9 +1,10 @@
 import slugify from "@sindresorhus/slugify";
-import ms from "ms";
+import msFn from "ms";
 
 import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -246,7 +247,7 @@ export const accessApprovalRequestServiceFactory = ({
           requesterEmail: requestedByUser.email,
           isTemporary,
           ...(isTemporary && {
-            expiresIn: ms(ms(temporaryRange || ""), { long: true })
+            expiresIn: msFn(ms(temporaryRange || ""), { long: true })
           }),
           secretPath,
           environment: envSlug,

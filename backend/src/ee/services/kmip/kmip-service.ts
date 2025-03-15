@@ -1,11 +1,11 @@
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import crypto, { KeyObject } from "crypto";
-import ms from "ms";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { isValidHostname, isValidIp } from "@app/lib/ip";
+import { ms } from "@app/lib/ms";
 import { constructPemChainFromCerts } from "@app/services/certificate/certificate-fns";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import {
