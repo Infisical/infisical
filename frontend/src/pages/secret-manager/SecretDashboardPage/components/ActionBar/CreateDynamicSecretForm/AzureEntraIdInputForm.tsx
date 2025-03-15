@@ -72,6 +72,7 @@ type Props = {
   secretPath: string;
   projectSlug: string;
   environments: WorkspaceEnv[];
+  isSingleEnvironmentMode?: boolean;
 };
 
 export const AzureEntraIdInputForm = ({
@@ -79,7 +80,8 @@ export const AzureEntraIdInputForm = ({
   onCancel,
   environments,
   secretPath,
-  projectSlug
+  projectSlug,
+  isSingleEnvironmentMode
 }: Props) => {
   const {
     control,
@@ -89,7 +91,7 @@ export const AzureEntraIdInputForm = ({
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      environment: environments.length === 1 ? environments[0] : undefined
+      environment: isSingleEnvironmentMode ? environments[0] : undefined
     }
   });
   const tenantId = watch("provider.tenantId");
@@ -379,7 +381,7 @@ export const AzureEntraIdInputForm = ({
               </div>
             </div>
           </div>
-          {environments.length > 1 && (
+          {!isSingleEnvironmentMode && (
             <Controller
               control={control}
               name="environment"

@@ -63,6 +63,7 @@ type Props = {
   secretPath: string;
   projectSlug: string;
   environments: WorkspaceEnv[];
+  isSingleEnvironmentMode?: boolean;
 };
 
 export const RedisInputForm = ({
@@ -70,7 +71,8 @@ export const RedisInputForm = ({
   onCancel,
   environments,
   secretPath,
-  projectSlug
+  projectSlug,
+  isSingleEnvironmentMode
 }: Props) => {
   const {
     control,
@@ -85,7 +87,7 @@ export const RedisInputForm = ({
         creationStatement: "ACL SETUSER {{username}} on >{{password}} ~* &* +@all",
         revocationStatement: "ACL DELUSER {{username}}"
       },
-      environment: environments.length === 1 ? environments[0] : undefined
+      environment: isSingleEnvironmentMode ? environments[0] : undefined
     }
   });
 
@@ -323,7 +325,7 @@ export const RedisInputForm = ({
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
-                {environments.length > 1 && (
+                {!isSingleEnvironmentMode && (
                   <Controller
                     control={control}
                     name="environment"

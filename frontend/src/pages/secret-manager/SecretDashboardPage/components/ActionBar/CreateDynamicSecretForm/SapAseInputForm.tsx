@@ -61,6 +61,7 @@ type Props = {
   secretPath: string;
   projectSlug: string;
   environments: WorkspaceEnv[];
+  isSingleEnvironmentMode?: boolean;
 };
 
 export const SapAseInputForm = ({
@@ -68,7 +69,8 @@ export const SapAseInputForm = ({
   onCancel,
   environments,
   secretPath,
-  projectSlug
+  projectSlug,
+  isSingleEnvironmentMode
 }: Props) => {
   const {
     control,
@@ -86,7 +88,7 @@ sp_role 'grant', 'mon_role', '{{username}}';`,
         revocationStatement: `sp_dropuser '{{username}}';
 sp_droplogin '{{username}}';`
       },
-      environment: environments.length === 1 ? environments[0] : undefined
+      environment: isSingleEnvironmentMode ? environments[0] : undefined
     }
   });
 
@@ -301,7 +303,7 @@ sp_droplogin '{{username}}';`
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
-                {environments.length > 1 && (
+                {!isSingleEnvironmentMode && (
                   <Controller
                     control={control}
                     name="environment"

@@ -657,6 +657,7 @@ export const ActionBar = ({
         projectSlug={projectSlug}
         environments={[{ slug: environment, name: environment, id: "not-used" }]}
         secretPath={secretPath}
+        isSingleEnvironmentMode
       />
       <Modal
         isOpen={popUp.addFolder.isOpen}

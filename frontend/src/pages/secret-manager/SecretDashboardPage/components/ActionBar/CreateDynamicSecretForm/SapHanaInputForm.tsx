@@ -63,6 +63,7 @@ type Props = {
   secretPath: string;
   projectSlug: string;
   environments: WorkspaceEnv[];
+  isSingleEnvironmentMode?: boolean;
 };
 
 export const SapHanaInputForm = ({
@@ -70,7 +71,8 @@ export const SapHanaInputForm = ({
   onCancel,
   environments,
   secretPath,
-  projectSlug
+  projectSlug,
+  isSingleEnvironmentMode
 }: Props) => {
   const {
     control,
@@ -86,7 +88,7 @@ GRANT "MONITORING" TO {{username}};`,
 DROP USER {{username}};`,
         renewStatement: "ALTER USER {{username}} VALID UNTIL '{{expiration}}';"
       },
-      environment: environments.length === 1 ? environments[0] : undefined
+      environment: isSingleEnvironmentMode ? environments[0] : undefined
     }
   });
 
@@ -321,7 +323,7 @@ DROP USER {{username}};`,
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
-                {environments.length > 1 && (
+                {!isSingleEnvironmentMode && (
                   <Controller
                     control={control}
                     name="environment"

@@ -187,10 +187,8 @@ export const OverviewPage = () => {
     permission.can(
       ProjectPermissionDynamicSecretActions.CreateRootCredential,
       subject(ProjectPermissionSub.DynamicSecrets, {
-        environment: env.id,
-        secretPath,
-        secretName: "*",
-        secretTags: ["*"]
+        environment: env.slug,
+        secretPath
       })
     )
   );
@@ -863,42 +861,49 @@ export const OverviewPage = () => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <div className="flex flex-col space-y-1 p-1.5">
-                      <Button
-                        leftIcon={<FontAwesomeIcon icon={faFingerprint} className="pr-2" />}
-                        onClick={() => {
-                          if (subscription?.dynamicSecret) {
-                            handlePopUpOpen("addDynamicSecret");
-                            return;
-                          }
-                          handlePopUpOpen("upgradePlan");
-                        }}
-                        isDisabled={userAvailableDynamicSecretEnvs.length === 0}
-                        variant="outline_bg"
-                        className="h-10 text-left"
-                        isFullWidth
-                      >
-                        Add Dynamic Secret
-                      </Button>
                       <ProjectPermissionCan
                         I={ProjectPermissionActions.Create}
                         a={ProjectPermissionSub.SecretFolders}
                       >
                         {(isAllowed) => (
                           <Button
-                            leftIcon={<FontAwesomeIcon icon={faFolderPlus} />}
+                            leftIcon={<FontAwesomeIcon icon={faFolderPlus} className="pr-2" />}
                             onClick={() => {
                               handlePopUpOpen("addFolder");
                               handlePopUpClose("misc");
                             }}
                             isDisabled={!isAllowed}
                             variant="outline_bg"
-                            className="h-10"
+                            className="h-10 text-left"
                             isFullWidth
                           >
                             Add Folder
                           </Button>
                         )}
                       </ProjectPermissionCan>
+                      <Tooltip
+                        content={
+                          userAvailableDynamicSecretEnvs.length === 0 ? "Access restricted" : ""
+                        }
+                      >
+                        <Button
+                          leftIcon={<FontAwesomeIcon icon={faFingerprint} className="pr-2" />}
+                          onClick={() => {
+                            if (subscription?.dynamicSecret) {
+                              handlePopUpOpen("addDynamicSecret");
+                              handlePopUpClose("misc");
+                              return;
+                            }
+                            handlePopUpOpen("upgradePlan");
+                          }}
+                          isDisabled={userAvailableDynamicSecretEnvs.length === 0}
+                          variant="outline_bg"
+                          className="h-10 text-left"
+                          isFullWidth
+                        >
+                          Add Dynamic Secret
+                        </Button>
+                      </Tooltip>
                     </div>
                   </DropdownMenuContent>
                 </DropdownMenu>

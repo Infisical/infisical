@@ -92,6 +92,7 @@ type Props = {
   secretPath: string;
   projectSlug: string;
   environments: WorkspaceEnv[];
+  isSingleEnvironmentMode?: boolean;
 };
 
 const getSqlStatements = (provider: SqlProviders) => {
@@ -150,7 +151,8 @@ export const SqlDatabaseInputForm = ({
   onCancel,
   environments,
   secretPath,
-  projectSlug
+  projectSlug,
+  isSingleEnvironmentMode
 }: Props) => {
   const { currentWorkspace } = useWorkspace();
 
@@ -176,7 +178,7 @@ export const SqlDatabaseInputForm = ({
           allowedSymbols: "-_.~!*"
         }
       },
-      environment: environments.length === 1 ? environments[0] : undefined
+      environment: isSingleEnvironmentMode ? environments[0] : undefined
     }
   });
 
@@ -660,7 +662,7 @@ export const SqlDatabaseInputForm = ({
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
-                {environments.length > 1 && (
+                {!isSingleEnvironmentMode && (
                   <Controller
                     control={control}
                     name="environment"

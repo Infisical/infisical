@@ -41,6 +41,7 @@ type Props = {
   projectSlug: string;
   environments: WorkspaceEnv[];
   secretPath: string;
+  isSingleEnvironmentMode?: boolean;
 };
 
 enum WizardSteps {
@@ -131,7 +132,8 @@ export const CreateDynamicSecretForm = ({
   onToggle,
   projectSlug,
   environments,
-  secretPath
+  secretPath,
+  isSingleEnvironmentMode
 }: Props) => {
   const [wizardStep, setWizardStep] = useState(WizardSteps.SelectProvider);
   const [selectedProvider, setSelectedProvider] = useState<DynamicSecretProviders | null>(null);
@@ -199,6 +201,7 @@ export const CreateDynamicSecretForm = ({
                   projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
+                  isSingleEnvironmentMode={isSingleEnvironmentMode}
                 />
               </motion.div>
             )}
@@ -217,6 +220,7 @@ export const CreateDynamicSecretForm = ({
                   projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
+                  isSingleEnvironmentMode={isSingleEnvironmentMode}
                 />
               </motion.div>
             )}
@@ -235,6 +239,7 @@ export const CreateDynamicSecretForm = ({
                   projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
+                  isSingleEnvironmentMode={isSingleEnvironmentMode}
                 />
               </motion.div>
             )}
@@ -253,6 +258,7 @@ export const CreateDynamicSecretForm = ({
                   projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
+                  isSingleEnvironmentMode={isSingleEnvironmentMode}
                 />
               </motion.div>
             )}
@@ -271,6 +277,7 @@ export const CreateDynamicSecretForm = ({
                   projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
+                  isSingleEnvironmentMode={isSingleEnvironmentMode}
                 />
               </motion.div>
             )}
@@ -289,6 +296,7 @@ export const CreateDynamicSecretForm = ({
                   projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
+                  isSingleEnvironmentMode={isSingleEnvironmentMode}
                 />
               </motion.div>
             )}
@@ -307,6 +315,7 @@ export const CreateDynamicSecretForm = ({
                   projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
+                  isSingleEnvironmentMode={isSingleEnvironmentMode}
                 />
               </motion.div>
             )}
@@ -325,6 +334,7 @@ export const CreateDynamicSecretForm = ({
                   projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
+                  isSingleEnvironmentMode={isSingleEnvironmentMode}
                 />
               </motion.div>
             )}
@@ -343,6 +353,7 @@ export const CreateDynamicSecretForm = ({
                   projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
+                  isSingleEnvironmentMode={isSingleEnvironmentMode}
                 />
               </motion.div>
             )}
@@ -361,6 +372,7 @@ export const CreateDynamicSecretForm = ({
                   projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
+                  isSingleEnvironmentMode={isSingleEnvironmentMode}
                 />
               </motion.div>
             )}
@@ -379,6 +391,7 @@ export const CreateDynamicSecretForm = ({
                   projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
+                  isSingleEnvironmentMode={isSingleEnvironmentMode}
                 />
               </motion.div>
             )}
@@ -397,6 +410,7 @@ export const CreateDynamicSecretForm = ({
                   projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
+                  isSingleEnvironmentMode={isSingleEnvironmentMode}
                 />
               </motion.div>
             )}
@@ -415,6 +429,7 @@ export const CreateDynamicSecretForm = ({
                   projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
+                  isSingleEnvironmentMode={isSingleEnvironmentMode}
                 />
               </motion.div>
             )}
@@ -434,6 +449,7 @@ export const CreateDynamicSecretForm = ({
                   projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
+                  isSingleEnvironmentMode={isSingleEnvironmentMode}
                 />
               </motion.div>
             )}
@@ -452,6 +468,7 @@ export const CreateDynamicSecretForm = ({
                   projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
+                  isSingleEnvironmentMode={isSingleEnvironmentMode}
                 />
               </motion.div>
             )}

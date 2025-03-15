@@ -67,6 +67,7 @@ type Props = {
   secretPath: string;
   projectSlug: string;
   environments: WorkspaceEnv[];
+  isSingleEnvironmentMode?: boolean;
 };
 
 export const SnowflakeInputForm = ({
@@ -74,7 +75,8 @@ export const SnowflakeInputForm = ({
   onCancel,
   environments,
   secretPath,
-  projectSlug
+  projectSlug,
+  isSingleEnvironmentMode
 }: Props) => {
   const {
     control,
@@ -89,7 +91,7 @@ export const SnowflakeInputForm = ({
         revocationStatement: "DROP USER {{username}};",
         renewStatement: "ALTER USER {{username}} SET DAYS_TO_EXPIRY = {{expiration}};"
       },
-      environment: environments.length === 1 ? environments[0] : undefined
+      environment: isSingleEnvironmentMode ? environments[0] : undefined
     }
   });
 
@@ -324,7 +326,7 @@ export const SnowflakeInputForm = ({
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
-              {environments.length > 1 && (
+              {!isSingleEnvironmentMode && (
                 <Controller
                   control={control}
                   name="environment"

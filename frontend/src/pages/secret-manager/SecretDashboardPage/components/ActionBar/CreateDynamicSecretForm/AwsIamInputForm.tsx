@@ -52,6 +52,7 @@ type Props = {
   secretPath: string;
   projectSlug: string;
   environments: WorkspaceEnv[];
+  isSingleEnvironmentMode?: boolean;
 };
 
 export const AwsIamInputForm = ({
@@ -59,7 +60,8 @@ export const AwsIamInputForm = ({
   onCancel,
   environments,
   secretPath,
-  projectSlug
+  projectSlug,
+  isSingleEnvironmentMode
 }: Props) => {
   const {
     control,
@@ -68,7 +70,7 @@ export const AwsIamInputForm = ({
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      environment: environments.length === 1 ? environments[0] : undefined
+      environment: isSingleEnvironmentMode ? environments[0] : undefined
     }
   });
 
@@ -298,7 +300,7 @@ export const AwsIamInputForm = ({
                   </FormControl>
                 )}
               />
-              {environments.length > 1 && (
+              {!isSingleEnvironmentMode && (
                 <Controller
                   control={control}
                   name="environment"

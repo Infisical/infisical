@@ -65,6 +65,7 @@ type Props = {
   secretPath: string;
   projectSlug: string;
   environments: WorkspaceEnv[];
+  isSingleEnvironmentMode?: boolean;
 };
 
 const getSqlStatements = () => {
@@ -81,7 +82,8 @@ export const CassandraInputForm = ({
   onCancel,
   environments,
   secretPath,
-  projectSlug
+  projectSlug,
+  isSingleEnvironmentMode
 }: Props) => {
   const {
     control,
@@ -91,7 +93,7 @@ export const CassandraInputForm = ({
     resolver: zodResolver(formSchema),
     defaultValues: {
       provider: getSqlStatements(),
-      environment: environments.length === 1 ? environments[0] : undefined
+      environment: isSingleEnvironmentMode ? environments[0] : undefined
     }
   });
 
@@ -356,7 +358,7 @@ export const CassandraInputForm = ({
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
-                {environments.length > 1 && (
+                {!isSingleEnvironmentMode && (
                   <Controller
                     control={control}
                     name="environment"

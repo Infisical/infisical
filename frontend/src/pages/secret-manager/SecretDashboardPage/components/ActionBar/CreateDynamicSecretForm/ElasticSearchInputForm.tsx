@@ -86,6 +86,7 @@ type Props = {
   secretPath: string;
   projectSlug: string;
   environments: WorkspaceEnv[];
+  isSingleEnvironmentMode?: boolean;
 };
 
 export const ElasticSearchInputForm = ({
@@ -93,7 +94,8 @@ export const ElasticSearchInputForm = ({
   onCancel,
   environments,
   secretPath,
-  projectSlug
+  projectSlug,
+  isSingleEnvironmentMode
 }: Props) => {
   const {
     control,
@@ -111,7 +113,7 @@ export const ElasticSearchInputForm = ({
         roles: ["superuser"],
         port: 443
       },
-      environment: environments.length === 1 ? environments[0] : undefined
+      environment: isSingleEnvironmentMode ? environments[0] : undefined
     }
   });
 
@@ -416,7 +418,7 @@ export const ElasticSearchInputForm = ({
                   )}
                 />
               </div>
-              {environments.length > 1 && (
+              {!isSingleEnvironmentMode && (
                 <Controller
                   control={control}
                   name="environment"

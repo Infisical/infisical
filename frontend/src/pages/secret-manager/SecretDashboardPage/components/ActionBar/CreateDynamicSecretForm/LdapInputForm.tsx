@@ -90,6 +90,7 @@ type Props = {
   secretPath: string;
   projectSlug: string;
   environments: WorkspaceEnv[];
+  isSingleEnvironmentMode?: boolean;
 };
 
 export const LdapInputForm = ({
@@ -97,7 +98,8 @@ export const LdapInputForm = ({
   onCancel,
   secretPath,
   projectSlug,
-  environments
+  environments,
+  isSingleEnvironmentMode
 }: Props) => {
   const {
     control,
@@ -118,7 +120,7 @@ export const LdapInputForm = ({
         rollbackLdif: "",
         credentialType: CredentialType.Dynamic
       },
-      environment: environments.length === 1 ? environments[0] : undefined
+      environment: isSingleEnvironmentMode ? environments[0] : undefined
     }
   });
 
@@ -386,7 +388,7 @@ export const LdapInputForm = ({
                     )}
                   />
                 )}
-                {environments.length > 1 && (
+                {!isSingleEnvironmentMode && (
                   <Controller
                     control={control}
                     name="environment"

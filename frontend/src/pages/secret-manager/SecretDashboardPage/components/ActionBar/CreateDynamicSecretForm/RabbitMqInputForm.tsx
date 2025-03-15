@@ -70,6 +70,7 @@ type Props = {
   secretPath: string;
   projectSlug: string;
   environments: WorkspaceEnv[];
+  isSingleEnvironmentMode?: boolean;
 };
 
 export const RabbitMqInputForm = ({
@@ -77,7 +78,8 @@ export const RabbitMqInputForm = ({
   onCancel,
   environments,
   secretPath,
-  projectSlug
+  projectSlug,
+  isSingleEnvironmentMode
 }: Props) => {
   const {
     control,
@@ -100,7 +102,7 @@ export const RabbitMqInputForm = ({
         },
         tags: []
       },
-      environment: environments.length === 1 ? environments[0] : undefined
+      environment: isSingleEnvironmentMode ? environments[0] : undefined
     }
   });
 
@@ -422,7 +424,7 @@ export const RabbitMqInputForm = ({
                   )}
                 />
               </div>
-              {environments.length > 1 && (
+              {!isSingleEnvironmentMode && (
                 <Controller
                   control={control}
                   name="environment"

@@ -72,6 +72,7 @@ type Props = {
   secretPath: string;
   projectSlug: string;
   environments: WorkspaceEnv[];
+  isSingleEnvironmentMode?: boolean;
 };
 
 export const TotpInputForm = ({
@@ -79,7 +80,8 @@ export const TotpInputForm = ({
   onCancel,
   environments,
   secretPath,
-  projectSlug
+  projectSlug,
+  isSingleEnvironmentMode
 }: Props) => {
   const {
     control,
@@ -92,7 +94,7 @@ export const TotpInputForm = ({
       provider: {
         configType: ConfigType.URL
       },
-      environment: environments.length === 1 ? environments[0] : environments[0]
+      environment: isSingleEnvironmentMode ? environments[0] : undefined
     }
   });
 
@@ -305,7 +307,7 @@ export const TotpInputForm = ({
                   </p>
                 </>
               )}
-              {environments.length > 1 && (
+              {!isSingleEnvironmentMode && (
                 <Controller
                   control={control}
                   name="environment"
