@@ -7,9 +7,18 @@ import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, Select, SelectItem, TextArea } from "@app/components/v2";
+import {
+  Button,
+  FilterableSelect,
+  FormControl,
+  Input,
+  Select,
+  SelectItem,
+  TextArea
+} from "@app/components/v2";
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
+import { WorkspaceEnv } from "@app/hooks/api/types";
 
 enum CredentialType {
   Dynamic = "dynamic",
@@ -69,7 +78,8 @@ const formSchema = z.object({
       if (valMs > 24 * 60 * 60 * 1000)
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
     }),
-  name: z.string().refine((val) => val.toLowerCase() === val, "Must be lowercase")
+  name: z.string().refine((val) => val.toLowerCase() === val, "Must be lowercase"),
+  environment: z.object({ name: z.string(), slug: z.string() })
 });
 
 type TForm = z.infer<typeof formSchema>;
@@ -79,7 +89,8 @@ type Props = {
   onCancel: () => void;
   secretPath: string;
   projectSlug: string;
-  environment: string;
+  environments: WorkspaceEnv[];
+  isSingleEnvironmentMode?: boolean;
 };
 
 export const LdapInputForm = ({
@@ -87,7 +98,8 @@ export const LdapInputForm = ({
   onCancel,
   secretPath,
   projectSlug,
-  environment
+  environments,
+  isSingleEnvironmentMode
 }: Props) => {
   const {
     control,
@@ -107,7 +119,8 @@ export const LdapInputForm = ({
         revocationLdif: "",
         rollbackLdif: "",
         credentialType: CredentialType.Dynamic
-      }
+      },
+      environment: isSingleEnvironmentMode ? environments[0] : undefined
     }
   });
 
@@ -115,7 +128,13 @@ export const LdapInputForm = ({
 
   const createDynamicSecret = useCreateDynamicSecret();
 
-  const handleCreateDynamicSecret = async ({ name, maxTTL, provider, defaultTTL }: TForm) => {
+  const handleCreateDynamicSecret = async ({
+    name,
+    maxTTL,
+    provider,
+    defaultTTL,
+    environment
+  }: TForm) => {
     // wait till previous request is finished
     if (createDynamicSecret.isPending) return;
     try {
@@ -126,7 +145,7 @@ export const LdapInputForm = ({
         path: secretPath,
         defaultTTL,
         projectSlug,
-        environmentSlug: environment
+        environmentSlug: environment.slug
       });
       onCompleted();
     } catch {
@@ -365,6 +384,29 @@ export const LdapInputForm = ({
                         errorText={error?.message}
                       >
                         <TextArea {...field} />
+                      </FormControl>
+                    )}
+                  />
+                )}
+                {!isSingleEnvironmentMode && (
+                  <Controller
+                    control={control}
+                    name="environment"
+                    render={({ field: { value, onChange }, fieldState: { error } }) => (
+                      <FormControl
+                        label="Environment"
+                        isError={Boolean(error)}
+                        errorText={error?.message}
+                      >
+                        <FilterableSelect
+                          options={environments}
+                          value={value}
+                          onChange={onChange}
+                          placeholder="Select the environment to create secret in..."
+                          getOptionLabel={(option) => option.name}
+                          getOptionValue={(option) => option.slug}
+                          menuPlacement="top"
+                        />
                       </FormControl>
                     )}
                   />
