@@ -63,7 +63,7 @@ export const samlConfigServiceFactory = ({
   kmsService
 }: TSamlConfigServiceFactoryDep) => {
   const createSamlCfg = async ({
-    cert,
+    idpCert,
     actor,
     actorAuthMethod,
     actorOrgId,
@@ -93,9 +93,9 @@ export const samlConfigServiceFactory = ({
       orgId,
       authProvider,
       isActive,
-      encryptedSamlIssuer: encryptor({ plainText: Buffer.from(issuer) }).cipherTextBlob,
+      encryptedSamlCertificate: encryptor({ plainText: Buffer.from(idpCert) }).cipherTextBlob,
       encryptedSamlEntryPoint: encryptor({ plainText: Buffer.from(entryPoint) }).cipherTextBlob,
-      encryptedSamlCertificate: encryptor({ plainText: Buffer.from(cert) }).cipherTextBlob
+      encryptedSamlIssuer: encryptor({ plainText: Buffer.from(issuer) }).cipherTextBlob
     });
 
     return samlConfig;
@@ -106,7 +106,7 @@ export const samlConfigServiceFactory = ({
     actor,
     actorOrgId,
     actorAuthMethod,
-    cert,
+    idpCert,
     actorId,
     issuer,
     isActive,
@@ -136,8 +136,8 @@ export const samlConfigServiceFactory = ({
       updateQuery.encryptedSamlIssuer = encryptor({ plainText: Buffer.from(issuer) }).cipherTextBlob;
     }
 
-    if (cert !== undefined) {
-      updateQuery.encryptedSamlCertificate = encryptor({ plainText: Buffer.from(cert) }).cipherTextBlob;
+    if (idpCert !== undefined) {
+      updateQuery.encryptedSamlCertificate = encryptor({ plainText: Buffer.from(idpCert) }).cipherTextBlob;
     }
 
     const [ssoConfig] = await samlConfigDAL.update({ orgId }, updateQuery);

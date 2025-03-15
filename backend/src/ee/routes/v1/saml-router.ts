@@ -22,7 +22,7 @@ import { SanitizedSamlConfigSchema } from "@app/server/routes/sanitizedSchema/di
 import { AuthMode } from "@app/services/auth/auth-type";
 
 type TSAMLConfig = {
-  callbackUrl: string;
+  callbackUrl: string; 
   entryPoint: string;
   issuer: string;
   cert: string;
@@ -302,15 +302,21 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const saml = await server.services.saml.createSamlCfg({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        orgId: req.body.organizationId,
-        ...req.body
+      const { isActive, authProvider, issuer, entryPoint, cert } = req.body;
+      const { permission } = req;
+
+      return server.services.saml.createSamlCfg({
+        isActive,
+        authProvider,
+        issuer,
+        entryPoint,
+        idpCert: cert,
+        actor: permission.type,
+        actorId: permission.id,
+        actorAuthMethod: permission.authMethod,
+        actorOrgId: permission.orgId,
+        orgId: req.body.organizationId
       });
-      return saml;
     }
   });
 
@@ -337,15 +343,21 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const saml = await server.services.saml.updateSamlCfg({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        orgId: req.body.organizationId,
-        ...req.body
+      const { isActive, authProvider, issuer, entryPoint, cert } = req.body;
+      const { permission } = req;
+
+      return server.services.saml.updateSamlCfg({
+        isActive,
+        authProvider,
+        issuer,
+        entryPoint,
+        idpCert: cert,
+        actor: permission.type,
+        actorId: permission.id,
+        actorAuthMethod: permission.authMethod,
+        actorOrgId: permission.orgId,
+        orgId: req.body.organizationId
       });
-      return saml;
     }
   });
 };
