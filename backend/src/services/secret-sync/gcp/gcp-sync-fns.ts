@@ -71,8 +71,16 @@ const getGcpSecrets = async (accessToken: string, secretSync: TGcpSyncWithCreden
 
       res[key] = Buffer.from(secretLatest.payload.data, "base64").toString("utf-8");
     } catch (error) {
-      // when a secret in GCP has no versions, we treat it as if it's a blank value
-      if (error instanceof AxiosError && error.response?.status === 404) {
+      // when a secret in GCP has no versions, or is disabled/destroyed, we treat it as if it's a blank value
+      if (
+        error instanceof AxiosError &&
+        (error.response?.status === 404 ||
+          (error.response?.status === 400 &&
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            error.response.data.error.status === "FAILED_PRECONDITION" &&
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-call
+            error.response.data.error.message.match(/(?:disabled|destroyed)/i)))
+      ) {
         res[key] = "";
       } else {
         throw new SecretSyncError({
