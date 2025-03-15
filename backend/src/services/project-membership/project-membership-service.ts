@@ -1,6 +1,5 @@
 /* eslint-disable no-await-in-loop */
 import { ForbiddenError } from "@casl/ability";
-import ms from "ms";
 
 import { ActionProjectType, ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -11,6 +10,7 @@ import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
+import { ms } from "@app/lib/ms";
 
 import { TUserGroupMembershipDALFactory } from "../../ee/services/group/user-group-membership-dal";
 import { ActorType } from "../auth/auth-type";

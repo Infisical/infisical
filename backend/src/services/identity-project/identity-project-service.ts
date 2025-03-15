@@ -1,5 +1,4 @@
 import { ForbiddenError, subject } from "@casl/ability";
-import ms from "ms";
 
 import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -7,6 +6,7 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services
 import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
+import { ms } from "@app/lib/ms";
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";

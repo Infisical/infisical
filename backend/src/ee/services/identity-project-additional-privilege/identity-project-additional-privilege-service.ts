@@ -1,10 +1,10 @@
 import { ForbiddenError, MongoAbility, RawRuleOf, subject } from "@casl/ability";
 import { PackRule, packRules, unpackRules } from "@casl/ability/extra";
-import ms from "ms";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { ms } from "@app/lib/ms";
 import { UnpackedPermissionSchema } from "@app/server/routes/sanitizedSchema/permission";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";

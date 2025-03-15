@@ -1,11 +1,11 @@
 import slugify from "@sindresorhus/slugify";
-import ms from "ms";
 import { z } from "zod";
 
 import { IdentityProjectAdditionalPrivilegeTemporaryMode } from "@app/ee/services/identity-project-additional-privilege-v2/identity-project-additional-privilege-v2-types";
 import { checkForInvalidPermissionCombination } from "@app/ee/services/permission/permission-fns";
 import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
 import { IDENTITY_ADDITIONAL_PRIVILEGE_V2 } from "@app/lib/api-docs";
+import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
