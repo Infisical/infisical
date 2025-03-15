@@ -111,6 +111,26 @@ export const ViewIdentityOidcAuthContent = ({
           </Tooltip>
         )}
       </IdentityAuthFieldDisplay>
+      <IdentityAuthFieldDisplay className="col-span-2" label="Claim Metadata Mapping">
+        {Object.keys(data.claimMetadataMapping).length && (
+          <Tooltip
+            side="right"
+            className="max-w-xl p-2"
+            content={
+              <pre className="whitespace-pre-wrap rounded bg-mineshaft-600 p-2">
+                {JSON.stringify(data.claimMetadataMapping, null, 2)}
+              </pre>
+            }
+          >
+            <div className="w-min">
+              <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300">
+                <FontAwesomeIcon icon={faEye} />
+                <span>Reveal</span>
+              </Badge>
+            </div>
+          </Tooltip>
+        )}
+      </IdentityAuthFieldDisplay>
     </ViewIdentityContentWrapper>
   );
 };

@@ -978,6 +978,7 @@ interface AddIdentityOidcAuthEvent {
     boundIssuer: string;
     boundAudiences: string;
     boundClaims: Record<string, string>;
+    claimMetadataMapping: Record<string, string>;
     boundSubject: string;
     accessTokenTTL: number;
     accessTokenMaxTTL: number;
@@ -1002,6 +1003,7 @@ interface UpdateIdentityOidcAuthEvent {
     boundIssuer?: string;
     boundAudiences?: string;
     boundClaims?: Record<string, string>;
+    claimMetadataMapping?: Record<string, string>;
     boundSubject?: string;
     accessTokenTTL?: number;
     accessTokenMaxTTL?: number;

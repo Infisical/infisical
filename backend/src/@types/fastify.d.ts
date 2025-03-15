@@ -100,6 +100,12 @@ import { TWorkflowIntegrationServiceFactory } from "@app/services/workflow-integ
 declare module "@fastify/request-context" {
   interface RequestContextData {
     reqId: string;
+    identityAuthInfo?: {
+      identityId: string;
+      oidc?: {
+        claims: Record<string, string>;
+      };
+    };
   }
 }
 

@@ -462,6 +462,7 @@ export const useUpdateIdentityOidcAuth = () => {
       boundIssuer,
       boundAudiences,
       boundClaims,
+      claimMetadataMapping,
       boundSubject
     }) => {
       const {
@@ -478,7 +479,8 @@ export const useUpdateIdentityOidcAuth = () => {
           accessTokenTTL,
           accessTokenMaxTTL,
           accessTokenNumUsesLimit,
-          accessTokenTrustedIps
+          accessTokenTrustedIps,
+          claimMetadataMapping
         }
       );
 
@@ -504,6 +506,7 @@ export const useAddIdentityOidcAuth = () => {
       boundIssuer,
       boundAudiences,
       boundClaims,
+      claimMetadataMapping,
       boundSubject,
       accessTokenTTL,
       accessTokenMaxTTL,
@@ -524,7 +527,8 @@ export const useAddIdentityOidcAuth = () => {
           accessTokenTTL,
           accessTokenMaxTTL,
           accessTokenNumUsesLimit,
-          accessTokenTrustedIps
+          accessTokenTrustedIps,
+          claimMetadataMapping
         }
       );
 
