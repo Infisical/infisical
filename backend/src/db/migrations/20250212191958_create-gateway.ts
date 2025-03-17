@@ -85,7 +85,7 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   if (await knex.schema.hasTable(TableName.DynamicSecret)) {
-    const doesGatewayColExist = await knex.schema.hasColumn(TableName.DynamicSecret, "gatewayId");
+    const doesGatewayColExist = await knex.schema.hasColumn(TableName.DynamicSecret, "projectGatewayId");
     await knex.schema.alterTable(TableName.DynamicSecret, (t) => {
       // not setting a foreign constraint so that cascade effects are not triggered
       if (!doesGatewayColExist) {
