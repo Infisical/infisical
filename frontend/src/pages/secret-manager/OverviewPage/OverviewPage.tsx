@@ -67,15 +67,22 @@ import { DashboardSecretsOrderBy } from "@app/hooks/api/dashboard/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
 import { TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
+import { SecretImportData } from "@app/hooks/api/secretImports/types";
 import { SecretType, SecretV3RawSanitized, TSecretFolder } from "@app/hooks/api/types";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/workspace/types";
-import { useDynamicSecretOverview, useFolderOverview, useSecretOverview } from "@app/hooks/utils";
+import {
+  useDynamicSecretOverview,
+  useFolderOverview,
+  useSecretImportOverview,
+  useSecretOverview
+} from "@app/hooks/utils";
 
 import { FolderForm } from "../SecretDashboardPage/components/ActionBar/FolderForm";
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { FolderBreadCrumbs } from "./components/FolderBreadCrumbs";
 import { SecretOverviewDynamicSecretRow } from "./components/SecretOverviewDynamicSecretRow";
 import { SecretOverviewFolderRow } from "./components/SecretOverviewFolderRow";
+import { SecretOverviewImportListView } from "./components/SecretOverviewImportListView";
 import {
   SecretNoAccessOverviewTableRow,
   SecretOverviewTableRow
@@ -185,12 +192,22 @@ export const OverviewPage = () => {
     setVisibleEnvs(userAvailableEnvs);
   }, [userAvailableEnvs]);
 
-  const { isImportedSecretPresentInEnv, getImportedSecretByKey, getEnvImportedSecretKeyCount } =
-    useGetImportedSecretsAllEnvs({
-      projectId: workspaceId,
-      path: secretPath,
-      environments: (userAvailableEnvs || []).map(({ slug }) => slug)
-    });
+  const {
+    secretImports,
+    isImportedSecretPresentInEnv,
+    getImportedSecretByKey,
+    getEnvImportedSecretKeyCount
+  } = useGetImportedSecretsAllEnvs({
+    projectId: workspaceId,
+    path: secretPath,
+    environments: (userAvailableEnvs || []).map(({ slug }) => slug)
+  });
+  const secretImportsData = useMemo(
+    () => secretImports?.map((s) => s.data as SecretImportData[]) ?? [],
+    [secretImports]
+  );
+  const { uniqueEnvSecretPaths, isSecretImportPresent } =
+    useSecretImportOverview(secretImportsData);
 
   const { isPending: isOverviewLoading, data: overview } = useGetProjectSecretsOverview(
     {
@@ -1052,6 +1069,16 @@ export const OverviewPage = () => {
                         isDynamicSecretInEnv={isDynamicSecretPresentInEnv}
                         environments={visibleEnvs}
                         key={`overview-${dynamicSecretName}-${index + 1}`}
+                      />
+                    ))}
+                    {Object.entries(uniqueEnvSecretPaths).map(([key, secretImportsAllEnvs]) => (
+                      <SecretOverviewImportListView
+                        secretImport={secretImportsAllEnvs[0]}
+                        isImportedSecretPresentInEnv={isSecretImportPresent}
+                        environments={visibleEnvs}
+                        key={`overview-${key}`}
+                        scrollOffset={debouncedScrollOffset}
+                        allSecretImports={secretImportsData}
                       />
                     ))}
                     {secKeys.map((key, index) => (

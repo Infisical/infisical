@@ -2,6 +2,8 @@ import { useCallback, useMemo } from "react";
 
 import { DashboardProjectSecretsOverview } from "@app/hooks/api/dashboard/types";
 
+import { SecretImportData } from "../api/secretImports/types";
+
 type FolderNameAndDescription = {
   name: string;
   description?: string;
@@ -95,4 +97,41 @@ export const useSecretOverview = (secrets: DashboardProjectSecretsOverview["secr
   );
 
   return { secKeys, getSecretByKey, getEnvSecretKeyCount };
+};
+
+export const useSecretImportOverview = (secretImports: SecretImportData[][] | undefined) => {
+  const uniqueEnvSecretPaths = useMemo(() => {
+    const uniqueMap: Record<string, SecretImportData[]> = {};
+    secretImports?.forEach((importData) => {
+      importData?.forEach((envImport) => {
+        if (envImport) {
+          const key = `${envImport.environment}-${envImport.secretPath}`;
+          const existing = uniqueMap[key];
+          uniqueMap[key] = existing ? [...existing, envImport] : [envImport];
+        }
+      });
+    });
+    return uniqueMap;
+  }, [secretImports]);
+
+  const isSecretImportPresent = useCallback(
+    (sourceEnv: string, targetEnv: string, secretPath: string) => {
+      return (
+        secretImports?.some((importData) =>
+          importData?.some(
+            (envImport) =>
+              envImport?.currentEnv === sourceEnv &&
+              envImport?.environment === targetEnv &&
+              envImport?.secretPath === secretPath
+          )
+        ) ?? false
+      );
+    },
+    [secretImports]
+  );
+
+  return {
+    uniqueEnvSecretPaths,
+    isSecretImportPresent
+  };
 };
