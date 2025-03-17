@@ -52,6 +52,15 @@ const schema = z.object({
       value: z.string()
     })
   ),
+  claimMetadataMapping: z
+    .array(
+      z.object({
+        key: z.string(),
+        value: z.string()
+      })
+    )
+    .optional()
+    .nullable(),
   boundSubject: z.string().optional().default("")
 });
 
@@ -99,7 +108,6 @@ export const IdentityOidcAuthForm = ({
       accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]
     }
   });
-
   const {
     fields: boundClaimsFields,
     append: appendBoundClaimField,
@@ -107,6 +115,15 @@ export const IdentityOidcAuthForm = ({
   } = useFieldArray({
     control,
     name: "boundClaims"
+  });
+
+  const {
+    fields: claimMetadataMappingFields,
+    append: appendClaimMetadataMappingField,
+    remove: removeClaimMetadataMappingField
+  } = useFieldArray({
+    control,
+    name: "claimMetadataMapping"
   });
 
   const {
@@ -126,6 +143,12 @@ export const IdentityOidcAuthForm = ({
           key,
           value
         })),
+        claimMetadataMapping: data?.claimMetadataMapping
+          ? Object.entries(data.claimMetadataMapping).map(([key, value]) => ({
+              key,
+              value
+            }))
+          : undefined,
         boundSubject: data.boundSubject,
         accessTokenTTL: String(data.accessTokenTTL),
         accessTokenMaxTTL: String(data.accessTokenMaxTTL),
@@ -164,6 +187,7 @@ export const IdentityOidcAuthForm = ({
     boundIssuer,
     boundAudiences,
     boundClaims,
+    claimMetadataMapping,
     boundSubject
   }: FormData) => {
     try {
@@ -180,6 +204,9 @@ export const IdentityOidcAuthForm = ({
           boundIssuer,
           boundAudiences,
           boundClaims: Object.fromEntries(boundClaims.map((entry) => [entry.key, entry.value])),
+          claimMetadataMapping: claimMetadataMapping
+            ? Object.fromEntries(claimMetadataMapping.map((entry) => [entry.key, entry.value]))
+            : undefined,
           boundSubject,
           accessTokenTTL: Number(accessTokenTTL),
           accessTokenMaxTTL: Number(accessTokenMaxTTL),
@@ -194,6 +221,9 @@ export const IdentityOidcAuthForm = ({
           boundIssuer,
           boundAudiences,
           boundClaims: Object.fromEntries(boundClaims.map((entry) => [entry.key, entry.value])),
+          claimMetadataMapping: claimMetadataMapping
+            ? Object.fromEntries(claimMetadataMapping.map((entry) => [entry.key, entry.value]))
+            : undefined,
           boundSubject,
           organizationId: orgId,
           accessTokenTTL: Number(accessTokenTTL),
@@ -447,6 +477,84 @@ export const IdentityOidcAuthForm = ({
               size="xs"
             >
               Add Claims
+            </Button>
+          </div>
+          {claimMetadataMappingFields.map(({ id }, index) => (
+            <div className="mb-3 flex items-end space-x-2" key={id}>
+              <Controller
+                control={control}
+                name={`claimMetadataMapping.${index}.key`}
+                render={({ field, fieldState: { error } }) => {
+                  return (
+                    <FormControl
+                      className="mb-0 flex-grow"
+                      label={index === 0 ? "Claim Metadata Mapping" : undefined}
+                      icon={
+                        index === 0 ? (
+                          <Tooltip
+                            className="text-center"
+                            content="Map token claims to metadata. This can later be accessed in attribute based permission as identity.metadata.oidc.claims.<>."
+                          >
+                            <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
+                          </Tooltip>
+                        ) : undefined
+                      }
+                      isError={Boolean(error)}
+                      errorText={error?.message}
+                    >
+                      <Input
+                        value={field.value}
+                        onChange={(e) => field.onChange(e)}
+                        placeholder="property"
+                      />
+                    </FormControl>
+                  );
+                }}
+              />
+              <Controller
+                control={control}
+                name={`claimMetadataMapping.${index}.value`}
+                render={({ field, fieldState: { error } }) => {
+                  return (
+                    <FormControl
+                      className="mb-0 flex-grow"
+                      isError={Boolean(error)}
+                      errorText={error?.message}
+                    >
+                      <Input
+                        value={field.value}
+                        onChange={(e) => field.onChange(e)}
+                        placeholder="key1.nested-key2"
+                      />
+                    </FormControl>
+                  );
+                }}
+              />
+              <IconButton
+                onClick={() => removeClaimMetadataMappingField(index)}
+                size="lg"
+                colorSchema="danger"
+                variant="plain"
+                ariaLabel="update"
+                className="p-3"
+              >
+                <FontAwesomeIcon icon={faXmark} />
+              </IconButton>
+            </div>
+          ))}
+          <div className="my-4 ml-1">
+            <Button
+              variant="outline_bg"
+              onClick={() =>
+                appendClaimMetadataMappingField({
+                  key: "",
+                  value: ""
+                })
+              }
+              leftIcon={<FontAwesomeIcon icon={faPlus} />}
+              size="xs"
+            >
+              Add Mapping
             </Button>
           </div>
           {accessTokenTrustedIpsFields.map(({ id }, index) => (
