@@ -12,6 +12,7 @@ import {
   validateJwtAuthAudiencesField,
   validateJwtBoundClaimsField
 } from "@app/services/identity-jwt-auth/identity-jwt-auth-validators";
+import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 
 const IdentityJwtAuthResponseSchema = IdentityJwtAuthsSchema.omit({
   encryptedJwksCaCert: true,
@@ -169,7 +170,8 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body,
-        identityId: req.params.identityId
+        identityId: req.params.identityId,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       await server.services.auditLog.createAuditLog({

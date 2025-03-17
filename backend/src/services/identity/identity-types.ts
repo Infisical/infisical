@@ -17,6 +17,7 @@ export type TUpdateIdentityDTO = {
 
 export type TDeleteIdentityDTO = {
   id: string;
+  isActorSuperAdmin?: boolean;
 } & Omit<TOrgPermission, "orgId">;
 
 export type TGetIdentityByIdDTO = {

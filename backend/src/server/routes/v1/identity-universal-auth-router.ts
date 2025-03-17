@@ -7,6 +7,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
+import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 
 export const sanitizedClientSecretSchema = IdentityUaClientSecretsSchema.pick({
   id: true,
@@ -142,8 +143,10 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         ...req.body,
-        identityId: req.params.identityId
+        identityId: req.params.identityId,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: identityUniversalAuth.orgId,

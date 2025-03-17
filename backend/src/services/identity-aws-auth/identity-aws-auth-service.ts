@@ -16,6 +16,7 @@ import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityAwsAuthDALFactory } from "./identity-aws-auth-dal";
 import { extractPrincipalArn } from "./identity-aws-auth-fns";
 import {
@@ -149,8 +150,11 @@ export const identityAwsAuthServiceFactory = ({
     actorId,
     actorAuthMethod,
     actor,
-    actorOrgId
+    actorOrgId,
+    isActorSuperAdmin
   }: TAttachAwsAuthDTO) => {
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 

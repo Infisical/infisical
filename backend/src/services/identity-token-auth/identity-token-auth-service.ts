@@ -14,6 +14,7 @@ import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityTokenAuthDALFactory } from "./identity-token-auth-dal";
 import {
   TAttachTokenAuthDTO,
@@ -59,8 +60,11 @@ export const identityTokenAuthServiceFactory = ({
     actorId,
     actorAuthMethod,
     actor,
-    actorOrgId
+    actorOrgId,
+    isActorSuperAdmin
   }: TAttachTokenAuthDTO) => {
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
@@ -126,8 +130,11 @@ export const identityTokenAuthServiceFactory = ({
     actorId,
     actorAuthMethod,
     actor,
-    actorOrgId
+    actorOrgId,
+    isActorSuperAdmin
   }: TUpdateTokenAuthDTO) => {
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
@@ -218,8 +225,11 @@ export const identityTokenAuthServiceFactory = ({
     actorId,
     actor,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    isActorSuperAdmin
   }: TRevokeTokenAuthDTO) => {
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
@@ -271,8 +281,11 @@ export const identityTokenAuthServiceFactory = ({
     actor,
     actorAuthMethod,
     actorOrgId,
-    name
+    name,
+    isActorSuperAdmin
   }: TCreateTokenAuthTokenDTO) => {
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
@@ -350,8 +363,11 @@ export const identityTokenAuthServiceFactory = ({
     actorId,
     actor,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    isActorSuperAdmin
   }: TGetTokenAuthTokensDTO) => {
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
@@ -386,7 +402,8 @@ export const identityTokenAuthServiceFactory = ({
     actorId,
     actor,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    isActorSuperAdmin
   }: TUpdateTokenAuthTokenDTO) => {
     const foundToken = await identityAccessTokenDAL.findOne({
       [`${TableName.IdentityAccessToken}.id` as "id"]: tokenId,
@@ -398,6 +415,8 @@ export const identityTokenAuthServiceFactory = ({
     if (!identityMembershipOrg) {
       throw new NotFoundError({ message: `Failed to find identity with ID ${foundToken.identityId}` });
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(foundToken.identityId, isActorSuperAdmin);
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.TOKEN_AUTH)) {
       throw new BadRequestError({
         message: "The identity does not have Token Auth"
@@ -446,17 +465,21 @@ export const identityTokenAuthServiceFactory = ({
     actorId,
     actor,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    isActorSuperAdmin
   }: TRevokeTokenAuthTokenDTO) => {
     const identityAccessToken = await identityAccessTokenDAL.findOne({
       [`${TableName.IdentityAccessToken}.id` as "id"]: tokenId,
       [`${TableName.IdentityAccessToken}.isAccessTokenRevoked` as "isAccessTokenRevoked"]: false,
       [`${TableName.IdentityAccessToken}.authMethod` as "authMethod"]: IdentityAuthMethod.TOKEN_AUTH
     });
+
     if (!identityAccessToken)
       throw new NotFoundError({
         message: `Token with ID ${tokenId} not found or already revoked`
       });
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityAccessToken.identityId, isActorSuperAdmin);
 
     const identityOrgMembership = await identityOrgMembershipDAL.findOne({
       identityId: identityAccessToken.identityId

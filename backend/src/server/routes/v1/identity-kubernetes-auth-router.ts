@@ -7,6 +7,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
+import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 
 const IdentityKubernetesAuthResponseSchema = IdentityKubernetesAuthsSchema.pick({
   id: true,
@@ -147,7 +148,8 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body,
-        identityId: req.params.identityId
+        identityId: req.params.identityId,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       await server.services.auditLog.createAuditLog({

@@ -12,6 +12,7 @@ export type TAttachOidcAuthDTO = {
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
   accessTokenTrustedIps: { ipAddress: string }[];
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateOidcAuthDTO = {

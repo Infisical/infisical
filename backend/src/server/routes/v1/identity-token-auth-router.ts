@@ -7,6 +7,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
+import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 
 export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -74,7 +75,8 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body,
-        identityId: req.params.identityId
+        identityId: req.params.identityId,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       await server.services.auditLog.createAuditLog({
@@ -157,7 +159,8 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         ...req.body,
-        identityId: req.params.identityId
+        identityId: req.params.identityId,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       await server.services.auditLog.createAuditLog({
@@ -257,7 +260,8 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        identityId: req.params.identityId
+        identityId: req.params.identityId,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       await server.services.auditLog.createAuditLog({
@@ -312,6 +316,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
           actorAuthMethod: req.permission.authMethod,
           actorOrgId: req.permission.orgId,
           identityId: req.params.identityId,
+          isActorSuperAdmin: isSuperAdmin(req.auth),
           ...req.body
         });
 
@@ -370,6 +375,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         identityId: req.params.identityId,
+        isActorSuperAdmin: isSuperAdmin(req.auth),
         ...req.query
       });
 
@@ -421,6 +427,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         tokenId: req.params.tokenId,
+        isActorSuperAdmin: isSuperAdmin(req.auth),
         ...req.body
       });
 
@@ -470,7 +477,8 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        tokenId: req.params.tokenId
+        tokenId: req.params.tokenId,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       return {
