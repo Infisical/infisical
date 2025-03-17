@@ -143,7 +143,12 @@ var secretsSetCmd = &cobra.Command{
 	Short:                 "Used set secrets",
 	Use:                   "set [secrets]",
 	DisableFlagsInUseLine: true,
-	Args:                  cobra.MinimumNArgs(1),
+	Args: func(cmd *cobra.Command, args []string) error {
+		if cmd.Flags().Changed("file") {
+			return cobra.MinimumNArgs(0)(cmd, args)
+		}
+		return cobra.MinimumNArgs(1)(cmd, args)
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		token, err := util.GetInfisicalToken(cmd)
 		if err != nil {
@@ -177,13 +182,18 @@ var secretsSetCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse secret type")
 		}
 
+		file, err := cmd.Flags().GetString("file")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
 		var secretOperations []models.SecretSetOperation
 		if token != nil && (token.Type == util.SERVICE_TOKEN_IDENTIFIER || token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER) {
 			if projectId == "" {
 				util.PrintErrorMessageAndExit("When using service tokens or machine identities, you must set the --projectId flag")
 			}
 
-			secretOperations, err = util.SetRawSecrets(args, secretType, environmentName, secretsPath, projectId, token)
+			secretOperations, err = util.SetRawSecrets(args, secretType, environmentName, secretsPath, projectId, token, file)
 		} else {
 			if projectId == "" {
 				workspaceFile, err := util.GetWorkSpaceFromFile()
@@ -206,7 +216,7 @@ var secretsSetCmd = &cobra.Command{
 			secretOperations, err = util.SetRawSecrets(args, secretType, environmentName, secretsPath, projectId, &models.TokenDetails{
 				Type:  "",
 				Token: loggedInUserDetails.UserCredentials.JTWToken,
-			})
+			}, file)
 		}
 
 		if err != nil {
@@ -691,6 +701,7 @@ func init() {
 	secretsSetCmd.Flags().String("projectId", "", "manually set the project ID to for setting secrets when using machine identity based auth")
 	secretsSetCmd.Flags().String("path", "/", "set secrets within a folder path")
 	secretsSetCmd.Flags().String("type", util.SECRET_TYPE_SHARED, "the type of secret to create: personal or shared")
+	secretsSetCmd.Flags().String("file", "", "Path to a file with key=value secret pairs (comments with # or // are ignored)")
 
 	secretsDeleteCmd.Flags().String("type", "personal", "the type of secret to delete: personal or shared  (default: personal)")
 	secretsDeleteCmd.Flags().String("token", "", "Fetch secrets using service token or machine identity access token")
