@@ -85,8 +85,8 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
             <SecretSyncLabel label="Suffix">{appendSuffix}</SecretSyncLabel> */}
             {AdditionalSyncOptionsComponent}
             {disableSecretDeletion && (
-              <SecretSyncLabel label="Disable Secret Deletion">
-                <Badge variant="success">Enabled</Badge>
+              <SecretSyncLabel label="Secret Deletion">
+                <Badge variant="primary">Disabled</Badge>
               </SecretSyncLabel>
             )}
           </div>
