@@ -28,13 +28,13 @@ import {
   useGetServerRootKmsEncryptionDetails,
   useUpdateServerConfig
 } from "@app/hooks/api";
+import { IdentityPanel } from "@app/pages/admin/OverviewPage/components/IdentityPanel";
 
 import { AuthPanel } from "./components/AuthPanel";
 import { EncryptionPanel } from "./components/EncryptionPanel";
 import { IntegrationPanel } from "./components/IntegrationPanel";
 import { RateLimitPanel } from "./components/RateLimitPanel";
 import { UserPanel } from "./components/UserPanel";
-import { IdentityPanel } from "@app/pages/admin/OverviewPage/components/IdentityPanel";
 
 enum TabSections {
   Settings = "settings",
@@ -59,8 +59,8 @@ const formSchema = z.object({
   trustLdapEmails: z.boolean(),
   trustOidcEmails: z.boolean(),
   defaultAuthOrgId: z.string(),
-  authConsentContent: z.string().optional(),
-  pageFrameContent: z.string().optional()
+  authConsentContent: z.string().optional().default(""),
+  pageFrameContent: z.string().optional().default("")
 });
 
 type TDashboardForm = z.infer<typeof formSchema>;
@@ -86,8 +86,8 @@ export const OverviewPage = () => {
       trustLdapEmails: config.trustLdapEmails,
       trustOidcEmails: config.trustOidcEmails,
       defaultAuthOrgId: config.defaultAuthOrgId ?? "",
-      authConsentContent: config.authConsentContent,
-      pageFrameContent: config.pageFrameContent
+      authConsentContent: config.authConsentContent ?? "",
+      pageFrameContent: config.pageFrameContent ?? ""
     }
   });
 

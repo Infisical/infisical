@@ -1,16 +1,21 @@
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 
-import { TSuperAdmin, TSuperAdminUpdate } from "@app/db/schemas";
+import { IdentityAuthMethod, OrgMembershipRole, TSuperAdmin, TSuperAdminUpdate } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
-import { getUserPrivateKey } from "@app/lib/crypto/srp";
+import { generateUserSrpKeys, getUserPrivateKey } from "@app/lib/crypto/srp";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 
 import { TAuthLoginFactory } from "../auth/auth-login-service";
-import { AuthMethod } from "../auth/auth-type";
+import { AuthMethod, AuthTokenType } from "../auth/auth-type";
+import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
+import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
+import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { TIdentityTokenAuthDALFactory } from "../identity-token-auth/identity-token-auth-dal";
 import { KMS_ROOT_CONFIG_UUID } from "../kms/kms-fns";
 import { TKmsRootConfigDALFactory } from "../kms/kms-root-config-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -20,10 +25,19 @@ import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { UserAliasType } from "../user-alias/user-alias-types";
 import { TSuperAdminDALFactory } from "./super-admin-dal";
-import { LoginMethod, TAdminGetIdentitiesDTO, TAdminGetUsersDTO, TAdminSignUpDTO } from "./super-admin-types";
+import {
+  LoginMethod,
+  TAdminGetIdentitiesDTO,
+  TAdminGetUsersDTO,
+  TAdminInitializeInstanceDTO,
+  TAdminSignUpDTO
+} from "./super-admin-types";
 
 type TSuperAdminServiceFactoryDep = {
-  identityDAL: Pick<TIdentityDALFactory, "getIdentitiesByFilter">;
+  identityDAL: TIdentityDALFactory;
+  identityTokenAuthDAL: TIdentityTokenAuthDALFactory;
+  identityAccessTokenDAL: TIdentityAccessTokenDALFactory;
+  identityOrgMembershipDAL: TIdentityOrgDALFactory;
   serverCfgDAL: TSuperAdminDALFactory;
   userDAL: TUserDALFactory;
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne">;
@@ -60,7 +74,10 @@ export const superAdminServiceFactory = ({
   keyStore,
   kmsRootConfigDAL,
   kmsService,
-  licenseService
+  licenseService,
+  identityAccessTokenDAL,
+  identityTokenAuthDAL,
+  identityOrgMembershipDAL
 }: TSuperAdminServiceFactoryDep) => {
   const initServerCfg = async () => {
     // TODO(akhilmhdh): bad  pattern time less change this later to me itself
@@ -274,6 +291,137 @@ export const superAdminServiceFactory = ({
     return { token, user: userInfo, organization };
   };
 
+  const initializeInstance = async ({ email, password, organizationName }: TAdminInitializeInstanceDTO) => {
+    const appCfg = getConfig();
+    const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
+    if (serverCfg?.initialized) {
+      throw new BadRequestError({ message: "Instance has already been set up" });
+    }
+
+    const existingUser = await userDAL.findOne({ email });
+    if (existingUser) throw new BadRequestError({ name: "Instance initialization", message: "User already exists" });
+
+    const userInfo = await userDAL.transaction(async (tx) => {
+      const newUser = await userDAL.create(
+        {
+          firstName: "Admin",
+          lastName: "User",
+          username: email,
+          email,
+          superAdmin: true,
+          isGhost: false,
+          isAccepted: true,
+          authMethods: [AuthMethod.EMAIL],
+          isEmailVerified: true
+        },
+        tx
+      );
+      const { tag, encoding, ciphertext, iv } = infisicalSymmetricEncypt(password);
+      const encKeys = await generateUserSrpKeys(email, password);
+
+      const userEnc = await userDAL.createUserEncryption(
+        {
+          userId: newUser.id,
+          encryptionVersion: 2,
+          protectedKey: encKeys.protectedKey,
+          protectedKeyIV: encKeys.protectedKeyIV,
+          protectedKeyTag: encKeys.protectedKeyTag,
+          publicKey: encKeys.publicKey,
+          encryptedPrivateKey: encKeys.encryptedPrivateKey,
+          iv: encKeys.encryptedPrivateKeyIV,
+          tag: encKeys.encryptedPrivateKeyTag,
+          salt: encKeys.salt,
+          verifier: encKeys.verifier,
+          serverEncryptedPrivateKeyEncoding: encoding,
+          serverEncryptedPrivateKeyTag: tag,
+          serverEncryptedPrivateKeyIV: iv,
+          serverEncryptedPrivateKey: ciphertext
+        },
+        tx
+      );
+
+      return { user: newUser, enc: userEnc };
+    });
+
+    const initialOrganizationName = organizationName ?? "Admin Org";
+
+    const organization = await orgService.createOrganization({
+      userId: userInfo.user.id,
+      userEmail: userInfo.user.email,
+      orgName: initialOrganizationName
+    });
+
+    const { identity, credentials } = await identityDAL.transaction(async (tx) => {
+      const newIdentity = await identityDAL.create({ name: "Admin Identity" }, tx);
+      await identityOrgMembershipDAL.create(
+        {
+          identityId: newIdentity.id,
+          orgId: organization.id,
+          role: OrgMembershipRole.Admin
+        },
+        tx
+      );
+
+      const tokenAuth = await identityTokenAuthDAL.create(
+        {
+          identityId: newIdentity.id,
+          accessTokenMaxTTL: 0,
+          accessTokenTTL: 0,
+          accessTokenNumUsesLimit: 0,
+          accessTokenTrustedIps: JSON.stringify([
+            {
+              type: "ipv4",
+              prefix: 0,
+              ipAddress: "0.0.0.0"
+            },
+            {
+              type: "ipv6",
+              prefix: 0,
+              ipAddress: "::"
+            }
+          ])
+        },
+        tx
+      );
+
+      const newToken = await identityAccessTokenDAL.create(
+        {
+          identityId: newIdentity.id,
+          isAccessTokenRevoked: false,
+          accessTokenTTL: tokenAuth.accessTokenTTL,
+          accessTokenMaxTTL: tokenAuth.accessTokenMaxTTL,
+          accessTokenNumUses: 0,
+          accessTokenNumUsesLimit: tokenAuth.accessTokenNumUsesLimit,
+          name: "Instance Admin Token",
+          authMethod: IdentityAuthMethod.TOKEN_AUTH
+        },
+        tx
+      );
+
+      const generatedAccessToken = jwt.sign(
+        {
+          identityId: newIdentity.id,
+          identityAccessTokenId: newToken.id,
+          authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
+        } as TIdentityAccessTokenJwtPayload,
+        appCfg.AUTH_SECRET
+      );
+
+      return { identity: newIdentity, auth: tokenAuth, credentials: { token: generatedAccessToken } };
+    });
+
+    await updateServerCfg({ initialized: true, adminIdentityIds: [identity.id] }, userInfo.user.id);
+
+    return {
+      user: userInfo,
+      organization,
+      machineIdentity: {
+        ...identity,
+        credentials
+      }
+    };
+  };
+
   const getUsers = ({ offset, limit, searchTerm, adminsOnly }: TAdminGetUsersDTO) => {
     return userDAL.getUsersByFilter({
       limit,
@@ -289,13 +437,19 @@ export const superAdminServiceFactory = ({
     return user;
   };
 
-  const getIdentities = ({ offset, limit, searchTerm }: TAdminGetIdentitiesDTO) => {
-    return identityDAL.getIdentitiesByFilter({
+  const getIdentities = async ({ offset, limit, searchTerm }: TAdminGetIdentitiesDTO) => {
+    const identities = await identityDAL.getIdentitiesByFilter({
       limit,
       offset,
       searchTerm,
       sortBy: "name"
     });
+    const serverCfg = await getServerCfg();
+
+    return identities.map((identity) => ({
+      ...identity,
+      isInstanceAdmin: Boolean(serverCfg?.adminIdentityIds?.includes(identity.id))
+    }));
   };
 
   const grantServerAdminAccessToUser = async (userId: string) => {
@@ -393,6 +547,7 @@ export const superAdminServiceFactory = ({
     initServerCfg,
     updateServerCfg,
     adminSignUp,
+    initializeInstance,
     getUsers,
     deleteUser,
     getIdentities,

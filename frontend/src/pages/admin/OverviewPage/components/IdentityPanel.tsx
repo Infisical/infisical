@@ -3,6 +3,7 @@ import { faMagnifyingGlass, faServer } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import {
+  Badge,
   Button,
   EmptyState,
   Input,
@@ -54,9 +55,16 @@ const IdentityPanelTable = () => {
               {isPending && <TableSkeleton columns={2} innerKey="identities" />}
               {!isPending &&
                 data?.pages?.map((identities) =>
-                  identities.map(({ name, id }) => (
+                  identities.map(({ name, id, isInstanceAdmin }) => (
                     <Tr key={`identity-${id}`} className="w-full">
-                      <Td>{name}</Td>
+                      <Td>
+                        {name}
+                        {isInstanceAdmin && (
+                          <Badge variant="primary" className="ml-2">
+                            Server Admin
+                          </Badge>
+                        )}
+                      </Td>
                     </Tr>
                   ))
                 )}

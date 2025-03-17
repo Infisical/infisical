@@ -15,6 +15,7 @@ export type Identity = {
   authMethods: IdentityAuthMethod[];
   createdAt: string;
   updatedAt: string;
+  isInstanceAdmin?: boolean;
 };
 
 export type IdentityAccessToken = {

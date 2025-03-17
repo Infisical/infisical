@@ -16,6 +16,12 @@ export type TAdminSignUpDTO = {
   userAgent: string;
 };
 
+export type TAdminInitializeInstanceDTO = {
+  email: string;
+  password: string;
+  organizationName: string;
+};
+
 export type TAdminGetUsersDTO = {
   offset: number;
   limit: number;
