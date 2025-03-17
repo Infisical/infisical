@@ -106,6 +106,7 @@ declare module "@fastify/request-context" {
         claims: Record<string, string>;
       };
     };
+    identityPermissionMetadata?: Record<string, unknown>; // filled by permission service
   }
 }
 

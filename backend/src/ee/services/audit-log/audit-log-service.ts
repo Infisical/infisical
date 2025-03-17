@@ -1,8 +1,10 @@
 import { ForbiddenError } from "@casl/ability";
+import { requestContext } from "@fastify/request-context";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
+import { ActorType } from "@app/services/auth/auth-type";
 
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service";
@@ -81,8 +83,12 @@ export const auditLogServiceFactory = ({
       if (!data.projectId && !data.orgId)
         throw new BadRequestError({ message: "Must specify either project id or org id" });
     }
-
-    return auditLogQueue.pushToLog(data);
+    const el = { ...data };
+    if (el.actor.type === ActorType.USER || el.actor.type === ActorType.IDENTITY) {
+      const permissionMetadata = requestContext.get("identityPermissionMetadata");
+      el.actor.metadata.permission = permissionMetadata;
+    }
+    return auditLogQueue.pushToLog(el);
   };
 
   return {
