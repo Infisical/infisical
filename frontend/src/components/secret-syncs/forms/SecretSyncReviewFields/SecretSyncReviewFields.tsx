@@ -36,6 +36,7 @@ export const SecretSyncReviewFields = () => {
     secretPath,
     syncOptions: {
       // appendSuffix, prependPrefix,
+      disableSecretDeletion,
       initialSyncBehavior
     },
     destination,
@@ -111,6 +112,11 @@ export const SecretSyncReviewFields = () => {
           {/* <SecretSyncLabel label="Prepend Prefix">{prependPrefix}</SecretSyncLabel>
           <SecretSyncLabel label="Append Suffix">{appendSuffix}</SecretSyncLabel> */}
           {AdditionalSyncOptionsFieldsComponent}
+          {disableSecretDeletion && (
+            <SecretSyncLabel label="Secret Deletion">
+              <Badge variant="primary">Disabled</Badge>
+            </SecretSyncLabel>
+          )}
         </div>
       </div>
       <div className="flex flex-col gap-3">

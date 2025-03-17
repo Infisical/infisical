@@ -155,6 +155,9 @@ export const GcpSyncFns = {
     for await (const key of Object.keys(gcpSecrets)) {
       try {
         if (!(key in secretMap) || !secretMap[key].value) {
+          // eslint-disable-next-line no-continue
+          if (secretSync.syncOptions.disableSecretDeletion) continue;
+
           // case: delete secret
           await request.delete(
             `${IntegrationUrls.GCP_SECRET_MANAGER_URL}/v1/projects/${destinationConfig.projectId}/secrets/${key}`,
