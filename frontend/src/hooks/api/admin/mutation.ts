@@ -70,6 +70,24 @@ export const useAdminDeleteUser = () => {
   });
 };
 
+export const useAdminRemoveIdentitySuperAdminAccess = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (identityId: string) => {
+      await apiRequest.delete(
+        `/api/v1/admin/identity-management/identities/${identityId}/super-admin-access`
+      );
+
+      return {};
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [adminStandaloneKeys.getIdentities]
+      });
+    }
+  });
+};
+
 export const useAdminGrantServerAdminAccess = () => {
   const queryClient = useQueryClient();
   return useMutation({

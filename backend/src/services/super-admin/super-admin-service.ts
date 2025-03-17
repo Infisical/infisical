@@ -437,6 +437,22 @@ export const superAdminServiceFactory = ({
     return user;
   };
 
+  const deleteIdentitySuperAdminAccess = async (identityId: string, actorId: string) => {
+    const identity = await identityDAL.findById(identityId);
+    if (!identity) {
+      throw new NotFoundError({ name: "Identity", message: "Identity not found" });
+    }
+
+    const currentAdminIdentityIds = (await getServerCfg()).adminIdentityIds ?? [];
+    if (!currentAdminIdentityIds?.includes(identityId)) {
+      throw new BadRequestError({ name: "Identity", message: "Identity does not have super admin access" });
+    }
+
+    await updateServerCfg({ adminIdentityIds: currentAdminIdentityIds.filter((id) => id !== identityId) }, actorId);
+
+    return identity;
+  };
+
   const getIdentities = async ({ offset, limit, searchTerm }: TAdminGetIdentitiesDTO) => {
     const identities = await identityDAL.getIdentitiesByFilter({
       limit,
@@ -554,6 +570,7 @@ export const superAdminServiceFactory = ({
     getAdminSlackConfig,
     updateRootEncryptionStrategy,
     getConfiguredEncryptionStrategies,
-    grantServerAdminAccessToUser
+    grantServerAdminAccessToUser,
+    deleteIdentitySuperAdminAccess
   };
 };

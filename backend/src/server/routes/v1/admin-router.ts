@@ -400,6 +400,42 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "DELETE",
+    url: "/identity-management/identities/:identityId/super-admin-access",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        identityId: z.string()
+      }),
+      response: {
+        200: z.object({
+          identity: IdentitiesSchema.pick({
+            name: true,
+            id: true
+          })
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      const identity = await server.services.superAdmin.deleteIdentitySuperAdminAccess(
+        req.params.identityId,
+        req.permission.id
+      );
+
+      return {
+        identity
+      };
+    }
+  });
+
+  server.route({
     method: "POST",
     url: "/bootstrap",
     config: {

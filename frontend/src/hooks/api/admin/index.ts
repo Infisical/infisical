@@ -1,6 +1,7 @@
 export {
   useAdminDeleteUser,
   useAdminGrantServerAdminAccess,
+  useAdminRemoveIdentitySuperAdminAccess,
   useCreateAdminUser,
   useUpdateAdminSlackConfig,
   useUpdateServerConfig,
