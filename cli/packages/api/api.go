@@ -600,3 +600,23 @@ func CallGatewayHeartBeatV1(httpClient *resty.Client) error {
 
 	return nil
 }
+
+func CallBootstrapInstance(httpClient *resty.Client, request BootstrapInstanceRequest) (*BootstrapInstanceResponse, error) {
+	var resBody BootstrapInstanceResponse
+	response, err := httpClient.
+		R().
+		SetResult(&resBody).
+		SetHeader("User-Agent", USER_AGENT).
+		SetBody(request).
+		Post(fmt.Sprintf("%v/v1/admin/bootstrap", request.Domain))
+
+	if err != nil {
+		return nil, fmt.Errorf("CallBootstrapInstance: Unable to complete api request [err=%w]", err)
+	}
+
+	if response.IsError() {
+		return nil, fmt.Errorf("CallBootstrapInstance: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+	}
+
+	return &resBody, nil
+}

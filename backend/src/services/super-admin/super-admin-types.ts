@@ -16,7 +16,7 @@ export type TAdminSignUpDTO = {
   userAgent: string;
 };
 
-export type TAdminInitializeInstanceDTO = {
+export type TAdminBoostrapInstanceDTO = {
   email: string;
   password: string;
   organizationName: string;

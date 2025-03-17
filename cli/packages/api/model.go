@@ -654,3 +654,27 @@ type ExchangeRelayCertResponseV1 struct {
 	Certificate      string `json:"certificate"`
 	CertificateChain string `json:"certificateChain"`
 }
+
+type BootstrapInstanceRequest struct {
+	Email        string `json:"email"`
+	Password     string `json:"password"`
+	Organization string `json:"organization"`
+	Domain       string `json:"domain"`
+}
+
+type BootstrapInstanceResponseOrganization struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+type BootstrapInstanceResponseIdentity struct {
+	ID          string      `json:"id"`
+	Name        string      `json:"name"`
+	Credentials interface{} `json:"credentials"`
+}
+
+type BootstrapInstanceResponse struct {
+	Message      string                                `json:"message"`
+	Organization BootstrapInstanceResponseOrganization `json:"organization"`
+	Identity     BootstrapInstanceResponseIdentity     `json:"identity"`
+}

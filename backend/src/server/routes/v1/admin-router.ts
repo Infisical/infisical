@@ -401,22 +401,22 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
-    url: "/initialize",
+    url: "/bootstrap",
     config: {
       rateLimit: writeLimit
     },
     schema: {
       body: z.object({
-        email: z.string().email().trim(),
-        password: z.string().trim(),
-        organizationName: z.string().trim()
+        email: z.string().email().trim().min(1),
+        password: z.string().trim().min(1),
+        organization: z.string().trim().min(1)
       }),
       response: {
         200: z.object({
           message: z.string(),
           user: UsersSchema,
           organization: OrganizationsSchema,
-          machineIdentity: IdentitiesSchema.extend({
+          identity: IdentitiesSchema.extend({
             credentials: z.object({
               token: z.string()
             }) // would just be Token AUTH for now
@@ -425,8 +425,9 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { user, organization, machineIdentity } = await server.services.superAdmin.initializeInstance({
-        ...req.body
+      const { user, organization, machineIdentity } = await server.services.superAdmin.bootstrapInstance({
+        ...req.body,
+        organizationName: req.body.organization
       });
 
       await server.services.telemetry.sendPostHogEvents({
@@ -441,10 +442,10 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
 
       return {
-        message: "Successfully initialized instance",
+        message: "Successfully boostrapped instance",
         user: user.user,
         organization,
-        machineIdentity
+        identity: machineIdentity
       };
     }
   });
