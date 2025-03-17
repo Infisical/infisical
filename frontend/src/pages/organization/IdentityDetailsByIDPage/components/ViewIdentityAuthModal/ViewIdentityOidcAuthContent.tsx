@@ -112,7 +112,7 @@ export const ViewIdentityOidcAuthContent = ({
         )}
       </IdentityAuthFieldDisplay>
       <IdentityAuthFieldDisplay className="col-span-2" label="Claim Metadata Mapping">
-        {Object.keys(data.claimMetadataMapping).length && (
+        {data.claimMetadataMapping && Object.keys(data.claimMetadataMapping).length && (
           <Tooltip
             side="right"
             className="max-w-xl p-2"
