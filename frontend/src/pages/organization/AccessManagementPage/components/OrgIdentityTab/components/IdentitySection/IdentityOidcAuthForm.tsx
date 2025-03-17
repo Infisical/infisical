@@ -46,12 +46,14 @@ const schema = z.object({
   caCert: z.string().trim().default(""),
   boundIssuer: z.string().min(1),
   boundAudiences: z.string().optional().default(""),
-  boundClaims: z.array(
-    z.object({
-      key: z.string(),
-      value: z.string()
-    })
-  ).default([{ key: "", value: "" }]),
+  boundClaims: z
+    .array(
+      z.object({
+        key: z.string(),
+        value: z.string()
+      })
+    )
+    .default([{ key: "", value: "" }]),
   claimMetadataMapping: z
     .array(
       z.object({
@@ -254,7 +256,9 @@ export const IdentityOidcAuthForm = ({
     <form
       onSubmit={handleSubmit(onFormSubmit, (fields) => {
         setTabValue(
-          ["accessTokenTrustedIps", "caCert", "claimMetadataMapping"].includes(Object.keys(fields)[0])
+          ["accessTokenTrustedIps", "caCert", "claimMetadataMapping"].includes(
+            Object.keys(fields)[0]
+          )
             ? IdentityFormTab.Advanced
             : IdentityFormTab.Configuration
         );
@@ -499,9 +503,13 @@ export const IdentityOidcAuthForm = ({
                             content={
                               <div className="w-[180px]">
                                 <p>Map OIDC token claims to metadata fields</p>
-                                <p className="text-sm mt-2">Example:</p>
-                                <p className="text-sm mt-1">'role' → 'token.groups'</p>
-                                <p className="text-xs text-gray-400 mt-1">Becomes: identity.metadata.oidc.claims.role</p>
+                                <p className="mt-2 text-sm">Example:</p>
+                                <p className="mt-1 text-sm">
+                                  &apos;role&apos; → &apos;token.groups&apos;
+                                </p>
+                                <p className="mt-1 text-xs text-gray-400">
+                                  Becomes: identity.metadata.oidc.claims.role
+                                </p>
                               </div>
                             }
                           >
