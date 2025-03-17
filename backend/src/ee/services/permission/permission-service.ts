@@ -257,6 +257,7 @@ export const permissionServiceFactory = ({
       username: userProjectPermission.username,
       metadata: metadataKeyValuePair
     };
+    requestContext.set("identityPermissionMetadata", metadataKeyValuePair);
     const interpolateRules = templatedRules(
       {
         identity: templateValue
@@ -337,6 +338,8 @@ export const permissionServiceFactory = ({
       metadata: metadataKeyValuePair,
       auth: identityAuthInfo
     };
+
+    requestContext.set("identityPermissionMetadata", metadataKeyValuePair);
     const interpolateRules = templatedRules(
       {
         identity: templateValue

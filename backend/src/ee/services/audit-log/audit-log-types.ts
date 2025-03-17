@@ -290,6 +290,7 @@ interface UserActorMetadata {
   userId: string;
   email?: string | null;
   username: string;
+  permission?: Record<string, unknown>;
 }
 
 interface ServiceActorMetadata {
@@ -300,6 +301,7 @@ interface ServiceActorMetadata {
 interface IdentityActorMetadata {
   identityId: string;
   name: string;
+  permission?: Record<string, unknown>;
 }
 
 interface ScimClientActorMetadata {}
