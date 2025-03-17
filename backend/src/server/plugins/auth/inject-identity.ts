@@ -138,10 +138,12 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
           identityName: identity.name,
           authMethod: null
         };
-        requestContext.set("identityAuthInfo", {
-          identityId: identity.identityId,
-          oidc: token?.identityAuth?.oidc
-        });
+        if (token?.identityAuth?.oidc) {
+          requestContext.set("identityAuthInfo", {
+            identityId: identity.identityId,
+            oidc: token?.identityAuth?.oidc
+          });
+        }
         break;
       }
       case AuthMode.SERVICE_TOKEN: {

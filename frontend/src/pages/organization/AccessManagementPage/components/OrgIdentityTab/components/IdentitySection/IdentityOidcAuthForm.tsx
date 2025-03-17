@@ -52,12 +52,15 @@ const schema = z.object({
       value: z.string()
     })
   ),
-  claimMetadataMapping: z.array(
-    z.object({
-      key: z.string(),
-      value: z.string()
-    })
-  ),
+  claimMetadataMapping: z
+    .array(
+      z.object({
+        key: z.string(),
+        value: z.string()
+      })
+    )
+    .optional()
+    .nullable(),
   boundSubject: z.string().optional().default("")
 });
 
@@ -105,7 +108,6 @@ export const IdentityOidcAuthForm = ({
       accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]
     }
   });
-
   const {
     fields: boundClaimsFields,
     append: appendBoundClaimField,
@@ -141,10 +143,12 @@ export const IdentityOidcAuthForm = ({
           key,
           value
         })),
-        claimMetadataMapping: Object.entries(data.claimMetadataMapping).map(([key, value]) => ({
-          key,
-          value
-        })),
+        claimMetadataMapping: data?.claimMetadataMapping
+          ? Object.entries(data.claimMetadataMapping).map(([key, value]) => ({
+              key,
+              value
+            }))
+          : undefined,
         boundSubject: data.boundSubject,
         accessTokenTTL: String(data.accessTokenTTL),
         accessTokenMaxTTL: String(data.accessTokenMaxTTL),
@@ -200,9 +204,9 @@ export const IdentityOidcAuthForm = ({
           boundIssuer,
           boundAudiences,
           boundClaims: Object.fromEntries(boundClaims.map((entry) => [entry.key, entry.value])),
-          claimMetadataMapping: Object.fromEntries(
-            claimMetadataMapping.map((entry) => [entry.key, entry.value])
-          ),
+          claimMetadataMapping: claimMetadataMapping
+            ? Object.fromEntries(claimMetadataMapping.map((entry) => [entry.key, entry.value]))
+            : undefined,
           boundSubject,
           accessTokenTTL: Number(accessTokenTTL),
           accessTokenMaxTTL: Number(accessTokenMaxTTL),
@@ -217,9 +221,9 @@ export const IdentityOidcAuthForm = ({
           boundIssuer,
           boundAudiences,
           boundClaims: Object.fromEntries(boundClaims.map((entry) => [entry.key, entry.value])),
-          claimMetadataMapping: Object.fromEntries(
-            claimMetadataMapping.map((entry) => [entry.key, entry.value])
-          ),
+          claimMetadataMapping: claimMetadataMapping
+            ? Object.fromEntries(claimMetadataMapping.map((entry) => [entry.key, entry.value]))
+            : undefined,
           boundSubject,
           organizationId: orgId,
           accessTokenTTL: Number(accessTokenTTL),

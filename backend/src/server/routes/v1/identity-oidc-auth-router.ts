@@ -105,7 +105,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
           boundIssuer: z.string().min(1).describe(OIDC_AUTH.ATTACH.boundIssuer),
           boundAudiences: validateOidcAuthAudiencesField.describe(OIDC_AUTH.ATTACH.boundAudiences),
           boundClaims: validateOidcBoundClaimsField.describe(OIDC_AUTH.ATTACH.boundClaims),
-          claimMetadataMapping: validateOidcBoundClaimsField.describe(OIDC_AUTH.ATTACH.claimMetadataMapping),
+          claimMetadataMapping: validateOidcBoundClaimsField.describe(OIDC_AUTH.ATTACH.claimMetadataMapping).optional(),
           boundSubject: z.string().optional().default("").describe(OIDC_AUTH.ATTACH.boundSubject),
           accessTokenTrustedIps: z
             .object({
@@ -203,7 +203,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
           boundIssuer: z.string().min(1).describe(OIDC_AUTH.UPDATE.boundIssuer),
           boundAudiences: validateOidcAuthAudiencesField.describe(OIDC_AUTH.UPDATE.boundAudiences),
           boundClaims: validateOidcBoundClaimsField.describe(OIDC_AUTH.UPDATE.boundClaims),
-          claimMetadataMapping: validateOidcBoundClaimsField.describe(OIDC_AUTH.UPDATE.claimMetadataMapping),
+          claimMetadataMapping: validateOidcBoundClaimsField.describe(OIDC_AUTH.UPDATE.claimMetadataMapping).optional(),
           boundSubject: z.string().optional().default("").describe(OIDC_AUTH.UPDATE.boundSubject),
           accessTokenTrustedIps: z
             .object({
