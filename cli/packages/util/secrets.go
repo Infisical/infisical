@@ -232,6 +232,7 @@ func FilterSecretsByTag(plainTextSecrets []models.SingleEnvironmentVariable, tag
 
 func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectConfigFilePath string) ([]models.SingleEnvironmentVariable, error) {
 	var secretsToReturn []models.SingleEnvironmentVariable
+	// var serviceTokenDetails api.GetServiceTokenDetailsResponse
 	var errorToReturn error
 
 	if params.InfisicalToken == "" && params.UniversalAuthAccessToken == "" {

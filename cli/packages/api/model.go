@@ -2,12 +2,6 @@ package api
 
 import "time"
 
-type Environment struct {
-	Name string `json:"name"`
-	Slug string `json:"slug"`
-	ID   string `json:"id"`
-}
-
 // Stores info for login one
 type LoginOneRequest struct {
 	Email           string `json:"email"`
@@ -20,6 +14,7 @@ type LoginOneResponse struct {
 }
 
 // Stores info for login two
+
 type LoginTwoRequest struct {
 	Email       string `json:"email"`
 	ClientProof string `json:"clientProof"`
@@ -173,10 +168,9 @@ type Secret struct {
 }
 
 type Project struct {
-	ID           string        `json:"id"`
-	Name         string        `json:"name"`
-	Slug         string        `json:"slug"`
-	Environments []Environment `json:"environments"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Slug string `json:"slug"`
 }
 
 type RawSecret struct {
