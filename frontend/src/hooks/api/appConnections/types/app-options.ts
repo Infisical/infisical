@@ -38,6 +38,14 @@ export type THumanitecConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Humanitec;
 };
 
+export type TPostgresConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Postgres;
+};
+
+export type TMsSqlConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.MsSql;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -45,7 +53,9 @@ export type TAppConnectionOption =
   | TAzureAppConfigurationConnectionOption
   | TAzureKeyVaultConnectionOption
   | TDatabricksConnectionOption
-  | THumanitecConnectionOption;
+  | THumanitecConnectionOption
+  | TPostgresConnectionOption
+  | TMsSqlConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -55,4 +65,6 @@ export type TAppConnectionOptionMap = {
   [AppConnection.AzureAppConfiguration]: TAzureAppConfigurationConnectionOption;
   [AppConnection.Databricks]: TDatabricksConnectionOption;
   [AppConnection.Humanitec]: THumanitecConnectionOption;
+  [AppConnection.Postgres]: TPostgresConnectionOption;
+  [AppConnection.MsSql]: TMsSqlConnectionOption;
 };

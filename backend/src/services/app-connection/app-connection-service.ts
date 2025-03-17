@@ -6,7 +6,6 @@ import { generateHash } from "@app/lib/crypto/encryption";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { DiscriminativePick, OrgServiceActor } from "@app/lib/types";
-import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   decryptAppConnection,
   encryptAppConnectionCredentials,
@@ -14,17 +13,18 @@ import {
   listAppConnectionOptions,
   validateAppConnectionCredentials
 } from "@app/services/app-connection/app-connection-fns";
-import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+
+import { TAppConnectionDALFactory } from "./app-connection-dal";
+import { AppConnection } from "./app-connection-enums";
+import { APP_CONNECTION_NAME_MAP } from "./app-connection-maps";
 import {
   TAppConnection,
   TAppConnectionConfig,
   TCreateAppConnectionDTO,
   TUpdateAppConnectionDTO,
   TValidateAppConnectionCredentials
-} from "@app/services/app-connection/app-connection-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-
-import { TAppConnectionDALFactory } from "./app-connection-dal";
+} from "./app-connection-types";
 import { ValidateAwsConnectionCredentialsSchema } from "./aws";
 import { awsConnectionService } from "./aws/aws-connection-service";
 import { ValidateAzureAppConfigurationConnectionCredentialsSchema } from "./azure-app-configuration";
@@ -37,6 +37,8 @@ import { ValidateGitHubConnectionCredentialsSchema } from "./github";
 import { githubConnectionService } from "./github/github-connection-service";
 import { ValidateHumanitecConnectionCredentialsSchema } from "./humanitec";
 import { humanitecConnectionService } from "./humanitec/humanitec-connection-service";
+import { ValidateMsSqlConnectionCredentialsSchema } from "./mssql";
+import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
 
 export type TAppConnectionServiceFactoryDep = {
   appConnectionDAL: TAppConnectionDALFactory;
@@ -53,7 +55,9 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.AzureKeyVault]: ValidateAzureKeyVaultConnectionCredentialsSchema,
   [AppConnection.AzureAppConfiguration]: ValidateAzureAppConfigurationConnectionCredentialsSchema,
   [AppConnection.Databricks]: ValidateDatabricksConnectionCredentialsSchema,
-  [AppConnection.Humanitec]: ValidateHumanitecConnectionCredentialsSchema
+  [AppConnection.Humanitec]: ValidateHumanitecConnectionCredentialsSchema,
+  [AppConnection.Postgres]: ValidatePostgresConnectionCredentialsSchema,
+  [AppConnection.MsSql]: ValidateMsSqlConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({

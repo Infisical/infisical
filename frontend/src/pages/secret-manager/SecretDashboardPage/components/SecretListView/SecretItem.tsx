@@ -306,7 +306,10 @@ export const SecretItem = memo(
                   )}
                 />
               )}
-              <div key="actions" className="flex h-full flex-shrink-0 self-start transition-all group-hover:gap-x-2">
+              <div
+                key="actions"
+                className="flex h-full flex-shrink-0 self-start transition-all group-hover:gap-x-2"
+              >
                 <Tooltip content="Copy secret">
                   <IconButton
                     isDisabled={secret.secretValueHidden}

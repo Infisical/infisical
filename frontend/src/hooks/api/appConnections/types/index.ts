@@ -1,13 +1,14 @@
-import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import { TAppConnectionOption } from "@app/hooks/api/appConnections/types/app-options";
-import { TAwsConnection } from "@app/hooks/api/appConnections/types/aws-connection";
-import { TDatabricksConnection } from "@app/hooks/api/appConnections/types/databricks-connection";
-import { TGitHubConnection } from "@app/hooks/api/appConnections/types/github-connection";
-import { THumanitecConnection } from "@app/hooks/api/appConnections/types/humanitec-connection";
-
+import { AppConnection } from "../enums";
+import { TAppConnectionOption } from "./app-options";
+import { TAwsConnection } from "./aws-connection";
 import { TAzureAppConfigurationConnection } from "./azure-app-configuration-connection";
 import { TAzureKeyVaultConnection } from "./azure-key-vault-connection";
+import { TDatabricksConnection } from "./databricks-connection";
 import { TGcpConnection } from "./gcp-connection";
+import { TGitHubConnection } from "./github-connection";
+import { THumanitecConnection } from "./humanitec-connection";
+import { TMsSqlConnection } from "./mssql-connection";
+import { TPostgresConnection } from "./postgres-connection";
 
 export * from "./aws-connection";
 export * from "./azure-app-configuration-connection";
@@ -15,6 +16,7 @@ export * from "./azure-key-vault-connection";
 export * from "./gcp-connection";
 export * from "./github-connection";
 export * from "./humanitec-connection";
+export * from "./postgres-connection";
 
 export type TAppConnection =
   | TAwsConnection
@@ -23,7 +25,9 @@ export type TAppConnection =
   | TAzureKeyVaultConnection
   | TAzureAppConfigurationConnection
   | TDatabricksConnection
-  | THumanitecConnection;
+  | THumanitecConnection
+  | TPostgresConnection
+  | TMsSqlConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -58,4 +62,5 @@ export type TAppConnectionMap = {
   [AppConnection.AzureAppConfiguration]: TAzureAppConfigurationConnection;
   [AppConnection.Databricks]: TDatabricksConnection;
   [AppConnection.Humanitec]: THumanitecConnection;
+  [AppConnection.Postgres]: TPostgresConnection;
 };

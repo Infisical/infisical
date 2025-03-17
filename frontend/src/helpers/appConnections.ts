@@ -1,5 +1,5 @@
 import { faGithub } from "@fortawesome/free-brands-svg-icons";
-import { faKey, faPassport, faUser } from "@fortawesome/free-solid-svg-icons";
+import { faKey, faLock, faPassport, faUser } from "@fortawesome/free-solid-svg-icons";
 
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
@@ -8,10 +8,12 @@ import {
   AzureKeyVaultConnectionMethod,
   GcpConnectionMethod,
   GitHubConnectionMethod,
+  PostgresConnectionMethod,
   TAppConnection
 } from "@app/hooks/api/appConnections/types";
 import { DatabricksConnectionMethod } from "@app/hooks/api/appConnections/types/databricks-connection";
 import { HumanitecConnectionMethod } from "@app/hooks/api/appConnections/types/humanitec-connection";
+import { MsSqlConnectionMethod } from "@app/hooks/api/appConnections/types/mssql-connection";
 
 export const APP_CONNECTION_MAP: Record<AppConnection, { name: string; image: string }> = {
   [AppConnection.AWS]: { name: "AWS", image: "Amazon Web Services.png" },
@@ -26,7 +28,9 @@ export const APP_CONNECTION_MAP: Record<AppConnection, { name: string; image: st
     image: "Microsoft Azure.png"
   },
   [AppConnection.Databricks]: { name: "Databricks", image: "Databricks.png" },
-  [AppConnection.Humanitec]: { name: "Humanitec", image: "Humanitec.png" }
+  [AppConnection.Humanitec]: { name: "Humanitec", image: "Humanitec.png" },
+  [AppConnection.Postgres]: { name: "PostgreSQL", image: "Postgres.png" },
+  [AppConnection.MsSql]: { name: "Microsoft SQL Server", image: "MsSql.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -45,8 +49,11 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "Service Account Impersonation", icon: faUser };
     case DatabricksConnectionMethod.ServicePrincipal:
       return { name: "Service Principal", icon: faUser };
-    case HumanitecConnectionMethod.API_TOKEN:
+    case HumanitecConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
+    case PostgresConnectionMethod.UsernameAndPassword:
+    case MsSqlConnectionMethod.UsernameAndPassword:
+      return { name: "Username & Password", icon: faLock };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }

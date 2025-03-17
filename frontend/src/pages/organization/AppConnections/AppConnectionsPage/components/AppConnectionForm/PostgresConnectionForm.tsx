@@ -2,51 +2,51 @@ import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import {
-  Button,
-  FormControl,
-  ModalClose,
-  SecretInput,
-  Select,
-  SelectItem
-} from "@app/components/v2";
+import { Button, FormControl, ModalClose, Select, SelectItem } from "@app/components/v2";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
-import { HumanitecConnectionMethod, THumanitecConnection } from "@app/hooks/api/appConnections";
+import { PostgresConnectionMethod, TPostgresConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
 } from "./GenericAppConnectionFields";
+import { BaseSqlUsernameAndPasswordConnectionSchema, SqlConnectionFields } from "./shared";
 
 type Props = {
-  appConnection?: THumanitecConnection;
+  appConnection?: TPostgresConnection;
   onSubmit: (formData: FormData) => void;
 };
 
 const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.Humanitec)
+  app: z.literal(AppConnection.Postgres)
 });
 
 const formSchema = z.discriminatedUnion("method", [
   rootSchema.extend({
-    method: z.literal(HumanitecConnectionMethod.ApiToken),
-    credentials: z.object({
-      apiToken: z.string().trim().min(1, "Service API Token required")
-    })
+    method: z.literal(PostgresConnectionMethod.UsernameAndPassword),
+    credentials: BaseSqlUsernameAndPasswordConnectionSchema
   })
 ]);
 
 type FormData = z.infer<typeof formSchema>;
 
-export const HumanitecConnectionForm = ({ appConnection, onSubmit }: Props) => {
+export const PostgresConnectionForm = ({ appConnection, onSubmit }: Props) => {
   const isUpdate = Boolean(appConnection);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: appConnection ?? {
-      app: AppConnection.Humanitec,
-      method: HumanitecConnectionMethod.ApiToken
+      app: AppConnection.Postgres,
+      method: PostgresConnectionMethod.UsernameAndPassword,
+      credentials: {
+        host: "",
+        port: 5432,
+        database: "default",
+        username: "",
+        password: "",
+        ca: ""
+      }
     }
   });
 
@@ -66,7 +66,7 @@ export const HumanitecConnectionForm = ({ appConnection, onSubmit }: Props) => {
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <FormControl
               tooltipText={`The method you would like to use to connect with ${
-                APP_CONNECTION_MAP[AppConnection.Humanitec].name
+                APP_CONNECTION_MAP[AppConnection.Postgres].name
               }. This field cannot be changed after creation.`}
               errorText={error?.message}
               isError={Boolean(error?.message)}
@@ -80,7 +80,7 @@ export const HumanitecConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 position="popper"
                 dropdownContainerClassName="max-w-none"
               >
-                {Object.values(HumanitecConnectionMethod).map((method) => {
+                {Object.values(PostgresConnectionMethod).map((method) => {
                   return (
                     <SelectItem value={method} key={method}>
                       {getAppConnectionMethodDetails(method).name}{" "}
@@ -91,24 +91,7 @@ export const HumanitecConnectionForm = ({ appConnection, onSubmit }: Props) => {
             </FormControl>
           )}
         />
-        <Controller
-          name="credentials.apiToken"
-          control={control}
-          shouldUnregister
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Service API Token"
-            >
-              <SecretInput
-                containerClassName="text-gray-400 group-focus-within:!border-primary-400/50 border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-              />
-            </FormControl>
-          )}
-        />
+        <SqlConnectionFields />
         <div className="mt-8 flex items-center">
           <Button
             className="mr-4"
@@ -118,7 +101,7 @@ export const HumanitecConnectionForm = ({ appConnection, onSubmit }: Props) => {
             isLoading={isSubmitting}
             isDisabled={isSubmitting || !isDirty}
           >
-            {isUpdate ? "Update Credentials" : "Connect to Humanitec"}
+            {isUpdate ? "Update Credentials" : "Connect to Database"}
           </Button>
           <ModalClose asChild>
             <Button colorSchema="secondary" variant="plain">

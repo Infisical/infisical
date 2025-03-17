@@ -18,7 +18,7 @@ export const getHumanitecConnectionListItem = () => {
   return {
     name: "Humanitec" as const,
     app: AppConnection.Humanitec as const,
-    methods: Object.values(HumanitecConnectionMethod) as [HumanitecConnectionMethod.API_TOKEN]
+    methods: Object.values(HumanitecConnectionMethod) as [HumanitecConnectionMethod.ApiToken]
   };
 };
 
