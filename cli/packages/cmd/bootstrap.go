@@ -70,11 +70,13 @@ var bootstrapCmd = &cobra.Command{
 
 		if err != nil {
 			log.Error().Msgf("Failed to bootstrap instance: %v", err)
+			return
 		}
 
 		responseJSON, err := json.MarshalIndent(bootstrapResponse, "", "  ")
 		if err != nil {
 			log.Fatal().Msgf("Failed to convert response to JSON: %v", err)
+			return
 		}
 		fmt.Println(string(responseJSON))
 	},
