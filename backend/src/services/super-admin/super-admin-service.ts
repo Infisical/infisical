@@ -27,7 +27,7 @@ import { UserAliasType } from "../user-alias/user-alias-types";
 import { TSuperAdminDALFactory } from "./super-admin-dal";
 import {
   LoginMethod,
-  TAdminBoostrapInstanceDTO,
+  TAdminBootstrapInstanceDTO,
   TAdminGetIdentitiesDTO,
   TAdminGetUsersDTO,
   TAdminSignUpDTO
@@ -291,7 +291,7 @@ export const superAdminServiceFactory = ({
     return { token, user: userInfo, organization };
   };
 
-  const bootstrapInstance = async ({ email, password, organizationName }: TAdminBoostrapInstanceDTO) => {
+  const bootstrapInstance = async ({ email, password, organizationName }: TAdminBootstrapInstanceDTO) => {
     const appCfg = getConfig();
     const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
     if (serverCfg?.initialized) {

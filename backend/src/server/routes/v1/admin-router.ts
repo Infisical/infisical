@@ -478,7 +478,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
 
       return {
-        message: "Successfully boostrapped instance",
+        message: "Successfully bootstrapped instance",
         user: user.user,
         organization,
         identity: machineIdentity
