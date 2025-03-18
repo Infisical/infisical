@@ -34,7 +34,7 @@ The command initializes a fresh Infisical instance by creating an admin user, or
 </Accordion>
 
 <Accordion title="--email">
-  Email address for the admin user account that will be created.
+  Email address for the admin user account that will be created. This can be set using the `INFISICAL_ADMIN_EMAIL` environment variable.
 
   ```bash
   # Example
@@ -45,7 +45,7 @@ The command initializes a fresh Infisical instance by creating an admin user, or
 </Accordion>
 
 <Accordion title="--password">
-  Password for the admin user account.
+  Password for the admin user account. This can be set using the `INFISICAL_ADMIN_PASSWORD` environment variable.
 
   ```bash
   # Example
@@ -72,38 +72,27 @@ The command returns a JSON response with details about the created user, organiz
 
 ```json
 {
-    "message": "Successfully initialized instance",
-    "user": {
-        "id": "911d6d11-2bf8-4f1b-861d-6a0ec43e7e1a",
-        "email": "admin@example.com",
-        "authMethods": [
-            "email"
-        ],
-        "superAdmin": true,
-        "firstName": "Admin",
-        "lastName": "User",
-        "isAccepted": true,
-        "isMfaEnabled": false,
-        // Additional user properties...
+  "identity": {
+    "credentials": {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZGVudGl0eUlkIjoiZGIyMjQ3OTItZWQxOC00Mjc3LTlkYWUtNTdlNzUyMzE1ODU0IiwiaWRlbnRpdHlBY2Nlc3NUb2tlbklkIjoiZmVkZmZmMGEtYmU3Yy00NjViLWEwZWEtZjM5OTNjMTg4OGRlIiwiYXV0aFRva2VuVHlwZSI6ImlkZW50aXR5QWNjZXNzVG9rZW4iLCJpYXQiOjE3NDIzMjI0ODl9.mqcZZqIFqER1e9ubrQXp8FbzGYi8nqqZwfMvz09g-8Y"
     },
-    "organization": {
-        "id": "65a54d51-cac9-418a-ae17-20bfc715c6df",
-        "name": "your-org-name",
-        "slug": "your-org-name-xxxx",
-        "createdAt": "2025-03-17T11:11:41.564Z",
-        "updatedAt": "2025-03-17T11:11:41.564Z",
-        // Additional organization properties...
-    },
-    "identity": {
-        "id": "4fa39767-39ce-440f-bb00-f6aae64b3dd5",
-        "name": "Admin Identity",
-        "authMethod": null,
-        "createdAt": "2025-03-17T11:11:41.569Z",
-        "updatedAt": "2025-03-17T11:11:41.569Z",
-        "credentials": {
-            "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-        }
-    }
+    "id": "db224792-ed18-4277-9dae-57e752315854",
+    "name": "Instance Admin Identity"
+  },
+  "message": "Successfully bootstrapped instance",
+  "organization": {
+    "id": "b56bece0-42f5-4262-b25e-be7bf5f84957",
+    "name": "dog",
+    "slug": "dog-v-e5l"
+  },
+  "user": {
+    "email": "admin@example.com",
+    "firstName": "Admin",
+    "id": "a418f355-c8da-453c-bbc8-6c07208eeb3c",
+    "lastName": "User",
+    "superAdmin": true,
+    "username": "admin@example.com"
+  }
 }
 ```
 
