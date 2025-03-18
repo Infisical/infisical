@@ -408,7 +408,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         totalDynamicSecretCount,
         totalImportCount,
         totalSecretCount,
-        totalCount: (totalFolderCount ?? 0) + (totalDynamicSecretCount ?? 0) + (totalSecretCount ?? 0)
+        totalCount:
+          (totalFolderCount ?? 0) + (totalDynamicSecretCount ?? 0) + (totalSecretCount ?? 0) + (totalImportCount ?? 0)
       };
     }
   });
