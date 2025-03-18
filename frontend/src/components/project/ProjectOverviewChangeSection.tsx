@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -102,11 +102,12 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
         text: `Copied ${label} to clipboard`,
         type: "success"
       });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(`Clipboard copy error (${label}):`, error);
-      setErrorMessage(error.message || "An unknown error occurred while copying.");
+      const message = error instanceof Error ? error.message : "An unknown error occurred while copying.";
+      setErrorMessage(message);
       createNotification({
-        text: `Failed to copy ${label}: ${error.message || "Unknown error"}`,
+        text: `Failed to copy ${label}: ${message}`,
         type: "error"
       });
     }
@@ -120,7 +121,7 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
           <Button
             variant="outline_bg"
             size="sm"
-            onClick={() => handleCopy(projectSlug, "project slug")}
+            onClick={() => handleCopy(currentWorkspace?.slug || "", "project slug")}
             disabled={!canCopy}
             title={!canCopy ? errorMessage : "Click to copy project slug"}
           >
@@ -130,7 +131,7 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
           <Button
             variant="outline_bg"
             size="sm"
-            onClick={() => handleCopy(projectId, "project ID")}
+            onClick={() => handleCopy(currentWorkspace?.id || "", "project ID")}
             disabled={!canCopy}
             title={!canCopy ? errorMessage : "Click to copy project ID"}
           >
