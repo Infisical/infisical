@@ -3,6 +3,7 @@ export {
   useAdminGrantServerAdminAccess,
   useAdminRemoveIdentitySuperAdminAccess,
   useCreateAdminUser,
+  useRemoveUserServerAdminAccess,
   useUpdateAdminSlackConfig,
   useUpdateServerConfig,
   useUpdateServerEncryptionStrategy

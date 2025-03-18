@@ -453,6 +453,17 @@ export const superAdminServiceFactory = ({
     return identity;
   };
 
+  const deleteUserSuperAdminAccess = async (userId: string) => {
+    const user = await userDAL.findById(userId);
+    if (!user) {
+      throw new NotFoundError({ name: "User", message: "User not found" });
+    }
+
+    const updatedUser = userDAL.updateById(userId, { superAdmin: false });
+
+    return updatedUser;
+  };
+
   const getIdentities = async ({ offset, limit, searchTerm }: TAdminGetIdentitiesDTO) => {
     const identities = await identityDAL.getIdentitiesByFilter({
       limit,
@@ -571,6 +582,7 @@ export const superAdminServiceFactory = ({
     updateRootEncryptionStrategy,
     getConfiguredEncryptionStrategies,
     grantServerAdminAccessToUser,
-    deleteIdentitySuperAdminAccess
+    deleteIdentitySuperAdminAccess,
+    deleteUserSuperAdminAccess
   };
 };
