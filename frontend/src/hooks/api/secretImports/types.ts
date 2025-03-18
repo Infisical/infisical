@@ -1,5 +1,4 @@
 import { SecretV3Raw } from "../secrets/types";
-import { WsTag } from "../types";
 import { WorkspaceEnv } from "../workspace/types";
 
 export type TSecretImport = {
@@ -92,7 +91,7 @@ export type TDeleteSecretImportDTO = {
   path?: string;
 };
 
-export type SecretImportData = {
+export type TSecretImportMultiEnvData = {
   currentEnv: string;
   environment: string;
   secretPath: string;
@@ -104,7 +103,15 @@ export type SecretImportData = {
     key: string;
     value: string;
     secretValueHidden: boolean;
-    tags?: WsTag[];
+    tags?: {
+      id: string;
+      slug: string;
+      color?: string;
+      projectId: string;
+      createdAt: string;
+      updatedAt: string;
+      __v: number;
+    }[];
     comment?: string;
     createdAt: string;
     updatedAt: string;

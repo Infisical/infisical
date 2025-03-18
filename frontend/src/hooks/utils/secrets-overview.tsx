@@ -1,8 +1,7 @@
 import { useCallback, useMemo } from "react";
 
 import { DashboardProjectSecretsOverview } from "@app/hooks/api/dashboard/types";
-
-import { SecretImportData } from "../api/secretImports/types";
+import { TSecretImportMultiEnvData } from "@app/hooks/api/secretImports/types";
 
 type FolderNameAndDescription = {
   name: string;
@@ -99,31 +98,28 @@ export const useSecretOverview = (secrets: DashboardProjectSecretsOverview["secr
   return { secKeys, getSecretByKey, getEnvSecretKeyCount };
 };
 
-export const useSecretImportOverview = (secretImports: SecretImportData[][] | undefined) => {
+export const useSecretImportOverview = (secretImports: TSecretImportMultiEnvData[] | undefined) => {
   const uniqueEnvSecretPaths = useMemo(() => {
-    const uniqueMap: Record<string, SecretImportData[]> = {};
+    const uniqueMap = new Map<string, TSecretImportMultiEnvData>();
     secretImports?.forEach((importData) => {
-      importData?.forEach((envImport) => {
-        if (envImport) {
-          const key = `${envImport.environment}-${envImport.secretPath}`;
-          const existing = uniqueMap[key];
-          uniqueMap[key] = existing ? [...existing, envImport] : [envImport];
+      if (importData) {
+        const key = `${importData.environment}-${importData.secretPath}`;
+        if (!uniqueMap.has(key)) {
+          uniqueMap.set(key, importData);
         }
-      });
+      }
     });
-    return uniqueMap;
+    return Array.from(uniqueMap.values());
   }, [secretImports]);
 
   const isSecretImportPresent = useCallback(
     (sourceEnv: string, targetEnv: string, secretPath: string) => {
       return (
-        secretImports?.some((importData) =>
-          importData?.some(
-            (envImport) =>
-              envImport?.currentEnv === sourceEnv &&
-              envImport?.environment === targetEnv &&
-              envImport?.secretPath === secretPath
-          )
+        secretImports?.some(
+          (importData) =>
+            importData?.currentEnv === sourceEnv &&
+            importData?.environment === targetEnv &&
+            importData?.secretPath === secretPath
         ) ?? false
       );
     },

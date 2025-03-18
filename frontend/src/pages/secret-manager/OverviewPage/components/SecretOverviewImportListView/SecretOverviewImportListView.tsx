@@ -1,17 +1,15 @@
-import { subject } from "@casl/ability";
 import { faCheck, faFileImport, faKey, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
 import { EmptyState, SecretInput, TableContainer, Td, Tr } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { useToggle } from "@app/hooks";
-import { SecretImportData } from "@app/hooks/api/secretImports/types";
+import { TSecretImportMultiEnvData } from "@app/hooks/api/secretImports/types";
 import { EnvFolderIcon } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretImportListView/SecretImportItem";
 import { computeImportedSecretRows } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretImportListView/SecretImportListView";
 
 type Props = {
-  secretImport: SecretImportData;
+  secretImport: TSecretImportMultiEnvData;
   environments: { name: string; slug: string }[];
   isImportedSecretPresentInEnv: (
     sourceEnv: string,
@@ -19,7 +17,7 @@ type Props = {
     secretPath: string
   ) => boolean;
   scrollOffset: number;
-  allSecretImports: SecretImportData[][] | undefined;
+  allSecretImports: TSecretImportMultiEnvData[];
 };
 
 export const SecretOverviewImportListView = ({
@@ -27,27 +25,18 @@ export const SecretOverviewImportListView = ({
   environments = [],
   isImportedSecretPresentInEnv,
   scrollOffset,
-  allSecretImports
+  allSecretImports = []
 }: Props) => {
   const [isFormExpanded, setIsFormExpanded] = useToggle();
-  const { permission } = useProjectPermission();
   const environmentImportDetails = secretImport.environmentInfo;
   const totalCols = environments.length + 1;
 
-  const canReadSecretImports = permission.can(
-    ProjectPermissionActions.Read,
-    subject(ProjectPermissionSub.SecretImports, {
-      environment: environmentImportDetails.slug,
-      secretPath: secretImport.secretPath
-    })
-  );
-
   const computeImportedSecrets =
-    canReadSecretImports && allSecretImports
+    allSecretImports.length > 0
       ? computeImportedSecretRows(
           environmentImportDetails.slug,
           secretImport.secretPath,
-          (allSecretImports?.flatMap((s) => s ?? []) ?? []).filter(Boolean) as SecretImportData[]
+          allSecretImports
         )
       : [];
   return (
@@ -55,7 +44,7 @@ export const SecretOverviewImportListView = ({
       <Tr
         isHoverable
         isSelectable
-        onClick={() => canReadSecretImports && setIsFormExpanded.toggle()}
+        onClick={() => setIsFormExpanded.toggle()}
         className={`group ${isFormExpanded ? "border-t-2 border-mineshaft-500" : ""}`}
       >
         <Td className="sticky left-0 z-10 bg-mineshaft-800 bg-clip-padding px-0 py-0 group-hover:bg-mineshaft-700">
@@ -106,7 +95,7 @@ export const SecretOverviewImportListView = ({
           );
         })}
       </Tr>
-      {canReadSecretImports && isFormExpanded && (
+      {isFormExpanded && (
         <Tr>
           <Td
             colSpan={totalCols}

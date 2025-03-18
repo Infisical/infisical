@@ -7,6 +7,7 @@ import {
   faAngleDown,
   faArrowDown,
   faArrowUp,
+  faFileImport,
   faFingerprint,
   faFolder,
   faFolderBlank,
@@ -67,7 +68,7 @@ import { DashboardSecretsOrderBy } from "@app/hooks/api/dashboard/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
 import { TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
-import { SecretImportData } from "@app/hooks/api/secretImports/types";
+import { TSecretImportMultiEnvData } from "@app/hooks/api/secretImports/types";
 import { SecretType, SecretV3RawSanitized, TSecretFolder } from "@app/hooks/api/types";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/workspace/types";
 import {
@@ -100,7 +101,8 @@ export enum EntryType {
 enum RowType {
   Folder = "folder",
   DynamicSecret = "dynamic",
-  Secret = "secret"
+  Secret = "secret",
+  Import = "import"
 }
 
 type Filter = {
@@ -110,7 +112,8 @@ type Filter = {
 const DEFAULT_FILTER_STATE = {
   [RowType.Folder]: true,
   [RowType.DynamicSecret]: true,
-  [RowType.Secret]: true
+  [RowType.Secret]: true,
+  [RowType.Import]: true
 };
 
 export const OverviewPage = () => {
@@ -203,7 +206,18 @@ export const OverviewPage = () => {
     environments: (userAvailableEnvs || []).map(({ slug }) => slug)
   });
   const secretImportsData = useMemo(
-    () => secretImports?.map((s) => s.data as SecretImportData[]) ?? [],
+    () =>
+      (secretImports?.map((s) => s.data as TSecretImportMultiEnvData[]) ?? [])
+        ?.flatMap((s) => s ?? [])
+        ?.filter((secretImport) =>
+          permission.can(
+            ProjectPermissionActions.Read,
+            subject(ProjectPermissionSub.SecretImports, {
+              environment: secretImport.currentEnv,
+              secretPath
+            })
+          )
+        ),
     [secretImports]
   );
   const { uniqueEnvSecretPaths, isSecretImportPresent } =
@@ -771,6 +785,19 @@ export const OverviewPage = () => {
                   <DropdownMenuItem
                     onClick={(e) => {
                       e.preventDefault();
+                      handleToggleRowType(RowType.Import);
+                    }}
+                    icon={filter[RowType.Import] && <FontAwesomeIcon icon={faCheckCircle} />}
+                    iconPos="right"
+                  >
+                    <div className="flex items-center gap-2">
+                      <FontAwesomeIcon icon={faFileImport} className="text-green-700" />
+                      <span>Imports</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.preventDefault();
                       handleToggleRowType(RowType.Folder);
                     }}
                     icon={filter[RowType.Folder] && <FontAwesomeIcon icon={faCheckCircle} />}
@@ -1071,16 +1098,19 @@ export const OverviewPage = () => {
                         key={`overview-${dynamicSecretName}-${index + 1}`}
                       />
                     ))}
-                    {Object.entries(uniqueEnvSecretPaths).map(([key, secretImportsAllEnvs]) => (
-                      <SecretOverviewImportListView
-                        secretImport={secretImportsAllEnvs[0]}
-                        isImportedSecretPresentInEnv={isSecretImportPresent}
-                        environments={visibleEnvs}
-                        key={`overview-${key}`}
-                        scrollOffset={debouncedScrollOffset}
-                        allSecretImports={secretImportsData}
-                      />
-                    ))}
+                    {filter.import &&
+                      Object.entries(uniqueEnvSecretPaths).map(([key, secretImportsAllEnvs]) => (
+                        <SecretOverviewImportListView
+                          secretImport={secretImportsAllEnvs}
+                          isImportedSecretPresentInEnv={isSecretImportPresent}
+                          environments={visibleEnvs}
+                          key={`overview-${key}`}
+                          scrollOffset={debouncedScrollOffset}
+                          allSecretImports={(
+                            secretImportsData?.flatMap((s) => s ?? []) ?? []
+                          ).filter(Boolean)}
+                        />
+                      ))}
                     {secKeys.map((key, index) => (
                       <SecretOverviewTableRow
                         isSelected={Boolean(selectedEntries.secret[key])}
