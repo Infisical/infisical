@@ -23,7 +23,12 @@ export const PostgresConnectionSchema = BasePostgresConnectionSchema.extend({
 export const SanitizedPostgresConnectionSchema = z.discriminatedUnion("method", [
   BasePostgresConnectionSchema.extend({
     method: z.literal(PostgresConnectionMethod.UsernameAndPassword),
-    credentials: PostgresConnectionAccessTokenCredentialsSchema.pick({})
+    credentials: PostgresConnectionAccessTokenCredentialsSchema.pick({
+      host: true,
+      database: true,
+      port: true,
+      username: true
+    })
   })
 ]);
 

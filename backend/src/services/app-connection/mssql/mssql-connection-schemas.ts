@@ -29,8 +29,7 @@ export const SanitizedMsSqlConnectionSchema = z.discriminatedUnion("method", [
       host: true,
       database: true,
       port: true,
-      username: true,
-      password: true // TODO: REMOVE!!!!
+      username: true
     })
   })
 ]);
