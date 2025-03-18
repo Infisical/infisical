@@ -81,6 +81,36 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
       });
     }
   };
+  
+  const [canCopy, setCanCopy] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    if (!navigator.clipboard) {
+      setCanCopy(false);
+      setErrorMessage("Clipboard API is not supported in this browser.");
+    } else if (window.location.protocol !== "https:") {
+      setCanCopy(false);
+      setErrorMessage("Clipboard API requires HTTPS to function.");
+    }
+  }, []);
+
+  const handleCopy = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      createNotification({
+        text: `Copied ${label} to clipboard`,
+        type: "success"
+      });
+    } catch (error) {
+      console.error(`Clipboard copy error (${label}):`, error);
+      setErrorMessage(error.message || "An unknown error occurred while copying.");
+      createNotification({
+        text: `Failed to copy ${label}: ${error.message || "Unknown error"}`,
+        type: "error"
+      });
+    }
+  };
 
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
@@ -90,30 +120,21 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
           <Button
             variant="outline_bg"
             size="sm"
-            onClick={() => {
-              navigator.clipboard.writeText(currentSlug || "");
-              createNotification({
-                text: "Copied project slug to clipboard",
-                type: "success"
-              });
-            }}
-            title="Click to copy project slug"
+            onClick={() => handleCopy(projectSlug, "project slug")}
+            disabled={!canCopy}
+            title={!canCopy ? errorMessage : "Click to copy project slug"}
           >
-            Copy Project Slug
+            {canCopy ? "Copy Project Slug" : "Clipboard Unavailable"}
           </Button>
+
           <Button
             variant="outline_bg"
             size="sm"
-            onClick={() => {
-              navigator.clipboard.writeText(currentWorkspace?.id || "");
-              createNotification({
-                text: "Copied project ID to clipboard",
-                type: "success"
-              });
-            }}
-            title="Click to copy project ID"
+            onClick={() => handleCopy(projectId, "project ID")}
+            disabled={!canCopy}
+            title={!canCopy ? errorMessage : "Click to copy project ID"}
           >
-            Copy Project ID
+            {canCopy ? "Copy Project ID" : "Clipboard Unavailable"}
           </Button>
         </div>
       </div>
