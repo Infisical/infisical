@@ -53,7 +53,7 @@ const schema = z.object({
         value: z.string()
       })
     )
-    .default([{ key: "", value: "" }]),
+    .default([]),
   claimMetadataMapping: z
     .array(
       z.object({
@@ -61,7 +61,7 @@ const schema = z.object({
         value: z.string()
       })
     )
-    .default([{ key: "", value: "" }]),
+    .default([]),
   boundSubject: z.string().optional().default("")
 });
 
@@ -107,8 +107,8 @@ export const IdentityOidcAuthForm = ({
       accessTokenMaxTTL: "2592000",
       accessTokenNumUsesLimit: "0",
       accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
-      boundClaims: [{ key: "", value: "" }],
-      claimMetadataMapping: [{ key: "", value: "" }]
+      boundClaims: [],
+      claimMetadataMapping: []
     }
   });
   const {
@@ -170,12 +170,13 @@ export const IdentityOidcAuthForm = ({
         caCert: "",
         boundIssuer: "",
         boundAudiences: "",
-        boundClaims: [{ key: "", value: "" }],
+        boundClaims: [],
         boundSubject: "",
         accessTokenTTL: "2592000",
         accessTokenMaxTTL: "2592000",
         accessTokenNumUsesLimit: "0",
-        accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]
+        accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
+        claimMetadataMapping: []
       });
     }
   }, [data]);
