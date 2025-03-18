@@ -67,7 +67,8 @@ export const WindmillConfigurePage = () => {
           (integrationAuthApp) => integrationAuthApp.name === targetApp
         )?.appId,
         sourceEnvironment: selectedSourceEnvironment,
-        secretPath
+        secretPath,
+        url: integrationAuth.url ?? undefined
       });
 
       setIsLoading(false);
