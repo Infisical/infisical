@@ -145,7 +145,10 @@ var secretsSetCmd = &cobra.Command{
 	DisableFlagsInUseLine: true,
 	Args: func(cmd *cobra.Command, args []string) error {
 		if cmd.Flags().Changed("file") {
-			return cobra.ExactArgs(0)(cmd, args)
+			if len(args) > 0 {
+				return fmt.Errorf("secrets cannot be provided as command-line arguments when the --file option is used. Please choose either file-based or argument-based secret input")
+			}
+			return nil
 		}
 		return cobra.MinimumNArgs(1)(cmd, args)
 	},
