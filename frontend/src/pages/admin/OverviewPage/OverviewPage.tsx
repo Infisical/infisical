@@ -165,8 +165,8 @@ export const OverviewPage = () => {
                     <Tab value={TabSections.Auth}>Authentication</Tab>
                     <Tab value={TabSections.RateLimit}>Rate Limit</Tab>
                     <Tab value={TabSections.Integrations}>Integrations</Tab>
-                    <Tab value={TabSections.Users}>Users</Tab>
-                    <Tab value={TabSections.Identities}>Identities</Tab>
+                    <Tab value={TabSections.Users}>User Identities</Tab>
+                    <Tab value={TabSections.Identities}>Machine Identities</Tab>
                   </div>
                 </TabList>
                 <TabPanel value={TabSections.Settings}>
