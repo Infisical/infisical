@@ -486,9 +486,23 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           message: z.string(),
-          user: UsersSchema,
-          organization: OrganizationsSchema,
-          identity: IdentitiesSchema.extend({
+          user: UsersSchema.pick({
+            username: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            id: true,
+            superAdmin: true
+          }),
+          organization: OrganizationsSchema.pick({
+            id: true,
+            name: true,
+            slug: true
+          }),
+          identity: IdentitiesSchema.pick({
+            id: true,
+            name: true
+          }).extend({
             credentials: z.object({
               token: z.string()
             }) // would just be Token AUTH for now

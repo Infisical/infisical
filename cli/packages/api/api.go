@@ -601,8 +601,8 @@ func CallGatewayHeartBeatV1(httpClient *resty.Client) error {
 	return nil
 }
 
-func CallBootstrapInstance(httpClient *resty.Client, request BootstrapInstanceRequest) (*BootstrapInstanceResponse, error) {
-	var resBody BootstrapInstanceResponse
+func CallBootstrapInstance(httpClient *resty.Client, request BootstrapInstanceRequest) (map[string]interface{}, error) {
+	var resBody map[string]interface{}
 	response, err := httpClient.
 		R().
 		SetResult(&resBody).
@@ -618,5 +618,5 @@ func CallBootstrapInstance(httpClient *resty.Client, request BootstrapInstanceRe
 		return nil, fmt.Errorf("CallBootstrapInstance: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
 	}
 
-	return &resBody, nil
+	return resBody, nil
 }
