@@ -19,7 +19,7 @@ export type TValidatePostgresConnectionCredentials = typeof ValidatePostgresConn
 
 export type TPostgresConnectionConfig = DiscriminativePick<
   TPostgresConnectionInput,
-  "method" | "app" | "credentials"
+  "method" | "app" | "credentials" | "isPlatformManaged"
 > & {
   orgId: string;
 };

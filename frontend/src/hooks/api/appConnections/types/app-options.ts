@@ -3,6 +3,7 @@ import { AppConnection } from "@app/hooks/api/appConnections/enums";
 export type TAppConnectionOptionBase = {
   name: string;
   methods: string[];
+  supportsPlatformManagement?: boolean;
 };
 
 export type TAwsConnectionOption = TAppConnectionOptionBase & {

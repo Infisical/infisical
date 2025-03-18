@@ -1,6 +1,6 @@
 {
   "name": "Infisical",
-  "openapi": "https://app.infisical.com/api/docs/json",
+  "openapi": "https://bubblegloop-swamp.ngrok.dev/api/docs/json",
   "logo": {
     "dark": "/logo/dark.svg",
     "light": "/logo/light.svg",
@@ -911,6 +911,30 @@
                 "api-reference/endpoints/app-connections/humanitec/create",
                 "api-reference/endpoints/app-connections/humanitec/update",
                 "api-reference/endpoints/app-connections/humanitec/delete"
+              ]
+            },
+            {
+              "group": "Microsoft SQL Server",
+              "pages": [
+                "api-reference/endpoints/app-connections/mssql/list",
+                "api-reference/endpoints/app-connections/mssql/available",
+                "api-reference/endpoints/app-connections/mssql/get-by-id",
+                "api-reference/endpoints/app-connections/mssql/get-by-name",
+                "api-reference/endpoints/app-connections/mssql/create",
+                "api-reference/endpoints/app-connections/mssql/update",
+                "api-reference/endpoints/app-connections/mssql/delete"
+              ]
+            },
+            {
+              "group": "PostgreSQL",
+              "pages": [
+                "api-reference/endpoints/app-connections/postgres/list",
+                "api-reference/endpoints/app-connections/postgres/available",
+                "api-reference/endpoints/app-connections/postgres/get-by-id",
+                "api-reference/endpoints/app-connections/postgres/get-by-name",
+                "api-reference/endpoints/app-connections/postgres/create",
+                "api-reference/endpoints/app-connections/postgres/update",
+                "api-reference/endpoints/app-connections/postgres/delete"
               ]
             }
           ]

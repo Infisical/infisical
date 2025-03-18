@@ -72,7 +72,7 @@ export type TAppConnectionInput = { id: string } & (
 
 export type TCreateAppConnectionDTO = Pick<
   TAppConnectionInput,
-  "credentials" | "method" | "name" | "app" | "description"
+  "credentials" | "method" | "name" | "app" | "description" | "isPlatformManaged"
 >;
 
 export type TUpdateAppConnectionDTO = Partial<Omit<TCreateAppConnectionDTO, "method" | "app">> & {
@@ -110,3 +110,7 @@ export type TListAwsConnectionKmsKeys = {
 export type TAppConnectionCredentialValidator = (
   appConnection: TAppConnectionConfig
 ) => Promise<TAppConnection["credentials"]>;
+
+export type TAppConnectionBaseConfig = {
+  supportsPlatformManagement?: boolean;
+};

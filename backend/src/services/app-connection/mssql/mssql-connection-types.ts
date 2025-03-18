@@ -17,6 +17,9 @@ export type TMsSqlConnectionInput = z.infer<typeof CreateMsSqlConnectionSchema> 
 
 export type TValidateMsSqlConnectionCredentials = typeof ValidateMsSqlConnectionCredentialsSchema;
 
-export type TMsSqlConnectionConfig = DiscriminativePick<TMsSqlConnectionInput, "method" | "app" | "credentials"> & {
+export type TMsSqlConnectionConfig = DiscriminativePick<
+  TMsSqlConnectionInput,
+  "method" | "app" | "credentials" | "isPlatformManaged"
+> & {
   orgId: string;
 };

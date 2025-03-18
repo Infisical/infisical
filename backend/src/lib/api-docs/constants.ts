@@ -1649,7 +1649,8 @@ export const AppConnections = {
       name: `The name of the ${appName} Connection to create. Must be slug-friendly.`,
       description: `An optional description for the ${appName} Connection.`,
       credentials: `The credentials used to connect with ${appName}.`,
-      method: `The method used to authenticate with ${appName}.`
+      method: `The method used to authenticate with ${appName}.`,
+      isPlatformManaged: `Whether or not the ${appName} Connection should be managed by Infisical.`
     };
   },
   UPDATE: (app: AppConnection) => {
@@ -1659,7 +1660,8 @@ export const AppConnections = {
       name: `The updated name of the ${appName} Connection. Must be slug-friendly.`,
       description: `The updated description of the ${appName} Connection.`,
       credentials: `The credentials used to connect with ${appName}.`,
-      method: `The method used to authenticate with ${appName}.`
+      method: `The method used to authenticate with ${appName}.`,
+      isPlatformManaged: `Whether or not the ${appName} Connection should be managed by Infisical.`
     };
   },
   DELETE: (app: AppConnection) => ({

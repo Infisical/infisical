@@ -22,7 +22,8 @@ type Props = {
 };
 
 const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.MsSql)
+  app: z.literal(AppConnection.MsSql),
+  isPlatformManaged: z.boolean().optional()
 });
 
 const formSchema = z.discriminatedUnion("method", [

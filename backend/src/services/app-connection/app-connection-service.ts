@@ -5,6 +5,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { generateHash } from "@app/lib/crypto/encryption";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { DiscriminativePick, OrgServiceActor } from "@app/lib/types";
 import {
   decryptAppConnection,
@@ -164,7 +165,8 @@ export const appConnectionServiceFactory = ({
       app,
       credentials,
       method,
-      orgId: actor.orgId
+      orgId: actor.orgId,
+      isPlatformManaged: params.isPlatformManaged
     } as TAppConnectionConfig);
 
     const encryptedCredentials = await encryptAppConnectionCredentials({
@@ -217,6 +219,13 @@ export const appConnectionServiceFactory = ({
       OrgPermissionSubjects.AppConnections
     );
 
+    // prevent updating credentials or management status if platform managed
+    if (appConnection.isPlatformManaged && (params.isPlatformManaged === false || credentials)) {
+      throw new BadRequestError({
+        message: "Cannot update credentials or management status for platform managed connections"
+      });
+    }
+
     let encryptedCredentials: undefined | Buffer;
 
     if (credentials) {
@@ -234,11 +243,14 @@ export const appConnectionServiceFactory = ({
           } Connection with method ${getAppConnectionMethodName(method)}`
         });
 
+      logger.warn(params, "PARAMS");
+
       const validatedCredentials = await validateAppConnectionCredentials({
         app,
         orgId: actor.orgId,
         credentials,
-        method
+        method,
+        isPlatformManaged: params.isPlatformManaged
       } as TAppConnectionConfig);
 
       if (!validatedCredentials)

@@ -13,7 +13,9 @@ import { MsSqlConnectionMethod } from "./mssql-connection-enums";
 
 export const MsSqlConnectionAccessTokenCredentialsSchema = BaseSqlUsernameAndPasswordConnectionSchema;
 
-const BaseMsSqlConnectionSchema = BaseAppConnectionSchema.extend({ app: z.literal(AppConnection.MsSql) });
+const BaseMsSqlConnectionSchema = BaseAppConnectionSchema.extend({
+  app: z.literal(AppConnection.MsSql)
+});
 
 export const MsSqlConnectionSchema = BaseMsSqlConnectionSchema.extend({
   method: z.literal(MsSqlConnectionMethod.UsernameAndPassword),
@@ -23,7 +25,13 @@ export const MsSqlConnectionSchema = BaseMsSqlConnectionSchema.extend({
 export const SanitizedMsSqlConnectionSchema = z.discriminatedUnion("method", [
   BaseMsSqlConnectionSchema.extend({
     method: z.literal(MsSqlConnectionMethod.UsernameAndPassword),
-    credentials: MsSqlConnectionAccessTokenCredentialsSchema.pick({})
+    credentials: MsSqlConnectionAccessTokenCredentialsSchema.pick({
+      host: true,
+      database: true,
+      port: true,
+      username: true,
+      password: true // TODO: REMOVE!!!!
+    })
   })
 ]);
 
@@ -39,7 +47,7 @@ export const ValidateMsSqlConnectionCredentialsSchema = z.discriminatedUnion("me
 ]);
 
 export const CreateMsSqlConnectionSchema = ValidateMsSqlConnectionCredentialsSchema.and(
-  GenericCreateAppConnectionFieldsSchema(AppConnection.MsSql)
+  GenericCreateAppConnectionFieldsSchema(AppConnection.MsSql, { supportsPlatformManagement: true })
 );
 
 export const UpdateMsSqlConnectionSchema = z
@@ -48,10 +56,11 @@ export const UpdateMsSqlConnectionSchema = z
       AppConnections.UPDATE(AppConnection.MsSql).credentials
     )
   })
-  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.MsSql));
+  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.MsSql, { supportsPlatformManagement: true }));
 
 export const MsSqlConnectionListItemSchema = z.object({
   name: z.literal("Microsoft SQL Server"),
   app: z.literal(AppConnection.MsSql),
-  methods: z.nativeEnum(MsSqlConnectionMethod).array()
+  methods: z.nativeEnum(MsSqlConnectionMethod).array(),
+  supportsPlatformManagement: z.literal(true)
 });

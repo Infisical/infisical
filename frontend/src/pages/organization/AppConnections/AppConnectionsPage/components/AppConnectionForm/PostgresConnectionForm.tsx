@@ -19,7 +19,8 @@ type Props = {
 };
 
 const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.Postgres)
+  app: z.literal(AppConnection.Postgres),
+  isPlatformManaged: z.boolean().optional()
 });
 
 const formSchema = z.discriminatedUnion("method", [

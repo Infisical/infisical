@@ -33,7 +33,10 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
   const { name: appName } = APP_CONNECTION_MAP[app];
 
   const onSubmit = async (
-    formData: DiscriminativePick<TAppConnection, "method" | "name" | "app" | "credentials">
+    formData: DiscriminativePick<
+      TAppConnection,
+      "method" | "name" | "app" | "credentials" | "isPlatformManaged"
+    >
   ) => {
     try {
       const connection = await createAppConnection.mutateAsync(formData);
@@ -81,7 +84,10 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
   const { name: appName } = APP_CONNECTION_MAP[appConnection.app];
 
   const onSubmit = async (
-    formData: DiscriminativePick<TAppConnection, "method" | "name" | "app" | "credentials">
+    formData: DiscriminativePick<
+      TAppConnection,
+      "method" | "name" | "app" | "credentials" | "isPlatformManaged"
+    >
   ) => {
     try {
       const connection = await updateAppConnection.mutateAsync({

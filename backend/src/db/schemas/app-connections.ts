@@ -19,7 +19,8 @@ export const AppConnectionsSchema = z.object({
   version: z.number().default(1),
   orgId: z.string().uuid(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  isPlatformManaged: z.boolean().default(false).nullable().optional()
 });
 
 export type TAppConnections = z.infer<typeof AppConnectionsSchema>;
