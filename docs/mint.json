@@ -150,7 +150,14 @@
           "pages": [
             "documentation/platform/access-controls/overview",
             "documentation/platform/access-controls/role-based-access-controls",
-            "documentation/platform/access-controls/attribute-based-access-controls",
+            {
+              "group": "Attribute based access controls",
+              "pages": [
+                "documentation/platform/access-controls/abac/overview",
+                "documentation/platform/access-controls/abac/managing-user-metadata",
+                "documentation/platform/access-controls/abac/managing-machine-identity-attributes"
+              ]
+            },
             "documentation/platform/access-controls/additional-privileges",
             "documentation/platform/access-controls/temporary-access",
             "documentation/platform/access-controls/access-requests",
