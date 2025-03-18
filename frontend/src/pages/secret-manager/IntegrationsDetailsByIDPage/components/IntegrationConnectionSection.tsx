@@ -192,6 +192,15 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
       );
     }
 
+    if (integration.integration === "windmill" && integration.url) {
+      return (
+        <div>
+          <FormLabel className="text-sm font-semibold text-mineshaft-300" label="Instance URL" />
+          <div className="text-sm text-mineshaft-300">{integration.url}</div>
+        </div>
+      );
+    }
+
     return null;
   };
 
