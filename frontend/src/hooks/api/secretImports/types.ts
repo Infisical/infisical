@@ -14,6 +14,7 @@ export type TSecretImport = {
   isReplicationSuccess?: boolean;
   replicationStatus?: string;
   lastReplicated?: string;
+  environment?: string;
 };
 
 export type TGetImportedFoldersByEnvDTO = {
@@ -89,32 +90,4 @@ export type TDeleteSecretImportDTO = {
   projectId: string;
   environment: string;
   path?: string;
-};
-
-export type TSecretImportMultiEnvData = {
-  currentEnv: string;
-  environment: string;
-  secretPath: string;
-  environmentInfo: WorkspaceEnv;
-  folderId: string;
-  secrets: {
-    id: string;
-    env: string;
-    key: string;
-    value: string;
-    secretValueHidden: boolean;
-    tags?: {
-      id: string;
-      slug: string;
-      color?: string;
-      projectId: string;
-      createdAt: string;
-      updatedAt: string;
-      __v: number;
-    }[];
-    comment?: string;
-    createdAt: string;
-    updatedAt: string;
-    version: number;
-  }[];
 };

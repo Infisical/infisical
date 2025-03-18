@@ -68,15 +68,9 @@ import { DashboardSecretsOrderBy } from "@app/hooks/api/dashboard/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
 import { TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
-import { TSecretImportMultiEnvData } from "@app/hooks/api/secretImports/types";
 import { SecretType, SecretV3RawSanitized, TSecretFolder } from "@app/hooks/api/types";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/workspace/types";
-import {
-  useDynamicSecretOverview,
-  useFolderOverview,
-  useSecretImportOverview,
-  useSecretOverview
-} from "@app/hooks/utils";
+import { useDynamicSecretOverview, useFolderOverview, useSecretOverview } from "@app/hooks/utils";
 
 import { FolderForm } from "../SecretDashboardPage/components/ActionBar/FolderForm";
 import { CreateSecretForm } from "./components/CreateSecretForm";
@@ -195,33 +189,12 @@ export const OverviewPage = () => {
     setVisibleEnvs(userAvailableEnvs);
   }, [userAvailableEnvs]);
 
-  const {
-    secretImports,
-    isImportedSecretPresentInEnv,
-    getImportedSecretByKey,
-    getEnvImportedSecretKeyCount
-  } = useGetImportedSecretsAllEnvs({
-    projectId: workspaceId,
-    path: secretPath,
-    environments: (userAvailableEnvs || []).map(({ slug }) => slug)
-  });
-  const secretImportsData = useMemo(
-    () =>
-      (secretImports?.map((s) => s.data as TSecretImportMultiEnvData[]) ?? [])
-        ?.flatMap((s) => s ?? [])
-        ?.filter((secretImport) =>
-          permission.can(
-            ProjectPermissionActions.Read,
-            subject(ProjectPermissionSub.SecretImports, {
-              environment: secretImport.currentEnv,
-              secretPath
-            })
-          )
-        ),
-    [secretImports]
-  );
-  const { uniqueEnvSecretPaths, isSecretImportPresent } =
-    useSecretImportOverview(secretImportsData);
+  const { isImportedSecretPresentInEnv, getImportedSecretByKey, getEnvImportedSecretKeyCount } =
+    useGetImportedSecretsAllEnvs({
+      projectId: workspaceId,
+      path: secretPath,
+      environments: (userAvailableEnvs || []).map(({ slug }) => slug)
+    });
 
   const { isPending: isOverviewLoading, data: overview } = useGetProjectSecretsOverview(
     {
@@ -233,6 +206,7 @@ export const OverviewPage = () => {
       includeFolders: filter.folder,
       includeDynamicSecrets: filter.dynamic,
       includeSecrets: filter.secret,
+      includeImports: filter.import,
       search: debouncedSearchFilter,
       limit,
       offset
@@ -244,14 +218,28 @@ export const OverviewPage = () => {
     secrets,
     folders,
     dynamicSecrets,
+    imports,
     totalFolderCount,
     totalSecretCount,
     totalDynamicSecretCount,
+    totalImportCount,
     totalCount = 0,
     totalUniqueFoldersInPage,
     totalUniqueSecretsInPage,
+    totalUniqueSecretImportsInPage,
     totalUniqueDynamicSecretsInPage
   } = overview ?? {};
+
+  const importsShaped = imports
+    ?.filter((el) => !el.isReserved)
+    ?.map(({ importPath, importEnv }) => ({ importPath, importEnv }))
+    .filter(
+      (el, index, self) =>
+        index ===
+        self.findIndex(
+          (item) => item.importPath === el.importPath && item.importEnv.slug === el.importEnv.slug
+        )
+    );
 
   useResetPageHelper({
     totalCount,
@@ -693,7 +681,6 @@ export const OverviewPage = () => {
         <SecretV2MigrationSection />
       </div>
     );
-
   return (
     <div className="">
       <Helmet>
@@ -1099,16 +1086,14 @@ export const OverviewPage = () => {
                       />
                     ))}
                     {filter.import &&
-                      Object.entries(uniqueEnvSecretPaths).map(([key, secretImportsAllEnvs]) => (
+                      importsShaped &&
+                      importsShaped?.length > 0 &&
+                      importsShaped?.map((item, index) => (
                         <SecretOverviewImportListView
-                          secretImport={secretImportsAllEnvs}
-                          isImportedSecretPresentInEnv={isSecretImportPresent}
+                          secretImport={item}
                           environments={visibleEnvs}
-                          key={`overview-${key}`}
-                          scrollOffset={debouncedScrollOffset}
-                          allSecretImports={(
-                            secretImportsData?.flatMap((s) => s ?? []) ?? []
-                          ).filter(Boolean)}
+                          key={`overview-secret-input-${index + 1}`}
+                          allSecretImports={imports}
                         />
                       ))}
                     {secKeys.map((key, index) => (
@@ -1134,7 +1119,8 @@ export const OverviewPage = () => {
                         (page * perPage > totalCount ? totalCount % perPage : perPage) -
                           (totalUniqueFoldersInPage || 0) -
                           (totalUniqueDynamicSecretsInPage || 0) -
-                          (totalUniqueSecretsInPage || 0),
+                          (totalUniqueSecretsInPage || 0) -
+                          (totalUniqueSecretImportsInPage || 0),
                         0
                       )}
                     />
@@ -1174,6 +1160,7 @@ export const OverviewPage = () => {
                   dynamicSecretCount={totalDynamicSecretCount}
                   secretCount={totalSecretCount}
                   folderCount={totalFolderCount}
+                  importCount={totalImportCount}
                 />
               }
               className="rounded-b-md border-t border-solid border-t-mineshaft-600"

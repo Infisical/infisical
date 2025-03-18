@@ -813,7 +813,8 @@ export const DASHBOARD = {
     search: "The text string to filter secret keys and folder names by.",
     includeSecrets: "Whether to include project secrets in the response.",
     includeFolders: "Whether to include project folders in the response.",
-    includeDynamicSecrets: "Whether to include dynamic project secrets in the response."
+    includeDynamicSecrets: "Whether to include dynamic project secrets in the response.",
+    includeImports: "Whether to include project secret imports in the response."
   },
   SECRET_DETAILS_LIST: {
     projectId: "The ID of the project to list secrets/folders from.",

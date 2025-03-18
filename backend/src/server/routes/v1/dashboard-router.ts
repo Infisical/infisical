@@ -109,6 +109,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         search: z.string().trim().describe(DASHBOARD.SECRET_OVERVIEW_LIST.search).optional(),
         includeSecrets: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeSecrets),
         includeFolders: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeFolders),
+        includeImports: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeImports),
         includeDynamicSecrets: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeDynamicSecrets)
       }),
       response: {
@@ -124,9 +125,17 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             })
             .array()
             .optional(),
+          imports: SecretImportsSchema.omit({ importEnv: true })
+            .extend({
+              importEnv: z.object({ name: z.string(), slug: z.string(), id: z.string() }),
+              environment: z.string()
+            })
+            .array()
+            .optional(),
           totalFolderCount: z.number().optional(),
           totalDynamicSecretCount: z.number().optional(),
           totalSecretCount: z.number().optional(),
+          totalImportCount: z.number().optional(),
           totalCount: z.number()
         })
       }
@@ -143,6 +152,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         orderDirection,
         includeFolders,
         includeSecrets,
+        includeImports,
         includeDynamicSecrets
       } = req.query;
 
@@ -159,6 +169,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       let remainingLimit = limit;
       let adjustedOffset = offset;
 
+      let imports: Awaited<ReturnType<typeof server.services.secretImport.getImportsMultiEnv>> | undefined;
       let folders: Awaited<ReturnType<typeof server.services.folder.getFoldersMultiEnv>> | undefined;
       let secrets: Awaited<ReturnType<typeof server.services.secret.getSecretsRawMultiEnv>> | undefined;
       let dynamicSecrets:
@@ -168,6 +179,53 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       let totalFolderCount: number | undefined;
       let totalDynamicSecretCount: number | undefined;
       let totalSecretCount: number | undefined;
+      let totalImportCount: number | undefined;
+
+      if (includeImports) {
+        totalImportCount = await server.services.secretImport.getProjectImportMultiEnvCount({
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          projectId,
+          environments,
+          path: secretPath,
+          search
+        });
+
+        if (remainingLimit > 0 && totalImportCount > adjustedOffset) {
+          imports = await server.services.secretImport.getImportsMultiEnv({
+            actorId: req.permission.id,
+            actor: req.permission.type,
+            actorAuthMethod: req.permission.authMethod,
+            actorOrgId: req.permission.orgId,
+            projectId,
+            environments,
+            path: secretPath,
+            search,
+            limit: remainingLimit,
+            offset: adjustedOffset
+          });
+
+          await server.services.auditLog.createAuditLog({
+            ...req.auditLogInfo,
+            projectId: req.query.projectId,
+            event: {
+              type: EventType.GET_SECRET_IMPORTS,
+              metadata: {
+                environment: environments.join(","),
+                folderId: imports?.[0]?.folderId,
+                numberOfImports: imports.length
+              }
+            }
+          });
+
+          remainingLimit -= imports.length;
+          adjustedOffset = 0;
+        } else {
+          adjustedOffset = Math.max(0, adjustedOffset - totalImportCount);
+        }
+      }
 
       if (includeFolders) {
         // this is the unique count, ie duplicate folders across envs only count as 1
@@ -345,8 +403,10 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         folders,
         dynamicSecrets,
         secrets,
+        imports,
         totalFolderCount,
         totalDynamicSecretCount,
+        totalImportCount,
         totalSecretCount,
         totalCount: (totalFolderCount ?? 0) + (totalDynamicSecretCount ?? 0) + (totalSecretCount ?? 0)
       };
