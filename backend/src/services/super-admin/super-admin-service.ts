@@ -27,7 +27,7 @@ import { UserAliasType } from "../user-alias/user-alias-types";
 import { TSuperAdminDALFactory } from "./super-admin-dal";
 import {
   LoginMethod,
-  TAdminBoostrapInstanceDTO,
+  TAdminBootstrapInstanceDTO,
   TAdminGetIdentitiesDTO,
   TAdminGetUsersDTO,
   TAdminSignUpDTO
@@ -291,7 +291,7 @@ export const superAdminServiceFactory = ({
     return { token, user: userInfo, organization };
   };
 
-  const bootstrapInstance = async ({ email, password, organizationName }: TAdminBoostrapInstanceDTO) => {
+  const bootstrapInstance = async ({ email, password, organizationName }: TAdminBootstrapInstanceDTO) => {
     const appCfg = getConfig();
     const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
     if (serverCfg?.initialized) {
@@ -453,6 +453,17 @@ export const superAdminServiceFactory = ({
     return identity;
   };
 
+  const deleteUserSuperAdminAccess = async (userId: string) => {
+    const user = await userDAL.findById(userId);
+    if (!user) {
+      throw new NotFoundError({ name: "User", message: "User not found" });
+    }
+
+    const updatedUser = userDAL.updateById(userId, { superAdmin: false });
+
+    return updatedUser;
+  };
+
   const getIdentities = async ({ offset, limit, searchTerm }: TAdminGetIdentitiesDTO) => {
     const identities = await identityDAL.getIdentitiesByFilter({
       limit,
@@ -571,6 +582,7 @@ export const superAdminServiceFactory = ({
     updateRootEncryptionStrategy,
     getConfiguredEncryptionStrategies,
     grantServerAdminAccessToUser,
-    deleteIdentitySuperAdminAccess
+    deleteIdentitySuperAdminAccess,
+    deleteUserSuperAdminAccess
   };
 };

@@ -88,6 +88,22 @@ export const useAdminRemoveIdentitySuperAdminAccess = () => {
   });
 };
 
+export const useRemoveUserServerAdminAccess = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      await apiRequest.delete(`/api/v1/admin/user-management/users/${userId}/admin-access`);
+
+      return {};
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [adminStandaloneKeys.getUsers]
+      });
+    }
+  });
+};
+
 export const useAdminGrantServerAdminAccess = () => {
   const queryClient = useQueryClient();
   return useMutation({
