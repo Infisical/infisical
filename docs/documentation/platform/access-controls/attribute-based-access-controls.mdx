@@ -50,17 +50,50 @@ The following attributes are available within project permissions:
 
 During policy execution, these placeholders are replaced by their actual values prior to evaluation.
 
-## ABAC Policies From Authentication
+## Access Attributes from Machine Identity Login
 
-ABAC policies can also be defined based on your identity authentication. This means you can design your authentication process using metadata provided by an external authentication provider.
+When authenticating with machine identity providers like OIDC, your login process may include additional attributes or claims that can be used for making permission decisions.
+These attributes can be mapped to your access control policies to provide fine-grained, attribute-based access control (ABAC).
 
-1. Navigate to the identity authentication table and select the Advanced section.
-2. Map the values to be included in the permission authentication key, and assign the corresponding values from the external authentication provider's data.
-3. After logging in, your access token will contain these values, and the permissions will reflect them as well.
+### Using OIDC Authentication Attributes
+
+After authenticating via OIDC, you can access the claims provided by your identity provider and use them in permission decisions:
+
+1.  Navigate to the Identity Authentication settings and select the OIDC Auth Method.
+2.  In the **Advanced section**, find the Claim Mapping configuration.
+3.  Map the OIDC claims to permission attributes by specifying:
+
+        		- **Attribute Name**: The name that will be used in your permission policies
+        		- **Claim Path**: The dot notation path to the claim in the OIDC token (e.g., user.department)
 
 <img src="/images/platform/access-controls/abac-policies-by-auth.png" />
 
-<Info> Currently, only OIDC authentication is supported. </Info>
+For example, if your OIDC provider returns claims like
+
+```json
+{
+  "sub": "user123",
+  "name": "Jane Doe",
+  "user": {
+    "department": "engineering",
+    "role": "developer"
+  }
+}
+```
+
+You could create mappings like:
+
+- Attribute Name: **department**, Claim Path: **user.department**
+- Attribute Name: **user_role**, Claim Path: **user.role**
+
+Once configured, these attributes will be included in the access token after login and can be referenced in permission policies:
+
+<img src="/images/platform/access-controls/abac-policy-oidc-format.png" />
+
+<Info>
+  Currently, only OIDC authentication is supported. Support for Kubernetes and
+  other authentication methods is planned for future releases.{" "}
+</Info>
 
 ### OIDC Authentication
 
