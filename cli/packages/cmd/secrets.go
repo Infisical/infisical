@@ -145,7 +145,7 @@ var secretsSetCmd = &cobra.Command{
 	DisableFlagsInUseLine: true,
 	Args: func(cmd *cobra.Command, args []string) error {
 		if cmd.Flags().Changed("file") {
-			return cobra.MinimumNArgs(0)(cmd, args)
+			return cobra.ExactArgs(0)(cmd, args)
 		}
 		return cobra.MinimumNArgs(1)(cmd, args)
 	},
@@ -701,7 +701,7 @@ func init() {
 	secretsSetCmd.Flags().String("projectId", "", "manually set the project ID to for setting secrets when using machine identity based auth")
 	secretsSetCmd.Flags().String("path", "/", "set secrets within a folder path")
 	secretsSetCmd.Flags().String("type", util.SECRET_TYPE_SHARED, "the type of secret to create: personal or shared")
-	secretsSetCmd.Flags().String("file", "", "Path to a file with key=value secret pairs (comments with # or // are ignored)")
+	secretsSetCmd.Flags().String("file", "", "Load secrets from the specified file. File format: .env or YAML (comments: # or //). This option is mutually exclusive with command-line secrets arguments.")
 
 	secretsDeleteCmd.Flags().String("type", "personal", "the type of secret to delete: personal or shared  (default: personal)")
 	secretsDeleteCmd.Flags().String("token", "", "Fetch secrets using service token or machine identity access token")
