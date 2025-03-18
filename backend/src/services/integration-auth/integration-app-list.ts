@@ -923,7 +923,7 @@ const getAppsCodefresh = async ({ accessToken }: { accessToken: string }) => {
 /**
  * Return list of projects for Windmill integration
  */
-const getAppsWindmill = async ({ accessToken, url }: { accessToken: string; url?: string }) => {
+const getAppsWindmill = async ({ accessToken, url }: { accessToken: string; url?: string | null }) => {
   const apiUrl = url ? `${url}/api` : IntegrationUrls.WINDMILL_API_URL;
   const { data } = await request.get<{ id: string; name: string }[]>(`${apiUrl}/workspaces/list`, {
     headers: {
