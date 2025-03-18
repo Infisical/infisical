@@ -63,4 +63,5 @@ export type TAppConnectionMap = {
   [AppConnection.Databricks]: TDatabricksConnection;
   [AppConnection.Humanitec]: THumanitecConnection;
   [AppConnection.Postgres]: TPostgresConnection;
+  [AppConnection.MsSql]: TMsSqlConnection;
 };
