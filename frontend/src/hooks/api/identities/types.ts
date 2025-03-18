@@ -193,6 +193,7 @@ export type IdentityOidcAuth = {
   boundIssuer: string;
   boundAudiences: string;
   boundClaims: Record<string, string>;
+  claimMetadataMapping?: Record<string, string>;
   boundSubject: string;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
@@ -208,6 +209,7 @@ export type AddIdentityOidcAuthDTO = {
   boundIssuer: string;
   boundAudiences: string;
   boundClaims: Record<string, string>;
+  claimMetadataMapping?: Record<string, string>;
   boundSubject: string;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
@@ -225,6 +227,7 @@ export type UpdateIdentityOidcAuthDTO = {
   boundIssuer?: string;
   boundAudiences?: string;
   boundClaims?: Record<string, string>;
+  claimMetadataMapping?: Record<string, string>;
   boundSubject?: string;
   accessTokenTTL?: number;
   accessTokenMaxTTL?: number;

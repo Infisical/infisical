@@ -1,5 +1,6 @@
 import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
 import { PackRule, unpackRules } from "@casl/ability/extra";
+import { requestContext } from "@fastify/request-context";
 import { MongoQuery } from "@ucast/mongo2js";
 import handlebars from "handlebars";
 
@@ -317,14 +318,17 @@ export const permissionServiceFactory = ({
 
     const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
     const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false });
-    const metadataKeyValuePair = escapeHandlebarsMissingMetadata(
-      objectify(
-        identityProjectPermission.metadata,
-        (i) => i.key,
-        (i) => i.value
-      )
-    );
-
+    const identityAuthInfo = requestContext.get("identityAuthInfo");
+    const unescapedMetadata = objectify(
+      identityProjectPermission.metadata,
+      (i) => i.key,
+      (i) => i.value
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ) as Record<string, any>;
+    if (identityAuthInfo?.identityId === identityId && identityAuthInfo) {
+      unescapedMetadata.auth = identityAuthInfo;
+    }
+    const metadataKeyValuePair = escapeHandlebarsMissingMetadata(unescapedMetadata);
     const interpolateRules = templatedRules(
       {
         identity: {

@@ -12,6 +12,7 @@ import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
+import { getStringValueByDot } from "@app/lib/template/dot-access";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
@@ -77,7 +78,7 @@ export const identityOidcAuthServiceFactory = ({
     const { data: discoveryDoc } = await axios.get<{ jwks_uri: string }>(
       `${identityOidcAuth.oidcDiscoveryUrl}/.well-known/openid-configuration`,
       {
-        httpsAgent: requestAgent
+        httpsAgent: identityOidcAuth.oidcDiscoveryUrl.includes("https") ? requestAgent : undefined
       }
     );
     const jwksUri = discoveryDoc.jwks_uri;
@@ -91,7 +92,7 @@ export const identityOidcAuthServiceFactory = ({
 
     const client = new JwksClient({
       jwksUri,
-      requestAgent
+      requestAgent: identityOidcAuth.oidcDiscoveryUrl.includes("https") ? requestAgent : undefined
     });
 
     const { kid } = decodedToken.header;
@@ -108,7 +109,6 @@ export const identityOidcAuthServiceFactory = ({
           message: `Access denied: ${error.message}`
         });
       }
-
       throw error;
     }
 
@@ -135,14 +135,34 @@ export const identityOidcAuthServiceFactory = ({
     if (identityOidcAuth.boundClaims) {
       Object.keys(identityOidcAuth.boundClaims).forEach((claimKey) => {
         const claimValue = (identityOidcAuth.boundClaims as Record<string, string>)[claimKey];
+        const value = getStringValueByDot(tokenData, claimKey) || "";
+
+        if (!value) {
+          throw new UnauthorizedError({
+            message: `Access denied: token has no ${claimKey} field`
+          });
+        }
+
         // handle both single and multi-valued claims
-        if (
-          !claimValue.split(", ").some((claimEntry) => doesFieldValueMatchOidcPolicy(tokenData[claimKey], claimEntry))
-        ) {
+        if (!claimValue.split(", ").some((claimEntry) => doesFieldValueMatchOidcPolicy(value, claimEntry))) {
           throw new UnauthorizedError({
             message: "Access denied: OIDC claim not allowed."
           });
         }
+      });
+    }
+
+    const filteredClaims: Record<string, string> = {};
+    if (identityOidcAuth.claimMetadataMapping) {
+      Object.keys(identityOidcAuth.claimMetadataMapping).forEach((permissionKey) => {
+        const claimKey = (identityOidcAuth.claimMetadataMapping as Record<string, string>)[permissionKey];
+        const value = getStringValueByDot(tokenData, claimKey) || "";
+        if (!value) {
+          throw new UnauthorizedError({
+            message: `Access denied: token has no ${claimKey} field`
+          });
+        }
+        filteredClaims[permissionKey] = value;
       });
     }
 
@@ -167,7 +187,12 @@ export const identityOidcAuthServiceFactory = ({
       {
         identityId: identityOidcAuth.identityId,
         identityAccessTokenId: identityAccessToken.id,
-        authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
+        authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN,
+        identityAuth: {
+          oidc: {
+            claims: filteredClaims
+          }
+        }
       } as TIdentityAccessTokenJwtPayload,
       appCfg.AUTH_SECRET,
       // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
@@ -188,6 +213,7 @@ export const identityOidcAuthServiceFactory = ({
     boundIssuer,
     boundAudiences,
     boundClaims,
+    claimMetadataMapping,
     boundSubject,
     accessTokenTTL,
     accessTokenMaxTTL,
@@ -254,6 +280,7 @@ export const identityOidcAuthServiceFactory = ({
           boundIssuer,
           boundAudiences,
           boundClaims,
+          claimMetadataMapping,
           boundSubject,
           accessTokenMaxTTL,
           accessTokenTTL,
@@ -274,6 +301,7 @@ export const identityOidcAuthServiceFactory = ({
     boundIssuer,
     boundAudiences,
     boundClaims,
+    claimMetadataMapping,
     boundSubject,
     accessTokenTTL,
     accessTokenMaxTTL,
@@ -335,6 +363,7 @@ export const identityOidcAuthServiceFactory = ({
       boundIssuer,
       boundAudiences,
       boundClaims,
+      claimMetadataMapping,
       boundSubject,
       accessTokenMaxTTL,
       accessTokenTTL,

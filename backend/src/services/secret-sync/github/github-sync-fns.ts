@@ -192,12 +192,6 @@ export const GithubSyncFns = {
 
     const publicKey = await getPublicKey(client, secretSync);
 
-    for await (const encryptedSecret of encryptedSecrets) {
-      if (!(encryptedSecret.name in secretMap)) {
-        await deleteSecret(client, secretSync, encryptedSecret);
-      }
-    }
-
     await sodium.ready.then(async () => {
       for await (const key of Object.keys(secretMap)) {
         // convert secret & base64 key to Uint8Array.
@@ -224,6 +218,14 @@ export const GithubSyncFns = {
         }
       }
     });
+
+    if (secretSync.syncOptions.disableSecretDeletion) return;
+
+    for await (const encryptedSecret of encryptedSecrets) {
+      if (!(encryptedSecret.name in secretMap)) {
+        await deleteSecret(client, secretSync, encryptedSecret);
+      }
+    }
   },
   getSecrets: async (secretSync: TGitHubSyncWithCredentials) => {
     throw new Error(`${SECRET_SYNC_NAME_MAP[secretSync.destination]} does not support importing secrets.`);
