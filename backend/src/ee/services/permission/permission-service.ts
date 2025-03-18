@@ -249,7 +249,8 @@ export const permissionServiceFactory = ({
         userProjectPermission.metadata,
         (i) => i.key,
         (i) => i.value
-      )
+      ),
+      "identity.metadata"
     );
     const templateValue = {
       id: userProjectPermission.userId,
@@ -329,7 +330,7 @@ export const permissionServiceFactory = ({
       unescapedIdentityAuthInfo?.identityId === identityId && unescapedIdentityAuthInfo
         ? escapeHandlebarsMissingDict(unescapedIdentityAuthInfo as never, "identity.auth")
         : {};
-    const metadataKeyValuePair = escapeHandlebarsMissingDict(unescapedMetadata);
+    const metadataKeyValuePair = escapeHandlebarsMissingDict(unescapedMetadata, "identity.metadata");
     const templateValue = {
       id: identityProjectPermission.identityId,
       username: identityProjectPermission.username,
@@ -436,7 +437,8 @@ export const permissionServiceFactory = ({
           userProjectPermission.metadata,
           (i) => i.key,
           (i) => i.value
-        )
+        ),
+        "identity.metadata"
       );
       const templateValue = {
         id: userProjectPermission.userId,
@@ -482,7 +484,8 @@ export const permissionServiceFactory = ({
           identityProjectPermission.metadata,
           (i) => i.key,
           (i) => i.value
-        )
+        ),
+        "identity.metadata"
       );
       const templateValue = {
         id: identityProjectPermission.identityId,

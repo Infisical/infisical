@@ -131,7 +131,7 @@ function validateOrgSSO(actorAuthMethod: ActorAuthMethod, isOrgSsoEnforced: TOrg
   }
 }
 
-const escapeHandlebarsMissingDict = (obj: Record<string, string>, key = "identity.metadata") => {
+const escapeHandlebarsMissingDict = (obj: Record<string, string>, key: string) => {
   const handler = {
     get(target: Record<string, string>, prop: string) {
       if (!Object.hasOwn(target, prop)) {
