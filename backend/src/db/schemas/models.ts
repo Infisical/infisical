@@ -140,7 +140,8 @@ export enum TableName {
   KmipClient = "kmip_clients",
   KmipOrgConfig = "kmip_org_configs",
   KmipOrgServerCertificates = "kmip_org_server_certificates",
-  KmipClientCertificates = "kmip_client_certificates"
+  KmipClientCertificates = "kmip_client_certificates",
+  SecretRotationV2 = "secret_rotations_v2"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt";

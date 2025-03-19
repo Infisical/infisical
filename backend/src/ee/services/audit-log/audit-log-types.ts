@@ -2,6 +2,13 @@ import {
   TCreateProjectTemplateDTO,
   TUpdateProjectTemplateDTO
 } from "@app/ee/services/project-template/project-template-types";
+import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
+import {
+  TCreateSecretRotationV2DTO,
+  TDeleteSecretRotationV2DTO,
+  TSecretRotationV2,
+  TUpdateSecretRotationV2DTO
+} from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { SshCaStatus, SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
 import { SshCertTemplateStatus } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-types";
 import { SymmetricEncryption } from "@app/lib/crypto/cipher";
@@ -283,7 +290,15 @@ export enum EventType {
   KMIP_OPERATION_ACTIVATE = "kmip-operation-activate",
   KMIP_OPERATION_REVOKE = "kmip-operation-revoke",
   KMIP_OPERATION_LOCATE = "kmip-operation-locate",
-  KMIP_OPERATION_REGISTER = "kmip-operation-register"
+  KMIP_OPERATION_REGISTER = "kmip-operation-register",
+
+  GET_SECRET_ROTATIONS = "get-secret-rotations",
+  GET_SECRET_ROTATION = "get-secret-rotation",
+  GET_SECRET_ROTATION_CREDENTIALS = "get-secret-rotation-credentials",
+  CREATE_SECRET_ROTATION = "create-secret-rotation",
+  UPDATE_SECRET_ROTATION = "update-secret-rotation",
+  DELETE_SECRET_ROTATION = "delete-secret-rotation",
+  ROTATE_SECRET_ROTATION = "rotate-secret-rotation"
 }
 
 interface UserActorMetadata {
@@ -2285,6 +2300,56 @@ interface RegisterKmipServerEvent {
   };
 }
 
+interface GetSecretRotationsEvent {
+  type: EventType.GET_SECRET_ROTATIONS;
+  metadata: {
+    type?: SecretRotation;
+    count: number;
+    rotationIds: string[];
+  };
+}
+
+interface GetSecretRotationEvent {
+  type: EventType.GET_SECRET_ROTATION;
+  metadata: {
+    type: SecretRotation;
+    rotationId: string;
+  };
+}
+
+interface GetSecretRotationCredentialsEvent {
+  type: EventType.GET_SECRET_ROTATION_CREDENTIALS;
+  metadata: {
+    type: SecretRotation;
+    rotationId: string;
+  };
+}
+
+interface CreateSecretRotationEvent {
+  type: EventType.CREATE_SECRET_ROTATION;
+  metadata: Omit<TCreateSecretRotationV2DTO, "projectId"> & { rotationId: string };
+}
+
+interface UpdateSecretRotationEvent {
+  type: EventType.UPDATE_SECRET_ROTATION;
+  metadata: TUpdateSecretRotationV2DTO;
+}
+
+interface DeleteSecretRotationEvent {
+  type: EventType.DELETE_SECRET_ROTATION;
+  metadata: TDeleteSecretRotationV2DTO;
+}
+
+interface RotateSecretRotationEvent {
+  type: EventType.ROTATE_SECRET_ROTATION;
+  metadata: Pick<TSecretRotationV2, "parameters" | "type" | "rotationStatus" | "connectionId" | "folderId"> & {
+    rotationId: string;
+    rotationMessage: string | null;
+    jobId?: string;
+    rotatedAt: Date;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -2495,4 +2560,11 @@ export type Event =
   | KmipOperationLocateEvent
   | KmipOperationRegisterEvent
   | CreateSecretRequestEvent
-  | SecretApprovalRequestReview;
+  | SecretApprovalRequestReview
+  | GetSecretRotationsEvent
+  | GetSecretRotationEvent
+  | GetSecretRotationCredentialsEvent
+  | CreateSecretRotationEvent
+  | UpdateSecretRotationEvent
+  | DeleteSecretRotationEvent
+  | RotateSecretRotationEvent;

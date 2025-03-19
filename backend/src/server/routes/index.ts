@@ -75,6 +75,8 @@ import { secretReplicationServiceFactory } from "@app/ee/services/secret-replica
 import { secretRotationDALFactory } from "@app/ee/services/secret-rotation/secret-rotation-dal";
 import { secretRotationQueueFactory } from "@app/ee/services/secret-rotation/secret-rotation-queue";
 import { secretRotationServiceFactory } from "@app/ee/services/secret-rotation/secret-rotation-service";
+import { secretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
+import { secretRotationV2ServiceFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-service";
 import { gitAppDALFactory } from "@app/ee/services/secret-scanning/git-app-dal";
 import { gitAppInstallSessionDALFactory } from "@app/ee/services/secret-scanning/git-app-install-session-dal";
 import { secretScanningDALFactory } from "@app/ee/services/secret-scanning/secret-scanning-dal";
@@ -400,6 +402,8 @@ export const registerRoutes = async (
   const orgGatewayConfigDAL = orgGatewayConfigDALFactory(db);
   const gatewayDAL = gatewayDALFactory(db);
   const projectGatewayDAL = projectGatewayDALFactory(db);
+
+  const secretRotationV2DAL = secretRotationV2DALFactory(db, folderDAL);
 
   const permissionService = permissionServiceFactory({
     permissionDAL,
@@ -1482,6 +1486,15 @@ export const registerRoutes = async (
     permissionService
   });
 
+  const secretRotationV2Service = secretRotationV2ServiceFactory({
+    secretRotationV2DAL,
+    permissionService,
+    appConnectionService,
+    folderDAL,
+    projectBotService,
+    licenseService
+  });
+
   await superAdminService.initServerCfg();
 
   // setup the communication with license key server
@@ -1583,7 +1596,8 @@ export const registerRoutes = async (
     secretSync: secretSyncService,
     kmip: kmipService,
     kmipOperation: kmipOperationService,
-    gateway: gatewayService
+    gateway: gatewayService,
+    secretRotationV2: secretRotationV2Service
   });
 
   const cronJobs: CronJob[] = [];

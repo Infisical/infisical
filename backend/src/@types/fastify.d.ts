@@ -33,6 +33,7 @@ import { TScimServiceFactory } from "@app/ee/services/scim/scim-service";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
 import { TSecretRotationServiceFactory } from "@app/ee/services/secret-rotation/secret-rotation-service";
+import { TSecretRotationV2ServiceFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-service";
 import { TSecretScanningServiceFactory } from "@app/ee/services/secret-scanning/secret-scanning-service";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { TSshCertificateAuthorityServiceFactory } from "@app/ee/services/ssh/ssh-certificate-authority-service";
@@ -230,6 +231,7 @@ declare module "fastify" {
       kmip: TKmipServiceFactory;
       kmipOperation: TKmipOperationServiceFactory;
       gateway: TGatewayServiceFactory;
+      secretRotationV2: TSecretRotationV2ServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

@@ -814,6 +814,19 @@
           ]
         },
         {
+          "group": "Secret Rotations",
+          "pages": [
+            "api-reference/endpoints/secret-rotations/list",
+            "api-reference/endpoints/secret-rotations/options",
+            {
+              "group": "PostgreSQL Login Credentials",
+              "pages": [
+                "api-reference/endpoints/secret-rotations/postgres-login-credentials/create"
+              ]
+            }
+          ]
+        },
+        {
           "group": "Identity Specific Privilege",
           "pages": [
             "api-reference/endpoints/identity-specific-privilege/create-permanent",

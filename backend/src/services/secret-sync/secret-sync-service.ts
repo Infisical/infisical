@@ -119,14 +119,9 @@ export const secretSyncServiceFactory = ({
     { destination, syncName, projectId }: TFindSecretSyncByNameDTO,
     actor: OrgServiceActor
   ) => {
-    const folders = await folderDAL.findByProjectId(projectId);
-
-    // we prevent conflicting names within a project so this will only return one at most
-    const [secretSync] = await secretSyncDAL.find({
+    const secretSync = await secretSyncDAL.findOne({
       name: syncName,
-      $in: {
-        folderId: folders.map((folder) => folder.id)
-      }
+      projectId
     });
 
     if (!secretSync)

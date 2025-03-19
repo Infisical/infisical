@@ -31,7 +31,8 @@ const baseSecretSyncQuery = ({ filter, db, tx }: { db: TDbClient; filter?: Secre
       db.ref("description").withSchema(TableName.AppConnection).as("connectionDescription"),
       db.ref("version").withSchema(TableName.AppConnection).as("connectionVersion"),
       db.ref("createdAt").withSchema(TableName.AppConnection).as("connectionCreatedAt"),
-      db.ref("updatedAt").withSchema(TableName.AppConnection).as("connectionUpdatedAt")
+      db.ref("updatedAt").withSchema(TableName.AppConnection).as("connectionUpdatedAt"),
+      db.ref("isPlatformManaged").withSchema(TableName.AppConnection).as("connectionIsPlatformManaged")
     );
 
   if (filter) {
@@ -60,6 +61,7 @@ const expandSecretSync = (
     connectionCreatedAt,
     connectionUpdatedAt,
     connectionVersion,
+    connectionIsPlatformManaged,
     ...el
   } = secretSync;
 
@@ -77,7 +79,8 @@ const expandSecretSync = (
       description: connectionDescription,
       createdAt: connectionCreatedAt,
       updatedAt: connectionUpdatedAt,
-      version: connectionVersion
+      version: connectionVersion,
+      isPlatformManaged: connectionIsPlatformManaged
     },
     folder: folder
       ? {
@@ -166,14 +169,14 @@ export const secretSyncDALFactory = (
     }
   };
 
-  const find = async (filter: Parameters<(typeof secretSyncOrm)["find"]>[0], tx?: Knex) => {
+  const find = async (filter: Parameters<(typeof secretSyncOrm)["find"]>[0] & { projectId: string }, tx?: Knex) => {
     try {
       const secretSyncs = await baseSecretSyncQuery({ filter, db, tx });
 
       if (!secretSyncs.length) return [];
 
       const foldersWithPath = await folderDAL.findSecretPathByFolderIds(
-        secretSyncs[0].projectId,
+        filter.projectId,
         secretSyncs.filter((sync) => Boolean(sync.folderId)).map((sync) => sync.folderId!)
       );
 

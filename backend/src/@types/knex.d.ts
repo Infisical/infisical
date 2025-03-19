@@ -393,6 +393,11 @@ import {
   TExternalGroupOrgRoleMappingsInsert,
   TExternalGroupOrgRoleMappingsUpdate
 } from "@app/db/schemas/external-group-org-role-mappings";
+import {
+  TSecretRotationsV2,
+  TSecretRotationsV2Insert,
+  TSecretRotationsV2Update
+} from "@app/db/schemas/secret-rotations-v2";
 import { TSecretSyncs, TSecretSyncsInsert, TSecretSyncsUpdate } from "@app/db/schemas/secret-syncs";
 import {
   TSecretV2TagJunction,
@@ -949,6 +954,11 @@ declare module "knex/types/tables" {
       TOrgGatewayConfig,
       TOrgGatewayConfigInsert,
       TOrgGatewayConfigUpdate
+    >;
+    [TableName.SecretRotationV2]: KnexOriginal.CompositeTableType<
+      TSecretRotationsV2,
+      TSecretRotationsV2Insert,
+      TSecretRotationsV2Update
     >;
   }
 }
