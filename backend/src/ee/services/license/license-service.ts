@@ -50,7 +50,7 @@ export type TLicenseServiceFactory = ReturnType<typeof licenseServiceFactory>;
 const LICENSE_SERVER_CLOUD_LOGIN = "/api/auth/v1/license-server-login";
 const LICENSE_SERVER_ON_PREM_LOGIN = "/api/auth/v1/license-login";
 
-const LICENSE_SERVER_CLOUD_PLAN_TTL = 30; // 30 second
+const LICENSE_SERVER_CLOUD_PLAN_TTL = 5 * 60; // 5 mins
 const FEATURE_CACHE_KEY = (orgId: string) => `infisical-cloud-plan-${orgId}`;
 
 export const licenseServiceFactory = ({
@@ -170,6 +170,8 @@ export const licenseServiceFactory = ({
         JSON.stringify(onPremFeatures)
       );
       return onPremFeatures;
+    } finally {
+      logger.info(`getPlan: Process done for [orgId=${orgId}] [projectId=${projectId}]`);
     }
     return onPremFeatures;
   };
