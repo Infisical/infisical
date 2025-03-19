@@ -1,5 +1,5 @@
 ---
-title: "Automated Bootstrapping"
+title: "Programmatic Provisioning"
 description: "Learn how to provision and configure Infisical instances programmatically without UI interaction"
 ---
 
@@ -15,10 +15,10 @@ The Automated Bootstrapping workflow automates the following processes:
 
 ## Key Concepts
 
-- **Instance Initialization**: Infisical requires configuration variables to be set during launch, after which the bootstrap process can be triggered.
+- **Instance Initialization**: Infisical requires [configuration variables](/self-hosting/configuration/envars) to be set during launch, after which the bootstrap process can be triggered.
 - **Instance Admin Machine Identity**: The bootstrapping process creates a machine identity with instance-level admin privileges, which can be used to programmatically manage all aspects of the Infisical instance.
   ![Instance Admin Identity](/images/self-hosting/guides/automated-bootstrapping/identity-instance-admin.png)
-- **Token Auth**: The instance admin machine identity uses [Token Auth](https://infisical.com/docs/documentation/platform/identities/token-auth), providing a JWT token that can be used directly to make authenticated requests to the Infisical API.
+- **Token Auth**: The instance admin machine identity uses [Token Auth](/documentation/platform/identities/token-auth), providing a JWT token that can be used directly to make authenticated requests to the Infisical API.
 
 ## Prerequisites
 
@@ -30,37 +30,38 @@ The Automated Bootstrapping workflow automates the following processes:
 
 You can bootstrap an Infisical instance using either the API or the CLI.
 
-### Using the API
+<Tabs>
+  <Tab title="Using the API">
+    Make a POST request to the bootstrap endpoint:
 
-Make a POST request to the bootstrap endpoint:
+    ```
+    POST: http://your-infisical-instance.com/api/v1/admin/bootstrap
+    {
+        "email": "admin@example.com",
+        "password": "your-secure-password",
+        "organization": "your-org-name"
+    }
+    ```
 
-```
-POST: http://your-infisical-instance.com/api/v1/admin/bootstrap
-{
-    "email": "admin@example.com",
-    "password": "your-secure-password",
-    "organization": "your-org-name"
-}
-```
+    Example using curl:
 
-Example using curl:
+    ```bash
+    curl -X POST \
+      -H "Content-Type: application/json" \
+      -d '{"email":"admin@example.com","password":"your-secure-password","organization":"your-org-name"}' \
+      http://your-infisical-instance.com/api/v1/admin/bootstrap
+    ```
+  </Tab>
+  <Tab title="Using the CLI">
+    Use the [Infisical CLI](/cli/commands/bootstrap) to bootstrap the instance and extract the token for immediate use in automation:
 
-```bash
-curl -X POST \
-  -H "Content-Type: application/json" \
-  -d '{"email":"admin@example.com","password":"your-secure-password","organization":"your-org-name"}' \
-  http://your-infisical-instance.com/api/v1/admin/bootstrap
-```
+    ```bash
+    infisical bootstrap --domain="http://localhost:8080" --email="admin@example.com" --password="your-secure-password" --organization="your-org-name" | jq ".identity.credentials.token"
+    ```
 
-### Using the CLI
-
-Use the [Infisical CLI](https://infisical.com/docs/cli/commands/bootstrap) to bootstrap the instance and extract the token for immediate use in automation:
-
-```bash
-infisical bootstrap --domain="http://localhost:8080" --email="admin@example.com" --password="your-secure-password" --organization="your-org-name" | jq ".identity.credentials.token"
-```
-
-This command pipes the output through `jq` to extract only the machine identity token, making it easy to capture and use directly in automation scripts or export as an environment variable for tools like Terraform.
+    This example command pipes the output through `jq` to extract only the machine identity token, making it easy to capture and use directly in automation scripts or export as an environment variable for tools like Terraform.
+  </Tab>
+</Tabs>
 
 ## API Response Structure
 
@@ -138,17 +139,6 @@ curl -X POST \
   }' \
   https://your-infisical-instance.com/api/v2/projects
 ```
-
-## End-to-End Workflow
-
-1. **Configuration**: Launch Infisical with all necessary configuration variables
-2. **Bootstrapping**: Initialize the instance using either the API or CLI
-   - When using CLI, pipe the output to extract just the token: `infisical bootstrap ... | jq ".identity.credentials.token"` 
-   - This extracted token can be directly captured in a script variable or used in a command chain
-3. **Automation**: Use the instance admin machine identity for programmatic management:
-   - Persist the identity credentials securely (Kubernetes secrets, environment variables)
-   - Configure automation tools (Terraform, Crossplane) to use these credentials
-   - Manage Infisical resources programmatically through APIs
 
 ## Important Notes
 
