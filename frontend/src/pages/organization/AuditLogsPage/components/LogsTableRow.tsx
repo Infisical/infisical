@@ -1,128 +1,88 @@
-import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
+import { faCaretDown, faCaretRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { format } from "date-fns";
 
-import { Td, Tooltip, Tr } from "@app/components/v2";
-import { eventToNameMap, userAgentTTypeoNameMap } from "@app/hooks/api/auditLogs/constants";
-import { ActorType, EventType } from "@app/hooks/api/auditLogs/enums";
-import { Actor, AuditLog } from "@app/hooks/api/auditLogs/types";
+import { Td, Tr } from "@app/components/v2";
+import { useToggle } from "@app/hooks";
+import { ActorType } from "@app/hooks/api/auditLogs/enums";
+import { AuditLog } from "@app/hooks/api/auditLogs/types";
 
 type Props = {
   auditLog: AuditLog;
-  isOrgAuditLogs?: boolean;
-  showActorColumn: boolean;
 };
 
-export const LogsTableRow = ({ auditLog, isOrgAuditLogs, showActorColumn }: Props) => {
-  const renderActor = (actor: Actor) => {
-    if (!actor) {
-      return <Td />;
-    }
-
-    switch (actor.type) {
-      case ActorType.USER:
-        return (
-          <Td>
-            <p>{actor.metadata.email}</p>
-            <p>User</p>
-          </Td>
-        );
-      case ActorType.SERVICE:
-        return (
-          <Td>
-            <p>{`${actor.metadata.name}`}</p>
-            <p>Service token</p>
-          </Td>
-        );
-      case ActorType.IDENTITY:
-        return (
-          <Td>
-            <p>{`${actor.metadata.name}`}</p>
-            <p>Machine Identity</p>
-          </Td>
-        );
-      case ActorType.PLATFORM:
-        return (
-          <Td>
-            <p>Platform</p>
-          </Td>
-        );
-      case ActorType.KMIP_CLIENT:
-        return (
-          <Td>
-            <p>{actor.metadata.name}</p>
-            <p>KMIP Client</p>
-          </Td>
-        );
-      case ActorType.UNKNOWN_USER:
-        return (
-          <Td>
-            <div className="flex items-center gap-2">
-              <p>Unknown User</p>
-              <Tooltip content="This action was performed by a user who was not authenticated at the time.">
-                <FontAwesomeIcon className="text-mineshaft-400" icon={faQuestionCircle} />
-              </Tooltip>
-            </div>
-          </Td>
-        );
-      default:
-        return <Td />;
-    }
-  };
-
-  const formatDate = (dateToFormat: string) => {
-    const date = new Date(dateToFormat);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-
-    let hours = date.getHours();
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-
-    // convert from 24h to 12h format
-    const period = hours >= 12 ? "PM" : "AM";
-    hours %= 12;
-    hours = hours || 12; // the hour '0' should be '12'
-
-    const formattedDate = `${month}-${day}-${year} at ${hours}:${minutes} ${period}`;
-    return formattedDate;
-  };
-
-  const renderSource = () => {
-    const { event, actor } = auditLog;
-
-    if (event.type === EventType.INTEGRATION_SYNCED) {
-      if (actor.type === ActorType.USER) {
-        return (
-          <Td>
-            <p>Manually triggered by {actor.metadata.email}</p>
-          </Td>
-        );
-      }
-
-      // Platform / automatic syncs
-      return (
-        <Td>
-          <p>Automatically synced by Infisical</p>
-        </Td>
-      );
-    }
-
-    return (
-      <Td>
-        <p>{userAgentTTypeoNameMap[auditLog.userAgentType]}</p>
-        <p>{auditLog.ipAddress}</p>
-      </Td>
-    );
-  };
+type TagProps = {
+  label: string;
+  value?: string;
+};
+const Tag = ({ label, value }: TagProps) => {
+  if (!value) return null;
 
   return (
-    <Tr className={`log-${auditLog.id} h-10 border-x-0 border-b border-t-0`}>
-      <Td>{formatDate(auditLog.createdAt)}</Td>
-      <Td>{`${eventToNameMap[auditLog.event.type]}`}</Td>
-      {isOrgAuditLogs && <Td>{auditLog?.projectName ?? auditLog?.projectId ?? "N/A"}</Td>}
-      {showActorColumn && renderActor(auditLog.actor)}
-      {renderSource()}
-      <Td className="max-w-xs break-all">{JSON.stringify(auditLog.event.metadata || {})}</Td>
-    </Tr>
+    <div className="flex items-center space-x-2">
+      <div className="rounded bg-bunker-800 p-1 py-0.5 font-mono">{label}: </div>
+      <div>{value}</div>
+    </div>
+  );
+};
+
+export const LogsTableRow = ({ auditLog }: Props) => {
+  const [isOpen, setIsOpen] = useToggle();
+
+  return (
+    <>
+      <Tr
+        className="h-10 cursor-pointer border-x-0 border-b border-t-0"
+        role="button"
+        tabIndex={0}
+        onClick={() => setIsOpen.toggle()}
+        onKeyDown={(evt) => {
+          if (evt.key === "Enter") setIsOpen.toggle();
+        }}
+        isHoverable
+      >
+        <Td className="align-top">
+          <FontAwesomeIcon icon={isOpen ? faCaretDown : faCaretRight} />
+        </Td>
+        <Td className="align-top">
+          {format(new Date(auditLog.createdAt), "MMM do yyyy, hh:mm a")}
+        </Td>
+        <Td>
+          <div className="flex flex-wrap gap-2 text-sm">
+            <Tag label="event" value={auditLog.event.type} />
+            <Tag label="actor" value={auditLog.actor.type} />
+            {auditLog.actor.type === ActorType.USER && (
+              <>
+                <Tag label="user_email" value={auditLog.actor.metadata.email} />
+                <Tag label="user_id" value={auditLog.actor.metadata.userId} />
+              </>
+            )}
+            {auditLog.actor.type === ActorType.IDENTITY && (
+              <>
+                <Tag label="identity_name" value={auditLog.actor.metadata.name} />
+                <Tag label="identity_id" value={auditLog.actor.metadata.identityId} />
+              </>
+            )}
+            {auditLog.projectId && auditLog.projectName && (
+              <>
+                <Tag label="project_name" value={auditLog.projectName} />
+                <Tag label="project_id" value={auditLog.projectId} />
+              </>
+            )}
+            <Tag label="ip" value={auditLog.ipAddress} />
+            <Tag label="agent" value={auditLog.userAgent} />
+          </div>
+        </Td>
+      </Tr>
+      {isOpen && (
+        <Tr className={`log-${auditLog.id} h-10 border-x-0 border-b border-t-0`}>
+          <Td colSpan={3}>
+            <div className="thin-scrollbar my-1 max-h-96 overflow-auto whitespace-pre-wrap rounded bg-bunker-800 p-2 font-mono leading-6">
+              {JSON.stringify(auditLog, null, 4)}
+            </div>
+          </Td>
+        </Tr>
+      )}
+    </>
   );
 };
