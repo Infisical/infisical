@@ -99,15 +99,15 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
     try {
       await navigator.clipboard.writeText(text);
       createNotification({
-        text: Copied ${label} to clipboard,
+        text: `Copied ${label} to clipboard`,
         type: "success"
       });
     } catch (error: unknown) {
-      console.error(Clipboard copy error (${label}):, error);
+      console.error(`Clipboard copy error (${label}):`, error);
       const message = error instanceof Error ? error.message : "An unknown error occurred while copying.";
       setErrorMessage(message);
       createNotification({
-        text: Failed to copy ${label}: ${message},
+        text: `Failed to copy ${label}: ${message}`,
         type: "error"
       });
     }
