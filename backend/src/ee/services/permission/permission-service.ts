@@ -244,23 +244,20 @@ export const permissionServiceFactory = ({
 
     const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
     const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false });
-    const metadataKeyValuePair = escapeHandlebarsMissingDict(
-      objectify(
-        userProjectPermission.metadata,
-        (i) => i.key,
-        (i) => i.value
-      ),
-      "identity.metadata"
+    const unescapedMetadata = objectify(
+      userProjectPermission.metadata,
+      (i) => i.key,
+      (i) => i.value
     );
-    const templateValue = {
-      id: userProjectPermission.userId,
-      username: userProjectPermission.username,
-      metadata: metadataKeyValuePair
-    };
-    requestContext.set("identityPermissionMetadata", metadataKeyValuePair);
+    const metadataKeyValuePair = escapeHandlebarsMissingDict(unescapedMetadata, "identity.metadata");
+    requestContext.set("identityPermissionMetadata", { metadata: unescapedMetadata });
     const interpolateRules = templatedRules(
       {
-        identity: templateValue
+        identity: {
+          id: userProjectPermission.userId,
+          username: userProjectPermission.username,
+          metadata: metadataKeyValuePair
+        }
       },
       { data: false }
     );
@@ -332,17 +329,16 @@ export const permissionServiceFactory = ({
         ? escapeHandlebarsMissingDict(unescapedIdentityAuthInfo as never, "identity.auth")
         : {};
     const metadataKeyValuePair = escapeHandlebarsMissingDict(unescapedMetadata, "identity.metadata");
-    const templateValue = {
-      id: identityProjectPermission.identityId,
-      username: identityProjectPermission.username,
-      metadata: metadataKeyValuePair,
-      auth: identityAuthInfo
-    };
 
-    requestContext.set("identityPermissionMetadata", metadataKeyValuePair);
+    requestContext.set("identityPermissionMetadata", { metadata: unescapedMetadata, auth: unescapedIdentityAuthInfo });
     const interpolateRules = templatedRules(
       {
-        identity: templateValue
+        identity: {
+          id: identityProjectPermission.identityId,
+          username: identityProjectPermission.username,
+          metadata: metadataKeyValuePair,
+          auth: identityAuthInfo
+        }
       },
       { data: false }
     );
@@ -443,14 +439,13 @@ export const permissionServiceFactory = ({
         ),
         "identity.metadata"
       );
-      const templateValue = {
-        id: userProjectPermission.userId,
-        username: userProjectPermission.username,
-        metadata: metadataKeyValuePair
-      };
       const interpolateRules = templatedRules(
         {
-          identity: templateValue
+          identity: {
+            id: userProjectPermission.userId,
+            username: userProjectPermission.username,
+            metadata: metadataKeyValuePair
+          }
         },
         { data: false }
       );
@@ -490,14 +485,13 @@ export const permissionServiceFactory = ({
         ),
         "identity.metadata"
       );
-      const templateValue = {
-        id: identityProjectPermission.identityId,
-        username: identityProjectPermission.username,
-        metadata: metadataKeyValuePair
-      };
       const interpolateRules = templatedRules(
         {
-          identity: templateValue
+          identity: {
+            id: identityProjectPermission.identityId,
+            username: identityProjectPermission.username,
+            metadata: metadataKeyValuePair
+          }
         },
         { data: false }
       );
