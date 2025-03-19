@@ -101,7 +101,8 @@ export const identityKubernetesAuthServiceFactory = ({
             "Content-Type": "application/json",
             Authorization: `Bearer ${tokenReviewerJwt}`
           },
-
+          signal: AbortSignal.timeout(10000),
+          timeout: 10000,
           // if ca cert, rejectUnauthorized: true
           httpsAgent: new https.Agent({
             ca: caCert,
