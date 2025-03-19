@@ -142,7 +142,10 @@ export const licenseServiceFactory = ({
     try {
       if (instanceType === InstanceType.Cloud) {
         const cachedPlan = await keyStore.getItem(FEATURE_CACHE_KEY(orgId));
-        if (cachedPlan) return JSON.parse(cachedPlan) as TFeatureSet;
+        if (cachedPlan) {
+          logger.info(`getPlan: plan fetched from cache [orgId=${orgId}] [projectId=${projectId}]`);
+          return JSON.parse(cachedPlan) as TFeatureSet;
+        }
 
         const org = await orgDAL.findOrgById(orgId);
         if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
