@@ -1,10 +1,5 @@
 import { Controller, useForm } from "react-hook-form";
-import {
-  faCheck,
-  faCircleInfo,
-  faExclamationTriangle,
-  faWarning
-} from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faCircleInfo, faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -131,23 +126,12 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
             involve changing privileges or permissions will now use the new permission-based system,
             requiring users to have explicit permission to modify access levels.
           </p>
+          <p className="mb-6 text-mineshaft-100">
+            Once upgraded, your organization <span className="font-bold">cannot</span> revert to the
+            legacy privilege system. Please ensure you&apos;ve completed all preparations before
+            proceeding.
+          </p>
           <form onSubmit={handleSubmit(handlePrivilegeSystemUpgrade)}>
-            <div className="mb-4 rounded-lg border border-red-500 bg-red-500/10 p-4">
-              <div className="mb-3 flex items-start gap-2">
-                <FontAwesomeIcon
-                  icon={faExclamationTriangle}
-                  className="mt-1 text-red-500"
-                  size="lg"
-                />
-                <p className="font-bold text-red-400">IMPORTANT: THIS CHANGE IS PERMANENT</p>
-              </div>
-              <p className="mb-3 ml-7 text-mineshaft-100">
-                Once upgraded, your organization <span className="font-bold">cannot</span> revert to
-                the legacy privilege system. Please ensure you&apos;ve completed all preparations
-                before proceeding.
-              </p>
-            </div>
-
             <div className="mb-4">
               <p className="mb-3 font-medium">Required preparation checklist:</p>
 
