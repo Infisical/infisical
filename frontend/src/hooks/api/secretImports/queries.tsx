@@ -167,7 +167,6 @@ export const useGetImportedSecretsAllEnvs = ({
       select: useCallback(
         (data: Awaited<ReturnType<typeof fetchImportedSecrets>>) =>
           data.map((el) => ({
-            currentEnv: env,
             environment: el.environment,
             secretPath: el.secretPath,
             environmentInfo: el.environmentInfo,

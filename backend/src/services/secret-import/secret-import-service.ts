@@ -487,7 +487,22 @@ export const secretImportServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
+    const filteredEnvironments = [];
     for (const environment of environments) {
+      if (
+        permission.can(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
+        )
+      ) {
+        filteredEnvironments.push(environment);
+      }
+    }
+    if (filteredEnvironments.length === 0) {
+      return 0;
+    }
+
+    for (const environment of filteredEnvironments) {
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionActions.Read,
         subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
@@ -745,14 +760,22 @@ export const secretImportServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
+    const filteredEnvironments = [];
     for (const environment of environments) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionActions.Read,
-        subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
-      );
+      if (
+        permission.can(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
+        )
+      ) {
+        filteredEnvironments.push(environment);
+      }
+    }
+    if (filteredEnvironments.length === 0) {
+      return [];
     }
 
-    const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath);
+    const folders = await folderDAL.findBySecretPathMultiEnv(projectId, filteredEnvironments, secretPath);
     if (!folders?.length)
       throw new NotFoundError({
         message: `Folder with path '${secretPath}' not found on environments with slugs '${environments.join(", ")}'`
