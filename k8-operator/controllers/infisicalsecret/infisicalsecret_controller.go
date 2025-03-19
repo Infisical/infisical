@@ -73,6 +73,7 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	// It's important we don't directly modify the CRD object, so we create a copy of it and move existing data into it.
 	managedKubeSecretReferences := infisicalSecretCRD.Spec.ManagedKubeSecretReferences
+	managedKubeConfigMapReferences := infisicalSecretCRD.Spec.ManagedKubeConfigMapReferences
 
 	if infisicalSecretCRD.Spec.ManagedSecretReference.SecretName != "" && managedKubeSecretReferences != nil && len(managedKubeSecretReferences) > 0 {
 		errMessage := "InfisicalSecret CRD cannot have both managedSecretReference and managedKubeSecretReferences"
@@ -89,8 +90,8 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		managedKubeSecretReferences = append(managedKubeSecretReferences, infisicalSecretCRD.Spec.ManagedSecretReference)
 	}
 
-	if len(managedKubeSecretReferences) == 0 {
-		errMessage := "InfisicalSecret CRD must have at least one managed secret reference set in the `managedKubeSecretReferences` field"
+	if len(managedKubeSecretReferences) == 0 && len(managedKubeConfigMapReferences) == 0 {
+		errMessage := "InfisicalSecret CRD must have at least one managed secret reference set in the `managedKubeSecretReferences` or `managedKubeConfigMapReferences` field"
 		logger.Error(defaultErrors.New(errMessage), errMessage)
 		return ctrl.Result{}, defaultErrors.New(errMessage)
 	}
@@ -151,8 +152,8 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		api.API_CA_CERTIFICATE = ""
 	}
 
-	secretsCount, err := r.ReconcileInfisicalSecret(ctx, logger, infisicalSecretCRD, managedKubeSecretReferences)
-	r.SetReadyToSyncSecretsConditions(ctx, &infisicalSecretCRD, secretsCount, err)
+	secretsCount, err := r.ReconcileInfisicalSecret(ctx, logger, &infisicalSecretCRD, managedKubeSecretReferences, managedKubeConfigMapReferences)
+	r.SetReadyToSyncSecretsConditions(ctx, logger, &infisicalSecretCRD, secretsCount, err)
 
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("unable to reconcile InfisicalSecret. Will requeue after [requeueTime=%v]", requeueTime))
@@ -163,6 +164,7 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	numDeployments, err := controllerhelpers.ReconcileDeploymentsWithMultipleManagedSecrets(ctx, r.Client, logger, managedKubeSecretReferences)
 	r.SetInfisicalAutoRedeploymentReady(ctx, logger, &infisicalSecretCRD, numDeployments, err)
+
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("unable to reconcile auto redeployment. Will requeue after [requeueTime=%v]", requeueTime))
 		return ctrl.Result{

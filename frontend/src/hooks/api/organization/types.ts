@@ -16,6 +16,7 @@ export type Organization = {
   enforceMfa: boolean;
   selectedMfaMethod?: MfaMethod;
   shouldUseNewPrivilegeSystem: boolean;
+  allowSecretSharingOutsideOrganization?: boolean;
 };
 
 export type UpdateOrgDTO = {
@@ -27,6 +28,7 @@ export type UpdateOrgDTO = {
   defaultMembershipRoleSlug?: string;
   enforceMfa?: boolean;
   selectedMfaMethod?: MfaMethod;
+  allowSecretSharingOutsideOrganization?: boolean;
 };
 
 export type BillingDetails = {

@@ -25,7 +25,8 @@ export const OrganizationsSchema = z.object({
   selectedMfaMethod: z.string().nullable().optional(),
   shouldUseNewPrivilegeSystem: z.boolean().default(true),
   privilegeUpgradeInitiatedByUsername: z.string().nullable().optional(),
-  privilegeUpgradeInitiatedAt: z.date().nullable().optional()
+  privilegeUpgradeInitiatedAt: z.date().nullable().optional(),
+  allowSecretSharingOutsideOrganization: z.boolean().default(true).nullable().optional()
 });
 
 export type TOrganizations = z.infer<typeof OrganizationsSchema>;

@@ -32,6 +32,12 @@ import {
   TValidateAzureKeyVaultConnectionCredentials
 } from "./azure-key-vault";
 import { TGcpConnection, TGcpConnectionConfig, TGcpConnectionInput, TValidateGcpConnectionCredentials } from "./gcp";
+import {
+  THumanitecConnection,
+  THumanitecConnectionConfig,
+  THumanitecConnectionInput,
+  TValidateHumanitecConnectionCredentials
+} from "./humanitec";
 
 export type TAppConnection = { id: string } & (
   | TAwsConnection
@@ -40,6 +46,7 @@ export type TAppConnection = { id: string } & (
   | TAzureKeyVaultConnection
   | TAzureAppConfigurationConnection
   | TDatabricksConnection
+  | THumanitecConnection
 );
 
 export type TAppConnectionInput = { id: string } & (
@@ -49,6 +56,7 @@ export type TAppConnectionInput = { id: string } & (
   | TAzureKeyVaultConnectionInput
   | TAzureAppConfigurationConnectionInput
   | TDatabricksConnectionInput
+  | THumanitecConnectionInput
 );
 
 export type TCreateAppConnectionDTO = Pick<
@@ -66,7 +74,8 @@ export type TAppConnectionConfig =
   | TGcpConnectionConfig
   | TAzureKeyVaultConnectionConfig
   | TAzureAppConfigurationConnectionConfig
-  | TDatabricksConnectionConfig;
+  | TDatabricksConnectionConfig
+  | THumanitecConnectionConfig;
 
 export type TValidateAppConnectionCredentials =
   | TValidateAwsConnectionCredentials
@@ -74,7 +83,8 @@ export type TValidateAppConnectionCredentials =
   | TValidateGcpConnectionCredentials
   | TValidateAzureKeyVaultConnectionCredentials
   | TValidateAzureAppConfigurationConnectionCredentials
-  | TValidateDatabricksConnectionCredentials;
+  | TValidateDatabricksConnectionCredentials
+  | TValidateHumanitecConnectionCredentials;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

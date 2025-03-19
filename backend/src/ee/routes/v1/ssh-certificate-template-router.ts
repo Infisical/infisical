@@ -1,5 +1,4 @@
 import slugify from "@sindresorhus/slugify";
-import ms from "ms";
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
@@ -10,6 +9,7 @@ import {
   isValidUserPattern
 } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-validators";
 import { SSH_CERTIFICATE_TEMPLATES } from "@app/lib/api-docs";
+import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";

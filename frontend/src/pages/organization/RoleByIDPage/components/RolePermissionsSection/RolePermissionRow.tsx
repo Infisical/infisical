@@ -74,7 +74,7 @@ type Props = {
   title: string;
   formName: keyof Omit<
     Exclude<TFormSchema["permissions"], undefined>,
-    "workspace" | "organization-admin-console" | "kmip" | "gateway"
+    "workspace" | "organization-admin-console" | "kmip" | "gateway" | "secret-share"
   >;
   setValue: UseFormSetValue<TFormSchema>;
   control: Control<TFormSchema>;

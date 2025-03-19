@@ -10,6 +10,7 @@ import { AzureKeyVaultSyncFields } from "./AzureKeyVaultSyncFields";
 import { DatabricksSyncFields } from "./DatabricksSyncFields";
 import { GcpSyncFields } from "./GcpSyncFields";
 import { GitHubSyncFields } from "./GitHubSyncFields";
+import { HumanitecSyncFields } from "./HumanitecSyncFields";
 
 export const SecretSyncDestinationFields = () => {
   const { watch } = useFormContext<TSecretSyncForm>();
@@ -31,6 +32,8 @@ export const SecretSyncDestinationFields = () => {
       return <AzureAppConfigurationSyncFields />;
     case SecretSync.Databricks:
       return <DatabricksSyncFields />;
+    case SecretSync.Humanitec:
+      return <HumanitecSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

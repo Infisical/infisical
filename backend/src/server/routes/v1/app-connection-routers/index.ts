@@ -6,6 +6,7 @@ import { registerAzureKeyVaultConnectionRouter } from "./azure-key-vault-connect
 import { registerDatabricksConnectionRouter } from "./databricks-connection-router";
 import { registerGcpConnectionRouter } from "./gcp-connection-router";
 import { registerGitHubConnectionRouter } from "./github-connection-router";
+import { registerHumanitecConnectionRouter } from "./humanitec-connection-router";
 
 export * from "./app-connection-router";
 
@@ -16,5 +17,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.GCP]: registerGcpConnectionRouter,
     [AppConnection.AzureKeyVault]: registerAzureKeyVaultConnectionRouter,
     [AppConnection.AzureAppConfiguration]: registerAzureAppConfigurationConnectionRouter,
-    [AppConnection.Databricks]: registerDatabricksConnectionRouter
+    [AppConnection.Databricks]: registerDatabricksConnectionRouter,
+    [AppConnection.Humanitec]: registerHumanitecConnectionRouter
   };

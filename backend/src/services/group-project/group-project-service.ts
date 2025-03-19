@@ -1,5 +1,4 @@
 import { ForbiddenError } from "@casl/ability";
-import ms from "ms";
 
 import { ActionProjectType, ProjectMembershipRole, SecretKeyEncoding, TGroups } from "@app/db/schemas";
 import {
@@ -12,6 +11,7 @@ import { decryptAsymmetric, encryptAsymmetric } from "@app/lib/crypto";
 import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
+import { ms } from "@app/lib/ms";
 import { isUuidV4 } from "@app/lib/validator";
 
 import { TGroupDALFactory } from "../../ee/services/group/group-dal";

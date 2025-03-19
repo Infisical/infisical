@@ -15,6 +15,7 @@ import { AzureKeyVaultConnectionForm } from "./AzureKeyVaultConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
 import { GcpConnectionForm } from "./GcpConnectionForm";
 import { GitHubConnectionForm } from "./GitHubConnectionForm";
+import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
 
 type FormProps = {
   onComplete: (appConnection: TAppConnection) => void;
@@ -62,6 +63,8 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <AzureAppConfigurationConnectionForm />;
     case AppConnection.Databricks:
       return <DatabricksConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Humanitec:
+      return <HumanitecConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -107,6 +110,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <AzureAppConfigurationConnectionForm appConnection={appConnection} />;
     case AppConnection.Databricks:
       return <DatabricksConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Humanitec:
+      return <HumanitecConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

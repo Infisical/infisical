@@ -1,7 +1,7 @@
 import { TDbClient } from "@app/db";
 import { TableName, TIdentities } from "@app/db/schemas";
-import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { DatabaseError } from "@app/lib/errors";
+import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TIdentityDALFactory = ReturnType<typeof identityDALFactory>;
 

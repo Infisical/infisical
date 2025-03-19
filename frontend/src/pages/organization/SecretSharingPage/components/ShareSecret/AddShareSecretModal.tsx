@@ -1,4 +1,5 @@
 import { Modal, ModalContent } from "@app/components/v2";
+import { useOrganization } from "@app/context";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { ShareSecretForm } from "@app/pages/public/ShareSecretPage/components";
 
@@ -11,6 +12,7 @@ type Props = {
 };
 
 export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
+  const { currentOrg } = useOrganization();
   return (
     <Modal
       isOpen={popUp?.createSharedSecret?.isOpen}
@@ -25,6 +27,9 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
         <ShareSecretForm
           isPublic={false}
           value={(popUp.createSharedSecret.data as { value?: string })?.value}
+          allowSecretSharingOutsideOrganization={
+            currentOrg?.allowSecretSharingOutsideOrganization ?? true
+          }
         />
       </ModalContent>
     </Modal>

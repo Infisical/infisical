@@ -41,9 +41,14 @@ export type FormData = z.infer<typeof schema>;
 type Props = {
   isPublic: boolean; // whether or not this is a public (non-authenticated) secret sharing form
   value?: string;
+  allowSecretSharingOutsideOrganization?: boolean;
 };
 
-export const ShareSecretForm = ({ isPublic, value }: Props) => {
+export const ShareSecretForm = ({
+  isPublic,
+  value,
+  allowSecretSharingOutsideOrganization = true
+}: Props) => {
   const [secretLink, setSecretLink] = useState("");
   const [, isCopyingSecret, setCopyTextSecret] = useTimedReset<string>({
     initialState: "Copy to clipboard"
@@ -230,7 +235,9 @@ export const ShareSecretForm = ({ isPublic, value }: Props) => {
                 onValueChange={(e) => onChange(e)}
                 className="w-full"
               >
-                <SelectItem value={SecretSharingAccessType.Anyone}>Anyone</SelectItem>
+                {allowSecretSharingOutsideOrganization && (
+                  <SelectItem value={SecretSharingAccessType.Anyone}>Anyone</SelectItem>
+                )}
                 <SelectItem value={SecretSharingAccessType.Organization}>
                   People within your organization
                 </SelectItem>

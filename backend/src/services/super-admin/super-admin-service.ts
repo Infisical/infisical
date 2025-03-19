@@ -7,6 +7,7 @@ import { getConfig } from "@app/lib/config/env";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 
 import { TAuthLoginFactory } from "../auth/auth-login-service";
 import { AuthMethod } from "../auth/auth-type";
@@ -20,7 +21,6 @@ import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { UserAliasType } from "../user-alias/user-alias-types";
 import { TSuperAdminDALFactory } from "./super-admin-dal";
 import { LoginMethod, TAdminGetIdentitiesDTO, TAdminGetUsersDTO, TAdminSignUpDTO } from "./super-admin-types";
-import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 
 type TSuperAdminServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "getIdentitiesByFilter">;

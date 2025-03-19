@@ -1,4 +1,3 @@
-import ms from "ms";
 import { z } from "zod";
 
 import { DynamicSecretLeasesSchema } from "@app/db/schemas";
@@ -6,6 +5,7 @@ import { DynamicSecretProviderSchema } from "@app/ee/services/dynamic-secret/pro
 import { DYNAMIC_SECRETS } from "@app/lib/api-docs";
 import { daysToMillisecond } from "@app/lib/dates";
 import { removeTrailingSlash } from "@app/lib/fn";
+import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";

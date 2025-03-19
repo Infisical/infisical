@@ -1,13 +1,13 @@
 import { execFile } from "child_process";
 import crypto from "crypto";
 import { promises as fs } from "fs";
-import ms from "ms";
 import os from "os";
 import path from "path";
 import { promisify } from "util";
 
 import { TSshCertificateTemplates } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
+import { ms } from "@app/lib/ms";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
 import {

@@ -23,7 +23,11 @@ export const ROUTE_PATHS = Object.freeze({
     ),
     SecretSharing: setRoute(
       "/organization/secret-sharing",
-      "/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing"
+      "/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/"
+    ),
+    SecretSharingSettings: setRoute(
+      "/organization/secret-sharing/settings",
+      "/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/settings"
     ),
     SettingsPage: setRoute(
       "/organization/settings",

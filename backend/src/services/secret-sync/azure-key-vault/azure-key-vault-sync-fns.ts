@@ -189,6 +189,8 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
       });
     }
 
+    if (secretSync.syncOptions.disableSecretDeletion) return;
+
     for await (const deleteSecretKey of deleteSecrets.filter(
       (secret) => !setSecrets.find((setSecret) => setSecret.key === secret)
     )) {

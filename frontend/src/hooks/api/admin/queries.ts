@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { Identity } from "@app/hooks/api/identities/types";
 
 import { User } from "../types";
 import {
@@ -10,7 +11,6 @@ import {
   TGetServerRootKmsEncryptionDetails,
   TServerConfig
 } from "./types";
-import { Identity } from "@app/hooks/api/identities/types";
 
 export const adminStandaloneKeys = {
   getUsers: "get-users",

@@ -2,7 +2,6 @@
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import crypto, { KeyObject } from "crypto";
-import ms from "ms";
 import { z } from "zod";
 
 import { ActionProjectType, ProjectType, TCertificateAuthorities, TCertificateTemplates } from "@app/db/schemas";
@@ -10,6 +9,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { ms } from "@app/lib/ms";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
