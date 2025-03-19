@@ -110,6 +110,7 @@ export const SelectionPanel = ({ secretPath, resetSelectedEntries, selectedEntri
       const secretsToDelete = Object.values(selectedEntries.secret).reduce(
         (accum: TDeleteSecretBatchDTO["secrets"], secretRecord) => {
           const entry = secretRecord[env.slug];
+          if (!entry) return accum;
           const canDeleteSecret = permission.can(
             ProjectPermissionSecretActions.Delete,
             subject(ProjectPermissionSub.Secrets, {
