@@ -1,5 +1,6 @@
 import { Fragment } from "react";
-import { faFile } from "@fortawesome/free-solid-svg-icons";
+import { faFile, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import {
   Button,
@@ -11,6 +12,7 @@ import {
   Td,
   Th,
   THead,
+  Tooltip,
   Tr
 } from "@app/components/v2";
 import { useGetAuditLogs } from "@app/hooks/api";
@@ -50,8 +52,17 @@ export const LogsTable = ({ filter, refetchInterval }: Props) => {
         <Table>
           <THead>
             <Tr>
-              <Th className="w-8" />
-              <Th className="w-64">Timestamp</Th>
+              <Th className="w-24" />
+              <Th className="w-64">
+                Timestamp
+                <Tooltip
+                  className="normal-case"
+                  content="Time displayed in your system's time zone."
+                  sideOffset={10}
+                >
+                  <FontAwesomeIcon icon={faInfoCircle} className="ml-1" />
+                </Tooltip>
+              </Th>
               <Th>Event</Th>
             </Tr>
           </THead>
@@ -59,12 +70,16 @@ export const LogsTable = ({ filter, refetchInterval }: Props) => {
             {!isPending &&
               data?.pages?.map((group, i) => (
                 <Fragment key={`audit-log-fragment-${i + 1}`}>
-                  {group.map((auditLog) => (
-                    <LogsTableRow auditLog={auditLog} key={`audit-log-${auditLog.id}`} />
+                  {group.map((auditLog, index) => (
+                    <LogsTableRow
+                      rowNumber={index + i * AUDIT_LOG_LIMIT + 1}
+                      auditLog={auditLog}
+                      key={`audit-log-${auditLog.id}`}
+                    />
                   ))}
                 </Fragment>
               ))}
-            {isPending && <TableSkeleton innerKey="logs-table" columns={5} key="logs" />}
+            {isPending && <TableSkeleton innerKey="logs-table" columns={3} key="logs-loading" />}
             {isEmpty && (
               <Tr>
                 <Td colSpan={3}>
