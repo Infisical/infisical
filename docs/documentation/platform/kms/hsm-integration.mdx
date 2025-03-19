@@ -312,7 +312,7 @@ For organizations that work with US government agencies, FIPS compliance is almo
           <Step title="Update Chrystoki.conf">
             The `Chrystoki.conf` file is used to configure the HSM client. You need to update the `Chrystoki.conf` file to point to the correct file paths.
 
-            In this example, we will be mounting the `/etc/hsm-client` folder to the Kubernetes deployment under a different path. The path we will use in this example is `/hsm-client`. This means `/etc/hsm-client` will be mounted to `/hsm-client` in the Kubernetes deployment.
+            In this example, we will be mounting the `/etc/hsm-client` folder from the host to containers in our deployment's pods at the path `/hsm-client`. This means the contents of `/etc/hsm-client` on the host will be accessible at `/hsm-client` within the containers.
 
             An example config file will look like this:
 
@@ -406,7 +406,7 @@ For organizations that work with US government agencies, FIPS compliance is almo
             The above command will create a PVC named `infisical-data-pvc` with a storage size of `500Mi`. You can change the storage size if needed.
 
 
-            Next we need to create a temporary pod to upload the HSM client files to the PVC.
+            Next we need to create a temporary pod with the PVC mounted as a volume, allowing us to copy the HSM client files into this mounted storage.
 
             ```bash
             kubectl apply -f - <<EOF
@@ -485,12 +485,9 @@ For organizations that work with US government agencies, FIPS compliance is almo
           </Step>
 
           <Step title="Updating the Deployment">
-            After we've successfully configured the PVC and updated our environment variables, we are ready to update the deployment so it can access the HSM client files.
+            After we've successfully configured the PVC and updated our environment variables, we are ready to update the deployment configuration so that the pods it creates can access the HSM client files.
 
             We need to update the Docker image of the deployment to use `infisical/infisical-fips`. The `infisical/infisical-fips` image is a functionally identical image to the `infisical/infisical` image, but it is built with support for HSM encryption.
-            The image has the same versions as the `infisical/infisical` image, so you don't need to worry about changing the version of the Infisical instance.
-
-
 
             ```yaml
               # ... The rest of the values.yaml file ...
