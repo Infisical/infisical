@@ -12,10 +12,12 @@ export type TUpdateIdentityDTO = {
   role?: string;
   name?: string;
   metadata?: { key: string; value: string }[];
+  isActorSuperAdmin?: boolean;
 } & Omit<TOrgPermission, "orgId">;
 
 export type TDeleteIdentityDTO = {
   id: string;
+  isActorSuperAdmin?: boolean;
 } & Omit<TOrgPermission, "orgId">;
 
 export type TGetIdentityByIdDTO = {

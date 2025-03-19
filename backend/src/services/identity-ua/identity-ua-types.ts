@@ -7,6 +7,7 @@ export type TAttachUaDTO = {
   accessTokenNumUsesLimit: number;
   clientSecretTrustedIps: { ipAddress: string }[];
   accessTokenTrustedIps: { ipAddress: string }[];
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateUaDTO = {

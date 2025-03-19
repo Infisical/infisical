@@ -8,6 +8,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { validateGcpAuthField } from "@app/services/identity-gcp-auth/identity-gcp-auth-validators";
+import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 
 export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -121,7 +122,8 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body,
-        identityId: req.params.identityId
+        identityId: req.params.identityId,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       await server.services.auditLog.createAuditLog({

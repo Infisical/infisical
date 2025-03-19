@@ -8,8 +8,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { validateAzureAuthField } from "@app/services/identity-azure-auth/identity-azure-auth-validators";
-
-import {} from "../sanitizedSchemas";
+import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 
 export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -127,7 +126,8 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body,
-        identityId: req.params.identityId
+        identityId: req.params.identityId,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       await server.services.auditLog.createAuditLog({

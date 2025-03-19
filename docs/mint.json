@@ -318,7 +318,8 @@
           "group": "Guides",
           "pages": [
             "self-hosting/guides/mongo-to-postgres",
-            "self-hosting/guides/custom-certificates"
+            "self-hosting/guides/custom-certificates",
+            "self-hosting/guides/automated-bootstrapping"
           ]
         },
         {
@@ -348,6 +349,7 @@
             "cli/commands/dynamic-secrets",
             "cli/commands/ssh",
             "cli/commands/gateway",
+            "cli/commands/bootstrap",
             "cli/commands/export",
             "cli/commands/token",
             "cli/commands/service-token",
