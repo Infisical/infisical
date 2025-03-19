@@ -1795,6 +1795,9 @@ export const SecretRotations = {
   GET_BY_ID: (type: SecretRotation) => ({
     rotationId: `The ID of the ${SECRET_ROTATION_NAME_MAP[type]} Rotation to retrieve.`
   }),
+  GET_CREDENTIALS_BY_ID: (type: SecretRotation) => ({
+    rotationId: `The ID of the ${SECRET_ROTATION_NAME_MAP[type]} Rotation to retrieve the credentials for.`
+  }),
   GET_BY_NAME: (type: SecretRotation) => ({
     rotationName: `The name of the ${SECRET_ROTATION_NAME_MAP[type]} Rotation to retrieve.`,
     projectId: `The ID of the project the ${SECRET_ROTATION_NAME_MAP[type]} Rotation is associated with.`
@@ -1818,9 +1821,6 @@ export const SecretRotations = {
     const typeName = SECRET_ROTATION_NAME_MAP[type];
     return {
       rotationId: `The ID of the ${typeName} Rotation to be updated.`,
-      connectionId: `The updated ID of the ${
-        APP_CONNECTION_NAME_MAP[SECRET_ROTATION_CONNECTION_MAP[type]]
-      } Connection to use for rotation.`,
       name: `The updated name of the ${typeName} Rotation. Must be slug-friendly.`,
       environment: `The updated slug of the project environment to move the rotation to.`,
       secretPath: `The updated folder path to move the rotation to.`,
@@ -1834,20 +1834,20 @@ export const SecretRotations = {
     removeSecrets: `Whether the secrets belonging to this rotation should be deleted.`
   }),
   ROTATE: (type: SecretRotation) => ({
-    rotationId: `The ID of the ${SECRET_ROTATION_NAME_MAP[type]} Rotation to trigger a rotation for.`
+    rotationId: `The ID of the ${SECRET_ROTATION_NAME_MAP[type]} Rotation to rotate credentials for.`
   }),
   PARAMETERS: {
-    POSTGRES_LOGIN_CREDENTIALS: {
+    POSTGRES_CREDENTIALS: {
       usernameSecretKey: "The secret key that the generated username will be mapped to.",
       passwordSecretKey: "The secret key that the generated password will be mapped to.",
-      issueStatement: "The SQL statement to generate the login credentials on rotation.",
-      revokeStatement: "The SQL statement to revoke expired login credentials on rotation."
+      issueStatement: "The SQL statement to generate the credentials on rotation.",
+      revokeStatement: "The SQL statement to revoke expired credentials on rotation."
     },
-    MSSQL_LOGIN_CREDENTIALS: {
+    MSSQL_CREDENTIALS: {
       usernameSecretKey: "The secret key that the generated username will be mapped to.",
       passwordSecretKey: "The secret key that the generated password will be mapped to.",
-      issueStatement: "The SQL statement to generate the login credentials on rotation.",
-      revokeStatement: "The SQL statement to revoke expired login credentials on rotation."
+      issueStatement: "The SQL statement to generate the credentials on rotation.",
+      revokeStatement: "The SQL statement to revoke expired credentials on rotation."
     }
   }
 };

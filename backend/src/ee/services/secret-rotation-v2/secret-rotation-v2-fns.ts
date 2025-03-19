@@ -27,13 +27,13 @@
 // import { HUMANITEC_SYNC_LIST_OPTION } from "./humanitec";
 // import { HumanitecSyncFns } from "./humanitec/humanitec-sync-fns";
 //
-import { POSTGRES_LOGIN_CREDENTIALS_ROTATION_LIST_OPTION } from "./postgres-login-credentials";
+import { POSTGRES_CREDENTIALS_ROTATION_LIST_OPTION } from "./postgres-credentials";
 import { SecretRotation } from "./secret-rotation-v2-enums";
 import { TSecretRotationV2ListItem } from "./secret-rotation-v2-types";
 
 const SECRET_ROTATION_LIST_OPTIONS: Record<SecretRotation, TSecretRotationV2ListItem> = {
-  [SecretRotation.PostgresLoginCredentials]: POSTGRES_LOGIN_CREDENTIALS_ROTATION_LIST_OPTION,
-  [SecretRotation.MsSqlLoginCredentials]: POSTGRES_LOGIN_CREDENTIALS_ROTATION_LIST_OPTION // TODO: replace
+  [SecretRotation.PostgresCredentials]: POSTGRES_CREDENTIALS_ROTATION_LIST_OPTION,
+  [SecretRotation.MsSqlCredentials]: POSTGRES_CREDENTIALS_ROTATION_LIST_OPTION // TODO: replace
 };
 
 export const listSecretRotationOptions = () => {

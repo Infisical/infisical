@@ -90,97 +90,93 @@ export const registerSecretRotationEndpoints = <T extends TSecretRotationV2, I e
     }
   });
 
-  // server.route({
-  //   method: "GET",
-  //   url: "/:syncId",
-  //   config: {
-  //     rateLimit: readLimit
-  //   },
-  //   schema: {
-  //     description: `Get the specified ${rotationType} Rotation by ID.`,
-  //     params: z.object({
-  //       syncId: z.string().uuid().describe(SecretRotations.GET_BY_ID(destination).syncId)
-  //     }),
-  //     response: {
-  //       200: z.object({ secretRotation: responseSchema })
-  //     }
-  //   },
-  //   onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-  //   handler: async (req) => {
-  //     const { syncId } = req.params;
-  //
-  //     const secretRotation = (await server.services.secretRotation.findSecretRotationById(
-  //       { syncId, destination },
-  //       req.permission
-  //     )) as T;
-  //
-  //     await server.services.auditLog.createAuditLog({
-  //       ...req.auditLogInfo,
-  //       projectId: secretRotation.projectId,
-  //       event: {
-  //         type: EventType.GET_SECRET_SYNC,
-  //         metadata: {
-  //           syncId,
-  //           destination
-  //         }
-  //       }
-  //     });
-  //
-  //     return { secretRotation };
-  //   }
-  // });
-  //
-  // server.route({
-  //   method: "GET",
-  //   url: `/sync-name/:syncName`,
-  //   config: {
-  //     rateLimit: readLimit
-  //   },
-  //   schema: {
-  //     description: `Get the specified ${rotationType} Rotation by name and project ID.`,
-  //     params: z.object({
-  //       syncName: z
-  //         .string()
-  //         .trim()
-  //         .min(1, "Rotation name required")
-  //         .describe(SecretRotations.GET_BY_NAME(destination).syncName)
-  //     }),
-  //     querystring: z.object({
-  //       projectId: z
-  //         .string()
-  //         .trim()
-  //         .min(1, "Project ID required")
-  //         .describe(SecretRotations.GET_BY_NAME(destination).projectId)
-  //     }),
-  //     response: {
-  //       200: z.object({ secretRotation: responseSchema })
-  //     }
-  //   },
-  //   onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-  //   handler: async (req) => {
-  //     const { syncName } = req.params;
-  //     const { projectId } = req.query;
-  //
-  //     const secretRotation = (await server.services.secretRotation.findSecretRotationByName(
-  //       { syncName, projectId, destination },
-  //       req.permission
-  //     )) as T;
-  //
-  //     await server.services.auditLog.createAuditLog({
-  //       ...req.auditLogInfo,
-  //       projectId,
-  //       event: {
-  //         type: EventType.GET_SECRET_SYNC,
-  //         metadata: {
-  //           syncId: secretRotation.id,
-  //           destination
-  //         }
-  //       }
-  //     });
-  //
-  //     return { secretRotation };
-  //   }
-  // });
+  server.route({
+    method: "GET",
+    url: "/:rotationId",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: `Get the specified ${rotationType} Rotation by ID.`,
+      params: z.object({
+        rotationId: z.string().uuid().describe(SecretRotations.GET_BY_ID(type).rotationId)
+      }),
+      response: {
+        200: z.object({ secretRotation: responseSchema })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { rotationId } = req.params;
+
+      const secretRotation = (await server.services.secretRotationV2.findSecretRotationById(
+        { rotationId, type },
+        req.permission
+      )) as T;
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: secretRotation.projectId,
+        event: {
+          type: EventType.GET_SECRET_ROTATION,
+          metadata: {
+            rotationId,
+            type
+          }
+        }
+      });
+
+      return { secretRotation };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: `/rotation-name/:rotationName`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: `Get the specified ${rotationType} Rotation by name and project ID.`,
+      params: z.object({
+        rotationName: z
+          .string()
+          .trim()
+          .min(1, "Rotation name required")
+          .describe(SecretRotations.GET_BY_NAME(type).rotationName)
+      }),
+      querystring: z.object({
+        projectId: z.string().trim().min(1, "Project ID required").describe(SecretRotations.GET_BY_NAME(type).projectId)
+      }),
+      response: {
+        200: z.object({ secretRotation: responseSchema })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { rotationName } = req.params;
+      const { projectId } = req.query;
+
+      const secretRotation = (await server.services.secretRotationV2.findSecretRotationByName(
+        { rotationName, projectId, type },
+        req.permission
+      )) as T;
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.GET_SECRET_ROTATION,
+          metadata: {
+            rotationId: secretRotation.id,
+            type
+          }
+        }
+      });
+
+      return { secretRotation };
+    }
+  });
 
   server.route({
     method: "POST",
@@ -221,195 +217,186 @@ export const registerSecretRotationEndpoints = <T extends TSecretRotationV2, I e
     }
   });
 
-  // server.route({
-  //   method: "PATCH",
-  //   url: "/:syncId",
-  //   config: {
-  //     rateLimit: writeLimit
-  //   },
-  //   schema: {
-  //     description: `Update the specified ${rotationType} Rotation.`,
-  //     params: z.object({
-  //       syncId: z.string().uuid().describe(SecretRotations.UPDATE(destination).syncId)
-  //     }),
-  //     body: updateSchema,
-  //     response: {
-  //       200: z.object({ secretRotation: responseSchema })
-  //     }
-  //   },
-  //   onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-  //   handler: async (req) => {
-  //     const { syncId } = req.params;
-  //
-  //     const secretRotation = (await server.services.secretRotation.updateSecretRotation(
-  //       { ...req.body, syncId, destination },
-  //       req.permission
-  //     )) as T;
-  //
-  //     await server.services.auditLog.createAuditLog({
-  //       ...req.auditLogInfo,
-  //       projectId: secretRotation.projectId,
-  //       event: {
-  //         type: EventType.UPDATE_SECRET_SYNC,
-  //         metadata: {
-  //           syncId,
-  //           destination,
-  //           ...req.body
-  //         }
-  //       }
-  //     });
-  //
-  //     return { secretRotation };
-  //   }
-  // });
-  //
-  // server.route({
-  //   method: "DELETE",
-  //   url: `/:syncId`,
-  //   config: {
-  //     rateLimit: writeLimit
-  //   },
-  //   schema: {
-  //     description: `Delete the specified ${rotationType} Rotation.`,
-  //     params: z.object({
-  //       syncId: z.string().uuid().describe(SecretRotations.DELETE(destination).syncId)
-  //     }),
-  //     querystring: z.object({
-  //       removeSecrets: z
-  //         .enum(["true", "false"])
-  //         .default("false")
-  //         .transform((value) => value === "true")
-  //         .describe(SecretRotations.DELETE(destination).removeSecrets)
-  //     }),
-  //     response: {
-  //       200: z.object({ secretRotation: responseSchema })
-  //     }
-  //   },
-  //   onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-  //   handler: async (req) => {
-  //     const { syncId } = req.params;
-  //     const { removeSecrets } = req.query;
-  //
-  //     const secretRotation = (await server.services.secretRotation.deleteSecretRotation(
-  //       { destination, syncId, removeSecrets },
-  //       req.permission
-  //     )) as T;
-  //
-  //     await server.services.auditLog.createAuditLog({
-  //       ...req.auditLogInfo,
-  //       orgId: req.permission.orgId,
-  //       event: {
-  //         type: EventType.DELETE_SECRET_SYNC,
-  //         metadata: {
-  //           destination,
-  //           syncId,
-  //           removeSecrets
-  //         }
-  //       }
-  //     });
-  //
-  //     return { secretRotation };
-  //   }
-  // });
-  //
-  // server.route({
-  //   method: "POST",
-  //   url: "/:syncId/sync-secrets",
-  //   config: {
-  //     rateLimit: writeLimit
-  //   },
-  //   schema: {
-  //     description: `Trigger a sync for the specified ${rotationType} Rotation.`,
-  //     params: z.object({
-  //       syncId: z.string().uuid().describe(SecretRotations.SYNC_SECRETS(destination).syncId)
-  //     }),
-  //     response: {
-  //       200: z.object({ secretRotation: responseSchema })
-  //     }
-  //   },
-  //   onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-  //   handler: async (req) => {
-  //     const { syncId } = req.params;
-  //
-  //     const secretRotation = (await server.services.secretRotation.triggerSecretRotationRotationSecretsById(
-  //       {
-  //         syncId,
-  //         destination,
-  //         auditLogInfo: req.auditLogInfo
-  //       },
-  //       req.permission
-  //     )) as T;
-  //
-  //     return { secretRotation };
-  //   }
-  // });
-  //
-  // server.route({
-  //   method: "POST",
-  //   url: "/:syncId/import-secrets",
-  //   config: {
-  //     rateLimit: writeLimit
-  //   },
-  //   schema: {
-  //     description: `Import secrets from the specified ${rotationType} Rotation destination.`,
-  //     params: z.object({
-  //       syncId: z.string().uuid().describe(SecretRotations.IMPORT_SECRETS(destination).syncId)
-  //     }),
-  //     querystring: z.object({
-  //       importBehavior: z
-  //         .nativeEnum(SecretRotationImportBehavior)
-  //         .describe(SecretRotations.IMPORT_SECRETS(destination).importBehavior)
-  //     }),
-  //     response: {
-  //       200: z.object({ secretRotation: responseSchema })
-  //     }
-  //   },
-  //   onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-  //   handler: async (req) => {
-  //     const { syncId } = req.params;
-  //     const { importBehavior } = req.query;
-  //
-  //     const secretRotation = (await server.services.secretRotation.triggerSecretRotationImportSecretsById(
-  //       {
-  //         syncId,
-  //         destination,
-  //         importBehavior
-  //       },
-  //       req.permission
-  //     )) as T;
-  //
-  //     return { secretRotation };
-  //   }
-  // });
-  //
-  // server.route({
-  //   method: "POST",
-  //   url: "/:syncId/remove-secrets",
-  //   config: {
-  //     rateLimit: writeLimit
-  //   },
-  //   schema: {
-  //     description: `Remove previously synced secrets from the specified ${rotationType} Rotation destination.`,
-  //     params: z.object({
-  //       syncId: z.string().uuid().describe(SecretRotations.REMOVE_SECRETS(destination).syncId)
-  //     }),
-  //     response: {
-  //       200: z.object({ secretRotation: responseSchema })
-  //     }
-  //   },
-  //   onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-  //   handler: async (req) => {
-  //     const { syncId } = req.params;
-  //
-  //     const secretRotation = (await server.services.secretRotation.triggerSecretRotationRemoveSecretsById(
-  //       {
-  //         syncId,
-  //         destination
-  //       },
-  //       req.permission
-  //     )) as T;
-  //
-  //     return { secretRotation };
-  //   }
-  // });
+  server.route({
+    method: "PATCH",
+    url: "/:rotationId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: `Update the specified ${rotationType} Rotation.`,
+      params: z.object({
+        rotationId: z.string().uuid().describe(SecretRotations.UPDATE(type).rotationId)
+      }),
+      body: updateSchema,
+      response: {
+        200: z.object({ secretRotation: responseSchema })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { rotationId } = req.params;
+
+      const secretRotation = (await server.services.secretRotationV2.updateSecretRotation(
+        { ...req.body, rotationId, type },
+        req.permission
+      )) as T;
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: secretRotation.projectId,
+        event: {
+          type: EventType.UPDATE_SECRET_ROTATION,
+          metadata: {
+            rotationId,
+            type,
+            ...req.body
+          }
+        }
+      });
+
+      return { secretRotation };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: `/:rotationId`,
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: `Delete the specified ${rotationType} Rotation.`,
+      params: z.object({
+        rotationId: z.string().uuid().describe(SecretRotations.DELETE(type).rotationId)
+      }),
+      querystring: z.object({
+        removeSecrets: z
+          .enum(["true", "false"])
+          .default("false")
+          .transform((value) => value === "true")
+          .describe(SecretRotations.DELETE(type).removeSecrets)
+      }),
+      response: {
+        200: z.object({ secretRotation: responseSchema })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { rotationId } = req.params;
+      const { removeSecrets } = req.query;
+
+      const secretRotation = (await server.services.secretRotationV2.deleteSecretRotation(
+        { type, rotationId, removeSecrets },
+        req.permission
+      )) as T;
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.DELETE_SECRET_ROTATION,
+          metadata: {
+            type,
+            rotationId,
+            removeSecrets
+          }
+        }
+      });
+
+      return { secretRotation };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:rotationId/credentials",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: `Get the active and inactive credentials for the specified ${rotationType} Rotation.`,
+      params: z.object({
+        rotationId: z.string().uuid().describe(SecretRotations.GET_CREDENTIALS_BY_ID(type).rotationId)
+      }),
+      response: {
+        200: z.object({ secretRotation: responseSchema })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { rotationId } = req.params;
+
+      // TODO!
+      // const secretRotation = (await server.services.secretRotation.triggerSecretRotationRotationSecretsById(
+      //   {
+      //     rotationId,
+      //     type,
+      //     auditLogInfo: req.auditLogInfo
+      //   },
+      //   req.permission
+      // )) as T;
+
+      // await server.services.auditLog.createAuditLog({
+      //   ...req.auditLogInfo,
+      //   orgId: req.permission.orgId,
+      //   event: {
+      //     type: EventType.DELETE_SECRET_ROTATION,
+      //     metadata: {
+      //       type,
+      //       rotationId,
+      //       removeSecrets
+      //     }
+      //   }
+      // });
+
+      return { secretRotation: null };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:rotationId/rotate",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: `Rotate the credentials for the specified ${rotationType} Rotation.`,
+      params: z.object({
+        rotationId: z.string().uuid().describe(SecretRotations.ROTATE(type).rotationId)
+      }),
+      response: {
+        200: z.object({ secretRotation: responseSchema })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { rotationId } = req.params;
+
+      // TODO!
+      // const secretRotation = (await server.services.secretRotation.triggerSecretRotationRotationSecretsById(
+      //   {
+      //     rotationId,
+      //     type,
+      //     auditLogInfo: req.auditLogInfo
+      //   },
+      //   req.permission
+      // )) as T;
+
+      // await server.services.auditLog.createAuditLog({
+      //   ...req.auditLogInfo,
+      //   orgId: req.permission.orgId,
+      //   event: {
+      //     type: EventType.DELETE_SECRET_ROTATION,
+      //     metadata: {
+      //       type,
+      //       rotationId,
+      //       removeSecrets
+      //     }
+      //   }
+      // });
+
+      return { secretRotation: null };
+    }
+  });
 };

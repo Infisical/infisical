@@ -119,6 +119,7 @@ export const secretSyncServiceFactory = ({
     { destination, syncName, projectId }: TFindSecretSyncByNameDTO,
     actor: OrgServiceActor
   ) => {
+    // we prevent conflicting names within a project
     const secretSync = await secretSyncDAL.findOne({
       name: syncName,
       projectId

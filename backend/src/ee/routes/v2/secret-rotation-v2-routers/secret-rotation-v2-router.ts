@@ -2,17 +2,17 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
-  PostgresLoginCredentialsRotationListItemSchema,
-  PostgresLoginCredentialsRotationSchema
-} from "@app/ee/services/secret-rotation-v2/postgres-login-credentials";
+  PostgresCredentialsRotationListItemSchema,
+  PostgresCredentialsRotationSchema
+} from "@app/ee/services/secret-rotation-v2/postgres-credentials";
 import { SecretRotations } from "@app/lib/api-docs";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-const SecretRotationV2Schema = z.discriminatedUnion("type", [PostgresLoginCredentialsRotationSchema]);
+const SecretRotationV2Schema = z.discriminatedUnion("type", [PostgresCredentialsRotationSchema]);
 
-const SecretRotationV2OptionsSchema = z.discriminatedUnion("type", [PostgresLoginCredentialsRotationListItemSchema]);
+const SecretRotationV2OptionsSchema = z.discriminatedUnion("type", [PostgresCredentialsRotationListItemSchema]);
 
 export const registerSecretRotationV2Router = async (server: FastifyZodProvider) => {
   server.route({

@@ -1,18 +1,18 @@
 import {
-  TPostgresLoginCredentialsRotation,
-  TPostgresLoginCredentialsRotationInput,
-  TPostgresLoginCredentialsRotationListItem,
-  TPostgresLoginCredentialsRotationWithConnection
-} from "./postgres-login-credentials";
+  TPostgresCredentialsRotation,
+  TPostgresCredentialsRotationInput,
+  TPostgresCredentialsRotationListItem,
+  TPostgresCredentialsRotationWithConnection
+} from "./postgres-credentials";
 import { SecretRotation } from "./secret-rotation-v2-enums";
 
-export type TSecretRotationV2 = TPostgresLoginCredentialsRotation;
+export type TSecretRotationV2 = TPostgresCredentialsRotation;
 
-export type TSecretRotationV2WithConnection = TPostgresLoginCredentialsRotationWithConnection;
+export type TSecretRotationV2WithConnection = TPostgresCredentialsRotationWithConnection;
 
-export type TSecretRotationV2Input = TPostgresLoginCredentialsRotationInput;
+export type TSecretRotationV2Input = TPostgresCredentialsRotationInput;
 
-export type TSecretRotationV2ListItem = TPostgresLoginCredentialsRotationListItem;
+export type TSecretRotationV2ListItem = TPostgresCredentialsRotationListItem;
 
 export type TListSecretRotationsV2ByProjectId = {
   projectId: string;
@@ -20,14 +20,14 @@ export type TListSecretRotationsV2ByProjectId = {
 };
 
 export type TFindSecretRotationV2ByIdDTO = {
-  syncId: string;
-  destination: SecretRotation;
+  rotationId: string;
+  type: SecretRotation;
 };
 
 export type TFindSecretRotationV2ByNameDTO = {
-  syncName: string;
+  rotationName: string;
   projectId: string;
-  destination: SecretRotation;
+  type: SecretRotation;
 };
 
 export type TCreateSecretRotationV2DTO = Pick<
@@ -40,7 +40,7 @@ export type TCreateSecretRotationV2DTO = Pick<
   isAutoRotationEnabled?: boolean;
 };
 
-export type TUpdateSecretRotationV2DTO = Partial<Omit<TCreateSecretRotationV2DTO, "projectId">> & {
+export type TUpdateSecretRotationV2DTO = Partial<Omit<TCreateSecretRotationV2DTO, "projectId" | "connectionId">> & {
   rotationId: string;
   type: SecretRotation;
 };

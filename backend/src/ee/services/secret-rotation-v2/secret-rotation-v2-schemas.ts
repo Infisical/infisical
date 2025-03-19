@@ -57,7 +57,6 @@ export const BaseUpdateSecretRotationSchema = (type: SecretRotation) =>
       .max(256, "Description cannot exceed 256 characters")
       .nullish()
       .describe(SecretRotations.UPDATE(type).description),
-    connectionId: z.string().uuid().describe(SecretRotations.UPDATE(type).connectionId),
     environment: slugSchema({ field: "environment", max: 64 }).describe(SecretRotations.UPDATE(type).environment),
     secretPath: z
       .string()

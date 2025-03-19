@@ -24,7 +24,7 @@ export const registerV2EERoutes = async (server: FastifyZodProvider) => {
       // register generic secret sync endpoints
       await secretRotationV2Router.register(registerSecretRotationV2Router);
 
-      // register service specific secret rotation endpoints (secret-rotations/postgres-login-credentials, etc.)
+      // register service specific secret rotation endpoints (secret-rotations/postgres-credentials, etc.)
       for await (const [type, router] of Object.entries(SECRET_ROTATION_REGISTER_ROUTER_MAP)) {
         await secretRotationV2Router.register(router, { prefix: `/${type}` });
       }
