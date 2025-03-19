@@ -48,11 +48,23 @@ var bootstrapCmd = &cobra.Command{
 
 		organization, _ := cmd.Flags().GetString("organization")
 		if organization == "" {
+			if envOrganization, ok := os.LookupEnv("INFISICAL_ADMIN_ORGANIZATION"); ok {
+				organization = envOrganization
+			}
+		}
+
+		if organization == "" {
 			log.Error().Msg("organization is required")
 			return
 		}
 
 		domain, _ := cmd.Flags().GetString("domain")
+		if domain == "" {
+			if envDomain, ok := os.LookupEnv("INFISICAL_API_URL"); ok {
+				domain = envDomain
+			}
+		}
+
 		if domain == "" {
 			log.Error().Msg("domain is required")
 			return

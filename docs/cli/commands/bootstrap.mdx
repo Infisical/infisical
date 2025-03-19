@@ -19,53 +19,60 @@ The `infisical bootstrap` command is used when deploying Infisical in automated 
 The command initializes a fresh Infisical instance by creating an admin user, organization, and instance admin machine identity, enabling subsequent programmatic configuration without human intervention.
 
 <Warning>
-  This command creates an instance admin machine identity with the highest level of privileges. The returned token should be treated with the utmost security, similar to a root credential. Unauthorized access to this token could compromise your entire Infisical instance.
+  This command creates an instance admin machine identity with the highest level
+  of privileges. The returned token should be treated with the utmost security,
+  similar to a root credential. Unauthorized access to this token could
+  compromise your entire Infisical instance.
 </Warning>
 
 ## Flags
 
 <Accordion title="--domain" defaultOpen="true">
-  The URL of your Infisical instance.
+  The URL of your Infisical instance. This can be set using the `INFISICAL_API_URL` environment variable.
 
-  ```bash
-  # Example
-  infisical bootstrap --domain=https://your-infisical-instance.com
-  ```
+```bash
+# Example
+infisical bootstrap --domain=https://your-infisical-instance.com
+```
 
-  This flag is required.
+This flag is required.
+
 </Accordion>
 
 <Accordion title="--email">
   Email address for the admin user account that will be created. This can be set using the `INFISICAL_ADMIN_EMAIL` environment variable.
 
-  ```bash
-  # Example
-  infisical bootstrap --email=admin@example.com
-  ```
+```bash
+# Example
+infisical bootstrap --email=admin@example.com
+```
 
-  This flag is required.
+This flag is required.
+
 </Accordion>
 
 <Accordion title="--password">
   Password for the admin user account. This can be set using the `INFISICAL_ADMIN_PASSWORD` environment variable.
 
-  ```bash
-  # Example
-  infisical bootstrap --password=your-secure-password
-  ```
+```bash
+# Example
+infisical bootstrap --password=your-secure-password
+```
 
-  This flag is required.
+This flag is required.
+
 </Accordion>
 
 <Accordion title="--organization">
-  Name of the organization that will be created within the instance.
+  Name of the organization that will be created within the instance. This can be set using the `INFISICAL_ADMIN_ORGANIZATION` environment variable.
 
-  ```bash
-  # Example
-  infisical bootstrap --organization=your-org-name
-  ```
+```bash
+# Example
+infisical bootstrap --organization=your-org-name
+```
 
-  This flag is required.
+This flag is required.
+
 </Accordion>
 
 ## Response
