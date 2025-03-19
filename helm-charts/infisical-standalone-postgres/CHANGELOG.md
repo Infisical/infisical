@@ -1,3 +1,8 @@
+## 1.4.1 (March 19, 2025)
+
+Changes:
+* Added support for supplying extra volume mounts and volumes via `infisical.extraVolumeMounts` and `infisical.extraVolumes`
+
 ## 1.4.0 (November 06, 2024)
 
 Changes:

@@ -14,6 +14,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
+import { getStringValueByDot } from "@app/lib/template/dot-access";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
@@ -180,8 +181,9 @@ export const identityJwtAuthServiceFactory = ({
     if (identityJwtAuth.boundClaims) {
       Object.keys(identityJwtAuth.boundClaims).forEach((claimKey) => {
         const claimValue = (identityJwtAuth.boundClaims as Record<string, string>)[claimKey];
+        const value = getStringValueByDot(tokenData, claimKey) || "";
 
-        if (!tokenData[claimKey]) {
+        if (!value) {
           throw new UnauthorizedError({
             message: `Access denied: token has no ${claimKey} field`
           });

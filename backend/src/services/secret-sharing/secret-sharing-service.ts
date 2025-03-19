@@ -82,6 +82,13 @@ export const secretSharingServiceFactory = ({
     if (!permission) throw new ForbiddenRequestError({ name: "User is not a part of the specified organization" });
     $validateSharedSecretExpiry(expiresAt);
 
+    const org = await orgDAL.findOrgById(orgId);
+    if (!org.allowSecretSharingOutsideOrganization && accessType === SecretSharingAccessType.Anyone) {
+      throw new BadRequestError({
+        message: "Organization does not allow sharing secrets to members outside of this organization"
+      });
+    }
+
     if (secretValue.length > 10_000) {
       throw new BadRequestError({ message: "Shared secret value too long" });
     }

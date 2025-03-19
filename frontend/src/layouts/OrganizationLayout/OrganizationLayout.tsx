@@ -1,30 +1,33 @@
 import { useTranslation } from "react-i18next";
 import { faMobile } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link, linkOptions, Outlet, useLocation, useRouterState } from "@tanstack/react-router";
+import { linkOptions, Outlet, useLocation, useRouterState } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
 import { twMerge } from "tailwind-merge";
 
 import { CreateOrgModal } from "@app/components/organization/CreateOrgModal";
 import { Banner } from "@app/components/page-frames/Banner";
-import {
-  BreadcrumbContainer,
-  Menu,
-  MenuGroup,
-  MenuItem,
-  TBreadcrumbFormat
-} from "@app/components/v2";
-import { useServerConfig } from "@app/context";
+import { BreadcrumbContainer, TBreadcrumbFormat } from "@app/components/v2";
+import { OrgPermissionSubjects, useOrgPermission, useServerConfig } from "@app/context";
+import { OrgPermissionSecretShareAction } from "@app/context/OrgPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 
 import { InsecureConnectionBanner } from "./components/InsecureConnectionBanner";
 import { MinimizedOrgSidebar } from "./components/MinimizedOrgSidebar";
 import { SidebarHeader } from "./components/SidebarHeader";
+import { DefaultSideBar, SecretSharingSideBar } from "./ProductsSideBar";
 
 export const OrganizationLayout = () => {
   const matches = useRouterState({ select: (s) => s.matches.at(-1)?.context });
   const location = useLocation();
   const { config } = useServerConfig();
+  const { permission } = useOrgPermission();
+
+  const shouldShowProductsSidebar = permission.can(
+    OrgPermissionSecretShareAction.ManageSettings,
+    OrgPermissionSubjects.SecretShare
+  );
+
   const isOrganizationSpecificPage = location.pathname.startsWith("/organization");
   const breadcrumbs =
     isOrganizationSpecificPage && matches && "breadcrumbs" in matches
@@ -35,16 +38,23 @@ export const OrganizationLayout = () => {
 
   const { t } = useTranslation();
 
+  const isSecretSharingPage = (
+    [
+      linkOptions({ to: "/organization/secret-sharing" }).to,
+      linkOptions({ to: "/organization/secret-sharing/settings" }).to
+    ] as string[]
+  ).includes(location.pathname);
+
   const shouldShowOrgSidebar =
     location.pathname.startsWith("/organization") &&
+    (!isSecretSharingPage || shouldShowProductsSidebar) &&
     !(
       [
         linkOptions({ to: "/organization/secret-manager/overview" }).to,
         linkOptions({ to: "/organization/cert-manager/overview" }).to,
         linkOptions({ to: "/organization/ssh/overview" }).to,
         linkOptions({ to: "/organization/kms/overview" }).to,
-        linkOptions({ to: "/organization/secret-scanning" }).to,
-        linkOptions({ to: "/organization/secret-sharing" }).to
+        linkOptions({ to: "/organization/secret-scanning" }).to
       ] as string[]
     ).includes(location.pathname);
 
@@ -73,58 +83,7 @@ export const OrganizationLayout = () => {
                   <div className="p-2 pt-3">
                     <SidebarHeader />
                   </div>
-                  <Menu>
-                    <MenuGroup title="Organization Control">
-                      <Link to="/organization/audit-logs">
-                        {({ isActive }) => (
-                          <MenuItem isSelected={isActive} icon="moving-block">
-                            Audit Logs
-                          </MenuItem>
-                        )}
-                      </Link>
-                      {(window.location.origin.includes("https://app.infisical.com") ||
-                        window.location.origin.includes("https://eu.infisical.com") ||
-                        window.location.origin.includes("https://gamma.infisical.com")) && (
-                        <Link to="/organization/billing">
-                          {({ isActive }) => (
-                            <MenuItem isSelected={isActive} icon="spinning-coin">
-                              Usage & Billing
-                            </MenuItem>
-                          )}
-                        </Link>
-                      )}
-                    </MenuGroup>
-                    <MenuGroup title="Other">
-                      <Link to="/organization/access-management">
-                        {({ isActive }) => (
-                          <MenuItem isSelected={isActive} icon="groups">
-                            Access Control
-                          </MenuItem>
-                        )}
-                      </Link>
-                      <Link to="/organization/app-connections">
-                        {({ isActive }) => (
-                          <MenuItem isSelected={isActive} icon="jigsaw-puzzle">
-                            App Connections
-                          </MenuItem>
-                        )}
-                      </Link>
-                      <Link to="/organization/gateways">
-                        {({ isActive }) => (
-                          <MenuItem isSelected={isActive} icon="gateway" iconMode="reverse">
-                            Gateways
-                          </MenuItem>
-                        )}
-                      </Link>
-                      <Link to="/organization/settings">
-                        {({ isActive }) => (
-                          <MenuItem isSelected={isActive} icon="toggle-settings">
-                            Organization Settings
-                          </MenuItem>
-                        )}
-                      </Link>
-                    </MenuGroup>
-                  </Menu>
+                  {isSecretSharingPage ? <SecretSharingSideBar /> : <DefaultSideBar />}
                 </nav>
               </motion.div>
             )}

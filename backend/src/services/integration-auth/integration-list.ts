@@ -93,6 +93,7 @@ export enum IntegrationUrls {
   NORTHFLANK_API_URL = "https://api.northflank.com",
   HASURA_CLOUD_API_URL = "https://data.pro.hasura.io/v1/graphql",
   AZURE_DEVOPS_API_URL = "https://dev.azure.com",
+  HUMANITEC_API_URL = "https://api.humanitec.io",
 
   GCP_SECRET_MANAGER_SERVICE_NAME = "secretmanager.googleapis.com",
   GCP_SECRET_MANAGER_URL = `https://${GCP_SECRET_MANAGER_SERVICE_NAME}`,

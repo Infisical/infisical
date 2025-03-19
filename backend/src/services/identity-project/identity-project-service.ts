@@ -1,5 +1,4 @@
 import { ForbiddenError, subject } from "@casl/ability";
-import ms from "ms";
 
 import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
 import {
@@ -10,6 +9,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
+import { ms } from "@app/lib/ms";
 
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TProjectDALFactory } from "../project/project-dal";

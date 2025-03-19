@@ -3,6 +3,7 @@ import {
   GitHubSyncScope,
   GitHubSyncVisibility
 } from "@app/hooks/api/secretSyncs/types/github-sync";
+import { HumanitecSyncScope } from "@app/hooks/api/secretSyncs/types/humanitec-sync";
 
 // This functional ensures parity across what is displayed in the destination column
 // and the values used when search filtering
@@ -58,6 +59,19 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       break;
     case SecretSync.Databricks:
       primaryText = destinationConfig.scope;
+      break;
+    case SecretSync.Humanitec:
+      switch (destinationConfig.scope) {
+        case HumanitecSyncScope.Application:
+          primaryText = destinationConfig.app;
+          break;
+        case HumanitecSyncScope.Environment:
+          primaryText = `${destinationConfig.app} / ${destinationConfig.env}`;
+          break;
+        default:
+          throw new Error(`Unhandled Humanitec Scope Destination Col Values ${destination}`);
+      }
+      secondaryText = `Organization - ${destinationConfig.org}`;
       break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);

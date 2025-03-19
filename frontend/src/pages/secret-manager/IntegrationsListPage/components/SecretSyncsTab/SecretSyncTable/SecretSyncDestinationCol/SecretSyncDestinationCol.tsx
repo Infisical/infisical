@@ -7,6 +7,7 @@ import { AzureKeyVaultDestinationSyncCol } from "./AzureKeyVaultDestinationSyncC
 import { DatabricksSyncDestinationCol } from "./DatabricksSyncDestinationCol";
 import { GcpSyncDestinationCol } from "./GcpSyncDestinationCol";
 import { GitHubSyncDestinationCol } from "./GitHubSyncDestinationCol";
+import { HumanitecSyncDestinationCol } from "./HumanitecSyncDestinationCol";
 
 type Props = {
   secretSync: TSecretSync;
@@ -28,6 +29,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <AzureAppConfigurationDestinationSyncCol secretSync={secretSync} />;
     case SecretSync.Databricks:
       return <DatabricksSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Humanitec:
+      return <HumanitecSyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(
         `Unhandled Secret Sync Destination Col: ${(secretSync as TSecretSync).destination}`

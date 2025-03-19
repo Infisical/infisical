@@ -4,6 +4,7 @@ import {
   SecretSyncImportBehavior,
   SecretSyncInitialSyncBehavior
 } from "@app/hooks/api/secretSyncs";
+import { HumanitecSyncScope } from "@app/hooks/api/secretSyncs/types/humanitec-sync";
 
 export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }> = {
   [SecretSync.AWSParameterStore]: { name: "AWS Parameter Store", image: "Amazon Web Services.png" },
@@ -18,6 +19,10 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
   [SecretSync.Databricks]: {
     name: "Databricks",
     image: "Databricks.png"
+  },
+  [SecretSync.Humanitec]: {
+    name: "Humanitec",
+    image: "Humanitec.png"
   }
 };
 
@@ -28,7 +33,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.GCPSecretManager]: AppConnection.GCP,
   [SecretSync.AzureKeyVault]: AppConnection.AzureKeyVault,
   [SecretSync.AzureAppConfiguration]: AppConnection.AzureAppConfiguration,
-  [SecretSync.Databricks]: AppConnection.Databricks
+  [SecretSync.Databricks]: AppConnection.Databricks,
+  [SecretSync.Humanitec]: AppConnection.Humanitec
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<
@@ -61,4 +67,20 @@ export const SECRET_SYNC_IMPORT_BEHAVIOR_MAP: Record<
     name: `Prioritize ${destinationName} Values`,
     description: `Infisical will import any secrets present in the ${destinationName} destination, prioritizing values from ${destinationName} over Infisical when keys conflict.`
   })
+};
+
+export const HUMANITEC_SYNC_SCOPES: Record<
+  HumanitecSyncScope,
+  { name: string; description: string }
+> = {
+  [HumanitecSyncScope.Application]: {
+    name: "Application",
+    description:
+      "Infisical will sync secrets as application level shared values to the specified Humanitec application."
+  },
+  [HumanitecSyncScope.Environment]: {
+    name: "Environment",
+    description:
+      "Infisical will sync secrets as environment level shared values to the specified Humanitec application environment."
+  }
 };

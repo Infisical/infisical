@@ -329,6 +329,7 @@ export const OIDC_AUTH = {
     boundIssuer: "The unique identifier of the identity provider issuing the JWT.",
     boundAudiences: "The list of intended recipients.",
     boundClaims: "The attributes that should be present in the JWT for it to be valid.",
+    claimMetadataMapping: "The attributes that should be present in the permission metadata from the JWT.",
     boundSubject: "The expected principal that is the subject of the JWT.",
     accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from.",
     accessTokenTTL: "The lifetime for an access token in seconds.",
@@ -342,6 +343,7 @@ export const OIDC_AUTH = {
     boundIssuer: "The new unique identifier of the identity provider issuing the JWT.",
     boundAudiences: "The new list of intended recipients.",
     boundClaims: "The new attributes that should be present in the JWT for it to be valid.",
+    claimMetadataMapping: "The new attributes that should be present in the permission metadata from the JWT.",
     boundSubject: "The new expected principal that is the subject of the JWT.",
     accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from.",
     accessTokenTTL: "The new lifetime for an access token in seconds.",
@@ -1725,7 +1727,8 @@ export const SecretSyncs = {
   SYNC_OPTIONS: (destination: SecretSync) => {
     const destinationName = SECRET_SYNC_NAME_MAP[destination];
     return {
-      initialSyncBehavior: `Specify how Infisical should resolve the initial sync to the ${destinationName} destination.`
+      initialSyncBehavior: `Specify how Infisical should resolve the initial sync to the ${destinationName} destination.`,
+      disableSecretDeletion: `Enable this flag to prevent removal of secrets from the ${destinationName} destination when syncing.`
     };
   },
   ADDITIONAL_SYNC_OPTIONS: {
@@ -1771,6 +1774,12 @@ export const SecretSyncs = {
     },
     DATABRICKS: {
       scope: "The Databricks secret scope that secrets should be synced to."
+    },
+    HUMANITEC: {
+      app: "The ID of the Humanitec app to sync secrets to.",
+      org: "The ID of the Humanitec org to sync secrets to.",
+      env: "The ID of the Humanitec environment to sync secrets to.",
+      scope: "The Humanitec scope that secrets should be synced to."
     }
   }
 };

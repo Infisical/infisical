@@ -11,7 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (r *InfisicalSecretReconciler) SetReadyToSyncSecretsConditions(ctx context.Context, infisicalSecret *v1alpha1.InfisicalSecret, secretsCount int, errorToConditionOn error) error {
+func (r *InfisicalSecretReconciler) SetReadyToSyncSecretsConditions(ctx context.Context, logger logr.Logger, infisicalSecret *v1alpha1.InfisicalSecret, secretsCount int, errorToConditionOn error) {
 	if infisicalSecret.Status.Conditions == nil {
 		infisicalSecret.Status.Conditions = []metav1.Condition{}
 	}
@@ -39,7 +39,10 @@ func (r *InfisicalSecretReconciler) SetReadyToSyncSecretsConditions(ctx context.
 		})
 	}
 
-	return r.Client.Status().Update(ctx, infisicalSecret)
+	err := r.Client.Status().Update(ctx, infisicalSecret)
+	if err != nil {
+		logger.Error(err, "Could not set condition for ReadyToSyncSecrets")
+	}
 }
 
 func (r *InfisicalSecretReconciler) SetInfisicalTokenLoadCondition(ctx context.Context, logger logr.Logger, infisicalSecret *v1alpha1.InfisicalSecret, authStrategy util.AuthStrategyType, errorToConditionOn error) {

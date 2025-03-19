@@ -20,6 +20,7 @@ import { AzureKeyVaultSyncReviewFields } from "./AzureKeyVaultSyncReviewFields";
 import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
 import { GcpSyncReviewFields } from "./GcpSyncReviewFields";
 import { GitHubSyncReviewFields } from "./GitHubSyncReviewFields";
+import { HumanitecSyncReviewFields } from "./HumanitecSyncReviewFields";
 
 export const SecretSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm>();
@@ -35,6 +36,7 @@ export const SecretSyncReviewFields = () => {
     secretPath,
     syncOptions: {
       // appendSuffix, prependPrefix,
+      disableSecretDeletion,
       initialSyncBehavior
     },
     destination,
@@ -66,6 +68,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Databricks:
       DestinationFieldsComponent = <DatabricksSyncReviewFields />;
+      break;
+    case SecretSync.Humanitec:
+      DestinationFieldsComponent = <HumanitecSyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);
@@ -107,6 +112,11 @@ export const SecretSyncReviewFields = () => {
           {/* <SecretSyncLabel label="Prepend Prefix">{prependPrefix}</SecretSyncLabel>
           <SecretSyncLabel label="Append Suffix">{appendSuffix}</SecretSyncLabel> */}
           {AdditionalSyncOptionsFieldsComponent}
+          {disableSecretDeletion && (
+            <SecretSyncLabel label="Secret Deletion">
+              <Badge variant="primary">Disabled</Badge>
+            </SecretSyncLabel>
+          )}
         </div>
       </div>
       <div className="flex flex-col gap-3">

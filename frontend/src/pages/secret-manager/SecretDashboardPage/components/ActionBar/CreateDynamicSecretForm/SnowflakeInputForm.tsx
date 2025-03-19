@@ -13,12 +13,14 @@ import {
   AccordionItem,
   AccordionTrigger,
   Button,
+  FilterableSelect,
   FormControl,
   Input,
   TextArea
 } from "@app/components/v2";
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
+import { WorkspaceEnv } from "@app/hooks/api/types";
 
 const formSchema = z.object({
   provider: z.object({
@@ -54,7 +56,8 @@ const formSchema = z.object({
     .string()
     .trim()
     .min(1)
-    .refine((val) => val.toLowerCase() === val, "Must be lowercase")
+    .refine((val) => val.toLowerCase() === val, "Must be lowercase"),
+  environment: z.object({ name: z.string(), slug: z.string() })
 });
 type TForm = z.infer<typeof formSchema>;
 
@@ -63,15 +66,17 @@ type Props = {
   onCancel: () => void;
   secretPath: string;
   projectSlug: string;
-  environment: string;
+  environments: WorkspaceEnv[];
+  isSingleEnvironmentMode?: boolean;
 };
 
 export const SnowflakeInputForm = ({
   onCompleted,
   onCancel,
-  environment,
+  environments,
   secretPath,
-  projectSlug
+  projectSlug,
+  isSingleEnvironmentMode
 }: Props) => {
   const {
     control,
@@ -85,13 +90,20 @@ export const SnowflakeInputForm = ({
           "CREATE USER {{username}} PASSWORD = '{{password}}' DEFAULT_ROLE = public DEFAULT_SECONDARY_ROLES = ('ALL') MUST_CHANGE_PASSWORD = FALSE DAYS_TO_EXPIRY = {{expiration}};",
         revocationStatement: "DROP USER {{username}};",
         renewStatement: "ALTER USER {{username}} SET DAYS_TO_EXPIRY = {{expiration}};"
-      }
+      },
+      environment: isSingleEnvironmentMode ? environments[0] : undefined
     }
   });
 
   const createDynamicSecret = useCreateDynamicSecret();
 
-  const handleCreateDynamicSecret = async ({ name, maxTTL, provider, defaultTTL }: TForm) => {
+  const handleCreateDynamicSecret = async ({
+    name,
+    maxTTL,
+    provider,
+    defaultTTL,
+    environment
+  }: TForm) => {
     // wait till previous request is finished
     if (createDynamicSecret.isPending) return;
     try {
@@ -102,7 +114,7 @@ export const SnowflakeInputForm = ({
         path: secretPath,
         defaultTTL,
         projectSlug,
-        environmentSlug: environment
+        environmentSlug: environment.slug
       });
       onCompleted();
     } catch (err) {
@@ -314,6 +326,29 @@ export const SnowflakeInputForm = ({
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
+              {!isSingleEnvironmentMode && (
+                <Controller
+                  control={control}
+                  name="environment"
+                  render={({ field: { value, onChange }, fieldState: { error } }) => (
+                    <FormControl
+                      label="Environment"
+                      isError={Boolean(error)}
+                      errorText={error?.message}
+                    >
+                      <FilterableSelect
+                        options={environments}
+                        value={value}
+                        onChange={onChange}
+                        placeholder="Select the environment to create secret in..."
+                        getOptionLabel={(option) => option.name}
+                        getOptionValue={(option) => option.slug}
+                        menuPlacement="top"
+                      />
+                    </FormControl>
+                  )}
+                />
+              )}
             </div>
           </div>
         </div>

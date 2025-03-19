@@ -1,9 +1,9 @@
 import { ReactNode } from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import { faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
+import { faQuestionCircle, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { FormControl, Select, SelectItem } from "@app/components/v2";
+import { FormControl, Select, SelectItem, Switch, Tooltip } from "@app/components/v2";
 import { SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP, SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { SecretSync, useSecretSyncOption } from "@app/hooks/api/secretSyncs";
 
@@ -38,6 +38,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
     case SecretSync.AzureKeyVault:
     case SecretSync.AzureAppConfiguration:
     case SecretSync.Databricks:
+    case SecretSync.Humanitec:
       AdditionalSyncOptionsFieldsComponent = null;
       break;
     default:
@@ -115,6 +116,44 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
         </>
       )}
       {AdditionalSyncOptionsFieldsComponent}
+      <Controller
+        control={control}
+        name="syncOptions.disableSecretDeletion"
+        render={({ field: { value, onChange }, fieldState: { error } }) => {
+          return (
+            <FormControl isError={Boolean(error)} errorText={error?.message}>
+              <Switch
+                className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+                id="auto-sync-enabled"
+                thumbClassName="bg-mineshaft-800"
+                onCheckedChange={onChange}
+                isChecked={value}
+              >
+                <p className="w-[11rem]">
+                  Disable Secret Deletion{" "}
+                  <Tooltip
+                    className="max-w-md"
+                    content={
+                      <>
+                        <p>
+                          When enabled, Infisical will <span className="font-semibold">not</span>{" "}
+                          remove secrets from the destination during a sync.
+                        </p>
+                        <p className="mt-4">
+                          Enable this option if you intend to manage some secrets manually outside
+                          of Infisical.
+                        </p>
+                      </>
+                    }
+                  >
+                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
+                  </Tooltip>
+                </p>
+              </Switch>
+            </FormControl>
+          );
+        }}
+      />
       {/* <Controller
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <FormControl

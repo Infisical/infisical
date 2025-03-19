@@ -5,7 +5,8 @@ export enum SecretSync {
   GCPSecretManager = "gcp-secret-manager",
   AzureKeyVault = "azure-key-vault",
   AzureAppConfiguration = "azure-app-configuration",
-  Databricks = "databricks"
+  Databricks = "databricks",
+  Humanitec = "humanitec"
 }
 
 export enum SecretSyncInitialSyncBehavior {

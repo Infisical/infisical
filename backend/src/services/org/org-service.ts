@@ -22,6 +22,7 @@ import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import {
   OrgPermissionActions,
   OrgPermissionGroupActions,
+  OrgPermissionSecretShareAction,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
 import {
@@ -334,12 +335,27 @@ export const orgServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     orgId,
-    data: { name, slug, authEnforced, scimEnabled, defaultMembershipRoleSlug, enforceMfa, selectedMfaMethod }
+    data: {
+      name,
+      slug,
+      authEnforced,
+      scimEnabled,
+      defaultMembershipRoleSlug,
+      enforceMfa,
+      selectedMfaMethod,
+      allowSecretSharingOutsideOrganization
+    }
   }: TUpdateOrgDTO) => {
     const appCfg = getConfig();
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
 
+    if (allowSecretSharingOutsideOrganization !== undefined) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionSecretShareAction.ManageSettings,
+        OrgPermissionSubjects.SecretShare
+      );
+    }
     const plan = await licenseService.getPlan(orgId);
     const currentOrg = await orgDAL.findOrgById(actorOrgId);
 
@@ -406,7 +422,8 @@ export const orgServiceFactory = ({
       scimEnabled,
       defaultMembershipRole,
       enforceMfa,
-      selectedMfaMethod
+      selectedMfaMethod,
+      allowSecretSharingOutsideOrganization
     });
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
     return org;

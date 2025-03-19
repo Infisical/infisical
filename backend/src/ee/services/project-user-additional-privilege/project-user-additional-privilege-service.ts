@@ -1,9 +1,9 @@
 import { ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
 import { PackRule, packRules, unpackRules } from "@casl/ability/extra";
-import ms from "ms";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { ms } from "@app/lib/ms";
 import { UnpackedPermissionSchema } from "@app/server/routes/sanitizedSchema/permission";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";

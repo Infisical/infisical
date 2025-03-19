@@ -15,7 +15,7 @@ export type TCreateSamlCfgDTO = {
   isActive: boolean;
   entryPoint: string;
   issuer: string;
-  cert: string;
+  idpCert: string;
 } & TOrgPermission;
 
 export type TUpdateSamlCfgDTO = Partial<{
@@ -23,7 +23,7 @@ export type TUpdateSamlCfgDTO = Partial<{
   isActive: boolean;
   entryPoint: string;
   issuer: string;
-  cert: string;
+  idpCert: string;
 }> &
   TOrgPermission;
 
