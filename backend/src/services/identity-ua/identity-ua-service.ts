@@ -69,9 +69,15 @@ export const identityUaServiceFactory = ({
       isClientSecretRevoked: false
     });
 
-    const validClientSecretInfo = clientSecrtInfo.find(({ clientSecretHash }) =>
-      bcrypt.compareSync(clientSecret, clientSecretHash)
-    );
+    let validClientSecretInfo: (typeof clientSecrtInfo)[0] | null = null;
+    for await (const info of clientSecrtInfo) {
+      const isMatch = await bcrypt.compare(clientSecret, info.clientSecretHash);
+      if (isMatch) {
+        validClientSecretInfo = info;
+        break;
+      }
+    }
+
     if (!validClientSecretInfo) throw new UnauthorizedError({ message: "Invalid credentials" });
 
     const { clientSecretTTL, clientSecretNumUses, clientSecretNumUsesLimit } = validClientSecretInfo;
@@ -104,7 +110,7 @@ export const identityUaServiceFactory = ({
     }
 
     const identityAccessToken = await identityUaDAL.transaction(async (tx) => {
-      const uaClientSecretDoc = await identityUaClientSecretDAL.incrementUsage(validClientSecretInfo.id, tx);
+      const uaClientSecretDoc = await identityUaClientSecretDAL.incrementUsage(validClientSecretInfo!.id, tx);
       const newToken = await identityAccessTokenDAL.create(
         {
           identityId: identityUa.identityId,
