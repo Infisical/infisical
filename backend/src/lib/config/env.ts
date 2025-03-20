@@ -56,6 +56,7 @@ const envSchema = z
     // TODO(akhilmhdh): will be changed to one
     ENCRYPTION_KEY: zpStr(z.string().optional()),
     ROOT_ENCRYPTION_KEY: zpStr(z.string().optional()),
+    QUEUE_WORKERS_ENABLED: zodStrBool.default("true"),
     HTTPS_ENABLED: zodStrBool,
     // smtp options
     SMTP_HOST: zpStr(z.string().optional()),
