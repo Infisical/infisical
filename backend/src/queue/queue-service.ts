@@ -272,10 +272,13 @@ export const queueServiceFactory = (
       connection
     });
 
-    workerContainer[name] = new Worker<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>(name, jobFn, {
-      ...queueSettings,
-      connection
-    });
+    const appCfg = getConfig();
+    if (appCfg.QUEUE_WORKERS_ENABLED) {
+      workerContainer[name] = new Worker<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>(name, jobFn, {
+        ...queueSettings,
+        connection
+      });
+    }
   };
 
   const startPg = async <T extends QueueName>(
@@ -307,6 +310,11 @@ export const queueServiceFactory = (
     event: U,
     listener: WorkerListener<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>[U]
   ) => {
+    const appCfg = getConfig();
+    if (!appCfg.QUEUE_WORKERS_ENABLED) {
+      return;
+    }
+
     const worker = workerContainer[name];
     worker.on(event, listener);
   };
