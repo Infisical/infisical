@@ -11,7 +11,25 @@ jobs:
       - name: Extract version from tag
         id: extract_version
         run: echo "::set-output name=version::${GITHUB_REF_NAME#infisical-k8-operator/}"
-      - uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.10.0
+
+      - name: Install python
+        uses: actions/setup-python@v4
+        
+      - name: Generate Helm Chart
+        run: sh k8-operator/scripts/generate-helm.sh
+        
+      - name: Update Helm Chart Version
+        run: sh k8-operator/scripts/update-version.sh ${{ steps.extract_version.outputs.version }}
 
       - name: 🔧 Set up QEMU
         uses: docker/setup-qemu-action@v1
@@ -35,18 +53,22 @@ jobs:
           tags: |
             infisical/kubernetes-operator:latest
             infisical/kubernetes-operator:${{ steps.extract_version.outputs.version }}
-
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Install Helm
-        uses: azure/setup-helm@v3
-        with:
-          version: v3.10.0
-      - name: Install python
-        uses: actions/setup-python@v4
+            
       - name: Install Cloudsmith CLI
-        run: pip install --upgrade cloudsmith-cli
+        run: pip install --upgrade cloudsmith-cli      
+
       - name: Build and push helm package to Cloudsmith
         run: cd helm-charts && sh upload-k8s-operator-cloudsmith.sh
         env:
           CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
+
+      - name: Configure Git
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+            
+      - name: Commit and Push Helm Changes
+        run: |
+          git add .
+          git commit -m "Update Helm chart to version ${{ steps.extract_version.outputs.version }}" || echo "No changes to commit"
+          git push
