@@ -35,9 +35,6 @@ export const SecretSyncAuditLogsSection = ({ secretSync }: Props) => {
       {subscription.auditLogs ? (
         <LogsSection
           refetchInterval={4000}
-          remappedHeaders={{
-            Metadata: "Sync Status"
-          }}
           showFilters={false}
           presets={{
             eventMetadata: { syncId: secretSync.id },
