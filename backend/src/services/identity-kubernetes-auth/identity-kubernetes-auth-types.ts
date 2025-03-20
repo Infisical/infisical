@@ -17,6 +17,7 @@ export type TAttachKubernetesAuthDTO = {
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
   accessTokenTrustedIps: { ipAddress: string }[];
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateKubernetesAuthDTO = {

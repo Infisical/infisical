@@ -33,22 +33,26 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { useSubscription, useUser } from "@app/context";
+import { useSubscription } from "@app/context";
 import { useDebounce, usePopUp } from "@app/hooks";
 import {
   useAdminDeleteUser,
   useAdminGetUsers,
-  useAdminGrantServerAdminAccess
+  useAdminGrantServerAdminAccess,
+  useRemoveUserServerAdminAccess
 } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const addServerAdminUpgradePlanMessage = "Granting another user Server Admin permissions";
+const removeServerAdminUpgradePlanMessage = "Removing Server Admin permissions from user";
 
 const UserPanelTable = ({
   handlePopUpOpen
 }: {
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["removeUser", "upgradePlan", "upgradeToServerAdmin"]>,
+    popUpName: keyof UsePopUpState<
+      ["removeUser", "upgradePlan", "upgradeToServerAdmin", "removeServerAdmin"]
+    >,
     data?: {
       username: string;
       id: string;
@@ -58,8 +62,6 @@ const UserPanelTable = ({
 }) => {
   const [searchUserFilter, setSearchUserFilter] = useState("");
   const [adminsOnly, setAdminsOnly] = useState(false);
-  const { user } = useUser();
-  const userId = user?.id || "";
   const [debouncedSearchTerm] = useDebounce(searchUserFilter, 500);
   const { subscription } = useSubscription();
 
@@ -143,45 +145,61 @@ const UserPanelTable = ({
                         </Td>
                         <Td className="w-5/12">{email}</Td>
                         <Td>
-                          {userId !== id && (
-                            <div className="flex justify-end">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild className="rounded-lg">
-                                  <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
-                                    <FontAwesomeIcon size="sm" icon={faEllipsis} />
-                                  </div>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start" className="p-1">
+                          <div className="flex justify-end">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild className="rounded-lg">
+                                <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
+                                  <FontAwesomeIcon size="sm" icon={faEllipsis} />
+                                </div>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="start" className="p-1">
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePopUpOpen("removeUser", { username, id });
+                                  }}
+                                >
+                                  Remove User
+                                </DropdownMenuItem>
+                                {!superAdmin && (
                                   <DropdownMenuItem
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handlePopUpOpen("removeUser", { username, id });
+                                      if (!subscription?.instanceUserManagement) {
+                                        handlePopUpOpen("upgradePlan", {
+                                          username,
+                                          id,
+                                          message: addServerAdminUpgradePlanMessage
+                                        });
+                                        return;
+                                      }
+                                      handlePopUpOpen("upgradeToServerAdmin", { username, id });
                                     }}
                                   >
-                                    Remove User
+                                    Make User Server Admin
                                   </DropdownMenuItem>
-                                  {!superAdmin && (
-                                    <DropdownMenuItem
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (!subscription?.instanceUserManagement) {
-                                          handlePopUpOpen("upgradePlan", {
-                                            username,
-                                            id,
-                                            message: addServerAdminUpgradePlanMessage
-                                          });
-                                          return;
-                                        }
-                                        handlePopUpOpen("upgradeToServerAdmin", { username, id });
-                                      }}
-                                    >
-                                      Make User Server Admin
-                                    </DropdownMenuItem>
-                                  )}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          )}
+                                )}
+                                {superAdmin && (
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (!subscription?.instanceUserManagement) {
+                                        handlePopUpOpen("upgradePlan", {
+                                          username,
+                                          id,
+                                          message: removeServerAdminUpgradePlanMessage
+                                        });
+                                        return;
+                                      }
+                                      handlePopUpOpen("removeServerAdmin", { username, id });
+                                    }}
+                                  >
+                                    Remove Server Admin
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         </Td>
                       </Tr>
                     );
@@ -212,11 +230,13 @@ export const UserPanel = () => {
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "removeUser",
     "upgradePlan",
-    "upgradeToServerAdmin"
+    "upgradeToServerAdmin",
+    "removeServerAdmin"
   ] as const);
 
   const { mutateAsync: deleteUser } = useAdminDeleteUser();
   const { mutateAsync: grantAdminAccess } = useAdminGrantServerAdminAccess();
+  const { mutateAsync: removeAdminAccess } = useRemoveUserServerAdminAccess();
 
   const handleRemoveUser = async () => {
     const { id } = popUp?.removeUser?.data as { id: string; username: string };
@@ -256,6 +276,25 @@ export const UserPanel = () => {
     handlePopUpClose("upgradeToServerAdmin");
   };
 
+  const handleRemoveServerAdminAccess = async () => {
+    const { id } = popUp?.removeServerAdmin?.data as { id: string; username: string };
+
+    try {
+      await removeAdminAccess(id);
+      createNotification({
+        type: "success",
+        text: "Successfully removed server admin access from user"
+      });
+    } catch {
+      createNotification({
+        type: "error",
+        text: "Error removing server admin access from user"
+      });
+    }
+
+    handlePopUpClose("removeServerAdmin");
+  };
+
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4">
@@ -281,6 +320,17 @@ export const UserPanel = () => {
         deleteKey="confirm"
         onDeleteApproved={handleGrantServerAdminAccess}
         buttonText="Grant Access"
+      />
+      <DeleteActionModal
+        isOpen={popUp.removeServerAdmin.isOpen}
+        title={`Are you sure want to remove Server Admin permissions from ${
+          (popUp?.removeServerAdmin?.data as { id: string; username: string })?.username || ""
+        }?`}
+        subTitle=""
+        onChange={(isOpen) => handlePopUpToggle("removeServerAdmin", isOpen)}
+        deleteKey="confirm"
+        onDeleteApproved={handleRemoveServerAdminAccess}
+        buttonText="Remove Access"
       />
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}

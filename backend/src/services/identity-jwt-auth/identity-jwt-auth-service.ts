@@ -22,6 +22,7 @@ import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identit
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
+import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityJwtAuthDALFactory } from "./identity-jwt-auth-dal";
 import { doesFieldValueMatchJwtPolicy } from "./identity-jwt-auth-fns";
 import {
@@ -253,8 +254,11 @@ export const identityJwtAuthServiceFactory = ({
     actorId,
     actorAuthMethod,
     actor,
-    actorOrgId
+    actorOrgId,
+    isActorSuperAdmin
   }: TAttachJwtAuthDTO) => {
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) {
       if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });

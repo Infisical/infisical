@@ -11,6 +11,7 @@ import {
   validateAccountIds,
   validatePrincipalArns
 } from "@app/services/identity-aws-auth/identity-aws-auth-validators";
+import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 
 export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -130,7 +131,8 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body,
-        identityId: req.params.identityId
+        identityId: req.params.identityId,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       await server.services.auditLog.createAuditLog({

@@ -59,8 +59,8 @@ const formSchema = z.object({
   trustLdapEmails: z.boolean(),
   trustOidcEmails: z.boolean(),
   defaultAuthOrgId: z.string(),
-  authConsentContent: z.string().optional(),
-  pageFrameContent: z.string().optional()
+  authConsentContent: z.string().optional().default(""),
+  pageFrameContent: z.string().optional().default("")
 });
 
 type TDashboardForm = z.infer<typeof formSchema>;
@@ -86,8 +86,8 @@ export const OverviewPage = () => {
       trustLdapEmails: config.trustLdapEmails,
       trustOidcEmails: config.trustOidcEmails,
       defaultAuthOrgId: config.defaultAuthOrgId ?? "",
-      authConsentContent: config.authConsentContent,
-      pageFrameContent: config.pageFrameContent
+      authConsentContent: config.authConsentContent ?? "",
+      pageFrameContent: config.pageFrameContent ?? ""
     }
   });
 
@@ -165,8 +165,8 @@ export const OverviewPage = () => {
                     <Tab value={TabSections.Auth}>Authentication</Tab>
                     <Tab value={TabSections.RateLimit}>Rate Limit</Tab>
                     <Tab value={TabSections.Integrations}>Integrations</Tab>
-                    <Tab value={TabSections.Users}>Users</Tab>
-                    <Tab value={TabSections.Identities}>Identities</Tab>
+                    <Tab value={TabSections.Users}>User Identities</Tab>
+                    <Tab value={TabSections.Identities}>Machine Identities</Tab>
                   </div>
                 </TabList>
                 <TabPanel value={TabSections.Settings}>

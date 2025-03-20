@@ -11,6 +11,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 
+import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityDALFactory } from "./identity-dal";
 import { TIdentityMetadataDALFactory } from "./identity-metadata-dal";
 import { TIdentityOrgDALFactory } from "./identity-org-dal";
@@ -131,8 +132,11 @@ export const identityServiceFactory = ({
     actorId,
     actorAuthMethod,
     actorOrgId,
-    metadata
+    metadata,
+    isActorSuperAdmin
   }: TUpdateIdentityDTO) => {
+    await validateIdentityUpdateForSuperAdminPrivileges(id, isActorSuperAdmin);
+
     const identityOrgMembership = await identityOrgMembershipDAL.findOne({ identityId: id });
     if (!identityOrgMembership) throw new NotFoundError({ message: `Failed to find identity with id ${id}` });
 
@@ -224,7 +228,16 @@ export const identityServiceFactory = ({
     return identity;
   };
 
-  const deleteIdentity = async ({ actorId, actor, actorOrgId, actorAuthMethod, id }: TDeleteIdentityDTO) => {
+  const deleteIdentity = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    id,
+    isActorSuperAdmin
+  }: TDeleteIdentityDTO) => {
+    await validateIdentityUpdateForSuperAdminPrivileges(id, isActorSuperAdmin);
+
     const identityOrgMembership = await identityOrgMembershipDAL.findOne({ identityId: id });
     if (!identityOrgMembership) throw new NotFoundError({ message: `Failed to find identity with id ${id}` });
 
