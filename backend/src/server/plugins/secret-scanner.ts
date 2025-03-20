@@ -65,7 +65,7 @@ export const registerSecretScannerGhApp = async (server: FastifyZodProvider) => 
           payload: JSON.stringify(req.body),
           signature: signatureSHA256
         });
-        void res.send("ok");
+        return res.send("ok");
       }
     });
   }
