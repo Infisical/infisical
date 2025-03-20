@@ -39,4 +39,5 @@ subjects:
 - kind: ServiceAccount
   name: '{{ include "secrets-operator.fullname" . }}-controller-manager'
   namespace: '{{ .Release.Namespace }}'
+
 {{- end }}
