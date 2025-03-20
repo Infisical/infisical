@@ -31,7 +31,7 @@ window.addEventListener("vite:preloadError", async (event) => {
   const reloadCount = parseInt(sessionStorage.getItem("vitePreloadErrorCount") || "0", 10);
 
   // Check if we've already tried 3 times
-  if (reloadCount >= 3) {
+  if (reloadCount >= 2) {
     console.warn("Vite preload has failed multiple times. Stopping automatic reload.");
     // Optionally show a user-facing message here
     return;
@@ -49,7 +49,7 @@ window.addEventListener("vite:preloadError", async (event) => {
   // Increment and save the counter
   sessionStorage.setItem("vitePreloadErrorCount", (reloadCount + 1).toString());
 
-  console.log(`Reloading page (attempt ${reloadCount + 1} of 3)...`);
+  console.log(`Reloading page (attempt ${reloadCount + 1} of 2)...`);
   window.location.reload(); // for example, refresh the page
 });
 
