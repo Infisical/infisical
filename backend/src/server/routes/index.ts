@@ -1,5 +1,6 @@
 import { CronJob } from "cron";
 import { Knex } from "knex";
+import { monitorEventLoopDelay } from "perf_hooks";
 import { z } from "zod";
 
 import { registerCertificateEstRouter } from "@app/ee/routes/est/certificate-est-router";
@@ -96,6 +97,7 @@ import { trustedIpDALFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal"
 import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, TEnvConfig } from "@app/lib/config/env";
+import { logger } from "@app/lib/logger";
 import { TQueueServiceFactory } from "@app/queue";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue/access-token-queue";
@@ -245,6 +247,9 @@ import { registerSecretScannerGhApp } from "../plugins/secret-scanner";
 import { registerV1Routes } from "./v1";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
+
+const histogram = monitorEventLoopDelay({ resolution: 20 });
+histogram.enable();
 
 export const registerRoutes = async (
   server: FastifyZodProvider,
@@ -1629,6 +1634,18 @@ export const registerRoutes = async (
     handler: async () => {
       const cfg = getConfig();
       const serverCfg = await getServerCfg();
+
+      const meanLagMs = histogram.mean / 1e6;
+      const maxLagMs = histogram.max / 1e6;
+      const p99LagMs = histogram.percentile(99) / 1e6;
+
+      logger.info(
+        `Event loop stats - Mean: ${meanLagMs.toFixed(2)}ms, Max: ${maxLagMs.toFixed(2)}ms, p99: ${p99LagMs.toFixed(
+          2
+        )}ms`
+      );
+
+      logger.info(`Raw event loop stats: ${JSON.stringify(histogram, null, 2)}`);
 
       // try {
       //   await db.raw("SELECT NOW()");
