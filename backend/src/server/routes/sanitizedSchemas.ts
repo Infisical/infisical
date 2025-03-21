@@ -81,7 +81,7 @@ export const booleanSchema = z
     return value;
   })
   .optional()
-  .default(false);
+  .default(true);
 
 export const sapPubSchema = SecretApprovalPoliciesSchema.merge(
   z.object({

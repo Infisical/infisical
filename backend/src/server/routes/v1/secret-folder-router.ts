@@ -350,7 +350,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
           .transform(prefixWithSlash)
           .transform(removeTrailingSlash)
           .describe(FOLDERS.LIST.directory),
-        recursive: booleanSchema.describe(FOLDERS.LIST.recursive)
+        recursive: booleanSchema.default(false).describe(FOLDERS.LIST.recursive)
       }),
       response: {
         200: z.object({
