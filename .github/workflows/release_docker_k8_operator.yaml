@@ -6,6 +6,7 @@ on:
 
 jobs:
     generate-and-pr:
+        name: Generate Helm Chart PR
         runs-on: ubuntu-latest
         outputs:
             pr_number: ${{ steps.create-pr.outputs.pull-request-number }}
@@ -54,7 +55,12 @@ jobs:
                   echo ""
                   echo "Modified files:"
                   git diff --name-only
-                  echo ""
+
+                  # If there is no diff, exit with error
+                  if [ -z "$(git diff --name-only)" ]; then
+                    echo "No helm changes or version changes. Invalid release detected, Exiting."
+                    exit 1
+                  fi
 
             - name: Create Pull Request
               id: create-pr
@@ -68,12 +74,17 @@ jobs:
                   delete-branch: true
                   title: "Update Helm chart to version ${{ steps.extract_version.outputs.version }}"
                   body: |
-                      This PR updates the Helm chart to version ${{ steps.extract_version.outputs.version }}.
+                      This PR updates the Helm chart to version `${{ steps.extract_version.outputs.version }}`.
+                      Additionally the helm chart has been updated to match the latest operator code changes.
 
-                      Please review and approve to continue the release process.
+                      Associated Release Workflow: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+                      Please review and approve to continue the release process. To cancel the release process, you can close this PR.
+                      You have **30 minutes** to approve or close the PR after it is created, or the release workflow will cancel itself.
                   base: main
 
     wait-for-approval:
+        name: Wait for Helm Chart PR Merge
         needs: generate-and-pr
         runs-on: ubuntu-latest
         steps:
@@ -92,7 +103,8 @@ jobs:
                     echo "PR #$PR_NUMBER was created, will wait for approval"
                   fi
 
-            - name: Wait for PR merge
+            - name: Wait for Helm Chart PR Merge
+              timeout-minutes: 30 # Job dies after 30 minutes of waiting
               if: steps.check_pr.outputs.skip_wait != 'true'
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -111,21 +123,10 @@ jobs:
                   start_time=$(date +%s)
 
                   while true; do
-                    # Check if we've exceeded the timeout
-                    current_time=$(date +%s)
-                    elapsed=$((current_time - start_time))
-                    if [ $elapsed -gt $timeout ]; then
-                      echo "Timeout waiting for PR to be merged."
-                      exit 1
-                    fi
-                    
-                    echo "Debug - PR number: '${PR_NUMBER}'"
-                    # Query PR status using direct gh pr view command
                     echo "Checking PR status..."
                     PR_DATA=$(gh pr view "${PR_NUMBER}" --json state,mergedAt)
                     PR_STATE=$(echo $PR_DATA | jq -r .state)
                     MERGED_AT=$(echo $PR_DATA | jq -r .mergedAt)
-                    echo "Debug - mergedAt value: '${MERGED_AT}'"
 
                     # Check if mergedAt is null or empty
                     if [ "${MERGED_AT}" = "null" ] || [ -z "${MERGED_AT}" ]; then
@@ -134,9 +135,7 @@ jobs:
                       MERGED="true"
                     fi
                     
-                    echo "Current PR state: $PR_STATE, Merged: $MERGED"
-                    
-                    # If PR is merged, break the loop
+                    # If PR is merged, break the loop and continue to release step
                     if [ "$MERGED" = "true" ]; then
                       echo "PR has been merged! Continuing with the workflow."
                       break
@@ -148,12 +147,13 @@ jobs:
                       exit 1
                     fi
                     
-                    # Wait before checking again (30 seconds)
+                    # Check again every 30 seconds
                     echo "Waiting 30 seconds before checking again..."
                     sleep 30
                   done
 
     build-and-publish:
+        name: Build and Publish Image + Helm Chart
         needs: wait-for-approval
         runs-on: ubuntu-latest
         steps:
@@ -172,6 +172,3 @@ jobs:
 
             - name: Print values.yaml
               run: cat helm-charts/secrets-operator/values.yaml
-
-            - name: Print infisicalsecret-crd.yaml
-              run: cat helm-charts/secrets-operator/templates/infisicalsecret-crd.yaml
