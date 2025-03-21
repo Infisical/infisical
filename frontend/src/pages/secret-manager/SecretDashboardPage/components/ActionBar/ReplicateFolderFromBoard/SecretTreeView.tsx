@@ -144,14 +144,15 @@ const Folder: React.FC<FolderProps> = ({
           </label>
 
           {allItemIds.length > 0 && (
-            <span className="ml-2 text-xs">
+            <span className="ml-2 text-xs text-mineshaft-400">
               {allItemIds.length} {allItemIds.length === 1 ? "item" : "items"}
             </span>
           )}
         </div>
 
         <CollapsibleContent className="overflow-hidden transition-all duration-300 ease-in-out">
-          <div className="mt-1">
+          <div className="relative mt-1">
+            <div className="absolute bottom-0 left-5 top-0 w-px bg-mineshaft-600" />
             {structure.items.map((item) => (
               <div key={item.id} className="group ml-6 flex items-center rounded px-2 py-1">
                 <div className="ml-6 mr-2">
@@ -309,8 +310,8 @@ export const SecretTreeView: React.FC<TreeViewProps> = ({
           )}
         </div>
 
-        <div className="pb-2 pl-2 pt-2">
-          <h3 className="flex items-center">
+        <div className="flex justify-end pb-2 pr-2 pt-2">
+          <h3 className="flex items-center text-mineshaft-400">
             {selectedItems.length} Item{selectedItems.length === 1 ? "" : "s"} Selected
           </h3>
         </div>
