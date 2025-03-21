@@ -9,6 +9,19 @@ import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
+const booleanSchema = z
+  .union([z.boolean(), z.string().trim()])
+  .transform((value) => {
+    if (typeof value === "string") {
+      // ie if not empty, 0 or false, return true
+      return Boolean(value) && Number(value) !== 0 && value.toLowerCase() !== "false";
+    }
+
+    return value;
+  })
+  .optional()
+  .default(false);
+
 export const registerSecretFolderRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/",
@@ -347,11 +360,14 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
           .default("/")
           .transform(prefixWithSlash)
           .transform(removeTrailingSlash)
-          .describe(FOLDERS.LIST.directory)
+          .describe(FOLDERS.LIST.directory),
+        recursive: booleanSchema.describe(FOLDERS.LIST.recursive)
       }),
       response: {
         200: z.object({
-          folders: SecretFoldersSchema.array()
+          folders: SecretFoldersSchema.extend({
+            relativePath: z.string().optional()
+          }).array()
         })
       }
     },
