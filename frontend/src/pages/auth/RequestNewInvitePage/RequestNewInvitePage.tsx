@@ -18,14 +18,6 @@ export const RequestNewInvitePage = () => {
           <span className="rounded-md bg-primary-500/40 px-1 text-black">Note:</span> If it still
           doesn&apos;t work, please reach out to us at support@infisical.com
         </p>
-        <div className="">
-          <img
-            src="/images/invitation-expired.svg"
-            height={500}
-            width={800}
-            alt="invitation expired illustration"
-          />
-        </div>
       </div>
     </div>
   );
