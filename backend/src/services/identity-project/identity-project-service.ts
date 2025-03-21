@@ -104,7 +104,7 @@ export const identityProjectServiceFactory = ({
         throw new ForbiddenRequestError({
           name: "PermissionBoundaryError",
           message: constructPermissionErrorMessage(
-            "Failed to assign to a more privileged role",
+            "Failed to assign to role",
             membership.shouldUseNewPrivilegeSystem,
             ProjectPermissionIdentityActions.ManagePrivileges,
             ProjectPermissionSub.Identity
@@ -212,7 +212,7 @@ export const identityProjectServiceFactory = ({
         throw new ForbiddenRequestError({
           name: "PermissionBoundaryError",
           message: constructPermissionErrorMessage(
-            "Failed to change to a more privileged role",
+            "Failed to change role",
             membership.shouldUseNewPrivilegeSystem,
             ProjectPermissionIdentityActions.ManagePrivileges,
             ProjectPermissionSub.Identity

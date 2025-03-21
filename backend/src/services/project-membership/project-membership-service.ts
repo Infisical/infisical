@@ -288,7 +288,7 @@ export const projectMembershipServiceFactory = ({
         throw new ForbiddenRequestError({
           name: "PermissionBoundaryError",
           message: constructPermissionErrorMessage(
-            `Failed to change to a more privileged role ${requestedRoleChange}`,
+            `Failed to change role ${requestedRoleChange}`,
             membership.shouldUseNewPrivilegeSystem,
             ProjectPermissionMemberActions.ManagePrivileges,
             ProjectPermissionSub.Member

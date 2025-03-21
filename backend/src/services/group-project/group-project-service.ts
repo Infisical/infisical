@@ -116,7 +116,7 @@ export const groupProjectServiceFactory = ({
         throw new ForbiddenRequestError({
           name: "PermissionBoundaryError",
           message: constructPermissionErrorMessage(
-            "Failed to assign group to a more privileged role",
+            "Failed to assign group to role",
             membership.shouldUseNewPrivilegeSystem,
             ProjectPermissionGroupActions.ManagePrivileges,
             ProjectPermissionSub.Groups
@@ -294,7 +294,7 @@ export const groupProjectServiceFactory = ({
         throw new ForbiddenRequestError({
           name: "PermissionBoundaryError",
           message: constructPermissionErrorMessage(
-            "Failed to assign group to a more privileged role",
+            "Failed to assign group to role",
             membership.shouldUseNewPrivilegeSystem,
             ProjectPermissionGroupActions.ManagePrivileges,
             ProjectPermissionSub.Groups

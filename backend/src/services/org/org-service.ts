@@ -951,7 +951,7 @@ export const orgServiceFactory = ({
             throw new ForbiddenRequestError({
               name: "PermissionBoundaryError",
               message: constructPermissionErrorMessage(
-                "Failed to invite user to a more privileged role in the project",
+                "Failed to invite user to the project",
                 membership.shouldUseNewPrivilegeSystem,
                 ProjectPermissionMemberActions.ManagePrivileges,
                 ProjectPermissionSub.Member

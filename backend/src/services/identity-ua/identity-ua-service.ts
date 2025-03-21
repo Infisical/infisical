@@ -446,7 +446,7 @@ export const identityUaServiceFactory = ({
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",
         message: constructPermissionErrorMessage(
-          "Failed to create client secret for a more privileged identity.",
+          "Failed to create client secret for identity.",
           membership.shouldUseNewPrivilegeSystem,
           OrgPermissionIdentityActions.CreateToken,
           OrgPermissionSubjects.Identity

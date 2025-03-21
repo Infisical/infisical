@@ -100,7 +100,7 @@ export const groupServiceFactory = ({
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",
         message: constructPermissionErrorMessage(
-          "Failed to create a more privileged group",
+          "Failed to create group",
           membership.shouldUseNewPrivilegeSystem,
           OrgPermissionGroupActions.ManagePrivileges,
           OrgPermissionSubjects.Groups
@@ -185,7 +185,7 @@ export const groupServiceFactory = ({
         throw new ForbiddenRequestError({
           name: "PermissionBoundaryError",
           message: constructPermissionErrorMessage(
-            "Failed to update a more privileged group",
+            "Failed to update group",
             membership.shouldUseNewPrivilegeSystem,
             OrgPermissionGroupActions.ManagePrivileges,
             OrgPermissionSubjects.Groups

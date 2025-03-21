@@ -78,7 +78,7 @@ export const identityServiceFactory = ({
       throw new ForbiddenRequestError({
         name: "PermissionBoundaryError",
         message: constructPermissionErrorMessage(
-          "Failed to create a more privileged identity",
+          "Failed to create identity",
           membership.shouldUseNewPrivilegeSystem,
           OrgPermissionIdentityActions.ManagePrivileges,
           OrgPermissionSubjects.Identity
