@@ -7,6 +7,7 @@ import {
   faAngleDown,
   faArrowDown,
   faArrowUp,
+  faFileImport,
   faFingerprint,
   faFolder,
   faFolderBlank,
@@ -80,6 +81,7 @@ import { CreateSecretForm } from "./components/CreateSecretForm";
 import { FolderBreadCrumbs } from "./components/FolderBreadCrumbs";
 import { SecretOverviewDynamicSecretRow } from "./components/SecretOverviewDynamicSecretRow";
 import { SecretOverviewFolderRow } from "./components/SecretOverviewFolderRow";
+import { SecretOverviewImportListView } from "./components/SecretOverviewImportListView";
 import {
   SecretNoAccessOverviewTableRow,
   SecretOverviewTableRow
@@ -97,7 +99,8 @@ export enum EntryType {
 enum RowType {
   Folder = "folder",
   DynamicSecret = "dynamic",
-  Secret = "secret"
+  Secret = "secret",
+  Import = "import"
 }
 
 type Filter = {
@@ -107,7 +110,8 @@ type Filter = {
 const DEFAULT_FILTER_STATE = {
   [RowType.Folder]: true,
   [RowType.DynamicSecret]: true,
-  [RowType.Secret]: true
+  [RowType.Secret]: true,
+  [RowType.Import]: true
 };
 
 export const OverviewPage = () => {
@@ -216,6 +220,7 @@ export const OverviewPage = () => {
       includeFolders: filter.folder,
       includeDynamicSecrets: filter.dynamic,
       includeSecrets: filter.secret,
+      includeImports: filter.import,
       search: debouncedSearchFilter,
       limit,
       offset
@@ -227,14 +232,28 @@ export const OverviewPage = () => {
     secrets,
     folders,
     dynamicSecrets,
+    imports,
     totalFolderCount,
     totalSecretCount,
     totalDynamicSecretCount,
+    totalImportCount,
     totalCount = 0,
     totalUniqueFoldersInPage,
     totalUniqueSecretsInPage,
+    totalUniqueSecretImportsInPage,
     totalUniqueDynamicSecretsInPage
   } = overview ?? {};
+
+  const importsShaped = imports
+    ?.filter((el) => !el.isReserved)
+    ?.map(({ importPath, importEnv }) => ({ importPath, importEnv }))
+    .filter(
+      (el, index, self) =>
+        index ===
+        self.findIndex(
+          (item) => item.importPath === el.importPath && item.importEnv.slug === el.importEnv.slug
+        )
+    );
 
   useResetPageHelper({
     totalCount,
@@ -678,7 +697,6 @@ export const OverviewPage = () => {
         <SecretV2MigrationSection />
       </div>
     );
-
   return (
     <div className="">
       <Helmet>
@@ -767,6 +785,19 @@ export const OverviewPage = () => {
                     </Button>
                   </DropdownMenuItem> */}
                   <DropdownMenuLabel>Filter project resources</DropdownMenuLabel>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleToggleRowType(RowType.Import);
+                    }}
+                    icon={filter[RowType.Import] && <FontAwesomeIcon icon={faCheckCircle} />}
+                    iconPos="right"
+                  >
+                    <div className="flex items-center gap-2">
+                      <FontAwesomeIcon icon={faFileImport} className="text-green-700" />
+                      <span>Imports</span>
+                    </div>
+                  </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={(e) => {
                       e.preventDefault();
@@ -1093,6 +1124,17 @@ export const OverviewPage = () => {
                         key={`overview-${dynamicSecretName}-${index + 1}`}
                       />
                     ))}
+                    {filter.import &&
+                      importsShaped &&
+                      importsShaped?.length > 0 &&
+                      importsShaped?.map((item, index) => (
+                        <SecretOverviewImportListView
+                          secretImport={item}
+                          environments={visibleEnvs}
+                          key={`overview-secret-input-${index + 1}`}
+                          allSecretImports={imports}
+                        />
+                      ))}
                     {secKeys.map((key, index) => (
                       <SecretOverviewTableRow
                         isSelected={Boolean(selectedEntries.secret[key])}
@@ -1116,7 +1158,8 @@ export const OverviewPage = () => {
                         (page * perPage > totalCount ? totalCount % perPage : perPage) -
                           (totalUniqueFoldersInPage || 0) -
                           (totalUniqueDynamicSecretsInPage || 0) -
-                          (totalUniqueSecretsInPage || 0),
+                          (totalUniqueSecretsInPage || 0) -
+                          (totalUniqueSecretImportsInPage || 0),
                         0
                       )}
                     />
@@ -1156,6 +1199,7 @@ export const OverviewPage = () => {
                   dynamicSecretCount={totalDynamicSecretCount}
                   secretCount={totalSecretCount}
                   folderCount={totalFolderCount}
+                  importCount={totalImportCount}
                 />
               }
               className="rounded-b-md border-t border-solid border-t-mineshaft-600"
