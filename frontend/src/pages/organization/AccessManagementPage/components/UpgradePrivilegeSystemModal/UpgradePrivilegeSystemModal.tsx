@@ -91,8 +91,52 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
                 <p>
                   <strong>New system:</strong> Users need explicit permission to modify specific
                   access levels, providing targeted control. After upgrading, you&apos;ll need to
-                  grant the new &apos;Manage Privileges&apos; permission at organization or project
-                  level.
+                  grant the new &apos;Manage Privileges&apos; permission. At the organization level,
+                  this is available for the{" "}
+                  <a
+                    href="https://infisical.com/docs/internals/permissions/organization-permissions#subject%3A-groups"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline hover:text-bunker-200 hover:decoration-primary-700"
+                  >
+                    Groups
+                  </a>{" "}
+                  and{" "}
+                  <a
+                    href="https://infisical.com/docs/internals/permissions/organization-permissions#subject%3A-identity"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline hover:text-bunker-200 hover:decoration-primary-700"
+                  >
+                    Identity
+                  </a>{" "}
+                  subjects while at the project level, this is available for the{" "}
+                  <a
+                    href="https://infisical.com/docs/internals/permissions/project-permissions#subject%3A-member"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline hover:text-bunker-200 hover:decoration-primary-700"
+                  >
+                    Member,
+                  </a>{" "}
+                  <a
+                    href="https://infisical.com/docs/internals/permissions/project-permissions#subject%3A-groups"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline hover:text-bunker-200 hover:decoration-primary-700"
+                  >
+                    Groups,
+                  </a>{" "}
+                  and{" "}
+                  <a
+                    href="https://infisical.com/docs/internals/permissions/project-permissions#subject%3A-identity"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline hover:text-bunker-200 hover:decoration-primary-700"
+                  >
+                    Identity
+                  </a>{" "}
+                  subjects.
                 </p>
               </div>
             </div>
