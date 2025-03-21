@@ -184,6 +184,7 @@ export enum SecretsOrderBy {
 export type TGetAccessibleSecretsDTO = {
   secretPath: string;
   environment: string;
+  recursive?: boolean;
   filterByAction: ProjectPermissionSecretActions.DescribeSecret | ProjectPermissionSecretActions.ReadValue;
 } & TProjectPermission;
 

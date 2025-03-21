@@ -17,10 +17,12 @@ import {
   faKey,
   faLock,
   faMinusSquare,
+  faPaste,
   faPlus,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import FileSaver from "file-saver";
 import { twMerge } from "tailwind-merge";
@@ -53,8 +55,19 @@ import {
   useWorkspace
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { useCreateFolder, useDeleteSecretBatch, useMoveSecrets } from "@app/hooks/api";
-import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
+import {
+  useCreateFolder,
+  useCreateSecretBatch,
+  useDeleteSecretBatch,
+  useMoveSecrets,
+  useUpdateSecretBatch
+} from "@app/hooks/api";
+import {
+  dashboardKeys,
+  fetchDashboardProjectSecretsByKeys
+} from "@app/hooks/api/dashboard/queries";
+import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
+import { fetchProjectSecrets, secretKeys } from "@app/hooks/api/secrets/queries";
 import { ApiErrorTypes, SecretType, TApiErrors, WsTag } from "@app/hooks/api/types";
 import { SecretSearchInput } from "@app/pages/secret-manager/OverviewPage/components/SecretSearchInput";
 
@@ -65,10 +78,18 @@ import {
   useSelectedSecrets
 } from "../../SecretMainPage.store";
 import { Filter, RowType } from "../../SecretMainPage.types";
+import { ReplicateFolderFromBoard } from "./ReplicateFolderFromBoard/ReplicateFolderFromBoard";
 import { CreateDynamicSecretForm } from "./CreateDynamicSecretForm";
 import { CreateSecretImportForm } from "./CreateSecretImportForm";
 import { FolderForm } from "./FolderForm";
 import { MoveSecretsModal } from "./MoveSecretsModal";
+
+type TParsedEnv = Record<string, { value: string; comments: string[]; secretPath?: string }>;
+type TParsedFolderEnv = Record<
+  string,
+  Record<string, { value: string; comments: string[]; secretPath?: string }>
+>;
+type TSecOverwriteOpt = { update: TParsedEnv; create: TParsedEnv };
 
 type Props = {
   // switch the secrets type as it gets decrypted after api call
@@ -114,7 +135,9 @@ export const ActionBar = ({
     "bulkDeleteSecrets",
     "moveSecrets",
     "misc",
-    "upgradePlan"
+    "upgradePlan",
+    "replicateFolder",
+    "confirmUpload"
   ] as const);
   const isProtectedBranch = Boolean(protectedBranchPolicyName);
   const { subscription } = useSubscription();
@@ -122,6 +145,13 @@ export const ActionBar = ({
   const { mutateAsync: createFolder } = useCreateFolder();
   const { mutateAsync: deleteBatchSecretV3 } = useDeleteSecretBatch();
   const { mutateAsync: moveSecrets } = useMoveSecrets();
+  const { mutateAsync: updateSecretBatch, isPending: isUpdatingSecrets } = useUpdateSecretBatch({
+    options: { onSuccess: undefined }
+  });
+  const { mutateAsync: createSecretBatch, isPending: isCreatingSecrets } = useCreateSecretBatch({
+    options: { onSuccess: undefined }
+  });
+  const queryClient = useQueryClient();
 
   const selectedSecrets = useSelectedSecrets();
   const { reset: resetSelectedSecret } = useSelectedSecretActions();
@@ -290,6 +320,271 @@ export const ActionBar = ({
       resetSelectedSecret();
     } catch (error) {
       console.error(error);
+    }
+  };
+
+  // Replicate Folder Logic
+  const createSecretCount = Object.keys(
+    (popUp.confirmUpload?.data as TSecOverwriteOpt)?.create || {}
+  ).length;
+
+  const updateSecretCount = Object.keys(
+    (popUp.confirmUpload?.data as TSecOverwriteOpt)?.update || {}
+  ).length;
+
+  const isNonConflictingUpload = !updateSecretCount;
+  const isSubmitting = isCreatingSecrets || isUpdatingSecrets;
+
+  const handleParsedEnvMultiFolder = async (envByPath: TParsedFolderEnv) => {
+    if (Object.keys(envByPath).length === 0) {
+      createNotification({
+        type: "error",
+        text: "Failed to find secrets"
+      });
+      return;
+    }
+
+    try {
+      const allUpdateSecrets: TParsedEnv = {};
+      const allCreateSecrets: TParsedEnv = {};
+
+      await Promise.all(
+        Object.entries(envByPath).map(async ([folderPath, secrets]) => {
+          // Normalize the path
+          let normalizedPath = folderPath;
+
+          // If the path is "/", use the current secretPath
+          if (normalizedPath === "/") {
+            normalizedPath = secretPath;
+          } else {
+            // Otherwise, concatenate with the current secretPath, avoiding double slashes
+            const baseSecretPath = secretPath.endsWith("/") ? secretPath.slice(0, -1) : secretPath;
+            // Remove leading slash from folder path if present to avoid double slashes
+            const cleanFolderPath = folderPath.startsWith("/")
+              ? folderPath.substring(1)
+              : folderPath;
+            normalizedPath = `${baseSecretPath}/${cleanFolderPath}`;
+          }
+
+          const secretFolderKeys = Object.keys(secrets);
+
+          if (secretFolderKeys.length === 0) return;
+
+          // Check which secrets already exist in this path
+          const { secrets: existingSecrets } = await fetchDashboardProjectSecretsByKeys({
+            secretPath: normalizedPath,
+            environment,
+            projectId: workspaceId,
+            keys: secretFolderKeys
+          });
+
+          // Create a quick lookup for existing secrets
+          const existingSecretLookup = existingSecrets.reduce<Record<string, boolean>>(
+            (lookup, secret) => ({ ...lookup, [secret.secretKey]: true }),
+            {}
+          );
+
+          // Categorize each secret as update or create
+          secretFolderKeys.forEach((secretKey) => {
+            const secretData = secrets[secretKey];
+
+            // Store the path with the secret for later batch processing
+            const secretWithPath = {
+              ...secretData,
+              secretPath: normalizedPath
+            };
+
+            if (existingSecretLookup[secretKey]) {
+              allUpdateSecrets[secretKey] = secretWithPath;
+            } else {
+              allCreateSecrets[secretKey] = secretWithPath;
+            }
+          });
+        })
+      );
+
+      handlePopUpOpen("confirmUpload", {
+        update: allUpdateSecrets,
+        create: allCreateSecrets
+      });
+    } catch (e) {
+      console.error(e);
+      createNotification({
+        text: "Failed to check for secret conflicts",
+        type: "error"
+      });
+      handlePopUpClose("confirmUpload");
+    }
+  };
+
+  const handleSaveFolderImport = async () => {
+    const { update, create } = popUp?.confirmUpload?.data as TSecOverwriteOpt;
+    try {
+      // Group secrets by their path for batch operations
+      const groupedCreateSecrets: Record<
+        string,
+        Array<{
+          type: SecretType;
+          secretComment: string;
+          secretValue: string;
+          secretKey: string;
+        }>
+      > = {};
+
+      const groupedUpdateSecrets: Record<
+        string,
+        Array<{
+          type: SecretType;
+          secretComment: string;
+          secretValue: string;
+          secretKey: string;
+        }>
+      > = {};
+
+      // Collect all unique paths that need folders to be created
+      const allPaths = new Set<string>();
+
+      // Add paths from create secrets
+      Object.values(create || {}).forEach((secData) => {
+        if (secData.secretPath && secData.secretPath !== secretPath) {
+          allPaths.add(secData.secretPath);
+        }
+      });
+
+      // Create a map of folder paths to their folder name (last segment)
+      const folderPaths = Array.from(allPaths).map((path) => {
+        // Remove trailing slash if it exists
+        const normalizedPath = path.endsWith("/") ? path.slice(0, -1) : path;
+        // Split by '/' to get path segments
+        const segments = normalizedPath.split("/");
+        // Get the last segment as the folder name
+        const folderName = segments[segments.length - 1];
+        // Get the parent path (everything except the last segment)
+        const parentPath = segments.slice(0, -1).join("/");
+
+        return {
+          folderName,
+          fullPath: normalizedPath,
+          parentPath: parentPath || "/"
+        };
+      });
+
+      // Sort paths by depth (shortest first) to ensure parent folders are created before children
+      folderPaths.sort(
+        (a, b) => (a.fullPath.match(/\//g) || []).length - (b.fullPath.match(/\//g) || []).length
+      );
+
+      // Track created folders to avoid duplicates
+      const createdFolders = new Set<string>();
+
+      // Create all necessary folders in order using Promise.all and reduce
+      await folderPaths.reduce(async (previousPromise, { folderName, fullPath, parentPath }) => {
+        // Wait for the previous promise to complete
+        await previousPromise;
+
+        // Skip if we've already created this folder
+        if (createdFolders.has(fullPath)) return Promise.resolve();
+
+        try {
+          await createFolder({
+            name: folderName,
+            path: parentPath,
+            environment,
+            projectId: workspaceId
+          });
+
+          createdFolders.add(fullPath);
+        } catch (err) {
+          console.log(`Folder ${folderName} may already exist:`, err);
+        }
+
+        return Promise.resolve();
+      }, Promise.resolve());
+
+      if (Object.keys(create || {}).length > 0) {
+        Object.entries(create).forEach(([secretKey, secData]) => {
+          // Use the stored secretPath or fall back to the current secretPath
+          const path = secData.secretPath || secretPath;
+
+          if (!groupedCreateSecrets[path]) {
+            groupedCreateSecrets[path] = [];
+          }
+
+          groupedCreateSecrets[path].push({
+            type: SecretType.Shared,
+            secretComment: secData.comments.join("\n"),
+            secretValue: secData.value,
+            secretKey
+          });
+        });
+
+        await Promise.all(
+          Object.entries(groupedCreateSecrets).map(([path, secrets]) =>
+            createSecretBatch({
+              secretPath: path,
+              workspaceId,
+              environment,
+              secrets
+            })
+          )
+        );
+      }
+
+      if (Object.keys(update || {}).length > 0) {
+        Object.entries(update).forEach(([secretKey, secData]) => {
+          // Use the stored secretPath or fall back to the current secretPath
+          const path = secData.secretPath || secretPath;
+
+          if (!groupedUpdateSecrets[path]) {
+            groupedUpdateSecrets[path] = [];
+          }
+
+          groupedUpdateSecrets[path].push({
+            type: SecretType.Shared,
+            secretComment: secData.comments.join("\n"),
+            secretValue: secData.value,
+            secretKey
+          });
+        });
+
+        // Update secrets for each path in parallel
+        await Promise.all(
+          Object.entries(groupedUpdateSecrets).map(([path, secrets]) =>
+            updateSecretBatch({
+              secretPath: path,
+              workspaceId,
+              environment,
+              secrets
+            })
+          )
+        );
+      }
+
+      // Invalidate appropriate queries to refresh UI
+      queryClient.invalidateQueries({
+        queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalRequestKeys.count({ workspaceId })
+      });
+
+      // Close the modal and show notification
+      handlePopUpClose("confirmUpload");
+      createNotification({
+        type: "success",
+        text: isProtectedBranch
+          ? "Uploaded changes have been sent for review"
+          : "Successfully uploaded secrets"
+      });
+    } catch (err) {
+      console.log(err);
+      createNotification({
+        type: "error",
+        text: "Failed to upload secrets"
+      });
     }
   };
 
@@ -570,6 +865,29 @@ export const ActionBar = ({
                     </Button>
                   )}
                 </ProjectPermissionCan>
+                <ProjectPermissionCan
+                  I={ProjectPermissionActions.Create}
+                  a={subject(ProjectPermissionSub.SecretFolders, {
+                    environment,
+                    secretPath
+                  })}
+                >
+                  {(isAllowed) => (
+                    <Button
+                      leftIcon={<FontAwesomeIcon icon={faPaste} className="pr-2" />}
+                      onClick={() => {
+                        handlePopUpOpen("replicateFolder");
+                        handlePopUpClose("misc");
+                      }}
+                      isDisabled={!isAllowed}
+                      variant="outline_bg"
+                      className="h-10 text-left"
+                      isFullWidth
+                    >
+                      Replicate Folder
+                    </Button>
+                  )}
+                </ProjectPermissionCan>
               </div>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -679,6 +997,15 @@ export const ActionBar = ({
         handlePopUpToggle={handlePopUpToggle}
         onMoveApproved={handleSecretsMove}
       />
+      <ReplicateFolderFromBoard
+        isOpen={popUp.replicateFolder.isOpen}
+        onToggle={(isOpen) => handlePopUpToggle("replicateFolder", isOpen)}
+        onParsedEnv={handleParsedEnvMultiFolder}
+        environment={environment}
+        environments={currentWorkspace.environments}
+        workspaceId={workspaceId}
+        secretPath={secretPath}
+      />
       {subscription && (
         <UpgradePlanModal
           isOpen={popUp.upgradePlan.isOpen}
@@ -690,6 +1017,58 @@ export const ActionBar = ({
           }
         />
       )}
+      <Modal
+        isOpen={popUp?.confirmUpload?.isOpen}
+        onOpenChange={(open) => handlePopUpToggle("confirmUpload", open)}
+      >
+        <ModalContent
+          title="Confirm Secret Upload"
+          footerContent={[
+            <Button
+              isLoading={isSubmitting}
+              isDisabled={isSubmitting}
+              colorSchema={isNonConflictingUpload ? "primary" : "danger"}
+              key="overwrite-btn"
+              onClick={handleSaveFolderImport}
+            >
+              {isNonConflictingUpload ? "Upload" : "Overwrite"}
+            </Button>,
+            <Button
+              key="keep-old-btn"
+              className="ml-4"
+              onClick={() => handlePopUpClose("confirmUpload")}
+              variant="outline_bg"
+              isDisabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+          ]}
+        >
+          {isNonConflictingUpload ? (
+            <div>
+              Are you sure you want to import {createSecretCount} secret
+              {createSecretCount > 1 ? "s" : ""} to this environment?
+            </div>
+          ) : (
+            <div className="flex flex-col text-gray-300">
+              <div>Your project already contains the following {updateSecretCount} secrets:</div>
+              <div className="mt-2 text-sm text-gray-400">
+                {Object.keys((popUp?.confirmUpload?.data as TSecOverwriteOpt)?.update || {})
+                  ?.map((key) => key)
+                  .join(", ")}
+              </div>
+              <div className="mt-6">
+                Are you sure you want to overwrite these secrets
+                {createSecretCount > 0
+                  ? ` and import ${createSecretCount} new
+                one${createSecretCount > 1 ? "s" : ""}`
+                  : ""}
+                ?
+              </div>
+            </div>
+          )}
+        </ModalContent>
+      </Modal>
     </>
   );
 };

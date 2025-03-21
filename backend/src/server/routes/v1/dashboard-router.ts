@@ -845,6 +845,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         projectId: z.string().trim(),
         environment: z.string().trim(),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
+        recursive: booleanSchema.default(false),
         filterByAction: z
           .enum([ProjectPermissionSecretActions.DescribeSecret, ProjectPermissionSecretActions.ReadValue])
           .default(ProjectPermissionSecretActions.ReadValue)
@@ -863,7 +864,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { projectId, environment, secretPath, filterByAction } = req.query;
+      const { projectId, environment, secretPath, filterByAction, recursive } = req.query;
 
       const { secrets } = await server.services.secret.getAccessibleSecrets({
         actorId: req.permission.id,
@@ -873,7 +874,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         environment,
         secretPath,
         projectId,
-        filterByAction
+        filterByAction,
+        recursive
       });
 
       return { secrets };
