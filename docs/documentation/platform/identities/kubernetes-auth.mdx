@@ -53,15 +53,17 @@ In the following steps, we explore how to create and use identities for your app
 
 <Steps>
     <Step title="Obtaining the token reviewer JWT for Infisical">
+				<Tabs>
+								<Tab title="Reviewer JWT">
         1.1. Start by creating a service account in your Kubernetes cluster that will be used by Infisical to authenticate with the Kubernetes API Server.
 
-        ```yaml infisical-service-account.yaml
+        ```yaml
+    			infisical-service-account.yaml
         apiVersion: v1
         kind: ServiceAccount
         metadata:
           name: infisical-auth
           namespace: default
-
         ```
 
         ```
@@ -121,7 +123,27 @@ In the following steps, we explore how to create and use identities for your app
 
         Keep this JWT token handy as you will need it for the **Token Reviewer JWT** field when configuring the Kubernetes Auth authentication method for the identity in step 2.
 
-    </Step>
+</Tab>
+<Tab title="Client JWT as Self Reviewer JWT">
+
+The self-validation method eliminates the need for a separate long-lived reviewer JWT by using the same token for both authentication and validation. This approach:
+
+1. Reduces the number of long-lived credentials in your system
+2. Allows you to use short-lived tokens throughout your authentication flow
+
+Requires maintaining `system:auth-delegator` role bindings for all authenticating service accounts, which increases the operational overhead on the client side.
+
+```bash
+kubectl create clusterrolebinding infisical-client \
+    --clusterrole=system:auth-delegator \
+    --group=group1 \
+    --serviceaccount=default:svcaccount1 \
+    ...
+```
+
+</Tab>
+</Tabs>
+</Step>
 
   <Step title="Creating an identity">
     To create an identity, head to your Organization Settings > Access Control > Machine Identities and press **Create identity**.
@@ -151,7 +173,7 @@ In the following steps, we explore how to create and use identities for your app
     Here's some more guidance on each field:
 
     - Kubernetes Host / Base Kubernetes API URL: The host string, host:port pair, or URL to the base of the Kubernetes API server. This can usually be obtained by running `kubectl cluster-info`.
-    - Token Reviewer JWT: A long-lived service account JWT token for Infisical to access the [TokenReview API](https://kubernetes.io/docs/reference/kubernetes-api/authentication-resources/token-review-v1/) to validate other service account JWT tokens submitted by applications/pods. This is the JWT token obtained from step 1.5.
+    - Token Reviewer JWT: A long-lived service account JWT token for Infisical to access the [TokenReview API](https://kubernetes.io/docs/reference/kubernetes-api/authentication-resources/token-review-v1/) to validate other service account JWT tokens submitted by applications/pods. This is the JWT token obtained from step 1.5(Reviewer Tab). If omitted, the client's own JWT will be used instead, which requires the client to have the `system:auth-delegator` ClusterRole binding. This is shown in step 1(Client JWT as Self Reviewer JWT).
     - Allowed Service Account Names: A comma-separated list of trusted service account names that are allowed to authenticate with Infisical.
     - Allowed Namespaces: A comma-separated list of trusted namespaces that service accounts must belong to authenticate with Infisical.
     - Allowed Audience: An optional audience claim that the service account JWT token must have to authenticate with Infisical.
@@ -176,18 +198,19 @@ In the following steps, we explore how to create and use identities for your app
   </Step>
   <Step title="Accessing the Infisical API with the identity">
     To access the Infisical API as the identity, you should first make sure that the pod running your application is bound to a service account specified in the **Allowed Service Account Names** field of the identity's Kubernetes Auth authentication method configuration in step 2.
-    
+
     Once bound, the pod will receive automatically mounted service account credentials that is a JWT token at the `/var/run/secrets/kubernetes.io/serviceaccount/token` path. This token should be used to authenticate with Infisical at the `/api/v1/auth/kubernetes-auth/login` endpoint.
-    
+
     For information on how to configure sevice accounts for pods, refer to the guide [here](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/).
-    
+
     We provide a code example below of how you might retrieve the JWT token and use it to authenticate with Infisical to gain access to the [Infisical API](/api-reference/overview/introduction).
+
    <Accordion
         title="Sample code for inside an application"
-    > 
+    >
         The shown example uses Node.js but you can use any other language to retrieve the service account JWT token and use it to authenticate with Infisical.
-        
-        ```javascript   
+
+        ```javascript
         const fs = require("fs");
         try {
             const tokenPath = "/var/run/secrets/kubernetes.io/serviceaccount/token";
@@ -237,15 +260,16 @@ In the following steps, we explore how to create and use identities for your app
 </Accordion>
 <Accordion title="Why is the Infisical API rejecting my access token?">
   There are a few reasons for why this might happen:
-  
-  - The access token has expired.
-  - The identity is insufficently permissioned to interact with the resources you wish to access.
-  - The client access token is being used from an untrusted IP.
+
+- The access token has expired.
+- The identity is insufficently permissioned to interact with the resources you wish to access.
+- The client access token is being used from an untrusted IP.
+
 </Accordion>
 <Accordion title="What is access token renewal and TTL/Max TTL?">
-  A identity access token can have a time-to-live (TTL) or incremental lifetime after which it expires.
-  
-  In certain cases, you may want to extend the lifespan of an access token; to do so, you must set a max TTL parameter.
+A identity access token can have a time-to-live (TTL) or incremental lifetime after which it expires.
+
+In certain cases, you may want to extend the lifespan of an access token; to do so, you must set a max TTL parameter.
 
 A token can be renewed any number of times where each call to renew it can extend the token's lifetime by increments of the access token's TTL.
 Regardless of how frequently an access token is renewed, its lifespan remains bound to the maximum TTL determined at its creation.
