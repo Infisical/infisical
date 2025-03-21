@@ -26,10 +26,10 @@ jobs:
         uses: actions/setup-python@v4
         
       - name: Generate Helm Chart
-        run: sh k8-operator/scripts/generate-helm.sh
+        run: ./k8-operator/scripts/generate-helm.sh
         
       - name: Update Helm Chart Version
-        run: sh k8-operator/scripts/update-version.sh ${{ steps.extract_version.outputs.version }}  
+        run: ./k8-operator/scripts/update-version.sh ${{ steps.extract_version.outputs.version }}  
 
       - name: Configure Git
         run: |
