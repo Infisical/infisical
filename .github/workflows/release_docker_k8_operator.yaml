@@ -47,31 +47,53 @@ jobs:
             - name: Update Helm Chart Version
               run: ./k8-operator/scripts/update-version.sh ${{ steps.extract_version.outputs.version }}
 
+            - name: Debug - Check file changes
+              run: |
+                  echo "Current git status:"
+                  git status
+                  echo ""
+                  echo "Modified files:"
+                  git diff --name-only
+                  echo ""
+                  echo "Detailed changes:"
+                  git diff
+
+            - name: Check for changes
+              id: check_changes
+              run: |
+                  if [[ -n $(git status --porcelain) ]]; then
+                    echo "::set-output name=has_changes::true"
+                    echo "Changes detected in the repository"
+                  else
+                    echo "::set-output name=has_changes::false"
+                    echo "No changes detected in the repository"
+                  fi
+
             - name: Configure Git
+              if: steps.check_changes.outputs.has_changes == 'true'
               run: |
                   git config --local user.email "github-actions[bot]@users.noreply.github.com"
                   git config --local user.name "github-actions[bot]"
 
             - name: Create Branch
+              if: steps.check_changes.outputs.has_changes == 'true'
               run: |
-                  BRANCH_NAME="helm-update-${{ steps.extract_version.outputs.version }}-${{ github.run_id }}"
+                  BRANCH_NAME="helm-update-${{ steps.extract_version.outputs.version }}"
                   git checkout -b $BRANCH_NAME
                   git add .
-                  git commit -m "Update Helm chart to version ${{ steps.extract_version.outputs.version }}" || echo "No changes to commit"
+                  git commit -m "Update Helm chart to version ${{ steps.extract_version.outputs.version }}"
                   git push -u origin $BRANCH_NAME
                   echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
 
             - name: Create Pull Request
+              if: steps.check_changes.outputs.has_changes == 'true'
               id: create-pr
               uses: peter-evans/create-pull-request@v5
               with:
                   token: ${{ secrets.GITHUB_TOKEN }}
-                  title: "Generated Helm Chart for K8 operator release version `${{ steps.extract_version.outputs.version }}`"
+                  title: "Update Helm chart to version ${{ steps.extract_version.outputs.version }}"
                   body: |
-                      This PR updates the Helm chart to version to `${{ steps.extract_version.outputs.version }}`.
-                      This PR also regenerated the full Helm Chart from the latest source code.
-
-                      Release Workflow: `https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}`
+                      This PR updates the Helm chart to version ${{ steps.extract_version.outputs.version }}.
 
                       Please review and approve to continue the release process.
                   branch: ${{ env.BRANCH_NAME }}
@@ -79,22 +101,47 @@ jobs:
                   draft: false
 
             - name: PR Details
+              if: steps.check_changes.outputs.has_changes == 'true'
               run: |
                   echo "Created PR #${{ steps.create-pr.outputs.pull-request-number }}"
                   echo "PR URL: ${{ steps.create-pr.outputs.pull-request-url }}"
-                  echo "PR Branch: ${{ env.BRANCH_NAME }}"
+                  echo "::set-output name=pr_number::${{ steps.create-pr.outputs.pull-request-number }}"
+
+            - name: No changes detected
+              if: steps.check_changes.outputs.has_changes != 'true'
+              run: |
+                  echo "No changes detected in the repository. Skipping PR creation."
+                  echo "::set-output name=pr_number::skip"
 
     wait-for-approval:
         needs: generate-and-pr
         runs-on: ubuntu-latest
         steps:
+            - name: Check if PR was created
+              id: check_pr
+              run: |
+                  PR_NUMBER="${{ needs.generate-and-pr.outputs.pr_number }}"
+                  if [ "$PR_NUMBER" = "skip" ]; then
+                    echo "::set-output name=skip_wait::true"
+                    echo "No PR was created, skipping wait step"
+                  else
+                    echo "::set-output name=skip_wait::false"
+                    echo "PR #$PR_NUMBER was created, will wait for approval"
+                  fi
+
             - name: Wait for PR merge
+              if: steps.check_pr.outputs.skip_wait != 'true'
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   PR_NUMBER: ${{ needs.generate-and-pr.outputs.pr_number }}
                   REPO: ${{ github.repository }}
               run: |
                   echo "Waiting for PR #${PR_NUMBER} to be merged..."
+
+                  if [ -z "$PR_NUMBER" ]; then
+                    echo "Error: PR number is empty. Cannot proceed."
+                    exit 1
+                  fi
 
                   # Maximum wait time (24 hours in seconds)
                   timeout=$((24 * 60 * 60))
@@ -109,9 +156,11 @@ jobs:
                       exit 1
                     fi
                     
-                    # Query PR status
-                    PR_STATE=$(gh pr view $PR_NUMBER --repo $REPO --json state --jq '.state')
-                    MERGED=$(gh pr view $PR_NUMBER --repo $REPO --json merged --jq '.merged')
+                    # Query PR status using direct gh pr view command
+                    echo "Checking PR status..."
+                    PR_DATA=$(gh pr view ${PR_NUMBER} --json state,merged)
+                    PR_STATE=$(echo $PR_DATA | jq -r .state)
+                    MERGED=$(echo $PR_DATA | jq -r .merged)
                     
                     echo "Current PR state: $PR_STATE, Merged: $MERGED"
                     
