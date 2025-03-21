@@ -20,16 +20,25 @@ export const SecretOverviewImportListView = ({
   const isSecretPresentInEnv = (envSlug: string) => {
     return allSecretImports.some((item) => {
       if (item.isReplication) {
-        const reservedItem = allSecretImports.find((element) =>
-          element.importPath.includes(`__reserve_replication_${item.id}`)
-        );
-        // If the reserved item exists, check if the envSlug matches
-        if (reservedItem) {
-          return reservedItem.environment === envSlug;
+        if (
+          item.importPath === secretImport.importPath &&
+          item.importEnv.slug === secretImport.importEnv.slug
+        ) {
+          const reservedItem = allSecretImports.find((element) =>
+            element.importPath.includes(`__reserve_replication_${item.id}`)
+          );
+          // If the reserved item exists, check if the envSlug matches
+          if (reservedItem) {
+            return reservedItem.environment === envSlug;
+          }
         }
       } else {
         // If the item is not replication, check if the envSlug matches directly
-        return item.environment === envSlug;
+        return (
+          item.environment === envSlug &&
+          item.importPath === secretImport.importPath &&
+          item.importEnv.slug === secretImport.importEnv.slug
+        );
       }
       return false;
     });
@@ -37,7 +46,7 @@ export const SecretOverviewImportListView = ({
 
   return (
     <Tr className="group">
-      <Td className="sticky left-0 z-10 bg-mineshaft-800 bg-clip-padding px-0 py-0 group-hover:bg-mineshaft-700">
+      <Td className="sticky left-0 z-10 border-r border-mineshaft-600 bg-mineshaft-800 bg-clip-padding px-0 py-0 group-hover:bg-mineshaft-700">
         <div className="group flex cursor-pointer">
           <div className="flex w-11 items-center py-2 pl-5 text-green-700">
             <FontAwesomeIcon icon={faFileImport} />
