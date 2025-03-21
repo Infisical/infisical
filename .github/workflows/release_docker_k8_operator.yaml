@@ -24,6 +24,19 @@ jobs:
 
       - name: Install python
         uses: actions/setup-python@v4
+
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.21
+
+      - name: Install dependencies
+        working-directory: k8-operator
+        run: |
+          make kustomize
+          make controller-gen
+          make helmify
+      
         
       - name: Generate Helm Chart
         run: ./k8-operator/scripts/generate-helm.sh
