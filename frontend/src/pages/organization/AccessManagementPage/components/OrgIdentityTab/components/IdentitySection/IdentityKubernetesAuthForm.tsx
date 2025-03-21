@@ -31,7 +31,7 @@ import { IdentityFormTab } from "./types";
 const schema = z
   .object({
     kubernetesHost: z.string().min(1),
-    tokenReviewerJwt: z.string().min(1),
+    tokenReviewerJwt: z.string().optional(),
     allowedNames: z.string(),
     allowedNamespaces: z.string(),
     allowedAudience: z.string(),
@@ -166,7 +166,7 @@ export const IdentityKubernetesAuthForm = ({
         await updateMutateAsync({
           organizationId: orgId,
           kubernetesHost,
-          tokenReviewerJwt,
+          tokenReviewerJwt: tokenReviewerJwt || null,
           allowedNames,
           allowedNamespaces,
           allowedAudience,
@@ -182,7 +182,7 @@ export const IdentityKubernetesAuthForm = ({
           organizationId: orgId,
           identityId,
           kubernetesHost: kubernetesHost || "",
-          tokenReviewerJwt,
+          tokenReviewerJwt: tokenReviewerJwt || undefined,
           allowedNames: allowedNames || "",
           allowedNamespaces: allowedNamespaces || "",
           allowedAudience: allowedAudience || "",
@@ -255,11 +255,11 @@ export const IdentityKubernetesAuthForm = ({
             name="tokenReviewerJwt"
             render={({ field, fieldState: { error } }) => (
               <FormControl
+                tooltipClassName="max-w-md"
                 label="Token Reviewer JWT"
                 isError={Boolean(error)}
                 errorText={error?.message}
-                tooltipText="A long-lived service account JWT token for Infisical to access the TokenReview API to validate other service account JWT tokens submitted by applications/pods."
-                isRequired
+                tooltipText="Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token will be used to validate service account tokens during authentication. If omitted, the client's own JWT will be used instead, which requires the client to have the system:auth-delegator ClusterRole binding."
               >
                 <Input {...field} placeholder="" type="password" />
               </FormControl>
