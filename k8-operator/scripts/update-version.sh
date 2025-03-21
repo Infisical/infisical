@@ -23,13 +23,15 @@ if ! [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   exit 1
 fi
 
-
-
-
-sed -i '' -e '/repository: infisical\/kubernetes-operator/{n;s/tag: .*/tag: '"$VERSION"'/;}' "${PATH_TO_HELM_CHART}/values.yaml"
-
-# Update ../helm-charts/secrets-operator/Chart.yaml appVersion with the new version
-sed -i '' 's/appVersion: .*/appVersion: "'"$VERSION"'"/g' "${PATH_TO_HELM_CHART}/Chart.yaml"
-
-# Update ../helm-charts/secrets-operator/Chart.yaml version with the new version
-sed -i '' 's/version: .*/version: '"$VERSION"'/g' "${PATH_TO_HELM_CHART}/Chart.yaml"
+# For Linux vs macOS sed compatibility
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  # macOS version
+  sed -i '' -e '/repository: infisical\/kubernetes-operator/{n;s/tag: .*/tag: '"$VERSION"'/;}' "${PATH_TO_HELM_CHART}/values.yaml"
+  sed -i '' 's/appVersion: .*/appVersion: "'"$VERSION"'"/g' "${PATH_TO_HELM_CHART}/Chart.yaml"
+  sed -i '' 's/version: .*/version: '"$VERSION"'/g' "${PATH_TO_HELM_CHART}/Chart.yaml"
+else
+  # Linux version
+  sed -i -e '/repository: infisical\/kubernetes-operator/{n;s/tag: .*/tag: '"$VERSION"'/;}' "${PATH_TO_HELM_CHART}/values.yaml"
+  sed -i 's/appVersion: .*/appVersion: "'"$VERSION"'"/g' "${PATH_TO_HELM_CHART}/Chart.yaml"
+  sed -i 's/version: .*/version: '"$VERSION"'/g' "${PATH_TO_HELM_CHART}/Chart.yaml"
+fi
