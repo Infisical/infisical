@@ -34,7 +34,8 @@ jobs:
         working-directory: k8-operator
         run: |
           make helmify
-          make install
+          make kustomize
+          make controller-gen
       
         
       - name: Generate Helm Chart
