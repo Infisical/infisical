@@ -33,9 +33,9 @@ jobs:
       - name: Install dependencies
         working-directory: k8-operator
         run: |
-          make kustomize
-          make controller-gen
           make helmify
+          make install
+          make build
       
         
       - name: Generate Helm Chart

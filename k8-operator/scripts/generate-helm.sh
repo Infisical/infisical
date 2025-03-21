@@ -180,16 +180,6 @@ if [ -f "${HELM_DIR}/templates/deployment.yaml" ]; then
       continue
     fi
     
-    # check if this is the terminationGracePeriodSeconds line
-    if [[ "$line" == *"terminationGracePeriodSeconds:"* ]]; then
-      # output the current line
-      echo "$line" >> "${HELM_DIR}/templates/deployment.yaml.new"
-      # add our new lines
-      echo "      nodeSelector: {{ toYaml .Values.controllerManager.nodeSelector | nindent 8 }}" >> "${HELM_DIR}/templates/deployment.yaml.new"
-      echo "      tolerations: {{ toYaml .Values.controllerManager.tolerations | nindent 8 }}" >> "${HELM_DIR}/templates/deployment.yaml.new"
-      continue
-    fi
-    
     # skip the line if it's just the trailing part of the replacement
     if [[ "$securityContext_replaced" -eq 1 ]] && [[ "$line" =~ ^[[:space:]]*[0-9]+[[:space:]]*\}\} ]]; then
       # this is the trailing part of the template expression, skip it
@@ -205,7 +195,6 @@ if [ -f "${HELM_DIR}/templates/deployment.yaml" ]; then
     echo "$line" >> "${HELM_DIR}/templates/deployment.yaml.new"
   done < "${HELM_DIR}/templates/deployment.yaml"
 
-  echo "      terminationGracePeriodSeconds: 10" >> "${HELM_DIR}/templates/deployment.yaml.new"
   echo "      nodeSelector: {{ toYaml .Values.controllerManager.nodeSelector | nindent 8 }}" >> "${HELM_DIR}/templates/deployment.yaml.new"
   echo "      tolerations: {{ toYaml .Values.controllerManager.tolerations | nindent 8 }}" >> "${HELM_DIR}/templates/deployment.yaml.new"
   
@@ -295,8 +284,16 @@ if [ -f "${HELM_DIR}/values.yaml" ]; then
   done < "${HELM_DIR}/values.yaml"
   
 
+
   # hacky, just append the kubernetesClusterDomain fields at the end of the file
-  sed -i '' '/kubernetesClusterDomain: /d' "${HELM_DIR}/values.yaml.new" # remove the existing kubernetesClusterDomain line if it exists somewhere
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+  # macOS version
+  sed -i '' '/kubernetesClusterDomain: /d' "${HELM_DIR}/values.yaml.new"
+  else
+  # Linux version
+  sed -i '/kubernetesClusterDomain: /d' "${HELM_DIR}/values.yaml.new"
+  fi
+
   echo "kubernetesClusterDomain: cluster.local" >> "${HELM_DIR}/values.yaml.new"
   echo "scopedNamespace: \"\"" >> "${HELM_DIR}/values.yaml.new"
   echo "scopedRBAC: false" >> "${HELM_DIR}/values.yaml.new"
