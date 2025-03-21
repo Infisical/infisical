@@ -1,56 +1,156 @@
 name: Release image + Helm chart K8s Operator
 on:
-  push:
-    tags:
-      - "infisical-k8-operator/v*.*.*"
+    push:
+        tags:
+            - "infisical-k8-operator/v*.*.*"
 
 jobs:
-  release:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Extract version from tag
-        id: extract_version
-        run: echo "::set-output name=version::${GITHUB_REF_NAME#infisical-k8-operator/}"
-      - name: Checkout code
-        uses: actions/checkout@v2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0
+    generate-and-pr:
+        runs-on: ubuntu-latest
+        outputs:
+            pr_number: ${{ steps.create-pr.outputs.pull-request-number }}
+        steps:
+            - name: Extract version from tag
+              id: extract_version
+              run: echo "::set-output name=version::${GITHUB_REF_NAME#infisical-k8-operator/}"
 
-      - name: Install Helm
-        uses: azure/setup-helm@v3
-        with:
-          version: v3.10.0
+            - name: Checkout code
+              uses: actions/checkout@v2
+              with:
+                  token: ${{ secrets.GITHUB_TOKEN }}
+                  fetch-depth: 0
 
-      - name: Install python
-        uses: actions/setup-python@v4
+            - name: Install Helm
+              uses: azure/setup-helm@v3
+              with:
+                  version: v3.10.0
 
-      - name: Install Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: 1.21
+            - name: Install python
+              uses: actions/setup-python@v4
 
-      - name: Install dependencies
-        working-directory: k8-operator
-        run: |
-          make helmify
-          make kustomize
-          make controller-gen
+            - name: Install Go
+              uses: actions/setup-go@v4
+              with:
+                  go-version: 1.21
 
-      - name: Generate Helm Chart
-        working-directory: k8-operator
-        run: make helm
-        
-      - name: Update Helm Chart Version
-        run: ./k8-operator/scripts/update-version.sh ${{ steps.extract_version.outputs.version }}  
+            - name: Install dependencies
+              working-directory: k8-operator
+              run: |
+                  make helmify
+                  make kustomize
+                  make controller-gen
 
-      - name: Configure Git
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-            
-      - name: Commit and Push Helm Changes
-        run: |
-          git add .
-          git commit -m "Update Helm chart to version ${{ steps.extract_version.outputs.version }}" || echo "No changes to commit"
-          git push origin HEAD:main
+            - name: Generate Helm Chart
+              working-directory: k8-operator
+              run: make helm
+
+            - name: Update Helm Chart Version
+              run: ./k8-operator/scripts/update-version.sh ${{ steps.extract_version.outputs.version }}
+
+            - name: Configure Git
+              run: |
+                  git config --local user.email "github-actions[bot]@users.noreply.github.com"
+                  git config --local user.name "github-actions[bot]"
+
+            - name: Create Branch
+              run: |
+                  BRANCH_NAME="helm-update-${{ steps.extract_version.outputs.version }}-${{ github.run_id }}"
+                  git checkout -b $BRANCH_NAME
+                  git add .
+                  git commit -m "Update Helm chart to version ${{ steps.extract_version.outputs.version }}" || echo "No changes to commit"
+                  git push -u origin $BRANCH_NAME
+                  echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+
+            - name: Create Pull Request
+              id: create-pr
+              uses: peter-evans/create-pull-request@v5
+              with:
+                  token: ${{ secrets.GITHUB_TOKEN }}
+                  title: "Generated Helm Chart for K8 operator release version `${{ steps.extract_version.outputs.version }}`"
+                  body: |
+                      This PR updates the Helm chart to version to `${{ steps.extract_version.outputs.version }}`.
+                      This PR also regenerated the full Helm Chart from the latest source code.
+
+                      Release Workflow: `https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}`
+
+                      Please review and approve to continue the release process.
+                  branch: ${{ env.BRANCH_NAME }}
+                  base: main
+                  draft: false
+
+            - name: PR Details
+              run: |
+                  echo "Created PR #${{ steps.create-pr.outputs.pull-request-number }}"
+                  echo "PR URL: ${{ steps.create-pr.outputs.pull-request-url }}"
+                  echo "PR Branch: ${{ env.BRANCH_NAME }}"
+
+    wait-for-approval:
+        needs: generate-and-pr
+        runs-on: ubuntu-latest
+        steps:
+            - name: Wait for PR merge
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  PR_NUMBER: ${{ needs.generate-and-pr.outputs.pr_number }}
+                  REPO: ${{ github.repository }}
+              run: |
+                  echo "Waiting for PR #${PR_NUMBER} to be merged..."
+
+                  # Maximum wait time (24 hours in seconds)
+                  timeout=$((24 * 60 * 60))
+                  start_time=$(date +%s)
+
+                  while true; do
+                    # Check if we've exceeded the timeout
+                    current_time=$(date +%s)
+                    elapsed=$((current_time - start_time))
+                    if [ $elapsed -gt $timeout ]; then
+                      echo "Timeout waiting for PR to be merged."
+                      exit 1
+                    fi
+                    
+                    # Query PR status
+                    PR_STATE=$(gh pr view $PR_NUMBER --repo $REPO --json state --jq '.state')
+                    MERGED=$(gh pr view $PR_NUMBER --repo $REPO --json merged --jq '.merged')
+                    
+                    echo "Current PR state: $PR_STATE, Merged: $MERGED"
+                    
+                    # If PR is merged, break the loop
+                    if [ "$MERGED" = "true" ]; then
+                      echo "PR has been merged! Continuing with the workflow."
+                      break
+                    fi
+                    
+                    # If PR is closed but not merged, fail the workflow
+                    if [ "$PR_STATE" = "CLOSED" ] && [ "$MERGED" != "true" ]; then
+                      echo "PR was closed without being merged."
+                      exit 1
+                    fi
+                    
+                    # Wait before checking again (60 seconds)
+                    echo "Waiting 60 seconds before checking again..."
+                    sleep 60
+                  done
+
+    build-and-publish:
+        needs: wait-for-approval
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code (post-merge)
+              uses: actions/checkout@v2
+              with:
+                  ref: main
+                  fetch-depth: 0
+
+            - name: Extract version from tag
+              id: extract_version
+              run: echo "::set-output name=version::${GITHUB_REF_NAME#infisical-k8-operator/}"
+
+            - name: Print Chart.yaml
+              run: cat helm-charts/secrets-operator/Chart.yaml
+
+            - name: Print values.yaml
+              run: cat helm-charts/secrets-operator/values.yaml
+
+            - name: Print infisicalsecret-crd.yaml
+              run: cat helm-charts/secrets-operator/templates/infisicalsecret-crd.yaml
