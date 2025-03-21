@@ -84,6 +84,9 @@ export const identityKubernetesAuthServiceFactory = ({
       tokenReviewerJwt = decryptor({
         cipherTextBlob: identityKubernetesAuth.encryptedKubernetesTokenReviewerJwt
       }).toString();
+    } else {
+      // if no token reviewer is provided means the incoming token has to act as reviewer
+      tokenReviewerJwt = serviceAccountJwt;
     }
 
     const { data } = await axios
@@ -291,7 +294,9 @@ export const identityKubernetesAuthServiceFactory = ({
           accessTokenTTL,
           accessTokenNumUsesLimit,
           accessTokenTrustedIps: JSON.stringify(reformattedAccessTokenTrustedIps),
-          encryptedKubernetesTokenReviewerJwt: encryptor({ plainText: Buffer.from(tokenReviewerJwt) }).cipherTextBlob,
+          encryptedKubernetesTokenReviewerJwt: tokenReviewerJwt
+            ? encryptor({ plainText: Buffer.from(tokenReviewerJwt) }).cipherTextBlob
+            : null,
           encryptedKubernetesCaCertificate: encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob
         },
         tx
@@ -387,10 +392,12 @@ export const identityKubernetesAuthServiceFactory = ({
       updateQuery.encryptedKubernetesCaCertificate = encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob;
     }
 
-    if (tokenReviewerJwt !== undefined) {
+    if (tokenReviewerJwt) {
       updateQuery.encryptedKubernetesTokenReviewerJwt = encryptor({
         plainText: Buffer.from(tokenReviewerJwt)
       }).cipherTextBlob;
+    } else if (tokenReviewerJwt === null) {
+      updateQuery.encryptedKubernetesTokenReviewerJwt = null;
     }
 
     const updatedKubernetesAuth = await identityKubernetesAuthDAL.updateById(identityKubernetesAuth.id, updateQuery);

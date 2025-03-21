@@ -244,7 +244,7 @@ export const KUBERNETES_AUTH = {
     kubernetesHost: "The host string, host:port pair, or URL to the base of the Kubernetes API server.",
     caCert: "The PEM-encoded CA cert for the Kubernetes API server.",
     tokenReviewerJwt:
-      "The long-lived service account JWT token for Infisical to access the TokenReview API to validate other service account JWT tokens submitted by applications/pods.",
+      "Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token will be used to validate service account tokens during authentication. If omitted, the client's own JWT will be used instead, which requires the client to have the system:auth-delegator ClusterRole binding.",
     allowedNamespaces:
       "The comma-separated list of trusted namespaces that service accounts must belong to authenticate with Infisical.",
     allowedNames: "The comma-separated list of trusted service account names that can authenticate with Infisical.",
@@ -260,7 +260,7 @@ export const KUBERNETES_AUTH = {
     kubernetesHost: "The new host string, host:port pair, or URL to the base of the Kubernetes API server.",
     caCert: "The new PEM-encoded CA cert for the Kubernetes API server.",
     tokenReviewerJwt:
-      "The new long-lived service account JWT token for Infisical to access the TokenReview API to validate other service account JWT tokens submitted by applications/pods.",
+      "Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token will be used to validate service account tokens during authentication. If omitted, the client's own JWT will be used instead, which requires the client to have the system:auth-delegator ClusterRole binding.",
     allowedNamespaces:
       "The new comma-separated list of trusted namespaces that service accounts must belong to authenticate with Infisical.",
     allowedNames: "The new comma-separated list of trusted service account names that can authenticate with Infisical.",
