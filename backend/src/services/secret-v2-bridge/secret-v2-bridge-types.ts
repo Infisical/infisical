@@ -356,5 +356,6 @@ export type TGetAccessibleSecretsDTO = {
   environment: string;
   projectId: string;
   secretPath: string;
+  recursive?: boolean;
   filterByAction: ProjectPermissionSecretActions.DescribeSecret | ProjectPermissionSecretActions.ReadValue;
 } & TProjectPermission;
