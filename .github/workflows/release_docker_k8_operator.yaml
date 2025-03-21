@@ -38,6 +38,7 @@ jobs:
           make controller-gen
 
       - name: Generate Helm Chart
+        working-directory: k8-operator
         run: make helm
         
       - name: Update Helm Chart Version
