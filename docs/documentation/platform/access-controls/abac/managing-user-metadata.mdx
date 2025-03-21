@@ -1,0 +1,39 @@
+---
+title: "Users identities"  
+description: "How to set and use metadata attributes on user identities for ABAC."
+---
+
+User identities can have metadata attributes assigned directly. These attributes (such as location or department) are used to define dynamic access policies.
+
+#### Setting Metadata on Users
+
+<Tabs>
+  <Tab title="Manually Configure Metadata">
+    <Steps>
+      <Step title="Navigate to the Access Control page on the organization sidebar and select a user.">
+        <img src="/images/platform/access-controls/add-metadata-step1.png" />
+      </Step>
+      <Step title="On the User Page, click the pencil icon to edit the selected user.">
+        <img src="/images/platform/access-controls/add-metadata-step2.png" />
+      </Step>
+      <Step title="Add metadata via key-value pairs and update the user identity.">
+        <img src="/images/platform/access-controls/add-metadata-step3.png" />
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Automatically Populate Metadata">
+    For organizations using SAML for **user logins**, Infisical automatically maps metadata attributes from SAML assertions to user identities on every login. This enables dynamic policies based on the user's SAML attributes.
+  </Tab>
+</Tabs>
+
+#### Applying ABAC Policies with User Metadata
+Attribute-based access controls are currently only available for polices defined on Secrets Manager projects. 
+You can set ABAC permissions to dynamically set access to environments, folders, secrets, and secret tags.
+
+<img src="/images/platform/access-controls/example-abac-1.png" />
+
+In your policies, metadata values are accessed as follows:
+
+- **User ID:** `{{ identity.id }}` (always available)
+- **Username:** `{{ identity.username }}` (always available)
+- **Metadata Attributes:** `{{ identity.metadata.<metadata-key-name> }}` (available if set)

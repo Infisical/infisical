@@ -46,12 +46,14 @@ const schema = z.object({
   caCert: z.string().trim().default(""),
   boundIssuer: z.string().min(1),
   boundAudiences: z.string().optional().default(""),
-  boundClaims: z.array(
-    z.object({
-      key: z.string(),
-      value: z.string()
-    })
-  ),
+  boundClaims: z
+    .array(
+      z.object({
+        key: z.string(),
+        value: z.string()
+      })
+    )
+    .default([]),
   claimMetadataMapping: z
     .array(
       z.object({
@@ -59,8 +61,7 @@ const schema = z.object({
         value: z.string()
       })
     )
-    .optional()
-    .nullable(),
+    .default([]),
   boundSubject: z.string().optional().default("")
 });
 
@@ -105,7 +106,9 @@ export const IdentityOidcAuthForm = ({
       accessTokenTTL: "2592000",
       accessTokenMaxTTL: "2592000",
       accessTokenNumUsesLimit: "0",
-      accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]
+      accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
+      boundClaims: [],
+      claimMetadataMapping: []
     }
   });
   const {
@@ -172,7 +175,8 @@ export const IdentityOidcAuthForm = ({
         accessTokenTTL: "2592000",
         accessTokenMaxTTL: "2592000",
         accessTokenNumUsesLimit: "0",
-        accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]
+        accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
+        claimMetadataMapping: []
       });
     }
   }, [data]);
@@ -253,7 +257,9 @@ export const IdentityOidcAuthForm = ({
     <form
       onSubmit={handleSubmit(onFormSubmit, (fields) => {
         setTabValue(
-          ["accessTokenTrustedIps", "caCert", "boundClaims"].includes(Object.keys(fields)[0])
+          ["accessTokenTrustedIps", "caCert", "claimMetadataMapping"].includes(
+            Object.keys(fields)[0]
+          )
             ? IdentityFormTab.Advanced
             : IdentityFormTab.Configuration
         );
@@ -343,63 +349,6 @@ export const IdentityOidcAuthForm = ({
               </FormControl>
             )}
           />
-          <Controller
-            control={control}
-            defaultValue="2592000"
-            name="accessTokenTTL"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Access Token TTL (seconds)"
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
-                <Input {...field} placeholder="2592000" type="number" min="0" step="1" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            defaultValue="2592000"
-            name="accessTokenMaxTTL"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Access Token Max TTL (seconds)"
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
-                <Input {...field} placeholder="2592000" type="number" min="0" step="1" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            defaultValue="0"
-            name="accessTokenNumUsesLimit"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Access Token Max Number of Uses"
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
-                <Input {...field} placeholder="0" type="number" min="0" step="1" />
-              </FormControl>
-            )}
-          />
-        </TabPanel>
-        <TabPanel value={IdentityFormTab.Advanced}>
-          <Controller
-            control={control}
-            name="caCert"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="CA Certificate"
-                errorText={error?.message}
-                isError={Boolean(error)}
-              >
-                <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
-              </FormControl>
-            )}
-          />
           {boundClaimsFields.map(({ id }, index) => (
             <div className="mb-3 flex items-end space-x-2" key={id}>
               <Controller
@@ -479,6 +428,65 @@ export const IdentityOidcAuthForm = ({
               Add Claims
             </Button>
           </div>
+
+          <Controller
+            control={control}
+            defaultValue="2592000"
+            name="accessTokenTTL"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Access Token TTL (seconds)"
+                isError={Boolean(error)}
+                errorText={error?.message}
+              >
+                <Input {...field} placeholder="2592000" type="number" min="0" step="1" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            defaultValue="2592000"
+            name="accessTokenMaxTTL"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Access Token Max TTL (seconds)"
+                isError={Boolean(error)}
+                errorText={error?.message}
+              >
+                <Input {...field} placeholder="2592000" type="number" min="0" step="1" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            defaultValue="0"
+            name="accessTokenNumUsesLimit"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Access Token Max Number of Uses"
+                isError={Boolean(error)}
+                errorText={error?.message}
+              >
+                <Input {...field} placeholder="0" type="number" min="0" step="1" />
+              </FormControl>
+            )}
+          />
+        </TabPanel>
+        <TabPanel value={IdentityFormTab.Advanced}>
+          <Controller
+            control={control}
+            name="caCert"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="CA Certificate"
+                errorText={error?.message}
+                isError={Boolean(error)}
+              >
+                <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
+              </FormControl>
+            )}
+          />
+
           {claimMetadataMappingFields.map(({ id }, index) => (
             <div className="mb-3 flex items-end space-x-2" key={id}>
               <Controller
@@ -488,12 +496,23 @@ export const IdentityOidcAuthForm = ({
                   return (
                     <FormControl
                       className="mb-0 flex-grow"
-                      label={index === 0 ? "Claim Metadata Mapping" : undefined}
+                      label={index === 0 ? "Token Claim Mapping" : undefined}
                       icon={
                         index === 0 ? (
                           <Tooltip
                             className="text-center"
-                            content="Map token claims to metadata. This can later be accessed in attribute based permission as identity.metadata.oidc.claims.<>."
+                            content={
+                              <div className="w-[180px]">
+                                <p>Map OIDC token claims to metadata fields</p>
+                                <p className="mt-2 text-sm">Example:</p>
+                                <p className="mt-1 text-sm">
+                                  &apos;role&apos; → &apos;token.groups&apos;
+                                </p>
+                                <p className="mt-1 text-xs text-gray-400">
+                                  Becomes: identity.metadata.oidc.claims.role
+                                </p>
+                              </div>
+                            }
                           >
                             <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
                           </Tooltip>
@@ -505,7 +524,7 @@ export const IdentityOidcAuthForm = ({
                       <Input
                         value={field.value}
                         onChange={(e) => field.onChange(e)}
-                        placeholder="property"
+                        placeholder="Field name"
                       />
                     </FormControl>
                   );
@@ -524,7 +543,7 @@ export const IdentityOidcAuthForm = ({
                       <Input
                         value={field.value}
                         onChange={(e) => field.onChange(e)}
-                        placeholder="key1.nested-key2"
+                        placeholder="Token claim"
                       />
                     </FormControl>
                   );
@@ -554,9 +573,10 @@ export const IdentityOidcAuthForm = ({
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               size="xs"
             >
-              Add Mapping
+              Add Token Mapping
             </Button>
           </div>
+
           {accessTokenTrustedIpsFields.map(({ id }, index) => (
             <div className="mb-3 flex items-end space-x-2" key={id}>
               <Controller
@@ -627,24 +647,21 @@ export const IdentityOidcAuthForm = ({
           </div>
         </TabPanel>
       </Tabs>
-      <div className="flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
-          {isUpdate ? "Update" : "Add"}
-        </Button>
 
-        <Button
-          colorSchema="secondary"
-          variant="plain"
-          onClick={() => handlePopUpToggle("identityAuthMethod", false)}
-        >
-          Cancel
-        </Button>
+      <div className="mt-8 flex justify-between">
+        <div className="flex items-center">
+          <Button
+            onClick={() => handlePopUpToggle("identityAuthMethod", false)}
+            variant="outline_bg"
+            className="mr-4"
+            isDisabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" isLoading={isSubmitting}>
+            {isUpdate ? "Update" : "Add"} Auth Method
+          </Button>
+        </div>
       </div>
     </form>
   );

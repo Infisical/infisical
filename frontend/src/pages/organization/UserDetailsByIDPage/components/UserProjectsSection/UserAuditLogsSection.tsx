@@ -45,7 +45,6 @@ export const UserAuditLogsSection = withPermission(
             presets={{
               actorId: orgMembership.user.id
             }}
-            isOrgAuditLogs
           />
         </div>
       )

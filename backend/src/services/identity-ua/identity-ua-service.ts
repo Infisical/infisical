@@ -17,6 +17,7 @@ import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityUaClientSecretDALFactory } from "./identity-ua-client-secret-dal";
 import { TIdentityUaDALFactory } from "./identity-ua-dal";
 import {
@@ -68,9 +69,15 @@ export const identityUaServiceFactory = ({
       isClientSecretRevoked: false
     });
 
-    const validClientSecretInfo = clientSecrtInfo.find(({ clientSecretHash }) =>
-      bcrypt.compareSync(clientSecret, clientSecretHash)
-    );
+    let validClientSecretInfo: (typeof clientSecrtInfo)[0] | null = null;
+    for await (const info of clientSecrtInfo) {
+      const isMatch = await bcrypt.compare(clientSecret, info.clientSecretHash);
+      if (isMatch) {
+        validClientSecretInfo = info;
+        break;
+      }
+    }
+
     if (!validClientSecretInfo) throw new UnauthorizedError({ message: "Invalid credentials" });
 
     const { clientSecretTTL, clientSecretNumUses, clientSecretNumUsesLimit } = validClientSecretInfo;
@@ -103,7 +110,7 @@ export const identityUaServiceFactory = ({
     }
 
     const identityAccessToken = await identityUaDAL.transaction(async (tx) => {
-      const uaClientSecretDoc = await identityUaClientSecretDAL.incrementUsage(validClientSecretInfo.id, tx);
+      const uaClientSecretDoc = await identityUaClientSecretDAL.incrementUsage(validClientSecretInfo!.id, tx);
       const newToken = await identityAccessTokenDAL.create(
         {
           identityId: identityUa.identityId,
@@ -150,8 +157,11 @@ export const identityUaServiceFactory = ({
     actorId,
     actorAuthMethod,
     actor,
-    actorOrgId
+    actorOrgId,
+    isActorSuperAdmin
   }: TAttachUaDTO) => {
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 

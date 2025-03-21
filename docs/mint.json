@@ -150,7 +150,14 @@
           "pages": [
             "documentation/platform/access-controls/overview",
             "documentation/platform/access-controls/role-based-access-controls",
-            "documentation/platform/access-controls/attribute-based-access-controls",
+            {
+              "group": "Attribute based access controls",
+              "pages": [
+                "documentation/platform/access-controls/abac/overview",
+                "documentation/platform/access-controls/abac/managing-user-metadata",
+                "documentation/platform/access-controls/abac/managing-machine-identity-attributes"
+              ]
+            },
             "documentation/platform/access-controls/additional-privileges",
             "documentation/platform/access-controls/temporary-access",
             "documentation/platform/access-controls/access-requests",
@@ -311,7 +318,8 @@
           "group": "Guides",
           "pages": [
             "self-hosting/guides/mongo-to-postgres",
-            "self-hosting/guides/custom-certificates"
+            "self-hosting/guides/custom-certificates",
+            "self-hosting/guides/automated-bootstrapping"
           ]
         },
         {
@@ -341,6 +349,7 @@
             "cli/commands/dynamic-secrets",
             "cli/commands/ssh",
             "cli/commands/gateway",
+            "cli/commands/bootstrap",
             "cli/commands/export",
             "cli/commands/token",
             "cli/commands/service-token",

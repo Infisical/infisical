@@ -11,6 +11,7 @@ import {
   validateOidcAuthAudiencesField,
   validateOidcBoundClaimsField
 } from "@app/services/identity-oidc-auth/identity-oidc-auth-validators";
+import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 
 const IdentityOidcAuthResponseSchema = IdentityOidcAuthsSchema.pick({
   id: true,
@@ -148,7 +149,8 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body,
-        identityId: req.params.identityId
+        identityId: req.params.identityId,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       await server.services.auditLog.createAuditLog({

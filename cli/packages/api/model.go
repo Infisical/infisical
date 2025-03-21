@@ -648,3 +648,10 @@ type ExchangeRelayCertResponseV1 struct {
 	Certificate      string `json:"certificate"`
 	CertificateChain string `json:"certificateChain"`
 }
+
+type BootstrapInstanceRequest struct {
+	Email        string `json:"email"`
+	Password     string `json:"password"`
+	Organization string `json:"organization"`
+	Domain       string `json:"domain"`
+}
