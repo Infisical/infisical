@@ -36,10 +36,9 @@ jobs:
           make helmify
           make kustomize
           make controller-gen
-      
-        
+
       - name: Generate Helm Chart
-        run: ./k8-operator/scripts/generate-helm.sh
+        run: make helm
         
       - name: Update Helm Chart Version
         run: ./k8-operator/scripts/update-version.sh ${{ steps.extract_version.outputs.version }}  
