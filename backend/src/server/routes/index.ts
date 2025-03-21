@@ -413,7 +413,14 @@ export const registerRoutes = async (
     serviceTokenDAL,
     projectDAL
   });
-  const licenseService = licenseServiceFactory({ permissionService, orgDAL, licenseDAL, keyStore });
+  const licenseService = licenseServiceFactory({
+    permissionService,
+    orgDAL,
+    licenseDAL,
+    keyStore,
+    identityOrgMembershipDAL,
+    projectDAL
+  });
 
   const hsmService = hsmServiceFactory({
     hsmModule,
