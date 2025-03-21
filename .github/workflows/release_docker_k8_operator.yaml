@@ -53,4 +53,4 @@ jobs:
         run: |
           git add .
           git commit -m "Update Helm chart to version ${{ steps.extract_version.outputs.version }}" || echo "No changes to commit"
-          git push
+          git push origin HEAD:main
