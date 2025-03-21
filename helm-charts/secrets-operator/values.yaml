@@ -45,10 +45,6 @@ controllerManager:
     annotations: {}
   nodeSelector: {}
   tolerations: []
-kubernetesClusterDomain: cluster.local
-scopedNamespace: ""
-scopedRBAC: false
-installCRDs: true
 metricsService:
   ports:
     - name: https
@@ -56,3 +52,7 @@ metricsService:
       protocol: TCP
       targetPort: https
   type: ClusterIP
+kubernetesClusterDomain: cluster.local
+scopedNamespace: ""
+scopedRBAC: false
+installCRDs: true

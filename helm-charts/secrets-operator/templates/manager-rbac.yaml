@@ -54,6 +54,15 @@ rules:
   - update
   - watch
 - apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - get
+  - list
+  - update
+  - watch
+- apiGroups:
   - secrets.infisical.com
   resources:
   - infisicaldynamicsecrets
