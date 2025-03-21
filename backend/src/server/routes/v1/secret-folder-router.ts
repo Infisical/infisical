@@ -9,18 +9,7 @@ import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-const booleanSchema = z
-  .union([z.boolean(), z.string().trim()])
-  .transform((value) => {
-    if (typeof value === "string") {
-      // ie if not empty, 0 or false, return true
-      return Boolean(value) && Number(value) !== 0 && value.toLowerCase() !== "false";
-    }
-
-    return value;
-  })
-  .optional()
-  .default(false);
+import { booleanSchema } from "../sanitizedSchemas";
 
 export const registerSecretFolderRouter = async (server: FastifyZodProvider) => {
   server.route({

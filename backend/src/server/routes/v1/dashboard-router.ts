@@ -16,27 +16,18 @@ import { secretsLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { SanitizedDynamicSecretSchema, SanitizedTagSchema, secretRawSchema } from "@app/server/routes/sanitizedSchemas";
+import {
+  booleanSchema,
+  SanitizedDynamicSecretSchema,
+  SanitizedTagSchema,
+  secretRawSchema
+} from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const MAX_DEEP_SEARCH_LIMIT = 500; // arbitrary limit to prevent excessive results
-
-// handle querystring boolean values
-const booleanSchema = z
-  .union([z.boolean(), z.string().trim()])
-  .transform((value) => {
-    if (typeof value === "string") {
-      // ie if not empty, 0 or false, return true
-      return Boolean(value) && Number(value) !== 0 && value.toLowerCase() !== "false";
-    }
-
-    return value;
-  })
-  .optional()
-  .default(true);
 
 const parseSecretPathSearch = (search?: string) => {
   if (!search)
