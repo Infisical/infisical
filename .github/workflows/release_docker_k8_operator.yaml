@@ -118,9 +118,9 @@ jobs:
                     
                     # Query PR status using direct gh pr view command
                     echo "Checking PR status..."
-                    PR_DATA=$(gh pr view ${PR_NUMBER} --json state,merged)
+                    PR_DATA=$(gh pr view ${PR_NUMBER} --json state,mergedAt)
                     PR_STATE=$(echo $PR_DATA | jq -r .state)
-                    MERGED=$(echo $PR_DATA | jq -r .merged)
+                    MERGED=$([ -n "$(echo $PR_DATA | jq -r .mergedAt)" ] && echo "true" || echo "false")
                     
                     echo "Current PR state: $PR_STATE, Merged: $MERGED"
                     
