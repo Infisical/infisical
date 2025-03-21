@@ -55,63 +55,23 @@ jobs:
                   echo "Modified files:"
                   git diff --name-only
                   echo ""
-                  echo "Detailed changes:"
-                  git diff
-
-            - name: Check for changes
-              id: check_changes
-              run: |
-                  if [[ -n $(git status --porcelain) ]]; then
-                    echo "::set-output name=has_changes::true"
-                    echo "Changes detected in the repository"
-                  else
-                    echo "::set-output name=has_changes::false"
-                    echo "No changes detected in the repository"
-                  fi
-
-            - name: Configure Git
-              if: steps.check_changes.outputs.has_changes == 'true'
-              run: |
-                  git config --local user.email "github-actions[bot]@users.noreply.github.com"
-                  git config --local user.name "github-actions[bot]"
-
-            - name: Create Branch
-              if: steps.check_changes.outputs.has_changes == 'true'
-              run: |
-                  BRANCH_NAME="helm-update-${{ steps.extract_version.outputs.version }}"
-                  git checkout -b $BRANCH_NAME
-                  git add .
-                  git commit -m "Update Helm chart to version ${{ steps.extract_version.outputs.version }}"
-                  git push -u origin $BRANCH_NAME
-                  echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
 
             - name: Create Pull Request
-              if: steps.check_changes.outputs.has_changes == 'true'
               id: create-pr
               uses: peter-evans/create-pull-request@v5
               with:
                   token: ${{ secrets.GITHUB_TOKEN }}
+                  commit-message: "Update Helm chart to version ${{ steps.extract_version.outputs.version }}"
+                  committer: GitHub <noreply@github.com>
+                  author: ${{ github.actor }} <${{ github.actor }}@users.noreply.github.com>
+                  branch: helm-update-${{ steps.extract_version.outputs.version }}
+                  delete-branch: true
                   title: "Update Helm chart to version ${{ steps.extract_version.outputs.version }}"
                   body: |
                       This PR updates the Helm chart to version ${{ steps.extract_version.outputs.version }}.
 
                       Please review and approve to continue the release process.
-                  branch: ${{ env.BRANCH_NAME }}
                   base: main
-                  draft: false
-
-            - name: PR Details
-              if: steps.check_changes.outputs.has_changes == 'true'
-              run: |
-                  echo "Created PR #${{ steps.create-pr.outputs.pull-request-number }}"
-                  echo "PR URL: ${{ steps.create-pr.outputs.pull-request-url }}"
-                  echo "::set-output name=pr_number::${{ steps.create-pr.outputs.pull-request-number }}"
-
-            - name: No changes detected
-              if: steps.check_changes.outputs.has_changes != 'true'
-              run: |
-                  echo "No changes detected in the repository. Skipping PR creation."
-                  echo "::set-output name=pr_number::skip"
 
     wait-for-approval:
         needs: generate-and-pr
