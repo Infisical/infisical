@@ -223,15 +223,10 @@ export const SignupInvitePage = () => {
   // Step 4 of the sign up process (download the emergency kit pdf)
   const stepConfirmEmail = (
     <div className="h-7/12 mx-1 mb-36 flex w-full max-w-xs flex-col items-center rounded-xl border border-mineshaft-600 bg-mineshaft-800 px-4 py-8 drop-shadow-xl md:mb-16 md:max-w-lg md:px-6">
-      <p className="mb-6 flex justify-center text-center text-4xl font-semibold text-primary-100">
+      <p className="mb-2 flex justify-center text-center text-4xl font-semibold text-primary-100">
         Confirm your email
       </p>
-      <img
-        src="/images/dragon-signupinvite.svg"
-        style={{ height: "262px", width: "410px" }}
-        alt="verify email"
-      />
-      <div className="mx-auto mb-2 mt-10 flex max-h-24 max-w-md flex-col items-center justify-center px-4 text-lg md:p-2">
+      <div className="mx-auto mb-2 mt-4 flex max-h-24 max-w-md flex-col items-center justify-center px-4 text-lg md:p-2">
         <Button
           onClick={async () => {
             try {
