@@ -4127,10 +4127,10 @@ const syncSecretsWindmill = async ({
     is_secret: boolean;
     description?: string;
   }
-
+  const apiUrl = integration.url ? `${integration.url}/api` : IntegrationUrls.WINDMILL_API_URL;
   // get secrets stored in windmill workspace
   const res = (
-    await request.get<WindmillSecret[]>(`${IntegrationUrls.WINDMILL_API_URL}/w/${integration.appId}/variables/list`, {
+    await request.get<WindmillSecret[]>(`${apiUrl}/w/${integration.appId}/variables/list`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Accept-Encoding": "application/json"
@@ -4146,7 +4146,6 @@ const syncSecretsWindmill = async ({
 
   // eslint-disable-next-line
   const pattern = new RegExp("^(u/|f/)[a-zA-Z0-9_-]+/([a-zA-Z0-9_-]+/)*[a-zA-Z0-9_-]*[^/]$");
-
   for await (const key of Object.keys(secrets)) {
     if ((key.startsWith("u/") || key.startsWith("f/")) && pattern.test(key)) {
       if (!(key in res)) {
@@ -4154,7 +4153,7 @@ const syncSecretsWindmill = async ({
         // -> create secret
 
         await request.post(
-          `${IntegrationUrls.WINDMILL_API_URL}/w/${integration.appId}/variables/create`,
+          `${apiUrl}/w/${integration.appId}/variables/create`,
           {
             path: key,
             value: secrets[key].value,
@@ -4171,7 +4170,7 @@ const syncSecretsWindmill = async ({
       } else {
         // -> update secret
         await request.post(
-          `${IntegrationUrls.WINDMILL_API_URL}/w/${integration.appId}/variables/update/${res[key].path}`,
+          `${apiUrl}/w/${integration.appId}/variables/update/${res[key].path}`,
           {
             path: key,
             value: secrets[key].value,
@@ -4192,16 +4191,13 @@ const syncSecretsWindmill = async ({
   for await (const key of Object.keys(res)) {
     if (!(key in secrets)) {
       // -> delete secret
-      await request.delete(
-        `${IntegrationUrls.WINDMILL_API_URL}/w/${integration.appId}/variables/delete/${res[key].path}`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-            "Accept-Encoding": "application/json"
-          }
+      await request.delete(`${apiUrl}/w/${integration.appId}/variables/delete/${res[key].path}`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          "Accept-Encoding": "application/json"
         }
-      );
+      });
     }
   }
 };
