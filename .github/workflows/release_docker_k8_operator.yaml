@@ -124,7 +124,15 @@ jobs:
                     echo "Checking PR status..."
                     PR_DATA=$(gh pr view "${PR_NUMBER}" --json state,mergedAt)
                     PR_STATE=$(echo $PR_DATA | jq -r .state)
-                    MERGED=$([ -n "$(echo $PR_DATA | jq -r .mergedAt)" ] && echo "true" || echo "false")
+                    MERGED_AT=$(echo $PR_DATA | jq -r .mergedAt)
+                    echo "Debug - mergedAt value: '${MERGED_AT}'"
+
+                    # Check if mergedAt is null or empty
+                    if [ "${MERGED_AT}" = "null" ] || [ -z "${MERGED_AT}" ]; then
+                      MERGED="false"
+                    else
+                      MERGED="true"
+                    fi
                     
                     echo "Current PR state: $PR_STATE, Merged: $MERGED"
                     
