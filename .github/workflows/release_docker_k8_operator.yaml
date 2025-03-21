@@ -77,6 +77,9 @@ jobs:
         needs: generate-and-pr
         runs-on: ubuntu-latest
         steps:
+            - name: Checkout code
+              uses: actions/checkout@v2
+
             - name: Check if PR was created
               id: check_pr
               run: |
@@ -136,9 +139,9 @@ jobs:
                       exit 1
                     fi
                     
-                    # Wait before checking again (60 seconds)
-                    echo "Waiting 60 seconds before checking again..."
-                    sleep 60
+                    # Wait before checking again (30 seconds)
+                    echo "Waiting 30 seconds before checking again..."
+                    sleep 30
                   done
 
     build-and-publish:
