@@ -9,7 +9,7 @@ export type TAttachKubernetesAuthDTO = {
   identityId: string;
   kubernetesHost: string;
   caCert: string;
-  tokenReviewerJwt: string;
+  tokenReviewerJwt?: string;
   allowedNamespaces: string;
   allowedNames: string;
   allowedAudience: string;
@@ -24,7 +24,7 @@ export type TUpdateKubernetesAuthDTO = {
   identityId: string;
   kubernetesHost?: string;
   caCert?: string;
-  tokenReviewerJwt?: string;
+  tokenReviewerJwt?: string | null;
   allowedNamespaces?: string;
   allowedNames?: string;
   allowedAudience?: string;

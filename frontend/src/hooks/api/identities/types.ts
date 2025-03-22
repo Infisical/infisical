@@ -350,7 +350,7 @@ export type AddIdentityKubernetesAuthDTO = {
   organizationId: string;
   identityId: string;
   kubernetesHost: string;
-  tokenReviewerJwt: string;
+  tokenReviewerJwt?: string;
   allowedNamespaces: string;
   allowedNames: string;
   allowedAudience: string;
@@ -367,7 +367,7 @@ export type UpdateIdentityKubernetesAuthDTO = {
   organizationId: string;
   identityId: string;
   kubernetesHost?: string;
-  tokenReviewerJwt?: string;
+  tokenReviewerJwt?: string | null;
   allowedNamespaces?: string;
   allowedNames?: string;
   allowedAudience?: string;
