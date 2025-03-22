@@ -631,7 +631,8 @@ export const FOLDERS = {
     workspaceId: "The ID of the project to list folders from.",
     environment: "The slug of the environment to list folders from.",
     path: "The path to list folders from.",
-    directory: "The directory to list folders from. (Deprecated in favor of path)"
+    directory: "The directory to list folders from. (Deprecated in favor of path)",
+    recursive: "Whether or not to fetch all folders from the specified base path, and all of its subdirectories."
   },
   GET_BY_ID: {
     folderId: "The ID of the folder to get details."
