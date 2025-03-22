@@ -49,6 +49,7 @@ export const permissionDALFactory = (db: TDbClient) => {
         .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.OrgMembership}.orgId`)
         .select(
           selectAllTableCols(TableName.OrgMembership),
+          db.ref("shouldUseNewPrivilegeSystem").withSchema(TableName.Organization),
           db.ref("slug").withSchema(TableName.OrgRoles).withSchema(TableName.OrgRoles).as("customRoleSlug"),
           db.ref("permissions").withSchema(TableName.OrgRoles),
           db.ref("authEnforced").withSchema(TableName.Organization).as("orgAuthEnforced"),
@@ -70,7 +71,8 @@ export const permissionDALFactory = (db: TDbClient) => {
           OrgMembershipsSchema.extend({
             permissions: z.unknown(),
             orgAuthEnforced: z.boolean().optional().nullable(),
-            customRoleSlug: z.string().optional().nullable()
+            customRoleSlug: z.string().optional().nullable(),
+            shouldUseNewPrivilegeSystem: z.boolean()
           }).parse(el),
         childrenMapper: [
           {
@@ -118,7 +120,9 @@ export const permissionDALFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.IdentityOrgMembership))
         .select(db.ref("authEnforced").withSchema(TableName.Organization).as("orgAuthEnforced"))
         .select("permissions")
+        .select(db.ref("shouldUseNewPrivilegeSystem").withSchema(TableName.Organization))
         .first();
+
       return membership;
     } catch (error) {
       throw new DatabaseError({ error, name: "GetOrgIdentityPermission" });
@@ -668,7 +672,8 @@ export const permissionDALFactory = (db: TDbClient) => {
           db.ref("authEnforced").withSchema(TableName.Organization).as("orgAuthEnforced"),
           db.ref("orgId").withSchema(TableName.Project),
           db.ref("type").withSchema(TableName.Project).as("projectType"),
-          db.ref("id").withSchema(TableName.Project).as("projectId")
+          db.ref("id").withSchema(TableName.Project).as("projectId"),
+          db.ref("shouldUseNewPrivilegeSystem").withSchema(TableName.Organization)
         );
 
       const [userPermission] = sqlNestRelationships({
@@ -684,7 +689,8 @@ export const permissionDALFactory = (db: TDbClient) => {
           groupMembershipCreatedAt,
           groupMembershipUpdatedAt,
           membershipUpdatedAt,
-          projectType
+          projectType,
+          shouldUseNewPrivilegeSystem
         }) => ({
           orgId,
           orgAuthEnforced,
@@ -694,7 +700,8 @@ export const permissionDALFactory = (db: TDbClient) => {
           projectType,
           id: membershipId || groupMembershipId,
           createdAt: membershipCreatedAt || groupMembershipCreatedAt,
-          updatedAt: membershipUpdatedAt || groupMembershipUpdatedAt
+          updatedAt: membershipUpdatedAt || groupMembershipUpdatedAt,
+          shouldUseNewPrivilegeSystem
         }),
         childrenMapper: [
           {
@@ -995,6 +1002,7 @@ export const permissionDALFactory = (db: TDbClient) => {
           `${TableName.IdentityProjectMembership}.projectId`,
           `${TableName.Project}.id`
         )
+        .join(TableName.Organization, `${TableName.Project}.orgId`, `${TableName.Organization}.id`)
         .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
           void queryBuilder
             .on(`${TableName.Identity}.id`, `${TableName.IdentityMetadata}.identityId`)
@@ -1012,6 +1020,7 @@ export const permissionDALFactory = (db: TDbClient) => {
           db.ref("updatedAt").withSchema(TableName.IdentityProjectMembership).as("membershipUpdatedAt"),
           db.ref("slug").withSchema(TableName.ProjectRoles).as("customRoleSlug"),
           db.ref("permissions").withSchema(TableName.ProjectRoles),
+          db.ref("shouldUseNewPrivilegeSystem").withSchema(TableName.Organization),
           db.ref("id").withSchema(TableName.IdentityProjectAdditionalPrivilege).as("identityApId"),
           db.ref("permissions").withSchema(TableName.IdentityProjectAdditionalPrivilege).as("identityApPermissions"),
           db
@@ -1045,7 +1054,8 @@ export const permissionDALFactory = (db: TDbClient) => {
           membershipUpdatedAt,
           orgId,
           identityName,
-          projectType
+          projectType,
+          shouldUseNewPrivilegeSystem
         }) => ({
           id: membershipId,
           identityId,
@@ -1055,6 +1065,7 @@ export const permissionDALFactory = (db: TDbClient) => {
           updatedAt: membershipUpdatedAt,
           orgId,
           projectType,
+          shouldUseNewPrivilegeSystem,
           // just a prefilled value
           orgAuthEnforced: false
         }),

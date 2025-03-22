@@ -21,11 +21,16 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import {
   OrgPermissionActions,
+  OrgPermissionGroupActions,
   OrgPermissionSecretShareAction,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
+import {
+  constructPermissionErrorMessage,
+  validatePrivilegeChangeOperation
+} from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { getConfig } from "@app/lib/config/env";
@@ -76,6 +81,7 @@ import {
   TResendOrgMemberInvitationDTO,
   TUpdateOrgDTO,
   TUpdateOrgMembershipDTO,
+  TUpgradePrivilegeSystemDTO,
   TVerifyUserToOrgDTO
 } from "./org-types";
 
@@ -187,7 +193,7 @@ export const orgServiceFactory = ({
 
   const getOrgGroups = async ({ actor, actorId, orgId, actorAuthMethod, actorOrgId }: TGetOrgGroupsDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Groups);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
     const groups = await groupDAL.findByOrgId(orgId);
     return groups;
   };
@@ -279,6 +285,45 @@ export const orgServiceFactory = ({
       user,
       keys: encKeys
     };
+  };
+
+  const upgradePrivilegeSystem = async ({
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    orgId
+  }: TUpgradePrivilegeSystemDTO) => {
+    const { membership } = await permissionService.getUserOrgPermission(actorId, orgId, actorAuthMethod, actorOrgId);
+
+    if (membership.role !== OrgMembershipRole.Admin) {
+      throw new ForbiddenRequestError({
+        message: "Insufficient privileges - only the organization admin can upgrade the privilege system."
+      });
+    }
+
+    return orgDAL.transaction(async (tx) => {
+      const org = await orgDAL.findById(actorOrgId, tx);
+      if (org.shouldUseNewPrivilegeSystem) {
+        throw new BadRequestError({
+          message: "Privilege system already upgraded"
+        });
+      }
+
+      const user = await userDAL.findById(actorId, tx);
+      if (!user) {
+        throw new NotFoundError({ message: `User with ID '${actorId}' not found` });
+      }
+
+      return orgDAL.updateById(
+        actorOrgId,
+        {
+          shouldUseNewPrivilegeSystem: true,
+          privilegeUpgradeInitiatedAt: new Date(),
+          privilegeUpgradeInitiatedByUsername: user.username
+        },
+        tx
+      );
+    });
   };
 
   /*
@@ -856,7 +901,7 @@ export const orgServiceFactory = ({
       // if there exist no project membership we set is as given by the request
       for await (const project of projectsToInvite) {
         const projectId = project.id;
-        const { permission: projectPermission } = await permissionService.getProjectPermission({
+        const { permission: projectPermission, membership } = await permissionService.getProjectPermission({
           actor,
           actorId,
           projectId,
@@ -865,7 +910,7 @@ export const orgServiceFactory = ({
           actionProjectType: ActionProjectType.Any
         });
         ForbiddenError.from(projectPermission).throwUnlessCan(
-          ProjectPermissionActions.Create,
+          ProjectPermissionMemberActions.Create,
           ProjectPermissionSub.Member
         );
         const existingMembers = await projectMembershipDAL.find(
@@ -887,6 +932,33 @@ export const orgServiceFactory = ({
         const invitedProjectRoles = invitedProjects.find((el) => el.id === project.id)?.projectRoleSlug || [
           ProjectMembershipRole.Member
         ];
+
+        for await (const invitedRole of invitedProjectRoles) {
+          const { permission: rolePermission } = await permissionService.getProjectPermissionByRole(
+            invitedRole,
+            projectId
+          );
+
+          const permissionBoundary = validatePrivilegeChangeOperation(
+            membership.shouldUseNewPrivilegeSystem,
+            ProjectPermissionMemberActions.ManagePrivileges,
+            ProjectPermissionSub.Member,
+            projectPermission,
+            rolePermission
+          );
+
+          if (!permissionBoundary.isValid)
+            throw new ForbiddenRequestError({
+              name: "PermissionBoundaryError",
+              message: constructPermissionErrorMessage(
+                "Failed to invite user to the project",
+                membership.shouldUseNewPrivilegeSystem,
+                ProjectPermissionMemberActions.ManagePrivileges,
+                ProjectPermissionSub.Member
+              ),
+              details: { missingPermissions: permissionBoundary.missingPermissions }
+            });
+        }
 
         const customProjectRoles = invitedProjectRoles.filter(
           (role) => !Object.values(ProjectMembershipRole).includes(role as ProjectMembershipRole)
@@ -1021,9 +1093,9 @@ export const orgServiceFactory = ({
         const sanitizedProjectMembershipRoles: TProjectUserMembershipRolesInsert[] = [];
         invitedProjectRoles.forEach((projectRole) => {
           const isCustomRole = Boolean(customRolesGroupBySlug?.[projectRole]?.[0]);
-          projectMemberships.forEach((membership) => {
+          projectMemberships.forEach((membershipEntry) => {
             sanitizedProjectMembershipRoles.push({
-              projectMembershipId: membership.id,
+              projectMembershipId: membershipEntry.id,
               role: isCustomRole ? ProjectMembershipRole.Custom : projectRole,
               customRoleId: customRolesGroupBySlug[projectRole] ? customRolesGroupBySlug[projectRole][0].id : null
             });
@@ -1304,6 +1376,7 @@ export const orgServiceFactory = ({
     getOrgGroups,
     listProjectMembershipsByOrgMembershipId,
     findOrgBySlug,
-    resendOrgMemberInvitation
+    resendOrgMemberInvitation,
+    upgradePrivilegeSystem
   };
 };
