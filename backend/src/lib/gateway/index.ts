@@ -93,6 +93,7 @@ export const pingGatewayAndVerify = async ({
   let lastError: Error | null = null;
   const quicClient = await createQuicConnection(relayHost, relayPort, tlsOptions, identityId, orgId).catch((err) => {
     throw new BadRequestError({
+      message: (err as Error)?.message,
       error: err as Error
     });
   });
