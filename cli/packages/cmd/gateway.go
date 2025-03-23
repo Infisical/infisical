@@ -18,10 +18,10 @@ import (
 )
 
 var gatewayCmd = &cobra.Command{
-	Use:                   "gateway",
-	Short:                 "Run the Infisical gateway or manage its systemd service",
-	Long:                  "Run the Infisical gateway in the foreground or manage its systemd service installation. Use 'gateway install' to set up the systemd service.",
-	Example:               `infisical gateway --token=<token>
+	Use:   "gateway",
+	Short: "Run the Infisical gateway or manage its systemd service",
+	Long:  "Run the Infisical gateway in the foreground or manage its systemd service installation. Use 'gateway install' to set up the systemd service.",
+	Example: `infisical gateway --token=<token>
   sudo infisical gateway install --token=<token> --domain=<domain>`,
 	DisableFlagsInUseLine: true,
 	Args:                  cobra.NoArgs,
@@ -148,6 +148,28 @@ var gatewayInstallCmd = &cobra.Command{
 	},
 }
 
+var gatewayUninstallCmd = &cobra.Command{
+	Use:                   "uninstall",
+	Short:                 "Uninstall and remove systemd service for the gateway (requires sudo)",
+	Long:                  "Uninstall and remove systemd service for the gateway. Must be run with sudo on Linux.",
+	Example:               "sudo infisical gateway uninstall",
+	DisableFlagsInUseLine: true,
+	Args:                  cobra.NoArgs,
+	Run: func(cmd *cobra.Command, args []string) {
+		if runtime.GOOS != "linux" {
+			util.HandleError(fmt.Errorf("systemd service installation is only supported on Linux"))
+		}
+
+		if os.Geteuid() != 0 {
+			util.HandleError(fmt.Errorf("systemd service installation requires root/sudo privileges"))
+		}
+
+		if err := gateway.UninstallGatewaySystemdService(); err != nil {
+			util.HandleError(err, "Failed to uninstall systemd service")
+		}
+	},
+}
+
 var gatewayRelayCmd = &cobra.Command{
 	Example:               `infisical gateway relay`,
 	Short:                 "Used to run infisical gateway relay",
@@ -183,6 +205,7 @@ func init() {
 	gatewayRelayCmd.Flags().String("config", "", "Relay config yaml file path")
 
 	gatewayCmd.AddCommand(gatewayInstallCmd)
+	gatewayCmd.AddCommand(gatewayUninstallCmd)
 	gatewayCmd.AddCommand(gatewayRelayCmd)
 	rootCmd.AddCommand(gatewayCmd)
 }
