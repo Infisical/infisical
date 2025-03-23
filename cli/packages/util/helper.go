@@ -245,8 +245,9 @@ func getCurrentBranch() (string, error) {
 }
 
 func AppendAPIEndpoint(address string) string {
+	// if it's empty return as it is
 	// Ensure the address does not already end with "/api"
-	if strings.HasSuffix(address, "/api") {
+	if address == "" || strings.HasSuffix(address, "/api") {
 		return address
 	}
 
