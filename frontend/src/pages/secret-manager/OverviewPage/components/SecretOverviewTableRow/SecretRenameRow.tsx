@@ -162,7 +162,7 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
           render={({ field, fieldState: { error } }) => (
             <Input
               autoComplete="off"
-              isReadOnly={isReadOnly}
+              isReadOnly={isReadOnly || secrets.filter(Boolean).length === 0}
               autoCapitalization={currentWorkspace?.autoCapitalization}
               variant="plain"
               isDisabled={isOverriden}

@@ -81,7 +81,6 @@ import { CreateSecretForm } from "./components/CreateSecretForm";
 import { FolderBreadCrumbs } from "./components/FolderBreadCrumbs";
 import { SecretOverviewDynamicSecretRow } from "./components/SecretOverviewDynamicSecretRow";
 import { SecretOverviewFolderRow } from "./components/SecretOverviewFolderRow";
-import { SecretOverviewImportListView } from "./components/SecretOverviewImportListView";
 import {
   SecretNoAccessOverviewTableRow,
   SecretOverviewTableRow
@@ -203,12 +202,16 @@ export const OverviewPage = () => {
     setVisibleEnvs(userAvailableEnvs);
   }, [userAvailableEnvs]);
 
-  const { isImportedSecretPresentInEnv, getImportedSecretByKey, getEnvImportedSecretKeyCount } =
-    useGetImportedSecretsAllEnvs({
-      projectId: workspaceId,
-      path: secretPath,
-      environments: (userAvailableEnvs || []).map(({ slug }) => slug)
-    });
+  const {
+    secretImports,
+    isImportedSecretPresentInEnv,
+    getImportedSecretByKey,
+    getEnvImportedSecretKeyCount
+  } = useGetImportedSecretsAllEnvs({
+    projectId: workspaceId,
+    path: secretPath,
+    environments: (userAvailableEnvs || []).map(({ slug }) => slug)
+  });
 
   const { isPending: isOverviewLoading, data: overview } = useGetProjectSecretsOverview(
     {
@@ -232,7 +235,6 @@ export const OverviewPage = () => {
     secrets,
     folders,
     dynamicSecrets,
-    imports,
     totalFolderCount,
     totalSecretCount,
     totalDynamicSecretCount,
@@ -244,16 +246,20 @@ export const OverviewPage = () => {
     totalUniqueDynamicSecretsInPage
   } = overview ?? {};
 
-  const importsShaped = imports
-    ?.filter((el) => !el.isReserved)
-    ?.map(({ importPath, importEnv }) => ({ importPath, importEnv }))
-    .filter(
-      (el, index, self) =>
-        index ===
-        self.findIndex(
-          (item) => item.importPath === el.importPath && item.importEnv.slug === el.importEnv.slug
-        )
-    );
+  const secretImportsShaped = secretImports
+    ?.flatMap(({ data }) => data)
+    .filter(Boolean)
+    .flatMap((item) => item?.secrets || []);
+
+  const handleIsImportedSecretPresentInEnv = (envSlug: string, secretName: string) => {
+    if (secrets?.some((s) => s.key === secretName && s.env === envSlug)) {
+      return false;
+    }
+    if (secretImportsShaped.some((s) => s.key === secretName && s.sourceEnv === envSlug)) {
+      return true;
+    }
+    return isImportedSecretPresentInEnv(envSlug, secretName);
+  };
 
   useResetPageHelper({
     totalCount,
@@ -267,7 +273,18 @@ export const OverviewPage = () => {
   const { dynamicSecretNames, isDynamicSecretPresentInEnv } =
     useDynamicSecretOverview(dynamicSecrets);
 
-  const { secKeys, getSecretByKey, getEnvSecretKeyCount } = useSecretOverview(secrets);
+  const { secKeys, getEnvSecretKeyCount } = useSecretOverview(
+    secrets?.concat(secretImportsShaped) || []
+  );
+
+  const getSecretByKey = useCallback(
+    (env: string, key: string) => {
+      const sec = secrets?.find((s) => s.env === env && s.key === key);
+      return sec;
+    },
+    [secrets]
+  );
+
   const { data: tags } = useGetWsTags(
     permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags) ? workspaceId : ""
   );
@@ -1124,24 +1141,13 @@ export const OverviewPage = () => {
                         key={`overview-${dynamicSecretName}-${index + 1}`}
                       />
                     ))}
-                    {filter.import &&
-                      importsShaped &&
-                      importsShaped?.length > 0 &&
-                      importsShaped?.map((item, index) => (
-                        <SecretOverviewImportListView
-                          secretImport={item}
-                          environments={visibleEnvs}
-                          key={`overview-secret-input-${index + 1}`}
-                          allSecretImports={imports}
-                        />
-                      ))}
                     {secKeys.map((key, index) => (
                       <SecretOverviewTableRow
                         isSelected={Boolean(selectedEntries.secret[key])}
                         onToggleSecretSelect={() => toggleSelectedEntry(EntryType.SECRET, key)}
                         secretPath={secretPath}
                         getImportedSecretByKey={getImportedSecretByKey}
-                        isImportedSecretPresentInEnv={isImportedSecretPresentInEnv}
+                        isImportedSecretPresentInEnv={handleIsImportedSecretPresentInEnv}
                         onSecretCreate={handleSecretCreate}
                         onSecretDelete={handleSecretDelete}
                         onSecretUpdate={handleSecretUpdate}

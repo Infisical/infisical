@@ -86,13 +86,5 @@ export const useSecretOverview = (secrets: DashboardProjectSecretsOverview["secr
     [secrets]
   );
 
-  const getSecretByKey = useCallback(
-    (env: string, key: string) => {
-      const sec = secrets?.find((s) => s.env === env && s.key === key);
-      return sec;
-    },
-    [secrets]
-  );
-
-  return { secKeys, getSecretByKey, getEnvSecretKeyCount };
+  return { secKeys, getEnvSecretKeyCount };
 };
