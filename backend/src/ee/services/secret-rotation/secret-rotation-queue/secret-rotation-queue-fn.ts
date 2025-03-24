@@ -88,13 +88,13 @@ export const secretRotationDbFn = async ({
   options
 }: TSecretRotationDbFn) => {
   const ssl = ca ? { rejectUnauthorized: false, ca } : undefined;
-  await verifyHostInputValidity(host);
+  const [hostIp] = await verifyHostInputValidity(host);
   const db = knex({
     client,
     connection: {
       database,
       port,
-      host,
+      host: hostIp,
       user: username,
       password,
       connectionTimeoutMillis: EXTERNAL_REQUEST_TIMEOUT,
