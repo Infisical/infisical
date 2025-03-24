@@ -5,7 +5,7 @@ on:
             - "infisical-k8-operator/v*.*.*"
 
 jobs:
-    generate-and-pr:
+    release-image:
         name: Generate Helm Chart PR
         runs-on: ubuntu-latest
         outputs:
@@ -17,23 +17,20 @@ jobs:
 
             - name: Checkout code
               uses: actions/checkout@v2
-              with:
-                  token: ${{ secrets.GITHUB_TOKEN }}
-                  fetch-depth: 0
 
+            # Dependency for helm generation
             - name: Install Helm
               uses: azure/setup-helm@v3
               with:
                   version: v3.10.0
 
-            - name: Install python
-              uses: actions/setup-python@v4
-
+            # Dependency for helm generation
             - name: Install Go
               uses: actions/setup-go@v4
               with:
                   go-version: 1.21
 
+            # Install binaries for helm generation
             - name: Install dependencies
               working-directory: k8-operator
               run: |
@@ -56,13 +53,13 @@ jobs:
                   echo "Modified files:"
                   git diff --name-only
 
-                  # If there is no diff, exit with error
+                  # If there is no diff, exit with error. Version should always be changed, so if there is no diff, something is wrong and we should exit.
                   if [ -z "$(git diff --name-only)" ]; then
                     echo "No helm changes or version changes. Invalid release detected, Exiting."
                     exit 1
                   fi
 
-            - name: Create Pull Request
+            - name: Create Helm Chart PR
               id: create-pr
               uses: peter-evans/create-pull-request@v5
               with:
@@ -79,96 +76,43 @@ jobs:
 
                       Associated Release Workflow: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
-                      Please review and approve to continue the release process. To cancel the release process, you can close this PR.
-                      You have **30 minutes** to approve or close the PR after it is created, or the release workflow will cancel itself.
+                      Once you have approved this PR, you can trigger the helm release workflow manually.
                   base: main
 
-    wait-for-approval:
-        name: Wait for Helm Chart PR Merge
-        needs: generate-and-pr
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v2
+            - name: 🔧 Set up QEMU
+              uses: docker/setup-qemu-action@v1
 
-            - name: Check if PR was created
-              id: check_pr
-              run: |
-                  PR_NUMBER="${{ needs.generate-and-pr.outputs.pr_number }}"
-                  if [ "$PR_NUMBER" = "skip" ]; then
-                    echo "::set-output name=skip_wait::true"
-                    echo "No PR was created, skipping wait step"
-                  else
-                    echo "::set-output name=skip_wait::false"
-                    echo "PR #$PR_NUMBER was created, will wait for approval"
-                  fi
+            - name: 🔧 Set up Docker Buildx
+              uses: docker/setup-buildx-action@v1
 
-            - name: Wait for Helm Chart PR Merge
-              timeout-minutes: 30 # Job dies after 30 minutes of waiting
-              if: steps.check_pr.outputs.skip_wait != 'true'
-              env:
-                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  PR_NUMBER: ${{ needs.generate-and-pr.outputs.pr_number }}
-                  REPO: ${{ github.repository }}
-              run: |
-                  echo "Waiting for PR #${PR_NUMBER} to be merged..."
-
-                  if [ -z "$PR_NUMBER" ]; then
-                    echo "Error: PR number is empty. Cannot proceed."
-                    exit 1
-                  fi
-
-                  # Maximum wait time (24 hours in seconds)
-                  timeout=$((24 * 60 * 60))
-                  start_time=$(date +%s)
-
-                  while true; do
-                    echo "Checking PR status..."
-                    PR_DATA=$(gh pr view "${PR_NUMBER}" --json state,mergedAt)
-                    PR_STATE=$(echo $PR_DATA | jq -r .state)
-                    MERGED_AT=$(echo $PR_DATA | jq -r .mergedAt)
-
-                    # Check if mergedAt is null or empty
-                    if [ "${MERGED_AT}" = "null" ] || [ -z "${MERGED_AT}" ]; then
-                      MERGED="false"
-                    else
-                      MERGED="true"
-                    fi
-                    
-                    # If PR is merged, break the loop and continue to release step
-                    if [ "$MERGED" = "true" ]; then
-                      echo "PR has been merged! Continuing with the workflow."
-                      break
-                    fi
-                    
-                    # If PR is closed but not merged, fail the workflow
-                    if [ "$PR_STATE" = "CLOSED" ] && [ "$MERGED" != "true" ]; then
-                      echo "PR was closed without being merged."
-                      exit 1
-                    fi
-                    
-                    # Check again every 30 seconds
-                    echo "Waiting 30 seconds before checking again..."
-                    sleep 30
-                  done
-
-    build-and-publish:
-        name: Build and Publish Image + Helm Chart
-        needs: wait-for-approval
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout code (post-merge)
-              uses: actions/checkout@v2
+            - name: 🐋 Login to Docker Hub
+              uses: docker/login-action@v1
               with:
-                  ref: main
-                  fetch-depth: 0
+                  username: ${{ secrets.DOCKERHUB_USERNAME }}
+                  password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-            - name: Extract version from tag
-              id: extract_version
-              run: echo "::set-output name=version::${GITHUB_REF_NAME#infisical-k8-operator/}"
+            - name: Build and push
+              id: docker_build
+              uses: docker/build-push-action@v2
+              with:
+                  context: k8-operator
+                  push: true
+                  platforms: linux/amd64,linux/arm64
+                  tags: |
+                      infisical/kubernetes-operator:latest
+                      infisical/kubernetes-operator:${{ steps.extract_version.outputs.version }}
 
-            - name: Print Chart.yaml
-              run: cat helm-charts/secrets-operator/Chart.yaml
-
-            - name: Print values.yaml
-              run: cat helm-charts/secrets-operator/values.yaml
+            - name: Checkout
+              uses: actions/checkout@v2
+            - name: Install Helm
+              uses: azure/setup-helm@v3
+              with:
+                  version: v3.10.0
+            - name: Install python
+              uses: actions/setup-python@v4
+            - name: Install Cloudsmith CLI
+              run: pip install --upgrade cloudsmith-cli
+            - name: Build and push helm package to Cloudsmith
+              run: cd helm-charts && sh upload-k8s-operator-cloudsmith.sh
+              env:
+                  CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
