@@ -222,7 +222,7 @@ if [ -f "${HELM_DIR}/values.yaml" ]; then
       # Get the indentation
       indent=$(echo "$line" | sed 's/\(^[[:space:]]*\).*/\1/')
       # Replace with our custom tag
-      echo "${indent}tag: <REPLACE-WITH-NEW-VERSION>" >> "${HELM_DIR}/values.yaml.new"
+      echo "${indent}tag: <helm-pr-will-update-this-automatically>" >> "${HELM_DIR}/values.yaml.new"
       continue
     fi
 

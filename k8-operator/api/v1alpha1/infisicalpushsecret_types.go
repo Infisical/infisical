@@ -30,9 +30,6 @@ type InfisicalPushSecretSpec struct {
 	DeletionPolicy string `json:"deletionPolicy"`
 
 	// +kubebuilder:validation:Required
-	AdditionalFields []string `json:"additionalFields"`
-
-	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Immutable
 	Destination InfisicalPushSecretDestination `json:"destination"`
 
