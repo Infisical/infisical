@@ -5,6 +5,7 @@ import { ActionProjectType } from "@app/db/schemas";
 import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
+import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 import { UnpackedPermissionSchema } from "@app/server/routes/sanitizedSchema/permission";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
@@ -101,6 +102,10 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       projectMembershipId: identityProjectMembership.id
     });
     if (existingSlug) throw new BadRequestError({ message: "Additional privilege of provided slug exist" });
+
+    validateHandlebarTemplate("Identity Additional Privilege Create", JSON.stringify(customPermission || []), {
+      allowedExpressions: (val) => val.includes("identity.")
+    });
 
     const packedPermission = JSON.stringify(packRules(customPermission));
     if (!dto.isTemporary) {
@@ -203,6 +208,9 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     }
 
     const isTemporary = typeof data?.isTemporary !== "undefined" ? data.isTemporary : identityPrivilege.isTemporary;
+    validateHandlebarTemplate("Identity Additional Privilege Create", JSON.stringify(data.permissions || []), {
+      allowedExpressions: (val) => val.includes("identity.")
+    });
 
     const packedPermission = data.permissions ? JSON.stringify(packRules(data.permissions)) : undefined;
     if (isTemporary) {

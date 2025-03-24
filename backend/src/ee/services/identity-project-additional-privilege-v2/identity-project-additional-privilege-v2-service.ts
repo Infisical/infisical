@@ -5,6 +5,7 @@ import { ActionProjectType, TableName } from "@app/db/schemas";
 import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
+import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
@@ -86,6 +87,9 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
         message: "Failed to update more privileged identity",
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
+    validateHandlebarTemplate("Identity Additional Privilege Create", JSON.stringify(customPermission || []), {
+      allowedExpressions: (val) => val.includes("identity.")
+    });
 
     const existingSlug = await identityProjectAdditionalPrivilegeDAL.findOne({
       slug,
@@ -172,6 +176,10 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
         message: "Failed to update more privileged identity",
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
+
+    validateHandlebarTemplate("Identity Additional Privilege Update", JSON.stringify(data.permissions || []), {
+      allowedExpressions: (val) => val.includes("identity.")
+    });
 
     if (data?.slug) {
       const existingSlug = await identityProjectAdditionalPrivilegeDAL.findOne({

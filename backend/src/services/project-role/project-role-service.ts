@@ -9,6 +9,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 import { UnpackedPermissionSchema } from "@app/server/routes/sanitizedSchema/permission";
 
 import { ActorAuthMethod } from "../auth/auth-type";
@@ -76,6 +77,9 @@ export const projectRoleServiceFactory = ({
       ...data,
       projectId
     });
+    validateHandlebarTemplate("Project Role Create", JSON.stringify(data.permissions || []), {
+      allowedExpressions: (val) => val.includes("identity.")
+    });
     return { ...role, permissions: unpackPermissions(role.permissions) };
   };
 
@@ -134,7 +138,9 @@ export const projectRoleServiceFactory = ({
       if (existingRole && existingRole.id !== roleId)
         throw new BadRequestError({ name: "Update Role", message: "Project role with the same slug already exists" });
     }
-
+    validateHandlebarTemplate("Project Role Upadte", JSON.stringify(data.permissions || []), {
+      allowedExpressions: (val) => val.includes("identity.")
+    });
     const updatedRole = await projectRoleDAL.updateById(projectRole.id, {
       ...data,
       permissions: data.permissions ? data.permissions : undefined

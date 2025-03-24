@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretSapAseSchema, TDynamicProviderFns } from "./models";
@@ -27,7 +28,15 @@ export const SapAseProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretSapAseSchema.parseAsync(inputs);
 
-    verifyHostInputValidity(providerInputs.host);
+    await verifyHostInputValidity(providerInputs.host);
+    validateHandlebarTemplate("SAP ASE creation", providerInputs.creationStatement, {
+      allowedExpressions: (val) => ["username", "password"].includes(val)
+    });
+    if (providerInputs.revocationStatement) {
+      validateHandlebarTemplate("SAP ASE revoke", providerInputs.revocationStatement, {
+        allowedExpressions: (val) => ["username"].includes(val)
+      });
+    }
     return providerInputs;
   };
 

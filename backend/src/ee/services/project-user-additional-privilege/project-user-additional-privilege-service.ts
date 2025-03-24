@@ -5,6 +5,7 @@ import { ActionProjectType, TableName } from "@app/db/schemas";
 import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
+import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 import { UnpackedPermissionSchema } from "@app/server/routes/sanitizedSchema/permission";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
@@ -91,6 +92,10 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     });
     if (existingSlug)
       throw new BadRequestError({ message: `Additional privilege with provided slug ${slug} already exists` });
+
+    validateHandlebarTemplate("User Additional Privilege Update", JSON.stringify(customPermission || []), {
+      allowedExpressions: (val) => val.includes("identity.")
+    });
 
     const packedPermission = JSON.stringify(packRules(customPermission));
     if (!dto.isTemporary) {
@@ -184,6 +189,10 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       if (existingSlug && existingSlug.id !== userPrivilege.id)
         throw new BadRequestError({ message: `Additional privilege with provided slug ${dto.slug} already exists` });
     }
+
+    validateHandlebarTemplate("User Additional Privilege Update", JSON.stringify(dto.permissions || []), {
+      allowedExpressions: (val) => val.includes("identity.")
+    });
 
     const isTemporary = typeof dto?.isTemporary !== "undefined" ? dto.isTemporary : userPrivilege.isTemporary;
 

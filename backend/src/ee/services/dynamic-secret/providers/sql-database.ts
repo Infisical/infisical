@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { withGatewayProxy } from "@app/lib/gateway";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
 import { TGatewayServiceFactory } from "../../gateway/gateway-service";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
@@ -117,7 +118,19 @@ type TSqlDatabaseProviderDTO = {
 export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretSqlDBSchema.parseAsync(inputs);
-    verifyHostInputValidity(providerInputs.host, Boolean(providerInputs.projectGatewayId));
+
+    await verifyHostInputValidity(providerInputs.host, Boolean(providerInputs.projectGatewayId));
+    validateHandlebarTemplate("SQL creation", providerInputs.creationStatement, {
+      allowedExpressions: (val) => ["username", "password", "expiration", "database"].includes(val)
+    });
+    if (providerInputs.renewStatement) {
+      validateHandlebarTemplate("SQL renew", providerInputs.renewStatement, {
+        allowedExpressions: (val) => ["username", "expiration", "database"].includes(val)
+      });
+    }
+    validateHandlebarTemplate("SQL revoke", providerInputs.revocationStatement, {
+      allowedExpressions: (val) => ["username", "database"].includes(val)
+    });
     return providerInputs;
   };
 
@@ -144,7 +157,16 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
             }
           : undefined
       },
-      acquireConnectionTimeout: EXTERNAL_REQUEST_TIMEOUT
+      acquireConnectionTimeout: EXTERNAL_REQUEST_TIMEOUT,
+      pool: {
+        afterCreate: (conn: unknown, done: (err: unknown, arg0: unknown) => void) => {
+          void verifyHostInputValidity(providerInputs.host, Boolean(providerInputs.projectGatewayId))
+            .catch((err) => {
+              done(err, conn);
+            })
+            .then(() => done(null, conn));
+        }
+      }
     });
     return db;
   };

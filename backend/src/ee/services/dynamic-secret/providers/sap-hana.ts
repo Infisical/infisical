@@ -11,6 +11,7 @@ import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretSapHanaSchema, TDynamicProviderFns } from "./models";
@@ -28,7 +29,18 @@ export const SapHanaProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretSapHanaSchema.parseAsync(inputs);
 
-    verifyHostInputValidity(providerInputs.host);
+    await verifyHostInputValidity(providerInputs.host);
+    validateHandlebarTemplate("SAP Hana creation", providerInputs.creationStatement, {
+      allowedExpressions: (val) => ["username", "password", "expiration"].includes(val)
+    });
+    if (providerInputs.renewStatement) {
+      validateHandlebarTemplate("SAP Hana renew", providerInputs.renewStatement, {
+        allowedExpressions: (val) => ["username", "expiration"].includes(val)
+      });
+    }
+    validateHandlebarTemplate("SAP Hana revoke", providerInputs.revocationStatement, {
+      allowedExpressions: (val) => ["username"].includes(val)
+    });
     return providerInputs;
   };
 
