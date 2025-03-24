@@ -19,8 +19,8 @@ const generateUsername = () => {
 export const MongoDBProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretMongoDBSchema.parseAsync(inputs);
-    verifyHostInputValidity(providerInputs.host);
-    return providerInputs;
+    const [hostIp] = await verifyHostInputValidity(providerInputs.host);
+    return { ...providerInputs, host: hostIp };
   };
 
   const $getClient = async (providerInputs: z.infer<typeof DynamicSecretMongoDBSchema>) => {

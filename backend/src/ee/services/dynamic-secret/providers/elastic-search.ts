@@ -19,9 +19,8 @@ const generateUsername = () => {
 export const ElasticSearchProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretElasticSearchSchema.parseAsync(inputs);
-    verifyHostInputValidity(providerInputs.host);
-
-    return providerInputs;
+    const [hostIp] = await verifyHostInputValidity(providerInputs.host);
+    return { ...providerInputs, host: hostIp };
   };
 
   const $getClient = async (providerInputs: z.infer<typeof DynamicSecretElasticSearchSchema>) => {
