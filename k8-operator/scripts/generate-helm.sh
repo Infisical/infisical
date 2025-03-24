@@ -138,6 +138,30 @@ for rbac_file in "${HELM_DIR}/templates/proxy-rbac.yaml" "${HELM_DIR}/templates/
 done
 
 
+# ? NOTE(Daniel): Processes metrics-service.yaml
+if [ -f "${HELM_DIR}/templates/metrics-service.yaml" ]; then
+  echo "Processing metrics-service.yaml file specifically"
+  
+  metrics_file="${HELM_DIR}/templates/metrics-service.yaml"
+  touch "${metrics_file}.new"
+  
+  while IFS= read -r line; do
+    if [[ "$line" == *"{{- include \"secrets-operator.selectorLabels\" . | nindent 4 }}"* ]]; then
+      # keep original indentation for the selector labels line
+      echo "  {{- include \"secrets-operator.selectorLabels\" . | nindent 4 }}" >> "${metrics_file}.new"
+    elif [[ "$line" == *"{{- .Values.metricsService.ports | toYaml | nindent 2 }}"* ]]; then
+      # fix indentation for the ports line - use less indentation here
+      echo "  {{- .Values.metricsService.ports | toYaml | nindent 2 }}" >> "${metrics_file}.new"
+    else
+      echo "$line" >> "${metrics_file}.new"
+    fi
+  done < "${metrics_file}"
+  
+  mv "${metrics_file}.new" "${metrics_file}"
+  echo "Completed processing for metrics_service.yaml"
+fi
+
+
 
 # ? NOTE(Daniel): Processes deployment.yaml
 if [ -f "${HELM_DIR}/templates/deployment.yaml" ]; then
