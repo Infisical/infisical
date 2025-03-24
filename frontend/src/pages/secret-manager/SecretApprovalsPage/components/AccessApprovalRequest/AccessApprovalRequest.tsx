@@ -152,7 +152,7 @@ export const AccessApprovalRequest = ({
     const isAccepted = request.isApproved;
     const isSoftEnforcement = request.policy.enforcementLevel === EnforcementLevel.Soft;
     const isRequestedByCurrentUser = request.requestedByUserId === user.id;
-
+    const isSelfApproveAllowed = request.policy.selfApprovals;
     const userReviewStatus = request.reviewers.find(({ member }) => member === user.id)?.status;
 
     let displayData: { label: string; type: "primary" | "danger" | "success" } = {
@@ -189,7 +189,8 @@ export const AccessApprovalRequest = ({
       userReviewStatus,
       isAccepted,
       isSoftEnforcement,
-      isRequestedByCurrentUser
+      isRequestedByCurrentUser,
+      isSelfApproveAllowed
     };
   };
 
@@ -342,15 +343,16 @@ export const AccessApprovalRequest = ({
                     tabIndex={0}
                     onClick={() => {
                       if (
-                        (!details.isApprover ||
+                        ((!details.isApprover ||
                           details.isReviewedByUser ||
                           details.isRejectedByAnyone ||
                           details.isAccepted) &&
-                        !(
-                          details.isSoftEnforcement &&
-                          details.isRequestedByCurrentUser &&
-                          !details.isAccepted
-                        )
+                          !(
+                            details.isSoftEnforcement &&
+                            details.isRequestedByCurrentUser &&
+                            !details.isAccepted
+                          )) ||
+                        (request.requestedByUserId === user.id && !details.isSelfApproveAllowed)
                       )
                         return;
                       if (membersGroupById?.[request.requestedByUserId].user) {

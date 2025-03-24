@@ -16,7 +16,8 @@ export const useCreateSecretApprovalPolicy = () => {
       approvers,
       secretPath,
       name,
-      enforcementLevel
+      enforcementLevel,
+      selfApprovals
     }) => {
       const { data } = await apiRequest.post("/api/v1/secret-approvals", {
         environment,
@@ -25,7 +26,8 @@ export const useCreateSecretApprovalPolicy = () => {
         approvers,
         secretPath,
         name,
-        enforcementLevel
+        enforcementLevel,
+        selfApprovals
       });
       return data;
     },
@@ -41,13 +43,22 @@ export const useUpdateSecretApprovalPolicy = () => {
   const queryClient = useQueryClient();
 
   return useMutation<object, object, TUpdateSecretPolicyDTO>({
-    mutationFn: async ({ id, approvers, approvals, secretPath, name, enforcementLevel }) => {
+    mutationFn: async ({
+      id,
+      approvers,
+      approvals,
+      secretPath,
+      name,
+      enforcementLevel,
+      selfApprovals
+    }) => {
       const { data } = await apiRequest.patch(`/api/v1/secret-approvals/${id}`, {
         approvals,
         approvers,
         secretPath,
         name,
-        enforcementLevel
+        enforcementLevel,
+        selfApprovals
       });
       return data;
     },

@@ -112,6 +112,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         tx.ref("secretPath").withSchema(TableName.SecretApprovalPolicy).as("policySecretPath"),
         tx.ref("envId").withSchema(TableName.SecretApprovalPolicy).as("policyEnvId"),
         tx.ref("enforcementLevel").withSchema(TableName.SecretApprovalPolicy).as("policyEnforcementLevel"),
+        tx.ref("selfApprovals").withSchema(TableName.SecretApprovalPolicy).as("policySelfApprovals"),
         tx.ref("approvals").withSchema(TableName.SecretApprovalPolicy).as("policyApprovals"),
         tx.ref("deletedAt").withSchema(TableName.SecretApprovalPolicy).as("policyDeletedAt")
       );
@@ -150,7 +151,8 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             secretPath: el.policySecretPath,
             enforcementLevel: el.policyEnforcementLevel,
             envId: el.policyEnvId,
-            deletedAt: el.policyDeletedAt
+            deletedAt: el.policyDeletedAt,
+            selfApprovals: el.policySelfApprovals
           }
         }),
         childrenMapper: [
@@ -336,6 +338,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           ),
           db.ref("secretPath").withSchema(TableName.SecretApprovalPolicy).as("policySecretPath"),
           db.ref("enforcementLevel").withSchema(TableName.SecretApprovalPolicy).as("policyEnforcementLevel"),
+          db.ref("selfApprovals").withSchema(TableName.SecretApprovalPolicy).as("policySelfApprovals"),
           db.ref("approvals").withSchema(TableName.SecretApprovalPolicy).as("policyApprovals"),
           db.ref("approverUserId").withSchema(TableName.SecretApprovalPolicyApprover),
           db.ref("userId").withSchema(TableName.UserGroupMembership).as("approverGroupUserId"),
@@ -364,7 +367,8 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             name: el.policyName,
             approvals: el.policyApprovals,
             secretPath: el.policySecretPath,
-            enforcementLevel: el.policyEnforcementLevel
+            enforcementLevel: el.policyEnforcementLevel,
+            selfApprovals: el.policySelfApprovals
           },
           committerUser: {
             userId: el.committerUserId,
@@ -482,6 +486,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             `DENSE_RANK() OVER (partition by ${TableName.Environment}."projectId" ORDER BY ${TableName.SecretApprovalRequest}."id" DESC) as rank`
           ),
           db.ref("secretPath").withSchema(TableName.SecretApprovalPolicy).as("policySecretPath"),
+          db.ref("selfApprovals").withSchema(TableName.SecretApprovalPolicy).as("policySelfApprovals"),
           db.ref("approvals").withSchema(TableName.SecretApprovalPolicy).as("policyApprovals"),
           db.ref("enforcementLevel").withSchema(TableName.SecretApprovalPolicy).as("policyEnforcementLevel"),
           db.ref("approverUserId").withSchema(TableName.SecretApprovalPolicyApprover),
@@ -511,7 +516,8 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             name: el.policyName,
             approvals: el.policyApprovals,
             secretPath: el.policySecretPath,
-            enforcementLevel: el.policyEnforcementLevel
+            enforcementLevel: el.policyEnforcementLevel,
+            selfApprovals: el.policySelfApprovals
           },
           committerUser: {
             userId: el.committerUserId,
