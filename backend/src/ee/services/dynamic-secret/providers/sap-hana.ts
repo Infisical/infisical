@@ -29,7 +29,7 @@ export const SapHanaProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretSapHanaSchema.parseAsync(inputs);
 
-    await verifyHostInputValidity(providerInputs.host);
+    const [hostIp] = await verifyHostInputValidity(providerInputs.host);
     validateHandlebarTemplate("SAP Hana creation", providerInputs.creationStatement, {
       allowedExpressions: (val) => ["username", "password", "expiration"].includes(val)
     });
@@ -41,7 +41,7 @@ export const SapHanaProvider = (): TDynamicProviderFns => {
     validateHandlebarTemplate("SAP Hana revoke", providerInputs.revocationStatement, {
       allowedExpressions: (val) => ["username"].includes(val)
     });
-    return providerInputs;
+    return { ...providerInputs, host: hostIp };
   };
 
   const $getClient = async (providerInputs: z.infer<typeof DynamicSecretSapHanaSchema>) => {

@@ -28,7 +28,7 @@ export const SapAseProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretSapAseSchema.parseAsync(inputs);
 
-    await verifyHostInputValidity(providerInputs.host);
+    const [hostIp] = await verifyHostInputValidity(providerInputs.host);
     validateHandlebarTemplate("SAP ASE creation", providerInputs.creationStatement, {
       allowedExpressions: (val) => ["username", "password"].includes(val)
     });
@@ -37,7 +37,7 @@ export const SapAseProvider = (): TDynamicProviderFns => {
         allowedExpressions: (val) => ["username"].includes(val)
       });
     }
-    return providerInputs;
+    return { ...providerInputs, host: hostIp };
   };
 
   const $getClient = async (providerInputs: z.infer<typeof DynamicSecretSapAseSchema>, useMaster?: boolean) => {

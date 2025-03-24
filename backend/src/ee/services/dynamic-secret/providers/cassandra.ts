@@ -21,7 +21,7 @@ const generateUsername = () => {
 export const CassandraProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretCassandraSchema.parseAsync(inputs);
-    await verifyHostInputValidity(providerInputs.host);
+    const [hostIp] = await verifyHostInputValidity(providerInputs.host);
     validateHandlebarTemplate("Cassandra creation", providerInputs.creationStatement, {
       allowedExpressions: (val) => ["username", "password", "expiration", "keyspace"].includes(val)
     });
@@ -34,7 +34,7 @@ export const CassandraProvider = (): TDynamicProviderFns => {
       allowedExpressions: (val) => ["username"].includes(val)
     });
 
-    return providerInputs;
+    return { ...providerInputs, host: hostIp };
   };
 
   const $getClient = async (providerInputs: z.infer<typeof DynamicSecretCassandraSchema>) => {
