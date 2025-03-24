@@ -45,6 +45,7 @@ export type TGetFolderDTO = {
   orderDirection?: OrderByDirection;
   limit?: number;
   offset?: number;
+  recursive?: boolean;
 } & TProjectPermission;
 
 export type TGetFolderByIdDTO = {

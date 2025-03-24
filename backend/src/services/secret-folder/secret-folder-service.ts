@@ -401,7 +401,8 @@ export const secretFolderServiceFactory = ({
     orderBy,
     orderDirection,
     limit,
-    offset
+    offset,
+    recursive
   }: TGetFolderDTO) => {
     // folder list is allowed to be read by anyone
     // permission to check does user has access
@@ -419,6 +420,17 @@ export const secretFolderServiceFactory = ({
 
     const parentFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!parentFolder) return [];
+
+    if (recursive) {
+      const recursiveFolders = await folderDAL.findByEnvsDeep({ parentIds: [parentFolder.id] });
+      // remove the parent folder
+      return recursiveFolders
+        .filter((folder) => folder.id !== parentFolder.id)
+        .map((folder) => ({
+          ...folder,
+          relativePath: folder.path
+        }));
+    }
 
     const folders = await folderDAL.find(
       {
