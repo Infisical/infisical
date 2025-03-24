@@ -119,7 +119,7 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretSqlDBSchema.parseAsync(inputs);
 
-    await verifyHostInputValidity(providerInputs.host, Boolean(providerInputs.projectGatewayId));
+    const [hostIp] = await verifyHostInputValidity(providerInputs.host, Boolean(providerInputs.projectGatewayId));
     validateHandlebarTemplate("SQL creation", providerInputs.creationStatement, {
       allowedExpressions: (val) => ["username", "password", "expiration", "database"].includes(val)
     });
@@ -131,7 +131,8 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
     validateHandlebarTemplate("SQL revoke", providerInputs.revocationStatement, {
       allowedExpressions: (val) => ["username", "database"].includes(val)
     });
-    return providerInputs;
+
+    return { ...providerInputs, host: hostIp };
   };
 
   const $getClient = async (providerInputs: z.infer<typeof DynamicSecretSqlDBSchema>) => {
@@ -158,15 +159,7 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
           : undefined
       },
       acquireConnectionTimeout: EXTERNAL_REQUEST_TIMEOUT,
-      pool: {
-        afterCreate: (conn: unknown, done: (err: unknown, arg0: unknown) => void) => {
-          void verifyHostInputValidity(providerInputs.host, Boolean(providerInputs.projectGatewayId))
-            .catch((err) => {
-              done(err, conn);
-            })
-            .then(() => done(null, conn));
-        }
-      }
+      pool: { min: 0, max: 7 }
     });
     return db;
   };

@@ -47,4 +47,5 @@ export const verifyHostInputValidity = async (host: string, isGateway = false) =
 
   const isAppUsedIps = inputHostIps.some((el) => exclusiveIps.includes(el));
   if (isAppUsedIps) throw new BadRequestError({ message: "Invalid db host" });
+  return inputHostIps;
 };
