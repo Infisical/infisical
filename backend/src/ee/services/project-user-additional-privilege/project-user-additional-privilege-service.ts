@@ -93,7 +93,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     if (existingSlug)
       throw new BadRequestError({ message: `Additional privilege with provided slug ${slug} already exists` });
 
-    validateHandlebarTemplate("User Additional Privilege Update", JSON.stringify(customPermission || []), {
+    validateHandlebarTemplate("User Additional Privilege Create", JSON.stringify(customPermission || []), {
       allowedExpressions: (val) => val.includes("identity.")
     });
 

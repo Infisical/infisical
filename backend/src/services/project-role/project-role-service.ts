@@ -73,12 +73,12 @@ export const projectRoleServiceFactory = ({
       throw new BadRequestError({ name: "Create Role", message: "Project role with same slug already exists" });
     }
 
+    validateHandlebarTemplate("Project Role Create", JSON.stringify(data.permissions || []), {
+      allowedExpressions: (val) => val.includes("identity.")
+    });
     const role = await projectRoleDAL.create({
       ...data,
       projectId
-    });
-    validateHandlebarTemplate("Project Role Create", JSON.stringify(data.permissions || []), {
-      allowedExpressions: (val) => val.includes("identity.")
     });
     return { ...role, permissions: unpackPermissions(role.permissions) };
   };
@@ -138,7 +138,7 @@ export const projectRoleServiceFactory = ({
       if (existingRole && existingRole.id !== roleId)
         throw new BadRequestError({ name: "Update Role", message: "Project role with the same slug already exists" });
     }
-    validateHandlebarTemplate("Project Role Upadte", JSON.stringify(data.permissions || []), {
+    validateHandlebarTemplate("Project Role Update", JSON.stringify(data.permissions || []), {
       allowedExpressions: (val) => val.includes("identity.")
     });
     const updatedRole = await projectRoleDAL.updateById(projectRole.id, {

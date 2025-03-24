@@ -208,7 +208,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     }
 
     const isTemporary = typeof data?.isTemporary !== "undefined" ? data.isTemporary : identityPrivilege.isTemporary;
-    validateHandlebarTemplate("Identity Additional Privilege Create", JSON.stringify(data.permissions || []), {
+    validateHandlebarTemplate("Identity Additional Privilege Update", JSON.stringify(data.permissions || []), {
       allowedExpressions: (val) => val.includes("identity.")
     });
 
