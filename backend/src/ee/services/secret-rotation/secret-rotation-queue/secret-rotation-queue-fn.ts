@@ -8,10 +8,9 @@ import axios from "axios";
 import jmespath from "jmespath";
 import knex from "knex";
 
-import { getConfig } from "@app/lib/config/env";
-import { getDbConnectionHost } from "@app/lib/knex";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
+import { verifyHostInputValidity } from "../../dynamic-secret/dynamic-secret-fns";
 import { TAssignOp, TDbProviderClients, TDirectAssignOp, THttpProviderFunction } from "../templates/types";
 import { TSecretRotationData, TSecretRotationDbFn } from "./secret-rotation-queue-types";
 
@@ -88,26 +87,8 @@ export const secretRotationDbFn = async ({
   variables,
   options
 }: TSecretRotationDbFn) => {
-  const appCfg = getConfig();
-
   const ssl = ca ? { rejectUnauthorized: false, ca } : undefined;
-  const isCloud = Boolean(appCfg.LICENSE_SERVER_KEY); // quick and dirty way to check if its cloud or not
-  const dbHost = appCfg.DB_HOST || getDbConnectionHost(appCfg.DB_CONNECTION_URI);
-
-  if (
-    isCloud &&
-    // internal ips
-    (host === "host.docker.internal" || host.match(/^10\.\d+\.\d+\.\d+/) || host.match(/^192\.168\.\d+\.\d+/))
-  )
-    throw new Error("Invalid db host");
-  if (
-    host === "localhost" ||
-    host === "127.0.0.1" ||
-    // database infisical uses
-    dbHost === host
-  )
-    throw new Error("Invalid db host");
-
+  await verifyHostInputValidity(host);
   const db = knex({
     client,
     connection: {
