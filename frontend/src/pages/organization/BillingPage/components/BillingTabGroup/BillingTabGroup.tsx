@@ -1,5 +1,6 @@
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import { withPermission } from "@app/hoc";
 
 import { BillingCloudTab } from "../BillingCloudTab";
@@ -16,12 +17,7 @@ const tabs = [
 
 export const BillingTabGroup = withPermission(
   () => {
-    const isCloudInstance =
-      window.location.origin.includes("https://app.infisical.com") ||
-      window.location.origin.includes("https://eu.infisical.com") ||
-      window.location.origin.includes("https://gamma.infisical.com");
-
-    const tabsFiltered = isCloudInstance
+    const tabsFiltered = isInfisicalCloud()
       ? tabs
       : [{ name: "Infisical Self-Hosted", key: "tab-infisical-cloud" }];
 
@@ -35,7 +31,7 @@ export const BillingTabGroup = withPermission(
         <TabPanel value={tabs[0].key}>
           <BillingCloudTab />
         </TabPanel>
-        {isCloudInstance && (
+        {isInfisicalCloud() && (
           <>
             <TabPanel value={tabs[1].key}>
               <BillingSelfHostedTab />

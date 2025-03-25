@@ -9,6 +9,7 @@ import {
   useOrganization,
   useSubscription
 } from "@app/context";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import {
   useCreateCustomerPortalSession,
   useGetOrgPlanBillingInfo,
@@ -47,19 +48,17 @@ export const PreviewSection = () => {
   };
 
   function formatPlanSlug(slug: string) {
+    if (!slug) {
+      return "-";
+    }
     return slug.replace(/(\b[a-z])/g, (match) => match.toUpperCase()).replace(/-/g, " ");
   }
-
-  const isCloudInstance =
-    window.location.origin.includes("https://app.infisical.com") ||
-    window.location.origin.includes("https://eu.infisical.com") ||
-    window.location.origin.includes("https://gamma.infisical.com");
 
   const handleUpgradeBtnClick = async () => {
     try {
       if (!subscription || !currentOrg) return;
 
-      if (!isCloudInstance) {
+      if (!isInfisicalCloud()) {
         window.open("https://infisical.com/pricing", "_blank");
         return;
       }
@@ -82,7 +81,7 @@ export const PreviewSection = () => {
   };
 
   const getUpgradePlanLabel = () => {
-    if (!isCloudInstance) {
+    if (!isInfisicalCloud()) {
       return (
         <div>
           Go to Pricing
@@ -156,7 +155,7 @@ export const PreviewSection = () => {
                 subscription.status === "trialing" ? "(Trial)" : ""
               }`}
             </p>
-            {isCloudInstance && (
+            {isInfisicalCloud() && (
               <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Billing}>
                 {(isAllowed) => (
                   <button
