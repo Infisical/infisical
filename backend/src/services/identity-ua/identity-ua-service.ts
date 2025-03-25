@@ -64,9 +64,11 @@ export const identityUaServiceFactory = ({
       ipAddress: ip,
       trustedIps: identityUa.clientSecretTrustedIps as TIp[]
     });
+    const clientSecretPrefix = clientSecret.slice(0, 4);
     const clientSecrtInfo = await identityUaClientSecretDAL.find({
       identityUAId: identityUa.id,
-      isClientSecretRevoked: false
+      isClientSecretRevoked: false,
+      clientSecretPrefix
     });
 
     let validClientSecretInfo: (typeof clientSecrtInfo)[0] | null = null;
