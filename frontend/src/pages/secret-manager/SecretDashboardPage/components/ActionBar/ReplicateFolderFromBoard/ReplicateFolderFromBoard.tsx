@@ -102,7 +102,7 @@ export const ReplicateFolderFromBoard = ({
     };
 
     accessibleSecrets.forEach((secret) => {
-      const path = secret.secretPath;
+      const path = secret.secretPath || "/";
 
       if (path === "/") {
         result["/"]?.items.push(secret);
