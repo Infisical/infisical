@@ -65,15 +65,15 @@ export const RedisDatabaseProvider = (): TDynamicProviderFns => {
       allowedExpressions: (val) => ["username"].includes(val)
     });
 
-    return { ...providerInputs, host: hostIp };
+    return { ...providerInputs, hostIp };
   };
 
-  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretRedisDBSchema>) => {
+  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretRedisDBSchema> & { hostIp: string }) => {
     let connection: Redis | null = null;
     try {
       connection = new Redis({
         username: providerInputs.username,
-        host: providerInputs.host,
+        host: providerInputs.hostIp,
         port: providerInputs.port,
         password: providerInputs.password,
         ...(providerInputs.ca && {
