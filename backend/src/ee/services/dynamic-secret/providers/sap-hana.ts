@@ -41,12 +41,12 @@ export const SapHanaProvider = (): TDynamicProviderFns => {
     validateHandlebarTemplate("SAP Hana revoke", providerInputs.revocationStatement, {
       allowedExpressions: (val) => ["username"].includes(val)
     });
-    return { ...providerInputs, host: hostIp };
+    return { ...providerInputs, hostIp };
   };
 
-  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretSapHanaSchema>) => {
+  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretSapHanaSchema> & { hostIp: string }) => {
     const client = hdb.createClient({
-      host: providerInputs.host,
+      host: providerInputs.hostIp,
       port: providerInputs.port,
       user: providerInputs.username,
       password: providerInputs.password,

@@ -37,13 +37,16 @@ export const SapAseProvider = (): TDynamicProviderFns => {
         allowedExpressions: (val) => ["username"].includes(val)
       });
     }
-    return { ...providerInputs, host: hostIp };
+    return { ...providerInputs, hostIp };
   };
 
-  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretSapAseSchema>, useMaster?: boolean) => {
+  const $getClient = async (
+    providerInputs: z.infer<typeof DynamicSecretSapAseSchema> & { hostIp: string },
+    useMaster?: boolean
+  ) => {
     const connectionString =
       `DRIVER={FreeTDS};` +
-      `SERVER=${providerInputs.host};` +
+      `SERVER=${providerInputs.hostIp};` +
       `PORT=${providerInputs.port};` +
       `DATABASE=${useMaster ? "master" : providerInputs.database};` +
       `UID=${providerInputs.username};` +
