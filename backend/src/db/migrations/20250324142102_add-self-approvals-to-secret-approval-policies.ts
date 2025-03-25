@@ -3,27 +3,27 @@ import { Knex } from "knex";
 import { TableName } from "../schemas/models";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasColumn(TableName.SecretApprovalPolicy, "selfApprovals"))) {
+  if (!(await knex.schema.hasColumn(TableName.SecretApprovalPolicy, "allowedallowedSelfApprovals"))) {
     await knex.schema.alterTable(TableName.SecretApprovalPolicy, (t) => {
-      t.boolean("selfApprovals").notNullable().defaultTo(true);
+      t.boolean("allowedSelfApprovals").notNullable().defaultTo(true);
     });
   }
-  if (!(await knex.schema.hasColumn(TableName.AccessApprovalPolicy, "selfApprovals"))) {
+  if (!(await knex.schema.hasColumn(TableName.AccessApprovalPolicy, "allowedSelfApprovals"))) {
     await knex.schema.alterTable(TableName.AccessApprovalPolicy, (t) => {
-      t.boolean("selfApprovals").notNullable().defaultTo(true);
+      t.boolean("allowedSelfApprovals").notNullable().defaultTo(true);
     });
   }
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasColumn(TableName.SecretApprovalPolicy, "selfApprovals")) {
+  if (await knex.schema.hasColumn(TableName.SecretApprovalPolicy, "allowedSelfApprovals")) {
     await knex.schema.alterTable(TableName.SecretApprovalPolicy, (t) => {
-      t.dropColumn("selfApprovals");
+      t.dropColumn("allowedSelfApprovals");
     });
   }
-  if (await knex.schema.hasColumn(TableName.AccessApprovalPolicy, "selfApprovals")) {
+  if (await knex.schema.hasColumn(TableName.AccessApprovalPolicy, "allowedSelfApprovals")) {
     await knex.schema.alterTable(TableName.AccessApprovalPolicy, (t) => {
-      t.dropColumn("selfApprovals");
+      t.dropColumn("allowedSelfApprovals");
     });
   }
 }

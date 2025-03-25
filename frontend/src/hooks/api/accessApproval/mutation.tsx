@@ -24,7 +24,7 @@ export const useCreateAccessApprovalPolicy = () => {
       name,
       secretPath,
       enforcementLevel,
-      selfApprovals
+      allowedSelfApprovals
     }) => {
       const { data } = await apiRequest.post("/api/v1/access-approvals/policies", {
         environment,
@@ -34,7 +34,7 @@ export const useCreateAccessApprovalPolicy = () => {
         secretPath,
         name,
         enforcementLevel,
-        selfApprovals
+        allowedSelfApprovals
       });
       return data;
     },
@@ -57,7 +57,7 @@ export const useUpdateAccessApprovalPolicy = () => {
       name,
       secretPath,
       enforcementLevel,
-      selfApprovals
+      allowedSelfApprovals
     }) => {
       const { data } = await apiRequest.patch(`/api/v1/access-approvals/policies/${id}`, {
         approvals,
@@ -65,7 +65,7 @@ export const useUpdateAccessApprovalPolicy = () => {
         secretPath,
         name,
         enforcementLevel,
-        selfApprovals
+        allowedSelfApprovals
       });
       return data;
     },

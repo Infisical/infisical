@@ -10,7 +10,7 @@ export type TCreateSapDTO = {
   projectId: string;
   name: string;
   enforcementLevel: EnforcementLevel;
-  selfApprovals: boolean;
+  allowedSelfApprovals: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateSapDTO = {
@@ -20,7 +20,7 @@ export type TUpdateSapDTO = {
   approvers: ({ type: ApproverType.Group; id: string } | { type: ApproverType.User; id?: string; name?: string })[];
   name?: string;
   enforcementLevel?: EnforcementLevel;
-  selfApprovals?: boolean;
+  allowedSelfApprovals?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteSapDTO = {

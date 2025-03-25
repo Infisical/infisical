@@ -17,7 +17,7 @@ export const AccessApprovalPoliciesSchema = z.object({
   updatedAt: z.date(),
   enforcementLevel: z.string().default("hard"),
   deletedAt: z.date().nullable().optional(),
-  selfApprovals: z.boolean().default(true)
+  allowedSelfApprovals: z.boolean().default(true)
 });
 
 export type TAccessApprovalPolicies = z.infer<typeof AccessApprovalPoliciesSchema>;

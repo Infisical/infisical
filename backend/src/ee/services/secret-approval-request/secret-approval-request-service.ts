@@ -352,7 +352,7 @@ export const secretApprovalRequestServiceFactory = ({
         message: "The policy associated with this secret approval request has been deleted."
       });
     }
-    if (!policy.selfApprovals && actorId === secretApprovalRequest.committerUserId) {
+    if (!policy.allowedSelfApprovals && actorId === secretApprovalRequest.committerUserId) {
       throw new BadRequestError({
         message: "Failed to review secret approval request. Users are not authorized to review their own request."
       });

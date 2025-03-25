@@ -128,7 +128,7 @@ export const SecretApprovalRequestChanges = ({
     resolver: zodResolver(reviewFormSchema)
   });
   const shouldBlockSelfReview =
-    secretApprovalRequestDetails?.policy?.selfApprovals === false &&
+    secretApprovalRequestDetails?.policy?.allowedSelfApprovals === false &&
     secretApprovalRequestDetails?.committerUserId === userSession.id;
   const isApproving = variables?.status === ApprovalStatus.APPROVED && isUpdatingRequestStatus;
   const isRejecting = variables?.status === ApprovalStatus.REJECTED && isUpdatingRequestStatus;

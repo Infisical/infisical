@@ -56,7 +56,7 @@ const formSchema = z
       .default([]),
     policyType: z.nativeEnum(PolicyType),
     enforcementLevel: z.nativeEnum(EnforcementLevel),
-    selfApprovals: z.boolean().default(true)
+    allowedSelfApprovals: z.boolean().default(true)
   })
   .superRefine((data, ctx) => {
     if (!(data.groupApprovers.length || data.userApprovers.length)) {
@@ -104,7 +104,7 @@ export const AccessPolicyForm = ({
               ?.filter((approver) => approver.type === ApproverType.Group)
               .map(({ id, type }) => ({ id, type: type as ApproverType.Group })) || [],
           approvals: editValues?.approvals,
-          selfApprovals: editValues?.selfApprovals
+          allowedSelfApprovals: editValues?.allowedSelfApprovals
         }
       : undefined
   });
@@ -446,7 +446,7 @@ export const AccessPolicyForm = ({
             />
             <Controller
               control={control}
-              name="selfApprovals"
+              name="allowedSelfApprovals"
               defaultValue
               render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <FormControl

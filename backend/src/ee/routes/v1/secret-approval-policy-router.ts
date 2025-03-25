@@ -36,7 +36,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           .min(1, { message: "At least one approver should be provided" }),
         approvals: z.number().min(1).default(1),
         enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
-        selfApprovals: z.boolean().default(true)
+        allowedSelfApprovals: z.boolean().default(true)
       }),
       response: {
         200: z.object({
@@ -87,7 +87,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           .transform((val) => (val ? removeTrailingSlash(val) : val))
           .transform((val) => (val === "" ? "/" : val)),
         enforcementLevel: z.nativeEnum(EnforcementLevel).optional(),
-        selfApprovals: z.boolean().default(true)
+        allowedSelfApprovals: z.boolean().default(true)
       }),
       response: {
         200: z.object({

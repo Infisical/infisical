@@ -320,7 +320,7 @@ export const accessApprovalRequestServiceFactory = ({
         message: "The policy associated with this access request has been deleted."
       });
     }
-    if (!policy.selfApprovals && actorId === accessApprovalRequest.requestedByUserId) {
+    if (!policy.allowedSelfApprovals && actorId === accessApprovalRequest.requestedByUserId) {
       throw new BadRequestError({
         message: "Failed to review access approval request. Users are not authorized to review their own request."
       });

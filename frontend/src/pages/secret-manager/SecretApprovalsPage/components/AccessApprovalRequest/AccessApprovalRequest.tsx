@@ -152,7 +152,7 @@ export const AccessApprovalRequest = ({
     const isAccepted = request.isApproved;
     const isSoftEnforcement = request.policy.enforcementLevel === EnforcementLevel.Soft;
     const isRequestedByCurrentUser = request.requestedByUserId === user.id;
-    const isSelfApproveAllowed = request.policy.selfApprovals;
+    const isSelfApproveAllowed = request.policy.allowedSelfApprovals;
     const userReviewStatus = request.reviewers.find(({ member }) => member === user.id)?.status;
 
     let displayData: { label: string; type: "primary" | "danger" | "success" } = {
