@@ -26,6 +26,7 @@ export type TCreateAccessApprovalPolicy = {
   projectSlug: string;
   name: string;
   enforcementLevel: EnforcementLevel;
+  allowedSelfApprovals: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateAccessApprovalPolicy = {
@@ -35,6 +36,7 @@ export type TUpdateAccessApprovalPolicy = {
   secretPath?: string;
   name?: string;
   enforcementLevel?: EnforcementLevel;
+  allowedSelfApprovals: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteAccessApprovalPolicy = {
