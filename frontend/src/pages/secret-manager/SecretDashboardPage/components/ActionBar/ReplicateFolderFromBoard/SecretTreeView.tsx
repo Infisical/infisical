@@ -128,7 +128,7 @@ const Folder: React.FC<FolderProps> = ({
             />
           </div>
           <Checkbox
-            id={`folder-${path}`}
+            id="folder-root"
             className="data-[state=indeterminate]:bg-secondary data-[state=checked]:bg-primary"
             isChecked={allSelected || someSelected}
             onCheckedChange={handleFolderSelect}
@@ -159,7 +159,7 @@ const Folder: React.FC<FolderProps> = ({
                   <FontAwesomeIcon icon={faKey} className="h-3 w-3" />
                 </div>
                 <Checkbox
-                  id={`folder-${path}`}
+                  id={`folder-${item.id}`}
                   className="data-[state=indeterminate]:bg-secondary data-[state=checked]:bg-primary"
                   isChecked={selectedItemIds.includes(item.id)}
                   onCheckedChange={(checked) => onItemSelect(item, !!checked)}
@@ -240,7 +240,7 @@ export const SecretTreeView: React.FC<TreeViewProps> = ({
       current = tree["/"];
 
       const targetExists = parts.every((part) => {
-        if (current?.subFolders && current.subFolders[part]) {
+        if (current?.subFolders?.[part]) {
           current = current.subFolders[part];
           return true;
         }

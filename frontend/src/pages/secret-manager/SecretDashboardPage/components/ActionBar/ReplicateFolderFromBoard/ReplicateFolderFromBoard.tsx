@@ -171,7 +171,7 @@ export const ReplicateFolderFromBoard = ({
       const segment = segments[i];
       currentPath += `/${segment}`;
 
-      if (currentLevel.subFolders && currentLevel.subFolders[segment]) {
+      if (currentLevel?.subFolders?.[segment]) {
         currentLevel = currentLevel.subFolders[segment];
 
         if (currentPath === normalizedPath) {
