@@ -33,7 +33,6 @@ export default defineConfig({
     //   }
     // }
   },
-  base: "",
   plugins: [
     tsconfigPaths(),
     nodePolyfills({
