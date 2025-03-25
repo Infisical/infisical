@@ -94,8 +94,29 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
         });
       } else {
         const inviteeEmails = selectedMembers
-          .map((member) => member?.user.username as string)
-          .filter(Boolean);
+          .map((member) => {
+            if (!member) return null;
+
+            if (member.user.email) {
+              return member.user.email;
+            }
+
+            if (member.user.username) {
+              return member.user.username;
+            }
+
+            return null;
+          })
+          .filter(Boolean) as string[];
+
+        if (inviteeEmails.length !== selectedMembers.length) {
+          createNotification({
+            text: "Failed to add users to project. One or more users were invalid.",
+            type: "error"
+          });
+          return;
+        }
+
         if (inviteeEmails.length || newInvitees.length) {
           await addMembersToProject({
             inviteeEmails: [...inviteeEmails, ...newInvitees],
