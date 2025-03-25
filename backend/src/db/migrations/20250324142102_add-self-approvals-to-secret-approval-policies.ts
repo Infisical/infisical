@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TableName } from "../schemas/models";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasColumn(TableName.SecretApprovalPolicy, "allowedallowedSelfApprovals"))) {
+  if (!(await knex.schema.hasColumn(TableName.SecretApprovalPolicy, "allowedSelfApprovals"))) {
     await knex.schema.alterTable(TableName.SecretApprovalPolicy, (t) => {
       t.boolean("allowedSelfApprovals").notNullable().defaultTo(true);
     });
