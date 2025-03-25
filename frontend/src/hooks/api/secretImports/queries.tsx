@@ -182,7 +182,8 @@ export const useGetImportedSecretsAllEnvs = ({
                 comment: encSecret.secretComment,
                 createdAt: encSecret.createdAt,
                 updatedAt: encSecret.updatedAt,
-                version: encSecret.version
+                version: encSecret.version,
+                sourceEnv: env
               };
             })
           })),
