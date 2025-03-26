@@ -14,8 +14,35 @@ import { verifyHostInputValidity } from "../../dynamic-secret/dynamic-secret-fns
 import { TAssignOp, TDbProviderClients, TDirectAssignOp, THttpProviderFunction } from "../templates/types";
 import { TSecretRotationData, TSecretRotationDbFn } from "./secret-rotation-queue-types";
 
-const REGEX = /\${([^}]+)}/g;
 const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
+
+const replaceTemplateVariables = (str: string, getValue: (key: string) => unknown) => {
+  // Use array to collect pieces and join at the end (more efficient for large strings)
+  const parts: string[] = [];
+  let pos = 0;
+
+  while (pos < str.length) {
+    const start = str.indexOf("${", pos);
+    if (start === -1) {
+      parts.push(str.slice(pos));
+      break;
+    }
+
+    parts.push(str.slice(pos, start));
+    const end = str.indexOf("}", start + 2);
+
+    if (end === -1) {
+      parts.push(str.slice(start));
+      break;
+    }
+
+    const varName = str.slice(start + 2, end);
+    parts.push(String(getValue(varName)));
+    pos = end + 1;
+  }
+
+  return parts.join("");
+};
 
 export const interpolate = (data: any, getValue: (key: string) => unknown) => {
   if (!data) return;
@@ -23,7 +50,7 @@ export const interpolate = (data: any, getValue: (key: string) => unknown) => {
   if (typeof data === "number") return data;
 
   if (typeof data === "string") {
-    return data.replace(REGEX, (_a, b) => getValue(b) as string);
+    return replaceTemplateVariables(data, getValue);
   }
 
   if (typeof data === "object" && Array.isArray(data)) {

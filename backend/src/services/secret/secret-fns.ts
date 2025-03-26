@@ -207,7 +207,7 @@ export const recursivelyGetSecretPaths = ({
 const formatMultiValueEnv = (val?: string) => {
   if (!val) return "";
   if (!val.match("\n")) return val;
-  return `"${val.replace(/\n/g, "\\n")}"`;
+  return `"${val.replaceAll("/n", "\\n")}"`;
 };
 
 type TInterpolateSecretArg = {
@@ -218,7 +218,7 @@ type TInterpolateSecretArg = {
 };
 
 const MAX_SECRET_REFERENCE_DEPTH = 5;
-const INTERPOLATION_SYNTAX_REG = /\${([^}]+)}/g;
+const INTERPOLATION_SYNTAX_REG = /\${([a-zA-Z0-9-_.]+)}/g;
 export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderDAL }: TInterpolateSecretArg) => {
   const secretCache: Record<string, Record<string, string>> = {};
   const getCacheUniqueKey = (environment: string, secretPath: string) => `${environment}-${secretPath}`;

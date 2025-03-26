@@ -584,7 +584,7 @@ const syncSecretsAzureKeyVault = async ({
   }[] = [];
 
   Object.keys(secrets).forEach((key) => {
-    const hyphenatedKey = key.replace(/_/g, "-");
+    const hyphenatedKey = key.replaceAll("_", "-");
     if (!(hyphenatedKey in res)) {
       // case: secret has been created
       setSecrets.push({
@@ -603,7 +603,7 @@ const syncSecretsAzureKeyVault = async ({
   const deleteSecrets: AzureKeyVaultSecret[] = [];
 
   Object.keys(res).forEach((key) => {
-    const underscoredKey = key.replace(/-/g, "_");
+    const underscoredKey = key.replaceAll("-", "_");
     if (!(underscoredKey in secrets)) {
       deleteSecrets.push(res[key]);
     }
@@ -617,7 +617,7 @@ const syncSecretsAzureKeyVault = async ({
   if (!integration.lastUsed) {
     Object.keys(res).forEach((key) => {
       // first time using integration
-      const underscoredKey = key.replace(/-/g, "_");
+      const underscoredKey = key.replaceAll("-", "_");
 
       // -> apply initial sync behavior
       switch (metadata.initialSyncBehavior) {
@@ -3578,7 +3578,7 @@ const syncSecretsTeamCity = async ({
       .filter((parameter) => !parameter.inherited)
       .reduce(
         (obj, secret) => {
-          const secretName = secret.name.replace(/^env\./, "");
+          const secretName = secret.name.replace("env.", "");
           return {
             ...obj,
             [secretName]: secret.value
@@ -3635,7 +3635,7 @@ const syncSecretsTeamCity = async ({
       )
     ).data.property.reduce(
       (obj, secret) => {
-        const secretName = secret.name.replace(/^env\./, "");
+        const secretName = secret.name.replace("env.", "");
         return {
           ...obj,
           [secretName]: secret.value

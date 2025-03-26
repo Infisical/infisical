@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { isValidIp } from "@app/lib/ip";
+import { isFQDN } from "@app/lib/validator/validate-url";
 
 const isValidDate = (dateString: string) => {
   const date = new Date(dateString);
@@ -9,7 +10,6 @@ const isValidDate = (dateString: string) => {
 
 export const validateCaDateField = z.string().trim().refine(isValidDate, { message: "Invalid date format" });
 
-export const hostnameRegex = /^(?!:\/\/)(\*\.)?([a-zA-Z0-9-_]{1,63}\.?)+(?!:\/\/)([a-zA-Z]{2,63})$/;
 export const validateAltNamesField = z
   .string()
   .trim()
@@ -27,7 +27,7 @@ export const validateAltNamesField = z
       if (data === "") return true;
       // Split and validate each alt name
       return data.split(", ").every((name) => {
-        return hostnameRegex.test(name) || z.string().email().safeParse(name).success || isValidIp(name);
+        return isFQDN(name, { allow_wildcard: true }) || z.string().email().safeParse(name).success || isValidIp(name);
       });
     },
     {

@@ -2,7 +2,6 @@ import { ForbiddenError } from "@casl/ability";
 import { RawAxiosRequestHeaders } from "axios";
 
 import { SecretKeyEncoding } from "@app/db/schemas";
-import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
@@ -45,7 +44,6 @@ export const auditLogStreamServiceFactory = ({
   }: TCreateAuditLogStreamDTO) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID attached to authentication token" });
 
-    const appCfg = getConfig();
     const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.auditLogStreams) {
       throw new BadRequestError({
@@ -62,9 +60,7 @@ export const auditLogStreamServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
 
-    if (appCfg.isCloud) {
-      blockLocalAndPrivateIpAddresses(url);
-    }
+    await blockLocalAndPrivateIpAddresses(url);
 
     const totalStreams = await auditLogStreamDAL.find({ orgId: actorOrgId });
     if (totalStreams.length >= plan.auditLogStreamLimit) {
@@ -136,8 +132,7 @@ export const auditLogStreamServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
 
-    const appCfg = getConfig();
-    if (url && appCfg.isCloud) blockLocalAndPrivateIpAddresses(url);
+    if (url) await blockLocalAndPrivateIpAddresses(url);
 
     // testing connection first
     const streamHeaders: RawAxiosRequestHeaders = { "Content-Type": "application/json" };

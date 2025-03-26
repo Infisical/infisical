@@ -7,9 +7,11 @@ import { z } from "zod";
 import { ActionProjectType, ProjectType, TCertificateAuthorities, TCertificateTemplates } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
+import { isFQDN } from "@app/lib/validator/validate-url";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -58,7 +60,6 @@ import {
   TSignIntermediateDTO,
   TUpdateCaDTO
 } from "./certificate-authority-types";
-import { hostnameRegex } from "./certificate-authority-validators";
 
 type TCertificateAuthorityServiceFactoryDep = {
   certificateAuthorityDAL: Pick<
@@ -1017,9 +1018,7 @@ export const certificateAuthorityServiceFactory = ({
     const maxPathLength = certObj.getExtension(x509.BasicConstraintsExtension)?.pathLength;
 
     // validate imported certificate and certificate chain
-    const certificates = certificateChain
-      .match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g)
-      ?.map((cert) => new x509.X509Certificate(cert));
+    const certificates = extractX509CertFromChain(certificateChain)?.map((cert) => new x509.X509Certificate(cert));
 
     if (!certificates) throw new BadRequestError({ message: "Failed to parse certificate chain" });
 
@@ -1325,7 +1324,7 @@ export const certificateAuthorityServiceFactory = ({
           }
 
           // check if the altName is a valid hostname
-          if (hostnameRegex.test(altName)) {
+          if (isFQDN(altName, { allow_wildcard: true })) {
             return {
               type: "dns",
               value: altName
@@ -1702,7 +1701,7 @@ export const certificateAuthorityServiceFactory = ({
           }
 
           // check if the altName is a valid hostname
-          if (hostnameRegex.test(altName)) {
+          if (isFQDN(altName, { allow_wildcard: true })) {
             return {
               type: "dns",
               value: altName
