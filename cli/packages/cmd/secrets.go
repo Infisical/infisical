@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -139,7 +140,7 @@ var secretsGenerateExampleEnvCmd = &cobra.Command{
 }
 
 var secretsSetCmd = &cobra.Command{
-	Example:               `secrets set <secretName=secretValue> <secretName=secretValue>..."`,
+	Example:               `secrets set <secretName=secretValue> <secretName=secretValue> <secretName=@/path/to/file>..."`,
 	Short:                 "Used set secrets",
 	Use:                   "set [secrets]",
 	DisableFlagsInUseLine: true,
@@ -185,6 +186,30 @@ var secretsSetCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse secret type")
 		}
 
+		processedArgs := []string{}
+		for _, arg := range args {
+			splitKeyValue := strings.SplitN(arg, "=", 2)
+			if len(splitKeyValue) != 2 {
+				util.HandleError(fmt.Errorf("invalid argument format: %s. Expected format: key=value or key=@filepath", arg), "")
+			}
+
+			key := splitKeyValue[0]
+			value := splitKeyValue[1]
+
+			if strings.HasPrefix(value, "\\@") {
+				value = "@" + value[2:]
+			} else if strings.HasPrefix(value, "@") {
+				filePath := strings.TrimPrefix(value, "@")
+				content, err := os.ReadFile(filePath)
+				if err != nil {
+					util.HandleError(err, fmt.Sprintf("Unable to read file %s", filePath))
+				}
+				value = string(content)
+			}
+
+			processedArgs = append(processedArgs, fmt.Sprintf("%s=%s", key, value))
+		}
+
 		file, err := cmd.Flags().GetString("file")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
@@ -216,7 +241,7 @@ var secretsSetCmd = &cobra.Command{
 				util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
 			}
 
-			secretOperations, err = util.SetRawSecrets(args, secretType, environmentName, secretsPath, projectId, &models.TokenDetails{
+			secretOperations, err = util.SetRawSecrets(processedArgs, secretType, environmentName, secretsPath, projectId, &models.TokenDetails{
 				Type:  "",
 				Token: loggedInUserDetails.UserCredentials.JTWToken,
 			}, file)
