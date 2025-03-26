@@ -7,7 +7,8 @@ export enum PermissionAccess {
 export enum PermissionNode {
   Role = "role",
   Folder = "folder",
-  Environment = "environment"
+  Environment = "environment",
+  ShowMoreButton = "showMoreButton"
 }
 
 export enum PermissionEdge {

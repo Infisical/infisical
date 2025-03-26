@@ -46,6 +46,12 @@ export const PermissionSimulation = ({
           className="mr-1 rounded"
           colorSchema="secondary"
           onClick={handlePermissionSimulation}
+          rightIcon={
+            <FontAwesomeIcon
+              className="pl-1 text-sm text-bunker-300 hover:text-primary hover:opacity-80"
+              icon={faChevronDown}
+            />
+          }
         >
           Permission Simulation
         </Button>

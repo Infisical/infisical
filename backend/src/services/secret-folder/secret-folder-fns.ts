@@ -1,14 +1,11 @@
 import { TSecretFolders } from "@app/db/schemas";
-import { InternalServerError } from "@app/lib/errors";
 
 export const buildFolderPath = (
   folder: TSecretFolders,
   foldersMap: Record<string, TSecretFolders>,
   depth: number = 0
 ): string => {
-  if (depth > 20) {
-    throw new InternalServerError({ message: "Maximum folder depth of 20 exceeded" });
-  }
+  if (depth > 20) return;
   if (!folder.parentId) {
     return depth === 0 ? "/" : "";
   }
