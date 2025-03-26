@@ -48,7 +48,6 @@ export const SecretPathInput = ({
   }, [propValue]);
 
   useEffect(() => {
-    // update secret path if input is valid
     if (
       (debouncedInputValue.length > 0 &&
         debouncedInputValue[debouncedInputValue.length - 1] === "/") ||
@@ -59,7 +58,6 @@ export const SecretPathInput = ({
   }, [debouncedInputValue]);
 
   useEffect(() => {
-    // filter suggestions based on matching
     const searchFragment = debouncedInputValue.split("/").pop() || "";
     const filteredSuggestions = folders
       .filter((suggestionEntry) =>
@@ -78,7 +76,6 @@ export const SecretPathInput = ({
     const validPaths = inputValue.split("/");
     validPaths.pop();
 
-    // removed trailing slash
     const newValue = `${validPaths.join("/")}/${suggestions[selectedIndex]}`;
     onChange?.(newValue);
     setInputValue(newValue);
@@ -102,7 +99,6 @@ export const SecretPathInput = ({
   };
 
   const handleInputChange = (e: any) => {
-    // propagate event to react-hook-form onChange
     if (onChange) {
       onChange(e.target.value);
     }

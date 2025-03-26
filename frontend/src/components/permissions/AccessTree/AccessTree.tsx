@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { MongoAbility, MongoQuery } from "@casl/ability";
 import {
-  faArrowsToDot,
+  faAnglesUp,
   faArrowsUpDownLeftRight,
   faArrowUpRightFromSquare,
   faDownLeftAndUpRightToCenter,
@@ -241,7 +241,7 @@ const AccessTreeContent = ({ permissions }: AccessTreeProps) => {
                 </ControlButton>
                 <ControlButton onClick={goToRootNode}>
                   <Tooltip position="right" content="Go to root folder">
-                    <FontAwesomeIcon icon={faArrowsToDot} />
+                    <FontAwesomeIcon icon={faAnglesUp} />
                   </Tooltip>
                 </ControlButton>
               </Controls>

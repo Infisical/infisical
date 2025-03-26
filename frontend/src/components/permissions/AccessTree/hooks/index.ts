@@ -88,21 +88,18 @@ export const useAccessTree = (
     if (!environmentsFolders || !permissions || !environmentsFolders[environment]) return;
 
     const { folders } = environmentsFolders[environment];
-
     setTotalFolderCount(folders.length);
 
-    const groupedFolders: Record<string, TSecretFolderWithPath[]> = {};
+    const searchPathFolder = folders.find((folder) => folder.path === searchPath);
 
     const filteredFolders = folders.filter((folder) => {
-      if (folder.path.startsWith(searchPath)) {
+      if (folder.path === searchPath) {
         return true;
       }
 
       if (
-        searchPath.startsWith(folder.path) &&
-        (folder.path === "/" ||
-          searchPath === folder.path ||
-          searchPath.indexOf("/", folder.path.length) === folder.path.length)
+        folder.path.startsWith(searchPath) &&
+        (searchPath === "/" || folder.path.charAt(searchPath.length) === "/")
       ) {
         return true;
       }
@@ -110,11 +107,17 @@ export const useAccessTree = (
       return false;
     });
 
+    const rootFolder = searchPathFolder || filteredFolders.find((f) => f.path === "/");
+
+    const groupedFolders: Record<string, TSecretFolderWithPath[]> = {};
+
     filteredFolders.forEach((folder) => {
       const parentId = folder.parentId || "";
+
       if (!groupedFolders[parentId]) {
         groupedFolders[parentId] = [];
       }
+
       groupedFolders[parentId].push(folder);
     });
 
@@ -129,7 +132,18 @@ export const useAccessTree = (
       };
     });
 
-    setLevelFolderMap(newLevelFolderMap);
+    if (rootFolder) {
+      setLevelFolderMap({
+        ...newLevelFolderMap,
+        __rootFolderId: {
+          folders: [rootFolder],
+          visibleCount: 1,
+          hasMore: false
+        }
+      });
+    } else {
+      setLevelFolderMap(newLevelFolderMap);
+    }
   }, [permissions, environmentsFolders, environment, subject, secretName, searchPath]);
 
   useEffect(() => {
@@ -151,10 +165,14 @@ export const useAccessTree = (
     const actionRuleMap = getSubjectActionRuleMap(subject, permissions);
 
     const visibleFolders: TSecretFolderWithPath[] = [];
-
-    Object.values(levelFolderMap).forEach((levelData) => {
-      visibleFolders.push(...levelData.folders.slice(0, levelData.visibleCount));
+    Object.entries(levelFolderMap).forEach(([key, levelData]) => {
+      if (key !== "__rootFolderId") {
+        visibleFolders.push(...levelData.folders.slice(0, levelData.visibleCount));
+      }
     });
+
+    // eslint-disable-next-line no-underscore-dangle
+    const rootFolder = levelFolderMap.__rootFolderId?.folders[0];
 
     const folderNodes = visibleFolders.map((folder) =>
       createFolderNode({
@@ -167,10 +185,45 @@ export const useAccessTree = (
       })
     );
 
-    const folderEdges = folderNodes.map(({ data: folder }) => {
-      const actions = Object.values(folder.actions);
+    const folderEdges: Edge[] = [];
 
+    if (rootFolder) {
+      const rootFolderNode = folderNodes.find(
+        (node) => node.data.id === rootFolder.id || node.data.path === rootFolder.path
+      );
+
+      if (rootFolderNode) {
+        const rootActions = Object.values(rootFolderNode.data.actions);
+        let rootAccess: PermissionAccess;
+
+        if (Object.values(rootActions).some((action) => action === PermissionAccess.Full)) {
+          rootAccess = PermissionAccess.Full;
+        } else if (
+          Object.values(rootActions).some((action) => action === PermissionAccess.Partial)
+        ) {
+          rootAccess = PermissionAccess.Partial;
+        } else {
+          rootAccess = PermissionAccess.None;
+        }
+
+        folderEdges.push(
+          createBaseEdge({
+            source: roleNode.id,
+            target: rootFolderNode.id,
+            access: rootAccess
+          })
+        );
+      }
+    }
+
+    folderNodes.forEach(({ data: folder }) => {
+      if (rootFolder && (folder.id === rootFolder.id || folder.path === rootFolder.path)) {
+        return;
+      }
+
+      const actions = Object.values(folder.actions);
       let access: PermissionAccess;
+
       if (Object.values(actions).some((action) => action === PermissionAccess.Full)) {
         access = PermissionAccess.Full;
       } else if (Object.values(actions).some((action) => action === PermissionAccess.Partial)) {
@@ -179,16 +232,20 @@ export const useAccessTree = (
         access = PermissionAccess.None;
       }
 
-      return createBaseEdge({
-        source: folder.parentId ?? roleNode.id,
-        target: folder.id,
-        access
-      });
+      folderEdges.push(
+        createBaseEdge({
+          source: folder.parentId ?? roleNode.id,
+          target: folder.id,
+          access
+        })
+      );
     });
 
     const addMoreButtons: Node[] = [];
 
     Object.entries(levelFolderMap).forEach(([parentId, levelData]) => {
+      if (parentId === "__rootFolderId") return;
+
       const key = parentId === "null" ? null : parentId;
 
       if (key && levelData.hasMore) {

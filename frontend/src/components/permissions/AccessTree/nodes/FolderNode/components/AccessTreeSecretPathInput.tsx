@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
-import { faSearch, faTimes } from "@fortawesome/free-solid-svg-icons";
+import { useEffect, useRef, useState } from "react";
+import { faSearch } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
@@ -33,6 +33,12 @@ export const AccessTreeSecretPathInput = ({
       setIsFocused(false);
     }, 200);
   };
+
+  useEffect(() => {
+    if (!isFocused) {
+      setIsExpanded(false);
+    }
+  }, [isFocused]);
 
   const focusInput = () => {
     const inputElement = inputRef.current?.querySelector("input");
@@ -69,7 +75,7 @@ export const AccessTreeSecretPathInput = ({
               }
             }}
           >
-            <FontAwesomeIcon icon={faTimes} />
+            <FontAwesomeIcon icon={faSearch} />
           </div>
         ) : (
           <Tooltip position="bottom" content="Search paths">
